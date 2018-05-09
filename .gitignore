@@ -1,0 +1,11 @@
+bin
+logs
+nginx
+rejson
+stsdb
+.DS_Store
+.vscode
+CMakeFiles
+cmake_install.cmake
+CMakeCache.txt
+*.o
