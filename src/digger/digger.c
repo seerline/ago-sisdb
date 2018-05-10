@@ -6,9 +6,9 @@
 bool _inited = false;
 char _source[255];
 
-int call_sts_db_init(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
+int call_digger_init(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
-	int o = sts_db_create(ctx_, _source);
+	int o = digger_create(ctx_, _source);
 	if (o <= 0)
 	{
 		printf("create db [%s] fail. code = [%d]\n", _source, o);
@@ -22,13 +22,9 @@ int call_sts_db_init(s_sts_module_context *ctx_, s_sts_module_string **argv_, in
 	return o;	
 }
 // _module 开头的函数仅仅在该文件应用，该文件仅仅处理逻辑问题，具体函数实现在call文件中
-int call_sts_db_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
+int call_digger_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
-	if (!_inited) {
-		call_sts_db_init(ctx_, NULL, 0);	
-	}
-	// sts_module_not_used(argv_);
-	// sts_module_not_used(argc_);
+
 	if (argc_ < 3)
 	{
 		return sts_module_wrong_arity(ctx_);
@@ -37,14 +33,14 @@ int call_sts_db_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int
 	int out;
 	if (argc_ == 4)
 	{
-		out = sts_db_get(ctx_,
+		out = digger_get(ctx_,
 						 sts_module_string_get(argv_[1], NULL),  // dbname : day
 						 sts_module_string_get(argv_[2], NULL),  // key : sh600600
 						 sts_module_string_get(argv_[3], NULL)); // command: json
 	}
 	else
 	{
-		out = sts_db_get(ctx_,
+		out = digger_get(ctx_,
 						 sts_module_string_get(argv_[1], NULL), // dbname : day
 						 sts_module_string_get(argv_[2], NULL), // key : sh600600
 						 NULL);
@@ -53,7 +49,7 @@ int call_sts_db_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int
 }
 int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
-	if (sts_module_init(ctx_, "stsdb", 1, STS_MODULE_VER) == STS_MODULE_ERROR)
+	if (sts_module_init(ctx_, "digger", 1, STS_MODULE_VER) == STS_MODULE_ERROR)
 		return STS_MODULE_ERROR;
 
 	/* Log the list of parameters passing loading the module. */
@@ -64,22 +60,20 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	}
 	if (argc_ == 1)
 	{
-		sprintf(_source,"%s", sts_module_string_get(argv_[0], NULL));
+		call_digger_init(sts_module_string_get(argv_[0], NULL));
 	}
 	else
 	{
-		_source[0] = 0;
+		call_digger_init("./digger.conf", NULL));
 	}
 
-	example();
-
-	if (sts_module_create_command(ctx_, "stsdb.init",call_sts_db_init, 
+	if (sts_module_create_command(ctx_, "digger.start",call_digger_start, 
 		"write",
 		0, 0, 0) == STS_MODULE_ERROR)
 	{
 		return STS_MODULE_ERROR;
 	}
-	if (sts_module_create_command(ctx_, "stsdb.get",call_sts_db_get, 
+	if (sts_module_create_command(ctx_, "digger.get",call_digger_get, 
 		"readonly",
 		0, 0, 0) == STS_MODULE_ERROR)
 	{
@@ -88,3 +82,42 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 
 	return STS_MODULE_OK;
 }
+
+//------------------------------------------------------------//
+
+// digger.start [name] [command] 返回查询编码 000012
+// command中会有是realtime还是debug
+// digger.cancel [name]000012
+// digger.stop [name]000012
+
+
+// digger.get status.[name]000012  获取当前策略运行的状态
+// digger.get conf.[name]000012    获取当前策略运行的配置
+// digger.get money.[name]000012   不带参数--最新的资金情况  
+//                                 带参数--历史资金变动(需要增加开始和结束日期，若没有就返回全部)
+// digger.get stock.[name]000012   不带参数--当前持股  带参数 -- 历史持股信息
+// digger.get trade.[name]000012   不带参数--交易明细  带参数 -- 历史交易信息
+// ...
+// digger.sub order.[name]000012    订阅当前算法的交易指令
+// digger.pub order.[name]000012 {} 发布一个交易指令，用于人工策略交易
+
+// digger.set order.[name]000012 {} 实时调整和设置持仓情况，然后交由算法来判定交易指令
+// 增加股票按当前的股价，当前时间，不然总市值会不确定，影响算法的计算
+// 手动输入当天没有买入指令的股票不计入收益计算中，做好标记就可以了
+
+//------------------------------------------------------------//
+
+// digger.start [name] [command]  返回查询编码， [name]000012
+// command中会有是realtime还是debug
+// --- 获取当前策略最优的参数列表 
+
+// digger.get status.[name]000012  获取计算状态，百分比，预计花费时间
+// digger.get list.[name]000012    获取参数调整算法的结果列表，包括每种算法的收益率，成功率等信息，
+
+// digger.get conf.[name]000012.000001    获取当前策略运行的配置
+// digger.get money.[name]000012.000001   不带参数--最新的资金情况  
+//                                 带参数--历史资金变动(需要增加开始和结束日期，若没有就返回全部)
+// digger.get stock.[name]000012.000001   不带参数--当前持股  带参数 -- 历史持股信息
+// digger.get trade.[name]000012.000001   不带参数--交易明细  带参数 -- 成对完成交易信息
+//
+

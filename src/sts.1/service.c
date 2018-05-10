@@ -72,7 +72,7 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 		_source[0] = 0;
 	}
 	if (sts_module_create_command(ctx_, "stsdb.init",call_sts_db_init, 
-		"write",
+		"write", // deny-oom
 		0, 0, 0) == STS_MODULE_ERROR)
 	{
 		return STS_MODULE_ERROR;

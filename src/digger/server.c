@@ -1,7 +1,7 @@
 
 #include <call.h>
 
-int digger_create(s_sts_module_context *ctx_, const char *path_)
+int sts_db_create(s_sts_module_context *ctx_, const char *path_)
 {
     char dname[255];
     char rname[255];
@@ -21,7 +21,7 @@ int digger_create(s_sts_module_context *ctx_, const char *path_)
     count += sts_db_load_from_file(ctx_, "right", rname, sizeof(s_stock_right));
     return count;
 }
-int digger_load_from_file(s_sts_module_context *ctx_, const char *dbname_, const char *filename_, size_t slen_)
+int sts_db_load_from_file(s_sts_module_context *ctx_, const char *dbname_, const char *filename_, size_t slen_)
 {
 
     FILE *fp = fopen(filename_, "rb");
@@ -74,7 +74,7 @@ int digger_load_from_file(s_sts_module_context *ctx_, const char *dbname_, const
     return count;
 }
 
-int digger_get(s_sts_module_context *ctx_, const char *dbname_, const char *key_, const char *command)
+int sts_db_get(s_sts_module_context *ctx_, const char *dbname_, const char *key_, const char *command)
 {
     sts_module_memory_init(ctx_);
     printf("%s.%s\n", dbname_, key_);

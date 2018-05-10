@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <comm.h>
 
 #define uint32 unsigned int
 
@@ -28,5 +29,9 @@ typedef struct s_stock_day
 	uint32	m_amount_dw;			//成交额
 }s_stock_day;
 #pragma pack(pop)
+
+extern int sts_db_create(s_sts_module_context *ctx_,const char *);
+extern int sts_db_load_from_file(s_sts_module_context *ctx_,const char *dbname_, const char *filename_, size_t slen_);
+extern int sts_db_get(s_sts_module_context *ctx_,const char *dbname_, const char *key_, const char *command);
 
 #endif
