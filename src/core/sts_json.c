@@ -1053,6 +1053,26 @@ char *sts_json_output_zip(s_sts_json_node *node_, size_t *len_)
 	*len_ = strlen(ptr);
 	return ptr;
 }
+void sts_json_printf(s_sts_json_node *node_, int *i)
+{
+	if (!node_)
+	{
+		return;
+	}
+	if (node_->child)
+	{
+		s_sts_json_node *first = sts_json_first_node(node_);
+		while (first)
+		{
+			int iii = *i+1;
+			sts_json_printf(first,&iii);
+			first = first->next;
+		}
+	}
+	printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_, 
+			node_->child, node_->prev, node_->next,
+			node_->key, node_->value);
+}
 
 //////////////////////////////////////////////
 //   read function define

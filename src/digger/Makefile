@@ -189,6 +189,126 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s:
 	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
 
+mnt/hgfs/mysoft/stsdb/src/core/sts_json.o: mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_json.i: mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_json.s: mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
+
+server.o: server.c.o
+.PHONY : server.o
+
+# target to build an object file
+server.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/server.c.o
+.PHONY : server.c.o
+
+server.i: server.c.i
+.PHONY : server.i
+
+# target to preprocess a source file
+server.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/server.c.i
+.PHONY : server.c.i
+
+server.s: server.c.s
+.PHONY : server.s
+
+# target to generate assembly for a file
+server.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/server.c.s
+.PHONY : server.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -207,6 +327,21 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_conf.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_conf.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_conf.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s"
+	@echo "... server.o"
+	@echo "... server.i"
+	@echo "... server.s"
 .PHONY : help
 
 

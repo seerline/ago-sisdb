@@ -95,6 +95,7 @@ s_sts_json_node *sts_json_create_node(void);
 char *sts_json_output(s_sts_json_node *node_, size_t *len_);
 char *sts_json_output_zip(s_sts_json_node *node_, size_t *len_);
 
+void sts_json_printf(s_sts_json_node *node_, int *i);
 //======== read option =============//
 
 int sts_json_get_int(s_sts_json_node *root_, const char *key_, int defaultvalue_);

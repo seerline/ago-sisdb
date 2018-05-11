@@ -23,10 +23,14 @@
 #define STS_MODULE_READ REDISMODULE_READ
 #define STS_MODULE_WRITE REDISMODULE_WRITE
 
+#define STS_MODULE_LIST_HEAD REDISMODULE_LIST_HEAD
+#define STS_MODULE_LIST_TAIL REDISMODULE_LIST_TAIL
+
 // struct define
 #define s_sts_module_context RedisModuleCtx
 #define s_sts_module_string RedisModuleString
 #define s_sts_module_key RedisModuleKey
+#define s_sts_module_call_reply RedisModuleCallReply
 
 // function defined
 #define sts_module_on_load RedisModule_OnLoad
@@ -34,6 +38,13 @@
 #define sts_module_create_command RedisModule_CreateCommand
 
 #define sts_module_memory_init RedisModule_AutoMemory
+#define sts_module_wrong_arity RedisModule_WrongArity
+
+#define sts_module_call RedisModule_Call
+#define sts_module_call_reply_len RedisModule_CallReplyLength
+#define sts_module_call_reply_array RedisModule_CallReplyArrayElement
+#define sts_module_call_reply_free RedisModule_FreeCallReply
+#define sts_module_call_reply_int64 RedisModule_CallReplyInteger
 
 #define sts_module_reply_with_int64 RedisModule_ReplyWithLongLong
 #define sts_module_reply_with_error RedisModule_ReplyWithError
@@ -41,9 +52,11 @@
 #define sts_module_reply_with_null RedisModule_ReplyWithNull
 #define sts_module_reply_with_simple_string RedisModule_ReplyWithSimpleString
 
+
 #define sts_module_string_create RedisModule_CreateString
 #define sts_module_string_create_printf RedisModule_CreateStringPrintf
 #define sts_module_string_get RedisModule_StringPtrLen
+#define sts_module_string_free RedisModule_FreeString
 
 #define sts_module_key_open RedisModule_OpenKey
 #define sts_module_key_type RedisModule_KeyType
@@ -51,7 +64,10 @@
 #define sts_module_key_set_value RedisModule_StringSet
 #define sts_module_key_close RedisModule_CloseKey
 
-#define sts_module_wrong_arity RedisModule_WrongArity
+#define sts_module_value_len RedisModule_ValueLength
+
+#define sts_module_list_push RedisModule_ListPush
+#define sts_module_list_pop RedisModule_ListPop
 
 #define sts_module_not_used REDISMODULE_NOT_USED
 

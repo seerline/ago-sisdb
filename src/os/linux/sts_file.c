@@ -52,16 +52,21 @@ char *sts_file_open_and_read(const char *fn_, size_t *len_)
 	return buffer;
 }
 
-void sts_file_getpath(const char *fn, char *out_, int olen_)
+void sts_file_getpath(const char *fn_, char *out_, int olen_)
 {
 
-	int i, len = (int)strlen(fn);
+	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{
-		if (fn[i] == '\\' || fn[i] == '/')
+		if (fn_[i] == '\\' || fn_[i] == '/')
 		{
 			break;
 		}
 	}
-	sts_strncpy(out_, olen_, fn, i + 1);
+	sts_strncpy(out_, olen_, fn_, i + 1);
+}
+bool sts_file_exists(const char *fn_)
+{
+	if (access(fn_, STS_FILE_ACCESS_EXISTS) == 0) return true;
+	else return false;
 }

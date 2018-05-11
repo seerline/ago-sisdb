@@ -111,6 +111,31 @@ const char *sts_str_split(const char *s, size_t *len_, char c)
 	}
 	return ptr;
 }
+void sts_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
+{
+    int count = 0;
+    const char *ptr = in_;
+    const char *start = ptr;
+    while(ptr&&*ptr)
+    {
+        if (*ptr == c) {           
+            if(idx_ == count){
+               	sts_strncpy(out_, olen_, start, ptr - start);
+				return; 
+            }
+            ptr++;
+			start = ptr;
+			count++;            
+        } else {
+            ptr++;
+        }
+    }
+    if (ptr > start) {
+        sts_strncpy(out_, olen_, start, ptr - start);
+    } else {
+        sts_strcpy(out_, olen_, in_);
+    }
+}
 
 // int sts_strlen_right(const char *str_,const char * right_,const char *ctf_)
 // {

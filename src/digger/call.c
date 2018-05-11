@@ -1,98 +1,158 @@
 
 #include <call.h>
 
-int digger_create(s_sts_module_context *ctx_, const char *path_)
+/********************************/
+// 一定要用static定义，不然内存混乱
+static s_digger_server server = {
+    .inited = false,
+    .config = NULL,
+    .id = 0
+};
+/********************************/
+
+int digger_create(const char *conf_)
 {
-    char dname[255];
-    char rname[255];
-    if (path_ == NULL)
+    // 加载可包含的配置文件，方便后面使用
+    server.inited = true;
+    server.id = 0;  // 这里设置当前秒数
+
+    sts_strcpy(server.conf_name, STS_FILE_PATH_LEN, conf_);
+    sts_file_getpath(server.conf_name, server.conf_path, STS_FILE_PATH_LEN);
+
+    server.config = sts_conf_open(conf_);
+    if (!server.config) {
+        printf("load conf %s fail.\n", server.conf_name);
+        return STS_MODULE_ERROR;
+    }
+
+    return STS_MODULE_OK;
+}
+
+int digger_start(s_sts_module_context *ctx_, const char *name_, const char *com_)
+{
+    sts_module_memory_init(ctx_);
+
+    server.id++;
+    // s_sts_module_string *key = sts_module_string_create_printf(ctx_, "%s%06d", name_, server.id);
+    s_sts_module_string *key = sts_module_string_create(ctx_, "release", 7);
+
+    sts_module_reply_with_string(ctx_, key);
+
+    return STS_MODULE_OK;
+}
+int digger_cancel(s_sts_module_context *ctx_, const char *key_)
+{
+    sts_module_reply_with_simple_string(ctx_, "OK");
+    return STS_MODULE_OK;
+}
+int digger_stop(s_sts_module_context *ctx_, const char *key_)
+{
+    sts_module_reply_with_simple_string(ctx_, "OK");
+    return STS_MODULE_OK;
+}
+
+int digger_get(s_sts_module_context *ctx_, const char *db_, const char *key_, const char *com_)
+{
+    sts_module_memory_init(ctx_);
+
+    const char *dbpath = sts_conf_get_str(server.config->node, "dbpath");
+    printf("%s/%s/%s/%s\n", server.conf_path, dbpath, key_, db_);
+    char *fn = sts_str_sprintf(128, "%s/%s/%s/%s.json",
+                               server.conf_path,
+                               dbpath,
+                               key_,
+                               db_);
+    size_t size = 0;
+    char *buffer = sts_file_open_and_read(fn, &size);
+    if (size == 0 || !buffer)
     {
-        sprintf(dname, "day.sdb");
-        sprintf(rname, "right.sdb");
+        sts_free(fn);
+        sts_module_reply_with_error(ctx_, "no file!");
+        return STS_MODULE_ERROR;
+    }
+    sts_module_reply_with_string(ctx_, sts_module_string_create(ctx_, buffer, size));
+    sts_free(buffer);
+    sts_free(fn);
+    return STS_MODULE_OK;
+}
+int digger_set(s_sts_module_context *ctx_, const char *db_, const char *key_, const char *com_)
+{
+    printf("%s.%s\n", db_, key_);
+    sts_module_reply_with_simple_string(ctx_, "OK");
+    return STS_MODULE_OK;
+}
+
+// int digger_sub(s_sts_module_context *ctx_, const char *db_, const char *key_)
+// {
+//     printf("%s.%s\n", db_, key_);
+
+//     s_sts_module_call_reply *reply;
+//     reply = sts_module_call(ctx_, "BLPOP %s.%s %d", db_, key_, 0);
+//     if(!reply) {
+//         // 似乎不会阻塞在这里
+//         sts_module_reply_with_simple_string(ctx_, "ERROR");
+//         return STS_MODULE_ERROR;
+//     }
+//     size_t len = 0;
+//     size_t items = sts_module_call_reply_len(reply);
+//     for (size_t k = 0; k < items; k++) {
+//         s_sts_module_call_reply *e = sts_module_call_reply_array(reply,k);
+//         len += sts_module_call_reply_len(e);
+//     }
+//     sts_module_call_reply_free(reply);
+//     sts_module_reply_with_int64(ctx_,len);
+
+//     return STS_MODULE_OK;
+// }
+// int digger_pub(s_sts_module_context *ctx_, const char *db_, const char *key_, const char *com_)
+// {
+//     printf("%s.%s\n", db_, key_);
+
+//     char *key = sts_str_sprintf(128, "%s.%s", db_, key_);
+//     s_sts_module_call_reply *reply;
+//     reply = sts_module_call(ctx_,"RPUSH",key);
+//     sts_free(key);
+
+//     long long len = sts_module_call_reply_int64(reply);
+//     sts_module_call_reply_free(reply);
+//     sts_module_reply_with_int64(ctx_,len);
+
+//     return STS_MODULE_OK;
+// }
+int digger_sub(s_sts_module_context *ctx_, const char *db_, const char *key_)
+{
+    printf("%s.%s\n", db_, key_);
+
+    s_sts_module_string *code = sts_module_string_create_printf(ctx_, "%s.%s", db_, key_);
+    s_sts_module_key *key = sts_module_key_open(ctx_, code,
+                                                STS_MODULE_READ | STS_MODULE_WRITE);
+
+    s_sts_module_string *e = sts_module_list_pop(key, STS_MODULE_LIST_HEAD);
+    if (e)
+    {
+        sts_module_reply_with_string(ctx_, e);
+        sts_module_string_free(ctx_, e);
     }
     else
     {
-        sprintf(dname, "%s/day.sdb", path_);
-        sprintf(rname, "%s/right.sdb", path_);
+        sts_module_reply_with_null(ctx_);
     }
-    sts_module_memory_init(ctx_);
-    int count = 0;
-    count += sts_db_load_from_file(ctx_, "day", dname, sizeof(s_stock_day));
-    count += sts_db_load_from_file(ctx_, "right", rname, sizeof(s_stock_right));
-    return count;
-}
-int digger_load_from_file(s_sts_module_context *ctx_, const char *dbname_, const char *filename_, size_t slen_)
-{
-
-    FILE *fp = fopen(filename_, "rb");
-    if (!fp)
-        return 0;
-
-    fseek(fp, 0, SEEK_END);
-    size_t filelen = ftell(fp);
-    if (filelen == 0)
-    {
-        fclose(fp);
-        return 0;
-    }
-
-    fseek(fp, 0, SEEK_SET);
-
-    s_sts_module_key *key;
-    s_sts_module_string *code, *value;
-    int count;
-    char str[10];
-    char *ptr;
-    size_t l1, l2, l3, pos = 0, len;
-
-    while (1)
-    {
-        l1 = 0, l2 = 0, l3 = 0;
-        l1 = fread(str, 1, 8, fp);
-        str[8] = 0;
-
-        l2 = fread(&count, sizeof(int), 1, fp) * sizeof(int);
-        len = count * slen_;
-        ptr = (char *)malloc(len + 1);
-        l3 = fread(ptr, 1, len, fp);
-        pos = pos + l1 + l2 + l3;
-        printf("[%s.%s],%ld : %d [%ld,%ld][%ld,%ld,%ld]\n", dbname_, str, slen_, count, filelen, pos, l1, l2, l3);
-        code = sts_module_string_create_printf(ctx_, "%s.%s", dbname_, str);
-        // printf("%p---%p\n",code);
-        key = sts_module_key_open(ctx_, code, STS_MODULE_READ | STS_MODULE_WRITE);
-        value = sts_module_string_create(ctx_, ptr, len);
-        sts_module_key_set_value(key, value);
-        sts_module_key_close(key);
-
-        free(ptr);
-        // break;
-
-        if (pos >= filelen)
-            break;
-    }
-    fclose(fp);
-    return count;
-}
-
-int digger_get(s_sts_module_context *ctx_, const char *dbname_, const char *key_, const char *command)
-{
-    sts_module_memory_init(ctx_);
-    printf("%s.%s\n", dbname_, key_);
-    s_sts_module_string *code = sts_module_string_create_printf(ctx_, "%s.%s", dbname_, key_);
-
-    s_sts_module_key *key = sts_module_key_open(ctx_, code, STS_MODULE_READ);
-    if (!key)
-        return sts_module_reply_with_null(ctx_);
-    int keytype = sts_module_key_type(key);
-    if (keytype != STS_MODULE_KEYTYPE_STRING &&
-        keytype != STS_MODULE_KEYTYPE_EMPTY)
-    {
-        sts_module_key_close(key);
-        return sts_module_reply_with_error(ctx_, STS_MODULE_ERROR_WRONGTYPE);
-    }
-    size_t len;
-    char *value = sts_module_key_get_value(key, &len, STS_MODULE_READ);
-    sts_module_reply_with_string(ctx_, sts_module_string_create(ctx_, value, len));
     sts_module_key_close(key);
-    return 0;
+    return STS_MODULE_OK;
+}
+int digger_pub(s_sts_module_context *ctx_, const char *db_, const char *key_, const char *com_)
+{
+    printf("%s.%s\n", db_, key_);
+
+    s_sts_module_string *code = sts_module_string_create_printf(ctx_, "%s.%s", db_, key_);
+    s_sts_module_key *key = sts_module_key_open(ctx_, code,
+                                                STS_MODULE_READ | STS_MODULE_WRITE);
+
+    s_sts_module_string *info = sts_module_string_create(ctx_, com_, strlen(com_));
+    sts_module_list_push(key,STS_MODULE_LIST_TAIL,info);
+    size_t newlen = sts_module_value_len(key);
+    sts_module_key_close(key);
+    sts_module_reply_with_int64(ctx_,newlen);
+    
+    return STS_MODULE_OK;
 }

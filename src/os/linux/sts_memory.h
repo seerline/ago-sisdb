@@ -6,7 +6,7 @@
 
 #define STS_MALLOC  
 
-#define sts_malloc malloc
+#define sts_malloc  malloc
 #define sts_free free
 
 #define sts_sprintf snprintf

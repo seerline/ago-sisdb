@@ -33,7 +33,7 @@ static const char *_sts_parse_string(s_sts_conf_handle *handle_, s_sts_json_node
 
 	while (*ptr && *ptr > ' ' && *ptr != STS_CONF_NOTE_SIGN)
 	{
-		if (*ptr ==',' || *ptr ==']' || *ptr =='}')
+		if (*ptr == ',' || *ptr == ']' || *ptr == '}')
 		{
 			break;
 		}
@@ -78,13 +78,14 @@ static const char *_sts_parse_number(s_sts_conf_handle *handle_, s_sts_json_node
 		node_->type = STS_JSON_DOUBLE;
 	}
 	node_->value = sts_strdup(value_, len);
-
+	printf("vvv=%s\n", node_->value);
 	return ptr;
 }
 
 static const char *_sts_parse_array(s_sts_conf_handle *handle_, s_sts_json_node *node_, const char *value_)
 {
-	if (node_->key==NULL) {
+	if (node_->key == NULL)
+	{
 		handle_->error = value_;
 		return 0;
 	}
@@ -108,13 +109,13 @@ static const char *_sts_parse_array(s_sts_conf_handle *handle_, s_sts_json_node 
 			return 0;
 			//value_ = skip(_sts_parse_include(handle_, child, value_));
 			//while(child->next) child = child->next;
-		} 
-		else 
+		}
+		else
 		{
 			child->key = sts_str_sprintf(16, "%d", index++);
 			value_ = skip(_sts_parse_value(handle_, child, value_)); /* skip any spacing, get the value_. */
 		}
-		if (!value_||!*value_)
+		if (!value_ || !*value_)
 		{
 			return 0;
 		}
@@ -136,7 +137,8 @@ static const char *_sts_parse_array(s_sts_conf_handle *handle_, s_sts_json_node 
 }
 static const char *_sts_parse_object(s_sts_conf_handle *handle_, s_sts_json_node *node_, const char *value_)
 {
-	if (node_->key==NULL) {
+	if (node_->key == NULL)
+	{
 		handle_->error = value_;
 		return 0;
 	}
@@ -155,14 +157,15 @@ static const char *_sts_parse_object(s_sts_conf_handle *handle_, s_sts_json_node
 		if (!sts_strcase_match(STS_CONF_INCLUDE, value_))
 		{
 			value_ = skip(_sts_parse_include(handle_, child, value_));
-			while(child->next) child = child->next;
-		} 
-		else 
+			while (child->next)
+				child = child->next;
+		}
+		else
 		{
 			value_ = skip(_sts_parse_key(handle_, child, value_));
 			value_ = skip(_sts_parse_value(handle_, child, value_));
 		}
-		if (!value_||!*value_)
+		if (!value_ || !*value_)
 		{
 			return 0;
 		}
@@ -187,8 +190,8 @@ static const char *_sts_parse_value(s_sts_conf_handle *handle_, s_sts_json_node 
 	if (!value_)
 	{
 		return 0;
-	} 
-	if (*value_ == '-' || *value_ == '.' || (*value_ >= '0' && *value_ <= '9'))
+	}
+	if (*value_ == '-' || (*value_ >= '0' && *value_ <= '9'))
 	{
 		value_ = _sts_parse_number(handle_, node_, value_);
 	}
@@ -199,8 +202,9 @@ static const char *_sts_parse_value(s_sts_conf_handle *handle_, s_sts_json_node 
 	else if (*value_ == '{')
 	{
 		value_ = _sts_parse_object(handle_, node_, value_);
-	} 
-	else {
+	}
+	else
+	{
 		value_ = _sts_parse_string(handle_, node_, value_);
 	}
 	// printf("|=|%d| %p %p %p %p | %s : %s\n", node_->type, node_, node_->child, node_->prev, node_->next, node_->key,node_->value);
@@ -216,14 +220,14 @@ static const char *_sts_parse_include(s_sts_conf_handle *handle_, s_sts_json_nod
 	int len = 0;
 	while (*ptr && *ptr > ' ' && *ptr != STS_CONF_NOTE_SIGN)
 	{
-		if (*ptr ==',' || *ptr ==']' || *ptr =='}')
+		if (*ptr == ',' || *ptr == ']' || *ptr == '}')
 		{
 			break;
 		}
 		ptr++;
 		len++;
 	}
-	char *fn = sts_str_sprintf(255, "%s%.*s", handle_->path, len, value_);
+	char *fn = sts_str_sprintf(STS_FILE_PATH_LEN, "%s%.*s", handle_->path, len, value_);
 	// printf("read include is %.10s \n", ptr);
 	// printf("--- path : %s \n", handle_->path);
 	// printf("--- fn : %s \n", fn);
@@ -237,7 +241,7 @@ static const char *_sts_parse_include(s_sts_conf_handle *handle_, s_sts_json_nod
 		handle_->error = value_;
 		return 0; // fail
 	}
-	
+
 	struct s_sts_json_node *child = node_, *next = NULL;
 	const char *sonptr = skip(buffer);
 
@@ -248,27 +252,29 @@ static const char *_sts_parse_include(s_sts_conf_handle *handle_, s_sts_json_nod
 		{
 			sonptr = skip(_sts_parse_include(handle_, child, sonptr));
 			// printf("a include is %.10s \n", sonptr);
-		} 
-		else 
+		}
+		else
 		{
 			sonptr = skip(_sts_parse_key(handle_, child, sonptr));
 			sonptr = skip(_sts_parse_value(handle_, child, sonptr));
 		}
 		// printf("in::::%p, %s| %s | %.10s\n", child, child->key, child->value, sonptr);
-		if (sonptr && *sonptr) 
+		if (sonptr && *sonptr)
 		{
 			next = sts_json_create_node();
 			child->next = next;
 			next->prev = child;
-			child = next;	
-		}		
+			child = next;
+		}
 	}
 	if (handle_->error) // 既要返回为0，并且error有值
 	{
 		int len = 0;
-		handle_->error = sts_str_getline(handle_->error,&len, buffer, size);
+		handle_->error = sts_str_getline(handle_->error, &len, buffer, size);
 		sts_out_error(3)("parse conf fail : %.*s \n", len, handle_->error);
-		handle_->error = value_; 
+		handle_->error = value_;
+		sts_free(fn);
+		sts_free(buffer);
 		return 0;
 	}
 
@@ -283,34 +289,33 @@ static const char *_sts_parse_key(s_sts_conf_handle *handle_, s_sts_json_node *n
 	if (!key_)
 	{
 		return 0;
-	} 
+	}
 	int len = 0;
 	const char *ptr = key_;
 
-		while (*ptr && *ptr > ' ' && *ptr != ':') // 空格和控制字符或冒号跳出
-		{
-			ptr++;
-			len++;
-		}	
-		if (len <= 0)
-		{
-			printf("a key is null , [%.10s] type[%d]\n", ptr, node_->type);
-			handle_->error = ptr;
-			return 0;
-		}
-		node_->key = sts_strdup(key_, len);
-
-		while (*ptr && *ptr >= ' ' && *ptr != ':') // 跳过空格到冒号
-		{
-			ptr++; 
-		}
-		if(*ptr && *ptr != ':') {
-			printf("a line no find ':' [%x] %.10s\n", *ptr, key_);
-			handle_->error = key_;
-			return 0;
-		}
+	while (*ptr && *ptr > ' ' && *ptr != ':') // 空格和控制字符或冒号跳出
+	{
 		ptr++;
-
+		len++;
+	}
+	if (len <= 0)
+	{
+		printf("a key is null , [%.10s] type[%d]\n", ptr, node_->type);
+		handle_->error = ptr;
+		return 0;
+	}
+	node_->key = sts_strdup(key_, len);
+	while (*ptr && *ptr >= ' ' && *ptr != ':') // 跳过空格到冒号
+	{
+		ptr++;
+	}
+	if (*ptr && *ptr != ':')
+	{
+		printf("a line no find ':' [%x] %.10s\n", *ptr, key_);
+		handle_->error = key_;
+		return 0;
+	}
+	ptr++;
 	// printf("|=|%d| %p %p %p %p | %s : %s\n", node_->type, node_, node_->child, node_->prev, node_->next, node_->key,node_->value);
 	return ptr;
 }
@@ -332,22 +337,26 @@ bool _sts_conf_parse(s_sts_conf_handle *handle_, const char *content_)
 
 	while (value && *value)
 	{
-		if (!child) {
+		if (!child)
+		{
 			node->child = child = sts_json_create_node();
-		} else {
+		}
+		else
+		{
 			next = sts_json_create_node();
 			child->next = next;
 			next->prev = child;
-			child = next;			
+			child = next;
 		}
 		value = skip(value);
 		if (!sts_strcase_match(STS_CONF_INCLUDE, value))
 		{
 			value = skip(_sts_parse_include(handle_, child, value));
-			while(child->next) child = child->next;
+			while (child->next)
+				child = child->next;
 			printf("a include is %.10s \n", value);
-		} 
-		else 
+		}
+		else
 		{
 			value = skip(_sts_parse_key(handle_, child, value));
 			value = skip(_sts_parse_value(handle_, child, value));
@@ -359,7 +368,8 @@ bool _sts_conf_parse(s_sts_conf_handle *handle_, const char *content_)
 
 	if (handle_->error) // error有值,就是失败
 	{
-		sts_conf_delete_node(handle_->node);
+		// sts_conf_delete_node(handle_->node);
+		// handle_->node = NULL;
 		return false;
 	}
 	return true;
@@ -391,7 +401,7 @@ s_sts_conf_handle *sts_conf_open(const char *fn_)
 	if (!_sts_conf_parse(handle, buffer))
 	{
 		int len = 0;
-		handle->error = sts_str_getline(handle->error,&len, buffer, size);
+		handle->error = sts_str_getline(handle->error, &len, buffer, size);
 		sts_out_error(3)("parse conf fail : %.*s \n", len, handle->error);
 		sts_conf_close(handle);
 		handle = NULL;
@@ -406,8 +416,9 @@ fail:
 // 这个函数只会删除所有的子节点，并不删除自己，原因是结构中没有father，如果删除自己，可能对father->child产生影响
 void sts_conf_delete_node(s_sts_json_node *node_)
 {
-	if (!node_){
-		return ;
+	if (!node_)
+	{
+		return;
 	}
 	if (node_->prev)
 	{
@@ -430,10 +441,12 @@ void sts_conf_delete_node(s_sts_json_node *node_)
 	if (node_->key)
 	{
 		sts_free(node_->key);
+		node_->key = NULL;
 	}
 	if (node_->value)
 	{
 		sts_free(node_->value);
+		node_->value = NULL;
 	}
 	sts_free(node_);
 }
@@ -444,6 +457,9 @@ void sts_conf_close(s_sts_conf_handle *handle_)
 	{
 		return;
 	}
+	// int i;
+	// sts_json_printf(handle_->node,&i);
+
 	sts_conf_delete_node(handle_->node);
 	sts_free(handle_);
 }

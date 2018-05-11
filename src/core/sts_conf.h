@@ -17,7 +17,7 @@
 typedef struct s_sts_conf_handle
 {
 	const char * error;     // 指向错误的地址 错误地址为空表示正常处理完毕
-	char   path[255];  //保存主conf的路径
+	char   path[STS_FILE_PATH_LEN];  //保存主conf的路径
 	struct s_sts_json_node *node;
 } s_sts_conf_handle;         //专门提供给读json的快速结构体
 
