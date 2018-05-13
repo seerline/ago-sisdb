@@ -9,6 +9,8 @@
 
 #ifdef _PLATFORM_REDIS
 
+#define REDISMODULE_EXPERIMENTAL_API
+
 #include "redismodule.h"
 // const define
 #define STS_MODULE_OK REDISMODULE_OK
@@ -31,6 +33,7 @@
 #define s_sts_module_string RedisModuleString
 #define s_sts_module_key RedisModuleKey
 #define s_sts_module_call_reply RedisModuleCallReply
+#define s_sts_module_block_client RedisModuleBlockedClient
 
 // function defined
 #define sts_module_on_load RedisModule_OnLoad
@@ -52,7 +55,6 @@
 #define sts_module_reply_with_null RedisModule_ReplyWithNull
 #define sts_module_reply_with_simple_string RedisModule_ReplyWithSimpleString
 
-
 #define sts_module_string_create RedisModule_CreateString
 #define sts_module_string_create_printf RedisModule_CreateStringPrintf
 #define sts_module_string_get RedisModule_StringPtrLen
@@ -68,6 +70,17 @@
 
 #define sts_module_list_push RedisModule_ListPush
 #define sts_module_list_pop RedisModule_ListPop
+
+#define sts_module_block_client RedisModule_BlockClient
+#define sts_module_block_abort RedisModule_AbortBlock
+#define sts_module_unblock_client RedisModule_UnblockClient
+#define sts_module_block_getdata RedisModule_GetBlockedClientPrivateData
+
+#define sts_module_get_safe_context RedisModule_GetThreadSafeContext
+#define sts_module_free_safe_context RedisModule_FreeThreadSafeContext
+
+#define sts_module_alloc RedisModule_Alloc
+#define sts_module_free RedisModule_Free
 
 #define sts_module_not_used REDISMODULE_NOT_USED
 

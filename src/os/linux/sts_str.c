@@ -75,6 +75,36 @@ int sts_strcasecmp(const char *s1_, const char *s2_)
 	return 1;
 	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
 }
+void sts_trim(char *s)
+{
+	int i, len;
+	len = (int)strlen(s);
+	for (i = len - 1; i >= 0; i--)
+	{
+		// if (s[i] != ' ' && s[i] != 0x0d && s[i] != 0x0a)
+		if (s[i] && s[i] > ' ')
+		{
+			break;
+		}
+		else
+		{
+			s[i] = 0;
+		}
+	}
+	for (i = 0; i < len; i++)
+	{
+		if (s[i] && s[i] > ' ')
+		// if (s[i] != ' ')
+		{
+			break;
+		}
+	}
+	if (i != 0)
+	{
+		memmove(s, s + i, len - i);
+		s[len - i] = 0;
+	}
+}
 char *sts_strdup(const char *str_, size_t len_) //STS_MALLOC
 {
 	if (!str_) { return NULL; }
@@ -100,16 +130,53 @@ char *sts_str_sprintf(size_t mlen_, const char *fmt_, ...)
     return str;
 }
 
-const char *sts_str_split(const char *s, size_t *len_, char c)
+const char *sts_str_split(const char *s_, size_t *len_, char c_)
 {
 	*len_ = 0;
-	const char *ptr = s;
-	while (ptr && *ptr && (unsigned char)*ptr != c)
+	const char *ptr = s_;
+	while (ptr && *ptr && (unsigned char)*ptr != c_)
 	{
 		ptr++;
 		*len_ = *len_ + 1;
 	}
 	return ptr;
+}
+const char *sts_str_replace(const char *in_, char ic_,char oc_)
+{
+	char *ptr = (char *)in_;
+	while (ptr && *ptr)
+	{
+		if ((unsigned char)*ptr == ic_) {
+			*ptr = oc_;
+		}
+		ptr++;
+	}
+	return in_;
+}
+void sts_str_to_upper(char *in_)
+{
+	int len, i = -1;
+	len = (int)strlen(in_);
+	while (++i < len)
+	{
+		if (isalpha(in_[i]) && islower(in_[i]))
+		{
+			in_[i] = toupper((int)in_[i]);
+		}
+	}
+}
+
+void sts_str_to_lower(char *in_)
+{
+	int len, i = -1;
+	len = (int)strlen(in_);
+	while (++i < len)
+	{
+		if (isalpha(in_[i]) && isupper(in_[i]))
+		{
+			in_[i] = tolower((int)in_[i]);
+		}
+	}
 }
 void sts_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 {

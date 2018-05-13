@@ -1,11 +1,11 @@
 #定义工程名,必须在第一行
-PROJECT(stock)
+PROJECT(digger)
 
 #检查版本 必须大于等于2.6版本
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8) 
 
 #设置显示编译参数 方便验证编译参数
-SET(CMAKE_VERBOSE_MAKEFILE 0)
+SET(CMAKE_VERBOSE_MAKEFILE 1)
 
 ########################运行平台判定和初始化######################
 
@@ -13,7 +13,7 @@ MESSAGE(STATUS "operation system is ${PROJECT} ${CMAKE_SYSTEM}")
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     SET(SHOBJ_CFLAGS "-Wall -g -ggdb -std=gnu99 -O2")
     MESSAGE(STATUS "current platform: Linux ")
-#ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Windows")
+ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Windows")
     MESSAGE(STATUS "current platform: Windows")
 ELSEIF (CMAKE_SYSTEM_NAME MATCHES "APPLE")
     MESSAGE(STATUS "current platform: APPLE")
@@ -30,13 +30,17 @@ ENDIF ()
 #########################目录设置#############################
 
 #设置头文件目录
-INCLUDE_DIRECTORIES(. ../comm)
+INCLUDE_DIRECTORIES(. ../os/linux ../core ../comm)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
+AUX_SOURCE_DIRECTORY(../os/linux DIR_OS)
+AUX_SOURCE_DIRECTORY(../core DIR_CORE)
 
 #把源文件目录设置到环境变量
-SET(SRC_LIST ${DIR_SRCS})
+SET(SRC_LIST ${DIR_SRCS}
+             ${DIR_OS}
+	         ${DIR_CORE})
 
 # 设置输出文件目录
 SET(LIBRARY_OUTPUT_PATH ../../bin/)  
