@@ -9,6 +9,19 @@
 #include "lw_map.h"
 #include "sts_table.h"
 
+//#define STS_DB_DATETYPE_STR "json,bin,zip,array" // 
+#define STS_DB_DATETYPE_STR "json,struct" // 
+
+typedef struct sts_db_node {
+    sts_table *table; 
+    struct sts_db_node *next;
+}sts_db_node;
+
+typedef struct sts_db {
+    struct sts_db_node *head;
+    size_t len; /* how many table. */
+}sts_db;
+
 #pragma pack(push,1)
 typedef struct sts_map_define{
 	const char *key;

@@ -48,10 +48,15 @@
 //顺序保存压缩数据
 
 // 在压缩包中，字段的定义
+
 typedef struct sts_fields_zip{
-	unsigned type : 5;      // 数据类型  一共32种数据类型
-	unsigned encoding : 3;  // 8种编码方式
+	unsigned index : 6; // 当为up和local的时候，表示和第几个字段比较压缩，local情况下相等为自己压自己
+	unsigned type : 2;  // none 不压缩 up 上一条 local 和当前记录某字段比较压缩 
 }sts_fields_zip;
+// typedef struct sts_fields_zip{
+// 	unsigned type : 5;      // 数据类型  一共32种数据类型
+// 	unsigned encoding : 3;  // 8种编码方式
+// }sts_fields_zip;
 // 如果字段中有STS_FIELD_PRC或者STS_FIELD_VOL，那么字段定义完紧跟的就是下面的结构
 typedef struct sts_fields_zip_other{
 	unsigned prc_decimal : 4;  // 价格保留小数点

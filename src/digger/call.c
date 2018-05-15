@@ -8,7 +8,7 @@ static s_digger_server server = {
     .config = NULL,
     .id = 0};
 /********************************/
-
+ 
 int digger_create(const char *conf_)
 {
     // 加载可包含的配置文件，方便后面使用

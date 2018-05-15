@@ -45,10 +45,10 @@ EQUALS = =
 CMAKE_EDIT_COMMAND = /usr/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /mnt/hgfs/mysoft/stsdb/src/digger
+CMAKE_SOURCE_DIR = /mnt/hgfs/mysoft/stsdb/src/stsdb
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /mnt/hgfs/mysoft/stsdb/src/digger
+CMAKE_BINARY_DIR = /mnt/hgfs/mysoft/stsdb/src/stsdb
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -75,9 +75,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/hgfs/mysoft/stsdb/src/digger/CMakeFiles /mnt/hgfs/mysoft/stsdb/src/digger/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/hgfs/mysoft/stsdb/src/stsdb/CMakeFiles /mnt/hgfs/mysoft/stsdb/src/stsdb/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/hgfs/mysoft/stsdb/src/digger/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/hgfs/mysoft/stsdb/src/stsdb/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -105,24 +105,24 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named digger
+# Target rules for targets named stsdb
 
 # Build rule for target.
-digger: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 digger
-.PHONY : digger
+stsdb: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 stsdb
+.PHONY : stsdb
 
 # fast build rule for target.
-digger/fast:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/build
-.PHONY : digger/fast
+stsdb/fast:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/build
+.PHONY : stsdb/fast
 
 call.o: call.c.o
 .PHONY : call.o
 
 # target to build an object file
 call.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/call.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/call.c.o
 .PHONY : call.c.o
 
 call.i: call.c.i
@@ -130,7 +130,7 @@ call.i: call.c.i
 
 # target to preprocess a source file
 call.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/call.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/call.c.i
 .PHONY : call.c.i
 
 call.s: call.c.s
@@ -138,7 +138,7 @@ call.s: call.c.s
 
 # target to generate assembly for a file
 call.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/call.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/call.c.s
 .PHONY : call.c.s
 
 digger.o: digger.c.o
@@ -146,7 +146,7 @@ digger.o: digger.c.o
 
 # target to build an object file
 digger.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/digger.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/digger.c.o
 .PHONY : digger.c.o
 
 digger.i: digger.c.i
@@ -154,7 +154,7 @@ digger.i: digger.c.i
 
 # target to preprocess a source file
 digger.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/digger.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/digger.c.i
 .PHONY : digger.c.i
 
 digger.s: digger.c.s
@@ -162,7 +162,7 @@ digger.s: digger.c.s
 
 # target to generate assembly for a file
 digger.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/digger.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/digger.c.s
 .PHONY : digger.c.s
 
 mnt/hgfs/mysoft/stsdb/src/core/sts_conf.o: mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.o
@@ -170,7 +170,7 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_conf.o: mnt/hgfs/mysoft/stsdb/src/core/sts_co
 
 # target to build an object file
 mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.o
 
 mnt/hgfs/mysoft/stsdb/src/core/sts_conf.i: mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.i
@@ -178,7 +178,7 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_conf.i: mnt/hgfs/mysoft/stsdb/src/core/sts_co
 
 # target to preprocess a source file
 mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.i
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.i
 
 mnt/hgfs/mysoft/stsdb/src/core/sts_conf.s: mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
@@ -186,7 +186,7 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_conf.s: mnt/hgfs/mysoft/stsdb/src/core/sts_co
 
 # target to generate assembly for a file
 mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
 
 mnt/hgfs/mysoft/stsdb/src/core/sts_json.o: mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
@@ -194,7 +194,7 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_json.o: mnt/hgfs/mysoft/stsdb/src/core/sts_js
 
 # target to build an object file
 mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
 
 mnt/hgfs/mysoft/stsdb/src/core/sts_json.i: mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i
@@ -202,7 +202,7 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_json.i: mnt/hgfs/mysoft/stsdb/src/core/sts_js
 
 # target to preprocess a source file
 mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.i
 
 mnt/hgfs/mysoft/stsdb/src/core/sts_json.s: mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
@@ -210,7 +210,7 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_json.s: mnt/hgfs/mysoft/stsdb/src/core/sts_js
 
 # target to generate assembly for a file
 mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
@@ -218,7 +218,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o: mnt/hgfs/mysoft/stsdb/src/os/l
 
 # target to build an object file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i
@@ -226,7 +226,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.i: mnt/hgfs/mysoft/stsdb/src/os/l
 
 # target to preprocess a source file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s
@@ -234,7 +234,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.s: mnt/hgfs/mysoft/stsdb/src/os/l
 
 # target to generate assembly for a file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
@@ -242,7 +242,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o: mnt/hgfs/mysoft/stsdb/src/os/linu
 
 # target to build an object file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
@@ -250,7 +250,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i: mnt/hgfs/mysoft/stsdb/src/os/linu
 
 # target to preprocess a source file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
@@ -258,7 +258,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s: mnt/hgfs/mysoft/stsdb/src/os/linu
 
 # target to generate assembly for a file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
@@ -266,7 +266,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o: mnt/hgfs/mysoft/stsdb/src/os/linux
 
 # target to build an object file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
@@ -274,7 +274,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i: mnt/hgfs/mysoft/stsdb/src/os/linux
 
 # target to preprocess a source file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
@@ -282,7 +282,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s: mnt/hgfs/mysoft/stsdb/src/os/linux
 
 # target to generate assembly for a file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
@@ -290,7 +290,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o: mnt/hgfs/mysoft/stsdb/src/os/linux
 
 # target to build an object file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
@@ -298,7 +298,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i: mnt/hgfs/mysoft/stsdb/src/os/linux
 
 # target to preprocess a source file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
@@ -306,7 +306,7 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s: mnt/hgfs/mysoft/stsdb/src/os/linux
 
 # target to generate assembly for a file
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
 
 server.o: server.c.o
@@ -314,7 +314,7 @@ server.o: server.c.o
 
 # target to build an object file
 server.c.o:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/server.c.o
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/server.c.o
 .PHONY : server.c.o
 
 server.i: server.c.i
@@ -322,7 +322,7 @@ server.i: server.c.i
 
 # target to preprocess a source file
 server.c.i:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/server.c.i
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/server.c.i
 .PHONY : server.c.i
 
 server.s: server.c.s
@@ -330,8 +330,152 @@ server.s: server.c.s
 
 # target to generate assembly for a file
 server.c.s:
-	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/server.c.s
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/server.c.s
 .PHONY : server.c.s
+
+sts_collect.o: sts_collect.c.o
+.PHONY : sts_collect.o
+
+# target to build an object file
+sts_collect.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_collect.c.o
+.PHONY : sts_collect.c.o
+
+sts_collect.i: sts_collect.c.i
+.PHONY : sts_collect.i
+
+# target to preprocess a source file
+sts_collect.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_collect.c.i
+.PHONY : sts_collect.c.i
+
+sts_collect.s: sts_collect.c.s
+.PHONY : sts_collect.s
+
+# target to generate assembly for a file
+sts_collect.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_collect.c.s
+.PHONY : sts_collect.c.s
+
+sts_db.o: sts_db.c.o
+.PHONY : sts_db.o
+
+# target to build an object file
+sts_db.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_db.c.o
+.PHONY : sts_db.c.o
+
+sts_db.i: sts_db.c.i
+.PHONY : sts_db.i
+
+# target to preprocess a source file
+sts_db.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_db.c.i
+.PHONY : sts_db.c.i
+
+sts_db.s: sts_db.c.s
+.PHONY : sts_db.s
+
+# target to generate assembly for a file
+sts_db.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_db.c.s
+.PHONY : sts_db.c.s
+
+sts_fields.o: sts_fields.c.o
+.PHONY : sts_fields.o
+
+# target to build an object file
+sts_fields.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_fields.c.o
+.PHONY : sts_fields.c.o
+
+sts_fields.i: sts_fields.c.i
+.PHONY : sts_fields.i
+
+# target to preprocess a source file
+sts_fields.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_fields.c.i
+.PHONY : sts_fields.c.i
+
+sts_fields.s: sts_fields.c.s
+.PHONY : sts_fields.s
+
+# target to generate assembly for a file
+sts_fields.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_fields.c.s
+.PHONY : sts_fields.c.s
+
+sts_table.o: sts_table.c.o
+.PHONY : sts_table.o
+
+# target to build an object file
+sts_table.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_table.c.o
+.PHONY : sts_table.c.o
+
+sts_table.i: sts_table.c.i
+.PHONY : sts_table.i
+
+# target to preprocess a source file
+sts_table.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_table.c.i
+.PHONY : sts_table.c.i
+
+sts_table.s: sts_table.c.s
+.PHONY : sts_table.s
+
+# target to generate assembly for a file
+sts_table.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_table.c.s
+.PHONY : sts_table.c.s
+
+sts_zip.o: sts_zip.c.o
+.PHONY : sts_zip.o
+
+# target to build an object file
+sts_zip.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_zip.c.o
+.PHONY : sts_zip.c.o
+
+sts_zip.i: sts_zip.c.i
+.PHONY : sts_zip.i
+
+# target to preprocess a source file
+sts_zip.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_zip.c.i
+.PHONY : sts_zip.c.i
+
+sts_zip.s: sts_zip.c.s
+.PHONY : sts_zip.s
+
+# target to generate assembly for a file
+sts_zip.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/sts_zip.c.s
+.PHONY : sts_zip.c.s
+
+stsserver.o: stsserver.c.o
+.PHONY : stsserver.o
+
+# target to build an object file
+stsserver.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/stsserver.c.o
+.PHONY : stsserver.c.o
+
+stsserver.i: stsserver.c.i
+.PHONY : stsserver.i
+
+# target to preprocess a source file
+stsserver.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/stsserver.c.i
+.PHONY : stsserver.c.i
+
+stsserver.s: stsserver.c.s
+.PHONY : stsserver.s
+
+# target to generate assembly for a file
+stsserver.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/stsserver.c.s
+.PHONY : stsserver.c.s
 
 # Help Target
 help:
@@ -339,9 +483,9 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
-	@echo "... digger"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... stsdb"
 	@echo "... call.o"
 	@echo "... call.i"
 	@echo "... call.s"
@@ -369,6 +513,24 @@ help:
 	@echo "... server.o"
 	@echo "... server.i"
 	@echo "... server.s"
+	@echo "... sts_collect.o"
+	@echo "... sts_collect.i"
+	@echo "... sts_collect.s"
+	@echo "... sts_db.o"
+	@echo "... sts_db.i"
+	@echo "... sts_db.s"
+	@echo "... sts_fields.o"
+	@echo "... sts_fields.i"
+	@echo "... sts_fields.s"
+	@echo "... sts_table.o"
+	@echo "... sts_table.i"
+	@echo "... sts_table.s"
+	@echo "... sts_zip.o"
+	@echo "... sts_zip.i"
+	@echo "... sts_zip.s"
+	@echo "... stsserver.o"
+	@echo "... stsserver.i"
+	@echo "... stsserver.s"
 .PHONY : help
 
 

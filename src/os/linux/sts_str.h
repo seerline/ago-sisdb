@@ -9,7 +9,7 @@
 #include <stdarg.h>
 
 #include <sts_types.h>
-#include <sts_memory.h>
+#include <sts_malloc.h>
 
 #define sts_sprintf snprintf
 
@@ -20,6 +20,7 @@ int sts_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_);
 int sts_strcase_match(const char *son_, const char *source_);
 
 int sts_strcasecmp(const char *s1_, const char *s2_);
+int sts_strncasecmp(const char *s1_, const char *s2_, size_t len_);
 
 void sts_trim(char *s);
 
@@ -31,6 +32,8 @@ char *sts_str_sprintf(size_t mlen_, const char *fmt_, ...);
 const char *sts_str_split(const char *s, size_t *len_, char c);
 
 void sts_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);
+int sts_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
+int sts_str_subcmp_head(const char *sub, const char *s, char c);  //-1没有匹配的,比较头部几个字符是否相同
 
 const char *sts_str_replace(const char *in, char ic_,char oc_); // 把in中的ic替换为oc
 void sts_str_to_lower(char *in_);

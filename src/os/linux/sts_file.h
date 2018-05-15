@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #include <sts_types.h>
-#include <sts_memory.h>
+#include <sts_malloc.h>
 #include <sts_str.h>
 #include <sts_log.h>
 

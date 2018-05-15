@@ -5,11 +5,7 @@
 //////////////////////////////////////////////
 //  转换redis的函数定义方式，方便未来转移到其他平台
 //////////////////////////////////////////////
-#define _PLATFORM_REDIS
 
-#ifdef _PLATFORM_REDIS
-
-#define REDISMODULE_EXPERIMENTAL_API
 
 #include "redismodule.h"
 // const define
@@ -28,12 +24,17 @@
 #define STS_MODULE_LIST_HEAD REDISMODULE_LIST_HEAD
 #define STS_MODULE_LIST_TAIL REDISMODULE_LIST_TAIL
 
+#define STS_MODULE_TYPE_METHOD_VERSION REDISMODULE_TYPE_METHOD_VERSION
 // struct define
 #define s_sts_module_context RedisModuleCtx
 #define s_sts_module_string RedisModuleString
 #define s_sts_module_key RedisModuleKey
 #define s_sts_module_call_reply RedisModuleCallReply
 #define s_sts_module_block_client RedisModuleBlockedClient
+#define s_sts_module_type_methods  RedisModuleTypeMethods
+#define s_sts_module_type RedisModuleType
+#define s_sts_module_io RedisModuleIO
+#define s_sts_module_digest RedisModuleDigest
 
 // function defined
 #define sts_module_on_load RedisModule_OnLoad
@@ -79,13 +80,30 @@
 #define sts_module_get_safe_context RedisModule_GetThreadSafeContext
 #define sts_module_free_safe_context RedisModule_FreeThreadSafeContext
 
+#define sts_module_type_create RedisModule_CreateDataType
+#define sts_module_type_emit_aof RedisModule_EmitAOF
+#define sts_module_type_get_type RedisModule_ModuleTypeGetType
+
+#define sts_module_type_set_value RedisModule_ModuleTypeSetValue
+#define sts_module_type_get_value RedisModule_ModuleTypeGetValue
+#define sts_module_type_save_uint64 RedisModule_SaveUnsigned
+#define sts_module_type_load_uint64 RedisModule_LoadUnsigned
+#define sts_module_type_save_int64 RedisModule_SaveSigned
+#define sts_module_type_load_int64 RedisModule_LoadSigned
+#define sts_module_type_save_str RedisModule_SaveString
+#define sts_module_type_load_str RedisModule_LoadString
+#define sts_module_type_save_buffer RedisModule_SaveStringBuffer
+#define sts_module_type_load_buffer RedisModule_LoadStringBuffer
+#define sts_module_type_save_double RedisModule_SaveDouble
+#define sts_module_type_load_double RedisModule_LoadDouble
+#define sts_module_type_save_float RedisModule_SaveFloat
+#define sts_module_type_load_float RedisModule_LoadFloat
+
 #define sts_module_alloc RedisModule_Alloc
 #define sts_module_free RedisModule_Free
 
 #define sts_module_not_used REDISMODULE_NOT_USED
 
 
-#endif
 
-
-#endif  /* _CONF_H */
+#endif  /* _COMM_H */

@@ -75,6 +75,26 @@ int sts_strcasecmp(const char *s1_, const char *s2_)
 	return 1;
 	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
 }
+int sts_strncasecmp(const char *s1_, const char *s2_, size_t len_)
+{
+	if (!s1_)
+	{
+		return (s1_ == s2_) ? 0 : 1;
+	}
+	if (!s2_)
+	{
+		return 1;
+	}
+	for (int i = 0; tolower(*s1_) == tolower(*s2_); ++s1_, ++s2_, i++)
+	{
+		if (*s1_ == 0 || *s2_ == 0 || i >= len_)
+		{
+			return 0;
+		}
+	}
+	return 1;
+	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
+}
 void sts_trim(char *s)
 {
 	int i, len;
@@ -202,6 +222,63 @@ void sts_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
     } else {
         sts_strcpy(out_, olen_, in_);
     }
+}
+int sts_str_subcmp(const char *sub, const char *s, char c)  //-1没有匹配的
+{
+	if (!sub || !s) {
+		return -1;
+	}
+	int i, pos, len, count;
+	len = (int)strlen(s);
+	pos = 0;
+	for (i = 0, count = 0; i<len; i++)
+	{
+		if (s[i] == c)
+		{
+			if (!sts_strncasecmp(sub, &s[pos], i - pos))
+			{
+				return count;
+			}
+			pos = i + 1;
+			count++;
+		}
+	}
+	if (i > pos)
+	{
+		if (!sts_strncasecmp(sub, &s[pos], i - pos))
+		{
+			return count;
+		}
+	}
+	return -1;
+}
+int sts_str_subcmp_head(const char *sub, const char *s, char c)  //-1没有匹配的
+{
+	if (!sub || !s) {
+		return -1;
+	}
+	int i, pos, len, count;
+	len = (int)strlen(s);
+	pos = 0;
+	for (i = 0, count = 0; i<len; i++)
+	{
+		if (s[i] == c)
+		{
+			if (!sts_strncasecmp(sub, &s[pos], i - pos))
+			{
+				return count;
+			}
+			pos = i + 1;
+			count++;
+		}
+	}
+	if (i>pos)
+	{   //strncmp
+		if (!sts_strncasecmp(sub, &s[pos], i - pos)){
+			return count;
+		}
+	}
+	return -1;
 }
 
 // int sts_strlen_right(const char *str_,const char * right_,const char *ctf_)

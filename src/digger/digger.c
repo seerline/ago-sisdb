@@ -91,6 +91,16 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	}
 	return o;
 }
+int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
+{
+	if (argc_ != 3)
+	{
+		return sts_module_wrong_arity(ctx_);
+	}
+	printf("%s: %.90s\n", sts_module_string_get(argv_[1], NULL), sts_module_string_get(argv_[2], NULL));
+	sts_module_reply_with_simple_string(ctx_, "OK");
+	return STS_MODULE_OK;
+}
 int call_digger_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
 	if (argc_ != 3)
@@ -201,6 +211,13 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	{
 		return STS_MODULE_ERROR;
 	}
+	if (sts_module_create_command(ctx_, "stsdb.set", call_stsdb_set,
+								  "write deny-oom",
+								  0, 0, 0) == STS_MODULE_ERROR)
+	{
+		return STS_MODULE_ERROR;
+	}
+
 
 	return STS_MODULE_OK;
 }
