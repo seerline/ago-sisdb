@@ -1,7 +1,7 @@
 #ifndef _LW_MATH_H
 #define _LW_MATH_H
 
-#include "lw_base.h"
+#include "sts_core.h"
 #include <math.h>
 
 #ifndef _MSC_VER

@@ -1,8 +1,9 @@
 
-#include "lw_thread.h"
+#include "sts_thread.h"
+#include <sts_time.h>
 #include <assert.h>
 
-bool thread_create(THREAD_START_ROUTINE func, void* var, unsigned long *thread)
+bool sts_thread_create(THREAD_START_ROUTINE func, void* var, unsigned long *thread)
 {
 #ifdef _MSC_VER
 	uintptr_t result = 0;
@@ -34,7 +35,7 @@ bool thread_create(THREAD_START_ROUTINE func, void* var, unsigned long *thread)
 	return true;
 }
 
-void thread_join(unsigned thread)
+void sts_thread_join(unsigned thread)
 {
 
 #ifdef _MSC_VER
@@ -45,7 +46,7 @@ void thread_join(unsigned thread)
 #endif
 }
 
-void thread_clear(unsigned thread)
+void sts_thread_clear(unsigned thread)
 {
 #ifndef _MSC_VER
 	pthread_t t = (pthread_t)thread;
@@ -54,7 +55,7 @@ void thread_clear(unsigned thread)
 
 }
 
-unsigned thread_self()
+unsigned sts_thread_self()
 {
 #ifdef _MSC_VER
 	return (unsigned)GetCurrentThreadId();
@@ -66,7 +67,7 @@ unsigned thread_self()
 /////////////////////////////////////
 //
 //////////////////////////////////////////
-int mutex_init(pthread_mutex_t *m)
+int sts_mutex_init(s_sts_thread_mutex_t *m)
 {
 #ifdef _MSC_VER
 	InitializeCriticalSection(m);
@@ -79,7 +80,7 @@ int mutex_init(pthread_mutex_t *m)
 	return pthread_mutex_init(m, &attr);
 #endif
 }
-void mutex_destroy(pthread_mutex_t *m)
+void sts_mutex_destroy(s_sts_thread_mutex_t *m)
 {
 	assert(m);
 #ifdef _MSC_VER
@@ -88,12 +89,12 @@ void mutex_destroy(pthread_mutex_t *m)
 	pthread_mutex_destroy(m);
 #endif
 }
-void mutex_lock(pthread_mutex_t *m)
+void sts_mutex_lock(s_sts_thread_mutex_t *m)
 {
 	assert(m);
 	pthread_mutex_lock(m);
 }
-void mutex_unlock(pthread_mutex_t *m)
+void sts_mutex_unlock(s_sts_thread_mutex_t *m)
 {
 	assert(m);
 	pthread_mutex_unlock(m);
@@ -101,28 +102,28 @@ void mutex_unlock(pthread_mutex_t *m)
 ////////////////////////
 // 多读一写锁定义
 ////////////////////////
-int mutex_rw_create(pthread_mutex_rw *m)
+int sts_mutex_rw_create(s_sts_thread_mutex_rw *m)
 {
-	int rtn = mutex_create(&m->mutex_s);
+	int rtn = sts_mutex_create(&m->mutex_s);
 	m->try_write_b = false;
 	m->reads_i = 0;
 	m->writes_i = 0;
 	return rtn;
 }
-void mutex_rw_destroy(pthread_mutex_rw *m)
+void sts_mutex_rw_destroy(s_sts_thread_mutex_rw *m)
 {
 	assert(m);
-	mutex_destroy(&m->mutex_s);
+	sts_mutex_destroy(&m->mutex_s);
 }
-void mutex_rw_lock_r(pthread_mutex_rw *m)
+void sts_mutex_rw_lock_r(s_sts_thread_mutex_rw *m)
 {
 	assert(m);
 	for (;;)
 	{
-		mutex_lock(&m->mutex_s);
+		sts_mutex_lock(&m->mutex_s);
 		if (m->try_write_b || m->writes_i > 0)
 		{
-			mutex_unlock(&m->mutex_s);
+			sts_mutex_unlock(&m->mutex_s);
 #ifdef _MSC_VER
 			Sleep(50);
 #else
@@ -133,27 +134,27 @@ void mutex_rw_lock_r(pthread_mutex_rw *m)
 
 		assert(m->reads_i >= 0);
 		++m->reads_i;
-		mutex_unlock(&m->mutex_s);
+		sts_mutex_unlock(&m->mutex_s);
 		break;
 	}
 }
-void mutex_rw_unlock_r(pthread_mutex_rw *m)
+void sts_mutex_rw_unlock_r(s_sts_thread_mutex_rw *m)
 {
 	assert(m);
-	mutex_lock(&m->mutex_s);
+	sts_mutex_lock(&m->mutex_s);
 	--m->reads_i;
 	assert(m->reads_i >= 0);
-	mutex_unlock(&m->mutex_s);
+	sts_mutex_unlock(&m->mutex_s);
 }
-void mutex_rw_lock_w(pthread_mutex_rw *m)
+void sts_mutex_rw_lock_w(s_sts_thread_mutex_rw *m)
 {
 	for (;;)
 	{
-		mutex_lock(&m->mutex_s);
+		sts_mutex_lock(&m->mutex_s);
 		m->try_write_b = true;
 		if (m->reads_i > 0 || m->writes_i > 0)
 		{
-			mutex_unlock(&m->mutex_s);
+			sts_mutex_unlock(&m->mutex_s);
 #ifdef _MSC_VER
 			Sleep(50);
 #else
@@ -164,15 +165,15 @@ void mutex_rw_lock_w(pthread_mutex_rw *m)
 		m->try_write_b = false;
 		assert(m->writes_i >= 0);
 		++m->writes_i;
-		mutex_unlock(&m->mutex_s);
+		sts_mutex_unlock(&m->mutex_s);
 		break;
 	}
 }
-void mutex_rw_unlock_w(pthread_mutex_rw *m)
+void sts_mutex_rw_unlock_w(s_sts_thread_mutex_rw *m)
 {
 	assert(m);
-	mutex_lock(&m->mutex_s);
+	sts_mutex_lock(&m->mutex_s);
 	--m->writes_i;
 	assert(m->writes_i >= 0);
-	mutex_unlock(&m->mutex_s);
+	sts_mutex_unlock(&m->mutex_s);
 }

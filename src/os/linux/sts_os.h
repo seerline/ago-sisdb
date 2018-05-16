@@ -32,6 +32,7 @@
 // #include <stdarg.h>
 
 #include <sts_types.h>
+#include <sts_funcs.h>
 #include <sts_malloc.h>
 
 #include <sts_str.h>

@@ -1,7 +1,7 @@
 #ifndef _LW_BITSTREAM_H
 #define _LW_BITSTREAM_H
 
-#include "lw_base.h"
+#include "sts_core.h"
 #include "lw_zint.h"
 
 //m_method_c

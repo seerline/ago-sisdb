@@ -1,5 +1,5 @@
 
-#include "lw_time.h"
+#include "sts_time.h"
 #include <stdio.h>
 
 #ifdef _MSC_VER
@@ -23,7 +23,7 @@ int gettimeofday(struct timeval *tp, void *tzp)
 }
 #endif
 
-void dp_gmtime(struct tm *m, const time_t* t)
+void sts_time_getgm(struct tm *m, const time_t* t)
 {
 #ifdef _MSC_VER
 	gmtime_s(m, t);
@@ -32,7 +32,7 @@ void dp_gmtime(struct tm *m, const time_t* t)
 #endif
 }
 
-void dp_localtime(struct tm *m, const time_t* t)
+void _sts_localtime(struct tm *m, const time_t* t)
 {
 #ifdef _MSC_VER
 	localtime_s(m, t);
@@ -41,14 +41,14 @@ void dp_localtime(struct tm *m, const time_t* t)
 #endif
 }
 
-time_t dp_nowtime()
+time_t sts_time_get_now()
 {
 	time_t tt;
 	time(&tt);
 	return tt;
 }
 
-unsigned long long dp_nowtime_msec()
+unsigned long long sts_time_get_now_msec()
 {
 #ifndef _MSC_VER
 	struct timeval tv;
@@ -62,75 +62,75 @@ unsigned long long dp_nowtime_msec()
 #endif
 }
 
-void check_time_t(time_t tt, struct tm *ptm) //2015
+void _sts_time_check(time_t tt, struct tm *ptm)
 {
 	if (tt == 0)
 	{
 		time(&tt);
-		dp_localtime(ptm, &tt);
+		_sts_localtime(ptm, &tt);
 	}
 	else
 	{
-		dp_localtime(ptm, &tt);
+		_sts_localtime(ptm, &tt);
 	}
 }
-int dp_get_iyear(time_t ttime) //2015
+int sts_time_get_iyear(time_t ttime) //2015
 {
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900);
 }
-int dp_get_imonth(time_t ttime) //201510
+int sts_time_get_imonth(time_t ttime) //201510
 {
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900) * 100 + (ptm.tm_mon + 1);
 }
 
-int dp_get_idate(time_t ttime) //20151012
+int sts_time_get_idate(time_t ttime) //20151012
 {
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday;
 }
-int dp_get_itime(time_t ttime) //103020
+int sts_time_get_itime(time_t ttime) //103020
 {
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(ttime, &ptm);
 	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
-int dp_get_iminute(time_t ttime) //1030
+int sts_time_get_iminute(time_t ttime) //1030
 {
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(ttime, &ptm);
 	return ptm.tm_hour * 100 + ptm.tm_min;
 }
-int dp_get_isec(time_t ttime)
+int sts_time_get_isec(time_t ttime)
 {
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(ttime, &ptm);
 	return ptm.tm_sec;
 }
-int dp_get_showtime(time_t ttime)
+int sts_time_get_showtime(time_t ttime)
 {
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(ttime, &ptm);
 	return (ptm.tm_mon + 1) * 10000 * 10000 + ptm.tm_mday * 100 * 10000 + ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 
 }
-short dp_get_offset_iminute(short nMin, int offsec)
+short sts_time_get_offset_iminute(short nMin, int offsec)
 {
-	time_t tt = dp_make_time(0, nMin * 100);
+	time_t tt = sts_time_make_time(0, nMin * 100);
 	tt += offsec;
-	return (short)dp_get_iminute(tt);
+	return (short)sts_time_get_iminute(tt);
 }
-time_t dp_get_offset_time(time_t curTime, int offsec)
+time_t sts_time_get_offset_time(time_t curTime, int offsec)
 {
-	//time_t tt = dp_make_time(dp_get_idate(&curTime), dp_get_iminute(&curTime) * 100 + offsec);
+	//time_t tt = sts_time_make_time(sts_time_get_idate(&curTime), sts_time_get_iminute(&curTime) * 100 + offsec);
 	time_t tt = curTime + offsec;
 	return tt;
 }
-int dp_get_iminute_offset_i(int begin, int end) //930-1130 
+int sts_time_get_iminute_offset_i(int begin, int end) //930-1130 
 {
 	int bh, eh, bm, em;
 	int count = 0;
@@ -141,17 +141,17 @@ int dp_get_iminute_offset_i(int begin, int end) //930-1130
 	count = (eh * 60 + em) - (bh * 60 + bm);
 	return count;
 }
-int dp_get_iminute_offset_time(time_t tstart, time_t tend)
+int sts_time_get_iminute_offset_time(time_t tstart, time_t tend)
 {
 	return (int)((tend - tstart) / 60);
 }
-int dp_get_iminute_minnum(int source, int minnum)//minnum为分钟数
+int sts_time_get_iminute_minnum(int source, int minnum)//minnum为分钟数
 {
 	int mincount = (int)(source / 100) * 60 + (int)(source % 100) + minnum;
 	return (int)(mincount / 60) * 100 + (int)(mincount % 60);
 }
 
-time_t dp_make_time(int tdate, int ttime)
+time_t sts_time_make_time(int tdate, int ttime)
 {
 	struct tm stime;
 	stime.tm_year = tdate / 10000 - 1900;
@@ -166,58 +166,58 @@ time_t dp_make_time(int tdate, int ttime)
 	return mktime(&stime);
 }
 
-int dp_get_week_ofday(int today)
+int sts_time_get_week_ofday(int today)
 {
 	time_t tnow;
 	struct tm ptm = { 0 };
 	if (today == 0)
 	{
 		time(&tnow);
-		dp_localtime(&ptm, &tnow);
+		_sts_localtime(&ptm, &tnow);
 	}
 	else
 	{
-		tnow = dp_make_time(today, 0);
-		dp_localtime(&ptm, &tnow);
+		tnow = sts_time_make_time(today, 0);
+		_sts_localtime(&ptm, &tnow);
 	}
 	return ptm.tm_wday;
 }
-int dp_get_month_ofday(int today)
+int sts_time_get_month_ofday(int today)
 {
 	time_t tnow;
 	struct tm ptm = { 0 };
 	if (today == 0)
 	{
 		time(&tnow);
-		dp_localtime(&ptm, &tnow);
+		_sts_localtime(&ptm, &tnow);
 	}
 	else
 	{
-		tnow = dp_make_time(today, 0);
-		dp_localtime(&ptm, &tnow);
+		tnow = sts_time_make_time(today, 0);
+		_sts_localtime(&ptm, &tnow);
 	}
 	return ptm.tm_mon + 1;
 }
-int dp_get_dayoffset_ofday(int tstart, int tend)
+int sts_time_get_dayoffset_ofday(int tstart, int tend)
 {
-	time_t ttstart = dp_make_time(tstart, 0);
-	time_t ttend = dp_make_time(tend, 0);
+	time_t ttstart = sts_time_make_time(tstart, 0);
+	time_t ttend = sts_time_make_time(tend, 0);
 
 	return (int)((ttend - ttstart) / (24 * 3600));
 }
-int dp_next_work_day(int today_, int offset_ )
+int sts_time_next_work_day(int today_, int offset_ )
 {
-	time_t tt = dp_make_time(today_, 0);
+	time_t tt = sts_time_make_time(today_, 0);
 	tt += offset_ * (24 * 3600);
-	int today = dp_get_idate(tt);
-	int week = dp_get_week_ofday(today);
+	int today = sts_time_get_idate(tt);
+	int week = sts_time_get_week_ofday(today);
 	if (week == 0 || week == 6){
-		dp_next_work_day(today, 1);
+		sts_time_next_work_day(today, 1);
 	}
 	return today;
 }
 
-bool dp_str_is_date(char* date)
+bool sts_time_str_is_date(char* date)
 {
 	int len = (int)strlen(date);
 	if (len < 8) return false;
@@ -233,35 +233,35 @@ bool dp_str_is_date(char* date)
 	return true;
 }
 
-void format_minute(char * curTime, time_t ttime) //"930"
+void sts_time_format_minute(char * out_, size_t olen_, time_t tt_) //"930"
 {
-	if (!curTime) return;
+	if (!out_) return;
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(tt_, &ptm);
 
-	snprintf(curTime, sizeof(curTime), "%02d%02d", ptm.tm_hour, ptm.tm_min);
+	sts_sprintf(out_, olen_, "%02d%02d", ptm.tm_hour, ptm.tm_min);
 }
 
-void format_date(char * curTime, time_t ttime) //"20150912"
+void sts_time_format_date(char * out_, size_t olen_, time_t tt_) //"20150912"
 {
-	if (!curTime) return;
+	if (!out_) return;
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(tt_, &ptm);
 
-	snprintf(curTime, sizeof(curTime), "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
+	sts_sprintf(out_, olen_, "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
 
 }
-void format_datetime(char * curTime, time_t ttime) //"20150912103000"
+void sts_time_format_datetime(char * out_, size_t olen_, time_t tt_) //"20150912103000"
 {
-	if (!curTime) return;
+	if (!out_) return;
 	struct tm ptm = { 0 };
-	check_time_t(ttime, &ptm);
+	_sts_time_check(tt_, &ptm);
 
-	snprintf(curTime, sizeof(curTime), "%d%02d%02d%02d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday,
+	sts_sprintf(out_, olen_, "%d%02d%02d%02d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday,
 		ptm.tm_hour  , ptm.tm_min  , ptm.tm_sec);
 }
 
-int get_minute_from_shortstr(char* time)  //"12:30" => 1230
+int sts_time_get_minute_from_shortstr(char* time)  //"12:30" => 1230
 {
 	int nResult = 0;
 	if (strlen(time) < 5) return nResult;
@@ -289,7 +289,7 @@ int get_minute_from_shortstr(char* time)  //"12:30" => 1230
 	return nResult;
 }
 
-int get_itime_from_str(char* time) //"12:30:38" => 123038
+int sts_time_get_itime_from_str(char* time) //"12:30:38" => 123038
 {
 	int nResult = 0;
 	if (strlen(time)<8) return nResult;
@@ -331,13 +331,13 @@ int get_itime_from_str(char* time) //"12:30:38" => 123038
 	return nResult;
 }
 
-int get_idate_from_str(const char* time) //"20150212" = > 20150212
+int sts_time_get_idate_from_str(const char* time) //"20150212" = > 20150212
 {
 	int nResult = atoi(time);
 	return nResult;
 }
 
-int get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"2015-10-20 12:30:38" => 20151020,123038
+int sts_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"2015-10-20 12:30:38" => 20151020,123038
 {
 	int nResult = 0;
 	if (strlen(datetime)<19) return nResult;
@@ -404,7 +404,7 @@ int get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"2015-10-20 
 }
 
 //单位毫秒
-void dp_sleep(int msec)
+void sts_time_sleep(int msec)
 {
 #ifdef _MSC_VER
 	Sleep(msec);
@@ -413,27 +413,27 @@ void dp_sleep(int msec)
 #endif
 }
 
-s_delay *delay_create(unsigned int msec)
+s_sts_time_delay *sts_delay_create(unsigned int msec)
 {
-	s_delay *m = malloc(sizeof(*m));
+	s_sts_time_delay *m = malloc(sizeof(*m));
 	m->is_busy = false;
 	m->m_msec_i = msec;
 	if (m->m_msec_i < 5) m->m_msec_i = 5;
 	if (m->m_msec_i > 5000) m->m_msec_i = 5000;
-	m->start_msec = dp_nowtime_msec();
+	m->start_msec = sts_time_get_now_msec();
 	return m;
 }
-void delay_busy(s_delay *m)
+void sts_delay_busy(s_sts_time_delay *m)
 {
 	m->is_busy = true;
 }
-void delay_destroy(s_delay *m)
+void sts_delay_destroy(s_sts_time_delay *m)
 {
 	if (!m->is_busy) {
-		m->usesd_msec = (unsigned int)(dp_nowtime_msec() - m->start_msec);
+		m->usesd_msec = (unsigned int)(sts_time_get_now_msec() - m->start_msec);
 		if (m->m_msec_i > m->usesd_msec)
 		{
-			dp_sleep(m->m_msec_i - m->usesd_msec);
+			sts_time_sleep(m->m_msec_i - m->usesd_msec);
 		}
 	}
 	free(m);

@@ -3,6 +3,8 @@ logs/
 nginx/
 rejson/
 db/
+o/
+zip/
 stsdb0/
 .DS_Store
 .vscode

@@ -1,7 +1,8 @@
 ﻿
 
 #include "sts_fields.h"
-#include "lw_string.h"
+#include "zmalloc.h"
+#include "sts_str.h"
 #include "sts_db.h"
 
 /*
@@ -38,9 +39,9 @@ inline bool is_intlen(int n)
 	if (n == 1 || n == 2 || n == 4 || n == 8) return true;
 	return false;
 }
-void set_field_flags(sts_fields_flags *fp_, int index_, const char *type_, int len_, int group_)
+void set_field_flags(s_sts_fields_flags *fp_, int index_, const char *type_, int len_, int group_)
 {
-	sts_map_define *type = sts_db_find_map_define(type_);
+	s_sts_map_define *type = sts_db_find_map_define(type_);
 	if (!type) {
 		if (index_ == 0){
 			fp_->type = STS_FIELD_SECOND;
@@ -53,7 +54,7 @@ void set_field_flags(sts_fields_flags *fp_, int index_, const char *type_, int l
 		return;
 	}
 	fp_->type = type->uid;
-	fp_->group = group_;  // == 0
+	// fp_->group = group_;  // == 0
 	switch (fp_->type)
 	{
 	case STS_FIELD_INDEX:
@@ -87,22 +88,22 @@ void set_field_flags(sts_fields_flags *fp_, int index_, const char *type_, int l
 		break;
 	}
 }
-sts_field_unit *create_sts_field_unit(int index_, const char *name_, const char *type_, const char *zip_, int len_, int group_)
+s_sts_field_unit *sts_field_unit_create(int index_, const char *name_, const char *type_, const char *zip_, int len_, int group_)
 {
-	sts_field_unit *unit = zmalloc(sizeof(sts_field_unit));
+	s_sts_field_unit *unit = zmalloc(sizeof(s_sts_field_unit));
 	unit->index = index_;
-	safestrcpy(unit->name, STS_FIELD_MAXLEN, name_);
-	sts_map_define *zip = sts_db_find_map_define(zip_);
+	sts_strcpy(unit->name, STS_FIELD_MAXLEN, name_);
+	s_sts_map_define *zip = sts_db_find_map_define(zip_);
 	if (!zip) { 
-		unit->flags.encoding = STS_ZIP_NO; 
+		// unit->flags.encoding = STS_ZIP_NO; 
 	}
 	else {
-		unit->flags.encoding = zip->uid;
+		// unit->flags.encoding = zip->uid;
 	}
 	set_field_flags(&unit->flags, index_, type_, len_, group_);
 	return unit;
 }
-void destroy_sts_field_unit(sts_field_unit *unit_)
+void sts_field_unit_destroy(s_sts_field_unit *unit_)
 {
 	zfree(unit_);
 }

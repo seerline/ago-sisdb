@@ -1,7 +1,7 @@
 #ifndef _LW_STRING_H
 #define _LW_STRING_H
 
-#include "lw_base.h"
+#include "sts_core.h"
 #include "lw_thread.h"
 #include "lw_public.h"
 #include "zmalloc.h"

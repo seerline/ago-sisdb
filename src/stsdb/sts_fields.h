@@ -8,7 +8,7 @@
 
 #include "sds.h"
 #include "dict.h"
-#include "lw_map.h"
+#include "sts_map.h"
 #include <assert.h>
 /////////////////////////////////////////////////////////
 //  字段类型定义
@@ -77,20 +77,20 @@ typedef struct sts_fields_packed{
 }sts_fields_packed;
 #endif
 
-// typedef struct sts_fields_flags{
+// typedef struct s_sts_fields_flags{
 // 	unsigned type : 5;      // 数据类型  一共32种数据类型
 // 	unsigned encoding : 3;  // 8种编码方式
 // 	unsigned len : 6;       // 字段长度(按字节)  0...63 最大不超过64个字符串，公司名称最大限制
 // 	unsigned group : 2;     // 一条记录同一类型数据最多分为4组，一般用不到，
-// }sts_fields_flags;
-// typedef struct sts_field_unit{
+// }s_sts_fields_flags;
+// typedef struct s_sts_field_unit{
 // 	uint8_t  index;   // 位置，结构中第几个字段 最多64个字段
 // 	uint16_t offset;  // 偏移位置，结构中第几个字段，偏移多少字节
 // 	char name[STS_FIELD_MAXLEN];  // 字段名，
-// 	sts_fields_flags flags; // attribute字段属性
-// }sts_field_unit;
+// 	s_sts_fields_flags flags; // attribute字段属性
+// }s_sts_field_unit;
 
-typedef struct sts_fields_flags{
+typedef struct s_sts_fields_flags{
 	unsigned type : 5;    // 数据类型  一共32种数据类型
 	unsigned len : 6;     // 字段长度(按字节)  0...63 最大不超过64个字符串，公司名称最大限制
 	unsigned io : 1;      // 0 输入时放大 输出时缩小，float类型取小数点 int 取整
@@ -102,16 +102,16 @@ typedef struct sts_fields_flags{
 	unsigned ziper : 2;  // none 不压缩 up 上一条 local 和当前记录某字段比较压缩 multi 和指定字段相乘
 	unsigned refer : 6;  // 当为up和local的时候，表示和第几个字段比较压缩，local情况下相等为自己压自己
 				// ziper==refer==0 表示不压缩 
-}sts_fields_flags;
+}s_sts_fields_flags;
 
 #define STS_FIELD_MAXLEN  32
 
-typedef struct sts_field_unit{
+typedef struct s_sts_field_unit{
 	uint8_t  index;   // 位置，结构中第几个字段 最多64个字段
 	uint16_t offset;  // 偏移位置，结构中第几个字段，偏移多少字节
 	char name[STS_FIELD_MAXLEN];  // 字段名，
-	sts_fields_flags flags; // attribute字段属性
-}sts_field_unit;
+	s_sts_fields_flags flags; // attribute字段属性
+}s_sts_field_unit;
 
 //对table来说，定义一个map指向一个多记录sts_field_unit数据结构
 
@@ -129,8 +129,8 @@ typedef struct sts_field_unit{
 //           第3个为整型字段vol，长度8B  按列压缩
 //			 第2个为字符串name，长度为16 不压缩
 
-sts_field_unit *create_sts_field_unit(int index, const char *name_, const char *type_, const char *zip, int len_, int group_);
-void destroy_sts_field_unit(sts_field_unit *);
+s_sts_field_unit *sts_field_unit_create(int index, const char *name_, const char *type_, const char *zip, int len_, int group_);
+void sts_field_unit_destroy(s_sts_field_unit *);
 
 bool sts_field_is_times(int t_);
 

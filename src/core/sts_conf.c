@@ -78,7 +78,7 @@ static const char *_sts_parse_number(s_sts_conf_handle *handle_, s_sts_json_node
 		node_->type = STS_JSON_DOUBLE;
 	}
 	node_->value = sts_strdup(value_, len);
-	printf("vvv=%s\n", node_->value);
+	// printf("vvv=%s\n", node_->value);
 	return ptr;
 }
 

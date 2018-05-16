@@ -3,7 +3,7 @@
 #ifndef _LW_MEMORY_H
 #define _LW_MEMORY_H
 
-#include <lw_base.h>
+#include <sts_core.h>
 #include <lw_public.h>
 #include <lw_thread.h>
 #include "zmalloc.h"

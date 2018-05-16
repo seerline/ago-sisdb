@@ -34,6 +34,8 @@
  */
 
 #include <stdint.h>
+#include <stddef.h>
+#include <time.h>
 
 #ifndef __DICT_H
 #define __DICT_H

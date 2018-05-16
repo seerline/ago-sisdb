@@ -3,23 +3,23 @@
 #include "sts_collect.h"
 
 ///////////////////////////////////////////////////////////////////////////
-//------------------------s_step_index --------------------------------//
+//------------------------s_sts_step_index --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
 
-s_step_index *create_stepindex()
+s_sts_step_index *create_stepindex()
 {
-	s_step_index *si = zmalloc(sizeof(s_step_index));
+	s_sts_step_index *si = zmalloc(sizeof(s_sts_step_index));
 	si->left = 0;
 	si->right = 0;
 	si->count = 0;
 	si->step = 0;
 	return si;
 }
-void destroy_stepindex(s_step_index *si_)
+void destroy_stepindex(s_sts_step_index *si_)
 {
 	zfree(si_);
 }
-void stepindex_rebuild(s_step_index *si_, uint64 left_, uint64 right_, int count_)
+void stepindex_rebuild(s_sts_step_index *si_, uint64 left_, uint64 right_, int count_)
 {
 	si_->left = left_;
 	si_->right = right_;
@@ -27,7 +27,7 @@ void stepindex_rebuild(s_step_index *si_, uint64 left_, uint64 right_, int count
 	si_->step = min((uint64)((right_ - left_) / count_ ), 1);
 
 }
-int stepindex_goto(s_step_index *si_, uint64 curr_)
+int stepindex_goto(s_sts_step_index *si_, uint64 curr_)
 {
 	if (curr_ < si_->left) {
 		return 0;
@@ -42,29 +42,29 @@ int stepindex_goto(s_step_index *si_, uint64 curr_)
 	return index;
 }
 ///////////////////////////////////////////////////////////////////////////
-//------------------------sts_collect_unit --------------------------------//
+//------------------------s_sts_collect_unit --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
 
 
-sts_collect_unit *create_sts_collect_unit(sts_table *tb_, const char *key_)
+s_sts_collect_unit *create_sts_collect_unit(s_sts_table *tb_, const char *key_)
 {
-	sts_collect_unit *unit = zmalloc(sizeof(sts_collect_unit));
+	s_sts_collect_unit *unit = zmalloc(sizeof(s_sts_collect_unit));
 	unit->father = tb_;
 	unit->step = create_stepindex();
-	unit->value = create_struct_list(sts_table_get_fields_size(unit->father), NULL, 0);
+	unit->value = sts_struct_list_create(sts_table_get_fields_size(unit->father), NULL, 0);
 	return unit;
 }
-void destroy_sts_collect_unit(sts_collect_unit *unit_)
+void destroy_sts_collect_unit(s_sts_collect_unit *unit_)
 {
-	destroy_struct_list(unit_->value);
+	sts_struct_list_destroy(unit_->value);
 	destroy_stepindex(unit_->step);
 	zfree(unit_);
 }
 
-uint64 sts_collect_unit_get_time(sts_collect_unit *unit_, int index_)
+uint64 sts_collect_unit_get_time(s_sts_collect_unit *unit_, int index_)
 {
 	time_t tt = 0;
-	void * val = struct_list_get(unit_->value, index_);
+	void * val = sts_struct_list_get(unit_->value, index_);
 	if (val) {
 		tt = sts_table_get_times(unit_->father, val);  
 	}
@@ -74,20 +74,20 @@ uint64 sts_collect_unit_get_time(sts_collect_unit *unit_, int index_)
 //  delete
 ////////////////////////
 
-int __sts_collect_unit_delete(sts_collect_unit *unit_, int start_, int count_)
+int _sts_collect_unit_delete(s_sts_collect_unit *unit_, int start_, int count_)
 {
-	struct_list_delete(unit_->value, start_, count_);
+	sts_struct_list_delete(unit_->value, start_, count_);
 	stepindex_rebuild(unit_->step,
 		sts_collect_unit_get_time(unit_, 0),
 		sts_collect_unit_get_time(unit_, unit_->value->count - 1), 
 		unit_->value->count);
 	return 0;
 }
-int	sts_collect_unit_recs(sts_collect_unit *unit_)
+int	sts_collect_unit_recs(s_sts_collect_unit *unit_)
 {
 	return unit_->value->count;
 }
-int sts_collect_unit_search_left(sts_collect_unit *unit_, uint64 index_, int *mode_)
+int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 index_, int *mode_)
 {
 	*mode_ = STS_SEARCH_NONE;
 	int index = stepindex_goto(unit_->step, index_);
@@ -129,7 +129,7 @@ int sts_collect_unit_search_left(sts_collect_unit *unit_, uint64 index_, int *mo
 		return -1;
 	}
 }
-int sts_collect_unit_search_right(sts_collect_unit *unit_, uint64 index_, int *mode_)
+int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 index_, int *mode_)
 {
 	*mode_ = STS_SEARCH_NONE;
 	int index = stepindex_goto(unit_->step, index_);
@@ -172,7 +172,7 @@ int sts_collect_unit_search_right(sts_collect_unit *unit_, uint64 index_, int *m
 		return 0;
 	}	
 }
-int sts_collect_unit_search(sts_collect_unit *unit_, uint64 index_)
+int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 index_)
 {
 	int index = stepindex_goto(unit_->step, index_);
 	if (index < 0) {
@@ -205,7 +205,7 @@ int sts_collect_unit_search(sts_collect_unit *unit_, uint64 index_)
 	return -1;
 }
 
-int	sts_collect_unit_delete_of_range(sts_collect_unit *unit_, int start_, int stop_)
+int	sts_collect_unit_delete_of_range(s_sts_collect_unit *unit_, int start_, int stop_)
 {
 	int llen, count;
 
@@ -221,9 +221,9 @@ int	sts_collect_unit_delete_of_range(sts_collect_unit *unit_, int start_, int st
 	if (stop_ >= llen) stop_ = llen - 1;
 	count = (stop_ - start_) + 1;
 
-	return __sts_collect_unit_delete(unit_, start_, count);
+	return _sts_collect_unit_delete(unit_, start_, count);
 }
-int	sts_collect_unit_delete_of_count(sts_collect_unit *unit_, int start_, int count_)
+int	sts_collect_unit_delete_of_count(s_sts_collect_unit *unit_, int start_, int count_)
 {
 	int llen;
 	llen = sts_collect_unit_recs(unit_);
@@ -236,24 +236,24 @@ int	sts_collect_unit_delete_of_count(sts_collect_unit *unit_, int start_, int co
 	}
 	if (start_ + count_ > llen) count_ = llen - start_;
 
-	return __sts_collect_unit_delete(unit_, start_, count_);
+	return _sts_collect_unit_delete(unit_, start_, count_);
 }
 //////////////////////////////////////////////////////
 //  get  --  先默认二进制格式，全部字段返回数据
 //////////////////////////////////////////////////////
 
 //#define STS_DATA_ZIP     'R'   // 后面开始为数据
-//#define STS_DATA_BIN     'B'   // 后面开始为数据
+//#define STS_DATA_STRUCT     'B'   // 后面开始为数据
 //#define STS_DATA_STRING  'S'   // 后面开始为数据
 //#define STS_DATA_JSON    '{'   // 直接传数据
 //#define STS_DATA_ARRAY   '['   // 直接传数据
 #define check_fields_all(f) (!f||!strncmp(f,"*",1))
 
-sds __sts_collect_unit_get_data(sts_collect_unit *unit_, int no_, const char *fieldname_, sds out_)
+sds _sts_collect_unit_get_data(s_sts_collect_unit *unit_, int no_, const char *fieldname_, sds out_)
 {
-	sts_field_unit *fu = sts_table_get_field(unit_->father, fieldname_);
+	s_sts_field_unit *fu = sts_table_get_field(unit_->father, fieldname_);
 	if (!fu) { return out_; }
-	char *data = (char *)struct_list_get(unit_->value, no_);
+	char *data = (char *)sts_struct_list_get(unit_->value, no_);
 	if (!data) { return out_; }
 	if (!out_){
 		out_ = sdsnewlen(data + fu->offset, fu->flags.len);
@@ -263,25 +263,25 @@ sds __sts_collect_unit_get_data(sts_collect_unit *unit_, int no_, const char *fi
 	}
 	return out_;
 }
-sds __sts_collect_unit_get_of_count(sts_collect_unit *unit_, int start_, int count_, int format_, const char *fields_)
+sds _sts_collect_unit_get_of_count(s_sts_collect_unit *unit_, int start_, int count_, int format_, const char *fields_)
 {
 	sds out = NULL;
 	switch (format_)
 	{
-	case STS_DATA_BIN:
+	case STS_DATA_STRUCT:
 		if (check_fields_all(fields_)){
-			out = sdsnewlen(struct_list_get(unit_->value, start_), count_ * unit_->value->len);
+			out = sdsnewlen(sts_struct_list_get(unit_->value, start_), count_ * unit_->value->len);
 		}
 		else {
-			s_string_list *list = create_string_list_r();
-			string_list_load(list, fields_, strlen(fields_), ",");
+			s_sts_string_list *list = sts_string_list_create_r();
+			sts_string_list_load(list, fields_, strlen(fields_), ",");
 			for (int no = start_; no < start_ + count_; no++){
-				for (int i = 0; i < string_list_getsize(list); i++){
-					const char *key = string_list_get(list, i);
-					out = __sts_collect_unit_get_data(unit_, no, key, out); // 直接写入out中
+				for (int i = 0; i < sts_string_list_getsize(list); i++){
+					const char *key = sts_string_list_get(list, i);
+					out = _sts_collect_unit_get_data(unit_, no, key, out); // 直接写入out中
 				}
 			}
-			destroy_string_list(list);
+			sts_string_list_destroy(list);
 		}
 		break;
 	case STS_DATA_ZIP:
@@ -296,7 +296,7 @@ sds __sts_collect_unit_get_of_count(sts_collect_unit *unit_, int start_, int cou
 	return out;
 }
 
-sds sts_collect_unit_get_of_count_m(sts_collect_unit *unit_, int start_, int count_, int format_, const char *fields_)
+sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *unit_, int start_, int count_, int format_, const char *fields_)
 {
 	if (count_ == 0) {
 		return NULL;
@@ -317,10 +317,10 @@ sds sts_collect_unit_get_of_count_m(sts_collect_unit *unit_, int start_, int cou
 			count_ = llen - start_;
 		}
 	}
-	return __sts_collect_unit_get_of_count(unit_, start_, count_, format_, fields_);
+	return _sts_collect_unit_get_of_count(unit_, start_, count_, format_, fields_);
 }
 
-sds sts_collect_unit_get_of_range_m(sts_collect_unit *unit_, int start_, int stop_, int format_, const char *fields_)
+sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *unit_, int start_, int stop_, int format_, const char *fields_)
 {
 	int llen = sts_collect_unit_recs(unit_);
 
@@ -334,45 +334,45 @@ sds sts_collect_unit_get_of_range_m(sts_collect_unit *unit_, int start_, int sto
 	if (stop_ >= llen) { stop_ = llen - 1; }
 
 	int count = (stop_ - start_) + 1;
-	return __sts_collect_unit_get_of_count(unit_, start_, count, format_, fields_);
+	return _sts_collect_unit_get_of_count(unit_, start_, count, format_, fields_);
 }
 ////////////////////////
 //  update
 ////////////////////////
-int __sts_collect_unit_update(sts_collect_unit *unit_, const char *in_)
+int _sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_)
 {
 	uint64 tt;
 	switch (unit_->father->control.insert_mode)
 	{
 	case STS_INSERT_PUSH:
 		if (unit_->father->control.limit_rows == 1){
-			struct_list_update(unit_->value, 0, (void *)in_);
+			sts_struct_list_update(unit_->value, 0, (void *)in_);
 			unit_->value->count = 1;
 		}
 		else {
-			struct_list_push(unit_->value, (void *)in_);
+			sts_struct_list_push(unit_->value, (void *)in_);
 			if (unit_->father->control.limit_rows > 1){
-				struct_list_limit(unit_->value, unit_->father->control.limit_rows);
+				sts_struct_list_limit(unit_->value, unit_->father->control.limit_rows);
 			}
 		}
 		break;
 	case STS_INSERT_MUL_CHECK:
 		break;
-	default: // STS_INSERT_TS_CHECK
+	default: // STS_INSERT_STS_CHECK
 		tt = sts_table_get_times(unit_->father, (void *)in_);  // 得到时间序列值
 		int mode;
 		int index = sts_collect_unit_search_left(unit_, tt, &mode);
 		if (mode == STS_SEARCH_NONE) {
-			struct_list_push(unit_->value, (void *)in_);
+			sts_struct_list_push(unit_->value, (void *)in_);
 		}
 		else if (mode == STS_SEARCH_OK) {
-			struct_list_update(unit_->value, index, (void *)in_);
+			sts_struct_list_update(unit_->value, index, (void *)in_);
 		}
 		else {
-			struct_list_insert(unit_->value, index + 1, (void *)in_);
+			sts_struct_list_insert(unit_->value, index + 1, (void *)in_);
 		}
 		if (unit_->father->control.limit_rows > 0){
-			struct_list_limit(unit_->value, unit_->father->control.limit_rows);
+			sts_struct_list_limit(unit_->value, unit_->father->control.limit_rows);
 		}
 		break;
 	}
@@ -382,17 +382,17 @@ int __sts_collect_unit_update(sts_collect_unit *unit_, const char *in_)
 		unit_->value->count);
 	return 1;
 }
-int sts_collect_unit_update(sts_collect_unit *unit_, const char *in_, size_t inLen_)
+int sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_, size_t inLen_)
 {
 	if (inLen_ < 1) return 0;
 	char dt = in_[0]; // 取类型
 	int count = 0;
 	switch (dt)
 	{
-	case STS_DATA_BIN:
+	case STS_DATA_STRUCT:
 		count = (int)(inLen_ / unit_->value->len);
 		for (int i = 0; i < count; i++){
-			__sts_collect_unit_update(unit_, in_ + i * unit_->value->len);
+			_sts_collect_unit_update(unit_, in_ + i * unit_->value->len);
 		}
 		break;
 	case STS_DATA_ZIP:

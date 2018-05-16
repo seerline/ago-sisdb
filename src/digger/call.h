@@ -2,7 +2,7 @@
 #define _CALL_H
 
 #include <sts_core.h>
-#include <comm.h>
+#include <sts_comm.h>
 #include <server.h>
 
 int digger_create(const char *conf_);

@@ -21,7 +21,7 @@ stock - 和股票相关的数据结构和基础函数
     结构定义统一加 s_sts_xxxx 结构变量定义 sts_xxxx_s
     ** 只能包含os, core目录文件 **
 
-comm - 对外接口
+platform - 对外接口
      主要是插件的接口，目前仅仅支持redis
      函数名前加 sts_module_ 以区分为清理过的系统函数 谁都可以用
      常量统一加 STS_MODULE_

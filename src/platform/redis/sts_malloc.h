@@ -1,6 +1,6 @@
 
-#ifndef _STS_MEMORY_H
-#define _STS_MEMORY_H
+#ifndef _STS_MALLOC_H
+#define _STS_MALLOC_H
 
 #include <stdio.h>
 #include <redismodule.h>

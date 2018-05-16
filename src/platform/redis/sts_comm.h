@@ -1,5 +1,5 @@
-#ifndef _COMM_H
-#define _COMM_H
+#ifndef _STS_COMM_H
+#define _STS_COMM_H
 
 
 //////////////////////////////////////////////
@@ -106,4 +106,4 @@
 
 
 
-#endif  /* _COMM_H */
+#endif  /* _STS_COMM_H */

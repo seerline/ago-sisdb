@@ -1,7 +1,7 @@
 #ifndef _LW_ZINT_H
 #define _LW_ZINT_H
 
-#include "lw_base.h"
+#include "sts_core.h"
 #include "lw_public.h"
 
 #pragma pack(push,1)

@@ -6,7 +6,7 @@
 #ifndef _LW_SKIPLIST_H
 #define _LW_SKIPLIST_H
 
-#include "lw_base.h"
+#include "sts_core.h"
 #include "lw_public.h"
 #include "zmalloc.h"
 
@@ -241,7 +241,7 @@ static void skiplist_dump(struct s_skiplist *list)
 		printf("level %d:\n", i + 1);
 		skiplist_foreach(pos, end) {
 			node = list_entry(pos, struct s_skipnode, link[i]);
-			printf("key:0x%08x value:%p\n", node->key, node->value);
+			// printf("key:0x%08x value:%p\n", node->key, node->value);
 		}
 		pos = &list->head[i];
 		pos--;

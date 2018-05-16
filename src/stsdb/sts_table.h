@@ -8,46 +8,45 @@
 
 #include "dict.h"
 #include "sts_fields.h"
-#include "sts_zip.h"
-#include "lw_map.h"
-#include "lw_list.h"
+#include "sts_map.h"
+#include "sts_list.h"
 
 /////////////////////////////////////////////////////////
 //  Êı¾İ¿âÊı¾İ²åÈëÄ£Ê½
 /////////////////////////////////////////////////////////
 #define STS_INSERT_PUSH        0  // ²»×öÅĞ¶ÏÖ±½Ó×·¼Ó
-#define STS_INSERT_TS_CHECK    1  // ¼ì²éÊ±¼ä½ÚµãÖØ¸´¾Í¸²¸ÇÀÏµÄÊı¾İ£¬²»ÖØ¸´¾Í·Å¶ÔÓ¦Î»ÖÃ
+#define STS_INSERT_STS_CHECK   1  // ¼ì²éÊ±¼ä½ÚµãÖØ¸´¾Í¸²¸ÇÀÏµÄÊı¾İ£¬²»ÖØ¸´¾Í·Å¶ÔÓ¦Î»ÖÃ
 #define STS_INSERT_MUL_CHECK   2  // ×îÉÙ3¸öÒÔÉÏÊı¾İ²ÅÄÜÈ·ÈÏÊı¾İµÄ×¼È·ĞÔ£¬Ôİ²»ÓÃ
 
 /////////////////////////////////////////////////////////
 //  Êı¾İ¸ñÊÇ¶¨Òå 
 /////////////////////////////////////////////////////////
 #define STS_DATA_ZIP     'R'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ
-#define STS_DATA_BIN     'B'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ
+#define STS_DATA_STRUCT  'B'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ
 #define STS_DATA_STRING  'S'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ
 #define STS_DATA_JSON    '{'   // Ö±½Ó´«Êı¾İ
 #define STS_DATA_ARRAY   '['   // Ö±½Ó´«Êı¾İ
 
 #pragma pack(push,1)
 
-typedef struct sts_table_control{
+typedef struct s_sts_table_control{
 	uint32_t version;      // Êı¾İ±íµÄ°æ±¾ºÅtime_t¸ñÊ½
 	uint32_t limit_rows;   // Ã¿¸öcollectionµÄ×î´ó¼ÇÂ¼Êı
 	uint8_t  zip_mode;     // Ñ¹ËõÊ±¶àÉÙÊı¾İ´ò³ÉÒ»¸ö°ü
 	uint8_t  insert_mode;  // ²åÈëÊı¾İ·½Ê½
-}sts_table_control;
+}s_sts_table_control;
 
-typedef struct sts_table{
+typedef struct s_sts_table {
 	sds name;            //±íµÄÃû×Ö
-	sts_table_control control;       // ±í¿ØÖÆ¶¨Òå
-	s_string_list  *field_name;      // °´Ë³ĞòÅÅµÄÃû×Ö
-	s_map_pointer  *field_map;       // ×Ö¶Î¶¨Òå×Öµä±í£¬°´×Ö¶ÎÃû´æ´¢µÄ×Ö¶ÎÄÚ´æ¿é£¬Ö¸Ïòsts_field_unit
-	s_map_pointer  *collect_map;     // Êı¾İ¶¨Òå×Öµä±í£¬°´¹ÉÆ±Ãû´æ´¢µÄÊı¾İÄÚ´æ¿é£¬Ö¸Ïòsts_collect_unit
-}sts_table;
+	s_sts_table_control control;       // ±í¿ØÖÆ¶¨Òå
+	s_sts_string_list  *field_name;      // °´Ë³ĞòÅÅµÄÃû×Ö
+	s_sts_map_pointer  *field_map;       // ×Ö¶Î¶¨Òå×Öµä±í£¬°´×Ö¶ÎÃû´æ´¢µÄ×Ö¶ÎÄÚ´æ¿é£¬Ö¸Ïòsts_field_unit
+	s_sts_map_pointer  *collect_map;     // Êı¾İ¶¨Òå×Öµä±í£¬°´¹ÉÆ±Ãû´æ´¢µÄÊı¾İÄÚ´æ¿é£¬Ö¸Ïòsts_collect_unit
+}s_sts_table;
 
 #pragma pack(pop)
 
-sts_table *create_sts_table(const char *name_, const char *command);  //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
+s_sts_table *sts_table_create(const char *name_, const char *command);  //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
 // commandÎªjsonÃüÁî
 //ÓÃ»§´«ÈëµÄcommandÖĞ¹Ø¼ü×ÖµÄ¶¨ÒåÈçÏÂ£º
 //×Ö¶Î¶¨Òå£º  "fields":  []
@@ -55,32 +54,32 @@ sts_table *create_sts_table(const char *name_, const char *command);  //commandÎ
 //Ñ¹Ëõ·½Ê½£º  "zipmode":  0
 //²åÈë·½Ê½£º  "insert":  1 ²åÈëÊı¾İ·½Ê½£¬Èç¹ûlimitsÎª1£¬Ôò×ÜÊÇĞŞ¸ÄµÚÒ»Ìõ¼ÇÂ¼
 
-void destroy_sts_table(sts_table *);  //É¾³ıÒ»¸ö±í
-void clear_sts_table(sts_table *);    //ÇåÀíÒ»¸ö±íµÄËùÓĞÊı¾İ
+void sts_table_destroy(s_sts_table *);  //É¾³ıÒ»¸ö±í
+void sts_table_clear(s_sts_table *);    //ÇåÀíÒ»¸ö±íµÄËùÓĞÊı¾İ
 //¶ÔÊı¾İ¿âµÄ¸÷ÖÖÊôĞÔÉèÖÃ
-void sts_table_set_ver(sts_table *, uint32_t);  // time_t¸ñÊ½
-void sts_table_set_limit_rows(sts_table *, uint32_t); // 0 -- ²»ÏŞÖÆ  1 -- Ö»±£Áô×îĞÂµÄÒ»Ìõ  n 
-void sts_table_set_zip_mode(sts_table *, uint8_t); // 0 -- ²»Ñ¹Ëõ 1 2
-void sts_table_set_insert_mode(sts_table *, uint8_t); // 1 -- ÅĞ¶ÏºóĞŞ¸Ä 0 2
+void sts_table_set_ver(s_sts_table *, uint32_t);  // time_t¸ñÊ½
+void sts_table_set_limit_rows(s_sts_table *, uint32_t); // 0 -- ²»ÏŞÖÆ  1 -- Ö»±£Áô×îĞÂµÄÒ»Ìõ  n 
+void sts_table_set_zip_mode(s_sts_table *, uint8_t); // 0 -- ²»Ñ¹Ëõ 1 2
+void sts_table_set_insert_mode(s_sts_table *, uint8_t); // 1 -- ÅĞ¶ÏºóĞŞ¸Ä 0 2
 
-void sts_table_set_fields(sts_table *, const char *command); //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
+void sts_table_set_fields(s_sts_table *, const char *command); //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
 //»ñÈ¡Êı¾İ¿âµÄ¸÷ÖÖÖµ
-sts_field_unit *sts_table_get_field(sts_table *tb_, const char *name_);
-int sts_table_get_fields_size(sts_table *);
-uint64 sts_table_get_times(sts_table *, void *); // »ñÈ¡Ê±¼äĞòÁĞ,Ä¬ÈÏÎªµÚÒ»¸ö×Ö¶Î£¬ÈôµÚÒ»¸ö×Ö¶Î²»·ûºÏ±ê×¼£¬ÍùÏÂÕÒ
-sds sts_table_get_string_m(sts_table *, void *, const char *name_);
+s_sts_field_unit *sts_table_get_field(s_sts_table *tb_, const char *name_);
+int sts_table_get_fields_size(s_sts_table *);
+uint64 sts_table_get_times(s_sts_table *, void *); // »ñÈ¡Ê±¼äĞòÁĞ,Ä¬ÈÏÎªµÚÒ»¸ö×Ö¶Î£¬ÈôµÚÒ»¸ö×Ö¶Î²»·ûºÏ±ê×¼£¬ÍùÏÂÕÒ
+sds sts_table_get_string_m(s_sts_table *, void *, const char *name_);
 //µÃµ½¼ÇÂ¼µÄ³¤¶È
 //È¡Êı¾İºÍĞ´Êı¾İ
-void sts_table_update(sts_table *, const char *key_, sds value_); 
+void sts_table_update(s_sts_table *, const char *key_, sds value_); 
 //ĞŞ¸ÄÊı¾İ£¬key_Îª¹ÉÆ±´úÂë»òÊĞ³¡±àºÅ£¬value_Îª¶ş½øÖÆ½á¹¹»¯Êı¾İ»òjsonÊı¾İ
-sds sts_table_get_m(sts_table *, const char *key_, const char *command);  //·µ»ØÊı¾İĞèÒªÊÍ·Å
+sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //·µ»ØÊı¾İĞèÒªÊÍ·Å
 
 // commandÎªjsonÃüÁî
 //¶Á±íÖĞ´úÂëÎªkeyµÄÊı¾İ£¬keyÎª*±íÊ¾ËùÓĞ¹ÉÆ±Êı¾İ£¬ÓÉcommand¶¨ÒåÊı¾İ·¶Î§ºÍ×Ö¶Î·¶Î§
 //ÓÃ»§´«ÈëµÄcommandÖĞ¹Ø¼ü×ÖµÄ¶¨ÒåÈçÏÂ£º
 //·µ»ØÊı¾İ¸ñÊ½£º"format":"json" --> STS_DATA_JSON
 //						 "array" --> STS_DATA_ARRAY
-//						 "bin" --> STS_DATA_BIN  ----> Ä¬ÈÏ
+//						 "bin" --> STS_DATA_STRUCT  ----> Ä¬ÈÏ
 //					     "string" --> STS_DATA_STRING
 //						 "zip" --> STS_DATA_ZIP
 //×Ö¶Î£º    "fields":  "time,close,vol,name" ±íÊ¾Ò»¹²4¸ö×Ö¶Î  
@@ -92,7 +91,7 @@ sds sts_table_get_m(sts_table *, const char *key_, const char *command);  //·µ»Ø
 //Êı¾İ·¶Î§£º"range":    start£¬stop °´¼ÇÂ¼ºÅÈ¡Êı¾İ 0£¬-1-->±íÊ¾È«²¿Êı¾İ
 //						count(ºÍstop»¥³â£¬Õı±íÊ¾Ïòºó£¬¸º±íÊ¾ÏòÇ°),
 
-int sts_table_delete(sts_table *, const char *key_, const char *command);// commandÎªjsonÃüÁî
+int sts_table_delete(s_sts_table *, const char *key_, const char *command);// commandÎªjsonÃüÁî
 //É¾³ı
 //ÓÃ»§´«ÈëµÄcommandÖĞ¹Ø¼ü×ÖµÄ¶¨ÒåÈçÏÂ£º
 //Êı¾İ·¶Î§£º"search":   min,max °´Ê±ĞòË÷ÒıÈ¡Êı¾İ
