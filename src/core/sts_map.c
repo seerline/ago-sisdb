@@ -106,6 +106,13 @@ int   sts_map_buffer_set(s_sts_map_buffer *map_, const char *key_, void *value_)
 //////////////////////////////////////////
 //  s_sts_map_int 基础定义
 //////////////////////////////////////////
+s_sts_map_pointer *sts_map_pointer_create(){ 
+	s_sts_map_pointer *map = dictCreate(&bufferDictType, NULL);
+	return map;
+};
+//////////////////////////////////////////
+//  s_sts_map_int 基础定义
+//////////////////////////////////////////
 s_sts_map_int *sts_map_int_create(){ 
 	s_sts_map_int *map = dictCreate(&numberDictType, NULL);
 	return map;

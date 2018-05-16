@@ -4,27 +4,45 @@
 #include "sts_db.h"
 #include "sts_collect.h"
 #include "sts_time.h"
-#include "sts_json.h"
 
-s_sts_table *sts_table_create(const char *name_, const char *command)
+s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command)
 //command为一个json格式字段定义
 {
 	s_sts_table *tb = sts_db_get_table(name_);
 	if (tb) {
 		sts_table_destroy(tb);
 	}
+	// 先加载默认配置
 	tb = zmalloc(sizeof(s_sts_table ));
-	tb->control.insert_mode = STS_INSERT_STS_CHECK;
-	tb->control.limit_rows = 0;
+	tb->control.data_type = STS_DATA_STRUCT;
+	tb->control.time_scale =STS_FIELD_SECOND;
+	tb->control.limit_rows = sts_json_get_int(command, "limit", 0);
+	tb->control.insert_mode = STS_INSERT_PUSH;
 	tb->control.version = (uint32)sts_time_get_now();
-	tb->control.zip_mode = 0;//STS_ZIP_NO;
+	// 加载实际配置
+	s_sts_map_define *map = NULL;
+	const char *strval = sts_json_get_str(command, "data-type");
+	map = sts_db_find_map_define(strval, STS_MAP_DEFINE_DATA_TYPE);
+	if(map){
+		tb->control.data_type = map->uid;
+	}
+	strval = sts_json_get_str(command, "scale");
+	map = sts_db_find_map_define(strval, STS_MAP_DEFINE_SCALE);
+	if(map){
+		tb->control.time_scale = map->uid;
+	}	
+	strval = sts_json_get_str(command, "insert-mode");
+	map = sts_db_find_map_define(strval, STS_MAP_DEFINE_INSERT_MODE);
+	if(map){
+		tb->control.insert_mode = map->uid;
+	}
 
 	tb->name = sdsnew(name_);
 	tb->collect_map = sts_map_pointer_create();
 	//处理字段定义
 	tb->field_name = sts_string_list_create_w();
 	tb->field_map = sts_map_pointer_create();
-	sts_table_set_fields(tb, command);
+	sts_table_set_fields(tb, sts_json_cmp_child_node(command,"fields"));
 	return tb;
 }
 
@@ -62,53 +80,57 @@ void sts_table_clear(s_sts_table *tb_)
 /////////////////////////////////////
 //对数据库的各种属性设置
 ////////////////////////////////////
-void sts_table_set_ver(s_sts_table *tb_, uint32_t ver_)
+void sts_table_set_ver(s_sts_table *tb_, uint32 ver_)
 {
 	tb_->control.version = ver_;
 }
-void sts_table_set_limit_rows(s_sts_table *tb_, uint32_t limits_)
+void sts_table_set_limit_rows(s_sts_table *tb_, uint32 limits_)
 {
 	tb_->control.limit_rows = limits_;
 }
-void sts_table_set_zip_mode(s_sts_table *tb_, uint8_t zip_)
-{
-	tb_->control.zip_mode = 0;//STS_ZIP_NO;
-}
 void sts_table_set_insert_mode(s_sts_table *tb_, uint8_t insert_)
 {
-	tb_->control.insert_mode = STS_INSERT_STS_CHECK;
+	tb_->control.insert_mode = insert_;
 }
 
-void sts_table_set_fields(s_sts_table *tb_, const char *command)
+void sts_table_set_fields(s_sts_table *tb_, s_sts_json_node *fields_)
 {
-	s_sts_json_handle *handle = sts_json_load(command, strlen(command));
-	if (!handle) { return; }
-	s_sts_json_node *node = sts_json_cmp_child_node(handle->node, "fields");
-	if (!node) { goto fail; }
+	if (!fields_) { return ; }
 
 	sts_map_pointer_clear(tb_->field_map);
 	sts_string_list_clear(tb_->field_name);
-	s_sts_json_node *item = sts_json_first_node(node);
+	s_sts_json_node *node = sts_json_first_node(fields_);
+
+	s_sts_fields_flags flags;
+	s_sts_map_define *map = NULL;
 	int index = 0;
 	int offset = 0;
-	while (item){
-		const char * name = sts_json_get_str(item, "name");
-		s_sts_field_unit *unit = sts_field_unit_create(
-			index++,
-			name,
-			sts_json_get_str(item, "type"),
-			sts_json_get_str(item, "zip"),
-			sts_json_get_int(item, "len", 0),
-			sts_json_get_int(item, "zoom", -100)
-			);
-		unit->offset = offset;
-		offset += unit->flags.len;
-		sts_map_pointer_set(tb_->field_map, name, unit);
-		sts_string_list_push(tb_->field_name, name, strlen(name));
-		item = sts_json_next_node(item);
+	while (node) {
+		s_sts_json_node *child = node->child;
+		if (child){
+			const char * name = sts_json_get_str(child, "0");
+			flags.type = STS_FIELD_INT;
+			flags.len = sts_json_get_int(child, "2", 4);
+			flags.io = sts_json_get_int(child, "3", 0);
+			flags.zoom = sts_json_get_int(child, "4", 0);
+			flags.ziper = 0; // 暂时不压缩
+			flags.refer = 0;
+
+			const char *val = sts_json_get_str(child, "1");
+			map = sts_db_find_map_define(val, STS_MAP_DEFINE_FIELD_TYPE);
+			if(map){
+				flags.type = map->uid;
+			}
+
+			s_sts_field_unit *unit = 
+				sts_field_unit_create(index++, name, &flags);
+			unit->offset = offset;
+			offset += unit->flags.len;
+			sts_map_pointer_set(tb_->field_map, name, unit);
+			sts_string_list_push(tb_->field_name, name, strlen(name));
+		}
+		node = sts_json_next_node(node);
 	}
-fail:
-	sts_json_close(handle);
 }
 
 //获取数据库的各种值
@@ -134,7 +156,6 @@ uint64 _sts_table_get_integer(s_sts_field_unit *fu_, void *val_){
 	uint64 out = 0;
 	char *ptr = val_;
 	uint8  *u8;
-	uint16 *u16;
 	uint32 *u32;
 	uint64 *u64;
 
@@ -142,39 +163,21 @@ uint64 _sts_table_get_integer(s_sts_field_unit *fu_, void *val_){
 	{
 	case STS_FIELD_INDEX:
 	case STS_FIELD_SECOND:
-	case STS_FIELD_MINUTE:
+	case STS_FIELD_MIN1:
+	case STS_FIELD_MIN5:
 	case STS_FIELD_DAY:
-	case STS_FIELD_MONTH:
-	case STS_FIELD_INT4:
-	case STS_FIELD_INTZ:
 		u32 = (uint32 *)(ptr + fu_->offset);
 		out = *u32;
 		break;
-	case STS_FIELD_YEAR:
-	case STS_FIELD_INT2:
-		u16 = (uint16 *)(ptr + fu_->offset);
-		out = *u16;
-		break;
-	case STS_FIELD_INT1:
+	case STS_FIELD_INT:
 		u8 = (uint8 *)(ptr + fu_->offset);
 		out = *u8;
 		break;
 	case STS_FIELD_CODE:
 	case STS_FIELD_TIME:
-	case STS_FIELD_INT8:
 		u64 = (uint64 *)(ptr + fu_->offset);
 		out = *u64;
 		break;
-	case STS_FIELD_PRC:
-	case STS_FIELD_VOL:
-		if (fu_->flags.len == 4) {
-			u32 = (uint32 *)(ptr + fu_->offset);
-			out = *u32;
-		}
-		if (fu_->flags.len == 8) {
-			u64 = (uint64 *)(ptr + fu_->offset);
-			out = *u64;
-		}
 	default:
 		break;
 	}
@@ -217,7 +220,7 @@ uint64 sts_table_get_times(s_sts_table *tb_, void *val_){
 sds sts_table_get_string_m(s_sts_table *tb_, void *val_, const char *name_){
 	
 	s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb_->field_map, name_);
-	if (!fu || fu->flags.type != STS_FIELD_CHAR) { return NULL; }
+	if (!fu || fu->flags.type != STS_FIELD_STRING) { return NULL; }
 	sds str = sdsnewlen((const char *)val_ + fu->offset, fu->flags.len);
 	return str;
 }
@@ -322,7 +325,7 @@ sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *command)
 	int out_format = STS_DATA_ARRAY;
 	s_sts_json_node *format = sts_json_cmp_child_node(handle->node, "format");
 	if (format) {
-		s_sts_map_define *smd = sts_db_find_map_define(format->value);
+		s_sts_map_define *smd = sts_db_find_map_define(format->value, STS_MAP_DEFINE_DATA_TYPE);
 		if (smd) { out_format = smd->uid; }
 	} 
 

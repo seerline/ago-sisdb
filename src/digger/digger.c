@@ -93,11 +93,14 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 }
 int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
-	if (argc_ != 3)
+	if (argc_ != 4)
 	{
 		return sts_module_wrong_arity(ctx_);
 	}
-	printf("%s: %.90s\n", sts_module_string_get(argv_[1], NULL), sts_module_string_get(argv_[2], NULL));
+	printf("%s-%s: %.80s\n", 
+	sts_module_string_get(argv_[1], NULL),
+	sts_module_string_get(argv_[2], NULL),
+	 sts_module_string_get(argv_[3], NULL));
 	sts_module_reply_with_simple_string(ctx_, "OK");
 	return STS_MODULE_OK;
 }

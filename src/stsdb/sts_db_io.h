@@ -11,6 +11,7 @@
 #include "sts_conf.h"
 #include "sts_str.h"
 
+#include "sts_db.h"
 #include "sts_table.h"
 
 

@@ -10,13 +10,15 @@
 #include "sts_fields.h"
 #include "sts_map.h"
 #include "sts_list.h"
+#include "sts_json.h"
 
 /////////////////////////////////////////////////////////
 //  数据库数据插入模式
 /////////////////////////////////////////////////////////
 #define STS_INSERT_PUSH        0  // 不做判断直接追加
-#define STS_INSERT_STS_CHECK   1  // 检查时间节点重复就覆盖老的数据，不重复就放对应位置
-#define STS_INSERT_MUL_CHECK   2  // 最少3个以上数据才能确认数据的准确性，暂不用
+#define STS_INSERT_INCR_TIME   1  // 检查时间节点重复就覆盖老的数据，不重复就放对应位置
+#define STS_INSERT_INCR_VOL    2  // 检查成交量，成交量增加就写入
+#define STS_INSERT_MUL_CHECK   3  // 最少3个以上数据才能确认数据的准确性，暂不用
 
 /////////////////////////////////////////////////////////
 //  数据格是定义 
@@ -30,9 +32,10 @@
 #pragma pack(push,1)
 
 typedef struct s_sts_table_control{
-	uint32_t version;      // 数据表的版本号time_t格式
-	uint32_t limit_rows;   // 每个collection的最大记录数
-	uint8_t  zip_mode;     // 压缩时多少数据打成一个包
+	uint32 version;      // 数据表的版本号time_t格式
+	uint8_t  data_type;    // 数据类型
+	uint8_t  time_scale;   // 时序压缩的步长
+	uint32 limit_rows;   // 每个collection的最大记录数
 	uint8_t  insert_mode;  // 插入数据方式
 }s_sts_table_control;
 
@@ -46,23 +49,28 @@ typedef struct s_sts_table {
 
 #pragma pack(pop)
 
-s_sts_table *sts_table_create(const char *name_, const char *command);  //command为一个json格式字段定义
+s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command);  //command为一个json格式字段定义
 // command为json命令
 //用户传入的command中关键字的定义如下：
+//数据类型 data-type json的话就没有其他字段了，struct
 //字段定义：  "fields":  []
-//记录数限制："limits":  0 记录数限制  
-//压缩方式：  "zipmode":  0
-//插入方式：  "insert":  1 插入数据方式，如果limits为1，则总是修改第一条记录
+//  # 字段名| 数据类型| 长度| io 放大还是缩小| 缩放比例 zoom|压缩类型|压缩参考字段索引
+//  [name, string, 16, 0, 0, 0, 0],
+
+//记录数限制："limit":  0 记录数限制  
+//时间序列的尺度  scale
+//插入数据方式：  "insert":  push 不做判断直接增加 incr-time 根据时间增加增加记录，不增加就刷新老记录
+	//  incr-vol 根据成交量递增来增加数据，
+	//  如果limit为1，则总是修改第一条记录
 
 void sts_table_destroy(s_sts_table *);  //删除一个表
 void sts_table_clear(s_sts_table *);    //清理一个表的所有数据
 //对数据库的各种属性设置
-void sts_table_set_ver(s_sts_table *, uint32_t);  // time_t格式
-void sts_table_set_limit_rows(s_sts_table *, uint32_t); // 0 -- 不限制  1 -- 只保留最新的一条  n 
-void sts_table_set_zip_mode(s_sts_table *, uint8_t); // 0 -- 不压缩 1 2
+void sts_table_set_ver(s_sts_table *, uint32);  // time_t格式
+void sts_table_set_limit_rows(s_sts_table *, uint32); // 0 -- 不限制  1 -- 只保留最新的一条  n 
 void sts_table_set_insert_mode(s_sts_table *, uint8_t); // 1 -- 判断后修改 0 2
 
-void sts_table_set_fields(s_sts_table *, const char *command); //command为一个json格式字段定义
+void sts_table_set_fields(s_sts_table *, s_sts_json_node *fields_); //command为一个json格式字段定义
 //获取数据库的各种值
 s_sts_field_unit *sts_table_get_field(s_sts_table *tb_, const char *name_);
 int sts_table_get_fields_size(s_sts_table *);

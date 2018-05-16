@@ -67,7 +67,7 @@ unsigned sts_thread_self()
 /////////////////////////////////////
 //
 //////////////////////////////////////////
-int sts_mutex_init(s_sts_thread_mutex_t *m)
+int sts_mutex_create(s_sts_thread_mutex_t *m)
 {
 #ifdef _MSC_VER
 	InitializeCriticalSection(m);
