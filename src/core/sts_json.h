@@ -27,9 +27,9 @@ typedef struct s_sts_json_node
 typedef struct s_sts_json_handle
 {
 	const char * error;      // 指向错误的地址
-	bool   readonly;   // 读写模式，只读就从content
-	char  *content;    // 文件内容，只读模式下使用的映射
-	size_t position;   // 当前位置，临时变量，只读解析时用 
+	// bool   readonly;   // 读写模式，只读就从content
+	// char  *content;    // 文件内容，只读模式下使用的映射
+	// size_t position;   // 当前位置，临时变量，只读解析时用 
 	struct s_sts_json_node *node;
 } s_sts_json_handle; //专门提供给读json的快速结构体
 
@@ -37,7 +37,7 @@ typedef struct s_sts_json_handle
 //   output main function define
 ///////////////////////////////////////////////
 s_sts_json_handle *sts_json_open(const char *fn_);
-void sts_json_delete_node(s_sts_json_handle *handle_, s_sts_json_node *node_);
+void sts_json_delete_node(s_sts_json_node *node_);
 void sts_json_close(s_sts_json_handle *handle_);
 
 s_sts_json_handle *sts_json_load(const char *content_, size_t len_);  //按内容加载
@@ -57,34 +57,33 @@ s_sts_json_node *sts_json_create_object(); //创建一个对象
 //*********************************//
 
 // 追加到child的末尾，key不能有'.'
-void sts_json_add_node(s_sts_json_handle *h_, s_sts_json_node *source_, s_sts_json_node *node_);
+void sts_json_array_add_node(s_sts_json_node *source_, s_sts_json_node *node_);
+void sts_json_object_add_node(s_sts_json_node *source_, const char *key_, s_sts_json_node *node_);
 
 // 追加到child的末尾，key不能有'.'
-#define sts_json_object_add_node sts_json_add_node
 // 增加到child，在末尾增加一个元素
 // 修改到child，如果没有发现key_,就增加一个
-void sts_json_object_add_int(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, long value_);
-void sts_json_object_set_int(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, long value_);
+void sts_json_object_add_int(s_sts_json_node *node_, const char *key_, long value_);
+void sts_json_object_set_int(s_sts_json_node *node_, const char *key_, long value_);
 
-void sts_json_object_add_double(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, double value_, int demical_);
-void sts_json_object_set_double(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, double value_, int demical_);
+void sts_json_object_add_double(s_sts_json_node *node_, const char *key_, double value_, int demical_);
+void sts_json_object_set_double(s_sts_json_node *node_, const char *key_, double value_, int demical_);
 
-void sts_json_object_add_string(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, const char *value_);
-void sts_json_object_set_string(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, const char *value_);
+void sts_json_object_add_string(s_sts_json_node *node_, const char *key_, const char *value_, size_t len_);
+void sts_json_object_set_string(s_sts_json_node *node_, const char *key_, const char *value_, size_t len_);
 
 //----------------------------------------------//
 // 追加到child的末尾，key不能有'.'
-#define sts_json_array_add_node sts_json_add_node
 // 增加到child，在末尾增加一个元素
 // 修改到child，如果没有发现key_,就增加一个 
-void sts_json_array_add_int(s_sts_json_handle *h_, s_sts_json_node *node_, long value_);
-void sts_json_array_set_int(s_sts_json_handle *h_, s_sts_json_node *node_, int index_, long value_);
+void sts_json_array_add_int(s_sts_json_node *node_, long value_);
+void sts_json_array_set_int(s_sts_json_node *node_, int index_, long value_);
 
-void sts_json_array_add_double(s_sts_json_handle *h_, s_sts_json_node *node_, double value_, int demical_);
-void sts_json_array_set_double(s_sts_json_handle *h_, s_sts_json_node *node_, int index_,  double value_, int demical_);
+void sts_json_array_add_double(s_sts_json_node *node_, double value_, int demical_);
+void sts_json_array_set_double(s_sts_json_node *node_, int index_,  double value_, int demical_);
 
-void sts_json_array_add_string(s_sts_json_handle *h_, s_sts_json_node *node_, const char *value_);
-void sts_json_array_set_string(s_sts_json_handle *h_, s_sts_json_node *node_, int index_,  const char *value_);
+void sts_json_array_add_string(s_sts_json_node *node_, const char *value_, size_t len_);
+void sts_json_array_set_string(s_sts_json_node *node_, int index_,  const char *value_, size_t len_);
 
 //-------------------------------------------------------------//
 //======== read & print option =============//

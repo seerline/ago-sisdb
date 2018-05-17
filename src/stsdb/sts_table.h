@@ -23,10 +23,11 @@
 /////////////////////////////////////////////////////////
 //  Êı¾İ¸ñÊÇ¶¨Òå 
 /////////////////////////////////////////////////////////
-#define STS_DATA_ZIP     'R'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ
-#define STS_DATA_STRUCT  'B'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ
-#define STS_DATA_STRING  'S'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ
-#define STS_DATA_JSON    '{'   // Ö±½Ó´«Êı¾İ
+#define STS_DATA_ZIP     'R'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ Ñ¹Ëõ¸ñÊ½£¬Í·²¿Ó¦¸ÃÓĞ×Ö¶ÎËµÃ÷
+#define STS_DATA_STRUCT  'B'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ ¶ş½øÖÆ½á¹¹»¯Êı¾İ
+#define STS_DATA_STRING  'S'   // ºóÃæ¿ªÊ¼ÎªÊı¾İ ×Ö·û´®
+#define STS_DATA_JSON    '{'   // Ö±½Ó´«Êı¾İ  jsonÎÄµµ Êı×é¿ÉÄÜÏûÊ§£¬ÀûÓÃ groups ±íÊ¾¶àÖ§¹ÉÆ±µÄÊı¾İ
+							   // value ±íÊ¾×îĞÂµÄÒ»Î¬Êı×é  values ±íÊ¾¶şÎ¬Êı×é	
 #define STS_DATA_ARRAY   '['   // Ö±½Ó´«Êı¾İ
 
 #pragma pack(push,1)
@@ -78,7 +79,10 @@ uint64 sts_table_get_times(s_sts_table *, void *); // »ñÈ¡Ê±¼äĞòÁĞ,Ä¬ÈÏÎªµÚÒ»¸ö×
 sds sts_table_get_string_m(s_sts_table *, void *, const char *name_);
 //µÃµ½¼ÇÂ¼µÄ³¤¶È
 //È¡Êı¾İºÍĞ´Êı¾İ
-void sts_table_update(s_sts_table *, const char *key_, sds value_); 
+// À´Ô´Êı¾İÊÇjson£¬tableÒ²ÊÇjsonÊı¾İ
+void sts_table_update_json(s_sts_table *, const char *key_, const char * value_, size_t len_);
+// À´Ô´Êı¾İÊÇjson»òÕßstruct£¬tableÊÇstructÊı¾İ
+void sts_table_update_struct(s_sts_table *, const char *key_, const char * value_, size_t len_);
 //ĞŞ¸ÄÊı¾İ£¬key_Îª¹ÉÆ±´úÂë»òÊĞ³¡±àºÅ£¬value_Îª¶ş½øÖÆ½á¹¹»¯Êı¾İ»òjsonÊı¾İ
 sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //·µ»ØÊı¾İĞèÒªÊÍ·Å
 

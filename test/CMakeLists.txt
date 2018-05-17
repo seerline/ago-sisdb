@@ -30,16 +30,18 @@ ENDIF ()
 #########################目录设置#############################
 
 #设置头文件目录
-INCLUDE_DIRECTORIES(. ../src/os/linux ../src/core)
+INCLUDE_DIRECTORIES(. ../src/os/linux ../src/platform/redis ../src/core)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(../src/os/linux DIR_OS)
+AUX_SOURCE_DIRECTORY(../src/platform/redis DIR_PLATFORM)
 AUX_SOURCE_DIRECTORY(../src/core DIR_CORE)
 
 #把源文件目录设置到环境变量
 SET(SRC_LIST ${DIR_SRCS}
              ${DIR_OS}
+             ${DIR_PLATFORM}
 	         ${DIR_CORE})
 
 # 设置输出文件目录
@@ -67,12 +69,13 @@ SET(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} ${SHOBJ_CFLAGS}")
 
 #设置所有需要链接的库名到 LIBRARIES 环境变量
 #SET(LIBRARIES libbson-1.0.so libmongoc-1.0.so pthread z m iconv charset)
-
-#把LIBRARIES链接到输出文件中
-#TARGET_LINK_LIBRARIES(../../bin/xxx ${LIBRARIES})
+SET(LIBRARIES pthread z m )
 
 #生成可执行文件
 ADD_EXECUTABLE(${PROJECT_NAME} ${SRC_LIST})
+
+#把LIBRARIES链接到输出文件中
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES})
 
 ###########################################################
 

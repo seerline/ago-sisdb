@@ -36,11 +36,12 @@ typedef struct s_stsdb_server
 int stsdb_init(const char *conf_);
 
 int stsdb_start(s_sts_module_context *ctx_);
+int stsdb_list(s_sts_module_context *ctx_);
 
 int stsdb_get(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *com_);
 
-int stsdb_set_json(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *val_);
-int stsdb_set_struct(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *val_);
+int stsdb_set_json(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *val_, size_t len_);
+int stsdb_set_struct(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *val_, size_t len_);
 
 
 

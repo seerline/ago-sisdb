@@ -1,9 +1,11 @@
 ﻿
 
 #include "sts_fields.h"
-#include "zmalloc.h"
 #include "sts_str.h"
 #include "sts_db.h"
+
+// #include "zmalloc.h"
+#include "sdsalloc.h"
 
 /*
 inline int zip_zoom(int n)  // 1000 ==> 0x00011  -1000 ==> 0x10011

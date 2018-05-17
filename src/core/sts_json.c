@@ -34,17 +34,14 @@ static const char *_sts_parse_string(s_sts_json_handle *handle_, s_sts_json_node
 	{
 		return 0;
 	}
-	char *out = handle_->content + handle_->position;
-	memcpy(out, str_ + 1, len);
-	*(handle_->content + handle_->position + len) = 0;
-	handle_->position += len + 1;
+	char *out = sts_strdup(str_ + 1, len);
 
 	ptr++;
 
 	if (!node_->key)
 	{
 		node_->key = out;
-		while (*ptr != ':' && *ptr)
+		while (*ptr && *ptr != ':')
 		{
 			ptr++;
 		}
@@ -75,11 +72,8 @@ static const char *_sts_parse_number(s_sts_json_handle *handle_, s_sts_json_node
 		ptr++;
 		len++;
 	}
-	char *out = handle_->content + handle_->position;
-	memcpy(out, num_, len);
-	*(handle_->content + handle_->position + len) = 0;
-	handle_->position += len + 1;
-	node_->value = out;
+
+	node_->value = sts_strdup(num_, len);
 
 	if (!isfloat)
 	{
@@ -95,6 +89,11 @@ static const char *_sts_parse_number(s_sts_json_handle *handle_, s_sts_json_node
 /* Build an array from input text. */
 static const char *_sts_parse_array(s_sts_json_handle *handle_, s_sts_json_node *node_, const char *value_)
 {
+	if (node_->key == NULL)
+	{
+		handle_->error = value_;
+		return 0;
+	}
 	node_->type = STS_JSON_ARRAY;
 	value_ = skip(value_ + 1);
 	if (*value_ == ']')
@@ -108,9 +107,8 @@ static const char *_sts_parse_array(s_sts_json_handle *handle_, s_sts_json_node 
 	while (value_ && *value_)
 	{
 		child->key = sts_str_sprintf(16, "%d", index++);
-		child->type = STS_JSON_ARRAY;
 		value_ = skip(_sts_parse_value(handle_, child, skip(value_))); /* skip any spacing, get the value_. */
-		if (!value_)
+		if (!value_ || !*value_)
 		{
 			return 0;
 		}
@@ -132,6 +130,11 @@ static const char *_sts_parse_array(s_sts_json_handle *handle_, s_sts_json_node 
 /* Build an object from the text. */
 static const char *_sts_parse_object(s_sts_json_handle *handle_, s_sts_json_node *node_, const char *value_)
 {
+	// if (node_->key == NULL)
+	// {
+	// 	handle_->error = value_;
+	// 	return 0;
+	// }
 	node_->type = STS_JSON_OBJECT;
 	value_ = skip(value_ + 1);
 	if (*value_ == '}')
@@ -143,10 +146,9 @@ static const char *_sts_parse_object(s_sts_json_handle *handle_, s_sts_json_node
 	node_->child = child = sts_json_create_node();
 	while (value_ && *value_)
 	{
-		child->type = STS_JSON_OBJECT;
-		// value_ = skip(_sts_parse_string(handle_, child, skip(value_)));
-		value_ = skip(_sts_parse_value(handle_, child, skip(value_)));
-		if (!value_)
+		value_ = skip(value_);
+		value_ = skip(_sts_parse_value(handle_, child, value_));
+		if (!value_ || !*value_)
 		{
 			return 0;
 		}
@@ -163,65 +165,15 @@ static const char *_sts_parse_object(s_sts_json_handle *handle_, s_sts_json_node
 			child = new_node;
 		}
 	}
-	// value_ = skip(parse_string(child, skip(value_), 1, handle_));
-	// if (!value_)
-	// {
-	// 	return 0;
-	// }
-	// if (*value_ != ':')
-	// {
-	// 	jerror = value_;
-	// 	return 0;
-	// }														   /* fail! */
-	// value_ = skip(parse_value_(child, skip(value_ + 1), handle_)); /* skip any spacing, get the value. */
-	// if (!value)
-	// {
-	// 	return 0;
-	// }
-
-	// while (*value == ',')
-	// {
-	// 	struct s_sts_json_node *new_item = sts_json_create_node();
-	// 	child->next = new_item;
-	// 	new_item->prev = child;
-	// 	child = new_item;
-	// 	value = skip(parse_string(child, skip(value + 1), 1, handle_));
-	// 	//printf("1.5++%c++%p\n", *value, value);
-	// 	if (!value)
-	// 	{
-	// 		return 0;
-	// 	}
-	// 	if (*value != ':')
-	// 	{
-	// 		jerror = value;
-	// 		return 0;
-	// 	}														   /* fail! */
-	// 	value = skip(parse_value(child, skip(value + 1), handle_)); /* skip any spacing, get the value. */
-	// 	//printf("2++%c++%p\n", *value, value);
-	// 	if (!value)
-	// 	{
-	// 		return 0;
-	// 	}
-	// }
-
-	// if (*value == '}')
-	// {
-	// 	return value + 1;
-	// } /* end of array */
 	return 0; /* malformed. */
 }
 static const char *_sts_parse_value(s_sts_json_handle *handle_, s_sts_json_node *node_, const char *value_)
 {
-	if (!handle_)
-	{
-		return 0;
-	}
-	//printf("value_=%c, \n", *value_);
+	// printf("val: |%.10s| \n", value_);
 	if (!value_)
 	{
 		return 0;
 	} /* Fail on null. */
-	handle_->error = value_;
 	if (*value_ == '\"')
 	{
 		return _sts_parse_string(handle_, node_, value_);
@@ -238,28 +190,27 @@ static const char *_sts_parse_value(s_sts_json_handle *handle_, s_sts_json_node 
 	{
 		return _sts_parse_object(handle_, node_, value_);
 	}
-	return 0; /* failure. */
+	return 0;
 }
 
 bool _sts_json_parse(s_sts_json_handle *handle_, const char *content_)
 {
-	const char *end = 0;
-	struct s_sts_json_node *c = sts_json_create_node();
-
-	if (!c)
+	if (!content_)
 	{
 		return false;
-	} /* memory fail */
+	}
+	handle_->error = 0;
 
-	end = _sts_parse_value(handle_, c, skip(content_));
-	//printf("end=%p, c=%p\n", end, c);
+	struct s_sts_json_node *node = sts_json_create_node();
 
-	if (!end)
+	_sts_parse_value(handle_, node, skip(content_));
+
+	if (handle_->error)
 	{
-		sts_json_delete_node(handle_ ,c);
+		sts_json_delete_node(node);
 		return false;
-	} /* parse failure. jerror is set. */
-	handle_->node = c;
+	} 
+	handle_->node = node;
 	return true;
 }
 
@@ -292,14 +243,7 @@ void sts_json_close(s_sts_json_handle *handle_)
 	{
 		return;
 	}
-	if (handle_->readonly)
-	{
-		if (handle_->content)
-		{
-			sts_free(handle_->content);
-		}
-	}
-	sts_json_delete_node(handle_, handle_->node);
+	sts_json_delete_node(handle_->node);
 	sts_free(handle_);
 }
 
@@ -323,12 +267,6 @@ s_sts_json_handle *sts_json_load(const char *content_, size_t len_)
 		return NULL;
 	}
 	memset(handle, 0, sizeof(s_sts_json_handle));
-	handle->readonly = true; //不管是否会写入，都首先以只读方式
-	handle->position = 0;
-	handle->content = (char *)sts_malloc(len_ + 1);
-
-	handle->error = content_;
-	
 	if (!_sts_json_parse(handle, content_))
 	{
 		int len = 0;
@@ -432,47 +370,47 @@ s_sts_json_node *sts_json_create_object(void)
 	return n;
 }
 // 从只读模式切换到写入模式需要让所有的key和value重新单独申请内存
-void _sts_json_malloc(s_sts_json_node *node_)
+// void _sts_json_malloc(s_sts_json_node *node_)
+// {
+// 	if (!node_)
+// 	{
+// 		return;
+// 	}
+// 	if (node_->child)
+// 	{
+// 		s_sts_json_node *first = sts_json_first_node(node_);
+// 		while (first)
+// 		{
+// 			_sts_json_malloc(first);
+// 			first = first->next;
+// 		}
+// 	}
+// 	if (node_->key)
+// 	{
+// 		node_->key = sts_strdup(node_->key, 0);
+// 	}
+// 	if (node_->value)
+// 	{
+// 		node_->value = sts_strdup(node_->value, 0);
+// 	}
+// }
+// void _sts_json_check_write(s_sts_json_handle *handle_)
+// {
+// 	if (handle_->readonly)
+// 	{
+// 		handle_->readonly = false;
+// 		_sts_json_malloc(handle_->node);
+// 		if (handle_->content)
+// 		{
+// 			sts_free(handle_->content);
+// 			handle_->content = NULL;
+// 		}
+// 		handle_->position = 0;
+// 	}
+// }
+void sts_json_array_add_node(s_sts_json_node *source_, s_sts_json_node *node_)
 {
-	if (!node_)
-	{
-		return;
-	}
-	if (node_->child)
-	{
-		s_sts_json_node *first = sts_json_first_node(node_);
-		while (first)
-		{
-			_sts_json_malloc(first);
-			first = first->next;
-		}
-	}
-	if (node_->key)
-	{
-		node_->key = sts_strdup(node_->key, 0);
-	}
-	if (node_->value)
-	{
-		node_->value = sts_strdup(node_->value, 0);
-	}
-}
-void _sts_json_check_write(s_sts_json_handle *handle_)
-{
-	if (handle_->readonly)
-	{
-		handle_->readonly = false;
-		_sts_json_malloc(handle_->node);
-		if (handle_->content)
-		{
-			sts_free(handle_->content);
-			handle_->content = NULL;
-		}
-		handle_->position = 0;
-	}
-}
-void sts_json_add_node(s_sts_json_handle *h_, s_sts_json_node *source_, s_sts_json_node *node_)
-{
-	_sts_json_check_write(h_);
+	// _sts_json_check_write(h_);
 	struct s_sts_json_node *last = sts_json_last_node(source_);
 	if (!last)
 	{
@@ -484,26 +422,32 @@ void sts_json_add_node(s_sts_json_handle *h_, s_sts_json_node *source_, s_sts_js
 		node_->prev = last;
 	}
 }
-
-void sts_json_object_add_int(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, long value_)
+void sts_json_object_add_node(s_sts_json_node *source_, const char *key_, s_sts_json_node *node_)
+{ 
+	if (!node_) return; 
+	if (node_->key) { sts_free(node_->key); }
+	node_->key = sts_strdup(key_, 0);
+	sts_json_array_add_node(source_, node_);
+}
+void sts_json_object_add_int(s_sts_json_node *node_, const char *key_, long value_)
 {
-	_sts_json_check_write(h_);
+	// _sts_json_check_write(h_);
 	s_sts_json_node *c = sts_json_create_node();
 	if (c)
 	{
 		c->type = STS_JSON_INT;
 		c->key = sts_strdup(key_, 0);
 		c->value = sts_str_sprintf(21, "%ld", value_);
-		sts_json_add_node(h_, node_, c);
+		sts_json_array_add_node(node_, c);
 	}
 }
-void sts_json_object_set_int(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, long value_)
+void sts_json_object_set_int(s_sts_json_node *node_, const char *key_, long value_)
 {
-	_sts_json_check_write(h_);
+	// _sts_json_check_write(h_);
 	s_sts_json_node *c = sts_json_cmp_child_node(node_, key_);
 	if (!c)
 	{
-		sts_json_object_add_int(h_, node_, key_, value_);
+		sts_json_object_add_int(node_, key_, value_);
 	}
 	else
 	{
@@ -511,25 +455,25 @@ void sts_json_object_set_int(s_sts_json_handle *h_, s_sts_json_node *node_, cons
 		c->value = sts_str_sprintf(21, "%ld", value_);
 	}
 }
-void sts_json_object_add_double(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, double value_, int demical)
+void sts_json_object_add_double(s_sts_json_node *node_, const char *key_, double value_, int demical)
 {
-	_sts_json_check_write(h_);
+	// _sts_json_check_write(h_);
 	s_sts_json_node *c = sts_json_create_node();
 	if (c)
 	{
 		c->type = STS_JSON_DOUBLE;
 		c->key = sts_strdup(key_, 0);
 		c->value = sts_str_sprintf(64, "%.*f", demical, value_);
-		sts_json_add_node(h_, node_, c);
+		sts_json_array_add_node(node_, c);
 	}
 }
-void sts_json_object_set_double(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, double value_, int demical)
+void sts_json_object_set_double(s_sts_json_node *node_, const char *key_, double value_, int demical)
 {
-	_sts_json_check_write(h_);
+	// _sts_json_check_write(h_);
 	s_sts_json_node *c = sts_json_cmp_child_node(node_, key_);
 	if (!c)
 	{
-		sts_json_object_add_double(h_, node_, key_, value_, demical);
+		sts_json_object_add_double(node_, key_, value_, demical);
 	}
 	else
 	{
@@ -537,68 +481,68 @@ void sts_json_object_set_double(s_sts_json_handle *h_, s_sts_json_node *node_, c
 		c->value = sts_str_sprintf(64, "%.*f", demical, value_);
 	}
 }
-void sts_json_object_add_string(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, const char *value_)
+void sts_json_object_add_string(s_sts_json_node *node_, const char *key_, const char *value_, size_t len_)
 {
-	_sts_json_check_write(h_);
+	// _sts_json_check_write(h_);
 	s_sts_json_node *c = sts_json_create_node();
 	if (c)
 	{
 		c->type = STS_JSON_STRING;
 		c->key = sts_strdup(key_, 0);
-		c->value = sts_strdup(value_, 0);
-		sts_json_add_node(h_, node_, c);
+		c->value = sts_strdup(value_, len_);
+		sts_json_array_add_node(node_, c);
 	}
 }
-void sts_json_object_set_string(s_sts_json_handle *h_, s_sts_json_node *node_, const char *key_, const char *value_)
+void sts_json_object_set_string(s_sts_json_node *node_, const char *key_, const char *value_, size_t len_)
 {
-	_sts_json_check_write(h_);
+	// _sts_json_check_write(h_);
 	s_sts_json_node *c = sts_json_cmp_child_node(node_, key_);
 	if (!c)
 	{
-		sts_json_object_add_string(h_, node_, key_, value_);
+		sts_json_object_add_string(node_, key_, value_,len_);
 	}
 	else
 	{
 		sts_free(c->value);
-		c->value = sts_strdup(value_, 0);
+		c->value = sts_strdup(value_, len_);
 	}
 }
 //////////////////////////////////////////////////////
-void sts_json_array_add_int(s_sts_json_handle *h_, s_sts_json_node *node_, long value_)
+void sts_json_array_add_int(s_sts_json_node *node_, long value_)
 {
 	char key[16];
 	sts_sprintf(key, 10, "%d", sts_json_get_size(node_));
-	sts_json_object_add_int(h_, node_, key, value_);
+	sts_json_object_add_int(node_, key, value_);
 }
-void sts_json_array_set_int(s_sts_json_handle *h_, s_sts_json_node *node_, int index_, long value_)
+void sts_json_array_set_int(s_sts_json_node *node_, int index_, long value_)
 {
 	char key[16];
 	sts_sprintf(key, 10, "%d", index_);
-	sts_json_object_set_int(h_, node_, key, value_);
+	sts_json_object_set_int(node_, key, value_);
 }
-void sts_json_array_add_double(s_sts_json_handle *h_, s_sts_json_node *node_, double value_, int demical_)
+void sts_json_array_add_double(s_sts_json_node *node_, double value_, int demical_)
 {
 	char key[16];
 	sts_sprintf(key, 10, "%d", sts_json_get_size(node_));
-	sts_json_object_add_double(h_, node_, key, value_, demical_);
+	sts_json_object_add_double(node_, key, value_, demical_);
 }
-void sts_json_array_set_double(s_sts_json_handle *h_, s_sts_json_node *node_, int index_, double value_, int demical_)
+void sts_json_array_set_double(s_sts_json_node *node_, int index_, double value_, int demical_)
 {
 	char key[16];
 	sts_sprintf(key, 10, "%d", index_);
-	sts_json_object_set_double(h_, node_, key, value_, demical_);
+	sts_json_object_set_double(node_, key, value_, demical_);
 }
-void sts_json_array_add_string(s_sts_json_handle *h_, s_sts_json_node *node_, const char *value_)
+void sts_json_array_add_string(s_sts_json_node *node_, const char *value_, size_t len_)
 {
 	char key[16];
 	sts_sprintf(key, 10, "%d", sts_json_get_size(node_));
-	sts_json_object_add_string(h_, node_, key, value_);
+	sts_json_object_add_string(node_, key, value_, len_);
 }
-void sts_json_array_set_string(s_sts_json_handle *h_, s_sts_json_node *node_, int index_, const char *value_)
+void sts_json_array_set_string(s_sts_json_node *node_, int index_, const char *value_, size_t len_)
 {
 	char key[16];
 	sts_sprintf(key, 10, "%d", index_);
-	sts_json_object_set_string(h_, node_, key, value_);
+	sts_json_object_set_string(node_, key, value_, len_);
 }
 //////////////////////////////////////////////
 // output function & other same json files
@@ -611,7 +555,7 @@ s_sts_json_node *sts_json_create_node(void)
 	return node;
 }
 
-void sts_json_delete_node(s_sts_json_handle *h_, s_sts_json_node *node_)
+void sts_json_delete_node(s_sts_json_node *node_)
 {
 	if (!node_){
 		return ;
@@ -632,34 +576,19 @@ void sts_json_delete_node(s_sts_json_handle *h_, s_sts_json_node *node_)
 		while (node)
 		{
 			next = node->next;
-			if (node->child)
-			{
-				sts_json_delete_node(h_, node->child);
-			}
-			if (!h_->readonly) {
-				if (node->key)
-				{
-					sts_free(node->key);
-				}
-				if (node->value)
-				{
-					sts_free(node->value);
-				}
-			}
-			sts_free(node);
+			sts_json_delete_node(node->child);
 			node = next;
 		}
 	}
-	if (!h_->readonly) {
-		if (node_->key)
-		{
-			sts_free(node_->key);
-		}
-		if (node_->value)
-		{
-			sts_free(node_->value);
-		}
+	if (node_->key)
+	{
+		sts_free(node_->key);
 	}
+	if (node_->value)
+	{
+		sts_free(node_->value);
+	}
+
 	sts_free(node_);
 }
 
@@ -1069,9 +998,9 @@ void sts_json_printf(s_sts_json_node *node_, int *i)
 			first = first->next;
 		}
 	}
-	printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_, 
-			node_->child, node_->prev, node_->next,
-			node_->key, node_->value);
+	// printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_, 
+	// 		node_->child, node_->prev, node_->next,
+	// 		node_->key, node_->value);
 }
 
 //////////////////////////////////////////////
@@ -1131,7 +1060,7 @@ int sts_json_get_size(s_sts_json_node *node_)
 s_sts_json_node *sts_json_first_node(s_sts_json_node *node_)
 {
 	s_sts_json_node *c = node_->child;
-	while (c->prev)
+	while (c&&c->prev)
 	{
 		c = c->prev;
 	}
@@ -1144,7 +1073,7 @@ s_sts_json_node *sts_json_next_node(s_sts_json_node *node_)
 s_sts_json_node *sts_json_last_node(s_sts_json_node *node_)
 {
 	s_sts_json_node *c = node_->child;
-	while (c->next)
+	while (c&&c->next)
 	{
 		c = c->next;
 	}

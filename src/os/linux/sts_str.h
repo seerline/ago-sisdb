@@ -31,6 +31,7 @@ char *sts_str_sprintf(size_t mlen_, const char *fmt_, ...);
 
 const char *sts_str_split(const char *s, size_t *len_, char c);
 
+int sts_str_substr_nums(const char *s, char c);
 void sts_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);
 int sts_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
 int sts_str_subcmp_head(const char *sub, const char *s, char c);  //-1没有匹配的,比较头部几个字符是否相同

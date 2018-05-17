@@ -26,9 +26,9 @@ typedef struct s_sts_kv_pair{
 ///////////////////////////////////////////////
 
 #define s_sts_map_buffer dict
-#define s_sts_map_pointer s_sts_map_buffer
-#define s_sts_map_int s_sts_map_buffer
-#define s_sts_map_sds s_sts_map_buffer
+#define s_sts_map_pointer dict
+#define s_sts_map_int dict
+#define s_sts_map_sds dict
 
 s_sts_map_buffer *sts_map_buffer_create();
 void sts_map_buffer_destroy(s_sts_map_buffer *);

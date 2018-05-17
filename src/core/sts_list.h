@@ -5,7 +5,9 @@
 #include "sts_str.h"
 #include "adlist.h"
 #include "sds.h"
-#include "zmalloc.h"
+// #include "zmalloc.h"
+#include "sdsalloc.h"
+
 // 定义一个结构体链表
 // 定义一个指针读写链表
 // 定义一个字符串读写链表
@@ -100,6 +102,8 @@ int sts_string_list_update(s_sts_string_list *list_, int index_, const char *in_
 int sts_string_list_find_and_update(s_sts_string_list *list_, char *finder_, const char *in_, size_t inlen);
 int sts_string_list_insert(s_sts_string_list *list_, int index_, const char *in_, size_t inlen);
 int sts_string_list_push(s_sts_string_list *list_, const char *in_, size_t inlen);
+
+void sts_string_list_limit(s_sts_string_list *list_, int limit_);
 
 int sts_string_list_delete(s_sts_string_list *list_, int index_);
 //比较字符串地址并删除，字符串比较应该使用string_list_indexof&sts_string_list_delete

@@ -36,6 +36,8 @@ void sts_db_destroy();
 s_sts_table *sts_db_get_table(const char *name_); // 由此函数判断数据库是否有指定表
 void sts_db_install_table(s_sts_table *);
 
+sds sts_db_get_tables();
+
 s_sts_map_define *sts_db_find_map_define(const char *name_, uint8 style_);
 
 #else

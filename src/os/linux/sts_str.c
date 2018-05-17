@@ -85,8 +85,9 @@ int sts_strncasecmp(const char *s1_, const char *s2_, size_t len_)
 	{
 		return 1;
 	}
-	for (int i = 0; tolower(*s1_) == tolower(*s2_); ++s1_, ++s2_, i++)
+	for (int i = 1; tolower(*s1_) == tolower(*s2_); ++s1_, ++s2_, i++)
 	{
+		// printf("%d|%d|%ld|%d\n",*s1_,*s2_,len_,i);
 		if (*s1_ == 0 || *s2_ == 0 || i >= len_)
 		{
 			return 0;
@@ -223,6 +224,22 @@ void sts_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
         sts_strcpy(out_, olen_, in_);
     }
 }
+int sts_str_substr_nums(const char *s, char c)
+{
+	if (!s) {
+		return 0;
+	}
+	int i, len, count;
+	len = (int)strlen(s);
+	for (i = 0, count = 0; i<len; i++)
+	{
+		if (s[i] == c) count++;
+	}
+	if (len>0 && s[len - 1] != c) {
+		count++;
+	}
+	return count;
+}
 int sts_str_subcmp(const char *sub, const char *s, char c)  //-1没有匹配的
 {
 	if (!sub || !s) {
@@ -235,6 +252,7 @@ int sts_str_subcmp(const char *sub, const char *s, char c)  //-1没有匹配的
 	{
 		if (s[i] == c)
 		{
+			// printf("%s,%s,%d -- %d == %d\n",sub, &s[pos], i , pos, sts_strncasecmp(sub, &s[pos], i - pos));
 			if (!sts_strncasecmp(sub, &s[pos], i - pos))
 			{
 				return count;

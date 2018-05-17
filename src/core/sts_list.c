@@ -9,6 +9,7 @@
 
 s_sts_struct_list *sts_struct_list_create(int len_, void *in_, int inlen_)
 {
+	printf("new list...%d\n", len_);
 	if (len_ < 1) {
 		return NULL;
 	}
@@ -450,7 +451,15 @@ int sts_string_list_push(s_sts_string_list *list_, const char *in_, size_t inlen
 	sts_strncpy(str, inlen + 1, in_, inlen);
 	return sts_pointer_list_push(list_->strlist, str);
 }
+void sts_string_list_limit(s_sts_string_list *list_, int limit_)
+{
+	if (limit_ < 1 || (!list_->strlist) || limit_ > list_->strlist->count) {
+		return; 
+	}
+	int offset = list_->strlist->count - limit_;
+	sts_pointer_list_delete(list_->strlist, 0, offset);
 
+}
 ///////////////////////////////////////////////////////////////////////////
 //------------------------listNode --------------------------------//
 //  操作listNode列表的函数

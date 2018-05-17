@@ -71,7 +71,8 @@ int gettimeofday(struct timeval *tp, void *tzp)
 #endif
 
 #include "dict.h"
-#include "zmalloc.h"
+// #include "zmalloc.h"
+#include "sdsalloc.h"
 #include <assert.h>
 
 /* Using dictEnableResize() / dictDisableResize() we make possible to
