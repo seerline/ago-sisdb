@@ -945,7 +945,7 @@ sds *sdssplitargs(const char *line, int *argc) {
     const char *p = line;
     char *current = NULL;
     char **vector = NULL;
-
+    
     *argc = 0;
     while(1) {
         /* skip blanks */

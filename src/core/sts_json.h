@@ -66,6 +66,9 @@ void sts_json_object_add_node(s_sts_json_node *source_, const char *key_, s_sts_
 void sts_json_object_add_int(s_sts_json_node *node_, const char *key_, long value_);
 void sts_json_object_set_int(s_sts_json_node *node_, const char *key_, long value_);
 
+void sts_json_object_add_uint(s_sts_json_node *node_, const char *key_, unsigned long value_);
+void sts_json_object_set_uint(s_sts_json_node *node_, const char *key_, unsigned long value_);
+
 void sts_json_object_add_double(s_sts_json_node *node_, const char *key_, double value_, int demical_);
 void sts_json_object_set_double(s_sts_json_node *node_, const char *key_, double value_, int demical_);
 
@@ -78,6 +81,9 @@ void sts_json_object_set_string(s_sts_json_node *node_, const char *key_, const 
 // 修改到child，如果没有发现key_,就增加一个 
 void sts_json_array_add_int(s_sts_json_node *node_, long value_);
 void sts_json_array_set_int(s_sts_json_node *node_, int index_, long value_);
+
+void sts_json_array_add_uint(s_sts_json_node *node_, unsigned long value_);
+void sts_json_array_set_uint(s_sts_json_node *node_, int index_, unsigned long value_);
 
 void sts_json_array_add_double(s_sts_json_node *node_, double value_, int demical_);
 void sts_json_array_set_double(s_sts_json_node *node_, int index_,  double value_, int demical_);
@@ -97,7 +103,7 @@ char *sts_json_output_zip(s_sts_json_node *node_, size_t *len_);
 void sts_json_printf(s_sts_json_node *node_, int *i);
 //======== read option =============//
 
-int sts_json_get_int(s_sts_json_node *root_, const char *key_, int defaultvalue_);
+int64 sts_json_get_int(s_sts_json_node *root_, const char *key_, int64 defaultvalue_);
 double sts_json_get_double(s_sts_json_node *root_, const char *key_, double defaultvalue_);
 const char *sts_json_get_str(s_sts_json_node *root_, const char *key_);
 bool sts_json_get_bool(s_sts_json_node *root_, const char *key_, bool defaultvalue_);

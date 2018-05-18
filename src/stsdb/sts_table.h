@@ -10,15 +10,17 @@
 #include "sts_fields.h"
 #include "sts_map.h"
 #include "sts_list.h"
-#include "sts_json.h"
+#include "sts_conf.h"
+#include "sts_math.h"
 
 /////////////////////////////////////////////////////////
-//  Êı¾İ¿âÊı¾İ²åÈëÄ£Ê½
+//  Êı¾İ¿âÊı¾İ²åÈëºÍĞŞ¸ÄÄ£Ê½
 /////////////////////////////////////////////////////////
-#define STS_INSERT_PUSH        0  // ²»×öÅĞ¶ÏÖ±½Ó×·¼Ó
-#define STS_INSERT_INCR_TIME   1  // ¼ì²éÊ±¼ä½ÚµãÖØ¸´¾Í¸²¸ÇÀÏµÄÊı¾İ£¬²»ÖØ¸´¾Í·Å¶ÔÓ¦Î»ÖÃ
-#define STS_INSERT_INCR_VOL    2  // ¼ì²é³É½»Á¿£¬³É½»Á¿Ôö¼Ó¾ÍĞ´Èë
-#define STS_INSERT_MUL_CHECK   3  // ×îÉÙ3¸öÒÔÉÏÊı¾İ²ÅÄÜÈ·ÈÏÊı¾İµÄ×¼È·ĞÔ£¬Ôİ²»ÓÃ
+#define STS_OPTION_ALWAYS      0  // ²»×öÅĞ¶ÏÖ±½Ó×·¼Ó
+#define STS_OPTION_TIME        1  // ¼ì²éÊ±¼ä½ÚµãÖØ¸´¾Í¸²¸ÇÀÏµÄÊı¾İ£¬²»ÖØ¸´¾Í·Å¶ÔÓ¦Î»ÖÃ
+#define STS_OPTION_VOL         2  // ¼ì²é³É½»Á¿£¬³É½»Á¿Ôö¼Ó¾ÍĞ´Èë
+#define STS_OPTION_NONE        4  // ²»×öÅĞ¶ÏÖ±½Ó×·¼Ó
+#define STS_OPTION_MUL_CHECK   3  // ×îÉÙ3¸öÒÔÉÏÊı¾İ²ÅÄÜÈ·ÈÏÊı¾İµÄ×¼È·ĞÔ£¬Ôİ²»ÓÃ
 
 /////////////////////////////////////////////////////////
 //  Êı¾İ¸ñÊÇ¶¨Òå 
@@ -30,14 +32,20 @@
 							   // value ±íÊ¾×îĞÂµÄÒ»Î¬Êı×é  values ±íÊ¾¶şÎ¬Êı×é	
 #define STS_DATA_ARRAY   '['   // Ö±½Ó´«Êı¾İ
 
+#define STS_JSON_KEY_ARRAY    "value"   
+#define STS_JSON_KEY_ARRAYS   "values"   
+#define STS_JSON_KEY_GROUPS   "groups"   
+#define STS_JSON_KEY_FIELDS   "fields"   
+
 #pragma pack(push,1)
 
 typedef struct s_sts_table_control{
 	uint32 version;      // Êı¾İ±íµÄ°æ±¾ºÅtime_t¸ñÊ½
-	uint8_t  data_type;    // Êı¾İÀàĞÍ
+	uint8_t  data_type;    // Êı¾İÀàĞÍ Ä¿Ç°Ã»Ê²Ã´ÓÃ
 	uint8_t  time_scale;   // Ê±ĞòÑ¹ËõµÄ²½³¤
 	uint32 limit_rows;   // Ã¿¸öcollectionµÄ×î´ó¼ÇÂ¼Êı
 	uint8_t  insert_mode;  // ²åÈëÊı¾İ·½Ê½
+	uint8_t  update_mode;  // ĞŞ¸ÄÊı¾İ·½Ê½
 }s_sts_table_control;
 
 typedef struct s_sts_table {
@@ -53,7 +61,6 @@ typedef struct s_sts_table {
 s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command);  //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
 // commandÎªjsonÃüÁî
 //ÓÃ»§´«ÈëµÄcommandÖĞ¹Ø¼ü×ÖµÄ¶¨ÒåÈçÏÂ£º
-//Êı¾İÀàĞÍ data-type jsonµÄ»°¾ÍÃ»ÓĞÆäËû×Ö¶ÎÁË£¬struct
 //×Ö¶Î¶¨Òå£º  "fields":  []
 //  # ×Ö¶ÎÃû| Êı¾İÀàĞÍ| ³¤¶È| io ·Å´ó»¹ÊÇËõĞ¡| Ëõ·Å±ÈÀı zoom|Ñ¹ËõÀàĞÍ|Ñ¹Ëõ²Î¿¼×Ö¶ÎË÷Òı
 //  [name, string, 16, 0, 0, 0, 0],
@@ -75,14 +82,11 @@ void sts_table_set_fields(s_sts_table *, s_sts_json_node *fields_); //commandÎªÒ
 //»ñÈ¡Êı¾İ¿âµÄ¸÷ÖÖÖµ
 s_sts_field_unit *sts_table_get_field(s_sts_table *tb_, const char *name_);
 int sts_table_get_fields_size(s_sts_table *);
-uint64 sts_table_get_times(s_sts_table *, void *); // »ñÈ¡Ê±¼äĞòÁĞ,Ä¬ÈÏÎªµÚÒ»¸ö×Ö¶Î£¬ÈôµÚÒ»¸ö×Ö¶Î²»·ûºÏ±ê×¼£¬ÍùÏÂÕÒ
-sds sts_table_get_string_m(s_sts_table *, void *, const char *name_);
+
 //µÃµ½¼ÇÂ¼µÄ³¤¶È
 //È¡Êı¾İºÍĞ´Êı¾İ
-// À´Ô´Êı¾İÊÇjson£¬tableÒ²ÊÇjsonÊı¾İ
-void sts_table_update_json(s_sts_table *, const char *key_, const char * value_, size_t len_);
 // À´Ô´Êı¾İÊÇjson»òÕßstruct£¬tableÊÇstructÊı¾İ
-void sts_table_update_struct(s_sts_table *, const char *key_, const char * value_, size_t len_);
+void sts_table_update(s_sts_table *, const char *key_, int type_, const char * value_, size_t len_);
 //ĞŞ¸ÄÊı¾İ£¬key_Îª¹ÉÆ±´úÂë»òÊĞ³¡±àºÅ£¬value_Îª¶ş½øÖÆ½á¹¹»¯Êı¾İ»òjsonÊı¾İ
 sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //·µ»ØÊı¾İĞèÒªÊÍ·Å
 
@@ -95,6 +99,7 @@ sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //·µ
 //					     "string" --> STS_DATA_STRING
 //						 "zip" --> STS_DATA_ZIP
 //×Ö¶Î£º    "fields":  "time,close,vol,name" ±íÊ¾Ò»¹²4¸ö×Ö¶Î  
+//	
 //                      ¿Õ,*---->±íÊ¾È«²¿×Ö¶Î
 //---------<ÒÔÏÂÇøÓòÃ»ÓĞ±íÊ¾È«²¿Êı¾İ>--------
 //Êı¾İ·¶Î§£º"search":   min,max °´Ê±ĞòË÷ÒıÈ¡Êı¾İ

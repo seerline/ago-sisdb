@@ -71,7 +71,7 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	}
 	else
 	{
-		o = stsdb_get(ctx_, db, code, "{\"format\":\"json\"}");
+		o = stsdb_get(ctx_, db, code, "{format:json}");
 	}
 	return o;
 }
@@ -81,11 +81,7 @@ int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	{
 		return sts_module_wrong_arity(ctx_);
 	}
-	// printf("%s: %.90s\n", sts_module_string_get(argv_[1], NULL), sts_module_string_get(argv_[2], NULL));
-	// sts_module_reply_with_simple_string(ctx_, "OK");
-	// printf("....%d\n",sts_str_subcmp("struct" ,"struct,json",','));
-	// printf("....%d\n",sts_str_subcmp("json" ,"struct,json",','));
-	// printf("....%d\n",sts_str_subcmp("ssss" ,"struct,json",','));
+	printf("%s: %.90s\n", sts_module_string_get(argv_[1], NULL), sts_module_string_get(argv_[3], NULL));
 	const char * dt = sts_module_string_get(argv_[2],NULL);
 
  	if (sts_str_subcmp(dt ,"struct,json",',') < 0){
@@ -110,7 +106,6 @@ int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	} else {
 		o = stsdb_set_json(ctx_, db, code, val, len);
 	}
-
 	return o;
 }
 
@@ -136,6 +131,7 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	}
 	if (o != STS_MODULE_OK)
 	{
+		printf("llll");
 		return STS_MODULE_ERROR;
 	}
 

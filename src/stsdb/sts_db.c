@@ -19,6 +19,7 @@ static struct s_sts_map_define _sts_map_defines[] = {
 	{"CODE", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_CODE, 8},
 	{"STRING", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_STRING, 16},
 	{"INT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_INT, 4},
+	{"UINT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_UINT, 4},
 	{"FLOAT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_FLOAT, 4},
 	{"DOUBLE", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_DOUBLE, 8},
 	/////////////编码定义/////////////
@@ -28,10 +29,11 @@ static struct s_sts_map_define _sts_map_defines[] = {
 	// { "ALL", STS_ENCODEING_ALL, 0 },
 	// { "STR", STS_ENCODEING_STR, 0 },
 	// { "COD", STS_ENCODEING_COD, 0 },
-	/////////////插入方式定义/////////////
-	{"PUSH", STS_MAP_DEFINE_INSERT_MODE, STS_INSERT_PUSH, 0},
-	{"INCR-TIME", STS_MAP_DEFINE_INSERT_MODE, STS_INSERT_INCR_TIME, 0},
-	{"INCR-VOL", STS_MAP_DEFINE_INSERT_MODE, STS_INSERT_INCR_VOL, 0},
+	/////////////插入和修改方式定义/////////////
+	{"NONE", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_NONE, 0},
+	{"ALWAYS", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_ALWAYS, 0},
+	{"TIME", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_TIME, 0},
+	{"VOL", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_VOL, 0},
 	/////////////数据类型定义/////////////
 	{"NONE", STS_MAP_DEFINE_SCALE, STS_FIELD_NONE, 0},
 	{"INDEX", STS_MAP_DEFINE_SCALE, STS_FIELD_INDEX, 0},
@@ -104,6 +106,7 @@ void sts_db_destroy() //关闭一个数据库
 		_sys_sts_define = NULL;
 	}
 }
+
 sds sts_db_get_tables()
 {
 	sds list = sdsempty();
@@ -114,8 +117,10 @@ sds sts_db_get_tables()
 		while ((de = dictNext(di)) != NULL)
 		{
 			s_sts_table *val = (s_sts_table *)dictGetVal(de);
-			list = sdscat(list, val->name);
-			list = sdscat(list, ",");
+			list = sdscatprintf(list, "  %-10s : fields=%2d, collects=%lu\n",
+					val->name, 
+					sts_string_list_getsize(val->field_name),
+					sts_map_buffer_getsize(val->collect_map));
 		}
 	}
 

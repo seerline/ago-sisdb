@@ -12,7 +12,7 @@
 #define STS_MAP_DEFINE_FIELD_TYPE   0
 #define STS_MAP_DEFINE_DATA_TYPE    1
 #define STS_MAP_DEFINE_SCALE        2
-#define STS_MAP_DEFINE_INSERT_MODE  3
+#define STS_MAP_DEFINE_OPTION_MODE  3
 #define STS_MAP_DEFINE_ZIP_MODE     4
 
 #pragma pack(push,1)

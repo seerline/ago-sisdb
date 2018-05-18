@@ -1,5 +1,5 @@
-#ifndef _LW_MATH_H
-#define _LW_MATH_H
+#ifndef _STS_MATH_H
+#define _STS_MATH_H
 
 #include "sts_core.h"
 #include <math.h>
@@ -16,14 +16,7 @@ inline int64 sts_zoom10(int n)  // 3 ==> 1000
 	return o;
 };
 
-inline int power10(int n)  // 3 ==> 1000
-{
-	int rtn = 1;
-	int len = (n > 9) ? 9 : n;
-	for (int i = 0; i < len; i++) { rtn = rtn * 10; }
-	return rtn;
-};
-inline int sqrt10(int n)  // 1000 ==> 3  -1000 ==> -3
+inline int sts_sqrt10(int n)  // 1000 ==> 3  -1000 ==> -3
 {
 	int rtn = 0;
 	while (1)
@@ -35,7 +28,7 @@ inline int sqrt10(int n)  // 1000 ==> 3  -1000 ==> -3
 	return rtn;
 };
 
-inline bool isbetween(int value_, int min_, int max_)
+inline bool sts_isbetween(int value_, int min_, int max_)
 {
 	int min = min_;
 	int max = max_;
@@ -144,4 +137,4 @@ inline void polyfit(int n, double x[], double y[], int poly_n, double a[])
 	free(sumxy);
 	free(ata);
 }
-#endif //_LW_MATH_H
+#endif //_STS_MATH_H

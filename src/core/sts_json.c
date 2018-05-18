@@ -455,6 +455,32 @@ void sts_json_object_set_int(s_sts_json_node *node_, const char *key_, long valu
 		c->value = sts_str_sprintf(21, "%ld", value_);
 	}
 }
+void sts_json_object_add_uint(s_sts_json_node *node_, const char *key_, unsigned long value_)
+{
+	// _sts_json_check_write(h_);
+	s_sts_json_node *c = sts_json_create_node();
+	if (c)
+	{
+		c->type = STS_JSON_INT;
+		c->key = sts_strdup(key_, 0);
+		c->value = sts_str_sprintf(21, "%lu", value_);
+		sts_json_array_add_node(node_, c);
+	}
+}
+void sts_json_object_set_uint(s_sts_json_node *node_, const char *key_, unsigned long value_)
+{
+	// _sts_json_check_write(h_);
+	s_sts_json_node *c = sts_json_cmp_child_node(node_, key_);
+	if (!c)
+	{
+		sts_json_object_add_int(node_, key_, value_);
+	}
+	else
+	{
+		sts_free(c->value);
+		c->value = sts_str_sprintf(21, "%lu", value_);
+	}
+}
 void sts_json_object_add_double(s_sts_json_node *node_, const char *key_, double value_, int demical)
 {
 	// _sts_json_check_write(h_);
@@ -519,6 +545,18 @@ void sts_json_array_set_int(s_sts_json_node *node_, int index_, long value_)
 	char key[16];
 	sts_sprintf(key, 10, "%d", index_);
 	sts_json_object_set_int(node_, key, value_);
+}
+void sts_json_array_add_uint(s_sts_json_node *node_, unsigned long value_)
+{
+	char key[16];
+	sts_sprintf(key, 10, "%d", sts_json_get_size(node_));
+	sts_json_object_add_uint(node_, key, value_);
+}
+void sts_json_array_set_uint(s_sts_json_node *node_, int index_, unsigned long value_)
+{
+	char key[16];
+	sts_sprintf(key, 10, "%d", index_);
+	sts_json_object_set_uint(node_, key, value_);
 }
 void sts_json_array_add_double(s_sts_json_node *node_, double value_, int demical_)
 {
@@ -971,7 +1009,7 @@ char *_sts_json_to_value(s_sts_json_node *node_, int depth_, int fmt_)
 
 char *sts_json_output(s_sts_json_node *node_, size_t *len_)
 {
-	printf("node= %p\n",node_);
+	// printf("node= %p\n",node_);
 	char *ptr = _sts_json_to_value(node_, 0, 1);
 	*len_ = strlen(ptr);
 	return ptr;
@@ -1007,12 +1045,13 @@ void sts_json_printf(s_sts_json_node *node_, int *i)
 //   read function define
 ///////////////////////////////////////////////
 
-int sts_json_get_int(s_sts_json_node *root_, const char *key_, int defaultvalue_)
+int64 sts_json_get_int(s_sts_json_node *root_, const char *key_, int64 defaultvalue_)
 {
 	s_sts_json_node *c = sts_json_find_node(root_, key_);
 	if (c)
 	{
-		return atoi(c->value);
+		// return atoi(c->value);
+		return atoll(c->value);
 	}
 	return defaultvalue_;
 }

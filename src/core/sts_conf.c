@@ -137,11 +137,11 @@ static const char *_sts_parse_array(s_sts_conf_handle *handle_, s_sts_json_node 
 }
 static const char *_sts_parse_object(s_sts_conf_handle *handle_, s_sts_json_node *node_, const char *value_)
 {
-	if (node_->key == NULL)
-	{
-		handle_->error = value_;
-		return 0;
-	}
+	// if (node_->key == NULL)
+	// {
+	// 	handle_->error = value_;
+	// 	return 0;
+	// }
 	node_->type = STS_JSON_OBJECT;
 	value_ = skip(value_ + 1);
 	if (*value_ == '}')
@@ -457,9 +457,25 @@ void sts_conf_close(s_sts_conf_handle *handle_)
 	{
 		return;
 	}
-	// int i;
-	// sts_json_printf(handle_->node,&i);
 
 	sts_conf_delete_node(handle_->node);
 	sts_free(handle_);
+}
+// 必须为{...}格式，其他格式错误
+s_sts_conf_handle *sts_conf_load(const char *content_, size_t len_)
+{
+	s_sts_conf_handle *handle = NULL;
+	printf("sts_conf_load : %s\n", content_);
+	const char *value = skip(content_);
+	if (value&&*value&&*value=='{') {
+		handle = (s_sts_conf_handle *)sts_malloc(sizeof(s_sts_conf_handle));
+		memset(handle, 0, sizeof(s_sts_conf_handle));
+		s_sts_json_node *node = sts_json_create_node();
+		handle->node = node;
+		value = skip(_sts_parse_value(handle, node, value));
+	}
+	size_t i;
+	printf("sts_conf_load : %s \n", sts_conf_to_json_zip(handle->node,&i));
+
+	return handle;
 }

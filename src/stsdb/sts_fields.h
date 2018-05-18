@@ -27,8 +27,9 @@
 #define STS_FIELD_STRING  10 // "STRING"  //string 类型 后面需跟长度;
 //传入格式为 field名称:数据类型:长度; STS_FIELD_STRING不填长度默认为16;
 #define STS_FIELD_INT     11 // "INT"    //int 类型 
-#define STS_FIELD_FLOAT   12 // "FLOAT"  //float 
-#define STS_FIELD_DOUBLE  13 // "DOUBLE" //double
+#define STS_FIELD_UINT    12 // "UINT"    //unsigned int 类型 
+#define STS_FIELD_FLOAT   13 // "FLOAT"  //float 
+#define STS_FIELD_DOUBLE  14 // "DOUBLE" //double
 
 //--------32种类型，保留4种类型-------//
 
@@ -86,5 +87,7 @@ s_sts_field_unit *sts_field_unit_create(int index, const char *name_, s_sts_fiel
 void sts_field_unit_destroy(s_sts_field_unit *);
 
 bool sts_field_is_times(int t_);
+
+#define sts_check_fields_all(f) (!f || !strncmp(f, "*", 1))
 
 #endif  /* _STS_FIELDS_H */

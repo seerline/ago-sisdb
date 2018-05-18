@@ -34,12 +34,9 @@ typedef struct s_sts_step_index {
 
 // 单个股票的数据包
 typedef struct s_sts_collect_unit{
-	s_sts_table      *father;  // 表的指针，可以获得字段定义的相关信息
-	//--------//
+	s_sts_table        *father;  // 表的指针，可以获得字段定义的相关信息
 	s_sts_step_index   *step;    // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sts_struct_list  *value;   // 结构化数据
-	//--------//
-	s_sts_string_list  *string;   // json或字符串数据
 }s_sts_collect_unit;
 
 #pragma pack(pop)
@@ -61,7 +58,6 @@ void sts_collect_unit_destroy(s_sts_collect_unit *);
 
 uint64 sts_collect_unit_get_time(s_sts_collect_unit *unit_, int index_);
 
-bool sts_collect_unit_as_struct(s_sts_collect_unit *unit_);
 int	sts_collect_unit_recs(s_sts_collect_unit *unit_);
 int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 index_);
 int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 index_, int *mode_);
@@ -70,10 +66,22 @@ int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 index_, int 
 int	sts_collect_unit_delete_of_range(s_sts_collect_unit *, int start_, int stop_); // 定位后删除
 int	sts_collect_unit_delete_of_count(s_sts_collect_unit *, int start_, int count_); // 定位后删除
 
-sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *, int start_, int stop_, int format_, const char *fields_);
-sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *, int start_, int count_, int format_, const char *fields_);
+sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *, int start_, int stop_);
+sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *, int start_, int count_;
 
-int sts_collect_unit_update_json(s_sts_collect_unit *, const char *in_, size_t ilen_);
-int sts_collect_unit_update_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
+int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_);
+
+//传入json数据时通过该函数转成二进制结构数据
+sds sts_collect_json_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
+
+//输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
+sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fields_);
+sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *fields_);
+sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *fields_);
+
+uint64 sts_table_get_uint(s_sts_field_unit *fu_, const char *val_);
+int64 sts_table_get_int(s_sts_field_unit *fu_, const char *val_);
+double sts_table_get_double(s_sts_field_unit *fu_, const char *val_);
+uint64 sts_table_get_times(s_sts_table *, void *); // 获取时间序列,默认为第一个字段，若第一个字段不符合标准，往下找
 
 #endif  /* _STS_COLLECT_H */
