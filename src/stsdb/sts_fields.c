@@ -51,9 +51,12 @@ void sts_field_unit_destroy(s_sts_field_unit *unit_)
 	zfree(unit_);
 }
 
-bool sts_field_is_times(int t_)
+bool sts_field_is_times(s_sts_field_unit *unit_)
 {
-	switch (t_)
+	if (!sts_strcasecmp(unit_->name,"time")){
+		return true;
+	}
+	switch (unit_->flags.type)
 	{
 	case STS_FIELD_INDEX:
 	case STS_FIELD_SECOND:

@@ -117,6 +117,7 @@ int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 index_, int *
 	while (i >= 0 && i < unit_->value->count)
 	{
 		uint64 ts = sts_collect_unit_get_time(unit_, i);
+		printf("  %lld --- %lld  mode= %d\n",index_, ts, *mode_);
 		if (index_ > ts)
 		{
 			if (dir == -1)
@@ -392,7 +393,8 @@ int _sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_)
 		tt = sts_table_get_times(unit_->father, (void *)in_); // 得到时间序列值
 		int mode;
 		int index = sts_collect_unit_search_left(unit_, tt, &mode);
-		if (mode == STS_SEARCH_NONE)
+		printf("mode=%d tt= %lld index=%d\n",mode, tt, index);
+		if (mode == STS_SEARCH_NONE||mode == STS_SEARCH_LEFT)
 		{
 			sts_struct_list_push(unit_->value, (void *)in_);
 		}

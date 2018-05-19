@@ -90,7 +90,7 @@ typedef struct s_sts_field_unit{
 s_sts_field_unit *sts_field_unit_create(int index, const char *name_, s_sts_fields_flags *flags_);
 void sts_field_unit_destroy(s_sts_field_unit *);
 
-bool sts_field_is_times(int t_);
+bool sts_field_is_times(s_sts_field_unit *unit_);
 
 #define sts_check_fields_all(f) (!f || !strncmp(f, "*", 1))
 

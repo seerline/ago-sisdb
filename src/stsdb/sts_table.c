@@ -186,7 +186,7 @@ uint64 sts_table_get_times(s_sts_table *tb_, void *val_)
 		{
 			continue;
 		}
-		if (sts_field_is_times(fu->flags.type))
+		if (sts_field_is_times(fu))
 		{
 			out = sts_fields_get_uint(fu, (const char *)val_);
 			break;

@@ -209,7 +209,7 @@ bool _sts_json_parse(s_sts_json_handle *handle_, const char *content_)
 	{
 		sts_json_delete_node(node);
 		return false;
-	} 
+	}
 	handle_->node = node;
 	return true;
 }
@@ -270,7 +270,7 @@ s_sts_json_handle *sts_json_load(const char *content_, size_t len_)
 	if (!_sts_json_parse(handle, content_))
 	{
 		int len = 0;
-		handle->error = sts_str_getline(handle->error,&len, content_,len_);
+		handle->error = sts_str_getline(handle->error, &len, content_, len_);
 		sts_out_error(3)("json parse fail : %.*s \n", len, handle->error);
 		sts_json_close(handle);
 		return NULL;
@@ -284,7 +284,7 @@ void sts_json_save(s_sts_json_node *node_, const char *fn_)
 	if (!fp)
 	{
 		sts_out_error(3)("cann't write json file [%s].\n", fn_);
-		return ;
+		return;
 	}
 	size_t len;
 	char *buffer = sts_json_output(node_, &len);
@@ -327,7 +327,7 @@ s_sts_json_node *sts_json_clone(s_sts_json_node *node_, int child_)
 	cptr = node_->child;
 	while (cptr)
 	{
-		newchild = sts_json_clone(cptr, 1); 
+		newchild = sts_json_clone(cptr, 1);
 		if (!newchild)
 		{
 			return newitem;
@@ -423,9 +423,13 @@ void sts_json_array_add_node(s_sts_json_node *source_, s_sts_json_node *node_)
 	}
 }
 void sts_json_object_add_node(s_sts_json_node *source_, const char *key_, s_sts_json_node *node_)
-{ 
-	if (!node_) return; 
-	if (node_->key) { sts_free(node_->key); }
+{
+	if (!node_)
+		return;
+	if (node_->key)
+	{
+		sts_free(node_->key);
+	}
 	node_->key = sts_strdup(key_, 0);
 	sts_json_array_add_node(source_, node_);
 }
@@ -525,7 +529,7 @@ void sts_json_object_set_string(s_sts_json_node *node_, const char *key_, const 
 	s_sts_json_node *c = sts_json_cmp_child_node(node_, key_);
 	if (!c)
 	{
-		sts_json_object_add_string(node_, key_, value_,len_);
+		sts_json_object_add_string(node_, key_, value_, len_);
 	}
 	else
 	{
@@ -595,8 +599,9 @@ s_sts_json_node *sts_json_create_node(void)
 
 void sts_json_delete_node(s_sts_json_node *node_)
 {
-	if (!node_){
-		return ;
+	if (!node_)
+	{
+		return;
 	}
 	if (node_->prev)
 	{
@@ -845,12 +850,21 @@ static char *_sts_json_to_object(s_sts_json_node *node_, int depth_, int fmt_)
 
 	if (!numentries)
 	{
-		out = (char *)sts_malloc(fmt_?depth_+3:3);
+		out = (char *)sts_malloc(fmt_ ? depth_ + 3 : 3);
 		if (out)
 		{
-		ptr=out;*ptr++='{';
-		if (fmt_) { *ptr++ = '\n'; for (i = 0; i < depth_ - 1; i++) { *ptr++ = '\t'; } }
-		*ptr++='}';*ptr++=0;
+			ptr = out;
+			*ptr++ = '{';
+			if (fmt_)
+			{
+				*ptr++ = '\n';
+				for (i = 0; i < depth_ - 1; i++)
+				{
+					*ptr++ = '\t';
+				}
+			}
+			*ptr++ = '}';
+			*ptr++ = 0;
 		}
 		return out;
 	}
@@ -1011,13 +1025,19 @@ char *sts_json_output(s_sts_json_node *node_, size_t *len_)
 {
 	// printf("node= %p\n",node_);
 	char *ptr = _sts_json_to_value(node_, 0, 1);
-	*len_ = strlen(ptr);
+	if (ptr)
+	{
+		*len_ = strlen(ptr);
+	}
 	return ptr;
 }
 char *sts_json_output_zip(s_sts_json_node *node_, size_t *len_)
 {
 	char *ptr = _sts_json_to_value(node_, 0, 0);
-	*len_ = strlen(ptr);
+	if (ptr)
+	{
+		*len_ = strlen(ptr);
+	}
 	return ptr;
 }
 void sts_json_printf(s_sts_json_node *node_, int *i)
@@ -1031,12 +1051,12 @@ void sts_json_printf(s_sts_json_node *node_, int *i)
 		s_sts_json_node *first = sts_json_first_node(node_);
 		while (first)
 		{
-			int iii = *i+1;
-			sts_json_printf(first,&iii);
+			int iii = *i + 1;
+			sts_json_printf(first, &iii);
 			first = first->next;
 		}
 	}
-	// printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_, 
+	// printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_,
 	// 		node_->child, node_->prev, node_->next,
 	// 		node_->key, node_->value);
 }
@@ -1078,7 +1098,7 @@ bool sts_json_get_bool(s_sts_json_node *root_, const char *key_, bool defaultval
 	s_sts_json_node *c = sts_json_find_node(root_, key_);
 	if (c)
 	{
-		if (!sts_strcasecmp(c->value, "1") || !sts_strcasecmp(c->value, "true")|| !sts_strcasecmp(c->value, "yes"))
+		if (!sts_strcasecmp(c->value, "1") || !sts_strcasecmp(c->value, "true") || !sts_strcasecmp(c->value, "yes"))
 		{
 			return true;
 		}
@@ -1100,7 +1120,7 @@ int sts_json_get_size(s_sts_json_node *node_)
 s_sts_json_node *sts_json_first_node(s_sts_json_node *node_)
 {
 	s_sts_json_node *c = node_->child;
-	while (c&&c->prev)
+	while (c && c->prev)
 	{
 		c = c->prev;
 	}
@@ -1113,7 +1133,7 @@ s_sts_json_node *sts_json_next_node(s_sts_json_node *node_)
 s_sts_json_node *sts_json_last_node(s_sts_json_node *node_)
 {
 	s_sts_json_node *c = node_->child;
-	while (c&&c->next)
+	while (c && c->next)
 	{
 		c = c->next;
 	}

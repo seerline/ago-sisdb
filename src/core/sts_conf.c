@@ -30,15 +30,40 @@ static const char *_sts_parse_string(s_sts_conf_handle *handle_, s_sts_json_node
 {
 	int len = 0;
 	const char *ptr = value_;
-
-	while (*ptr && *ptr > ' ' && *ptr != STS_CONF_NOTE_SIGN)
+	if (*ptr && *ptr == '"')
 	{
-		if (*ptr == ',' || *ptr == ']' || *ptr == '}')
-		{
-			break;
-		}
+		value_++;
 		ptr++;
-		len++;
+		while (*ptr && *ptr > ' ' && *ptr != STS_CONF_NOTE_SIGN)
+		{
+			if (*ptr == '"')
+			{
+				ptr++;
+				break;
+			}
+			ptr++;
+			len++;
+		}
+		while (*ptr && *ptr > ' ' && *ptr != STS_CONF_NOTE_SIGN)
+		{
+			if (*ptr == ',' || *ptr == ']' || *ptr == '}')
+			{
+				break;
+			}
+			ptr++;
+		}
+	}
+	else
+	{
+		while (*ptr && *ptr > ' ' && *ptr != STS_CONF_NOTE_SIGN)
+		{
+			if (*ptr == ',' || *ptr == ']' || *ptr == '}')
+			{
+				break;
+			}
+			ptr++;
+			len++;
+		}
 	}
 	if (len <= 0)
 	{
@@ -467,7 +492,8 @@ s_sts_conf_handle *sts_conf_load(const char *content_, size_t len_)
 	s_sts_conf_handle *handle = NULL;
 	printf("sts_conf_load : %s\n", content_);
 	const char *value = skip(content_);
-	if (value&&*value&&*value=='{') {
+	if (value && *value && *value == '{')
+	{
 		handle = (s_sts_conf_handle *)sts_malloc(sizeof(s_sts_conf_handle));
 		memset(handle, 0, sizeof(s_sts_conf_handle));
 		s_sts_json_node *node = sts_json_create_node();
@@ -475,7 +501,7 @@ s_sts_conf_handle *sts_conf_load(const char *content_, size_t len_)
 		value = skip(_sts_parse_value(handle, node, value));
 	}
 	size_t i;
-	printf("sts_conf_load : %s \n", sts_conf_to_json_zip(handle->node,&i));
+	printf("sts_conf_load : %s \n", sts_conf_to_json_zip(handle->node, &i));
 
 	return handle;
 }

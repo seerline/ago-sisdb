@@ -24,9 +24,9 @@ void json_printf(s_sts_json_node *node_, int *i)
 			node_->key, node_->value);
 }
 
-int main1()
+int main()
 {
-	const char *fn = "../conf/digger.conf";
+	const char *fn = "../conf/stocks.conf";
 	// const char *fn = "../conf/sts.conf";
 	s_sts_conf_handle *h = sts_conf_open(fn);
 	if (!h) return -1;
@@ -58,7 +58,7 @@ int main1()
 	return 0;
 }
 
-int main()
+int main1()
 {
 	const char *fn = "../conf/select.json";
 	// const char *fn = "../conf/sts.conf";
