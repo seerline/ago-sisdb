@@ -89,11 +89,11 @@ static const char *_sts_parse_number(s_sts_json_handle *handle_, s_sts_json_node
 /* Build an array from input text. */
 static const char *_sts_parse_array(s_sts_json_handle *handle_, s_sts_json_node *node_, const char *value_)
 {
-	if (node_->key == NULL)
-	{
-		handle_->error = value_;
-		return 0;
-	}
+	// if (node_->key == NULL)
+	// {
+	// 	handle_->error = value_;
+	// 	return 0;
+	// }
 	node_->type = STS_JSON_ARRAY;
 	value_ = skip(value_ + 1);
 	if (*value_ == ']')
@@ -1086,6 +1086,7 @@ bool sts_json_get_bool(s_sts_json_node *root_, const char *key_, bool defaultval
 	}
 	return defaultvalue_;
 }
+
 int sts_json_get_size(s_sts_json_node *node_)
 {
 	s_sts_json_node *c = node_->child;

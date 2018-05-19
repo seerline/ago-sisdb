@@ -1,6 +1,8 @@
 
 #include <sts_log.h>
 
+char __log_error[255];
+
 void sts_log_close()
 {
 

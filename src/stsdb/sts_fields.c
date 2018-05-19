@@ -56,11 +56,11 @@ bool sts_field_is_times(int t_)
 	switch (t_)
 	{
 	case STS_FIELD_INDEX:
-	case STS_FIELD_TIME:
 	case STS_FIELD_SECOND:
 	case STS_FIELD_MIN1:
 	case STS_FIELD_MIN5:	
 	case STS_FIELD_DAY:
+	case STS_FIELD_TIME:
 	case STS_FIELD_CODE:
 		return true;
 	default:

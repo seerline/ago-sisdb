@@ -1,5 +1,6 @@
 
 #include <sts_db_io.h>
+#include <sts_comm.h>
 
 
 int call_stsdb_init(const char *conf_)
@@ -16,21 +17,16 @@ int call_stsdb_init(const char *conf_)
 	sts_out_error(3)("init stsdb error.\n");
 	return STS_MODULE_ERROR;
 }
-// int call_stsdb_start(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
-// {
-// 	sts_module_not_used(argc_);
-// 	sts_module_not_used(argv_);
-
-// 	return stsdb_start(ctx_);
-// }
 
 int call_stsdb_list(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
 	sts_module_not_used(argc_);
 	sts_module_not_used(argv_);
 
-	int o = stsdb_list(ctx_);
-	if (o > 0 ) {
+	sds o = stsdb_list();
+	if (o) {
+		sts_module_reply_with_simple_string(ctx_, o);
+		sdsfree(o);
 		return STS_MODULE_OK;
 	} 
 	return sts_module_reply_with_error(ctx_, "stsdb list table error.\n");
@@ -47,7 +43,6 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 		return sts_module_wrong_arity(ctx_);
 	}
 
-	int o;
 	const char *key = sts_module_string_get(argv_[1], NULL);
 	char db[32];
 	char code[16];
@@ -64,16 +59,21 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	} else {
 		sts_module_reply_with_error(ctx_, "set data key error.\n");
 	}
-
+	sds o;
 	if (argc_ == 3)
 	{
-		o = stsdb_get(ctx_, db, code, sts_module_string_get(argv_[2], NULL));
+		o = stsdb_get(db, code, sts_module_string_get(argv_[2], NULL));
 	}
 	else
 	{
-		o = stsdb_get(ctx_, db, code, "{format:json}");
+		o = stsdb_get(db, code, "{\"format\":\"json\"}");
 	}
-	return o;
+	if (o) {
+		sts_module_reply_with_simple_string(ctx_, o);
+		sdsfree(o);
+		return STS_MODULE_OK;
+	} 
+	return sts_module_reply_with_error(ctx_, "stsdb get error.\n");
 }
 int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
@@ -84,10 +84,10 @@ int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	printf("%s: %.90s\n", sts_module_string_get(argv_[1], NULL), sts_module_string_get(argv_[3], NULL));
 	const char * dt = sts_module_string_get(argv_[2],NULL);
 
- 	if (sts_str_subcmp(dt ,"struct,json",',') < 0){
+	int uid = sts_db_find_map_uid(dt,STS_MAP_DEFINE_DATA_TYPE);
+ 	if (uid!=STS_DATA_STRUCT&&uid!=STS_DATA_JSON&&uid!=STS_DATA_ARRAY){
 		return sts_module_reply_with_error(ctx_, "set data type error.\n");
 	}
-	int o;
 	const char *key = sts_module_string_get(argv_[1], NULL);
 	int count = sts_str_substr_nums(key, '.');
 	if (count != 2)
@@ -99,14 +99,16 @@ int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	sts_str_substr(db, 32, key, '.', 1);
 	sts_str_substr(code, 16, key, '.', 0);
 
+	int o;
 	size_t len;
 	const char *val = sts_module_string_get(argv_[3], &len);
-	if (!sts_strcasecmp(dt,"struct")) {
-		o = stsdb_set_struct(ctx_, db, code, val, len);
-	} else {
-		o = stsdb_set_json(ctx_, db, code, val, len);
-	}
-	return o;
+
+	o = stsdb_set(uid, db, code, val, len);
+	
+	if(!o) {
+	    return sts_module_reply_with_simple_string(ctx_, "OK");
+	} 
+	return sts_module_reply_with_error(ctx_, "stsdb set error.\n");
 }
 
 int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)

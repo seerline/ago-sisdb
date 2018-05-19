@@ -40,7 +40,7 @@ typedef struct s_sts_step_index {
 // 单个股票的数据包
 typedef struct s_sts_collect_unit{
 	s_sts_table        *father;  // 表的指针，可以获得字段定义的相关信息
-	s_sts_step_index   *step;    // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
+	s_sts_step_index   *stepinfo;    // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sts_struct_list  *value;   // 结构化数据
 }s_sts_collect_unit;
 
@@ -78,6 +78,9 @@ int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_)
 
 //传入json数据时通过该函数转成二进制结构数据
 sds sts_collect_json_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
+
+//传入array数据时通过该函数转成二进制结构数据
+sds sts_collect_array_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
 sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fields_);

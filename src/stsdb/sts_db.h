@@ -38,8 +38,6 @@ void sts_db_install_table(s_sts_table *);
 
 sds sts_db_get_tables();
 
-s_sts_map_define *sts_db_find_map_define(const char *name_, uint8 style_);
-
 #else
 s_sts_db *sts_db_create();  //数据库的名称，为空建立一个sys的数据库名
 void sts_db_destroy(s_sts_db *);  //关闭一个数据库
@@ -48,6 +46,8 @@ s_sts_table *sts_db_get_table(s_sts_db *, const char *name_); //name -- table na
 void sts_db_install_table(s_sts_db *, s_sts_table *); //装入表
 #endif
 
+s_sts_map_define *sts_db_find_map_define(const char *name_, uint8 style_);
+int sts_db_find_map_uid(const char *name_, uint8 style_);
 
 
 #endif  /* _STS_DB_H */

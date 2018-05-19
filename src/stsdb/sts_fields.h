@@ -48,7 +48,7 @@ typedef struct s_sts_fields_flags{
 	// 最大支持15位小数, 
 	// io = 1 输入时除以zoom后取整，输出时乘以zoom后取整 对int有效
 	// 最大支持10^15次方,足够表示极大数 
-	unsigned ziper : 3;  // none 不压缩 up 上一条 local 和当前记录某字段比较压缩 multi 和指定字段相乘
+	unsigned ziper : 3;  // 0 不压缩 up 上一条 local 和当前记录某字段比较压缩 multi 和指定字段相乘
 	unsigned refer : 6;  // 当为up和local的时候，表示和第几个字段比较压缩，local情况下相等为自己压自己
 				// ziper==refer==0 表示不压缩  64个字段
 }s_sts_fields_flags;

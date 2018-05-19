@@ -7,13 +7,14 @@
 #define _STS_DB_IO_H
 
 #include "sts_core.h"
-#include "sts_comm.h"
 #include "sts_conf.h"
 #include "sts_str.h"
 
 #include "sts_db.h"
 #include "sts_table.h"
 
+#define STS_SERVER_OK        0
+#define STS_SERVER_ERROR    1
 
 #define STS_SERVER_STATUS_NOINIT    0
 #define STS_SERVER_STATUS_INITED    1
@@ -35,15 +36,11 @@ typedef struct s_stsdb_server
 
 int stsdb_init(const char *conf_);
 
-int stsdb_start(s_sts_module_context *ctx_);
-int stsdb_list(s_sts_module_context *ctx_);
+sds stsdb_list();
 
-int stsdb_get(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *com_);
+sds stsdb_get(const char *db_, const char *key_, const char *com_);
 
-int stsdb_set_json(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *val_, size_t len_);
-int stsdb_set_struct(s_sts_module_context *ctx_,const char *db_, const char *key_, const char *val_, size_t len_);
-
-
+int stsdb_set(int type_, const char *db_, const char *key_, const char *val_, size_t len_);
 
 
 #endif  /* _STS_DB_IO_H */

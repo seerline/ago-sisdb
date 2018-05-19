@@ -38,11 +38,11 @@
 #pragma pack(push,1)
 typedef struct s_sts_table_control {
 	uint32 version;      // 数据表的版本号time_t格式
-	uint8_t  data_type;    // 数据类型 目前没什么用
-	uint8_t  time_scale;   // 时序压缩的步长
+	uint8  data_type;    // 数据类型 目前没什么用
+	uint8  time_scale;   // 时序压缩的步长
 	uint32 limit_rows;   // 每个collection的最大记录数
-	uint8_t  insert_mode;  // 插入数据方式
-	uint8_t  update_mode;  // 修改数据方式
+	uint8  insert_mode;  // 插入数据方式
+	uint8  update_mode;  // 修改数据方式
 }s_sts_table_control;
 
 typedef struct s_sts_table {
@@ -86,7 +86,7 @@ uint64 sts_table_get_times(s_sts_table *, void *);
 //得到记录的长度
 //取数据和写数据
 // 来源数据是json或者struct，table是struct数据
-void sts_table_update(s_sts_table *, const char *key_, int type_, const char * value_, size_t len_);
+int sts_table_update(s_sts_table *, const char *key_, int type_, const char * value_, size_t len_);
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
 

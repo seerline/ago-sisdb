@@ -147,19 +147,7 @@ void sts_db_install_table(s_sts_table *tb_)
 	}
 }
 
-s_sts_map_define *sts_db_find_map_define(const char *name_, uint8 style_)
-{
-	if (!name_)
-	{
-		return NULL;
-	}
-	sds key = sdsnew(name_);
-	key = sdscatfmt(key, ".%u", style_);
-	s_sts_map_define *val = (s_sts_map_define *)dictFetchValue(_sys_sts_define, key);
-	sdsfree(key);
-	printf("%s,%p\n",name_,val);
-	return val;
-}
+
 #else
 s_sts_db *sts_db_create() //数据库的名称，为空建立一个sys的数据库名
 {
@@ -191,3 +179,27 @@ void sts_db_install_table(s_sts_db *db_, s_sts_table *table_)
 	dictAdd(db_, sdsnew(table_->name), table_);
 }
 #endif
+
+s_sts_map_define *sts_db_find_map_define(const char *name_, uint8 style_)
+{
+	if (!name_)
+	{
+		return NULL;
+	}
+	sds key = sdsnew(name_);
+	key = sdscatfmt(key, ".%u", style_);
+	s_sts_map_define *val = (s_sts_map_define *)dictFetchValue(_sys_sts_define, key);
+	sdsfree(key);
+	printf("%s,%p\n",name_,val);
+	return val;
+}
+
+int sts_db_find_map_uid(const char *name_, uint8 style_)
+{
+	s_sts_map_define *map =sts_db_find_map_define(name_, style_);
+	if (!map)
+	{
+		return 0;
+	}
+	return map->uid;
+}

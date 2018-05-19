@@ -17,6 +17,7 @@ s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command)
 	tb->control.data_type = STS_DATA_STRUCT;
 	tb->control.time_scale = STS_FIELD_SECOND;
 	tb->control.limit_rows = sts_json_get_int(command, "limit", 0);
+	// printf("=====%s limit %d\n", name_, tb->control.limit_rows);
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
 	tb->control.version = (uint32)sts_time_get_now();
@@ -174,7 +175,6 @@ int sts_table_get_fields_size(s_sts_table *tb_)
 	return len;
 }
 
-
 uint64 sts_table_get_times(s_sts_table *tb_, void *val_)
 {
 	uint64 out = 0;
@@ -198,7 +198,7 @@ uint64 sts_table_get_times(s_sts_table *tb_, void *val_)
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 //////////////////////////////////////////////////////////////////////////////////
 
-void sts_table_update(s_sts_table *tb_, const char *key_, int type_, const char *value_, size_t len_)
+int sts_table_update(s_sts_table *tb_, const char *key_, int type_, const char *value_, size_t len_)
 {
 	s_sts_collect_unit *collect = sts_map_buffer_get(tb_->collect_map, key_);
 	// printf("---collect %p---%p--%d\n", collect, tb_->field_map, sts_table_get_fields_size(tb_));
@@ -208,21 +208,32 @@ void sts_table_update(s_sts_table *tb_, const char *key_, int type_, const char 
 		sts_map_buffer_set(tb_->collect_map, key_, collect);
 	}
 	// printf("---collect %p---\n", collect);
-	if (type_ == STS_DATA_JSON)
+	int o = 0;
+	sds val = NULL;
+	switch (type_)
 	{
+	case STS_DATA_JSON:
 		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
 		// 用新的数据进行覆盖，然后返回数据
-		sds val = sts_collect_json_to_struct(collect, value_, len_);
+		val = sts_collect_json_to_struct(collect, value_, len_);
 		if (val)
 		{
-			sts_collect_unit_update(collect, val, sdslen(val));
+			o = sts_collect_unit_update(collect, val, sdslen(val));
 			sdsfree(val);
 		}
+		break;
+	case STS_DATA_ARRAY:
+		val = sts_collect_array_to_struct(collect, value_, len_);
+		if (val)
+		{
+			o = sts_collect_unit_update(collect, val, sdslen(val));
+			sdsfree(val);
+		}
+		break;
+	default:
+		o = sts_collect_unit_update(collect, value_, len_);
 	}
-	else
-	{
-		sts_collect_unit_update(collect, value_, len_);
-	}
+	return o;
 }
 //////////////////////////
 //删除数据
@@ -321,10 +332,9 @@ exit:
 	return rtn;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //取数据,读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围
-////////////////////////////////////////////////////////////////////////////////////////////////
-
+///////////////////////////////////////////////////////////////////////////////
 sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *command)
 {
 	s_sts_json_handle *handle = sts_json_load(command, strlen(command));
