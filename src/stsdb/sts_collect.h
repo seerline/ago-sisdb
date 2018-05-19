@@ -12,7 +12,7 @@
 // #include "zmalloc.h"
 // #include "sdsalloc.h"
 
-// #include "sts_table.h"
+#include "sts_table.h"
 
 /////////////////////////////////////////////////////////
 //  数据库数据搜索模式
@@ -24,7 +24,6 @@
 #define STS_SEARCH_OK        0  // 准确匹配的数据
 
 #pragma pack(push,1)
-typedef struct s_sts_table;
 // 根据结构化数组的时间序列，自动生成头尾时间，和平均间隔时间
 typedef struct s_sts_step_index {
 	uint64 left;       // 最小时间
