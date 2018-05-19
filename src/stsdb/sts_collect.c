@@ -353,7 +353,7 @@ sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *unit_, int start_, int s
 	}
 
 	int count = (stop_ - start_) + 1;
-	return sdsnewlen(sts_struct_list_get(unit_->value, start_), count_ * unit_->value->len);
+	return sdsnewlen(sts_struct_list_get(unit_->value, start_), count * unit_->value->len);
 }
 ////////////////////////
 //  update
@@ -453,8 +453,7 @@ sds sts_collect_json_to_struct(s_sts_collect_unit *unit_, const char *in_, size_
 		int8 i8 = 0;
 		int16 i16 = 0;
 		int32 i32 = 0;
-		int64 i64, zoom;
-		float f32 = 0.0;
+		int64 i64, zoom = 1;
 		double f64 = 0.0;
 		switch (fu->flags.type)
 		{
@@ -467,7 +466,7 @@ sds sts_collect_json_to_struct(s_sts_collect_unit *unit_, const char *in_, size_
 			break;
 		case STS_FIELD_INT:
 		case STS_FIELD_UINT:
-			printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
+			printf("name=%s offset=%d\n", key, fu->offset);
 			if (sts_json_find_node(handle->node, key))
 			{
 				i64 = sts_json_get_int(handle->node, key, 0);
@@ -592,8 +591,8 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 	sts_json_object_add_node(jone, STS_JSON_KEY_FIELDS, jfields);
 
 	int dot = 0; //小数点位数
-	int len = sts_table_get_fields_size(tb);
-	int count = (int)(sdslen(in_) / len);
+	int skip_len = sts_table_get_fields_size(tb);
+	int count = (int)(sdslen(in_) / skip_len);
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
@@ -608,7 +607,7 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 				sts_json_array_add_string(jval, " ", 1);
 				continue;
 			}
-			const char *ptr = (const char *)simple_val;
+			const char *ptr = (const char *)val;
 			switch (fu->flags.type)
 			{
 			case STS_FIELD_STRING:
@@ -642,7 +641,7 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 		{
 			break;
 		}
-		val += len;
+		val += skip_len;
 	}
 
 	if (tb->control.limit_rows != 1)
@@ -659,9 +658,9 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 	// 输出数据
 	// printf("1112111 [%d]\n",tb->control.limit_rows);
 
-	size_t len;
-	str = sts_json_output_zip(jone, &len);
-	out = sdsnewlen(str, len);
+	size_t olen;
+	str = sts_json_output_zip(jone, &olen);
+	out = sdsnewlen(str, olen);
 	sts_free(str);
 	sts_json_delete_node(jone);
 
@@ -689,8 +688,8 @@ sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *
 	s_sts_json_node *jval;
 
 	int dot = 0; //小数点位数
-	int len = sts_table_get_fields_size(tb);
-	int count = (int)(sdslen(in_) / len);
+	int skip_len = sts_table_get_fields_size(tb);
+	int count = (int)(sdslen(in_) / skip_len);
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
@@ -705,7 +704,7 @@ sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *
 				sts_json_array_add_string(jval, " ", 1);
 				continue;
 			}
-			const char *ptr = (const char *)simple_val;
+			const char *ptr = (const char *)val;
 			switch (fu->flags.type)
 			{
 			case STS_FIELD_STRING:
@@ -732,7 +731,7 @@ sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *
 			}
 		}
 		sts_json_array_add_node(jone, jval);
-		val += len;
+		val += skip_len;
 	}
 
 	size_t ll;
@@ -740,9 +739,9 @@ sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *
 	// 输出数据
 	// printf("1112111 [%d]\n",tb->control.limit_rows);
 
-	size_t len;
-	str = sts_json_output_zip(jone, &len);
-	out = sdsnewlen(str, len);
+	size_t olen;
+	str = sts_json_output_zip(jone, &olen);
+	out = sdsnewlen(str, olen);
 	sts_free(str);
 	sts_json_delete_node(jone);
 

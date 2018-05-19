@@ -2,6 +2,7 @@
 
 #include "sts_table.h"
 #include "sts_collect.h"
+#include "sts_db.h"
 
 //command为一个json格式字段定义
 s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command)

@@ -6,12 +6,13 @@
 #ifndef _STS_TABLE_H
 #define _STS_TABLE_H
 
+#include "sts_core.h"
 // #include "dict.h"
 // #include "sts_map.h"
 #include "sts_list.h"
 #include "sts_json.h"
 // #include "sts_math.h"
-// #include "sts_time.h"
+#include "sts_time.h"
 
 #include "sts_fields.h"
 
@@ -21,8 +22,8 @@
 #define STS_OPTION_ALWAYS      0  // 不做判断直接追加
 #define STS_OPTION_TIME        1  // 检查时间节点重复就覆盖老的数据，不重复就放对应位置
 #define STS_OPTION_VOL         2  // 检查成交量，成交量增加就写入
-#define STS_OPTION_NONE        4  // 不做判断直接追加
-#define STS_OPTION_MUL_CHECK   3  // 最少3个以上数据才能确认数据的准确性，暂不用
+#define STS_OPTION_NONE        3  // 不做判断直接追加
+#define STS_OPTION_MUL_CHECK   4  // 最少3个以上数据才能确认数据的准确性，暂不用
 
 /////////////////////////////////////////////////////////
 //  数据格是定义 
@@ -34,14 +35,8 @@
 							   // value 表示最新的一维数组  values 表示二维数组	
 #define STS_DATA_ARRAY   '['   // 直接传数据
 
-#define STS_JSON_KEY_ARRAY    ("value")   
-#define STS_JSON_KEY_ARRAYS   ("values")   
-#define STS_JSON_KEY_GROUPS   ("groups")   
-#define STS_JSON_KEY_FIELDS   ("fields")   
-
 #pragma pack(push,1)
-
-typedef struct s_sts_table_control{
+typedef struct s_sts_table_control {
 	uint32 version;      // 数据表的版本号time_t格式
 	uint8_t  data_type;    // 数据类型 目前没什么用
 	uint8_t  time_scale;   // 时序压缩的步长

@@ -7,8 +7,8 @@
 #define _STS_COLLECT_H
 
 #include "sts_core.h"
-// #include "sts_map.h"
-// #include "sts_list.h"
+#include "sds.h"
+#include "sts_math.h"
 // #include "zmalloc.h"
 // #include "sdsalloc.h"
 
@@ -22,6 +22,11 @@
 #define STS_SEARCH_LEFT      2  // 附近的数据
 #define STS_SEARCH_RIGHT     3  // 附近的数据
 #define STS_SEARCH_OK        0  // 准确匹配的数据
+
+#define STS_JSON_KEY_ARRAY    ("value")   
+#define STS_JSON_KEY_ARRAYS   ("values")   
+#define STS_JSON_KEY_GROUPS   ("groups")   
+#define STS_JSON_KEY_FIELDS   ("fields")   
 
 #pragma pack(push,1)
 // 根据结构化数组的时间序列，自动生成头尾时间，和平均间隔时间
@@ -67,7 +72,7 @@ int	sts_collect_unit_delete_of_range(s_sts_collect_unit *, int start_, int stop_
 int	sts_collect_unit_delete_of_count(s_sts_collect_unit *, int start_, int count_); // 定位后删除
 
 sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *, int start_, int stop_);
-sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *, int start_, int count_;
+sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *, int start_, int count_);
 
 int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
@@ -78,6 +83,5 @@ sds sts_collect_json_to_struct(s_sts_collect_unit *, const char *in_, size_t ile
 sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fields_);
 sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *fields_);
 sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *fields_);
-
 
 #endif  /* _STS_COLLECT_H */
