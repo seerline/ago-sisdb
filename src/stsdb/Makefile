@@ -429,6 +429,30 @@ mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.s
 
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
+
 mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o
 
@@ -645,6 +669,9 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.s"

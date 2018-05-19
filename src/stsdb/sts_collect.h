@@ -7,11 +7,12 @@
 #define _STS_COLLECT_H
 
 #include "sts_core.h"
-#include "sts_table.h"
-#include "sts_map.h"
-#include "sts_list.h"
+// #include "sts_map.h"
+// #include "sts_list.h"
 // #include "zmalloc.h"
-#include "sdsalloc.h"
+// #include "sdsalloc.h"
+
+// #include "sts_table.h"
 
 /////////////////////////////////////////////////////////
 //  数据库数据搜索模式
@@ -23,7 +24,7 @@
 #define STS_SEARCH_OK        0  // 准确匹配的数据
 
 #pragma pack(push,1)
-
+typedef struct s_sts_table;
 // 根据结构化数组的时间序列，自动生成头尾时间，和平均间隔时间
 typedef struct s_sts_step_index {
 	uint64 left;       // 最小时间
@@ -79,9 +80,5 @@ sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fi
 sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *fields_);
 sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *fields_);
 
-uint64 sts_table_get_uint(s_sts_field_unit *fu_, const char *val_);
-int64 sts_table_get_int(s_sts_field_unit *fu_, const char *val_);
-double sts_table_get_double(s_sts_field_unit *fu_, const char *val_);
-uint64 sts_table_get_times(s_sts_table *, void *); // 获取时间序列,默认为第一个字段，若第一个字段不符合标准，往下找
 
 #endif  /* _STS_COLLECT_H */

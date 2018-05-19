@@ -1,12 +1,10 @@
 ﻿
 
 #include "sts_table.h"
-#include "sts_db.h"
 #include "sts_collect.h"
-#include "sts_time.h"
 
-s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command)
 //command为一个json格式字段定义
+s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command)
 {
 	s_sts_table *tb = sts_db_get_table(name_);
 	if (tb)
@@ -175,6 +173,26 @@ int sts_table_get_fields_size(s_sts_table *tb_)
 	return len;
 }
 
+
+uint64 sts_table_get_times(s_sts_table *tb_, void *val_)
+{
+	uint64 out = 0;
+	int count = sts_string_list_getsize(tb_->field_name);
+	for (int i = 0; i < count; i++)
+	{
+		s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb_->field_map, sts_string_list_get(tb_->field_name, i));
+		if (!fu)
+		{
+			continue;
+		}
+		if (sts_field_is_times(fu->flags.type))
+		{
+			out = sts_fields_get_uint(fu, (const char *)val_);
+			break;
+		}
+	}
+	return out;
+}
 //////////////////////////////////////////////////////////////////////////////////
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 //////////////////////////////////////////////////////////////////////////////////
@@ -430,7 +448,8 @@ filter:
 	switch (iformat)
 	{
 	case STS_DATA_STRUCT:
-		if (!sts_check_fields_all(sds_fields)) {
+		if (!sts_check_fields_all(sds_fields))
+		{
 			other = sts_collect_struct_filter(collect, out, sds_fields);
 			sdsfree(out);
 			out = other;

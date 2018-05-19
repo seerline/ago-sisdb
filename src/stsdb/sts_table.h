@@ -6,12 +6,14 @@
 #ifndef _STS_TABLE_H
 #define _STS_TABLE_H
 
-#include "dict.h"
-#include "sts_fields.h"
-#include "sts_map.h"
+// #include "dict.h"
+// #include "sts_map.h"
 #include "sts_list.h"
-#include "sts_conf.h"
-#include "sts_math.h"
+#include "sts_json.h"
+// #include "sts_math.h"
+// #include "sts_time.h"
+
+#include "sts_fields.h"
 
 /////////////////////////////////////////////////////////
 //  Êı¾İ¿âÊı¾İ²åÈëºÍĞŞ¸ÄÄ£Ê½
@@ -32,10 +34,10 @@
 							   // value ±íÊ¾×îĞÂµÄÒ»Î¬Êı×é  values ±íÊ¾¶şÎ¬Êı×é	
 #define STS_DATA_ARRAY   '['   // Ö±½Ó´«Êı¾İ
 
-#define STS_JSON_KEY_ARRAY    "value"   
-#define STS_JSON_KEY_ARRAYS   "values"   
-#define STS_JSON_KEY_GROUPS   "groups"   
-#define STS_JSON_KEY_FIELDS   "fields"   
+#define STS_JSON_KEY_ARRAY    ("value")   
+#define STS_JSON_KEY_ARRAYS   ("values")   
+#define STS_JSON_KEY_GROUPS   ("groups")   
+#define STS_JSON_KEY_FIELDS   ("fields")   
 
 #pragma pack(push,1)
 
@@ -82,6 +84,9 @@ void sts_table_set_fields(s_sts_table *, s_sts_json_node *fields_); //commandÎªÒ
 //»ñÈ¡Êı¾İ¿âµÄ¸÷ÖÖÖµ
 s_sts_field_unit *sts_table_get_field(s_sts_table *tb_, const char *name_);
 int sts_table_get_fields_size(s_sts_table *);
+
+// »ñÈ¡Ê±¼äĞòÁĞ,Ä¬ÈÏÎªµÚÒ»¸ö×Ö¶Î£¬ÈôµÚÒ»¸ö×Ö¶Î²»·ûºÏ±ê×¼£¬ÍùÏÂÕÒ
+uint64 sts_table_get_times(s_sts_table *, void *); 
 
 //µÃµ½¼ÇÂ¼µÄ³¤¶È
 //È¡Êı¾İºÍĞ´Êı¾İ

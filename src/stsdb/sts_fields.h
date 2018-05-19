@@ -8,8 +8,12 @@
 
 #include "sds.h"
 #include "dict.h"
-#include "sts_map.h"
 #include <assert.h>
+#include "sdsalloc.h"
+#include "sts_str.h"
+#include "sts_map.h"
+
+
 /////////////////////////////////////////////////////////
 //  字段类型定义
 /////////////////////////////////////////////////////////
@@ -89,5 +93,9 @@ void sts_field_unit_destroy(s_sts_field_unit *);
 bool sts_field_is_times(int t_);
 
 #define sts_check_fields_all(f) (!f || !strncmp(f, "*", 1))
+
+uint64 sts_fields_get_uint(s_sts_field_unit *fu_, const char *val_);
+int64 sts_fields_get_int(s_sts_field_unit *fu_, const char *val_);
+double sts_fields_get_double(s_sts_field_unit *fu_, const char *val_);
 
 #endif  /* _STS_FIELDS_H */

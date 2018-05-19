@@ -1,6 +1,7 @@
 ﻿
 
 #include "sts_collect.h"
+#include "sts_fields.h"
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sts_step_index --------------------------------//
@@ -527,124 +528,7 @@ sds sts_collect_json_to_struct(s_sts_collect_unit *unit_, const char *in_, size_
 }
 
 ////////////////
-uint64 sts_table_get_uint(s_sts_field_unit *fu_, const char *val_)
-{
-	uint64 out = 0;
-	uint8 *u8;
-	uint16 *u16;
-	uint32 *u32;
-	uint64 *u64;
-	const char *ptr = val_;
 
-	switch (fu_->flags.len)
-	{
-	case 1:
-		u8 = (uint8 *)(ptr + fu_->offset);
-		out = *u8;
-		break;
-	case 2:
-		u16 = (uint16 *)(ptr + fu_->offset);
-		out = *u16;
-		break;
-	case 4:
-		u32 = (uint32 *)(ptr + fu_->offset);
-		out = *u32;
-		break;
-	case 8:
-		u64 = (uint64 *)(ptr + fu_->offset);
-		out = *u64;
-		break;
-	default:
-		break;
-	}
-	if (fu_->flags.io && fu_->flags.zoom > 0)
-	{
-		out *= sts_zoom10(fu_->flags.zoom);
-	}
-	return out;
-}
-int64 sts_table_get_int(s_sts_field_unit *fu_, const char *val_)
-{
-	int64 out = 0;
-	int8 *u8;
-	int16 *u16;
-	int32 *u32;
-	int64 *u64;
-	const char *ptr = val_;
-
-	switch (fu_->flags.len)
-	{
-	case 1:
-		u8 = (int8 *)(ptr + fu_->offset);
-		out = *u8;
-		break;
-	case 2:
-		u16 = (int16 *)(ptr + fu_->offset);
-		out = *u16;
-		break;
-	case 4:
-		u32 = (int32 *)(ptr + fu_->offset);
-		out = *u32;
-		break;
-	case 8:
-		u64 = (int64 *)(ptr + fu_->offset);
-		out = *u64;
-		break;
-	default:
-		break;
-	}
-	if (fu_->flags.io && fu_->flags.zoom > 0)
-	{
-		out *= sts_zoom10(fu_->flags.zoom);
-	}
-	return out;
-}
-double sts_table_get_double(s_sts_field_unit *fu_, const char *val_)
-{
-	double out = 0.0;
-	float *f32;
-	double *f64;
-	const char *ptr = val_;
-
-	switch (fu_->flags.len)
-	{
-	case 4:
-		f32 = (float *)(ptr + fu_->offset);
-		out = *f32;
-		break;
-	case 8:
-		f64 = (double *)(ptr + fu_->offset);
-		out = *f64;
-		break;
-	default:
-		break;
-	}
-	if (!fu_->flags.io && fu_->flags.zoom > 0)
-	{
-		out /= sts_zoom10(fu_->flags.zoom);
-	}
-	return out;
-}
-
-uint64 sts_table_get_times(s_sts_table *tb_, void *val_)
-{
-	uint64 out = 0;
-	int count = sts_string_list_getsize(tb_->field_name);
-	for (int i = 0; i < count; i++)
-	{
-		s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb_->field_map, sts_string_list_get(tb_->field_name, i));
-		if (!fu)
-		{
-			continue;
-		}
-		if (sts_field_is_times(fu->flags.type))
-		{
-			out = sts_table_get_uint(fu, (const char *)val_);
-			break;
-		}
-	}
-	return out;
-}
 
 sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fields_)
 {
@@ -695,12 +579,16 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 
 	char *str;
 	s_sts_json_node *jone = sts_json_create_object();
-	s_sts_json_node *jtwo = sts_json_create_object();
+	s_sts_json_node *jtwo = sts_json_create_array();
 	s_sts_json_node *jval = NULL;
 	s_sts_json_node *jfields = sts_json_create_object();
 
 	// 先处理字段
-	
+	for (int i = 0; i < sts_string_list_getsize(field_list); i++)
+	{
+		const char *key = sts_string_list_get(field_list, i);
+		sts_json_object_add_uint(jfields, key, i);
+	}
 	sts_json_object_add_node(jone, STS_JSON_KEY_FIELDS, jfields);
 
 	int dot = 0; //小数点位数
@@ -728,10 +616,10 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 				break;
 			case STS_FIELD_INT:
 				printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
-				sts_json_array_add_int(jval, sts_table_get_int(fu, ptr));
+				sts_json_array_add_int(jval, sts_fields_get_int(fu, ptr));
 				break;
 			case STS_FIELD_UINT:
-				sts_json_array_add_uint(jval, sts_table_get_uint(fu, ptr));
+				sts_json_array_add_uint(jval, sts_fields_get_uint(fu, ptr));
 				break;
 			case STS_FIELD_FLOAT:
 			case STS_FIELD_DOUBLE:
@@ -739,10 +627,10 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 				{
 					dot = fu->flags.zoom;
 				}
-				sts_json_array_add_double(jval, sts_table_get_double(fu, ptr), dot);
+				sts_json_array_add_double(jval, sts_fields_get_double(fu, ptr), dot);
 				break;
 			default:
-				sts_json_array_add_string(jval, "", 0);
+				sts_json_array_add_string(jval, " ", 1);
 				break;
 			}
 		}
@@ -784,4 +672,83 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 	return out;
 }
 
-sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *fields_);
+sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *fields_)
+{
+	sds out = NULL;
+
+	s_sts_table *tb = unit_->father;
+	s_sts_string_list *field_list = tb->field_name; //取得全部的字段定义
+	if (!sts_check_fields_all(fields_))
+	{
+		field_list = sts_string_list_create_r();
+		sts_string_list_load(field_list, fields_, strlen(fields_), ",");
+	}
+
+	char *str;
+	s_sts_json_node *jone = sts_json_create_array();
+	s_sts_json_node *jval;
+
+	int dot = 0; //小数点位数
+	int len = sts_table_get_fields_size(tb);
+	int count = (int)(sdslen(in_) / len);
+	char *val = in_;
+	for (int k = 0; k < count; k++)
+	{
+		sts_out_binary("get", val, 30);
+		jval = sts_json_create_array();
+		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
+		{
+			const char *key = sts_string_list_get(field_list, i);
+			s_sts_field_unit *fu = sts_table_get_field(tb, key);
+			if (!fu)
+			{
+				sts_json_array_add_string(jval, " ", 1);
+				continue;
+			}
+			const char *ptr = (const char *)simple_val;
+			switch (fu->flags.type)
+			{
+			case STS_FIELD_STRING:
+				sts_json_array_add_string(jval, ptr + fu->offset, fu->flags.len);
+				break;
+			case STS_FIELD_INT:
+				printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
+				sts_json_array_add_int(jval, sts_fields_get_int(fu, ptr));
+				break;
+			case STS_FIELD_UINT:
+				sts_json_array_add_uint(jval, sts_fields_get_uint(fu, ptr));
+				break;
+			case STS_FIELD_FLOAT:
+			case STS_FIELD_DOUBLE:
+				if (!fu->flags.io && fu->flags.zoom > 0)
+				{
+					dot = fu->flags.zoom;
+				}
+				sts_json_array_add_double(jval, sts_fields_get_double(fu, ptr), dot);
+				break;
+			default:
+				sts_json_array_add_string(jval, " ", 1);
+				break;
+			}
+		}
+		sts_json_array_add_node(jone, jval);
+		val += len;
+	}
+
+	size_t ll;
+	printf("jone = %s\n", sts_json_output(jone, &ll));
+	// 输出数据
+	// printf("1112111 [%d]\n",tb->control.limit_rows);
+
+	size_t len;
+	str = sts_json_output_zip(jone, &len);
+	out = sdsnewlen(str, len);
+	sts_free(str);
+	sts_json_delete_node(jone);
+
+	if (!sts_check_fields_all(fields_))
+	{
+		sts_string_list_destroy(field_list);
+	}
+	return out;
+}
