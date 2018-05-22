@@ -12,6 +12,7 @@
 #include <sts_str.h>
 #include <sts_log.h>
 
+#define STS_STR_LEN 32
 #define STS_FILE_PATH_LEN 255
 
 #define STS_FILE_ENTER_LEN 1

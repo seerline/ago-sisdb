@@ -26,6 +26,17 @@
 
 #define STS_MODULE_TYPE_METHOD_VERSION REDISMODULE_TYPE_METHOD_VERSION
 // struct define
+
+#pragma pack(push,1)
+typedef struct sts_object {
+    unsigned type:4;
+    unsigned encoding:4;
+    unsigned lru:24; 
+    int refcount;
+    void *ptr;
+} sts_object;
+#pragma pack(pop)
+
 #define s_sts_module_context RedisModuleCtx
 #define s_sts_module_string RedisModuleString
 #define s_sts_module_key RedisModuleKey

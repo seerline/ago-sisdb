@@ -16,14 +16,11 @@
 //------------------------s_sts_struct_list ---------------------------------//
 //  固定长度的列表
 //////////////////////////////////////////////////////////////////////////
-#define STRUCT_LIST_NORMAL   0
-#define STRUCT_LIST_POINTER  1
 
 typedef struct s_sts_struct_list {
 	int		     maxcount; //总数
 	int		     count;    //当前个数
 	int          len;      //每条记录的长度
-	int          mode;     //区分什么类型的链表
 	void        *buffer;   //必须是mallco申请的char*类型
 	void(*free)(void *);   //==NULL 不释放对应内存
 } s_sts_struct_list;
@@ -47,9 +44,6 @@ void sts_struct_list_limit(s_sts_struct_list *, int limit_);
 int sts_struct_list_clone(s_sts_struct_list *src_, s_sts_struct_list *dst_, int limit_);
 int sts_struct_list_delete(s_sts_struct_list *src_, int start_, int count_);
 int sts_struct_list_pack(s_sts_struct_list *list_);
-
-// 获取指针的位置编号
-int sts_struct_list_pto_recno(s_sts_struct_list *list_,void *);
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_pointer_list --------------------------------//

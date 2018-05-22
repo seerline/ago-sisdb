@@ -2,33 +2,18 @@
 #include <sts_db_io.h>
 #include <sts_comm.h>
 
-
-int call_stsdb_init(const char *conf_)
-{
-	if (!sts_file_exists(conf_))
-	{
-		sts_out_error(3)("conf file %s no finded.\n", conf_);
-		return STS_MODULE_ERROR;
-	}
-	int o = stsdb_init(conf_);
-	if (o == STS_MODULE_OK) {
-		return STS_MODULE_OK;
-	} 
-	sts_out_error(3)("init stsdb error.\n");
-	return STS_MODULE_ERROR;
-}
-
 int call_stsdb_list(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
 	sts_module_not_used(argc_);
 	sts_module_not_used(argv_);
 
 	sds o = stsdb_list();
-	if (o) {
+	if (o)
+	{
 		sts_module_reply_with_simple_string(ctx_, o);
 		sdsfree(o);
 		return STS_MODULE_OK;
-	} 
+	}
 	return sts_module_reply_with_error(ctx_, "stsdb list table error.\n");
 }
 
@@ -56,7 +41,9 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	{
 		sts_str_substr(db, 32, key, '.', 1);
 		sts_str_substr(code, 16, key, '.', 0);
-	} else {
+	}
+	else
+	{
 		sts_module_reply_with_error(ctx_, "set data key error.\n");
 	}
 	sds o;
@@ -68,11 +55,12 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	{
 		o = stsdb_get(db, code, "{\"format\":\"json\"}");
 	}
-	if (o) {
+	if (o)
+	{
 		sts_module_reply_with_simple_string(ctx_, o);
 		sdsfree(o);
 		return STS_MODULE_OK;
-	} 
+	}
 	return sts_module_reply_with_error(ctx_, "stsdb get error.\n");
 }
 int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
@@ -81,13 +69,8 @@ int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	{
 		return sts_module_wrong_arity(ctx_);
 	}
-	printf("%s: %.90s\n", sts_module_string_get(argv_[1], NULL), sts_module_string_get(argv_[3], NULL));
-	const char * dt = sts_module_string_get(argv_[2],NULL);
+	// printf("%s: %.90s\n", sts_module_string_get(argv_[1], NULL), sts_module_string_get(argv_[3], NULL));
 
-	int uid = sts_db_find_map_uid(dt,STS_MAP_DEFINE_DATA_TYPE);
- 	if (uid!=STS_DATA_STRUCT&&uid!=STS_DATA_JSON&&uid!=STS_DATA_ARRAY){
-		return sts_module_reply_with_error(ctx_, "set data type error.\n");
-	}
 	const char *key = sts_module_string_get(argv_[1], NULL);
 	int count = sts_str_substr_nums(key, '.');
 	if (count != 2)
@@ -102,18 +85,48 @@ int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	int o;
 	size_t len;
 	const char *val = sts_module_string_get(argv_[3], &len);
+	const char *dt = sts_module_string_get(argv_[2], NULL);
 
-	o = stsdb_set(uid, db, code, val, len);
-	
-	if(!o) {
-	    return sts_module_reply_with_simple_string(ctx_, "OK");
-	} 
+	o = stsdb_set(dt, db, code, val, len);
+
+	if (!o)
+	{
+		return sts_module_reply_with_simple_string(ctx_, "OK");
+	}
 	return sts_module_reply_with_error(ctx_, "stsdb set error.\n");
+}
+
+char *call_stsdb_init(const char *conf_)
+{
+	if (!sts_file_exists(conf_))
+	{
+		sts_out_error(3)("conf file %s no finded.\n", conf_);
+		return NULL;
+	}
+	return stsdb_init(conf_);
 }
 
 int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
-	if (sts_module_init(ctx_, "stsdb", 1, STS_MODULE_VER) == STS_MODULE_ERROR)
+	// 先取得服务名
+	char *service;
+	if (argc_ == 1)
+	{
+		// service = call_stsdb_init(sts_module_string_get(argv_[0], NULL));
+		service = call_stsdb_init(((sts_object *)argv_[0])->ptr);
+	}
+	else
+	{
+		service = call_stsdb_init("../stsdb/conf/stsdb.conf");
+	}
+	if (!service || !*service)
+	{
+		sts_out_error(3)("init stsdb error.\n");
+		return STS_MODULE_ERROR;
+	}
+	char servicename[64];
+	sts_sprintf(servicename, 64, "%s", service);
+	if (sts_module_init(ctx_, servicename, 1, STS_MODULE_VER) == STS_MODULE_ERROR)
 		return STS_MODULE_ERROR;
 
 	/* Log the list of parameters passing loading the module. */
@@ -122,20 +135,6 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	// 	const char *s = sts_module_string_get(argv_[k], NULL);
 	// 	printf("module loaded with argv_[%d] = %s\n", k, s);
 	// }
-	int o;
-	if (argc_ == 1)
-	{
-		o = call_stsdb_init(sts_module_string_get(argv_[0], NULL));
-	}
-	else
-	{
-		o = call_stsdb_init("../conf/stsdb.conf");
-	}
-	if (o != STS_MODULE_OK)
-	{
-		printf("llll");
-		return STS_MODULE_ERROR;
-	}
 
 	// if (sts_module_create_command(ctx_, "stsdb.start", call_stsdb_start,
 	// 							  "readonly",
@@ -143,19 +142,22 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	// {
 	// 	return STS_MODULE_ERROR;
 	// }
-	if (sts_module_create_command(ctx_, "stsdb.list", call_stsdb_list,
+	sts_sprintf(servicename, 64, "%s.list", service);
+	if (sts_module_create_command(ctx_, servicename, call_stsdb_list,
 								  "readonly",
 								  0, 0, 0) == STS_MODULE_ERROR)
 	{
 		return STS_MODULE_ERROR;
 	}
-	if (sts_module_create_command(ctx_, "stsdb.get", call_stsdb_get,
+	sts_sprintf(servicename, 64, "%s.get", service);
+	if (sts_module_create_command(ctx_, servicename, call_stsdb_get,
 								  "readonly",
 								  0, 0, 0) == STS_MODULE_ERROR)
 	{
 		return STS_MODULE_ERROR;
-	}	
-	if (sts_module_create_command(ctx_, "stsdb.set", call_stsdb_set,
+	}
+	sts_sprintf(servicename, 64, "%s.set", service);
+	if (sts_module_create_command(ctx_, servicename, call_stsdb_set,
 								  "write deny-oom",
 								  0, 0, 0) == STS_MODULE_ERROR)
 	{
@@ -164,4 +166,3 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 
 	return STS_MODULE_OK;
 }
-

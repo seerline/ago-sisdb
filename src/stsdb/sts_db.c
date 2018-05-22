@@ -2,26 +2,42 @@
 
 #include "sts_db.h"
 
-#ifdef STATIC_STS_DB
-
-static s_sts_db *_sys_sts_db = NULL;
-static s_sts_map_pointer *_sys_sts_define = NULL;
-
 static struct s_sts_map_define _sts_map_defines[] = {
 	/////////////类型定义/////////////
 	{"NONE", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_NONE, 4},
-	{"INDEX", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_INDEX, 4},
-	{"SECOND", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_SECOND, 4},
-	{"MIN1", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_MIN1, 4},
-	{"MIN5", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_MIN5, 4},
-	{"DAY", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_DAY, 4},
-	{"TIME", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_TIME, 8},
-	{"CODE", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_CODE, 8},
+	// {"INDEX", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_INDEX, 4},
+	// {"TIME", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_TIME, 8},
+	// {"CODE", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_CODE, 8},
 	{"STRING", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_STRING, 16},
 	{"INT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_INT, 4},
 	{"UINT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_UINT, 4},
 	{"FLOAT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_FLOAT, 4},
 	{"DOUBLE", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_DOUBLE, 8},
+	/////////////插入和修改方式定义/////////////
+	{"NONE", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_NONE, 0},
+	{"ALWAYS", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_ALWAYS, 0},
+	{"TIME", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_TIME, 0},
+	{"VOL", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_VOL, 0},
+	/////////////数据类型定义/////////////
+	{"NONE", STS_MAP_DEFINE_SCALE, STS_SCALE_NONE, 0},
+	{"MSEC", STS_MAP_DEFINE_SCALE, STS_SCALE_MSEC, 0},
+	{"SECOND", STS_MAP_DEFINE_SCALE, STS_SCALE_SECOND, 0},
+	{"INDEX", STS_MAP_DEFINE_SCALE, STS_SCALE_INDEX, 0},
+	{"MIN1", STS_MAP_DEFINE_SCALE, STS_SCALE_MIN1, 0},
+	{"MIN5", STS_MAP_DEFINE_SCALE, STS_SCALE_MIN5, 0},
+	{"MIN30", STS_MAP_DEFINE_SCALE, STS_SCALE_MIN30, 0},
+	{"DAY", STS_MAP_DEFINE_SCALE, STS_SCALE_DAY, 0},
+	/////////////存入数据的方法定义/////////////
+	{"COVER", STS_MAP_DEFINE_FIELD_METHOD, STS_FIELD_METHOD_COVER, 0},
+	{"MIN", STS_MAP_DEFINE_FIELD_METHOD, STS_FIELD_METHOD_MIN, 0},
+	{"MAX", STS_MAP_DEFINE_FIELD_METHOD, STS_FIELD_METHOD_MAX, 0},
+	{"INIT", STS_MAP_DEFINE_FIELD_METHOD, STS_FIELD_METHOD_INIT, 0},
+	{"INCR", STS_MAP_DEFINE_FIELD_METHOD, STS_FIELD_METHOD_INCR, 0},
+	/////////////压缩类型定义/////////////
+	// { "0", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_NONE, 0 },
+	// { "UP", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_INDEX, 0 },
+	// { "LOCAL", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_NONE, 0 },
+	// { "MULTI", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_SECOND, 0 },
 	/////////////编码定义/////////////
 	// { "SRC", STS_ENCODEING_SRC, 0 },
 	// { "ROW", STS_ENCODEING_ROW, 0 },
@@ -29,23 +45,6 @@ static struct s_sts_map_define _sts_map_defines[] = {
 	// { "ALL", STS_ENCODEING_ALL, 0 },
 	// { "STR", STS_ENCODEING_STR, 0 },
 	// { "COD", STS_ENCODEING_COD, 0 },
-	/////////////插入和修改方式定义/////////////
-	{"NONE", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_NONE, 0},
-	{"ALWAYS", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_ALWAYS, 0},
-	{"TIME", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_TIME, 0},
-	{"VOL", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_VOL, 0},
-	/////////////数据类型定义/////////////
-	{"NONE", STS_MAP_DEFINE_SCALE, STS_FIELD_NONE, 0},
-	{"INDEX", STS_MAP_DEFINE_SCALE, STS_FIELD_INDEX, 0},
-	{"SECOND", STS_MAP_DEFINE_SCALE, STS_FIELD_SECOND, 0},
-	{"DAY", STS_MAP_DEFINE_SCALE, STS_FIELD_DAY, 0},
-	{"MIN1", STS_MAP_DEFINE_SCALE, STS_FIELD_MIN1, 0},
-	{"MIN5", STS_MAP_DEFINE_SCALE, STS_FIELD_MIN5, 0},
-	/////////////压缩类型定义/////////////
-	// { "0", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_NONE, 0 },
-	// { "UP", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_INDEX, 0 },
-	// { "LOCAL", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_NONE, 0 },
-	// { "MULTI", STS_MAP_DEFINE_ZIP_MODE, STS_FIELD_SECOND, 0 },
 	/////////////数据类型定义/////////////
 	{"ZIP", STS_MAP_DEFINE_DATA_TYPE, STS_DATA_ZIP, 0},
 	{"STRUCT", STS_MAP_DEFINE_DATA_TYPE, STS_DATA_STRUCT, 0},
@@ -60,60 +59,72 @@ void _init_map_define(s_sts_map_pointer *fields_)
 
 	for (int i = 0; i < nums; i++)
 	{
-		// printf("[%d:%d] key=%s\n",i,nums,_sts_map_defines[i].key);
-		// struct s_sts_map_define *f = _sts_map_defines[i];
-		// sds key = sdsnew(f->key);
-		// key = sdscatfmt(key, ".%u", f->style);
-		// int rtn = dictAdd(fields_, key, f);
 		sds key = sdsnew(_sts_map_defines[i].key);
 		key = sdscatfmt(key, ".%u", _sts_map_defines[i].style);
 		int rtn = dictAdd(fields_, key, &_sts_map_defines[i]);
 		assert(rtn == DICT_OK);
 	}
 }
-void sts_db_create() //数据库的名称，为空建立一个sys的数据库名
+
+
+s_sts_db *sts_db_create(char *name_) //数据库的名称，为空建立一个sys的数据库名
 {
-	if (!_sys_sts_define)
-	{
-		_sys_sts_define = sts_map_pointer_create();
-		_init_map_define(_sys_sts_define);
-	}
-	if (!_sys_sts_db)
-	{
-		_sys_sts_db = sts_map_pointer_create();
-	}
+	s_sts_db *db = zmalloc(sizeof(s_sts_db));
+	memset(db,0,sizeof(s_sts_db));
+	sts_strcpy(db->name,STS_FIELD_MAXLEN, name_);
+	db->db = sts_map_pointer_create();
+	db->map = sts_map_pointer_create();
+	db->trade_time = sts_struct_list_create(sizeof(s_sts_time_pair),NULL,0);
+	db->save_plans = sts_struct_list_create(sizeof(uint16),NULL,0);
+	
+	_init_map_define(db->map);
+	return db;
 }
-void sts_db_destroy() //关闭一个数据库
+
+void sts_db_destroy(s_sts_db *db_) //关闭一个数据库
 {
+	if(!db_) {
+		return ;
+	}
 	// 遍历字典中table，手动释放实际的table
-	if (_sys_sts_db)
+	if(db_->db){
+	dictEntry *de;
+	dictIterator *di = dictGetSafeIterator(db_->db);
+	while ((de = dictNext(di)) != NULL)
 	{
-		dictEntry *de;
-		dictIterator *di = dictGetSafeIterator(_sys_sts_db);
-		while ((de = dictNext(di)) != NULL)
-		{
-			s_sts_table *val = (s_sts_table *)dictGetVal(de);
-			sts_table_destroy(val);
-		}
-		dictReleaseIterator(di);
-		sts_map_pointer_destroy(_sys_sts_db);
-		_sys_sts_db = NULL;
+		s_sts_table *val = (s_sts_table *)dictGetVal(de);
+		sts_table_destroy(val);
 	}
+	dictReleaseIterator(di);
 
-	if (_sys_sts_define)
-	{
-		sts_map_pointer_destroy(_sys_sts_define);
-		_sys_sts_define = NULL;
 	}
+	sts_map_pointer_destroy(db_->db);
+	sts_map_pointer_destroy(db_->map);
+	sts_struct_list_destroy(db_->trade_time);
+	sts_struct_list_destroy(db_->save_plans);
+
+	zfree(db_);
+}
+//取数据和写数据
+s_sts_table *sts_db_get_table(s_sts_db *db_, const char *name_)
+{
+	s_sts_table *val = NULL;
+	if (db_->db)
+	{	
+		sds key = sdsnew(name_);
+		val = (s_sts_table *)dictFetchValue(db_->db, key);
+		sdsfree(key);
+	}
+	return val;
 }
 
-sds sts_db_get_tables()
+sds sts_db_get_table_info(s_sts_db *db_)
 {
 	sds list = sdsempty();
-	if (_sys_sts_db)
+	if (db_->db)
 	{
 		dictEntry *de;
-		dictIterator *di = dictGetSafeIterator(_sys_sts_db);
+		dictIterator *di = dictGetSafeIterator(db_->db);
 		while ((de = dictNext(di)) != NULL)
 		{
 			s_sts_table *val = (s_sts_table *)dictGetVal(de);
@@ -126,61 +137,8 @@ sds sts_db_get_tables()
 
 	return list;
 }
-//取数据和写数据
-s_sts_table *sts_db_get_table(const char *name_)
-{
-	s_sts_table *val = NULL;
-	if (_sys_sts_db)
-	{	
-		sds key = sdsnew(name_);
-		val = (s_sts_table *)dictFetchValue(_sys_sts_db, key);
-		sdsfree(key);
-	}
-	return val;
-}
 
-void sts_db_install_table(s_sts_table *tb_)
-{
-	if (_sys_sts_db)
-	{
-		dictAdd(_sys_sts_db, sdsnew(tb_->name), tb_);
-	}
-}
-
-
-#else
-s_sts_db *sts_db_create() //数据库的名称，为空建立一个sys的数据库名
-{
-	s_sts_db *db = sts_map_pointer_create();
-	return db;
-}
-void sts_db_destroy(s_sts_db *db_) //关闭一个数据库
-{
-	// 遍历字典中table，手动释放实际的table
-	dictEntry *de;
-	dictIterator *di = dictGetSafeIterator(db_);
-	while ((de = dictNext(di)) != NULL)
-	{
-		s_sts_table *val = (s_sts_table *)dictGetVal(de);
-		sts_table_destroy(val);
-	}
-	dictReleaseIterator(di);
-	sts_map_pointer_destroy(db_);
-}
-//取数据和写数据
-s_sts_table *sts_db_get_table(s_sts_db *db_, const char *name_)
-{
-	s_sts_table *val = (s_sts_table *)dictFetchValue(db_, name_);
-	return val;
-}
-
-void sts_db_install_table(s_sts_db *db_, s_sts_table *table_)
-{
-	dictAdd(db_, sdsnew(table_->name), table_);
-}
-#endif
-
-s_sts_map_define *sts_db_find_map_define(const char *name_, uint8 style_)
+s_sts_map_define *sts_db_find_map_define(s_sts_db *db_, const char *name_, uint8 style_)
 {
 	if (!name_)
 	{
@@ -188,15 +146,15 @@ s_sts_map_define *sts_db_find_map_define(const char *name_, uint8 style_)
 	}
 	sds key = sdsnew(name_);
 	key = sdscatfmt(key, ".%u", style_);
-	s_sts_map_define *val = (s_sts_map_define *)dictFetchValue(_sys_sts_define, key);
+	s_sts_map_define *val = (s_sts_map_define *)dictFetchValue(db_->map, key);
 	sdsfree(key);
-	printf("%s,%p\n",name_,val);
+	// printf("%s,%p\n",name_,val);
 	return val;
 }
 
-int sts_db_find_map_uid(const char *name_, uint8 style_)
+int sts_db_find_map_uid(s_sts_db *db_, const char *name_, uint8 style_)
 {
-	s_sts_map_define *map =sts_db_find_map_define(name_, style_);
+	s_sts_map_define *map =sts_db_find_map_define(db_, name_, style_);
 	if (!map)
 	{
 		return 0;

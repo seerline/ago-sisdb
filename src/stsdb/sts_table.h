@@ -36,6 +36,9 @@
 #define STS_DATA_ARRAY   '['   // Ö±½Ó´«Êý¾Ý
 
 #pragma pack(push,1)
+
+typedef struct s_sts_db s_sts_db;
+
 typedef struct s_sts_table_control {
 	uint32 version;      // Êý¾Ý±íµÄ°æ±¾ºÅtime_t¸ñÊ½
 	uint8  data_type;    // Êý¾ÝÀàÐÍ Ä¿Ç°Ã»Ê²Ã´ÓÃ
@@ -45,17 +48,25 @@ typedef struct s_sts_table_control {
 	uint8  update_mode;  // ÐÞ¸ÄÊý¾Ý·½Ê½
 }s_sts_table_control;
 
+#define STS_TABLE_LINK_COVER  0
+#define STS_TABLE_LINK_INCR   1
+
 typedef struct s_sts_table {
 	sds name;            //±íµÄÃû×Ö
+	s_sts_db *father;            //Êý¾Ý¿âµÄÖ¸Õë£¬ÔÚinstall±í¸ñÊ±¸³Öµ
 	s_sts_table_control control;       // ±í¿ØÖÆ¶¨Òå
+	s_sts_string_list  *links;         // µ±ÐÞ¸Ä±¾Êý¾Ý±íÊ±£¬Í¬Ê±ÐèÒªÐÞ¸ÄµÄÆäËûÊý¾Ý±í
 	s_sts_string_list  *field_name;      // °´Ë³ÐòÅÅµÄÃû×Ö
 	s_sts_map_pointer  *field_map;       // ×Ö¶Î¶¨Òå×Öµä±í£¬°´×Ö¶ÎÃû´æ´¢µÄ×Ö¶ÎÄÚ´æ¿é£¬Ö¸Ïòsts_field_unit
 	s_sts_map_pointer  *collect_map;     // Êý¾Ý¶¨Òå×Öµä±í£¬°´¹ÉÆ±Ãû´æ´¢µÄÊý¾ÝÄÚ´æ¿é£¬Ö¸Ïòsts_collect_unit
+
+	bool catch;   // ÊÇ·ñ¶Ôcollect½¨Á¢catch£»
+
 }s_sts_table;
 
 #pragma pack(pop)
 
-s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command);  //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
+s_sts_table *sts_table_create(s_sts_db *db_,const char *name_, s_sts_json_node *command);  //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
 // commandÎªjsonÃüÁî
 //ÓÃ»§´«ÈëµÄcommandÖÐ¹Ø¼ü×ÖµÄ¶¨ÒåÈçÏÂ£º
 //×Ö¶Î¶¨Òå£º  "fields":  []
@@ -76,17 +87,18 @@ void sts_table_set_limit_rows(s_sts_table *, uint32); // 0 -- ²»ÏÞÖÆ  1 -- Ö»±£Á
 void sts_table_set_insert_mode(s_sts_table *, uint8_t); // 1 -- ÅÐ¶ÏºóÐÞ¸Ä 0 2
 
 void sts_table_set_fields(s_sts_table *, s_sts_json_node *fields_); //commandÎªÒ»¸öjson¸ñÊ½×Ö¶Î¶¨Òå
-//»ñÈ¡Êý¾Ý¿âµÄ¸÷ÖÖÖµ
-s_sts_field_unit *sts_table_get_field(s_sts_table *tb_, const char *name_);
+//µÃµ½¼ÇÂ¼µÄ³¤¶È
 int sts_table_get_fields_size(s_sts_table *);
 
 // »ñÈ¡Ê±¼äÐòÁÐ,Ä¬ÈÏÎªµÚÒ»¸ö×Ö¶Î£¬ÈôµÚÒ»¸ö×Ö¶Î²»·ûºÏ±ê×¼£¬ÍùÏÂÕÒ
-uint64 sts_table_get_times(s_sts_table *, void *); 
 
-//µÃµ½¼ÇÂ¼µÄ³¤¶È
-//È¡Êý¾ÝºÍÐ´Êý¾Ý
+uint64 sts_table_struct_trans_time(uint64 in_, int inscale_, s_sts_table *out_tb_, int outscale_);
+
+// Ò»¸öÊý¾ÝÍ¬Ê±Ð´¶à¸ö¿â
+int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char *in_, size_t ilen_);
+
 // À´Ô´Êý¾ÝÊÇjson»òÕßstruct£¬tableÊÇstructÊý¾Ý
-int sts_table_update(s_sts_table *, const char *key_, int type_, const char * value_, size_t len_);
+int sts_table_update(int type_, s_sts_table *, const char *key_, const char * in_, size_t ilen_);
 //ÐÞ¸ÄÊý¾Ý£¬key_Îª¹ÉÆ±´úÂë»òÊÐ³¡±àºÅ£¬value_Îª¶þ½øÖÆ½á¹¹»¯Êý¾Ý»òjsonÊý¾Ý
 sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //·µ»ØÊý¾ÝÐèÒªÊÍ·Å
 
@@ -115,7 +127,5 @@ int sts_table_delete(s_sts_table *, const char *key_, const char *command);// co
 //						count(ºÍmax»¥³â£¬Õý±íÊ¾Ïòºó£¬¸º±íÊ¾ÏòÇ°),
 //Êý¾Ý·¶Î§£º"range":    start£¬stop °´¼ÇÂ¼ºÅÈ¡Êý¾Ý 0£¬-1-->±íÊ¾È«²¿Êý¾Ý
 //						count(ºÍstop»¥³â£¬Õý±íÊ¾Ïòºó£¬¸º±íÊ¾ÏòÇ°),
-
-//     
 
 #endif  /* _STS_TABLE_H */

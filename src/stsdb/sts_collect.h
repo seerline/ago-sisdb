@@ -23,6 +23,11 @@
 #define STS_SEARCH_RIGHT     3  // 附近的数据
 #define STS_SEARCH_OK        0  // 准确匹配的数据
 
+#define STS_SEARCH_CHECK_INIT   0  // 当日最新记录，先简单按日期来判定
+#define STS_SEARCH_CHECK_NEW    1  // 当日新增记录，新来的时间大于最后一条记录
+#define STS_SEARCH_CHECK_OLD    2  // 记录，新来的时间小于或等于最后一条记录
+#define STS_SEARCH_CHECK_ERROR  3  // 错误，不处理
+
 #define STS_JSON_KEY_ARRAY    ("value")   
 #define STS_JSON_KEY_ARRAYS   ("values")   
 #define STS_JSON_KEY_GROUPS   ("groups")   
@@ -42,6 +47,10 @@ typedef struct s_sts_collect_unit{
 	s_sts_table        *father;  // 表的指针，可以获得字段定义的相关信息
 	s_sts_step_index   *stepinfo;    // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sts_struct_list  *value;   // 结构化数据
+
+	sds  front;   // 前一分钟的记录 catch=true生效 -- 存盘时一定要保存
+	sds  lasted; // 当前那一分钟的记录 catch=true生效 -- 存盘时一定要保存
+	sds  moved;   // 移动中的
 }s_sts_collect_unit;
 
 #pragma pack(pop)
@@ -65,6 +74,8 @@ uint64 sts_collect_unit_get_time(s_sts_collect_unit *unit_, int index_);
 
 int	sts_collect_unit_recs(s_sts_collect_unit *unit_);
 int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 index_);
+//检查是否增加记录，只和最后一条记录做比较，返回3个，一是当日最新记录，一是新记录，一是老记录
+int sts_collect_unit_search_check(s_sts_collect_unit *unit_, uint64 index_);
 int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 index_, int *mode_);
 int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 index_, int *mode_);
 
@@ -86,5 +97,8 @@ sds sts_collect_array_to_struct(s_sts_collect_unit *, const char *in_, size_t il
 sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fields_);
 sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *fields_);
 sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *fields_);
+
+void sts_collect_struct_trans(sds ins_, s_sts_field_unit *infu_, s_sts_table *indb_, sds outs_, s_sts_field_unit *outfu_,s_sts_table *outdb_);
+// void sts_collect_struct_trans_incr(sds ins_,sds dbs_, s_sts_field_unit *infu_, s_sts_table *indb_, sds outs_, s_sts_field_unit *outfu_,s_sts_table *outdb_);
 
 #endif  /* _STS_COLLECT_H */

@@ -1109,6 +1109,9 @@ bool sts_json_get_bool(s_sts_json_node *root_, const char *key_, bool defaultval
 
 int sts_json_get_size(s_sts_json_node *node_)
 {
+	if (!node_||!node_->child) {
+		return 0;
+	}
 	s_sts_json_node *c = node_->child;
 	int i = 0;
 	while (c)

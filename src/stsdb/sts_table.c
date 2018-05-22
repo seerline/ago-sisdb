@@ -5,40 +5,46 @@
 #include "sts_db.h"
 
 //command为一个json格式字段定义
-s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command)
+s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node *command)
 {
-	s_sts_table *tb = sts_db_get_table(name_);
+	s_sts_table *tb = sts_db_get_table(db_, name_);
 	if (tb)
 	{
 		sts_table_destroy(tb);
 	}
 	// 先加载默认配置
 	tb = zmalloc(sizeof(s_sts_table));
-	tb->control.data_type = STS_DATA_STRUCT;
-	tb->control.time_scale = STS_FIELD_SECOND;
+	memset(tb, 0 ,sizeof(s_sts_table));
+
+	tb->control.data_type = STS_DATA_STRUCT; // 默认保存的目前都是struct，
+	tb->control.time_scale = STS_SCALE_SECOND;
 	tb->control.limit_rows = sts_json_get_int(command, "limit", 0);
 	// printf("=====%s limit %d\n", name_, tb->control.limit_rows);
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
 	tb->control.version = (uint32)sts_time_get_now();
+
+	dictAdd(db_->db, sdsnew(name_), tb);
+	tb->father = db_;
+
 	// 加载实际配置
 	s_sts_map_define *map = NULL;
 	const char *strval = NULL;
 
 	strval = sts_json_get_str(command, "scale");
-	map = sts_db_find_map_define(strval, STS_MAP_DEFINE_SCALE);
+	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_SCALE);
 	if (map)
 	{
 		tb->control.time_scale = map->uid;
 	}
 	strval = sts_json_get_str(command, "insert-mode");
-	map = sts_db_find_map_define(strval, STS_MAP_DEFINE_OPTION_MODE);
+	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_OPTION_MODE);
 	if (map)
 	{
 		tb->control.insert_mode = map->uid;
 	}
 	strval = sts_json_get_str(command, "update-mode");
-	map = sts_db_find_map_define(strval, STS_MAP_DEFINE_OPTION_MODE);
+	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_OPTION_MODE);
 	if (map)
 	{
 		tb->control.update_mode = map->uid;
@@ -46,10 +52,42 @@ s_sts_table *sts_table_create(const char *name_, s_sts_json_node *command)
 
 	tb->name = sdsnew(name_);
 	tb->collect_map = sts_map_pointer_create();
+	//处理链接数据表名
+	tb->links = sts_string_list_create_w();
+	
+	if (sts_json_cmp_child_node(command, "links")) {
+		strval = sts_json_get_str(command, "links");
+		sts_string_list_load(tb->links, strval, strlen(strval),",");
+	}
+
 	//处理字段定义
 	tb->field_name = sts_string_list_create_w();
 	tb->field_map = sts_map_pointer_create();
+
+	// 顺序不能变，必须最后
 	sts_table_set_fields(tb, sts_json_cmp_child_node(command, "fields"));
+
+	s_sts_json_node *cache = sts_json_cmp_child_node(command, "fields-cache");
+	if (cache){
+		tb->catch = true;
+		s_sts_json_node *child = cache->child;
+		while(child){
+			s_sts_field_unit *fu = sts_field_get_from_key(tb, child->key);
+			if (fu) {
+				fu->catch_method = STS_FIELD_METHOD_COVER;
+				map = sts_db_find_map_define(db_, sts_json_get_str(child, "0"), STS_MAP_DEFINE_FIELD_METHOD);
+				if (map)
+				{
+					fu->catch_method = map->uid;
+				}
+				sts_strcpy(fu->catch_initfield,STS_FIELD_MAXLEN,sts_json_get_str(child, "1"));
+				printf("%s==%d  %s\n",child->key, fu->catch_method, fu->catch_initfield);
+			}
+			printf("[%s] %s=====%p\n", tb->name, child->key, fu);
+			child= child->next;
+		}
+	}
+
 	return tb;
 }
 
@@ -65,6 +103,9 @@ void sts_table_destroy(s_sts_table *tb_)
 		sts_field_unit_destroy(val);
 	}
 	dictReleaseIterator(di);
+
+	sts_string_list_destroy(tb_->links);
+
 	sts_map_pointer_destroy(tb_->field_map);
 	sts_string_list_destroy(tb_->field_name);
 	//删除数据区
@@ -131,7 +172,7 @@ void sts_table_set_fields(s_sts_table *tb_, s_sts_json_node *fields_)
 		flags.refer = 0;
 
 		const char *val = sts_json_get_str(node, "1");
-		map = sts_db_find_map_define(val, STS_MAP_DEFINE_FIELD_TYPE);
+		map = sts_db_find_map_define(tb_->father, val, STS_MAP_DEFINE_FIELD_TYPE);
 		if (map)
 		{
 			flags.type = map->uid;
@@ -141,7 +182,7 @@ void sts_table_set_fields(s_sts_table *tb_, s_sts_json_node *fields_)
 			sts_field_unit_create(index++, name, &flags);
 		unit->offset = offset;
 		offset += unit->flags.len;
-		printf("[%d:%d] name=%s len=%d\n", index, offset, name, flags.len);
+		// printf("[%d:%d] name=%s len=%d\n", index, offset, name, flags.len);
 		sts_map_pointer_set(tb_->field_map, name, unit);
 		sts_string_list_push(tb_->field_name, name, strlen(name));
 
@@ -149,17 +190,6 @@ void sts_table_set_fields(s_sts_table *tb_, s_sts_json_node *fields_)
 	}
 }
 
-//获取数据库的各种值
-s_sts_field_unit *sts_table_get_field(s_sts_table *tb_, const char *name_)
-{
-	if (!name_)
-	{
-		return NULL;
-	}
-	s_sts_field_unit *val = (s_sts_field_unit *)sts_map_pointer_get(tb_->field_map, name_);
-	//	s_sts_field_unit *val = (s_sts_field_unit *)dictFetchValue(tb_->field_map, name_);
-	return val;
-}
 
 int sts_table_get_fields_size(s_sts_table *tb_)
 {
@@ -175,30 +205,310 @@ int sts_table_get_fields_size(s_sts_table *tb_)
 	return len;
 }
 
-uint64 sts_table_get_times(s_sts_table *tb_, void *val_)
+// uint64 sts_table_get_times(s_sts_table *tb_, void *val_)
+// {
+// 	uint64 out = 0;
+// 	int count = sts_string_list_getsize(tb_->field_name);
+// 	for (int i = 0; i < count; i++)
+// 	{
+// 		s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb_->field_map, sts_string_list_get(tb_->field_name, i));
+// 		if (!fu)
+// 		{
+// 			continue;
+// 		}
+// 		if (sts_field_is_time(fu))
+// 		{
+// 			out = sts_fields_get_uint(fu, (const char *)val_);
+// 			break;
+// 		}
+// 	}
+// 	return out;
+// }
+
+//time_t 返回０－２３９
+// 不允许返回-1
+uint16 _sts_ttime_to_trade_index(uint64 ttime_, s_sts_struct_list *tradetime_)
 {
-	uint64 out = 0;
-	int count = sts_string_list_getsize(tb_->field_name);
-	for (int i = 0; i < count; i++)
+	int tt = sts_time_get_iminute(ttime_);
+
+	int nowmin = 0;
+	int out = 0;
+
+	s_sts_time_pair *pair;
+	for (int i = 0; i < tradetime_->count; i++)
 	{
-		s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb_->field_map, sts_string_list_get(tb_->field_name, i));
-		if (!fu)
+		pair = (s_sts_time_pair *)sts_struct_list_get(tradetime_, i);
+		if (tt > pair->first && tt < pair->second) //9:31:00--11:29:59  13:01:00--14:59:59
 		{
-			continue;
-		}
-		if (sts_field_is_times(fu))
-		{
-			out = sts_fields_get_uint(fu, (const char *)val_);
+			out = nowmin + sts_time_get_iminute_offset_i(pair->first, tt);
 			break;
+		}
+		if (tt <= pair->first && i == 0)
+		{ // 8:00:00---9:30:59秒前都=0
+			return 0;
+		}
+		if (tt <= pair->first && (tt > sts_time_get_iminute_minnum(pair->first, -5)))
+		{ //12:55:59--13:00:59秒
+			return nowmin;
+		}
+
+		nowmin += sts_time_get_iminute_offset_i(pair->first, pair->second);
+
+		if (tt >= pair->second && i == tradetime_->count - 1)
+		{ //15:00:00秒后
+			return nowmin - 1;
+		}
+		// if (tt >= pair->second && (tt < sts_time_get_iminute_minnum(pair->second, 5)))
+		// { //11:30:00--11:34:59秒
+		// 	return nowmin - 1;
+		// }
+		if (tt >= pair->second)
+		{ //11:30:00--11:34:59秒
+			if (tt < sts_time_get_iminute_minnum(pair->second, 5)){
+				return nowmin - 1;
+			} else {
+				out = nowmin;
+			}
+			
 		}
 	}
 	return out;
 }
+uint64 _sts_trade_index_to_ttime(int date_, int nIndex_, s_sts_struct_list *tradetime_)
+{
+	int tt = nIndex_;
+	int nowmin = 0;
+	s_sts_time_pair *pair = (s_sts_time_pair *)sts_struct_list_get(tradetime_, tradetime_->count - 1);
+	uint64 out = sts_time_make_time(date_, pair->second * 100);
+	for (int i = 0; i<tradetime_->count; i++)
+	{
+		pair = (s_sts_time_pair *)sts_struct_list_get(tradetime_, i);
+		nowmin = sts_time_get_iminute_offset_i(pair->first, pair->second);
+		if (tt < nowmin)
+		{
+			int min = sts_time_get_iminute_minnum(pair->first, tt + 1);
+			out = sts_time_make_time(date_, min * 100);
+			break;
+		}
+		tt -= nowmin;
+	}
+	return out;
+}
+uint64 sts_table_struct_trans_time(uint64 in_, int inscale_, s_sts_table *out_tb_, int outscale_)
+{
+	if (inscale_ > outscale_)
+	{
+		return in_;
+	}
+	if (inscale_ == STS_SCALE_DAY)
+	{
+		return in_;
+	}
+	uint64 o = in_;
+	int date = sts_time_get_idate(o);
+	if (inscale_ == STS_SCALE_MSEC)
+	{
+		o = (uint64)(o / 1000);
+	}
+	switch (outscale_)
+	{
+	case STS_SCALE_MSEC:
+		return in_;
+	case STS_SCALE_SECOND:
+		return o;
+	case STS_SCALE_INDEX:
+		o = _sts_ttime_to_trade_index(o, out_tb_->father->trade_time);
+		break;
+	case STS_SCALE_MIN1:
+		o = _sts_ttime_to_trade_index(o, out_tb_->father->trade_time);
+		o = _sts_trade_index_to_ttime(date, o ,out_tb_->father->trade_time);
+		break;
+	case STS_SCALE_MIN5:
+		o = _sts_ttime_to_trade_index(o, out_tb_->father->trade_time);
+		o = _sts_trade_index_to_ttime(date, ((int)(o / 5) + 1)*5 - 1, out_tb_->father->trade_time);
+		break;
+	case STS_SCALE_MIN30:
+		o = _sts_ttime_to_trade_index(o, out_tb_->father->trade_time);
+		o = _sts_trade_index_to_ttime(date, ((int)(o / 30) + 1)*30 - 1, out_tb_->father->trade_time);
+		break;
+	case STS_SCALE_DAY:
+		o = date;
+		break;
+	}
+	return o;
+}
+sds _sts_table_struct_trans(s_sts_collect_unit *in_unit_, sds ins_, s_sts_collect_unit *out_unit_)
+{
+	// const char *src = sts_struct_list_get(out_unit_->value, out_unit_->value->count - 1);
+
+	s_sts_table *in_tb = in_unit_->father;
+	s_sts_table *out_tb = out_unit_->father;
+
+	int count = (int)(sdslen(ins_) / in_unit_->value->len);
+	sds outs_ = sdsnewlen(NULL, count * out_unit_->value->len);
+
+	sds ins = ins_;
+	sds outs = outs_;
+
+	int fields = sts_string_list_getsize(out_tb->field_name);
+
+	for (int k = 0; k < count; k++)
+	{
+		for (int m = 0; m < fields; m++)
+		{
+			const char *key = sts_string_list_get(out_tb->field_name, m);
+			s_sts_field_unit *out_fu = (s_sts_field_unit *)sts_map_buffer_get(out_tb->field_map, key);
+			// printf("key=%s size=%d offset=%d\n", key, fields, fu->offset);
+			s_sts_field_unit *in_fu = (s_sts_field_unit *)sts_map_buffer_get(in_tb->field_map, key);
+			if (!in_fu)
+			{
+				continue;
+			}
+			sts_collect_struct_trans(ins, in_fu, in_tb, outs, out_fu, out_tb);
+		}
+		ins += in_unit_->value->len;
+		outs += out_unit_->value->len;
+		// 下一块数据
+	}
+	return outs_;
+}
+
+// sds _sts_table_struct_trans_incr(s_sts_collect_unit *in_unit_, sds ins_, sds dbs_, s_sts_collect_unit *out_unit_, s_sts_string_list *fields_)
+// {
+// 	// 需要求差值然后根据情况不同累计到目标数据表中
+// 	s_sts_table *in_tb = in_unit_->father;
+// 	s_sts_table *out_tb = out_unit_->father;
+
+// 	int count = (int)(sdslen(ins_) / in_unit_->value->len);
+// 	sds outs_ = sdsnewlen(NULL, count * out_unit_->value->len);
+
+// 	sds ins = ins_;
+// 	sds dbs = dbs_;
+// 	sds outs = outs_;
+
+// 	int fields = sts_string_list_getsize(out_tb->field_name);
+
+// 	for (int k = 0; k < count; k++)
+// 	{
+// 		for (int m = 0; m < fields; m++)
+// 		{
+// 			const char *key = sts_string_list_get(out_tb->field_name, m);
+// 			s_sts_field_unit *out_fu = (s_sts_field_unit *)sts_map_buffer_get(out_tb->field_map, key);
+// 			// printf("key=%s size=%d offset=%d\n", key, fields, fu->offset);
+// 			s_sts_field_unit *in_fu = (s_sts_field_unit *)sts_map_buffer_get(in_tb->field_map, key);
+// 			if (!in_fu)
+// 			{
+// 				continue;
+// 			}
+// 			if (sts_string_list_indexof(fields_,key)) // 需要做增量计算
+// 			{
+// 				sts_collect_struct_trans_incr(ins, dbs, in_fu, in_tb, outs, out_fu, out_tb);
+// 			} else {		
+// 				sts_collect_struct_trans(ins, in_fu, in_tb, outs, out_fu, out_tb);
+// 			}
+// 		}
+// 		dbs = ins;  // 和上一条记录比较
+// 		ins += in_unit_->value->len;
+// 		outs += out_unit_->value->len;
+// 		// 下一块数据
+// 	}
+// 	return outs_;
+// }
 //////////////////////////////////////////////////////////////////////////////////
-//修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
+// 同时修改多个数据库，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 //////////////////////////////////////////////////////////////////////////////////
 
-int sts_table_update(s_sts_table *tb_, const char *key_, int type_, const char *value_, size_t len_)
+int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const char *in_, size_t ilen_)
+{
+	// 1 . 先把来源数据，转换为srcdb的二进制结构数据集合
+	s_sts_collect_unit *in_collect = sts_map_buffer_get(table_->collect_map, key_);
+	if (!in_collect)
+	{
+		in_collect = sts_collect_unit_create(table_, key_);
+		sts_map_buffer_set(table_->collect_map, key_, in_collect);
+	}
+
+	sds in_val = NULL;
+
+	switch (type_)
+	{
+	case STS_DATA_JSON:
+		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
+		// 用新的数据进行覆盖，然后返回数据
+		in_val = sts_collect_json_to_struct(in_collect, in_, ilen_);
+		break;
+	case STS_DATA_ARRAY:
+		in_val = sts_collect_array_to_struct(in_collect, in_, ilen_);
+		break;
+	default:
+		in_val = sdsnewlen(in_, ilen_);
+	}
+	// ------- val 就是hi已经转换好的完整的结构化数据 -----//
+	// 2. 先修改自己
+	if (!in_val)
+	{
+		return 0;
+	}
+	sds db_val = sdsnewlen(sts_struct_list_get(in_collect->value, in_collect->value->count - 1), 
+						   in_collect->value->len);
+	// 先储存上一次的数据，
+	int o = sts_collect_unit_update(in_collect, in_val, sdslen(in_val));
+
+	// 3. 顺序改其他数据表，
+	// **** 修改其他数据表时应该和单独修改min不同，需要修正vol和money两个字段*****
+	int count = sts_string_list_getsize(table_->links);
+	// printf("links=%d\n", count);
+
+	sds link_val = NULL;
+	s_sts_table *link_table;
+	s_sts_collect_unit *link_collect;
+	for (int k = 0; k < count; k++)
+	{
+		const char *link_db = sts_string_list_get(table_->links, k);
+		// printf("links=%d  db=%s\n", k, link_db);
+		link_table = sts_db_get_table(table_->father, link_db);
+		if (!link_table)
+		{
+			continue;
+		}
+		// 时间跨度大的不能转到跨度小的数据表
+		if (table_->control.time_scale > link_table->control.time_scale)
+		{
+			continue;
+		}
+		link_collect = sts_map_buffer_get(link_table->collect_map, key_);
+		if (!link_collect)
+		{
+			link_collect = sts_collect_unit_create(link_table, key_);
+			sts_map_buffer_set(link_table->collect_map, key_, link_collect);
+		}
+		//---- 转换到其他数据库的数据格式 ----//
+		link_val = _sts_table_struct_trans(in_collect, in_val, link_collect);
+		//---- 修改数据 ----//
+		if (link_val)
+		{
+			// printf("table_=%lld\n",sts_fields_get_uint_from_key(table_,"time",in_val));
+			// printf("link_table=%lld\n",sts_fields_get_uint_from_key(link_table,"time",link_val));
+			sts_collect_unit_update(link_collect, link_val, sdslen(link_val));
+			sdsfree(link_val);
+		}
+	}
+	// 5. 释放内存
+	if (in_val)
+	{
+		sdsfree(in_val);
+	}
+	if (db_val)
+	{
+		sdsfree(db_val);
+	}
+	return o;
+}
+//////////////////////////////////////////////////////////////////////////////////
+//修改数据，key_为股票代码或市场编号，in_为二进制结构化数据或json数据
+//////////////////////////////////////////////////////////////////////////////////
+
+int sts_table_update(int type_, s_sts_table *tb_, const char *key_, const char *in_, size_t ilen_)
 {
 	s_sts_collect_unit *collect = sts_map_buffer_get(tb_->collect_map, key_);
 	// printf("---collect %p---%p--%d\n", collect, tb_->field_map, sts_table_get_fields_size(tb_));
@@ -215,7 +525,7 @@ int sts_table_update(s_sts_table *tb_, const char *key_, int type_, const char *
 	case STS_DATA_JSON:
 		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
 		// 用新的数据进行覆盖，然后返回数据
-		val = sts_collect_json_to_struct(collect, value_, len_);
+		val = sts_collect_json_to_struct(collect, in_, ilen_);
 		if (val)
 		{
 			o = sts_collect_unit_update(collect, val, sdslen(val));
@@ -223,7 +533,7 @@ int sts_table_update(s_sts_table *tb_, const char *key_, int type_, const char *
 		}
 		break;
 	case STS_DATA_ARRAY:
-		val = sts_collect_array_to_struct(collect, value_, len_);
+		val = sts_collect_array_to_struct(collect, in_, ilen_);
 		if (val)
 		{
 			o = sts_collect_unit_update(collect, val, sdslen(val));
@@ -231,7 +541,7 @@ int sts_table_update(s_sts_table *tb_, const char *key_, int type_, const char *
 		}
 		break;
 	default:
-		o = sts_collect_unit_update(collect, value_, len_);
+		o = sts_collect_unit_update(collect, in_, ilen_);
 	}
 	return o;
 }
@@ -440,7 +750,7 @@ filter:
 	s_sts_json_node *format = sts_json_cmp_child_node(handle->node, "format");
 	if (format)
 	{
-		s_sts_map_define *smd = sts_db_find_map_define(format->value, STS_MAP_DEFINE_DATA_TYPE);
+		s_sts_map_define *smd = sts_db_find_map_define(tb_->father, format->value, STS_MAP_DEFINE_DATA_TYPE);
 		if (smd)
 		{
 			iformat = smd->uid;
