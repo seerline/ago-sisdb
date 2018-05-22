@@ -66,37 +66,37 @@ void _init_map_define(s_sts_map_pointer *fields_)
 	}
 }
 
-
 s_sts_db *sts_db_create(char *name_) //数据库的名称，为空建立一个sys的数据库名
 {
 	s_sts_db *db = zmalloc(sizeof(s_sts_db));
-	memset(db,0,sizeof(s_sts_db));
-	sts_strcpy(db->name,STS_FIELD_MAXLEN, name_);
+	memset(db, 0, sizeof(s_sts_db));
+	sts_strcpy(db->name, STS_FIELD_MAXLEN, name_);
 	db->db = sts_map_pointer_create();
 	db->map = sts_map_pointer_create();
-	db->trade_time = sts_struct_list_create(sizeof(s_sts_time_pair),NULL,0);
-	db->save_plans = sts_struct_list_create(sizeof(uint16),NULL,0);
-	
+	db->trade_time = sts_struct_list_create(sizeof(s_sts_time_pair), NULL, 0);
+	db->save_plans = sts_struct_list_create(sizeof(uint16), NULL, 0);
+
 	_init_map_define(db->map);
 	return db;
 }
 
 void sts_db_destroy(s_sts_db *db_) //关闭一个数据库
 {
-	if(!db_) {
-		return ;
+	if (!db_)
+	{
+		return;
 	}
 	// 遍历字典中table，手动释放实际的table
-	if(db_->db){
-	dictEntry *de;
-	dictIterator *di = dictGetSafeIterator(db_->db);
-	while ((de = dictNext(di)) != NULL)
+	if (db_->db)
 	{
-		s_sts_table *val = (s_sts_table *)dictGetVal(de);
-		sts_table_destroy(val);
-	}
-	dictReleaseIterator(di);
-
+		dictEntry *de;
+		dictIterator *di = dictGetSafeIterator(db_->db);
+		while ((de = dictNext(di)) != NULL)
+		{
+			s_sts_table *val = (s_sts_table *)dictGetVal(de);
+			sts_table_destroy(val);
+		}
+		dictReleaseIterator(di);
 	}
 	sts_map_pointer_destroy(db_->db);
 	sts_map_pointer_destroy(db_->map);
@@ -110,7 +110,7 @@ s_sts_table *sts_db_get_table(s_sts_db *db_, const char *name_)
 {
 	s_sts_table *val = NULL;
 	if (db_->db)
-	{	
+	{
 		sds key = sdsnew(name_);
 		val = (s_sts_table *)dictFetchValue(db_->db, key);
 		sdsfree(key);
@@ -129,9 +129,9 @@ sds sts_db_get_table_info(s_sts_db *db_)
 		{
 			s_sts_table *val = (s_sts_table *)dictGetVal(de);
 			list = sdscatprintf(list, "  %-10s : fields=%2d, collects=%lu\n",
-					val->name, 
-					sts_string_list_getsize(val->field_name),
-					sts_map_buffer_getsize(val->collect_map));
+								val->name,
+								sts_string_list_getsize(val->field_name),
+								sts_map_buffer_getsize(val->collect_map));
 		}
 	}
 
@@ -154,7 +154,7 @@ s_sts_map_define *sts_db_find_map_define(s_sts_db *db_, const char *name_, uint8
 
 int sts_db_find_map_uid(s_sts_db *db_, const char *name_, uint8 style_)
 {
-	s_sts_map_define *map =sts_db_find_map_define(db_, name_, style_);
+	s_sts_map_define *map = sts_db_find_map_define(db_, name_, style_);
 	if (!map)
 	{
 		return 0;

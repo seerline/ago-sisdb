@@ -14,7 +14,7 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	}
 	// 先加载默认配置
 	tb = zmalloc(sizeof(s_sts_table));
-	memset(tb, 0 ,sizeof(s_sts_table));
+	memset(tb, 0, sizeof(s_sts_table));
 
 	tb->control.data_type = STS_DATA_STRUCT; // 默认保存的目前都是struct，
 	tb->control.time_scale = STS_SCALE_SECOND;
@@ -54,10 +54,11 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	tb->collect_map = sts_map_pointer_create();
 	//处理链接数据表名
 	tb->links = sts_string_list_create_w();
-	
-	if (sts_json_cmp_child_node(command, "links")) {
+
+	if (sts_json_cmp_child_node(command, "links"))
+	{
 		strval = sts_json_get_str(command, "links");
-		sts_string_list_load(tb->links, strval, strlen(strval),",");
+		sts_string_list_load(tb->links, strval, strlen(strval), ",");
 	}
 
 	//处理字段定义
@@ -68,23 +69,26 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	sts_table_set_fields(tb, sts_json_cmp_child_node(command, "fields"));
 
 	s_sts_json_node *cache = sts_json_cmp_child_node(command, "fields-cache");
-	if (cache){
+	if (cache)
+	{
 		tb->catch = true;
 		s_sts_json_node *child = cache->child;
-		while(child){
+		while (child)
+		{
 			s_sts_field_unit *fu = sts_field_get_from_key(tb, child->key);
-			if (fu) {
+			if (fu)
+			{
 				fu->catch_method = STS_FIELD_METHOD_COVER;
 				map = sts_db_find_map_define(db_, sts_json_get_str(child, "0"), STS_MAP_DEFINE_FIELD_METHOD);
 				if (map)
 				{
 					fu->catch_method = map->uid;
 				}
-				sts_strcpy(fu->catch_initfield,STS_FIELD_MAXLEN,sts_json_get_str(child, "1"));
-				printf("%s==%d  %s\n",child->key, fu->catch_method, fu->catch_initfield);
+				sts_strcpy(fu->catch_initfield, STS_FIELD_MAXLEN, sts_json_get_str(child, "1"));
+				printf("%s==%d  %s\n", child->key, fu->catch_method, fu->catch_initfield);
 			}
 			printf("[%s] %s=====%p\n", tb->name, child->key, fu);
-			child= child->next;
+			child = child->next;
 		}
 	}
 
@@ -190,7 +194,6 @@ void sts_table_set_fields(s_sts_table *tb_, s_sts_json_node *fields_)
 	}
 }
 
-
 int sts_table_get_fields_size(s_sts_table *tb_)
 {
 	int len = 0;
@@ -264,12 +267,14 @@ uint16 _sts_ttime_to_trade_index(uint64 ttime_, s_sts_struct_list *tradetime_)
 		// }
 		if (tt >= pair->second)
 		{ //11:30:00--11:34:59秒
-			if (tt < sts_time_get_iminute_minnum(pair->second, 5)){
+			if (tt < sts_time_get_iminute_minnum(pair->second, 5))
+			{
 				return nowmin - 1;
-			} else {
+			}
+			else
+			{
 				out = nowmin;
 			}
-			
 		}
 	}
 	return out;
@@ -280,7 +285,7 @@ uint64 _sts_trade_index_to_ttime(int date_, int nIndex_, s_sts_struct_list *trad
 	int nowmin = 0;
 	s_sts_time_pair *pair = (s_sts_time_pair *)sts_struct_list_get(tradetime_, tradetime_->count - 1);
 	uint64 out = sts_time_make_time(date_, pair->second * 100);
-	for (int i = 0; i<tradetime_->count; i++)
+	for (int i = 0; i < tradetime_->count; i++)
 	{
 		pair = (s_sts_time_pair *)sts_struct_list_get(tradetime_, i);
 		nowmin = sts_time_get_iminute_offset_i(pair->first, pair->second);
@@ -321,15 +326,15 @@ uint64 sts_table_struct_trans_time(uint64 in_, int inscale_, s_sts_table *out_tb
 		break;
 	case STS_SCALE_MIN1:
 		o = _sts_ttime_to_trade_index(o, out_tb_->father->trade_time);
-		o = _sts_trade_index_to_ttime(date, o ,out_tb_->father->trade_time);
+		o = _sts_trade_index_to_ttime(date, o, out_tb_->father->trade_time);
 		break;
 	case STS_SCALE_MIN5:
 		o = _sts_ttime_to_trade_index(o, out_tb_->father->trade_time);
-		o = _sts_trade_index_to_ttime(date, ((int)(o / 5) + 1)*5 - 1, out_tb_->father->trade_time);
+		o = _sts_trade_index_to_ttime(date, ((int)(o / 5) + 1) * 5 - 1, out_tb_->father->trade_time);
 		break;
 	case STS_SCALE_MIN30:
 		o = _sts_ttime_to_trade_index(o, out_tb_->father->trade_time);
-		o = _sts_trade_index_to_ttime(date, ((int)(o / 30) + 1)*30 - 1, out_tb_->father->trade_time);
+		o = _sts_trade_index_to_ttime(date, ((int)(o / 30) + 1) * 30 - 1, out_tb_->father->trade_time);
 		break;
 	case STS_SCALE_DAY:
 		o = date;
@@ -403,7 +408,7 @@ sds _sts_table_struct_trans(s_sts_collect_unit *in_unit_, sds ins_, s_sts_collec
 // 			if (sts_string_list_indexof(fields_,key)) // 需要做增量计算
 // 			{
 // 				sts_collect_struct_trans_incr(ins, dbs, in_fu, in_tb, outs, out_fu, out_tb);
-// 			} else {		
+// 			} else {
 // 				sts_collect_struct_trans(ins, in_fu, in_tb, outs, out_fu, out_tb);
 // 			}
 // 		}
@@ -449,7 +454,7 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	{
 		return 0;
 	}
-	sds db_val = sdsnewlen(sts_struct_list_get(in_collect->value, in_collect->value->count - 1), 
+	sds db_val = sdsnewlen(sts_struct_list_get(in_collect->value, in_collect->value->count - 1),
 						   in_collect->value->len);
 	// 先储存上一次的数据，
 	int o = sts_collect_unit_update(in_collect, in_val, sdslen(in_val));

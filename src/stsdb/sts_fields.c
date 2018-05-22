@@ -42,7 +42,7 @@ inline unsigned long long unzip_zoom(int n)  // 1000 ==> 0x00011  -1000 ==> 0x10
 s_sts_field_unit *sts_field_unit_create(int index_, const char *name_, s_sts_fields_flags *flags_)
 {
 	s_sts_field_unit *unit = zmalloc(sizeof(s_sts_field_unit));
-	memset(unit,0,sizeof(s_sts_field_unit));
+	memset(unit, 0, sizeof(s_sts_field_unit));
 	unit->index = index_;
 	sts_strcpy(unit->name, STS_FIELD_MAXLEN, name_);
 	memmove(&unit->flags, flags_, sizeof(s_sts_fields_flags));
@@ -54,10 +54,10 @@ void sts_field_unit_destroy(s_sts_field_unit *unit_)
 }
 bool sts_field_is_price(s_sts_field_unit *unit_)
 {
-	if (!sts_strcase_match(unit_->name,"open")||
-	    !sts_strcase_match(unit_->name,"high")||
-	    !sts_strcase_match(unit_->name,"low")||
-	    !sts_strcase_match(unit_->name,"close"))
+	if (!sts_strcase_match(unit_->name, "open") ||
+		!sts_strcase_match(unit_->name, "high") ||
+		!sts_strcase_match(unit_->name, "low") ||
+		!sts_strcase_match(unit_->name, "close"))
 	{
 		return true;
 	}
@@ -65,14 +65,16 @@ bool sts_field_is_price(s_sts_field_unit *unit_)
 }
 bool sts_field_is_time(s_sts_field_unit *unit_)
 {
-	if (!sts_strcasecmp(unit_->name,"time")){
+	if (!sts_strcasecmp(unit_->name, "time"))
+	{
 		return true;
 	}
 	return false;
 }
 bool sts_field_is_volume(s_sts_field_unit *unit_)
 {
-	if (!sts_strcasecmp(unit_->name,"vol")||!sts_strcasecmp(unit_->name,"money")){
+	if (!sts_strcasecmp(unit_->name, "vol") || !sts_strcasecmp(unit_->name, "money"))
+	{
 		return true;
 	}
 	return false;
@@ -179,10 +181,10 @@ double sts_fields_get_double(s_sts_field_unit *fu_, const char *val_)
 void sts_fields_set_uint(s_sts_field_unit *fu_, char *val_, uint64 u64_)
 {
 	uint64 zoom = 1;
-	uint8  u8= 0;
-	uint16 u16 =0;
-	uint32 u32 =0;
-	uint64 u64 =0;
+	uint8 u8 = 0;
+	uint16 u16 = 0;
+	uint32 u32 = 0;
+	uint64 u64 = 0;
 
 	if (fu_->flags.io && fu_->flags.zoom > 0)
 	{
@@ -213,10 +215,10 @@ void sts_fields_set_uint(s_sts_field_unit *fu_, char *val_, uint64 u64_)
 void sts_fields_set_int(s_sts_field_unit *fu_, char *val_, int64 i64_)
 {
 	int64 zoom = 1;
-	int8  i8 = 0;
+	int8 i8 = 0;
 	int16 i16 = 0;
 	int32 i32 = 0;
-	int64 i64 = 0 ;
+	int64 i64 = 0;
 
 	if (fu_->flags.io && fu_->flags.zoom > 0)
 	{
@@ -246,9 +248,9 @@ void sts_fields_set_int(s_sts_field_unit *fu_, char *val_, int64 i64_)
 
 void sts_fields_set_double(s_sts_field_unit *fu_, char *val_, double f64_)
 {
-	
+
 	int32 i32 = 0;
-	int64 i64 = 0 ;
+	int64 i64 = 0;
 	int64 zoom = 1;
 	if (!fu_->flags.io && fu_->flags.zoom > 0)
 	{
@@ -280,26 +282,29 @@ s_sts_field_unit *sts_field_get_from_key(s_sts_table *tb_, const char *key_)
 uint64 sts_fields_get_uint_from_key(s_sts_table *tb_, const char *key_, const char *val_)
 {
 	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
-	if(!fu) return 0;
-	return  sts_fields_get_uint(fu,val_);
+	if (!fu)
+		return 0;
+	return sts_fields_get_uint(fu, val_);
 }
 int64 sts_fields_get_int_from_key(s_sts_table *tb_, const char *key_, const char *val_)
 {
 	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
-	if(!fu) return 0;
-	return  sts_fields_get_int(fu,val_);
+	if (!fu)
+		return 0;
+	return sts_fields_get_int(fu, val_);
 }
 double sts_fields_get_double_from_key(s_sts_table *tb_, const char *key_, const char *val_)
 {
 	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
-	if(!fu) return 0.0;
-	return  sts_fields_get_double(fu,val_);
+	if (!fu)
+		return 0.0;
+	return sts_fields_get_double(fu, val_);
 }
 
 void sts_fields_set_uint_from_key(s_sts_table *tb_, const char *key_, char *val_, uint64 u64_)
 {
 	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
-	if(fu) 
+	if (fu)
 	{
 		sts_fields_set_uint(fu, val_, u64_);
 	}
@@ -307,7 +312,7 @@ void sts_fields_set_uint_from_key(s_sts_table *tb_, const char *key_, char *val_
 void sts_fields_set_int_from_key(s_sts_table *tb_, const char *key_, char *val_, int64 i64_)
 {
 	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
-	if(fu) 
+	if (fu)
 	{
 		sts_fields_set_int(fu, val_, i64_);
 	}
@@ -315,17 +320,22 @@ void sts_fields_set_int_from_key(s_sts_table *tb_, const char *key_, char *val_,
 void sts_fields_set_double_from_key(s_sts_table *tb_, const char *key_, char *val_, double f64_)
 {
 	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
-	if(fu) {
+	if (fu)
+	{
 		sts_fields_set_double(fu, val_, f64_);
-	} 
+	}
 }
-void sts_fields_copy(char *des_,const char *src_,size_t len_)
+void sts_fields_copy(char *des_, const char *src_, size_t len_)
 {
-	if (!des_) return ;
+	if (!des_)
+		return;
 
-	if (!src_) {
-		memset(des_,0,len_);
-	} else {
-		memmove(des_,src_,len_);
+	if (!src_)
+	{
+		memset(des_, 0, len_);
+	}
+	else
+	{
+		memmove(des_, src_, len_);
 	}
 }
