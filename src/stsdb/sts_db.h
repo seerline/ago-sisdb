@@ -20,11 +20,12 @@
 #define STS_SCALE_NONE    0 // "NONE"  //
 #define STS_SCALE_MSEC    1 // "MSEC"  //int64 格式，精确到毫秒  
 #define STS_SCALE_SECOND  2 // "SECOND"  //int32 time_t格式，精确到秒  
-#define STS_SCALE_INDEX   4 // "INDEX"  //int16 0开始的递增数，对应开市分钟
-#define STS_SCALE_MIN1    5 // "MIN1"  //int32 time_t格式，精确到1分钟
-#define STS_SCALE_MIN5    6 // "MIN5"  //int32 time_t格式 ，精确到5分钟
-#define STS_SCALE_MIN30   7 // "MIN30"  //int32 time_t格式，精确到半小时
-#define STS_SCALE_DAY     8 // "DAY"  //int32 20170101格式，精确到天
+#define STS_SCALE_INDEX   3 // "INDEX"  //int16 0开始的递增数，对应开市分钟
+#define STS_SCALE_MIN1    4 // "MIN1"  //int32 time_t格式，精确到1分钟
+#define STS_SCALE_MIN5    5 // "MIN5"  //int32 time_t格式 ，精确到5分钟
+#define STS_SCALE_MIN30   6 // "MIN30"  //int32 time_t格式，精确到半小时
+#define STS_SCALE_DAY     7 // "DAY"  //int32 20170101格式，精确到天
+#define STS_SCALE_MONTH   8 // "MONTH"  //int32 20170101格式，精确到天
 
 #pragma pack(push,1)
 typedef struct s_sts_map_define{

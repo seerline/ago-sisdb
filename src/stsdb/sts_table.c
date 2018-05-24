@@ -310,7 +310,7 @@ uint64 sts_table_struct_trans_time(uint64 in_, int inscale_, s_sts_table *out_tb
 	{
 		return in_;
 	}
-	if (inscale_ == STS_SCALE_DAY)
+	if (inscale_ >= STS_SCALE_DAY)
 	{
 		return in_;
 	}

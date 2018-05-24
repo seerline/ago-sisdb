@@ -213,6 +213,54 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s:
 	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.s
 
+mnt/hgfs/mysoft/stsdb/src/core/sts_list.o: mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_list.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.o
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_list.i: mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_list.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.i
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_list.s: mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_list.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.s
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_map.o: mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.o
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_map.i: mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.i
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_map.s: mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.s
+
 mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o
 
@@ -309,6 +357,174 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s:
 	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
 
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.s
+
 server.o: server.c.o
 .PHONY : server.o
 
@@ -354,6 +570,12 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_list.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_list.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_list.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_map.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_map.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_map.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.s"
@@ -366,6 +588,27 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.s"
 	@echo "... server.o"
 	@echo "... server.i"
 	@echo "... server.s"
