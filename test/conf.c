@@ -26,7 +26,7 @@ void json_printf(s_sts_json_node *node_, int *i)
 
 int main()
 {
-	const char *fn = "../conf/stocks.conf";
+	const char *fn = "../conf/stsdb.conf";
 	// const char *fn = "../conf/sts.conf";
 	s_sts_conf_handle *h = sts_conf_open(fn);
 	if (!h) return -1;

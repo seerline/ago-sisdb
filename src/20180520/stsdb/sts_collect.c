@@ -10,12 +10,10 @@
 s_sts_step_index *sts_stepindex_create()
 {
 	s_sts_step_index *si = zmalloc(sizeof(s_sts_step_index));
-	memset(si, 0, sizeof(s_sts_step_index));
 	si->left = 0;
 	si->right = 0;
 	si->count = 0;
 	si->step = 0;
-
 	return si;
 }
 void sts_stepindex_destroy(s_sts_step_index *si_)
@@ -60,17 +58,8 @@ s_sts_collect_unit *sts_collect_unit_create(s_sts_table *tb_, const char *key_)
 	s_sts_collect_unit *unit = zmalloc(sizeof(s_sts_collect_unit));
 	memset(unit, 0, sizeof(s_sts_collect_unit));
 	unit->father = tb_;
-
 	unit->stepinfo = sts_stepindex_create();
-	int size = sts_table_get_fields_size(tb_);
-	unit->value = sts_struct_list_create(size, NULL, 0);
-
-	if (tb_->catch)
-	{
-		unit->front = sdsnewlen(NULL, size);
-		unit->lasted = sdsnewlen(NULL, size);
-		unit->moved = sdsnewlen(NULL, size);
-	}
+	unit->value = sts_struct_list_create(sts_table_get_fields_size(tb_), NULL, 0);
 	return unit;
 }
 void sts_collect_unit_destroy(s_sts_collect_unit *unit_)
@@ -83,23 +72,17 @@ void sts_collect_unit_destroy(s_sts_collect_unit *unit_)
 	{
 		sts_stepindex_destroy(unit_->stepinfo);
 	}
-	if (unit_->father->catch)
-	{
-		sdsfree(unit_->front);
-		sdsfree(unit_->lasted);
-		sdsfree(unit_->moved);
-	}
 	zfree(unit_);
 }
 
 uint64 sts_collect_unit_get_time(s_sts_collect_unit *unit_, int index_)
 {
 
-	uint64 tt = 0;
+	time_t tt = 0;
 	void *val = sts_struct_list_get(unit_->value, index_);
 	if (val)
 	{
-		tt = sts_fields_get_uint_from_key(unit_->father, "time", val);
+		tt = sts_table_get_times(unit_->father, val);
 	}
 	return tt;
 }
@@ -122,10 +105,10 @@ int sts_collect_unit_recs(s_sts_collect_unit *unit_)
 	return unit_->value->count;
 }
 
-int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 finder_, int *mode_)
+int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 index_, int *mode_)
 {
 	*mode_ = STS_SEARCH_NONE;
-	int index = stepindex_goto(unit_->stepinfo, finder_);
+	int index = stepindex_goto(unit_->stepinfo, index_);
 	if (index < 0)
 	{
 		return -1; // 没有任何数据
@@ -135,8 +118,8 @@ int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 finder_, int 
 	while (i >= 0 && i < unit_->value->count)
 	{
 		uint64 ts = sts_collect_unit_get_time(unit_, i);
-		printf("  %lld --- %lld  mode= %d\n", finder_, ts, *mode_);
-		if (finder_ > ts)
+		printf("  %lld --- %lld  mode= %d\n", index_, ts, *mode_);
+		if (index_ > ts)
 		{
 			if (dir == -1)
 			{
@@ -147,7 +130,7 @@ int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 finder_, int 
 			i += dir;
 			continue;
 		}
-		else if (finder_ < ts)
+		else if (index_ < ts)
 		{
 			if (dir == 1)
 			{
@@ -174,11 +157,11 @@ int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 finder_, int 
 		return -1;
 	}
 }
-int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 finder_, int *mode_)
+int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 index_, int *mode_)
 {
 
 	*mode_ = STS_SEARCH_NONE;
-	int index = stepindex_goto(unit_->stepinfo, finder_);
+	int index = stepindex_goto(unit_->stepinfo, index_);
 	if (index < 0)
 	{
 		return -1; // 没有任何数据
@@ -188,7 +171,7 @@ int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 finder_, int
 	while (i >= 0 && i < unit_->value->count)
 	{
 		uint64 ts = sts_collect_unit_get_time(unit_, i);
-		if (finder_ > ts)
+		if (index_ > ts)
 		{
 			if (dir == -1)
 			{
@@ -199,7 +182,7 @@ int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 finder_, int
 			i += dir;
 			continue;
 		}
-		else if (finder_ < ts)
+		else if (index_ < ts)
 		{
 			if (dir == 1)
 			{
@@ -227,10 +210,10 @@ int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 finder_, int
 		return 0;
 	}
 }
-int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
+int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 index_)
 {
 
-	int index = stepindex_goto(unit_->stepinfo, finder_);
+	int index = stepindex_goto(unit_->stepinfo, index_);
 	if (index < 0)
 	{
 		return -1; // 没有任何数据
@@ -240,7 +223,7 @@ int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 	while (i >= 0 && i < unit_->value->count)
 	{
 		uint64 ts = sts_collect_unit_get_time(unit_, i);
-		if (finder_ > ts)
+		if (index_ > ts)
 		{
 			if (dir == -1)
 			{
@@ -250,7 +233,7 @@ int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 			i += dir;
 			continue;
 		}
-		else if (finder_ < ts)
+		else if (index_ < ts)
 		{
 			if (dir == 1)
 			{
@@ -267,31 +250,7 @@ int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 	}
 	return -1;
 }
-int sts_collect_unit_search_check(s_sts_collect_unit *unit_, uint64 finder_)
-{
-	if (unit_->value->count < 1)
-	{
-		return STS_SEARCH_CHECK_INIT;
-	}
 
-	uint64 ts = sts_collect_unit_get_time(unit_, unit_->value->count - 1);
-	if (finder_ > ts)
-	{
-		if (sts_time_get_idate(finder_) > sts_time_get_idate(ts))
-		{
-			return STS_SEARCH_CHECK_INIT;
-		}
-		else
-		{
-			return STS_SEARCH_CHECK_NEW;
-		}
-	}
-	else
-	{
-		// 应该判断量，如果量小就返回错误
-		return STS_SEARCH_CHECK_OLD;
-	}
-}
 int sts_collect_unit_delete_of_range(s_sts_collect_unit *unit_, int start_, int stop_)
 {
 	int llen, count;
@@ -405,134 +364,13 @@ sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *unit_, int start_, int s
 ////////////////////////
 //  update
 ////////////////////////
-sds sts_make_catch_inited(s_sts_collect_unit *unit_, const char *in_)
+int _sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_)
 {
-	s_sts_table *tb = unit_->father;
-	sds o = sdsnewlen(in_, sdslen(unit_->front));
-	int fields = sts_string_list_getsize(tb->field_name);
-	for (int k = 0; k < fields; k++)
-	{
-		const char *key = sts_string_list_get(tb->field_name, k);
-		s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb->field_map, key);
-		if (!fu || fu->catch_method == STS_FIELD_METHOD_COVER)
-		{
-			continue;
-		}
-		uint64 u64 = 0;
-		// printf("fixed--key=%s size=%d offset=%d, method=%d\n", key, fields, fu->offset,fu->catch_method);
-		if (fu->catch_method == STS_FIELD_METHOD_INCR)
-		{
-			// printf("----inited incr key=%s new=%lld front=%lld\n", key, sts_fields_get_uint(fu,in_), sts_fields_get_uint(fu,unit_->front));
-			u64 = sts_fields_get_uint(fu, in_) - sts_fields_get_uint(fu, unit_->front);
-		}
-		else
-		{ //STS_FIELD_METHOD_INIT&STS_FIELD_METHOD_MIN&STS_FIELD_METHOD_MAX
-			s_sts_field_unit *sfu = (s_sts_field_unit *)sts_map_buffer_get(tb->field_map, fu->catch_initfield);
-			if (sfu)
-			{
-				u64 = sts_fields_get_uint(sfu, in_);
-			}
-		}
-		sts_fields_set_uint(fu, o, u64);
-	}
-	// printf("o=%lld\n",sts_fields_get_uint_from_key(tb,"time",o));
-	// printf("in_=%lld\n",sts_fields_get_uint_from_key(tb,"time",in_));
-	return o;
-}
-sds sts_make_catch_moved(s_sts_collect_unit *unit_, const char *in_)
-{
-	s_sts_table *tb = unit_->father;
-	sds o = sdsnewlen(in_, sdslen(unit_->front));
-	int fields = sts_string_list_getsize(tb->field_name);
-	for (int k = 0; k < fields; k++)
-	{
-		const char *key = sts_string_list_get(tb->field_name, k);
-		s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb->field_map, key);
-		// printf("fixed--key=%s size=%d offset=%d\n", key, fields, fu->offset);
-		if (!fu || fu->catch_method == STS_FIELD_METHOD_COVER)
-		{
-			continue;
-		}
-		// in_.vol - front.vol
-		// in_.money - front.money
-		// in.close = in_.close
-		uint64 u64, u64_front, u64_moved, u64_inited;
-		// close 的字段
-
-		if (fu->catch_method == STS_FIELD_METHOD_INCR)
-		{
-			printf("----moved incr key=%s new=%lld front=%lld\n", key, sts_fields_get_uint(fu, in_), sts_fields_get_uint(fu, unit_->front));
-			u64 = sts_fields_get_uint(fu, in_) - sts_fields_get_uint(fu, unit_->front);
-		}
-		else if (fu->catch_method == STS_FIELD_METHOD_MAX)
-		{
-			// in_.high > front.high || !front.high => in.high = in_.high
-			//     else in_.close > moved.high => in.high = in_.close
-			//		       else in.high = moved.high
-			u64 = sts_fields_get_uint(fu, in_);
-			u64_front = sts_fields_get_uint(fu, unit_->front);
-			u64_moved = sts_fields_get_uint(fu, unit_->moved);
-			s_sts_field_unit *sfu = (s_sts_field_unit *)sts_map_buffer_get(tb->field_map, fu->catch_initfield);
-			u64_inited = sts_fields_get_uint(sfu, in_);
-			if (u64 > u64_front || !u64_front)
-			{
-			}
-			else
-			{
-				if (u64_inited > u64_moved)
-				{
-					u64 = u64_inited;
-				}
-				else
-				{
-					u64 = u64_moved;
-				}
-			}
-		}
-		else if (fu->catch_method == STS_FIELD_METHOD_MIN)
-		{
-			// in_.low < front.low || !front.low => in.low = in_.low
-			//		else in_.close < moved.low => in.low = in_.close
-			//		       else in.low = moved.low
-			u64 = sts_fields_get_uint(fu, in_);
-			u64_front = sts_fields_get_uint(fu, unit_->front);
-			u64_moved = sts_fields_get_uint(fu, unit_->moved);
-			s_sts_field_unit *sfu = (s_sts_field_unit *)sts_map_buffer_get(tb->field_map, fu->catch_initfield);
-			u64_inited = sts_fields_get_uint(sfu, in_);
-			if (u64 < u64_front || !u64_front)
-			{
-			}
-			else
-			{
-				if (u64_inited < u64_moved)
-				{
-					u64 = u64_inited;
-				}
-				else
-				{
-					u64 = u64_moved;
-				}
-			}
-		}
-		else
-		{ //STS_FIELD_METHOD_INIT
-			// 恢复open
-			u64 = sts_fields_get_uint(fu, unit_->moved);
-		}
-		sts_fields_set_uint(fu, o, u64);
-	}
-
-	return o;
-}
-int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
-{
-	s_sts_table *tb = unit_->father;
-
 	uint64 tt;
-	switch (tb->control.insert_mode)
+	switch (unit_->father->control.insert_mode)
 	{
 	case STS_OPTION_ALWAYS:
-		if (tb->control.limit_rows == 1)
+		if (unit_->father->control.limit_rows == 1)
 		{
 			if (sts_struct_list_update(unit_->value, 0, (void *)in_) < 0)
 			{
@@ -542,9 +380,9 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 		else
 		{
 			sts_struct_list_push(unit_->value, (void *)in_);
-			if (tb->control.limit_rows > 1)
+			if (unit_->father->control.limit_rows > 1)
 			{
-				sts_struct_list_limit(unit_->value, tb->control.limit_rows);
+				sts_struct_list_limit(unit_->value, unit_->father->control.limit_rows);
 			}
 		}
 		break;
@@ -552,79 +390,26 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 		break;
 	case STS_OPTION_TIME:
 	case STS_OPTION_VOL:
-	default:
-		tt = sts_fields_get_uint_from_key(tb, "time", in_); // 得到时间序列值
-		int index = unit_->value->count - 1;
-		int mode = sts_collect_unit_search_check(unit_, tt);
-		int size = sts_table_get_fields_size(tb);
+	default:												  // STS_OPTION_STS_CHECK
+		tt = sts_table_get_times(unit_->father, (void *)in_); // 得到时间序列值
+		int mode;
+		int index = sts_collect_unit_search_left(unit_, tt, &mode);
 		printf("mode=%d tt= %lld index=%d\n", mode, tt, index);
-		if (mode == STS_SEARCH_CHECK_INIT)
+		if (mode == STS_SEARCH_NONE || mode == STS_SEARCH_LEFT)
 		{
-			// 1. 初始化
-			if (tb->catch)
-			{
-				sts_fields_copy(unit_->front, NULL, size); // 保存的是全量，成交量使用
-				sts_fields_copy(unit_->lasted, in_, size); //
-				sts_fields_copy(unit_->moved, in_, size);
-			}
-			// 2. 写入数据
 			sts_struct_list_push(unit_->value, (void *)in_);
 		}
-		else if (mode == STS_SEARCH_CHECK_NEW)
+		else if (mode == STS_SEARCH_OK)
 		{
-			// vol1=vol2,求和vol1的差值
-			if (tb->catch)
-			{
-				sts_fields_copy(unit_->front, unit_->lasted, size);
-				// -- 先根据in -- tb->front生成新数据
-				sds in = sts_make_catch_inited(unit_, in_);
-				// in_.vol - front.vol
-				// in_.money - front.money
-				// in.open = in_.close;
-				// in_.high = in_.close;
-				// in_.low = in_.close;
-				// in.close = in_.close
-				// -- 再覆盖老数据
-				sts_struct_list_push(unit_->value, (void *)in);
-				sts_fields_copy(unit_->moved, in, size);
-				sts_fields_copy(unit_->lasted, in_, size);
-			}
-			else
-			{
-				sts_struct_list_push(unit_->value, (void *)in_);
-			}
+			sts_struct_list_update(unit_->value, index, (void *)in_);
 		}
 		else
-		// if (mode == STS_SEARCH_CHECK_OLD)
 		{
-			//如果发现记录，保存原始值到lasted，然后计算出实际要写入的值
-			// 1. 初始化
-			if (tb->catch)
-			{
-				// -- 先根据in -- tb->front生成新数据
-				sds in = sts_make_catch_moved(unit_, in_);
-				// in_.vol - front.vol
-				// in_.money - front.money
-				// in_.high > front.high || !front.high => in.high = in_.high
-				//     else in_.close > moved.high => in.high = in_.close
-				//		       else in.high = moved.high
-				// in_.low < front.low || !front.low => in.low = in_.low
-				//		else in_.close < moved.low => in.low = in_.close
-				//		       else in.low = moved.low
-				// in.close = in_.close
-				sts_struct_list_update(unit_->value, index, (void *)in);
-				sts_fields_copy(unit_->moved, in, size);
-				sts_fields_copy(unit_->lasted, in_, size);
-			}
-			else
-			{
-				sts_struct_list_update(unit_->value, index, (void *)in_);
-			}
+			sts_struct_list_insert(unit_->value, index + 1, (void *)in_);
 		}
-
-		if (tb->control.limit_rows > 0)
+		if (unit_->father->control.limit_rows > 0)
 		{
-			sts_struct_list_limit(unit_->value, tb->control.limit_rows);
+			sts_struct_list_limit(unit_->value, unit_->father->control.limit_rows);
 		}
 		break;
 	}
@@ -646,12 +431,11 @@ int sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_, size_t i
 	// printf("-----count =%d len=%ld:%d\n", count, ilen_, unit_->value->len);
 	for (int i = 0; i < count; i++)
 	{
-		// 是否需要备份数据和进行数据转换
-		_sts_collect_unit_update_one(unit_, in_ + i * unit_->value->len);
+		_sts_collect_unit_update(unit_, in_ + i * unit_->value->len);
 	}
 	return count;
 }
-void _sts_fields_json_to_struct(sds in_, s_sts_field_unit *fu_, char *key_, s_sts_json_node *node_)
+void _sts_collect_struct(sds in_, s_sts_field_unit *fu_, char *key_, s_sts_json_node *node_)
 {
 	int8 i8 = 0;
 	int16 i16 = 0;
@@ -726,8 +510,7 @@ void _sts_fields_json_to_struct(sds in_, s_sts_field_unit *fu_, char *key_, s_st
 	}
 }
 
-void sts_collect_struct_trans(sds ins_, s_sts_field_unit *infu_, s_sts_table *indb_,
-							  sds outs_, s_sts_field_unit *outfu_, s_sts_table *outdb_)
+void sts_collect_struct_trans(sds ins_, s_sts_field_unit *infu_, sds outs_, s_sts_field_unit *outfu_)
 {
 	int8 i8 = 0;
 	int16 i16 = 0;
@@ -748,13 +531,6 @@ void sts_collect_struct_trans(sds ins_, s_sts_field_unit *infu_, s_sts_table *in
 		{
 			zoom = sts_zoom10(outfu_->flags.zoom);
 		}
-		// 对时间进行转换
-		if (sts_field_is_time(infu_))
-		{
-			i64 = (int64)sts_table_struct_trans_time(i64, indb_->control.time_scale,
-													 outdb_, outdb_->control.time_scale);
-		}
-		// 对成交量进行转换，必须是当天写入的数据，才以min为基础进行转换，
 		if (outfu_->flags.len == 1)
 		{
 			i8 = (int8)(i64 / zoom);
@@ -819,13 +595,13 @@ sds sts_collect_json_to_struct(s_sts_collect_unit *unit_, const char *in_, size_
 	{
 		const char *key = sts_string_list_get(tb->field_name, k);
 		s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb->field_map, key);
+		printf("key=%s size=%d offset=%d\n", key, fields, fu->offset);
 		if (!fu)
 		{
 			continue;
 		}
-		printf("key=%s size=%d offset=%d\n", key, fields, fu->offset);
 
-		_sts_fields_json_to_struct(o, fu, (char *)key, handle->node);
+		_sts_collect_struct(o, fu, (char *)key, handle->node);
 	}
 
 	sts_json_close(handle);
@@ -882,7 +658,7 @@ sds sts_collect_array_to_struct(s_sts_collect_unit *unit_, const char *in_, size
 			}
 			char key[16];
 			sts_sprintf(key, 10, "%d", k);
-			_sts_fields_json_to_struct(o + index * unit_->value->len, fu, key, jval);
+			_sts_collect_struct(o + index * unit_->value->len, fu, key, jval);
 		}
 		index++;
 		jval = jval->next;
@@ -909,7 +685,7 @@ sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fi
 		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
 		{
 			const char *key = sts_string_list_get(field_list, i);
-			s_sts_field_unit *fu = sts_field_get_from_key(tb, key);
+			s_sts_field_unit *fu = sts_table_get_field(tb, key);
 			if (!fu)
 			{
 				continue;
@@ -934,7 +710,6 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 
 	s_sts_table *tb = unit_->father;
 	s_sts_string_list *field_list = tb->field_name; //取得全部的字段定义
-	
 	if (!sts_check_fields_all(fields_))
 	{
 		field_list = sts_string_list_create_w();
@@ -951,13 +726,11 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 	for (int i = 0; i < sts_string_list_getsize(field_list); i++)
 	{
 		const char *key = sts_string_list_get(field_list, i);
-		// printf("----0----tb->field_name=%s\n",sts_string_list_get(tb->field_name, i));
-		// printf("----1----fields=%s\n",key);
 		sts_json_object_add_uint(jfields, key, i);
 	}
 	sts_json_object_add_node(jone, STS_JSON_KEY_FIELDS, jfields);
 
-	// printf("========%s rows=%d\n", tb->name, tb->control.limit_rows);
+	printf("========%s rows=%d\n", tb->name, tb->control.limit_rows);
 
 	int dot = 0; //小数点位数
 	int skip_len = sts_table_get_fields_size(tb);
@@ -970,8 +743,7 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
 		{
 			const char *key = sts_string_list_get(field_list, i);
-			printf("----2----fields=%s\n",key);
-			s_sts_field_unit *fu = sts_field_get_from_key(tb, key);
+			s_sts_field_unit *fu = sts_table_get_field(tb, key);
 			if (!fu)
 			{
 				sts_json_array_add_string(jval, " ", 1);
@@ -1068,7 +840,7 @@ sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *
 		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
 		{
 			const char *key = sts_string_list_get(field_list, i);
-			s_sts_field_unit *fu = sts_field_get_from_key(tb, key);
+			s_sts_field_unit *fu = sts_table_get_field(tb, key);
 			if (!fu)
 			{
 				sts_json_array_add_string(jval, " ", 1);
