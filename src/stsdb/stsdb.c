@@ -7,11 +7,11 @@ int call_stsdb_list(s_sts_module_context *ctx_, s_sts_module_string **argv_, int
 	sts_module_not_used(argc_);
 	sts_module_not_used(argv_);
 
-	sds o = stsdb_list();
+	s_sts_sds o = stsdb_list();
 	if (o)
 	{
 		sts_module_reply_with_simple_string(ctx_, o);
-		sdsfree(o);
+		sts_sdsfree(o);
 		return STS_MODULE_OK;
 	}
 	return sts_module_reply_with_error(ctx_, "stsdb list table error.\n");
@@ -46,7 +46,7 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	{
 		sts_module_reply_with_error(ctx_, "set data key error.\n");
 	}
-	sds o;
+	s_sts_sds o;
 	if (argc_ == 3)
 	{
 		o = stsdb_get(db, code, sts_module_string_get(argv_[2], NULL));
@@ -58,7 +58,7 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	if (o)
 	{
 		sts_module_reply_with_simple_string(ctx_, o);
-		sdsfree(o);
+		sts_sdsfree(o);
 		return STS_MODULE_OK;
 	}
 	return sts_module_reply_with_error(ctx_, "stsdb get error.\n");
@@ -113,7 +113,7 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	if (argc_ == 1)
 	{
 		// service = call_stsdb_init(sts_module_string_get(argv_[0], NULL));
-		service = call_stsdb_init(((sts_object *)argv_[0])->ptr);
+		service = call_stsdb_init(((s_sts_object *)argv_[0])->ptr);
 	}
 	else
 	{

@@ -6,12 +6,10 @@
 #ifndef _STS_FIELDS_H
 #define _STS_FIELDS_H
 
-#include "sds.h"
-#include "dict.h"
-#include <assert.h>
-#include "sdsalloc.h"
 #include "sts_str.h"
 #include "sts_map.h"
+
+#include "sts_malloc.h"
 
 /////////////////////////////////////////////////////////
 //  字段类型定义

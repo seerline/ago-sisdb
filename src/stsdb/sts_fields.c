@@ -41,7 +41,7 @@ inline unsigned long long unzip_zoom(int n)  // 1000 ==> 0x00011  -1000 ==> 0x10
 
 s_sts_field_unit *sts_field_unit_create(int index_, const char *name_, s_sts_fields_flags *flags_)
 {
-	s_sts_field_unit *unit = zmalloc(sizeof(s_sts_field_unit));
+	s_sts_field_unit *unit = sts_malloc(sizeof(s_sts_field_unit));
 	memset(unit, 0, sizeof(s_sts_field_unit));
 	unit->index = index_;
 	sts_strcpy(unit->name, STS_FIELD_MAXLEN, name_);
@@ -50,7 +50,7 @@ s_sts_field_unit *sts_field_unit_create(int index_, const char *name_, s_sts_fie
 }
 void sts_field_unit_destroy(s_sts_field_unit *unit_)
 {
-	zfree(unit_);
+	sts_free(unit_);
 }
 bool sts_field_is_price(s_sts_field_unit *unit_)
 {

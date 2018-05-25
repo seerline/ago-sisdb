@@ -2,12 +2,11 @@
 #define _STS_MAP_H
 
 #include "sts_core.h"
-#include "sds.h"
-#include "dict.h"
+
+#include "sts_malloc.h"
 
 // 定义一个指针类型的字典  string -- void*
 // 定义一个整数类型的字典  string -- int
-
 #pragma pack(push,1)
 
 typedef struct s_sts_kv_int{

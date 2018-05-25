@@ -1,7 +1,7 @@
 
 #include <sts_file.h>
 
-sts_str sts_file_open_and_read(const char *fn_, size_t *len_)
+s_sts_sds sts_file_open_and_read(const char *fn_, size_t *len_)
 {
 	sts_file_handle fp = sts_file_open(fn_, STS_FILE_IO_READ, 0);
 	if (!fp)
@@ -16,7 +16,7 @@ sts_str sts_file_open_and_read(const char *fn_, size_t *len_)
 		sts_file_close(fp);
 		return NULL;
 	}
-	sts_str buffer = (sts_str)sts_malloc(size + 1);
+	s_sts_sds buffer = (s_sts_sds)sts_malloc(size + 1);
 	memset(buffer, 0, size + 1);
 	*len_ = sts_file_read(fp, buffer, 1, size);
 	sts_file_close(fp);

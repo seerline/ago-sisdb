@@ -39,9 +39,9 @@ typedef struct s_stsdb_server
 
 char * stsdb_init(const char *conf_);
 
-sds stsdb_list();
+s_sts_sds stsdb_list();
 
-sds stsdb_get(const char *db_, const char *key_, const char *com_);
+s_sts_sds stsdb_get(const char *db_, const char *key_, const char *com_);
 
 int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *val_, size_t len_);
 

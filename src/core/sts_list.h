@@ -4,9 +4,7 @@
 #include "sts_core.h"
 #include "sts_str.h"
 
-#include "adlist.h"
-#include "sds.h"
-#include "sdsalloc.h"
+#include "sts_malloc.h"
 
 // 定义一个结构体链表
 // 定义一个指针读写链表
@@ -111,19 +109,19 @@ int sts_string_list_find_and_delete(s_sts_string_list *list_, const char *finder
 
 
 ///////////////////////////////////////////////////////////////////////////
-//------------------------listNode --------------------------------//
+//------------------------s_sts_list_node --------------------------------//
 //  操作listNode列表的函数
 ///////////////////////////////////////////////////////////////////////////
-listNode *sts_sdsnode_create(const void *in, size_t inlen);
-void sts_sdsnode_destroy(listNode *node);
+s_sts_list_node *sts_sdsnode_create(const void *in, size_t inlen);
+void sts_sdsnode_destroy(s_sts_list_node *node);
 
-listNode *sts_sdsnode_offset_node(listNode *node_, int offset);
-listNode *sts_sdsnode_last_node(listNode *node_);
-listNode *sts_sdsnode_first_node(listNode *node_);
-listNode *sts_sdsnode_push(listNode *node_, const void *in, size_t inlen);
-listNode *sts_sdsnode_update(listNode *node_, const void *in, size_t inlen);
-listNode *sts_sdsnode_clone(listNode *node_);
-int sts_sdsnode_get_size(listNode *node_);
-int sts_sdsnode_get_count(listNode *node_);
+s_sts_list_node *sts_sdsnode_offset_node(s_sts_list_node *node_, int offset);
+s_sts_list_node *sts_sdsnode_last_node(s_sts_list_node *node_);
+s_sts_list_node *sts_sdsnode_first_node(s_sts_list_node *node_);
+s_sts_list_node *sts_sdsnode_push(s_sts_list_node *node_, const void *in, size_t inlen);
+s_sts_list_node *sts_sdsnode_update(s_sts_list_node *node_, const void *in, size_t inlen);
+s_sts_list_node *sts_sdsnode_clone(s_sts_list_node *node_);
+int sts_sdsnode_get_size(s_sts_list_node *node_);
+int sts_sdsnode_get_count(s_sts_list_node *node_);
 
 #endif //_STS_LIST_H

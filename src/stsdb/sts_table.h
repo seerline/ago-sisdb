@@ -52,7 +52,7 @@ typedef struct s_sts_table_control {
 #define STS_TABLE_LINK_INCR   1
 
 typedef struct s_sts_table {
-	sds name;            //表的名字
+	s_sts_sds name;            //表的名字
 	s_sts_db *father;            //数据库的指针，在install表格时赋值
 	s_sts_table_control control;       // 表控制定义
 	s_sts_string_list  *links;         // 当修改本数据表时，同时需要修改的其他数据表
@@ -100,7 +100,7 @@ int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char 
 // 来源数据是json或者struct，table是struct数据
 int sts_table_update(int type_, s_sts_table *, const char *key_, const char * in_, size_t ilen_);
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
-sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
+s_sts_sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
 
 // command为json命令
 //读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围

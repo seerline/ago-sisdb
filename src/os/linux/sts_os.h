@@ -28,7 +28,7 @@
 // #include <sys/time.h>
 // #include <dirent.h>
 // #include <fnmatch.h>
-
+#include <assert.h>
 #include <stdarg.h>
 
 #include <os_types.h>

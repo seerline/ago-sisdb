@@ -57,7 +57,7 @@ void sts_db_destroy(s_sts_db *);  //关闭一个数据库
 //取数据和写数据
 s_sts_table *sts_db_get_table(s_sts_db *, const char *name_); //name -- table name
 
-sds sts_db_get_table_info(s_sts_db *);
+s_sts_sds sts_db_get_table_info(s_sts_db *);
 
 
 s_sts_map_define *sts_db_find_map_define(s_sts_db *, const char *name_, uint8 style_);

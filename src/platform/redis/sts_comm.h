@@ -28,13 +28,13 @@
 // struct define
 
 #pragma pack(push,1)
-typedef struct sts_object {
+typedef struct s_sts_object {
     unsigned type:4;
     unsigned encoding:4;
     unsigned lru:24; 
     int refcount;
     void *ptr;
-} sts_object;
+} s_sts_object;
 #pragma pack(pop)
 
 #define s_sts_module_context RedisModuleCtx

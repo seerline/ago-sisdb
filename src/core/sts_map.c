@@ -2,69 +2,69 @@
 #include "sts_map.h"
 #include "sts_list.h"
 
-uint64_t dictSdsHash(const void *key)
+uint64_t _sts_dict_sds_hash(const void *key)
 {
-	return dictGenHashFunction((unsigned char *)key, sdslen((char *)key));
+	return sts_dict_hash_func((unsigned char *)key, sdslen((char *)key));
 }
 
-uint64_t dictSdsCaseHash(const void *key)
+uint64_t _sts_dict_sdscase_hash(const void *key)
 {
-	return dictGenCaseHashFunction((unsigned char *)key, sdslen((char *)key));
+	return sts_dict_casehash_func((unsigned char *)key, sdslen((char *)key));
 }
 
-int dictSdsKeyCaseCompare(void *privdata, const void *key1, const void *key2)
+int _sts_dict_sdscase_compare(void *privdata, const void *key1, const void *key2)
 {
-	DICT_NOTUSED(privdata);
+	STS_NOTUSED(privdata);
 	return strcasecmp((const char *)key1, (const char *)key2) == 0;
 }
 
-void dictBufferDestructor(void *privdata, void *val)
+void _sts_dict_buffer_free(void *privdata, void *val)
 {
-	DICT_NOTUSED(privdata);
-	zfree(val);
+	STS_NOTUSED(privdata);
+	sts_free(val);
 }
-void dictSdsDestructor(void *privdata, void *val)
+void _sts_dict_sds_free(void *privdata, void *val)
 {
-	DICT_NOTUSED(privdata);
-	sdsfree((sds)val);
+	STS_NOTUSED(privdata);
+	sts_sdsfree((s_sts_sds)val);
 }
-void dictListDestructor(void *privdata, void *val)
+void _sts_dict_list_free(void *privdata, void *val)
 {
-	DICT_NOTUSED(privdata);
+	STS_NOTUSED(privdata);
 	sts_struct_list_destroy((s_sts_struct_list *)val);
 }
 
-dictType bufferDictType = {
-	dictSdsCaseHash,	   /* hash function */
+s_sts_dict_type _sts_dict_type_buffer_s = {
+	_sts_dict_sdscase_hash,	   /* hash function */
 	NULL,				   /* key dup */
 	NULL,				   /* val dup */
-	dictSdsKeyCaseCompare, /* key compare */
-	dictSdsDestructor,	 /* key destructor */
-	dictBufferDestructor   /* val destructor */
+	_sts_dict_sdscase_compare, /* key compare */
+	_sts_dict_sds_free,	 /* key destructor */
+	_sts_dict_buffer_free   /* val destructor */
 };
-dictType numberDictType = {
-	dictSdsCaseHash,	   /* hash function */
+s_sts_dict_type _sts_dict_type_number_s = {
+	_sts_dict_sdscase_hash,	   /* hash function */
 	NULL,				   /* key dup */
 	NULL,				   /* val dup */
-	dictSdsKeyCaseCompare, /* key compare */
-	dictSdsDestructor,	 /* key destructor */
+	_sts_dict_sdscase_compare, /* key compare */
+	_sts_dict_sds_free,	 /* key destructor */
 	NULL				   /* val destructor */
 };
-dictType sdsDictType = {
-	dictSdsCaseHash,	   /* hash function */
+s_sts_dict_type _sts_dict_type_sds_s = {
+	_sts_dict_sdscase_hash,	   /* hash function */
 	NULL,				   /* key dup */
 	NULL,				   /* val dup */
-	dictSdsKeyCaseCompare, /* key compare */
-	dictSdsDestructor,	 /* key destructor */
-	dictSdsDestructor	  /* val destructor */
+	_sts_dict_sdscase_compare, /* key compare */
+	_sts_dict_sds_free,	 /* key destructor */
+	_sts_dict_sds_free	  /* val destructor */
 };
-dictType listDictType = {
-	dictSdsCaseHash,	   /* hash function */
+s_sts_dict_type _sts_dict_list_sds_s = {
+	_sts_dict_sdscase_hash,	   /* hash function */
 	NULL,				   /* key dup */
 	NULL,				   /* val dup */
-	dictSdsKeyCaseCompare, /* key compare */
-	dictSdsDestructor,	 /* key destructor */
-	dictListDestructor	 /* val destructor */
+	_sts_dict_sdscase_compare, /* key compare */
+	_sts_dict_sds_free,	 /* key destructor */
+	_sts_dict_list_free	 /* val destructor */
 };
 
 //////////////////////////////////////////
@@ -73,43 +73,43 @@ dictType listDictType = {
 
 s_sts_map_buffer *sts_map_buffer_create()
 { //明确知道val的长度
-	s_sts_map_buffer *map = dictCreate(&bufferDictType, NULL);
+	s_sts_map_buffer *map = sts_dict_create(&_sts_dict_type_buffer_s, NULL);
 	return map;
 };
 void sts_map_buffer_destroy(s_sts_map_buffer *map_)
 {
-	dictRelease(map_);
+	sts_dict_destroy(map_);
 };
 void sts_map_buffer_clear(s_sts_map_buffer *map_)
 {
-	dictEmpty(map_, NULL);
+	sts_dict_empty(map_, NULL);
 };
 void *sts_map_buffer_get(s_sts_map_buffer *map_, const char *key_)
 {
 	//??? 这里可能有问题
-	dictEntry *he;
-	sds key = sdsnew(key_);
-	he = dictFind(map_, key);
-	sdsfree(key);
+	s_sts_dict_entry *he;
+	s_sts_sds key = sts_sdsnew(key_);
+	he = sts_dict_find(map_, key);
+	sts_sdsfree(key);
 	if (!he)
 	{
 		return NULL;
 	}
-	return dictGetVal(he);
+	return sts_dict_getval(he);
 };
 int sts_map_buffer_set(s_sts_map_buffer *map_, const char *key_, void *value_)
 {
-	dictEntry *he;
-	sds key = sdsnew(key_);
-	he = dictFind(map_, key_);
-	sdsfree(key);
+	s_sts_dict_entry *he;
+	s_sts_sds key = sts_sdsnew(key_);
+	he = sts_dict_find(map_, key_);
+	sts_sdsfree(key);
 	if (!he)
 	{
-		dictAdd(map_, sdsnew(key_), value_);
+		sts_dict_add(map_, sts_sdsnew(key_), value_);
 		return 0;
 	}
 	
-	dictSetVal(map_, he, value_);
+	sts_dict_setval(map_, he, value_);
 	return 0;
 }
 
@@ -118,7 +118,7 @@ int sts_map_buffer_set(s_sts_map_buffer *map_, const char *key_, void *value_)
 //////////////////////////////////////////
 s_sts_map_pointer *sts_map_pointer_create()
 {
-	s_sts_map_pointer *map = dictCreate(&bufferDictType, NULL);
+	s_sts_map_pointer *map = sts_dict_create(&_sts_dict_type_buffer_s, NULL);
 	return map;
 };
 //////////////////////////////////////////
@@ -126,28 +126,28 @@ s_sts_map_pointer *sts_map_pointer_create()
 //////////////////////////////////////////
 s_sts_map_int *sts_map_int_create()
 {
-	s_sts_map_int *map = dictCreate(&numberDictType, NULL);
+	s_sts_map_int *map = sts_dict_create(&_sts_dict_type_number_s, NULL);
 	return map;
 };
 uint64_t sts_map_int_get(s_sts_map_int *map_, const char *key_)
 {
-	dictEntry *he;
-	he = dictFind(map_, key_);
+	s_sts_dict_entry *he;
+	he = sts_dict_find(map_, key_);
 	if (!he)
 	{
 		return 0;
 	}
-	return dictGetUnsignedIntegerVal(he);
+	return sts_dict_get_uint(he);
 };
 int sts_map_int_set(s_sts_map_int *map_, const char *key_, uint64_t value_)
 {
-	dictEntry *he;
-	he = dictFind(map_, key_);
+	s_sts_dict_entry *he;
+	he = sts_dict_find(map_, key_);
 	if (!he)
 	{
 		return 0;
 	}
-	dictSetUnsignedIntegerVal(he, value_);
+	sts_dict_set_uint(he, value_);
 	return 0;
 }
 //////////////////////////////////////////
@@ -155,6 +155,6 @@ int sts_map_int_set(s_sts_map_int *map_, const char *key_, uint64_t value_)
 //////////////////////////////////////////
 s_sts_map_sds *sts_map_sds_create()
 {
-	s_sts_map_sds *map = dictCreate(&sdsDictType, NULL);
+	s_sts_map_sds *map = sts_dict_create(&_sts_dict_type_sds_s, NULL);
 	return map;
 };

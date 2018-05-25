@@ -1151,7 +1151,7 @@ int compareCallback(void *privdata, const void *key1, const void *key2) {
 void freeCallback(void *privdata, void *val) {
     DICT_NOTUSED(privdata);
 
-    sdsfree(val);
+    sts_sdsfree(val);
 }
 
 dictType BenchmarkDictType = {
@@ -1200,7 +1200,7 @@ int main(int argc, char **argv) {
         sds key = sdsfromlonglong(j);
         dictEntry *de = dictFind(dict,key);
         assert(de != NULL);
-        sdsfree(key);
+        sts_sdsfree(key);
     }
     end_benchmark("Linear access of existing elements");
 
@@ -1209,7 +1209,7 @@ int main(int argc, char **argv) {
         sds key = sdsfromlonglong(j);
         dictEntry *de = dictFind(dict,key);
         assert(de != NULL);
-        sdsfree(key);
+        sts_sdsfree(key);
     }
     end_benchmark("Linear access of existing elements (2nd round)");
 
@@ -1218,7 +1218,7 @@ int main(int argc, char **argv) {
         sds key = sdsfromlonglong(rand() % count);
         dictEntry *de = dictFind(dict,key);
         assert(de != NULL);
-        sdsfree(key);
+        sts_sdsfree(key);
     }
     end_benchmark("Random access of existing elements");
 
@@ -1228,7 +1228,7 @@ int main(int argc, char **argv) {
         key[0] = 'X';
         dictEntry *de = dictFind(dict,key);
         assert(de == NULL);
-        sdsfree(key);
+        sts_sdsfree(key);
     }
     end_benchmark("Accessing missing");
 

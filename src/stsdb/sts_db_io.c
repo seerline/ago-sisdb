@@ -83,7 +83,7 @@ char * stsdb_init(const char *conf_)
     // server.status = STS_SERVER_STATUS_LOADED;
     return server.service_name;
 }
-sds stsdb_list()
+s_sts_sds stsdb_list()
 {
     if (server.status != STS_SERVER_STATUS_INITED)
     {
@@ -93,7 +93,7 @@ sds stsdb_list()
     return sts_db_get_table_info(server.db);
 }
 
-sds stsdb_get(const char *db_, const char *key_, const char *com_)
+s_sts_sds stsdb_get(const char *db_, const char *key_, const char *com_)
 {
     if (server.status != STS_SERVER_STATUS_INITED)
     {

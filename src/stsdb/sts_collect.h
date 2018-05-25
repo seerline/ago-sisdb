@@ -7,10 +7,9 @@
 #define _STS_COLLECT_H
 
 #include "sts_core.h"
-#include "sds.h"
 #include "sts_math.h"
-// #include "zmalloc.h"
-// #include "sdsalloc.h"
+
+#include "sts_malloc.h"
 
 #include "sts_table.h"
 
@@ -18,15 +17,16 @@
 //  数据库数据搜索模式
 /////////////////////////////////////////////////////////
 #define STS_SEARCH_NONE -1 // 没有数据符合条件
-#define STS_SEARCH_NEAR 1  // 附近的数据
-#define STS_SEARCH_LEFT 2  // 附近的数据
-#define STS_SEARCH_RIGHT 3 // 附近的数据
-#define STS_SEARCH_OK 0	// 准确匹配的数据
+#define STS_SEARCH_NEAR  1  // 附近的数据
+#define STS_SEARCH_LEFT  2  // 附近的数据
+#define STS_SEARCH_RIGHT 3  // 附近的数据
+#define STS_SEARCH_OK    0	// 准确匹配的数据
 
-#define STS_SEARCH_CHECK_INIT 0  // 当日最新记录，先简单按日期来判定
-#define STS_SEARCH_CHECK_NEW 1   // 当日新增记录，新来的时间大于最后一条记录
-#define STS_SEARCH_CHECK_OLD 2   // 记录，新来的时间小于或等于最后一条记录
-#define STS_SEARCH_CHECK_ERROR 3 // 错误，不处理
+#define STS_SEARCH_CHECK_INIT  0  // 当日最新记录，先简单按日期来判定
+#define STS_SEARCH_CHECK_NEW   1   // 当日新增记录，新来的时间大于最后一条记录
+#define STS_SEARCH_CHECK_OLD   2   // 记录，新来的时间小于最后一条记录
+#define STS_SEARCH_CHECK_OK    3   // 等于最后一条记录
+#define STS_SEARCH_CHECK_ERROR 4 // 错误，不处理
 
 #define STS_JSON_KEY_ARRAY ("value")
 #define STS_JSON_KEY_ARRAYS ("values")
@@ -50,9 +50,9 @@ typedef struct s_sts_collect_unit
 	s_sts_step_index *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sts_struct_list *value;   // 结构化数据
 
-	sds front;  // 前一分钟的记录 catch=true生效 -- 存盘时一定要保存
-	sds lasted; // 当前那一分钟的记录 catch=true生效 -- 存盘时一定要保存
-	sds moved;  // 移动中的
+	s_sts_sds front;  // 前一分钟的记录 catch=true生效 -- 存盘时一定要保存
+	s_sts_sds lasted; // 当前那一分钟的记录 catch=true生效 -- 存盘时一定要保存
+	s_sts_sds moved;  // 移动中的
 } s_sts_collect_unit;
 
 #pragma pack(pop)
@@ -84,23 +84,23 @@ int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 index_, int 
 int sts_collect_unit_delete_of_range(s_sts_collect_unit *, int start_, int stop_);  // 定位后删除
 int sts_collect_unit_delete_of_count(s_sts_collect_unit *, int start_, int count_); // 定位后删除
 
-sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *, int start_, int stop_);
-sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *, int start_, int count_);
+s_sts_sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *, int start_, int stop_);
+s_sts_sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *, int start_, int count_);
 
 int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //传入json数据时通过该函数转成二进制结构数据
-sds sts_collect_json_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
+s_sts_sds sts_collect_json_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //传入array数据时通过该函数转成二进制结构数据
-sds sts_collect_array_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
+s_sts_sds sts_collect_array_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
-sds sts_collect_struct_filter(s_sts_collect_unit *unit_, sds in_, const char *fields_);
-sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *fields_);
-sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, sds in_, const char *fields_);
+s_sts_sds sts_collect_struct_filter(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
+s_sts_sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
+s_sts_sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
 
-void sts_collect_struct_trans(sds ins_, s_sts_field_unit *infu_, s_sts_table *indb_, sds outs_, s_sts_field_unit *outfu_, s_sts_table *outdb_);
-// void sts_collect_struct_trans_incr(sds ins_,sds dbs_, s_sts_field_unit *infu_, s_sts_table *indb_, sds outs_, s_sts_field_unit *outfu_,s_sts_table *outdb_);
+void sts_collect_struct_trans(s_sts_sds ins_, s_sts_field_unit *infu_, s_sts_table *indb_, s_sts_sds outs_, s_sts_field_unit *outfu_, s_sts_table *outdb_);
+// void sts_collect_struct_trans_incr(s_sts_sds ins_,s_sts_sds dbs_, s_sts_field_unit *infu_, s_sts_table *indb_, s_sts_sds outs_, s_sts_field_unit *outfu_,s_sts_table *outdb_);
 
 #endif /* _STS_COLLECT_H */
