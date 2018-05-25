@@ -15,3 +15,4 @@ CMakeCache.txt
 *.zip
 core.*
 test/test
+!bin/Makefile

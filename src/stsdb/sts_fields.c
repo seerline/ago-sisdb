@@ -151,33 +151,60 @@ int64 sts_fields_get_int(s_sts_field_unit *fu_, const char *val_)
 	}
 	return out;
 }
+// double sts_fields_get_double(s_sts_field_unit *fu_, const char *val_)
+// {
+// 	double out = 0.0;
+// 	float *f32;
+// 	double *f64;
+// 	const char *ptr = val_;
+
+// 	switch (fu_->flags.len)
+// 	{
+// 	case 4:
+// 		f32 = (float *)(ptr + fu_->offset);
+// 		out = *f32;
+// 		break;
+// 	case 8:
+// 		f64 = (double *)(ptr + fu_->offset);
+// 		out = *f64;
+// 		break;
+// 	default:
+// 		break;
+// 	}
+// 	printf("---[%s]=%.f\n",fu_->name, out);
+// 	if (!fu_->flags.io && fu_->flags.zoom > 0)
+// 	{
+// 		out /= sts_zoom10(fu_->flags.zoom);
+// 	}
+// 	return out;
+// }
 double sts_fields_get_double(s_sts_field_unit *fu_, const char *val_)
 {
 	double out = 0.0;
-	float *f32;
-	double *f64;
+	int32 *i32;
+	int64 *i64;
 	const char *ptr = val_;
 
+	if (!fu_->flags.io && fu_->flags.zoom > 0)
+	{
+		out = sts_zoom10(fu_->flags.zoom);
+	}
 	switch (fu_->flags.len)
 	{
 	case 4:
-		f32 = (float *)(ptr + fu_->offset);
-		out = *f32;
+		i32 = (int32 *)(ptr + fu_->offset);
+		out = (double)*i32/out;
 		break;
 	case 8:
-		f64 = (double *)(ptr + fu_->offset);
-		out = *f64;
+		i64 = (int64 *)(ptr + fu_->offset);
+		out = (double)*i64/out;
 		break;
 	default:
 		break;
 	}
-	if (!fu_->flags.io && fu_->flags.zoom > 0)
-	{
-		out /= sts_zoom10(fu_->flags.zoom);
-	}
+	// printf("---[%s]=%f\n",fu_->name, out);
 	return out;
 }
-
 void sts_fields_set_uint(s_sts_field_unit *fu_, char *val_, uint64 u64_)
 {
 	uint64 zoom = 1;

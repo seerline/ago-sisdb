@@ -557,7 +557,8 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 		int index = unit_->value->count - 1;
 		int mode = sts_collect_unit_search_check(unit_, tt);
 		int size = sts_table_get_fields_size(tb);
-		printf("mode=%d tt= %lld index=%d\n", mode, tt, index);
+		// printf("mode=%d tt= %lld index=%d\n", mode, tt, index);
+		 
 		if (mode == STS_SEARCH_CHECK_INIT)
 		{
 			// 1. 初始化
@@ -569,6 +570,7 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 			}
 			// 2. 写入数据
 			sts_struct_list_push(unit_->value, (void *)in_);
+			sts_out_binary("set push", in_, 30);
 		}
 		else if (mode == STS_SEARCH_CHECK_NEW)
 		{
@@ -970,7 +972,7 @@ sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, sds in_, const char *f
 		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
 		{
 			const char *key = sts_string_list_get(field_list, i);
-			printf("----2----fields=%s\n",key);
+			// printf("----2----fields=%s\n",key);
 			s_sts_field_unit *fu = sts_field_get_from_key(tb, key);
 			if (!fu)
 			{
