@@ -8,10 +8,11 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include <sts_types.h>
+#include <os_types.h>
 #include <sts_malloc.h>
+#include <sds.h>
 
-#define sts_sprintf snprintf
+#define sts_str  sds
 
 int sts_strcpy(char *out_, size_t olen_, const char *in_);
 int sts_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_);
@@ -40,8 +41,6 @@ const char *sts_str_replace(const char *in, char ic_,char oc_); // °ÑinÖÐµÄicÌæ»
 void sts_str_to_lower(char *in_);
 void sts_str_to_upper(char *in_);
 
-// int sts_strlen_right(const char *str_, const char * right_,const char *ctf_);
-// int sts_strlen_left(const char *str_, const char * left_, const char *ctf_);
 const char *sts_str_getline(const char *e, int *len, const char *s, size_t size_);
 
 

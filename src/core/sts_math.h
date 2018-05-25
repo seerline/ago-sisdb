@@ -1,12 +1,19 @@
 #ifndef _STS_MATH_H
 #define _STS_MATH_H
 
-#include "sts_core.h"
+#include <sts_core.h>
 #include <math.h>
+#include <sts_malloc.h>
 
-#ifndef _MSC_VER
-#define  pow2(x)     pow(2,x)
-#endif
+#define  LOWORD(l)         ( (unsigned short)(l) )
+#define  HIWORD(l)         ( (unsigned short)(((unsigned int)(l) >> 16) & 0xFFFF) )
+#define  MERGEINT(a,b)     ( (unsigned int)( ((unsigned short)(a) << 16) | (unsigned short)(b)) )
+
+#define  sts_max(a,b)    (((a) > (b)) ? (a) : (b))
+#define  sts_min(a,b)    (((a) < (b)) ? (a) : (b))
+
+//限制返回值a在某个区域内
+#define  sts_between(a,min,max)    (((a) < (min)) ? (min) : (((a) > (max)) ? (max) : (a)))
 
 inline int64 sts_zoom10(int n)  // 3 ==> 1000
 {
@@ -131,10 +138,10 @@ inline void polyfit(int n, double x[], double y[], int poly_n, double a[])
 		}
 	}
 	gauss_solve(poly_n + 1, ata, a, sumxy);
-	free(tempx);
-	free(sumxx);
-	free(tempy);
-	free(sumxy);
-	free(ata);
+	sts_free(tempx);
+	sts_free(sumxx);
+	sts_free(tempy);
+	sts_free(sumxy);
+	sts_free(ata);
 }
 #endif //_STS_MATH_H

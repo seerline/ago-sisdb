@@ -26,7 +26,7 @@ char * stsdb_init(const char *conf_)
         sts_out_error(1)("no find service define.\n");
          return NULL;
     }
-    sts_strcpy(server.service_name, STS_STR_LEN, sts_json_get_str(service,"name"));
+    sts_strcpy(server.service_name, STS_NAME_LEN, sts_json_get_str(service,"name"));
 
     server.db = sts_db_create(server.service_name);
 

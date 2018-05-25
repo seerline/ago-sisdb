@@ -3,7 +3,8 @@
 #define _STS_JSON_H
 
 #include <sts_core.h>
-#include <stdarg.h>
+#include <sts_file.h>
+#include <sts_str.h>
 
 #define STS_JSON_NULL    0
 #define STS_JSON_ROOT    1 // ¸ù½Úµã

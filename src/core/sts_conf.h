@@ -4,6 +4,7 @@
 
 // 包含了这个头，就基本包括了所有的os目录的文件头了
 #include <sts_core.h>
+#include <sts_file.h>
 #include <sts_json.h>
 
 // 要求可以从json字符串转化为conf格式，方便js客户端配置好参数后直接发回给服务器进行处理

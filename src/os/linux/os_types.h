@@ -1,6 +1,6 @@
 
-#ifndef _STS_TYPES_H
-#define _STS_TYPES_H
+#ifndef _OS_TYPES_H
+#define _OS_TYPES_H
 
 /////////////////////////////////////////////
 // 数据类型定义
@@ -44,4 +44,4 @@ typedef long long int64;
 typedef unsigned long long uint64;
 #endif
 
-#endif //_STS_TYPES_H
+#endif //_OS_TYPES_H

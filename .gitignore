@@ -1,7 +1,5 @@
 bin/
-logs/
-nginx/
-rejson/
+log/
 db/
 o/
 zip/

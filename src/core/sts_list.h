@@ -3,9 +3,9 @@
 
 #include "sts_core.h"
 #include "sts_str.h"
+
 #include "adlist.h"
 #include "sds.h"
-// #include "zmalloc.h"
 #include "sdsalloc.h"
 
 // 定义一个结构体链表

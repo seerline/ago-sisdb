@@ -23,6 +23,4 @@
 // #define sts_realloc  zrealloc
 // #define sts_free zfree
 
-#define sts_sprintf snprintf
-
 #endif //_STS_OS_H

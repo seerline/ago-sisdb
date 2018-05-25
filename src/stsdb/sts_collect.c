@@ -1,7 +1,7 @@
 ﻿
 
-#include "sts_collect.h"
-#include "sts_fields.h"
+#include <sts_collect.h>
+#include <sts_fields.h>
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sts_step_index --------------------------------//
@@ -27,7 +27,7 @@ void sts_stepindex_rebuild(s_sts_step_index *si_, uint64 left_, uint64 right_, i
 	si_->left = left_;
 	si_->right = right_;
 	si_->count = count_;
-	si_->step = min((uint64)((right_ - left_) / count_), 1);
+	si_->step = sts_min((uint64)((right_ - left_) / count_), 1);
 }
 int stepindex_goto(s_sts_step_index *si_, uint64 curr_)
 {

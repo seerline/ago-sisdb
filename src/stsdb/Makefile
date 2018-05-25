@@ -141,6 +141,30 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_conf.c.s
 
+mnt/hgfs/mysoft/stsdb/src/core/sts_file.o: mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_file.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.o
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_file.i: mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_file.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.i
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_file.s: mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_file.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_file.c.s
+
 mnt/hgfs/mysoft/stsdb/src/core/sts_json.o: mnt/hgfs/mysoft/stsdb/src/core/sts_json.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_json.o
 
@@ -189,6 +213,30 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_list.c.s
 
+mnt/hgfs/mysoft/stsdb/src/core/sts_log.o: mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_log.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.o
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_log.i: mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_log.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.i
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_log.s: mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_log.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_log.c.s
+
 mnt/hgfs/mysoft/stsdb/src/core/sts_map.o: mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.o
 
@@ -213,149 +261,149 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_map.c.s
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o
+mnt/hgfs/mysoft/stsdb/src/core/sts_str.o: mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_str.o
 
 # target to build an object file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.o
+mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.o
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.i
+mnt/hgfs/mysoft/stsdb/src/core/sts_str.i: mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_str.i
 
 # target to preprocess a source file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.i
+mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.i
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.s
+mnt/hgfs/mysoft/stsdb/src/core/sts_str.s: mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_str.s
 
 # target to generate assembly for a file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.c.s
+mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.s
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o
+mnt/hgfs/mysoft/stsdb/src/core/sts_time.o: mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_time.o
 
 # target to build an object file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.o
+mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.o
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i
+mnt/hgfs/mysoft/stsdb/src/core/sts_time.i: mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_time.i
 
 # target to preprocess a source file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.i
+mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.i
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s
+mnt/hgfs/mysoft/stsdb/src/core/sts_time.s: mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_time.s
 
 # target to generate assembly for a file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.c.s
+mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_time.c.s
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.o: mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.o
 
 # target to build an object file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.o
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.i: mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.i
 
 # target to preprocess a source file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.i
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.s: mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.s
 
 # target to generate assembly for a file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.c.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.c.s
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.o: mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.o
 
 # target to build an object file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.o
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.i: mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.i
 
 # target to preprocess a source file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.i
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.s: mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.s
 
 # target to generate assembly for a file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.c.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.s
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.o: mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.o
 
 # target to build an object file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.o
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.i: mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.i
 
 # target to preprocess a source file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.i
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.s: mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.s
 
 # target to generate assembly for a file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.c.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.c.s
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.o: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.o: mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.o
 
 # target to build an object file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.o
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.o
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.i: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.i: mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.i
 
 # target to preprocess a source file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.i
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.i
 
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.s: mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.s: mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.s
 
 # target to generate assembly for a file
-mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.c.s
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.c.s
 
 mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.o
@@ -633,33 +681,39 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_conf.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_conf.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_conf.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_file.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_file.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_file.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_json.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_list.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_list.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_list.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_log.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_log.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_log.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_map.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_map.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_map.s"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.o"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.i"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_charset.s"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.o"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.i"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_file.s"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.o"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.i"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_log.s"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.o"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.i"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_str.s"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.o"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.i"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_thread.s"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.o"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.i"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/sts_time.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_str.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_str.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_str.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_time.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_time.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_time.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_charset.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_thread.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_time.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/adlist.s"

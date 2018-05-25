@@ -1,5 +1,5 @@
-#ifndef _STS_THREAD_H
-#define _STS_THREAD_H
+#ifndef _OS_THREAD_H
+#define _OS_THREAD_H
 
 #ifdef _MSC_VER
 #include <winsock2.h>

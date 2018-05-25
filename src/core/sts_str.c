@@ -299,29 +299,6 @@ int sts_str_subcmp_head(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
 	return -1;
 }
 
-// int sts_strlen_right(const char *str_,const char * right_,const char *ctf_)
-// {
-// 	int len=0;
-// 	while(str_&&*str_&&!strchr(ctf_, (unsigned char)*str_)&&str_<right_) {
-// 	// while(str_&&*str_&&!strchr(ctf_, (unsigned char)*str_)) {	
-// 		printf("%x\n",(unsigned char)*str_);
-// 		len++;
-// 		str_++;
-// 	}
-// 	return len;
-// }
-
-// int sts_strlen_left(const char *str_,const char * left_,const char *ctf_)
-// {
-// 	int len=0;
-// 	// while(str_&&*str_&&!strchr(ctf_, (unsigned char)*str_&&str_>left_)) {
-// 	while(str_&&*str_&&!strchr(ctf_, (unsigned char)*str_)) {
-// 		printf("%x\n",(unsigned char)*str_);
-// 		len++;
-// 		str_--;
-// 	}
-// 	return --len;
-// }
 const char *sts_str_getline(const char *e_, int *len_, const char *s_, size_t size_)
 {
 	if (!e_||!s_) return NULL;

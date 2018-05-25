@@ -32,7 +32,7 @@ void sts_time_getgm(struct tm *m, const time_t* t)
 #endif
 }
 
-void _sts_localtime(struct tm *m, const time_t* t)
+void sts_localtime(struct tm *m, const time_t* t)
 {
 #ifdef _MSC_VER
 	localtime_s(m, t);
@@ -62,59 +62,59 @@ unsigned long long sts_time_get_now_msec()
 #endif
 }
 
-void _sts_time_check(time_t tt, struct tm *ptm)
+void sts_time_check(time_t tt, struct tm *ptm)
 {
 	if (tt == 0)
 	{
 		time(&tt);
-		_sts_localtime(ptm, &tt);
+		sts_localtime(ptm, &tt);
 	}
 	else
 	{
-		_sts_localtime(ptm, &tt);
+		sts_localtime(ptm, &tt);
 	}
 }
 int sts_time_get_iyear(time_t ttime) //2015
 {
 	struct tm ptm = { 0 };
-	_sts_time_check(ttime, &ptm);
+	sts_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900);
 }
 int sts_time_get_imonth(time_t ttime) //201510
 {
 	struct tm ptm = { 0 };
-	_sts_time_check(ttime, &ptm);
+	sts_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900) * 100 + (ptm.tm_mon + 1);
 }
 
 int sts_time_get_idate(time_t ttime) //20151012
 {
 	struct tm ptm = { 0 };
-	_sts_time_check(ttime, &ptm);
+	sts_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday;
 }
 int sts_time_get_itime(time_t ttime) //103020
 {
 	struct tm ptm = { 0 };
-	_sts_time_check(ttime, &ptm);
+	sts_time_check(ttime, &ptm);
 	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
 int sts_time_get_iminute(time_t ttime) //1030
 {
 	struct tm ptm = { 0 };
-	_sts_time_check(ttime, &ptm);
+	sts_time_check(ttime, &ptm);
 	return ptm.tm_hour * 100 + ptm.tm_min;
 }
 int sts_time_get_isec(time_t ttime)
 {
 	struct tm ptm = { 0 };
-	_sts_time_check(ttime, &ptm);
+	sts_time_check(ttime, &ptm);
 	return ptm.tm_sec;
 }
 int sts_time_get_showtime(time_t ttime)
 {
 	struct tm ptm = { 0 };
-	_sts_time_check(ttime, &ptm);
+	sts_time_check(ttime, &ptm);
 	return (ptm.tm_mon + 1) * 10000 * 10000 + ptm.tm_mday * 100 * 10000 + ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 
 }
@@ -173,12 +173,12 @@ int sts_time_get_week_ofday(int today)
 	if (today == 0)
 	{
 		time(&tnow);
-		_sts_localtime(&ptm, &tnow);
+		sts_localtime(&ptm, &tnow);
 	}
 	else
 	{
 		tnow = sts_time_make_time(today, 0);
-		_sts_localtime(&ptm, &tnow);
+		sts_localtime(&ptm, &tnow);
 	}
 	return ptm.tm_wday;
 }
@@ -189,12 +189,12 @@ int sts_time_get_month_ofday(int today)
 	if (today == 0)
 	{
 		time(&tnow);
-		_sts_localtime(&ptm, &tnow);
+		sts_localtime(&ptm, &tnow);
 	}
 	else
 	{
 		tnow = sts_time_make_time(today, 0);
-		_sts_localtime(&ptm, &tnow);
+		sts_localtime(&ptm, &tnow);
 	}
 	return ptm.tm_mon + 1;
 }
@@ -237,7 +237,7 @@ void sts_time_format_minute(char * out_, size_t olen_, time_t tt_) //"930"
 {
 	if (!out_) return;
 	struct tm ptm = { 0 };
-	_sts_time_check(tt_, &ptm);
+	sts_time_check(tt_, &ptm);
 
 	sts_sprintf(out_, olen_, "%02d%02d", ptm.tm_hour, ptm.tm_min);
 }
@@ -246,7 +246,7 @@ void sts_time_format_date(char * out_, size_t olen_, time_t tt_) //"20150912"
 {
 	if (!out_) return;
 	struct tm ptm = { 0 };
-	_sts_time_check(tt_, &ptm);
+	sts_time_check(tt_, &ptm);
 
 	sts_sprintf(out_, olen_, "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
 
@@ -255,7 +255,7 @@ void sts_time_format_datetime(char * out_, size_t olen_, time_t tt_) //"20150912
 {
 	if (!out_) return;
 	struct tm ptm = { 0 };
-	_sts_time_check(tt_, &ptm);
+	sts_time_check(tt_, &ptm);
 
 	sts_sprintf(out_, olen_, "%d%02d%02d%02d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday,
 		ptm.tm_hour  , ptm.tm_min  , ptm.tm_sec);

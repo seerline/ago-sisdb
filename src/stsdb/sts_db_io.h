@@ -9,6 +9,7 @@
 #include "sts_core.h"
 #include "sts_conf.h"
 #include "sts_str.h"
+#include "sts_file.h"
 
 #include "sts_db.h"
 #include "sts_table.h"
@@ -26,7 +27,7 @@ typedef struct s_stsdb_server
 {
 	int status; //是否已经初始化 0 没有初始化
 
-	char service_name[STS_STR_LEN];  //服务名
+	char service_name[STS_NAME_LEN];  //服务名
 	char conf_name[STS_FILE_PATH_LEN];  //配置文件路径
 	char conf_path[STS_FILE_PATH_LEN];  //配置文件路径
 	s_sts_conf_handle *config;  // 配置文件句柄

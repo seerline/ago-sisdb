@@ -8,7 +8,4 @@
 #define sts_realloc  realloc
 #define sts_free free
 
-#define sts_sprintf snprintf
-
-
 #endif //_STS_OS_H
