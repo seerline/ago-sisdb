@@ -1,5 +1,6 @@
 ﻿
 #include "sts_db_io.h"
+#include "os_thread.h"
 
 /********************************/
 // 一定要用static定义，不然内存混乱
@@ -7,6 +8,51 @@ static s_stsdb_server server = {
     .status = STS_SERVER_STATUS_NOINIT,
     .config = NULL};
 /********************************/
+
+void get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
+{
+    if (!inpath_) {
+        sts_sprintf(outpath_,size_,srcpath_);
+    } else {
+        if (*inpath_=='/') {
+            // 如果为根目录，就直接使用
+            sts_sprintf(outpath_,size_,inpath_);
+        } else {
+            // 如果为相对目录，就合并配置文件的目录
+            sts_sprintf(outpath_,size_,"%s%s", srcpath_,inpath_);
+        }
+    }
+}
+
+void *_thread_save_file(void *argv_)
+{
+    s_sts_db *db = (s_sts_db *)argv_;
+
+    sts_thread_wait_start(&db->thread_wait);
+    while (server.status != STS_SERVER_STATUS_CLOSE)
+    {
+        if (db->save_type==STS_SERVER_SAVE_GAPS) {
+            if(sts_thread_wait_sleep(&db->thread_wait, db->save_gaps) == STS_ETIMEDOUT)
+            {
+                sts_db_file_save(server.dbpath,db);
+            }
+        } else {
+            if(sts_thread_wait_sleep(&db->thread_wait, 30)== STS_ETIMEDOUT)// 30秒判断一次
+            {
+                int min = sts_time_get_iminute(0);
+                for (int k=0;k<db->save_plans->count;k++)
+                {
+                    uint16 *lm = sts_struct_list_get(db->save_plans, k);
+                    if(min == *lm) {
+                        sts_db_file_save(server.dbpath,db);
+                    }
+                }
+            }
+        }
+    }
+    sts_thread_wait_stop(&db->thread_wait);
+    return NULL;
+}
 
 char * stsdb_init(const char *conf_)
 {
@@ -19,21 +65,37 @@ char * stsdb_init(const char *conf_)
     // 加载可包含的配置文件，方便后面使用
 
     sts_strcpy(server.conf_name, STS_FILE_PATH_LEN, conf_);
-    sts_file_getpath(server.conf_name, server.conf_path, STS_FILE_PATH_LEN);
+
+    char conf_path[STS_FILE_PATH_LEN];
+    sts_file_getpath(server.conf_name, conf_path, STS_FILE_PATH_LEN);
+
+    get_fixed_path(conf_path,sts_json_get_str(server.config->node, "dbpath"),
+                server.dbpath, STS_FILE_PATH_LEN);
+ 
+    s_sts_json_node *lognode = sts_json_cmp_child_node(server.config->node, "log");
+    if(lognode) {
+        get_fixed_path(conf_path,sts_json_get_str(lognode, "path"),
+                server.logpath, STS_FILE_PATH_LEN);
+
+        server.logsize = sts_json_get_int(lognode,"level",5);
+        server.loglevel = sts_json_get_int(lognode,"maxsize",10) * 1024 * 1024;
+    }
 
     s_sts_json_node *service = sts_json_cmp_child_node(server.config->node, "service");
     if(!service) {
         sts_out_error(1)("no find service define.\n");
-         return NULL;
+        sts_conf_close(server.config);
+        return NULL;
     }
     sts_strcpy(server.service_name, STS_NAME_LEN, sts_json_get_str(service,"name"));
 
+    //-------- db start ----------//
     server.db = sts_db_create(server.service_name);
 
     s_sts_json_node *wtime = sts_json_cmp_child_node(service, "work-time");
     if (!wtime) {
         sts_out_error(1)("no find work time define.\n");
-         return NULL;
+        goto error;   
     }
     server.db->work_time.first = sts_json_get_int(wtime,"open",900);
     server.db->work_time.second = sts_json_get_int(wtime,"close",1530);
@@ -41,7 +103,7 @@ char * stsdb_init(const char *conf_)
     s_sts_json_node *ttime = sts_json_cmp_child_node(service, "trade-time");
     if (!ttime) {
         sts_out_error(1)("no find trade time define.\n");
-         return NULL;
+        goto error;   
     }
     s_sts_time_pair pair;
     s_sts_json_node *next = sts_json_first_node(ttime);
@@ -55,11 +117,24 @@ char * stsdb_init(const char *conf_)
     }
     if (server.db->trade_time->count < 1) {
         sts_out_error(1)("trade time < 1.\n");
-        return NULL;
+        goto error;   
     }
 
-    s_sts_json_node *stime = sts_json_cmp_child_node(service, "save-plans");
+    server.db->save_type = STS_SERVER_SAVE_NONE;
+    
+    s_sts_json_node *stime = sts_json_cmp_child_node(service, "save-gaps");
     if (stime) {
+        server.db->save_type = STS_SERVER_SAVE_GAPS;
+        // 默认15秒存盘一次，
+        server.db->save_gaps = sts_json_get_int(service, "save-gaps", 30); 
+        if (server.db->save_gaps < 5) {
+            server.db->save_gaps = 5;
+        }
+    }
+
+    stime = sts_json_cmp_child_node(service, "save-plans");
+    if (stime) {
+        server.db->save_type = STS_SERVER_SAVE_PLANS;
         int count = sts_json_get_size(stime);
         char key[16];
         for (int k=0;k<count;k++){
@@ -78,11 +153,59 @@ char * stsdb_init(const char *conf_)
         sts_table_create(server.db, info->key, info);
         info = info->next;
     }
+    
+    if(!sts_db_file_check(server.dbpath, server.db))
+    {
+        sts_out_error(1)("file format ver error.\n");
+        goto error;
+    }
+
+    if (!sts_db_file_load(server.dbpath, server.db))
+    {
+        sts_out_error(1)("load sdb fail. exit\n");
+        goto error;        
+    }
+    // 启动存盘线程
+    sts_thread_wait_create(&server.db->thread_wait);
+    
+    // 启动存盘线程
+    server.db->save_pid = 0;
+    sts_mutex_rw_create(&server.db->save_mutex);
+
+    if (server.db->save_type!=STS_SERVER_SAVE_NONE) 
+    {
+        if (sts_thread_create(_thread_save_file, server.db, &server.db->save_pid) != 0)
+        {
+            sts_out_error(1)("can't start thread\n");
+            goto error;       
+        }  
+    }
     server.status = STS_SERVER_STATUS_INITED;
     // sts_out_error(3)("server.status: %d\n", server.status);
     // server.status = STS_SERVER_STATUS_LOADED;
+    sts_conf_close(server.config);
     return server.service_name;
+error:
+    sts_db_destroy(server.db);
+    sts_conf_close(server.config);
+    return NULL;
 }
+
+void stsdb_close()
+{
+    server.status = STS_SERVER_STATUS_CLOSE;
+
+    sts_thread_wait_kill(&server.db->thread_wait);
+
+    if(server.db&&!server.db->save_pid){
+        sts_thread_join(server.db->save_pid);
+        sts_mutex_rw_destroy(&server.db->save_mutex);
+    }
+    sts_db_destroy(server.db);
+
+    sts_thread_wait_destroy(&server.db->thread_wait);
+}
+
 s_sts_sds stsdb_list()
 {
     if (server.status != STS_SERVER_STATUS_INITED)

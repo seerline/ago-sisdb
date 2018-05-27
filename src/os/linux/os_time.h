@@ -21,6 +21,6 @@ unsigned long long sts_time_get_now_msec();
 // 检查tt用当前时间替换
 void sts_time_check(time_t tt_, struct tm *ptm_);
 //睡眠单位毫秒
-void sts_time_sleep(int msec);
+void sts_sleep(int msec);
 
 #endif //_OS_TIME_H

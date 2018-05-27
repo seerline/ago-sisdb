@@ -105,6 +105,13 @@ char *call_stsdb_init(const char *conf_)
 	}
 	return stsdb_init(conf_);
 }
+int call_stsdb_close(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
+{
+	sts_module_not_used(argc_);
+	sts_module_not_used(argv_);
+	stsdb_close();
+	return sts_module_reply_with_simple_string(ctx_, "OK");
+}
 
 int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
@@ -136,12 +143,13 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	// 	printf("module loaded with argv_[%d] = %s\n", k, s);
 	// }
 
-	// if (sts_module_create_command(ctx_, "stsdb.start", call_stsdb_start,
-	// 							  "readonly",
-	// 							  0, 0, 0) == STS_MODULE_ERROR)
-	// {
-	// 	return STS_MODULE_ERROR;
-	// }
+	sts_sprintf(servicename, 64, "%s.close", service);
+	if (sts_module_create_command(ctx_, servicename, call_stsdb_close,
+								  "readonly",
+								  0, 0, 0) == STS_MODULE_ERROR)
+	{
+		return STS_MODULE_ERROR;
+	}
 	sts_sprintf(servicename, 64, "%s.list", service);
 	if (sts_module_create_command(ctx_, servicename, call_stsdb_list,
 								  "readonly",

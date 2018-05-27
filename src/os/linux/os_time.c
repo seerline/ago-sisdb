@@ -39,7 +39,7 @@ void sts_time_check(time_t tt, struct tm *ptm)
 	}
 }
 
-void sts_time_sleep(int msec)
+void sts_sleep(int msec)
 {
 	usleep(msec * 1000);
 }

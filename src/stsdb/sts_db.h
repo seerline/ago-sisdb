@@ -8,6 +8,7 @@
 
 #include "sts_map.h"
 #include "sts_table.h"
+#include "sts_table.h"
 
 #define STS_MAP_DEFINE_FIELD_TYPE   0
 #define STS_MAP_DEFINE_DATA_TYPE    1
@@ -46,8 +47,15 @@ typedef struct s_sts_db {
 	s_sts_map_pointer  *map; // 关键字查询表
 	s_sts_time_pair     work_time; // 900 --1530 工作时间
 	s_sts_struct_list  *trade_time; // [[930,1130],[1300,1500]] 交易时间
-	int  save_type;  // 存盘方式，间隔时间存，还是hi指定时间存
+
+	int  save_type;  // 存盘方式，间隔时间存，还是指定时间存
+	int  save_gaps;  // 存盘的间隔秒数	
 	s_sts_struct_list  *save_plans; // uin16的时间序列，如果类型为gap，就表示秒为单位的间隔时间
+	s_sts_thread_id_t save_pid;
+	s_sts_mutex_rw save_mutex;  // save时的锁定
+
+	s_sts_wait thread_wait; //线程内部延时处理
+
 }s_sts_db;
 #pragma pack(pop)
 

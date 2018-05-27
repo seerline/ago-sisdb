@@ -1,7 +1,7 @@
 
 #include <os_thread.h>
 
-bool sts_thread_create(THREAD_START_ROUTINE func_, void* val_, s_sts_thread_id_t *thread_)
+bool sts_thread_create(STS_THREAD_START_ROUTINE func_, void* val_, s_sts_thread_id_t *thread_)
 {
 	s_sts_thread_id_t result = 0;
 	pthread_attr_t attr;
@@ -38,7 +38,7 @@ s_sts_thread_id_t sts_thread_self()
 /////////////////////////////////////
 //
 //////////////////////////////////////////
-int sts_mutex_create(s_sts_thread_mutex_t *mutex_)
+int sts_mutex_create(s_sts_mutex_t *mutex_)
 {
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
@@ -50,7 +50,7 @@ int sts_mutex_create(s_sts_thread_mutex_t *mutex_)
 ////////////////////////
 // 多读一写锁定义
 ////////////////////////
-int sts_mutex_rw_create(s_sts_thread_mutex_rw *mutex_)
+int sts_mutex_rw_create(s_sts_mutex_rw *mutex_)
 {
 	int o = sts_mutex_create(&mutex_->mutex_s);
 	mutex_->try_write_b = false;
@@ -58,12 +58,12 @@ int sts_mutex_rw_create(s_sts_thread_mutex_rw *mutex_)
 	mutex_->writes_i = 0;
 	return o;
 }
-void sts_mutex_rw_destroy(s_sts_thread_mutex_rw *mutex_)
+void sts_mutex_rw_destroy(s_sts_mutex_rw *mutex_)
 {
 	assert(mutex_);
 	sts_mutex_destroy(&mutex_->mutex_s);
 }
-void sts_mutex_rw_lock_r(s_sts_thread_mutex_rw *mutex_)
+void sts_mutex_rw_lock_r(s_sts_mutex_rw *mutex_)
 {
 	assert(mutex_);
 	for (;;)
@@ -72,7 +72,7 @@ void sts_mutex_rw_lock_r(s_sts_thread_mutex_rw *mutex_)
 		if (mutex_->try_write_b || mutex_->writes_i > 0)
 		{
 			sts_mutex_unlock(&mutex_->mutex_s);
-			sts_time_sleep(50);
+			sts_sleep(50);
 			continue;
 		}
 		assert(mutex_->reads_i >= 0);
@@ -81,7 +81,7 @@ void sts_mutex_rw_lock_r(s_sts_thread_mutex_rw *mutex_)
 		break;
 	}
 }
-void sts_mutex_rw_unlock_r(s_sts_thread_mutex_rw *mutex_)
+void sts_mutex_rw_unlock_r(s_sts_mutex_rw *mutex_)
 {
 	assert(mutex_);
 	sts_mutex_lock(&mutex_->mutex_s);
@@ -89,7 +89,7 @@ void sts_mutex_rw_unlock_r(s_sts_thread_mutex_rw *mutex_)
 	assert(mutex_->reads_i >= 0);
 	sts_mutex_unlock(&mutex_->mutex_s);
 }
-void sts_mutex_rw_lock_w(s_sts_thread_mutex_rw *mutex_)
+void sts_mutex_rw_lock_w(s_sts_mutex_rw *mutex_)
 {
 	for (;;)
 	{
@@ -98,7 +98,7 @@ void sts_mutex_rw_lock_w(s_sts_thread_mutex_rw *mutex_)
 		if (mutex_->reads_i > 0 || mutex_->writes_i > 0)
 		{
 			sts_mutex_unlock(&mutex_->mutex_s);
-			sts_time_sleep(50);
+			sts_sleep(50);
 			continue;
 		}
 		mutex_->try_write_b = false;
@@ -108,7 +108,7 @@ void sts_mutex_rw_lock_w(s_sts_thread_mutex_rw *mutex_)
 		break;
 	}
 }
-void sts_mutex_rw_unlock_w(s_sts_thread_mutex_rw *mutex_)
+void sts_mutex_rw_unlock_w(s_sts_mutex_rw *mutex_)
 {
 	assert(mutex_);
 	sts_mutex_lock(&mutex_->mutex_s);
@@ -116,3 +116,44 @@ void sts_mutex_rw_unlock_w(s_sts_thread_mutex_rw *mutex_)
 	assert(mutex_->writes_i >= 0);
 	sts_mutex_unlock(&mutex_->mutex_s);
 }
+
+  
+void  sts_thread_wait_start(s_sts_wait *wait_) 
+{
+	sts_mutex_lock(&wait_->mutex); 	
+}
+void  sts_thread_wait_stop(s_sts_wait *wait_) 
+{
+	sts_mutex_unlock(&wait_->mutex); 	
+}
+int  sts_thread_wait_sleep(s_sts_wait *wait_, int delay_) // 秒
+{
+	struct timeval tv;
+	struct timespec ts; 
+	set_time_get_day(&tv, NULL);
+	ts.tv_sec = tv.tv_sec + delay_;  
+    ts.tv_nsec = tv.tv_usec * 1000;  
+
+	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);  
+	// 返回 ETIMEDOUT 就正常处理
+}
+
+void  sts_thread_wait_create(s_sts_wait *wait_)
+{
+    pthread_cond_init(&wait_->cond, NULL);  
+    pthread_mutex_init(&wait_->mutex, NULL);  
+	
+}
+void sts_thread_wait_kill(s_sts_wait *wait_)
+{
+    pthread_mutex_lock(&wait_->mutex);  
+    // pthread_cond_signal(&wait_.cond);  
+	pthread_cond_broadcast(&wait_->cond); 
+    pthread_mutex_unlock(&wait_->mutex);  
+}
+void sts_thread_wait_destroy(s_sts_wait *wait_)
+{
+    pthread_cond_destroy(&wait_->cond);  
+    pthread_mutex_destroy(&wait_->mutex);  
+}
+

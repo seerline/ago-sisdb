@@ -13,13 +13,19 @@
 
 #include "sts_db.h"
 #include "sts_table.h"
+#include "sts_db_file.h"
 
 #define STS_SERVER_OK        0
-#define STS_SERVER_ERROR    1
+#define STS_SERVER_ERROR     1
 
 #define STS_SERVER_STATUS_NOINIT    0
 #define STS_SERVER_STATUS_INITED    1
 #define STS_SERVER_STATUS_LOADED    2
+#define STS_SERVER_STATUS_CLOSE     3
+
+#define STS_SERVER_SAVE_NONE     0
+#define STS_SERVER_SAVE_GAPS     1
+#define STS_SERVER_SAVE_PLANS    2
 
 #pragma pack(push,1)
 
@@ -27,11 +33,18 @@ typedef struct s_stsdb_server
 {
 	int status; //是否已经初始化 0 没有初始化
 
-	char service_name[STS_NAME_LEN];  //服务名
 	char conf_name[STS_FILE_PATH_LEN];  //配置文件路径
-	char conf_path[STS_FILE_PATH_LEN];  //配置文件路径
+
+	char dbpath[STS_FILE_PATH_LEN];    //数据库路径
+
+	int    loglevel;
+	size_t logsize;
+	char   logpath[STS_FILE_PATH_LEN];   //log路径
+
 	s_sts_conf_handle *config;  // 配置文件句柄
+
 	s_sts_db *db;  // 数据库句柄
+	char service_name[STS_NAME_LEN];  //服务名
 
 }s_stsdb_server;
 
@@ -40,6 +53,8 @@ typedef struct s_stsdb_server
 char * stsdb_init(const char *conf_);
 
 s_sts_sds stsdb_list();
+
+void stsdb_close();
 
 s_sts_sds stsdb_get(const char *db_, const char *key_, const char *com_);
 

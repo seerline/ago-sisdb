@@ -35,5 +35,6 @@
 #include <os_io.h>
 #include <os_file.h>
 #include <os_time.h>
+#include <os_thread.h>
 
 #endif //_STS_OS_H

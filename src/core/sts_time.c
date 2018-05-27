@@ -331,7 +331,7 @@ int sts_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"20
 
 s_sts_time_delay *sts_delay_create(unsigned int msec)
 {
-	s_sts_time_delay *m = malloc(sizeof(*m));
+	s_sts_time_delay *m = sts_malloc(sizeof(*m));
 	m->is_busy = false;
 	m->m_msec_i = msec;
 	if (m->m_msec_i < 5) m->m_msec_i = 5;
@@ -349,7 +349,7 @@ void sts_delay_destroy(s_sts_time_delay *m)
 		m->usesd_msec = (unsigned int)(sts_time_get_now_msec() - m->start_msec);
 		if (m->m_msec_i > m->usesd_msec)
 		{
-			sts_time_sleep(m->m_msec_i - m->usesd_msec);
+			sts_sleep(m->m_msec_i - m->usesd_msec);
 		}
 	}
 	free(m);

@@ -568,7 +568,7 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 			if (index < 0) break; 
 			mode = STS_SEARCH_CHECK_OK;
 		}
-		printf("----=%d tt= %lld index=%d\n", mode, tt, index);
+		// printf("----=%d tt= %lld index=%d\n", mode, tt, index);
 		if (mode == STS_SEARCH_CHECK_INIT)
 		{
 			// 1. 初始化

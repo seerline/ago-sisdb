@@ -37,9 +37,9 @@
 // 根据结构化数组的时间序列，自动生成头尾时间，和平均间隔时间
 typedef struct s_sts_step_index
 {
+	uint32 count;
 	uint64 left; // 最小时间
 	uint64 right;
-	int count;
 	uint64 step; // 间隔时间，每条记录大约间隔时间，
 } s_sts_step_index;
 
@@ -52,7 +52,7 @@ typedef struct s_sts_collect_unit
 
 	s_sts_sds front;  // 前一分钟的记录 catch=true生效 -- 存盘时一定要保存
 	s_sts_sds lasted; // 当前那一分钟的记录 catch=true生效 -- 存盘时一定要保存
-	s_sts_sds moved;  // 移动中的
+	s_sts_sds moved;  // 移动中的==value中最后一条记录
 } s_sts_collect_unit;
 
 #pragma pack(pop)
