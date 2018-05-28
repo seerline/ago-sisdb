@@ -259,7 +259,7 @@ static const char *_sts_parse_include(s_sts_conf_handle *handle_, s_sts_json_nod
 	// fn = sts_lstrcat(fn, );
 
 	size_t size = 0;
-	char *buffer = sts_file_open_and_read(fn, &size);
+	char *buffer = sts_file_direct_read_sds(fn, &size);
 	if (!buffer || size == 0)
 	{
 		sts_free(fn);
@@ -410,7 +410,7 @@ s_sts_conf_handle *sts_conf_open(const char *fn_)
 	s_sts_conf_handle *handle = NULL;
 
 	size_t size = 0;
-	char *buffer = sts_file_open_and_read(fn_, &size);
+	char *buffer = sts_file_direct_read_sds(fn_, &size);
 	if (size == 0)
 	{
 		goto fail;

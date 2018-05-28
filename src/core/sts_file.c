@@ -1,7 +1,7 @@
 
 #include <sts_file.h>
 
-s_sts_sds sts_file_open_and_read(const char *fn_, size_t *len_)
+s_sts_sds sts_file_direct_read_sds(const char *fn_, size_t *len_)
 {
 	sts_file_handle fp = sts_file_open(fn_, STS_FILE_IO_READ, 0);
 	if (!fp)

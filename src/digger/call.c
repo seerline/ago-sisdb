@@ -62,7 +62,7 @@ int digger_get(s_sts_module_context *ctx_, const char *key_, const char *com_)
                                dbpath,
                                sts_str_replace(key_,'.','/'));
     size_t size = 0;
-    char *buffer = sts_file_open_and_read(fn, &size);
+    char *buffer = sts_file_direct_read_sds(fn, &size);
     if (size == 0 || !buffer)
     {
         sts_free(fn);
@@ -87,7 +87,7 @@ int stsdb_get(s_sts_module_context *ctx_, const char *db_, const char *key_, con
                                db_
                                );
     size_t size = 0;
-    char *buffer = sts_file_open_and_read(fn, &size);
+    char *buffer = sts_file_direct_read_sds(fn, &size);
     if (size == 0 || !buffer)
     {
         sts_free(fn);

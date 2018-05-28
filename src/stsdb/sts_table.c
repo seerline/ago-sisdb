@@ -450,10 +450,10 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	case STS_DATA_JSON:
 		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
 		// 用新的数据进行覆盖，然后返回数据
-		in_val = sts_collect_json_to_struct(in_collect, in_, ilen_);
+		in_val = sts_collect_json_to_struct_sds(in_collect, in_, ilen_);
 		break;
 	case STS_DATA_ARRAY:
-		in_val = sts_collect_array_to_struct(in_collect, in_, ilen_);
+		in_val = sts_collect_array_to_struct_sds(in_collect, in_, ilen_);
 		break;
 	default:
 		in_val = sts_sdsnewlen(in_, ilen_);
@@ -540,7 +540,7 @@ int sts_table_update(int type_, s_sts_table *tb_, const char *key_, const char *
 	case STS_DATA_JSON:
 		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
 		// 用新的数据进行覆盖，然后返回数据
-		val = sts_collect_json_to_struct(collect, in_, ilen_);
+		val = sts_collect_json_to_struct_sds(collect, in_, ilen_);
 		if (val)
 		{
 			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
@@ -548,7 +548,7 @@ int sts_table_update(int type_, s_sts_table *tb_, const char *key_, const char *
 		}
 		break;
 	case STS_DATA_ARRAY:
-		val = sts_collect_array_to_struct(collect, in_, ilen_);
+		val = sts_collect_array_to_struct_sds(collect, in_, ilen_);
 		if (val)
 		{
 			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
@@ -786,18 +786,18 @@ filter:
 	case STS_DATA_STRUCT:
 		if (!sts_check_fields_all(sds_fields))
 		{
-			other = sts_collect_struct_filter(collect, out, sds_fields);
+			other = sts_collect_struct_filter_sds(collect, out, sds_fields);
 			sts_sdsfree(out);
 			out = other;
 		}
 		break;
 	case STS_DATA_JSON:
-		other = sts_collect_struct_to_json(collect, out, sds_fields);
+		other = sts_collect_struct_to_json_sds(collect, out, sds_fields);
 		sts_sdsfree(out);
 		out = other;
 		break;
 	case STS_DATA_ARRAY:
-		other = sts_collect_struct_to_array(collect, out, sds_fields);
+		other = sts_collect_struct_to_array_sds(collect, out, sds_fields);
 		sts_sdsfree(out);
 		out = other;
 		break;

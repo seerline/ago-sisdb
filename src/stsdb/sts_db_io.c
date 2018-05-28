@@ -218,7 +218,7 @@ s_sts_sds stsdb_list()
         sts_out_error(3)("no init stsdb.\n");
         return NULL;
     }
-    return sts_db_get_table_info(server.db);
+    return sts_db_get_table_info_sds(server.db);
 }
 
 s_sts_sds stsdb_get(const char *db_, const char *key_, const char *com_)

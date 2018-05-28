@@ -92,15 +92,15 @@ s_sts_sds sts_collect_unit_get_of_count_sds(s_sts_collect_unit *, int start_, in
 int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //传入json数据时通过该函数转成二进制结构数据
-s_sts_sds sts_collect_json_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
+s_sts_sds sts_collect_json_to_struct_sds(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //传入array数据时通过该函数转成二进制结构数据
-s_sts_sds sts_collect_array_to_struct(s_sts_collect_unit *, const char *in_, size_t ilen_);
+s_sts_sds sts_collect_array_to_struct_sds(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
-s_sts_sds sts_collect_struct_filter(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
-s_sts_sds sts_collect_struct_to_json(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
-s_sts_sds sts_collect_struct_to_array(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
+s_sts_sds sts_collect_struct_filter_sds(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
+s_sts_sds sts_collect_struct_to_json_sds(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
+s_sts_sds sts_collect_struct_to_array_sds(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_);
 
 void sts_collect_struct_trans(s_sts_sds ins_, s_sts_field_unit *infu_, s_sts_table *indb_, s_sts_sds outs_, s_sts_field_unit *outfu_, s_sts_table *outdb_);
 // void sts_collect_struct_trans_incr(s_sts_sds ins_,s_sts_sds dbs_, s_sts_field_unit *infu_, s_sts_table *indb_, s_sts_sds outs_, s_sts_field_unit *outfu_,s_sts_table *outdb_);

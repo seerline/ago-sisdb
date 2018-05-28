@@ -121,7 +121,7 @@ s_sts_table *sts_db_get_table(s_sts_db *db_, const char *name_)
 	return val;
 }
 
-s_sts_sds sts_db_get_table_info(s_sts_db *db_)
+s_sts_sds sts_db_get_table_info_sds(s_sts_db *db_)
 {
 	s_sts_sds list = sts_sdsempty();
 	if (db_->db)
