@@ -50,9 +50,11 @@ typedef struct s_sts_collect_unit
 	s_sts_step_index *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sts_struct_list *value;   // 结构化数据
 
-	s_sts_sds front;  // 前一分钟的记录 catch=true生效 -- 存盘时一定要保存
-	s_sts_sds lasted; // 当前那一分钟的记录 catch=true生效 -- 存盘时一定要保存
-	s_sts_sds moved;  // 移动中的==value中最后一条记录
+	s_sts_sds front;  // 前一分钟的记录 catch=true生效 vol为全量 -- 存盘时一定要保存
+	s_sts_sds lasted; // 当前那一分钟的记录 catch=true生效 vol为全量 -- 存盘时一定要保存
+
+	s_sts_sds refer;  // 实际数据的前一条参考数据 zip 时生效 vol为当量 -- 需要保存
+	// s_sts_sds moved;  // 当前数据，直接从数据区获取
 } s_sts_collect_unit;
 
 #pragma pack(pop)
@@ -84,8 +86,8 @@ int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 index_, int 
 int sts_collect_unit_delete_of_range(s_sts_collect_unit *, int start_, int stop_);  // 定位后删除
 int sts_collect_unit_delete_of_count(s_sts_collect_unit *, int start_, int count_); // 定位后删除
 
-s_sts_sds sts_collect_unit_get_of_range_m(s_sts_collect_unit *, int start_, int stop_);
-s_sts_sds sts_collect_unit_get_of_count_m(s_sts_collect_unit *, int start_, int count_);
+s_sts_sds sts_collect_unit_get_of_range_sds(s_sts_collect_unit *, int start_, int stop_);
+s_sts_sds sts_collect_unit_get_of_count_sds(s_sts_collect_unit *, int start_, int count_);
 
 int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_);
 

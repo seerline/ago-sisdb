@@ -8,6 +8,10 @@
 
 #define STS_FILE_BUFFER_LEN  1024*1024
 
+#define WRITE_FILE_INT(f__,l__)  { int len__=(int)l__ ;sts_file_write(f__, &len__, sizeof(int), 1);}
+#define WRITE_FILE_STRING(f__,s__,l__)  { int len__=(int)l__ ;sts_file_write(f__, &len__, sizeof(int), 1); \
+                                        sts_file_write(f__, s__, 1, len__); }
+
 typedef struct s_sts_file {
     size_t  maxsize;
     s_sts_sds buffer;
@@ -24,6 +28,5 @@ typedef struct s_sts_file {
 } s_sts_file;
 
 s_sts_sds sts_file_open_and_read(const char *fn_, size_t *len_);
-void  sts_file_getpath(const char *fn, char *out_, int olen_);
 
 #endif //_STS_FILE_H

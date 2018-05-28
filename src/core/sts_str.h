@@ -2,17 +2,9 @@
 #ifndef _STS_STR_H
 #define _STS_STR_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdarg.h>
-
 #include <os_types.h>
+#include <os_str.h>
 #include <sts_malloc.h>
-
-int sts_strcpy(char *out_, size_t olen_, const char *in_);
-int sts_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_);
 
 // 以第一个字符串为长度，从头开始进行比较
 int sts_strcase_match(const char *son_, const char *source_);

@@ -9,7 +9,7 @@ static s_stsdb_server server = {
     .config = NULL};
 /********************************/
 
-void get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
+void _get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
 {
     if (!inpath_) {
         sts_sprintf(outpath_,size_,srcpath_);
@@ -64,18 +64,18 @@ char * stsdb_init(const char *conf_)
     }
     // 加载可包含的配置文件，方便后面使用
 
-    sts_strcpy(server.conf_name, STS_FILE_PATH_LEN, conf_);
+    sts_strcpy(server.conf_name, STS_PATH_LEN, conf_);
 
-    char conf_path[STS_FILE_PATH_LEN];
-    sts_file_getpath(server.conf_name, conf_path, STS_FILE_PATH_LEN);
+    char conf_path[STS_PATH_LEN];
+    sts_file_getpath(server.conf_name, conf_path, STS_PATH_LEN);
 
-    get_fixed_path(conf_path,sts_json_get_str(server.config->node, "dbpath"),
-                server.dbpath, STS_FILE_PATH_LEN);
+    _get_fixed_path(conf_path,sts_json_get_str(server.config->node, "dbpath"),
+                server.dbpath, STS_PATH_LEN);
  
     s_sts_json_node *lognode = sts_json_cmp_child_node(server.config->node, "log");
     if(lognode) {
-        get_fixed_path(conf_path,sts_json_get_str(lognode, "path"),
-                server.logpath, STS_FILE_PATH_LEN);
+        _get_fixed_path(conf_path,sts_json_get_str(lognode, "path"),
+                server.logpath, STS_PATH_LEN);
 
         server.logsize = sts_json_get_int(lognode,"level",5);
         server.loglevel = sts_json_get_int(lognode,"maxsize",10) * 1024 * 1024;
@@ -87,7 +87,7 @@ char * stsdb_init(const char *conf_)
         sts_conf_close(server.config);
         return NULL;
     }
-    sts_strcpy(server.service_name, STS_NAME_LEN, sts_json_get_str(service,"name"));
+    sts_strcpy(server.service_name, STS_TABLE_MAXLEN, sts_json_get_str(service,"name"));
 
     //-------- db start ----------//
     server.db = sts_db_create(server.service_name);
@@ -144,8 +144,13 @@ char * stsdb_init(const char *conf_)
             // printf("save time [%d]\n",min);
         }
     }
+	server.db->save_format = sts_db_find_map_uid(server.db, 
+            sts_json_get_str(service, "save-format"), 
+            STS_MAP_DEFINE_DATA_TYPE);
 
     s_sts_json_node *node = sts_json_cmp_child_node(service, "tables");
+    server.db->conf = sts_conf_to_json(node);
+
     s_sts_json_node *info = sts_conf_first_node(node);
     while (info)
     {
@@ -229,27 +234,15 @@ s_sts_sds stsdb_get(const char *db_, const char *key_, const char *com_)
         sts_out_error(3)("no find %s db.\n", db_);
         return NULL;
     }
-    return sts_table_get_m(table, key_, com_);
+    return sts_table_get_sds(table, key_, com_);
 }
 
 
-int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *val_, size_t len_)
+int stsdb_set_format(int format_, const char *db_, const char *key_, const char *val_, size_t len_)
 {
-	int uid = sts_db_find_map_uid(server.db, dt_, STS_MAP_DEFINE_DATA_TYPE);
-	if (uid != STS_DATA_STRUCT && uid != STS_DATA_JSON && uid != STS_DATA_ARRAY)
-	{
-        sts_out_error(3)("set data type error.\n");
-        return STS_SERVER_ERROR;
-	}
-
-    if (server.status != STS_SERVER_STATUS_INITED)
-    {
-        sts_out_error(3)("no init stsdb.\n");
-        return STS_SERVER_ERROR;
-    }
     // if (sts_strcasecmp(key_,"SH600048")) return STS_SERVER_ERROR;
     // printf("%s.%s  %ld\n", key_, db_, len_);
-    if (uid == STS_DATA_STRUCT)
+    if (format_ == STS_DATA_STRUCT)
     {
          sts_out_binary("set", val_, 30);
     }   
@@ -263,10 +256,35 @@ int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *va
         return STS_SERVER_ERROR;
     }
     // 来源是结构体数据的，必须只能往结构体table写数据，
-    int o = sts_table_update_mul(uid, table, key_, val_, len_);
+    int o = sts_table_update_mul(format_, table, key_, val_, len_);
     if(o) {
         sts_out_error(5)("set data ok,[%d].\n", o);
         return STS_SERVER_OK;
     }
     return STS_SERVER_ERROR;
+}
+
+int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *val_, size_t len_)
+{
+    if (server.status != STS_SERVER_STATUS_INITED)
+    {
+        sts_out_error(3)("no init stsdb.\n");
+        return STS_SERVER_ERROR;
+    }
+
+	int uid = sts_db_find_map_uid(server.db, dt_, STS_MAP_DEFINE_DATA_TYPE);
+	if (uid != STS_DATA_STRUCT && uid != STS_DATA_JSON && uid != STS_DATA_ARRAY)
+	{
+        sts_out_error(3)("set data type error.\n");
+        return STS_SERVER_ERROR;
+	}
+
+    // 如果保存aof失败就返回错误
+    if (!sts_db_file_save_aof(server.dbpath, server.db, uid, db_, key_, val_, len_))
+    {
+        sts_out_error(3)("set data type error.\n");
+        return STS_SERVER_ERROR;
+    }
+
+    return stsdb_set_format(uid,db_,key_,val_,len);
 }

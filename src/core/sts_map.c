@@ -4,12 +4,12 @@
 
 uint64_t _sts_dict_sds_hash(const void *key)
 {
-	return sts_dict_hash_func((unsigned char *)key, sdslen((char *)key));
+	return sts_dict_hash_func((unsigned char *)key, sts_sdslen((char *)key));
 }
 
 uint64_t _sts_dict_sdscase_hash(const void *key)
 {
-	return sts_dict_casehash_func((unsigned char *)key, sdslen((char *)key));
+	return sts_dict_casehash_func((unsigned char *)key, sts_sdslen((char *)key));
 }
 
 int _sts_dict_sdscase_compare(void *privdata, const void *key1, const void *key2)

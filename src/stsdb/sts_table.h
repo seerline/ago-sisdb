@@ -61,6 +61,7 @@ typedef struct s_sts_table {
 	s_sts_map_pointer  *collect_map;     // 数据定义字典表，按股票名存储的数据内存块，指向sts_collect_unit
 
 	bool catch;   // 是否对collect建立catch；
+	bool zip; 
 
 }s_sts_table;
 
@@ -100,7 +101,7 @@ int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char 
 // 来源数据是json或者struct，table是struct数据
 int sts_table_update(int type_, s_sts_table *, const char *key_, const char * in_, size_t ilen_);
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
-s_sts_sds sts_table_get_m(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
+s_sts_sds sts_table_get_sds(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
 
 // command为json命令
 //读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围

@@ -10,8 +10,8 @@ typedef struct s_digger_server
 {
 	bool inited; //是否已经初始化
 
-	char conf_name[STS_FILE_PATH_LEN];  //配置文件路径
-	char conf_path[STS_FILE_PATH_LEN];  //配置文件路径
+	char conf_name[STS_PATH_LEN];  //配置文件路径
+	char conf_path[STS_PATH_LEN];  //配置文件路径
 	s_sts_conf_handle *config;  // 配置文件句柄
 
 	int id; 

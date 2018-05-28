@@ -76,7 +76,7 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 
 	int o;
 	const char *key = sts_module_string_get(argv_[1], NULL);
-	char db[32];
+	char db[STS_TABLE_MAXLEN];
 	char code[16];
 	sts_str_substr(db, 32, key, '.', 1);
 	sts_str_substr(code, 16, key, '.', 0);

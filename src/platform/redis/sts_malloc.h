@@ -24,6 +24,7 @@
 #define sts_sdsempty sdsempty
 #define sts_sdsnew sdsnew
 #define sts_sdsnewlen sdsnewlen
+#define sts_sdscpylen sdscpylen
 #define sts_sdslen sdslen
 
 #define STS_NOTUSED(V) ((void) V)
@@ -32,6 +33,7 @@
 #define sts_dict_empty dictEmpty
 #define sts_dict_setval dictSetVal
 #define sts_dict_getval dictGetVal
+#define sts_dict_getkey dictGetKey
 
 #define sts_dict_get_iter dictGetSafeIterator
 #define sts_dict_next dictNext

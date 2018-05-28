@@ -15,8 +15,8 @@ int digger_create(const char *conf_)
     server.inited = true;
     server.id = 0; // 这里设置当前秒数
 
-    sts_strcpy(server.conf_name, STS_FILE_PATH_LEN, conf_);
-    sts_file_getpath(server.conf_name, server.conf_path, STS_FILE_PATH_LEN);
+    sts_strcpy(server.conf_name, STS_PATH_LEN, conf_);
+    sts_file_getpath(server.conf_name, server.conf_path, STS_PATH_LEN);
 
     server.config = sts_conf_open(conf_);
     if (!server.config)

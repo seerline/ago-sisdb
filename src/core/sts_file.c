@@ -22,16 +22,3 @@ s_sts_sds sts_file_open_and_read(const char *fn_, size_t *len_)
 	sts_file_close(fp);
 	return buffer;
 }
-
-void sts_file_getpath(const char *fn_, char *out_, int olen_)
-{
-	int i, len = (int)strlen(fn_);
-	for (i = len - 1; i > 0; i--)
-	{
-		if (fn_[i] == '\\' || fn_[i] == '/')
-		{
-			break;
-		}
-	}
-	sts_strncpy(out_, olen_, fn_, i + 1);
-}

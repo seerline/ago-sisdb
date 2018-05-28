@@ -29,18 +29,18 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	}
 
 	const char *key = sts_module_string_get(argv_[1], NULL);
-	char db[32];
-	char code[16];
+	char db[STS_TABLE_MAXLEN];
+	char code[STS_CODE_MAXLEN];
 	int count = sts_str_substr_nums(key, '.');
 	if (count == 1)
 	{
-		sts_strcpy(db, 32, key);
+		sts_strcpy(db, STS_TABLE_MAXLEN, key);
 		code[0] = 0;
 	}
 	else if (count == 2)
 	{
-		sts_str_substr(db, 32, key, '.', 1);
-		sts_str_substr(code, 16, key, '.', 0);
+		sts_str_substr(db, STS_TABLE_MAXLEN, key, '.', 1);
+		sts_str_substr(code, STS_CODE_MAXLEN, key, '.', 0);
 	}
 	else
 	{
@@ -77,10 +77,10 @@ int call_stsdb_set(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	{
 		return sts_module_reply_with_error(ctx_, "set data key error.\n");
 	}
-	char db[32];
-	char code[16];
-	sts_str_substr(db, 32, key, '.', 1);
-	sts_str_substr(code, 16, key, '.', 0);
+	char db[STS_TABLE_MAXLEN];
+	char code[STS_CODE_MAXLEN];
+	sts_str_substr(db, STS_TABLE_MAXLEN, key, '.', 1);
+	sts_str_substr(code, STS_CODE_MAXLEN, key, '.', 0);
 
 	int o;
 	size_t len;

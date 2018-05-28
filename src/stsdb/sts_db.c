@@ -71,7 +71,7 @@ s_sts_db *sts_db_create(char *name_) //数据库的名称，为空建立一个sy
 {
 	s_sts_db *db = sts_malloc(sizeof(s_sts_db));
 	memset(db, 0, sizeof(s_sts_db));
-	sts_strcpy(db->name, STS_FIELD_MAXLEN, name_);
+	db->name = sts_sdsnew(name_);
 	db->db = sts_map_pointer_create();
 	db->map = sts_map_pointer_create();
 	db->trade_time = sts_struct_list_create(sizeof(s_sts_time_pair), NULL, 0);
@@ -99,6 +99,8 @@ void sts_db_destroy(s_sts_db *db_) //关闭一个数据库
 		}
 		sts_dict_iter_free(di);
 	}
+	sts_sdsfree(tb_->name);
+	sts_sdsfree(db_->conf);
 	sts_map_pointer_destroy(db_->db);
 	sts_map_pointer_destroy(db_->map);
 	sts_struct_list_destroy(db_->trade_time);

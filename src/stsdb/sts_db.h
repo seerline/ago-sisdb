@@ -10,6 +10,10 @@
 #include "sts_table.h"
 #include "sts_table.h"
 
+#define STS_TABLE_MAXLEN 32
+#define STS_CODE_MAXLEN  9
+
+
 #define STS_MAP_DEFINE_FIELD_TYPE   0
 #define STS_MAP_DEFINE_DATA_TYPE    1
 #define STS_MAP_DEFINE_SCALE        2
@@ -42,11 +46,14 @@ typedef struct s_sts_time_pair{
 }s_sts_time_pair;
 
 typedef struct s_sts_db {
-	char name[32];  // 数据库名字
+	s_sts_sds name;  // 数据库名字
 	s_sts_map_pointer  *db; // 一个字典表
 	s_sts_map_pointer  *map; // 关键字查询表
 	s_sts_time_pair     work_time; // 900 --1530 工作时间
 	s_sts_struct_list  *trade_time; // [[930,1130],[1300,1500]] 交易时间
+
+	sts_sds conf;    // 保存时使用
+	int save_format; // 存盘文件的方式
 
 	int  save_type;  // 存盘方式，间隔时间存，还是指定时间存
 	int  save_gaps;  // 存盘的间隔秒数	

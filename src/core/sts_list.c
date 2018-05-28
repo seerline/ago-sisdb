@@ -168,6 +168,14 @@ int sts_struct_list_insert(s_sts_struct_list *list_, int index_, void *in_)
 	list_->count++;
 	return index_;
 }
+void *sts_struct_list_first(s_sts_struct_list *)
+{
+	return sts_struct_list_get(list_, 0);
+}
+void *sts_struct_list_last(s_sts_struct_list *list_)
+{
+	return sts_struct_list_get(list_, list_->count - 1);
+}
 void *sts_struct_list_get(s_sts_struct_list *list_, int index_)
 {
 	char *rtn = NULL;
@@ -649,7 +657,7 @@ s_sts_list_node *sts_sdsnode_update(s_sts_list_node *node_, const void *in, size
 	}
 	else
 	{
-		s_sts_sds ptr = sdscpylen((s_sts_sds)node_->value, (const char *)in, inlen);
+		s_sts_sds ptr = sts_sdscpylen((s_sts_sds)node_->value, (const char *)in, inlen);
 		node_->value = ptr;
 	}
 	return node_;
@@ -660,7 +668,7 @@ s_sts_list_node *sts_sdsnode_clone(s_sts_list_node *node_)
 	s_sts_list_node *node = node_;
 	while (node != NULL)
 	{
-		newnode = sts_sdsnode_push_node(newnode, node->value, sdslen((s_sts_sds)node->value));
+		newnode = sts_sdsnode_push_node(newnode, node->value, sts_sdslen((s_sts_sds)node->value));
 		node = node->next;
 	};
 	return newnode;
@@ -676,7 +684,7 @@ int sts_sdsnode_get_size(s_sts_list_node *node_)
 	{
 		if (node_->value)
 		{
-			k += sdslen((s_sts_sds)node_->value);
+			k += sts_sdslen((s_sts_sds)node_->value);
 		}
 		node_ = node_->next;
 	}

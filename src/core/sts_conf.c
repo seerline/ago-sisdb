@@ -252,7 +252,7 @@ static const char *_sts_parse_include(s_sts_conf_handle *handle_, s_sts_json_nod
 		ptr++;
 		len++;
 	}
-	char *fn = sts_str_sprintf(STS_FILE_PATH_LEN, "%s%.*s", handle_->path, len, value_);
+	char *fn = sts_str_sprintf(STS_PATH_LEN, "%s%.*s", handle_->path, len, value_);
 	// printf("read include is %.10s \n", ptr);
 	// printf("--- path : %s \n", handle_->path);
 	// printf("--- fn : %s \n", fn);

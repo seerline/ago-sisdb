@@ -97,6 +97,11 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 		}
 	}
 
+	s_sts_json_node *zip = sts_json_cmp_child_node(command, "zip-method");
+	if (zip)
+	{
+		tb->zip = true;
+	}
 	return tb;
 }
 
@@ -288,7 +293,7 @@ uint64 _sts_trade_index_to_ttime(int date_, int nIndex_, s_sts_struct_list *trad
 {
 	int tt = nIndex_;
 	int nowmin = 0;
-	s_sts_time_pair *pair = (s_sts_time_pair *)sts_struct_list_get(tradetime_, tradetime_->count - 1);
+	s_sts_time_pair *pair = (s_sts_time_pair *)sts_struct_list_last(tradetime_);
 	uint64 out = sts_time_make_time(date_, pair->second * 100);
 	for (int i = 0; i < tradetime_->count; i++)
 	{
@@ -354,7 +359,7 @@ s_sts_sds _sts_table_struct_trans(s_sts_collect_unit *in_unit_, s_sts_sds ins_, 
 	s_sts_table *in_tb = in_unit_->father;
 	s_sts_table *out_tb = out_unit_->father;
 
-	int count = (int)(sdslen(ins_) / in_unit_->value->len);
+	int count = (int)(sts_sdslen(ins_) / in_unit_->value->len);
 	s_sts_sds outs_ = sts_sdsnewlen(NULL, count * out_unit_->value->len);
 
 	s_sts_sds ins = ins_;
@@ -389,7 +394,7 @@ s_sts_sds _sts_table_struct_trans(s_sts_collect_unit *in_unit_, s_sts_sds ins_, 
 // 	s_sts_table *in_tb = in_unit_->father;
 // 	s_sts_table *out_tb = out_unit_->father;
 
-// 	int count = (int)(sdslen(ins_) / in_unit_->value->len);
+// 	int count = (int)(sts_sdslen(ins_) / in_unit_->value->len);
 // 	s_sts_sds outs_ = sts_sdsnewlen(NULL, count * out_unit_->value->len);
 
 // 	s_sts_sds ins = ins_;
@@ -459,10 +464,10 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	{
 		return 0;
 	}
-	s_sts_sds db_val = sts_sdsnewlen(sts_struct_list_get(in_collect->value, in_collect->value->count - 1),
+	s_sts_sds db_val = sts_sdsnewlen(sts_struct_list_last(in_collect->value),
 						   in_collect->value->len);
 	// 先储存上一次的数据，
-	int o = sts_collect_unit_update(in_collect, in_val, sdslen(in_val));
+	int o = sts_collect_unit_update(in_collect, in_val, sts_sdslen(in_val));
 
 	// 3. 顺序改其他数据表，
 	// **** 修改其他数据表时应该和单独修改min不同，需要修正vol和money两个字段*****
@@ -499,7 +504,7 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 		{
 			// printf("table_=%lld\n",sts_fields_get_uint_from_key(table_,"time",in_val));
 			// printf("link_table=%lld\n",sts_fields_get_uint_from_key(link_table,"time",link_val));
-			sts_collect_unit_update(link_collect, link_val, sdslen(link_val));
+			sts_collect_unit_update(link_collect, link_val, sts_sdslen(link_val));
 			sts_sdsfree(link_val);
 		}
 	}
@@ -538,7 +543,7 @@ int sts_table_update(int type_, s_sts_table *tb_, const char *key_, const char *
 		val = sts_collect_json_to_struct(collect, in_, ilen_);
 		if (val)
 		{
-			o = sts_collect_unit_update(collect, val, sdslen(val));
+			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
 			sts_sdsfree(val);
 		}
 		break;
@@ -546,7 +551,7 @@ int sts_table_update(int type_, s_sts_table *tb_, const char *key_, const char *
 		val = sts_collect_array_to_struct(collect, in_, ilen_);
 		if (val)
 		{
-			o = sts_collect_unit_update(collect, val, sdslen(val));
+			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
 			sts_sdsfree(val);
 		}
 		break;
@@ -655,7 +660,7 @@ exit:
 ///////////////////////////////////////////////////////////////////////////////
 //取数据,读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围
 ///////////////////////////////////////////////////////////////////////////////
-s_sts_sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *command)
+s_sts_sds sts_table_get_sds(s_sts_table *tb_, const char *key_, const char *command)
 {
 	s_sts_json_handle *handle = sts_json_load(command, strlen(command));
 	if (!handle)
@@ -681,7 +686,7 @@ s_sts_sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *comman
 	s_sts_json_node *range = sts_json_cmp_child_node(handle->node, "range");
 	if (!search && !range) // 这两个互斥，以search为首发
 	{
-		out = sts_collect_unit_get_of_range_m(collect, 0, -1);
+		out = sts_collect_unit_get_of_range_sds(collect, 0, -1);
 		goto filter;
 	}
 	if (search)
@@ -697,7 +702,7 @@ s_sts_sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *comman
 			start = sts_collect_unit_search(collect, min);
 			if (start >= 0)
 			{
-				out = sts_collect_unit_get_of_count_m(collect, start, count);
+				out = sts_collect_unit_get_of_count_sds(collect, start, count);
 			}
 		}
 		else
@@ -709,7 +714,7 @@ s_sts_sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *comman
 				stop = sts_collect_unit_search_left(collect, max, &maxX);
 				if (minX != STS_SEARCH_NONE && maxX != STS_SEARCH_NONE)
 				{
-					out = sts_collect_unit_get_of_range_m(collect, start, stop);
+					out = sts_collect_unit_get_of_range_sds(collect, start, stop);
 				}
 			}
 			else
@@ -717,7 +722,7 @@ s_sts_sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *comman
 				start = sts_collect_unit_search(collect, min);
 				if (start >= 0)
 				{
-					out = sts_collect_unit_get_of_count_m(collect, start, 1);
+					out = sts_collect_unit_get_of_count_sds(collect, start, 1);
 				}
 			}
 		}
@@ -733,18 +738,18 @@ s_sts_sds sts_table_get_m(s_sts_table *tb_, const char *key_, const char *comman
 		if (sts_json_cmp_child_node(range, "count"))
 		{
 			count = sts_json_get_int(range, "count", 1);
-			out = sts_collect_unit_get_of_count_m(collect, start, count);
+			out = sts_collect_unit_get_of_count_sds(collect, start, count);
 		}
 		else
 		{
 			if (sts_json_cmp_child_node(range, "stop"))
 			{
 				stop = sts_json_get_int(range, "stop", -1); // -1 为最新一条记录
-				out = sts_collect_unit_get_of_range_m(collect, start, stop);
+				out = sts_collect_unit_get_of_range_sds(collect, start, stop);
 			}
 			else
 			{
-				out = sts_collect_unit_get_of_count_m(collect, start, 1);
+				out = sts_collect_unit_get_of_count_sds(collect, start, 1);
 			}
 		}
 		goto filter;

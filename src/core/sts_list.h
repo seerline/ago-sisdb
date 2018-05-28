@@ -36,6 +36,8 @@ void struct_list_setsize(s_sts_struct_list *list_, int len_);
 int sts_struct_list_push(s_sts_struct_list *, void *in_);
 int sts_struct_list_insert(s_sts_struct_list *, int index_, void *in_);
 int sts_struct_list_update(s_sts_struct_list *, int index_, void *in_);
+void *sts_struct_list_first(s_sts_struct_list *);
+void *sts_struct_list_last(s_sts_struct_list *);
 void *sts_struct_list_get(s_sts_struct_list *, int index_);
 void *sts_struct_list_next(s_sts_struct_list *list_, void *, int offset);
 
