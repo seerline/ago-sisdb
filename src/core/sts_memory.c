@@ -12,8 +12,8 @@ s_sts_memory *sts_memory_create()
 } 
 void sts_memory_destroy(s_sts_memory *m_)
 {
-	if (m->buffer) {
-		sts_free(m->buffer);
+	if (m_->buffer) {
+		sts_free(m_->buffer);
 	}
 	sts_free(m_);
 }
@@ -42,6 +42,7 @@ size_t sts_memory_cat(s_sts_memory *m_, char *in_, size_t ilen_)
 		memmove(m_->buffer + m_->size, in_, ilen_);
 		m_->size += ilen_; 
 	}
+	return sts_memory_get_size(m_);
 }
 
 size_t sts_memory_readfile(s_sts_memory *m_, sts_file_handle fp_, size_t len_)
@@ -62,6 +63,7 @@ size_t sts_memory_readfile(s_sts_memory *m_, sts_file_handle fp_, size_t len_)
 		m_->size += bytes; 
 	}
 	sts_free(mem);
+	return sts_memory_get_size(m_);
 }
 
 size_t sts_memory_get_size(s_sts_memory *m_)

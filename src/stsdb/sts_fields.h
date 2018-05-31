@@ -25,8 +25,8 @@
 //传入格式为 field名称:数据类型:长度; STS_FIELD_STRING不填长度默认为16;
 #define STS_FIELD_INT 11	// "INT"    //int 类型
 #define STS_FIELD_UINT 12   // "UINT"    //unsigned int 类型
-#define STS_FIELD_FLOAT 13  // "FLOAT"  //float
-#define STS_FIELD_DOUBLE 14 // "DOUBLE" //double
+// #define STS_FIELD_FLOAT 13  // "FLOAT"  //float
+#define STS_FIELD_DOUBLE 14 // "DOUBLE" //double & float
 
 //--------32种类型，保留4种类型-------//
 

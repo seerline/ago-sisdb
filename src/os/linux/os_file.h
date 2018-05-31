@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h> 
 
 #include <os_types.h>
 #include <os_str.h>
@@ -41,7 +42,12 @@ void  sts_file_getpath(const char *fn_, char *out_, int olen_);
 bool sts_file_exists(const char *fn_);
 bool sts_path_exists(const char *path_);
 
-bool sts_file_mkdir(const char *path_);
 void sts_file_rename(char *oldn_, char *newn_);
+
+void sts_file_delete(const char *fn_);
+
+char sts_path_separator();
+void sts_path_complete(char *path_,int maxlen_);
+bool sts_path_mkdir(const char *path_);
 
 #endif //_STS_FILE_H

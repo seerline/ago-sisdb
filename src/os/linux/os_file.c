@@ -52,7 +52,7 @@ bool sts_path_exists(const char *path_)
 	if (access(path, STS_FILE_ACCESS_EXISTS) == 0)  return true;
 	else return false;
 }
-bool sts_file_mkdir(const char *path_)
+bool sts_path_mkdir(const char *path_)
 {
 	int len = (int)strlen(path_);
 	if (len == 0) {
@@ -64,7 +64,9 @@ bool sts_file_mkdir(const char *path_)
 		if (path_[i] == '\\' || path_[i] == '/')
 		{
 			sts_strncpy(dir, STS_PATH_LEN, path_, i + 1);
-			if (sts_path_exists(dir)) continue;
+			if (sts_path_exists(dir)) {
+				continue;
+			}
 			mkdir(dir, S_IRWXU | S_IRWXG | S_IRWXO);
 		}
 	}
@@ -76,3 +78,35 @@ void sts_file_rename(char *oldn_, char *newn_)
 {
 	rename(oldn_, newn_);
 }
+
+void sts_file_delete(const char *fn_)
+{
+	unlink(fn_);
+}
+
+char sts_path_separator()
+{
+	return '/';
+}
+
+void sts_path_complete(char *path_,int maxlen_)
+{
+	size_t len = strlen(path_);
+	for(int i=0;i<len;i++)
+	{
+		if(path_[i]=='\\') {
+			path_[i] = '/';
+		}
+		if (i==len-1){
+			if (path_[i]!='/') {
+				if (maxlen_>len) 
+				{
+					path_[i+1] = '/';
+				} else {
+					path_[i] = '/';
+				}
+			}
+		}
+	}
+}
+

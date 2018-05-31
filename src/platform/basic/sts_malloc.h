@@ -1,6 +1,6 @@
 
-#ifndef _STS_MEMORY_H
-#define _STS_MEMORY_H
+#ifndef _STS_MALLOC_H
+#define _STS_MALLOC_H
 
 #include <stdio.h>
 
@@ -8,4 +8,4 @@
 #define sts_realloc  realloc
 #define sts_free free
 
-#endif //_STS_OS_H
+#endif //_STS_MALLOC_H

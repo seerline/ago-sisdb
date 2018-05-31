@@ -42,7 +42,7 @@ s_sts_dict_type _sts_dict_type_buffer_s = {
 	_sts_dict_sds_free,	 /* key destructor */
 	_sts_dict_buffer_free   /* val destructor */
 };
-s_sts_dict_type _sts_dict_type_number_s = {
+s_sts_dict_type _sts_dict_type_sign_s = {
 	_sts_dict_sdscase_hash,	   /* hash function */
 	NULL,				   /* key dup */
 	NULL,				   /* val dup */
@@ -121,12 +121,17 @@ s_sts_map_pointer *sts_map_pointer_create()
 	s_sts_map_pointer *map = sts_dict_create(&_sts_dict_type_buffer_s, NULL);
 	return map;
 };
+s_sts_map_pointer *sts_map_sign_create()
+{
+	s_sts_map_pointer *map = sts_dict_create(&_sts_dict_type_sign_s, NULL);
+	return map;
+};
 //////////////////////////////////////////
 //  s_sts_map_int »ù´¡¶¨Òå
 //////////////////////////////////////////
 s_sts_map_int *sts_map_int_create()
 {
-	s_sts_map_int *map = sts_dict_create(&_sts_dict_type_number_s, NULL);
+	s_sts_map_int *map = sts_dict_create(&_sts_dict_type_sign_s, NULL);
 	return map;
 };
 uint64_t sts_map_int_get(s_sts_map_int *map_, const char *key_)

@@ -599,7 +599,7 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 			{
 				sts_fields_copy(unit_->front, unit_->lasted, size);
 				// -- 先根据in -- tb->front生成新数据
-				s_sts_sds in = sts_make_catch_inited(unit_, in_);
+				s_sts_sds in = sts_make_catch_inited_sds(unit_, in_);
 				// in_.vol - front.vol
 				// in_.money - front.money
 				// in.open = in_.close;
@@ -623,7 +623,7 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 			if (tb->catch)
 			{
 				// -- 先根据in -- tb->front生成新数据
-				s_sts_sds in = sts_make_catch_moved(unit_, in_);
+				s_sts_sds in = sts_make_catch_moved_sds(unit_, in_);
 				sts_struct_list_update(unit_->value, index, (void *)in);
 				sts_fields_copy(unit_->lasted, in_, size);
 			}
@@ -654,7 +654,7 @@ int sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_, size_t i
 	int count = 0;
 
 	count = (int)(ilen_ / unit_->value->len);
-	printf("-----count =%d len=%ld:%d\n", count, ilen_, unit_->value->len);
+	printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
 	for (int i = 0; i < count; i++)
 	{
 		// 是否需要备份数据和进行数据转换
@@ -711,7 +711,6 @@ void _sts_fields_json_to_struct(s_sts_sds in_, s_sts_field_unit *fu_, char *key_
 			}
 		}
 		break;
-	case STS_FIELD_FLOAT:
 	case STS_FIELD_DOUBLE:
 		if (sts_json_find_node(node_, key_))
 		{
@@ -787,7 +786,6 @@ void sts_collect_struct_trans(s_sts_sds ins_, s_sts_field_unit *infu_, s_sts_tab
 			memmove(outs_ + outfu_->offset, &i64, outfu_->flags.len);
 		}
 		break;
-	case STS_FIELD_FLOAT:
 	case STS_FIELD_DOUBLE:
 		f64 = sts_fields_get_double(infu_, ins_);
 		if (!outfu_->flags.io && outfu_->flags.zoom > 0)
@@ -1001,7 +999,6 @@ s_sts_sds sts_collect_struct_to_json_sds(s_sts_collect_unit *unit_, s_sts_sds in
 			case STS_FIELD_UINT:
 				sts_json_array_add_uint(jval, sts_fields_get_uint(fu, ptr));
 				break;
-			case STS_FIELD_FLOAT:
 			case STS_FIELD_DOUBLE:
 				if (!fu->flags.io && fu->flags.zoom > 0)
 				{
@@ -1098,7 +1095,6 @@ s_sts_sds sts_collect_struct_to_array_sds(s_sts_collect_unit *unit_, s_sts_sds i
 			case STS_FIELD_UINT:
 				sts_json_array_add_uint(jval, sts_fields_get_uint(fu, ptr));
 				break;
-			case STS_FIELD_FLOAT:
 			case STS_FIELD_DOUBLE:
 				if (!fu->flags.io && fu->flags.zoom > 0)
 				{

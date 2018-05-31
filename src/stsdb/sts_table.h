@@ -46,6 +46,7 @@ typedef struct s_sts_table_control {
 	uint32 limit_rows;   // 每个collection的最大记录数
 	uint8  insert_mode;  // 插入数据方式
 	uint8  update_mode;  // 修改数据方式
+	uint8  isinit;       // 是否需要初始化， 开盘时间到需要清理这个表
 }s_sts_table_control;
 
 #define STS_TABLE_LINK_COVER  0

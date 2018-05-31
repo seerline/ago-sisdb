@@ -310,7 +310,9 @@ uint64 sts_fields_get_uint_from_key(s_sts_table *tb_, const char *key_, const ch
 {
 	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
 	if (!fu)
+	{
 		return 0;
+	}
 	return sts_fields_get_uint(fu, val_);
 }
 int64 sts_fields_get_int_from_key(s_sts_table *tb_, const char *key_, const char *val_)

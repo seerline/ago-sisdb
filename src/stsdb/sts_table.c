@@ -19,6 +19,7 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	tb->control.data_type = STS_DATA_STRUCT; // 默认保存的目前都是struct，
 	tb->control.time_scale = STS_SCALE_SECOND;
 	tb->control.limit_rows = sts_json_get_int(command, "limit", 0);
+	tb->control.isinit = sts_json_get_int(command, "isinit", 0);
 	// printf("=====%s limit %d\n", name_, tb->control.limit_rows);
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
 	tb->control.insert_mode = STS_OPTION_ALWAYS;

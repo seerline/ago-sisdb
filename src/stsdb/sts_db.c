@@ -11,7 +11,7 @@ static struct s_sts_map_define _sts_map_defines[] = {
 	{"STRING", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_STRING, 16},
 	{"INT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_INT, 4},
 	{"UINT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_UINT, 4},
-	{"FLOAT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_FLOAT, 4},
+	// {"FLOAT", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_FLOAT, 4},
 	{"DOUBLE", STS_MAP_DEFINE_FIELD_TYPE, STS_FIELD_DOUBLE, 8},
 	/////////////插入和修改方式定义/////////////
 	{"NONE", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_NONE, 0},
@@ -73,9 +73,11 @@ s_sts_db *sts_db_create(char *name_) //数据库的名称，为空建立一个sy
 	memset(db, 0, sizeof(s_sts_db));
 	db->name = sts_sdsnew(name_);
 	db->db = sts_map_pointer_create();
-	db->map = sts_map_pointer_create();
+
 	db->trade_time = sts_struct_list_create(sizeof(s_sts_time_pair), NULL, 0);
 	db->save_plans = sts_struct_list_create(sizeof(uint16), NULL, 0);
+
+	db->map = sts_map_sign_create();
 
 	_init_map_define(db->map);
 	return db;
@@ -99,7 +101,7 @@ void sts_db_destroy(s_sts_db *db_) //关闭一个数据库
 		}
 		sts_dict_iter_free(di);
 	}
-	sts_sdsfree(tb_->name);
+	sts_sdsfree(db_->name);
 	sts_sdsfree(db_->conf);
 	sts_map_pointer_destroy(db_->db);
 	sts_map_pointer_destroy(db_->map);

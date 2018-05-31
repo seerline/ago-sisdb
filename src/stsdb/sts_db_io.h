@@ -50,13 +50,16 @@ typedef struct s_stsdb_server
 
 #pragma pack(pop)
 
-char * stsdb_init(const char *conf_);
+char * stsdb_open(const char *conf_);
 
-s_sts_sds stsdb_list();
+int stsdb_init(const char *market_);
+
+s_sts_sds stsdb_list_sds();
 
 void stsdb_close();
+bool stsdb_save();
 
-s_sts_sds stsdb_get(const char *db_, const char *key_, const char *com_);
+s_sts_sds stsdb_get_sds(const char *db_, const char *key_, const char *com_);
 
 int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *val_, size_t len_);
 int stsdb_set_format(int format_, const char *db_, const char *key_, const char *val_, size_t len_);

@@ -168,7 +168,7 @@ int sts_struct_list_insert(s_sts_struct_list *list_, int index_, void *in_)
 	list_->count++;
 	return index_;
 }
-void *sts_struct_list_first(s_sts_struct_list *)
+void *sts_struct_list_first(s_sts_struct_list *list_)
 {
 	return sts_struct_list_get(list_, 0);
 }
