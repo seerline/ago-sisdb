@@ -69,9 +69,6 @@ typedef struct list {
 #define listGetFree(l) ((l)->free)
 #define listGetMatchMethod(l) ((l)->match)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 /* Prototypes */
 list *listCreate(void);
 void listRelease(list *list);
@@ -90,12 +87,7 @@ void listRewind(list *list, listIter *li);
 void listRewindTail(list *list, listIter *li);
 void listRotate(list *list);
 void listJoin(list *l, list *o);
-listNode * listPopNode(list *list);
-listNode * listCutNode(list *list, int start_, int stop_);
-void listFreeNode(listNode *node, void(*free_)(void *ptr));
-#ifdef __cplusplus
-}
-#endif
+
 /* Directions for iterators */
 #define AL_START_HEAD 0
 #define AL_START_TAIL 1

@@ -21,3 +21,32 @@ char *sts_log(int level_, const char *fmt_, ...)
 	return NULL;
 }
 
+#if 0
+
+// inline void why_me()
+// {
+//     printf( "This function is %s\n", __func__ );
+//     printf( "The file is %s.\n", __FILE__ );
+//     printf( "This is line %d.\n", __LINE__ );
+
+// }
+#define why_me() do { \
+	printf( "This function is %s\n", __func__ ); \
+    printf( "The file is %s.\n", __FILE__ ); \
+    printf( "This is line %d.\n", __LINE__ ); \
+} while(0)
+int main()
+{
+    printf( "The file is %s.\n", __FILE__ );
+    printf( "The date is %s.\n", __DATE__ );
+    printf( "The time is %s.\n", __TIME__ );
+    printf( "This is line %d.\n", __LINE__ );
+    printf( "This function is %s.\n", __func__ );
+
+    why_me();
+
+     return 0;
+}
+
+
+#endif

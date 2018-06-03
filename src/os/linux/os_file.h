@@ -38,6 +38,7 @@ size_t sts_file_read(sts_file_handle fp_, const char *in_, size_t size_, size_t 
 size_t sts_file_write(sts_file_handle fp_, const char *in_, size_t size_, size_t len_);
 
 void  sts_file_getpath(const char *fn_, char *out_, int olen_);
+void sts_file_getname(const char *fn_, char *out_, int olen_);
 
 bool sts_file_exists(const char *fn_);
 bool sts_path_exists(const char *path_);

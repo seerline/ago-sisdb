@@ -77,7 +77,7 @@ s_sts_db *sts_db_create(char *name_) //数据库的名称，为空建立一个sy
 	db->trade_time = sts_struct_list_create(sizeof(s_sts_time_pair), NULL, 0);
 	db->save_plans = sts_struct_list_create(sizeof(uint16), NULL, 0);
 
-	db->map = sts_map_sign_create();
+	db->map = sts_map_pointer_create();
 
 	_init_map_define(db->map);
 	return db;
@@ -101,9 +101,11 @@ void sts_db_destroy(s_sts_db *db_) //关闭一个数据库
 		}
 		sts_dict_iter_free(di);
 	}
+	// 下面仅仅释放
+	sts_map_pointer_destroy(db_->db);
+
 	sts_sdsfree(db_->name);
 	sts_sdsfree(db_->conf);
-	sts_map_pointer_destroy(db_->db);
 	sts_map_pointer_destroy(db_->map);
 	sts_struct_list_destroy(db_->trade_time);
 	sts_struct_list_destroy(db_->save_plans);

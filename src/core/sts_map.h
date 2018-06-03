@@ -37,7 +37,6 @@ int  sts_map_buffer_set(s_sts_map_buffer *, const char *key_, void *value_);
 #define sts_map_buffer_getsize dictSize
 //设置key对应的数据引用，必须为一个指针，并不提供实体，
 
-s_sts_map_pointer *sts_map_sign_create();
 s_sts_map_pointer *sts_map_pointer_create();
 #define sts_map_pointer_destroy sts_map_buffer_destroy
 #define sts_map_pointer_clear sts_map_buffer_clear

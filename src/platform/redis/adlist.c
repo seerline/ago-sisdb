@@ -31,8 +31,7 @@
 
 #include <stdlib.h>
 #include "adlist.h"
-// #include "zmalloc.h"
-#include "sdsalloc.h"
+#include "zmalloc.h"
 
 /* Create a new list. The created list can be freed with
  * AlFreeList(), but private value of every node need to be freed
@@ -179,75 +178,7 @@ void listDelNode(list *list, listNode *node)
     zfree(node);
     list->len--;
 }
-listNode * listPopNode(list *list)
-{
-	listNode *node = list->head;// Index(list, 0);
-	if (!node) return NULL;
-	list->head = node->next;
-	if (node->next)
-		node->next->prev = NULL;
-	else
-		list->tail = NULL;
-	node->next = NULL;
-	node->prev = NULL;
-	//if (list->free) list->free(node->value);
-	//zfree(node);
-	list->len--;
-	return node;
-}
-listNode * listCutNode(list *list, int start_, int stop_)
-{
-	if (start_ > stop_){ return NULL; }
-	listNode *stop_node = listIndex(list, stop_);
-	listNode *start_node = listIndex(list, start_);
 
-	if (!stop_node || !start_node) { return NULL; }
-
-	if (start_node->prev)
-		start_node->prev->next = stop_node->next;
-	else
-		list->head = stop_node->next;
-
-	if (stop_node->next)
-		stop_node->next->prev = start_node->prev;
-	else
-		list->tail = start_node->prev;
-	stop_node->next = NULL;
-	start_node->prev = NULL;
-
-	//if (list->free) list->free(node->value);
-	//zfree(node);
-	//需要用listFreeNode释放
-	list->len -= (stop_ - start_ + 1);
-	return start_node;
-}
-void listFreeNode(listNode *node, void(*free_)(void *ptr))
-{
-	listNode *current, *next;
-	current = node;
-	while ( current!=NULL ) {
-		next = current->next;
-		if (free_) free_(current->value);
-		zfree(current);
-		current = next;
-	}
-}
-void listClearNode(list *list)
-{
-	unsigned long len;
-	listNode *current, *next;
-
-	current = list->head;
-	len = list->len;
-	while (len--) {
-		next = current->next;
-		if (list->free) list->free(current->value);
-		zfree(current);
-		current = next;
-	}
-	list->head = list->tail = NULL;
-	list->len = 0;
-}
 /* Returns a list iterator 'iter'. After the initialization every
  * call to listNext() will return the next element of the list.
  *

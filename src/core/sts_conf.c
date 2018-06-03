@@ -258,9 +258,8 @@ static const char *_sts_parse_include(s_sts_conf_handle *handle_, s_sts_json_nod
 	// printf("--- fn : %s \n", fn);
 	// fn = sts_lstrcat(fn, );
 
-	size_t size = 0;
-	char *buffer = sts_file_direct_read_sds(fn, &size);
-	if (!buffer || size == 0)
+	s_sts_sds buffer = sts_file_read_to_sds(fn);
+	if (!buffer)
 	{
 		sts_free(fn);
 		handle_->error = value_;
@@ -295,16 +294,16 @@ static const char *_sts_parse_include(s_sts_conf_handle *handle_, s_sts_json_nod
 	if (handle_->error) // 既要返回为0，并且error有值
 	{
 		int len = 0;
-		handle_->error = sts_str_getline(handle_->error, &len, buffer, size);
+		handle_->error = sts_str_getline(handle_->error, &len, buffer, sts_sdslen(buffer));
 		sts_out_error(3)("parse conf fail : %.*s \n", len, handle_->error);
 		handle_->error = value_;
 		sts_free(fn);
-		sts_free(buffer);
+		sts_sdsfree(buffer);
 		return 0;
 	}
 
 	sts_free(fn);
-	sts_free(buffer);
+	sts_sdsfree(buffer);
 
 	return ptr;
 }
@@ -409,9 +408,8 @@ s_sts_conf_handle *sts_conf_open(const char *fn_)
 
 	s_sts_conf_handle *handle = NULL;
 
-	size_t size = 0;
-	char *buffer = sts_file_direct_read_sds(fn_, &size);
-	if (size == 0)
+	s_sts_sds buffer = sts_file_read_to_sds(fn_);
+	if (!buffer)
 	{
 		goto fail;
 	}
@@ -426,7 +424,7 @@ s_sts_conf_handle *sts_conf_open(const char *fn_)
 	if (!_sts_conf_parse(handle, buffer))
 	{
 		int len = 0;
-		handle->error = sts_str_getline(handle->error, &len, buffer, size);
+		handle->error = sts_str_getline(handle->error, &len, buffer, sts_sdslen(buffer));
 		sts_out_error(3)("parse conf fail : %.*s \n", len, handle->error);
 		sts_conf_close(handle);
 		handle = NULL;
@@ -434,7 +432,7 @@ s_sts_conf_handle *sts_conf_open(const char *fn_)
 fail:
 	if (buffer)
 	{
-		sts_free(buffer);
+		sts_sdsfree(buffer);
 	}
 	return handle;
 }
@@ -505,3 +503,60 @@ s_sts_conf_handle *sts_conf_load(const char *content_, size_t len_)
 
 	return handle;
 }
+
+#if 0
+void json_printf(s_sts_json_node *node_, int *i)
+{
+	if (!node_)
+	{
+		return;
+	}
+	if (node_->child)
+	{
+		s_sts_json_node *first = sts_json_first_node(node_);
+		while (first)
+		{
+			int iii = *i+1;
+			json_printf(first,&iii);
+			first = first->next;
+		}
+	}
+	printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_, 
+			node_->child, node_->prev, node_->next,
+			node_->key, node_->value);
+}
+
+int main()
+{
+	const char *fn = "../conf/stsdb.conf";
+	// const char *fn = "../conf/sts.conf";
+	s_sts_conf_handle *h = sts_conf_open(fn);
+	if (!h) return -1;
+	printf("====================\n");
+	int iii=1;
+	json_printf(h->node,&iii);
+	printf("====================\n");
+	printf("===|%s|\n", sts_conf_get_str(h->node, "aaa1"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "bbb"));
+	printf("===|%s|\n", sts_conf_get_str(h->node, "aaa.hb"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "aaa.sssss"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "xp.0"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "xp.2"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "xp.4"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "ding.0.a1"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "ding.1.a1"));
+	// printf("|%s|\n", sts_conf_get_str(h->node, "ding.1.b1"));
+
+	// return 0;
+
+	size_t len = 0;
+	char *str = sts_conf_to_json(h->node, &len);
+	printf("[%ld]  |%s|\n", len, str);
+	sts_free(str);
+	sts_conf_close(h);
+
+	printf("I %.*s in command line\n", 5,"0123456789");
+
+	return 0;
+}
+#endif

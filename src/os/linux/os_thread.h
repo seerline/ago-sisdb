@@ -55,7 +55,7 @@ void sts_mutex_rw_lock_w(s_sts_mutex_rw *mutex_);
 void sts_mutex_rw_unlock_w(s_sts_mutex_rw *mutex_);
 
 typedef struct s_sts_wait {
-	s_sts_cond_t cond;  
+	s_sts_cond_t  cond;  
 	s_sts_mutex_t mutex;
 } s_sts_wait;
 

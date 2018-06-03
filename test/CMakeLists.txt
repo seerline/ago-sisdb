@@ -30,18 +30,20 @@ ENDIF ()
 #########################目录设置#############################
 
 #设置头文件目录
-INCLUDE_DIRECTORIES(. ../src/os/linux ../src/platform/redis ../src/core)
+INCLUDE_DIRECTORIES(. ../src/os/linux ../src/platform/redis ../src/core ../src/stsdb)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(../src/os/linux DIR_OS)
 AUX_SOURCE_DIRECTORY(../src/platform/redis DIR_PLATFORM)
 AUX_SOURCE_DIRECTORY(../src/core DIR_CORE)
+AUX_SOURCE_DIRECTORY(../src/stsdb DIR_STSDB)
 
 #把源文件目录设置到环境变量
 SET(SRC_LIST ${DIR_SRCS}
              ${DIR_OS}
              ${DIR_PLATFORM}
+             ${DIR_STSDB}
 	         ${DIR_CORE})
 
 # 设置输出文件目录

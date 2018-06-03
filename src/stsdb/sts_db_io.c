@@ -73,28 +73,29 @@ void *_thread_save_plan_task(void *argv_)
     sts_thread_wait_start(&db->thread_wait);
     while (server.status != STS_SERVER_STATUS_CLOSE)
     {
-        // 处理
+         printf("server.status ... %d",server.status);
+       // 处理
         if (db->save_type==STS_SERVER_SAVE_GAPS) {
             if(sts_thread_wait_sleep(&db->thread_wait, db->save_gaps) == STS_ETIMEDOUT)
             {
-                sts_db_file_save(server.dbpath,db);
+                // sts_db_file_save(server.dbpath,db);
             }
         } else {
-            if(sts_thread_wait_sleep(&db->thread_wait, 30)== STS_ETIMEDOUT)// 30秒判断一次
+            if(sts_thread_wait_sleep(&db->thread_wait, 5)== STS_ETIMEDOUT)// 30秒判断一次
             {
-                int min = sts_time_get_iminute(0);
-                for (int k=0;k<db->save_plans->count;k++)
-                {
-                    uint16 *lm = sts_struct_list_get(db->save_plans, k);
-                    if(min == *lm) {
-                        sts_db_file_save(server.dbpath,db);
-                        printf("save plan ... %d -- -- %d \n",*lm, min);
-                    }
-                }
-                printf("save plan ... -- -- -- %d \n",min);
+                // int min = sts_time_get_iminute(0);
+                // printf("save plan ... -- -- -- %d \n",min);
+                // for (int k=0;k<db->save_plans->count;k++)
+                // {
+                //     uint16 *lm = sts_struct_list_get(db->save_plans, k);
+                //     if(min == *lm) {
+                //         sts_db_file_save(server.dbpath,db);
+                //         printf("save plan ... %d -- -- %d \n",*lm, min);
+                //     }
+                // }
             }
         }
-        printf("server.status ... %d\n",server.status);
+        printf(" ... %d\n",server.status);
     }
     sts_thread_wait_stop(&db->thread_wait);
     return NULL;
@@ -234,7 +235,7 @@ char * stsdb_open(const char *conf_)
         size_t len = 0;
         char *str = sts_conf_to_json(service, &len);
         server.db->conf = sdsnewlen(str,len);
-
+        sts_free(str);
         s_sts_json_node *info = sts_conf_first_node(node);
         while (info)
         {
@@ -263,7 +264,8 @@ char * stsdb_open(const char *conf_)
         size_t len = 0;
         char *str = sts_conf_to_json(service, &len);
         server.db->conf = sdsnewlen(str,len);
-
+        sts_free(str);
+        
         s_sts_json_node *info = sts_conf_first_node(node);
         while (info)
         {
@@ -300,6 +302,9 @@ error:
 
 void stsdb_close()
 {
+    if (server.status==STS_SERVER_STATUS_CLOSE) {
+        return ;
+    }
     server.status = STS_SERVER_STATUS_CLOSE;
 
     sts_thread_wait_kill(&server.db->thread_wait);
@@ -308,11 +313,13 @@ void stsdb_close()
     
     if(server.db&&server.db->save_pid){
         sts_thread_join(server.db->save_pid);
+        printf("save_pid end.\n");
         sts_mutex_rw_destroy(&server.db->save_mutex);
     }
+    sts_thread_wait_destroy(&server.db->thread_wait);
+
     sts_db_destroy(server.db);
 
-    sts_thread_wait_destroy(&server.db->thread_wait);
 }
 bool stsdb_save()
 {

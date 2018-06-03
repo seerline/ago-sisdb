@@ -6,6 +6,7 @@
 //  转换redis的函数定义方式，方便未来转移到其他平台
 //////////////////////////////////////////////
 
+#define REDISMODULE_EXPERIMENTAL_API
 
 #include "redismodule.h"
 // const define
@@ -49,9 +50,10 @@ typedef struct s_sts_object {
 
 // function defined
 #define sts_module_on_load RedisModule_OnLoad
+#define sts_module_on_unload RedisModule_OnUnLoad
 #define sts_module_init RedisModule_Init
 #define sts_module_create_command RedisModule_CreateCommand
-
+// -------------------- //
 #define sts_module_memory_init RedisModule_AutoMemory
 #define sts_module_wrong_arity RedisModule_WrongArity
 

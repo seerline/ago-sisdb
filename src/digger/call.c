@@ -61,16 +61,15 @@ int digger_get(s_sts_module_context *ctx_, const char *key_, const char *com_)
                                server.conf_path,
                                dbpath,
                                sts_str_replace(key_,'.','/'));
-    size_t size = 0;
-    char *buffer = sts_file_direct_read_sds(fn, &size);
-    if (size == 0 || !buffer)
+	s_sts_sds buffer = sts_file_read_to_sds(fn);
+	if (!buffer)
     {
         sts_free(fn);
         sts_module_reply_with_error(ctx_, "no file!");
         return STS_MODULE_ERROR;
     }
-    sts_module_reply_with_string(ctx_, sts_module_string_create(ctx_, buffer, size));
-    sts_free(buffer);
+    sts_module_reply_with_string(ctx_, sts_module_string_create(ctx_, buffer, sts_sdslen(buffer)));
+    sts_sdsfree(buffer);
     sts_free(fn);
     return STS_MODULE_OK;
 }
@@ -86,16 +85,15 @@ int stsdb_get(s_sts_module_context *ctx_, const char *db_, const char *key_, con
                                key_,
                                db_
                                );
-    size_t size = 0;
-    char *buffer = sts_file_direct_read_sds(fn, &size);
-    if (size == 0 || !buffer)
+	s_sts_sds buffer = sts_file_read_to_sds(fn);
+	if (!buffer)
     {
         sts_free(fn);
-        return sts_module_reply_with_error(ctx_, "no file!");
-        // return STS_MODULE_ERROR;
+        sts_module_reply_with_error(ctx_, "no file!");
+        return STS_MODULE_ERROR;
     }
-    sts_module_reply_with_string(ctx_, sts_module_string_create(ctx_, buffer, size));
-    sts_free(buffer);
+    sts_module_reply_with_string(ctx_, sts_module_string_create(ctx_, buffer, sts_sdslen(buffer)));
+    sts_sdsfree(buffer);
     sts_free(fn);
     return STS_MODULE_OK;
 }

@@ -285,6 +285,54 @@ mnt/hgfs/mysoft/stsdb/src/core/sts_memory.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_memory.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_memory.c.s
 
+mnt/hgfs/mysoft/stsdb/src/core/sts_net.o: mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_net.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.o
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_net.i: mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_net.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.i
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_net.s: mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_net.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_net.c.s
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_node.o: mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_node.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.o
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_node.i: mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_node.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.i
+
+mnt/hgfs/mysoft/stsdb/src/core/sts_node.s: mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_node.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_node.c.s
+
 mnt/hgfs/mysoft/stsdb/src/core/sts_str.o: mnt/hgfs/mysoft/stsdb/src/core/sts_str.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/core/sts_str.o
 
@@ -380,6 +428,30 @@ mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.s: mnt/hgfs/mysoft/stsdb/src/os/linux
 mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.c.s
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.o: mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.o
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.i: mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.i
+
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.s: mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.c.s
 
 mnt/hgfs/mysoft/stsdb/src/os/linux/os_str.o: mnt/hgfs/mysoft/stsdb/src/os/linux/os_str.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/os/linux/os_str.o
@@ -501,6 +573,78 @@ mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.c.s
 
+mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/net.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/net.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/net.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/net.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/net.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/net.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/net.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/read.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/read.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/read.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/read.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/read.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/read.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/read.c.s
+
 mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.o
 
@@ -548,6 +692,54 @@ mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s: mnt/hgfs/mysoft/stsdb/src/pl
 mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.o:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.o
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.i:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.i
+
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.s:
+	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.s
 
 mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o
@@ -771,6 +963,12 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_memory.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_memory.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_memory.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_net.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_net.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_net.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_node.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_node.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_node.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_str.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_str.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/core/sts_str.s"
@@ -783,6 +981,9 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_file.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_net.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_str.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_str.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/os/linux/os_str.s"
@@ -798,12 +999,27 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/dict.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/hiredis.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/net.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/net.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/net.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/read.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/read.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/read.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sds.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.s"

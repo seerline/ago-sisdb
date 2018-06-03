@@ -109,7 +109,7 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 void sts_table_destroy(s_sts_table *tb_)
 //删除一个表
 {
-	//删除字段定义
+	// //删除字段定义
 	s_sts_dict_entry *de;
 	s_sts_dict_iter *di = sts_dict_get_iter(tb_->field_map);
 	while ((de = sts_dict_next(di)) != NULL)
@@ -118,10 +118,10 @@ void sts_table_destroy(s_sts_table *tb_)
 		sts_field_unit_destroy(val);
 	}
 	sts_dict_iter_free(di);
+	sts_map_pointer_destroy(tb_->field_map);
 
 	sts_string_list_destroy(tb_->links);
 
-	sts_map_pointer_destroy(tb_->field_map);
 	sts_string_list_destroy(tb_->field_name);
 	//删除数据区
 	sts_table_clear(tb_);
@@ -465,6 +465,7 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	{
 		return 0;
 	}
+	printf("in_collect->value = %p\n",in_collect->value);
 	s_sts_sds db_val = sts_sdsnewlen(sts_struct_list_last(in_collect->value),
 						   in_collect->value->len);
 	// 先储存上一次的数据，

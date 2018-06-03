@@ -157,3 +157,89 @@ void sts_thread_wait_destroy(s_sts_wait *wait_)
     pthread_mutex_destroy(&wait_->mutex);  
 }
 
+#if 0
+
+#include <signal.h>
+#include <stdio.h>
+
+int __kill = 0;
+s_sts_wait __thread_wait; //线程内部延时处理
+
+void *__task_ta(void *argv_)
+{
+
+    sts_thread_wait_start(&__thread_wait);
+    while (!__kill)
+    {
+        if(sts_thread_wait_sleep(&__thread_wait, 5) == STS_ETIMEDOUT)
+        {
+            printf("timeout ..a.. %d \n",__kill);
+        } else 
+		{
+            printf("no timeout ..a.. %d \n",__kill);
+		}
+    }
+    sts_thread_wait_stop(&__thread_wait);
+	// pthread_detach(pthread_self());
+    return NULL;
+}
+void *__task_tb(void *argv_)
+{
+
+    sts_thread_wait_start(&__thread_wait);
+    while (!__kill)
+    {
+        if(sts_thread_wait_sleep(&__thread_wait, 5) == STS_ETIMEDOUT)
+        {
+            printf("timeout ..b.. %d \n",__kill);
+        } else 
+		{
+            printf("no timeout ..b.. %d \n",__kill);
+		}
+    }
+    sts_thread_wait_stop(&__thread_wait);
+	// pthread_detach(pthread_self());
+    return NULL;
+}
+void exithandle(int sig)
+{
+	__kill = 1;
+    printf("sighup received kill=%d \n",__kill);
+}
+
+int main()
+{
+	// s_sts_mutex_rw save_mutex;
+	sts_thread_wait_create(&__thread_wait);
+
+	s_sts_thread_id_t ta ;
+	sts_thread_create(__task_ta, NULL, &ta);
+	printf("thread a ok!\n");
+
+	s_sts_thread_id_t tb ;
+	sts_thread_create(__task_tb, NULL, &tb);
+	printf("thread b ok!\n");
+
+    // sts_mutex_rw_create(&save_mutex);
+	while(!__kill)
+	{
+		signal(SIGINT,exithandle);
+		sts_sleep(300);
+	}
+   sts_thread_wait_kill(&__thread_wait);
+    //???这里要好好测试一下，看看两个能不能一起退出来
+    // sts_thread_join(server.db->init_pid);
+    
+    // sts_thread_join(ta);
+	// printf("thread a end!\n");
+
+    // sts_thread_join(tb);
+	// printf("thread b end!\n");
+
+    // sts_mutex_rw_destroy(&save_mutex);
+	printf("ok . \n");
+    sts_thread_wait_destroy(&__thread_wait);
+	printf("ok . \n");
+	return 1;
+}
+#endif

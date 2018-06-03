@@ -42,12 +42,12 @@ s_sts_dict_type _sts_dict_type_buffer_s = {
 	_sts_dict_sds_free,	 /* key destructor */
 	_sts_dict_buffer_free   /* val destructor */
 };
-s_sts_dict_type _sts_dict_type_sign_s = {
+s_sts_dict_type _sts_dict_type_owner_free_val_s = {
 	_sts_dict_sdscase_hash,	   /* hash function */
 	NULL,				   /* key dup */
 	NULL,				   /* val dup */
 	_sts_dict_sdscase_compare, /* key compare */
-	_sts_dict_sds_free,	 /* key destructor */
+	_sts_dict_sds_free,	   /* key destructor */
 	NULL				   /* val destructor */
 };
 s_sts_dict_type _sts_dict_type_sds_s = {
@@ -102,13 +102,12 @@ int sts_map_buffer_set(s_sts_map_buffer *map_, const char *key_, void *value_)
 	s_sts_dict_entry *he;
 	s_sts_sds key = sts_sdsnew(key_);
 	he = sts_dict_find(map_, key_);
-	sts_sdsfree(key);
 	if (!he)
 	{
-		sts_dict_add(map_, sts_sdsnew(key_), value_);
+		sts_dict_add(map_, key, value_);
 		return 0;
 	}
-	
+	sts_sdsfree(key);	
 	sts_dict_setval(map_, he, value_);
 	return 0;
 }
@@ -118,20 +117,16 @@ int sts_map_buffer_set(s_sts_map_buffer *map_, const char *key_, void *value_)
 //////////////////////////////////////////
 s_sts_map_pointer *sts_map_pointer_create()
 {
-	s_sts_map_pointer *map = sts_dict_create(&_sts_dict_type_buffer_s, NULL);
+	s_sts_map_pointer *map = sts_dict_create(&_sts_dict_type_owner_free_val_s, NULL);
 	return map;
 };
-s_sts_map_pointer *sts_map_sign_create()
-{
-	s_sts_map_pointer *map = sts_dict_create(&_sts_dict_type_sign_s, NULL);
-	return map;
-};
+
 //////////////////////////////////////////
 //  s_sts_map_int »ù´¡¶¨Òå
 //////////////////////////////////////////
 s_sts_map_int *sts_map_int_create()
 {
-	s_sts_map_int *map = sts_dict_create(&_sts_dict_type_sign_s, NULL);
+	s_sts_map_int *map = sts_dict_create(&_sts_dict_type_owner_free_val_s, NULL);
 	return map;
 };
 uint64_t sts_map_int_get(s_sts_map_int *map_, const char *key_)
@@ -163,3 +158,24 @@ s_sts_map_sds *sts_map_sds_create()
 	s_sts_map_sds *map = sts_dict_create(&_sts_dict_type_sds_s, NULL);
 	return map;
 };
+
+#if 0
+#include <sts_fields.h>
+
+int main()
+{
+	s_sts_map_pointer *map;
+	map = sts_map_pointer_create();
+	s_sts_fields_flags flag;
+	char str[100];
+	sts_map_buffer_clear(map);
+	for (int i=0;i<100;i++){
+		sprintf(str,"name%5d",i);
+		s_sts_field_unit *unit = sts_field_unit_create(i,str,&flag);
+		sts_map_pointer_set(map, str, unit);
+	}
+	sts_map_pointer_destroy(map);
+
+}
+
+#endif

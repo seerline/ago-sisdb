@@ -31,7 +31,9 @@ void sts_struct_list_destroy(s_sts_struct_list *list_)
 {
 	sts_struct_list_clear(list_);
 	if (list_->buffer)
+	{
 		sts_free(list_->buffer);
+	}
 	list_->buffer = NULL;
 	list_->maxcount = 0;
 	sts_free(list_);
@@ -76,6 +78,10 @@ void struct_list_grow(s_sts_struct_list *list_, int len_)
 		maxlen = len_ + BUFFLIST_STEP_ROW;
 	}
 
+	// void *buffer = sts_malloc(maxlen * list_->len);
+	// memmove(buffer, list_->buffer, list_->maxcount*list_->len);
+	// sts_free(list_->buffer);
+	// list_->buffer = buffer;
 	list_->buffer = sts_realloc(list_->buffer, maxlen * list_->len);
 	list_->maxcount = maxlen;
 }
@@ -85,6 +91,10 @@ void struct_list_setsize(s_sts_struct_list *list_, int len_)
 	{
 		return;
 	}
+	// void *buffer = sts_malloc(len_ * list_->len);
+	// memmove(buffer, list_->buffer, list_->maxcount*list_->len);
+	// sts_free(list_->buffer);
+	// list_->buffer = buffer;
 	list_->buffer = sts_realloc(list_->buffer, len_ * list_->len);
 	list_->maxcount = len_;
 }
@@ -397,6 +407,9 @@ s_sts_string_list *sts_string_list_create_w() //读写
 void sts_string_list_destroy(s_sts_string_list *list_)
 {
 	sts_string_list_clear(list_);
+	if (list_->permissions == STRING_LIST_WR) {
+		sts_pointer_list_destroy(list_->strlist);
+	}
 	sts_free(list_);
 }
 void sts_string_list_clear(s_sts_string_list *list_)
@@ -414,7 +427,9 @@ int sts_string_list_load(s_sts_string_list *list_, const char *in_, size_t inlen
 	sts_string_list_clear(list_);
 
 	if (strlen(in_) == 0)
+	{
 		return 0;
+	}	
 	char *token = NULL;
 	char *src = (char *)sts_malloc(inlen_ + 1);
 	sts_strncpy(src, inlen_ + 1, in_, inlen_);
@@ -423,9 +438,10 @@ int sts_string_list_load(s_sts_string_list *list_, const char *in_, size_t inlen
 	{
 		list_->m_ptr_r = src;
 	}
+	char *ptr = src;
 	char *des = NULL;
 	size_t len;
-	while ((token = strsep(&src, sign)) != NULL)
+	while ((token = strsep(&ptr, sign)) != NULL)
 	{
 		sts_trim(token);
 		if (list_->permissions == STRING_LIST_WR)
@@ -539,174 +555,7 @@ void sts_string_list_limit(s_sts_string_list *list_, int limit_)
 	int offset = list_->strlist->count - limit_;
 	sts_pointer_list_delete(list_->strlist, 0, offset);
 }
-///////////////////////////////////////////////////////////////////////////
-//------------------------s_sts_list_node --------------------------------//
-//  操作listNode列表的函数
-///////////////////////////////////////////////////////////////////////////
-s_sts_list_node *sts_sdsnode_create(const void *in, size_t inlen)
-{
-	s_sts_list_node *node = (s_sts_list_node *)sts_malloc(sizeof(s_sts_list_node));
-	node->value = NULL;
-	node->prev = NULL;
-	node->next = NULL;
-	if (in == NULL || inlen < 1)
-	{
-		return node;
-	}
-	s_sts_sds ptr = sts_sdsnewlen(in, inlen);
-	node->value = ptr;
-	return node;
-}
-void sts_sdsnode_destroy(s_sts_list_node *node)
-{
-	s_sts_list_node *next;
-	while (node != NULL)
-	{
-		next = node->next;
-		sts_sdsfree((s_sts_sds)(node->value));
-		sts_free(node);
-		node = next;
-	}
-}
 
-s_sts_list_node *sts_sdsnode_offset_node(s_sts_list_node *node_, int offset)
-{
-	if (node_ == NULL || offset == 0)
-	{
-		return NULL;
-	}
-	s_sts_list_node *node = NULL;
-	if (offset > 0)
-	{
-		node = sts_sdsnode_first_node(node_);
-		while (node->next != NULL)
-		{
-			node = node->next;
-			offset--;
-			if (offset == 0)
-			{
-				break;
-			}
-		};
-	}
-	else
-	{
-		node = sts_sdsnode_last_node(node_);
-		while (node->prev != NULL)
-		{
-			node = node->prev;
-			offset++;
-			if (offset == 0)
-			{
-				break;
-			}
-		};
-	}
-	return node;
-}
-
-s_sts_list_node *sts_sdsnode_last_node(s_sts_list_node *node_)
-{
-	if (node_ == NULL)
-	{
-		return NULL;
-	}
-	while (node_->next != NULL)
-	{
-		node_ = node_->next;
-	};
-	return node_;
-}
-s_sts_list_node *sts_sdsnode_first_node(s_sts_list_node *node_)
-{
-	if (node_ == NULL)
-	{
-		return NULL;
-	}
-	while (node_->prev != NULL)
-	{
-		node_ = node_->prev;
-	};
-	return node_;
-}
-s_sts_list_node *sts_sdsnode_push_node(s_sts_list_node *node_, const void *in, size_t inlen)
-{
-	if (node_ == NULL)
-	{
-		return sts_sdsnode_create(in, inlen);
-	}
-	s_sts_list_node *last = sts_sdsnode_last_node(node_); //这里一定返回真
-	s_sts_list_node *node = (s_sts_list_node *)sts_malloc(sizeof(s_sts_list_node));
-	s_sts_sds ptr = sts_sdsnewlen(in, inlen);
-	node->value = ptr;
-	node->prev = last;
-	node->next = NULL;
-	last->next = node;
-	return sts_sdsnode_first_node(node);
-}
-s_sts_list_node *sts_sdsnode_update(s_sts_list_node *node_, const void *in, size_t inlen)
-{
-	if (node_ == NULL)
-	{
-		return NULL;
-	}
-	if (node_->value == NULL)
-	{
-		node_->value = sts_sdsnewlen(in, inlen);
-		return node_;
-	}
-	else
-	{
-		s_sts_sds ptr = sts_sdscpylen((s_sts_sds)node_->value, (const char *)in, inlen);
-		node_->value = ptr;
-	}
-	return node_;
-}
-s_sts_list_node *sts_sdsnode_clone(s_sts_list_node *node_)
-{
-	s_sts_list_node *newnode = NULL;
-	s_sts_list_node *node = node_;
-	while (node != NULL)
-	{
-		newnode = sts_sdsnode_push_node(newnode, node->value, sts_sdslen((s_sts_sds)node->value));
-		node = node->next;
-	};
-	return newnode;
-}
-int sts_sdsnode_get_size(s_sts_list_node *node_)
-{
-	if (node_ == NULL)
-	{
-		return 0;
-	}
-	int k = 0;
-	while (node_)
-	{
-		if (node_->value)
-		{
-			k += sts_sdslen((s_sts_sds)node_->value);
-		}
-		node_ = node_->next;
-	}
-	return k;
-}
-int sts_sdsnode_get_count(s_sts_list_node *node_)
-{
-	if (node_ == NULL)
-	{
-		return 0;
-	}
-	int k = 0;
-	while (node_)
-	{
-		if (node_->value)
-		{
-			k++;
-		}
-		node_ = node_->next;
-	}
-	return k;
-}
 
 #if 0
 ///////test

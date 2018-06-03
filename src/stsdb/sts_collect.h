@@ -40,7 +40,7 @@ typedef struct s_sts_step_index
 	uint32 count;
 	uint64 left; // 最小时间
 	uint64 right;
-	uint64 step; // 间隔时间，每条记录大约间隔时间，
+	double step; // 间隔时间，每条记录大约间隔时间，
 } s_sts_step_index;
 
 // 单个股票的数据包

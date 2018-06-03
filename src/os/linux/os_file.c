@@ -35,10 +35,23 @@ void sts_file_getpath(const char *fn_, char *out_, int olen_)
 	{
 		if (fn_[i] == '\\' || fn_[i] == '/')
 		{
-			break;
+			sts_strncpy(out_, olen_, fn_, i + 1);
+			return;
 		}
 	}
-	sts_strncpy(out_, olen_, fn_, i + 1);
+}
+void sts_file_getname(const char *fn_, char *out_, int olen_)
+{
+	int i, len = (int)strlen(fn_);
+	for (i = len - 1; i > 0; i--)
+	{
+		if (fn_[i] == '\\' || fn_[i] == '/')
+		{
+			sts_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);
+			return;
+		}
+	}
+	sts_strncpy(out_, olen_, fn_, len);
 }
 bool sts_file_exists(const char *fn_)
 {

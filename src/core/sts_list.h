@@ -110,20 +110,5 @@ int sts_string_list_delete(s_sts_string_list *list_, int index_);
 int sts_string_list_find_and_delete(s_sts_string_list *list_, const char *finder_);
 
 
-///////////////////////////////////////////////////////////////////////////
-//------------------------s_sts_list_node --------------------------------//
-//  操作listNode列表的函数
-///////////////////////////////////////////////////////////////////////////
-s_sts_list_node *sts_sdsnode_create(const void *in, size_t inlen);
-void sts_sdsnode_destroy(s_sts_list_node *node);
-
-s_sts_list_node *sts_sdsnode_offset_node(s_sts_list_node *node_, int offset);
-s_sts_list_node *sts_sdsnode_last_node(s_sts_list_node *node_);
-s_sts_list_node *sts_sdsnode_first_node(s_sts_list_node *node_);
-s_sts_list_node *sts_sdsnode_push(s_sts_list_node *node_, const void *in, size_t inlen);
-s_sts_list_node *sts_sdsnode_update(s_sts_list_node *node_, const void *in, size_t inlen);
-s_sts_list_node *sts_sdsnode_clone(s_sts_list_node *node_);
-int sts_sdsnode_get_size(s_sts_list_node *node_);
-int sts_sdsnode_get_count(s_sts_list_node *node_);
 
 #endif //_STS_LIST_H

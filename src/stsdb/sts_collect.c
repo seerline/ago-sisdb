@@ -14,7 +14,7 @@ s_sts_step_index *sts_stepindex_create()
 	si->left = 0;
 	si->right = 0;
 	si->count = 0;
-	si->step = 0;
+	si->step = 0.0;
 
 	return si;
 }
@@ -27,7 +27,10 @@ void sts_stepindex_rebuild(s_sts_step_index *si_, uint64 left_, uint64 right_, i
 	si_->left = left_;
 	si_->right = right_;
 	si_->count = count_;
-	si_->step = sts_min((uint64)((right_ - left_) / count_), 1);
+	si_->step = 0.0;
+	if (count_>0) {
+		si_->step = (right_ - left_) / count_;
+	}
 }
 int stepindex_goto(s_sts_step_index *si_, uint64 curr_)
 {
@@ -43,8 +46,12 @@ int stepindex_goto(s_sts_step_index *si_, uint64 curr_)
 	{
 		return si_->count - 1;
 	}
-	printf("goto %llu\n", si_->step);
-	int index = (int)((curr_ - si_->left) / si_->step);
+	printf("goto %f\n", si_->step);
+	int index = 0;
+	if (si_->step>0.000001) {
+		index = (int)((curr_ - si_->left) / si_->step);
+	}
+	
 	if (index > si_->count - 1)
 	{
 		return si_->count - 1;
@@ -929,7 +936,7 @@ s_sts_sds sts_collect_struct_filter_sds(s_sts_collect_unit *unit_, s_sts_sds in_
 			}
 			else
 			{
-				o = sdscatlen(o, val + fu->offset, fu->flags.len);
+				o = sts_sdscatlen(o, val + fu->offset, fu->flags.len);
 			}
 		}
 		val += len;
@@ -1031,8 +1038,8 @@ s_sts_sds sts_collect_struct_to_json_sds(s_sts_collect_unit *unit_, s_sts_sds in
 		sts_json_object_add_node(jone, STS_JSON_KEY_ARRAY, jval);
 	}
 
-	size_t ll;
-	printf("jone = %s\n", sts_json_output(jone, &ll));
+	// size_t ll;
+	// printf("jone = %s\n", sts_json_output(jone, &ll));
 	// 输出数据
 	// printf("1112111 [%d]\n",tb->control.limit_rows);
 
@@ -1118,12 +1125,12 @@ s_sts_sds sts_collect_struct_to_array_sds(s_sts_collect_unit *unit_, s_sts_sds i
 
 	if (tb->control.limit_rows != 1)
 	{
-		printf("jone = %s\n", sts_json_output(jone, &olen));
+		// printf("jone = %s\n", sts_json_output(jone, &olen));
 		str = sts_json_output_zip(jone, &olen);
 	}
 	else
 	{
-		printf("jval = %s\n", sts_json_output(jval, &olen));
+		// printf("jval = %s\n", sts_json_output(jval, &olen));
 		str = sts_json_output_zip(jval, &olen);
 	}
 	// 输出数据
