@@ -68,7 +68,7 @@ typedef struct s_sts_db {
 	int  save_gaps;  // 存盘的间隔秒数	
 	s_sts_struct_list  *save_plans; // uin16的时间序列，如果类型为gap，就表示秒为单位的间隔时间
 	s_sts_thread_id_t save_pid;
-	s_sts_mutex_rw save_mutex;  // save时的锁定
+	s_sts_mutex_t save_mutex;  // save时的锁定
 
 	s_sts_wait thread_wait; //线程内部延时处理
 

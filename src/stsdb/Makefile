@@ -693,30 +693,6 @@ mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s:
 	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.c.s
 
-mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.o
-
-# target to build an object file
-mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o
-.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.o
-
-mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.i: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.i
-
-# target to preprocess a source file
-mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i
-.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.i
-
-mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.s: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.s
-
-# target to generate assembly for a file
-mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s:
-	$(MAKE) -f CMakeFiles/stsdb.dir/build.make CMakeFiles/stsdb.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s
-.PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.c.s
-
 mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.o: mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.c.o
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.o
 
@@ -1014,9 +990,6 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/siphash.s"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.o"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.i"
-	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_malloc.s"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/sts_redis.s"

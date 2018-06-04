@@ -46,7 +46,7 @@ int stepindex_goto(s_sts_step_index *si_, uint64 curr_)
 	{
 		return si_->count - 1;
 	}
-	printf("goto %f\n", si_->step);
+	// printf("goto %f\n", si_->step);
 	int index = 0;
 	if (si_->step>0.000001) {
 		index = (int)((curr_ - si_->left) / si_->step);
@@ -149,7 +149,7 @@ int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 finder_, int 
 	while (i >= 0 && i < unit_->value->count)
 	{
 		uint64 ts = sts_collect_unit_get_time(unit_, i);
-		printf("  %lld --- %lld  mode= %d\n", finder_, ts, *mode_);
+		// printf("  %lld --- %lld  mode= %d\n", finder_, ts, *mode_);
 		if (finder_ > ts)
 		{
 			if (dir == -1)
@@ -247,7 +247,7 @@ int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 	int index = stepindex_goto(unit_->stepinfo, finder_);
 	if (index < 0)
 	{
-		return -1; // 没有任何数据
+		return -3; // 没有任何数据
 	}
 	int i = index;
 	int dir = 0;
@@ -279,7 +279,7 @@ int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 			return i;
 		}
 	}
-	return -1;
+	return i;
 }
 int sts_collect_unit_search_check(s_sts_collect_unit *unit_, uint64 finder_)
 {
@@ -577,17 +577,23 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 		int index = unit_->value->count - 1;
 		int mode = sts_collect_unit_search_check(unit_, tt);
 		int size = sts_table_get_fields_size(tb);
-		printf("mode=%d tt= %lld index=%d\n", mode, tt, index);
+		// printf("mode=%d tt= %lld index=%d\n", mode, tt, index);
 		 
 		if (mode == STS_SEARCH_CHECK_OLD) {
 			// 时间是很早以前的数据，那就重新定位数据
-			index = sts_collect_unit_search(unit_, tt);
-			// 没找到完全匹配的数据
-			if (index < 0) break; 
+			int set = STS_SEARCH_NONE;
+			index = sts_collect_unit_search_right(unit_, tt, &set);
+			printf("mode=%d set=%d tt= %lld index=%d\n", mode, set, tt, index);
+
+			if (set == STS_SEARCH_OK) {
+				sts_struct_list_update(unit_->value, index, (void *)in_);
+			} else {
+				sts_struct_list_insert(unit_->value, index, (void *)in_);
+			}
 			mode = STS_SEARCH_CHECK_OK;
 		}
 		// printf("----=%d tt= %lld index=%d\n", mode, tt, index);
-		if (mode == STS_SEARCH_CHECK_INIT)
+		else if (mode == STS_SEARCH_CHECK_INIT)
 		{
 			// 1. 初始化
 			if (tb->catch)
@@ -872,8 +878,10 @@ s_sts_sds sts_collect_array_to_struct_sds(s_sts_collect_unit *unit_, const char 
 		count = 1;
 		jval = handle->node;
 	}
-	if (count < 1)
+	if (count < 1){
+		sts_json_close(handle);
 		return NULL;
+	}
 
 	s_sts_sds o = sts_sdsnewlen(NULL, count * unit_->value->len);
 	int index = 0;

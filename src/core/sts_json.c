@@ -618,7 +618,7 @@ void sts_json_delete_node(s_sts_json_node *node_)
 		while (node)
 		{
 			next = node->next;
-			sts_json_delete_node(node->child);
+			sts_json_delete_node(node);
 			node = next;
 		}
 	}

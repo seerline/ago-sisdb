@@ -108,6 +108,7 @@ void sts_mutex_rw_lock_w(s_sts_mutex_rw *mutex_)
 		break;
 	}
 }
+
 void sts_mutex_rw_unlock_w(s_sts_mutex_rw *mutex_)
 {
 	assert(mutex_);

@@ -86,7 +86,7 @@ bool _sts_db_file_save_sdb(const char *dbpath_, s_sts_db *db_,s_sts_table *tb_)
     char sdb[STS_PATH_LEN];
     sts_sprintf(sdb,STS_PATH_LEN, STS_DB_FILE_MAIN, dbpath_, db_->name, tb_->name);
 
-    sts_file_handle sdb_fp = sts_file_open(sdb, STS_FILE_IO_CREATE|STS_FILE_IO_WRITE, 0);
+    sts_file_handle sdb_fp = sts_file_open(sdb, STS_FILE_IO_CREATE|STS_FILE_IO_WRITE|STS_FILE_IO_TRUCT, 0);
 	if (!sdb_fp)
 	{
 		sts_out_error(3)("cann't open file [%s].\n", sdb);
@@ -181,6 +181,7 @@ bool sts_db_file_load_aof(const char *dbpath_, s_sts_db *db_)
 	}
     sts_file_seek(fp, 0 ,SEEK_SET);
 
+    bool hashead =false;
     s_sts_aof_head head;
     s_sts_memory *buffer = sts_memory_create();    
 	while (1)
@@ -189,15 +190,20 @@ bool sts_db_file_load_aof(const char *dbpath_, s_sts_db *db_)
 		if (bytes <= 0) break;
 		while (sts_memory_get_size(buffer) > sizeof(s_sts_aof_head))
 		{
-            memmove(&head,buffer->val,sizeof(s_sts_aof_head));
-            sts_memory_move(buffer, sizeof(s_sts_aof_head));
+            if (!hashead) {
+                memmove(&head, sts_memory(buffer),sizeof(s_sts_aof_head));
+                sts_memory_move(buffer, sizeof(s_sts_aof_head));
+                hashead = true;    
+            }
 			if (sts_memory_get_size(buffer) < head.size) 
             {
                 break;
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sts_memory_get_size需要减少
-            stsdb_set_format(head.format, head.table, head.code, buffer->val, head.size);
+            stsdb_set_format(head.format, head.table, head.code, sts_memory(buffer), head.size);
             sts_memory_move(buffer, head.size);
+            sts_memory_pack(buffer);
+            hashead=false;
         }
     }  
     sts_memory_destroy(buffer);
@@ -207,8 +213,8 @@ bool sts_db_file_load_aof(const char *dbpath_, s_sts_db *db_)
 }
 bool _sts_db_file_load_table(s_sts_table *tb_,sts_file_handle fp_)
 {
+    bool hashead =false;
     s_sts_sdb_head head;
-
     s_sts_memory *buffer = sts_memory_create();    
 	while (1)
 	{
@@ -216,15 +222,21 @@ bool _sts_db_file_load_table(s_sts_table *tb_,sts_file_handle fp_)
 		if (bytes <= 0) break;
 		while (sts_memory_get_size(buffer) > sizeof(s_sts_sdb_head))
 		{
-            memmove(&head,buffer->val,sizeof(s_sts_sdb_head));
-            sts_memory_move(buffer, sizeof(s_sts_sdb_head));
+            if (!hashead) {
+                memmove(&head, sts_memory(buffer),sizeof(s_sts_sdb_head));
+                sts_memory_move(buffer, sizeof(s_sts_sdb_head));
+                hashead = true;    
+            }
 			if (sts_memory_get_size(buffer) < head.size) 
             {
                 break;
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sts_memory_get_size需要减少
-            stsdb_set_format(head.format, tb_->name, head.code, buffer->val, head.size);
+            stsdb_set_format(head.format, tb_->name, head.code, sts_memory(buffer), head.size);
             sts_memory_move(buffer, head.size);
+            sts_memory_pack(buffer);
+            hashead=false;
+            // sts_sleep(1000*100);
         }
     }  
     sts_memory_destroy(buffer);

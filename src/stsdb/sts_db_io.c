@@ -73,29 +73,33 @@ void *_thread_save_plan_task(void *argv_)
     sts_thread_wait_start(&db->thread_wait);
     while (server.status != STS_SERVER_STATUS_CLOSE)
     {
-         printf("server.status ... %d",server.status);
+         printf("server.status ... %d\n",server.status);
        // 处理
         if (db->save_type==STS_SERVER_SAVE_GAPS) {
             if(sts_thread_wait_sleep(&db->thread_wait, db->save_gaps) == STS_ETIMEDOUT)
             {
-                // sts_db_file_save(server.dbpath,db);
+                sts_mutex_lock(&server.db->save_mutex);
+                sts_db_file_save(server.dbpath,db);
+                sts_mutex_unlock(&server.db->save_mutex);
             }
         } else {
             if(sts_thread_wait_sleep(&db->thread_wait, 5)== STS_ETIMEDOUT)// 30秒判断一次
             {
-                // int min = sts_time_get_iminute(0);
-                // printf("save plan ... -- -- -- %d \n",min);
-                // for (int k=0;k<db->save_plans->count;k++)
-                // {
-                //     uint16 *lm = sts_struct_list_get(db->save_plans, k);
-                //     if(min == *lm) {
-                //         sts_db_file_save(server.dbpath,db);
-                //         printf("save plan ... %d -- -- %d \n",*lm, min);
-                //     }
-                // }
+                int min = sts_time_get_iminute(0);
+                printf("save plan ... -- -- -- %d \n",min);
+                for (int k=0;k<db->save_plans->count;k++)
+                {
+                    uint16 *lm = sts_struct_list_get(db->save_plans, k);
+                    if(min == *lm) {
+                        sts_mutex_lock(&server.db->save_mutex);
+                        sts_db_file_save(server.dbpath,db);
+                        sts_mutex_unlock(&server.db->save_mutex);
+                        printf("save plan ... %d -- -- %d \n",*lm, min);
+                    }
+                }
             }
         }
-        printf(" ... %d\n",server.status);
+        printf("server.status ... %d\n",server.status);
     }
     sts_thread_wait_stop(&db->thread_wait);
     return NULL;
@@ -222,7 +226,7 @@ char * stsdb_open(const char *conf_)
             sts_out_error(1)("can't start save thread\n");
             goto error;       
         }
-        sts_mutex_rw_create(&server.db->save_mutex);
+        sts_mutex_create(&server.db->save_mutex);
     }
     // 检查数据库文件有没有
     char sdb_json_name[STS_PATH_LEN];
@@ -265,7 +269,7 @@ char * stsdb_open(const char *conf_)
         char *str = sts_conf_to_json(service, &len);
         server.db->conf = sdsnewlen(str,len);
         sts_free(str);
-        
+
         s_sts_json_node *info = sts_conf_first_node(node);
         while (info)
         {
@@ -288,7 +292,7 @@ char * stsdb_open(const char *conf_)
 
 error_1:
 
-    sts_mutex_rw_destroy(&server.db->save_mutex);
+    sts_mutex_destroy(&server.db->save_mutex);
 
 error:
     if(sdb_json) 
@@ -314,7 +318,7 @@ void stsdb_close()
     if(server.db&&server.db->save_pid){
         sts_thread_join(server.db->save_pid);
         printf("save_pid end.\n");
-        sts_mutex_rw_destroy(&server.db->save_mutex);
+        sts_mutex_destroy(&server.db->save_mutex);
     }
     sts_thread_wait_destroy(&server.db->thread_wait);
 
@@ -360,13 +364,13 @@ s_sts_sds stsdb_get_sds(const char *db_, const char *key_, const char *com_)
 int stsdb_set_format(int format_, const char *db_, const char *key_, const char *val_, size_t len_)
 {
     // if (sts_strcasecmp(key_,"SH600048")) return STS_SERVER_ERROR;
-    // printf("%s.%s  %ld\n", key_, db_, len_);
+    printf("----[%d] %s.%s  %ld\n", format_,key_, db_, len_);
     if (format_ == STS_DATA_STRUCT)
     {
          sts_out_binary("set", val_, 30);
     }   
     else{
-        printf("val : %s\n", val_);
+        printf("%s val : %s\n", __func__, val_);
     }
     s_sts_table *table = sts_db_get_table(server.db, db_);
     if (!table)
@@ -404,8 +408,15 @@ int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *va
         sts_out_error(3)("save aof error.\n");
         return STS_SERVER_ERROR;
     }
+    if (sts_mutex_trylock(&server.db->save_mutex)) {
+        // == 0 才是锁住
+        sts_out_error(3)("saveing... set fail.\n");
+        return STS_SERVER_OK;
+    };
+    int o = stsdb_set_format(uid,db_,key_,val_,len_);
+    sts_mutex_unlock(&server.db->save_mutex);
 
-    return stsdb_set_format(uid,db_,key_,val_,len_);
+    return o;
 }
 int sdsdb_delete_market(s_sts_table *tb_, const char *market_)
 {

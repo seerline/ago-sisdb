@@ -12,18 +12,19 @@
 typedef struct s_sts_memory {
     size_t  size;
 	size_t  maxsize;
-	char *val;     // 当前游标指向地址
+	size_t  offset;  //偏移距离
     char *buffer;  // 实际缓存区
 } s_sts_memory;
 
 s_sts_memory *sts_memory_create();   
 void sts_memory_destroy(s_sts_memory *);
 
-// void sts_memory_pack(s_sts_memory *m_);
+void sts_memory_pack(s_sts_memory *m_);
 
 size_t sts_memory_cat(s_sts_memory *, char *, size_t);  // 尾部添加，重新清理内存
 size_t sts_memory_readfile(s_sts_memory *, sts_file_handle, size_t);
 size_t sts_memory_get_size(s_sts_memory *);
 void sts_memory_move(s_sts_memory *, size_t);
+char *sts_memory(s_sts_memory *);
 
 #endif //_STS_FILE_H

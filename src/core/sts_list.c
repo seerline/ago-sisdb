@@ -9,7 +9,7 @@
 
 s_sts_struct_list *sts_struct_list_create(int len_, void *in_, int inlen_)
 {
-	printf("new list...%d\n", len_);
+	// printf("new list...%d\n", len_);
 	if (len_ < 1)
 	{
 		return NULL;
@@ -396,12 +396,16 @@ s_sts_string_list *sts_string_list_create_r() //Ö»¶Á
 	l->permissions = STRING_LIST_RD;
 	return l;
 }
+void sts_string_listfree(void *p)
+{
+	sts_free(p);
+}
 s_sts_string_list *sts_string_list_create_w() //¶ÁĞ´
 {
 	s_sts_string_list *l = (s_sts_string_list *)sts_malloc(sizeof(s_sts_string_list));
 	l->strlist = sts_pointer_list_create();
 	l->permissions = STRING_LIST_WR;
-	l->strlist->free = sts_free;
+	l->strlist->free = sts_string_listfree;
 	return l;
 }
 void sts_string_list_destroy(s_sts_string_list *list_)

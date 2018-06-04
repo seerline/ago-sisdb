@@ -52,7 +52,7 @@
 #define sts_dict_hash_func dictGenHashFunction
 #define sts_dict_casehash_func dictGenCaseHashFunction
 
-// #define __RELEASE__
+#define __RELEASE__
 
 #ifdef __RELEASE__
 #define sts_malloc  malloc
@@ -60,10 +60,13 @@
 #define sts_realloc  realloc
 #define sts_free free
 
-inline void check_memory_start(){};
-inline void check_memory_stop(){};
+inline void safe_memory_start(){};
+inline void safe_memory_stop(){};
 
 #else
+
+#include <string.h>
+#include <stdlib.h>
 
 #define MEMORY_INFO_SIZE  32
 
@@ -78,38 +81,78 @@ typedef struct s_memory_node {
 
 #define MEMORY_NODE_SIZE  (sizeof(s_memory_node))
 
-void check_memory_start();
-void check_memory_stop();
+void safe_memory_start();
+void safe_memory_stop();
 
-void check_memory_newnode(void *__p__,int line_,const char *func_);
-void check_memory_freenode(void *__p__);
+extern s_memory_node *__memory_first, *__memory_last;
 
-void sts_free(void *__p__);
+inline void safe_memory_newnode(void *__p__,int line_,const char *func_)
+{
+    s_memory_node *__n = (s_memory_node *)__p__; 
+    __n->next = NULL; 
+    __n->line = line_; 
+    // memmove(__n->info, func_, MEMORY_INFO_SIZE); __n->info[MEMORY_INFO_SIZE - 1] = 0; 
+
+    if (!__memory_first) { 
+        __n->prev = NULL;  
+        __memory_first = __n; 
+        __memory_last = __memory_first; 
+    }  else { 
+        __n->prev = __memory_last; 
+        __memory_last->next = __n; 
+        __memory_last = __n; 
+    }        
+}   
+inline void safe_memory_freenode(void *__p__)
+{   
+    s_memory_node *__n = (s_memory_node *)__p__; 
+    if(__n->prev) { 
+        __n->prev->next = __n->next; 
+    } 
+    else { 
+        __memory_first = __n->next; 
+    }  
+
+    if(__n->next)  { 
+        __n->next->prev = __n->prev; 
+    } 
+    else { 
+        __memory_last = __n->prev; 
+    } 
+}
+
 
 #define sts_malloc(__size__) ({   \
     void *__p = malloc(__size__ + MEMORY_NODE_SIZE); \
-    check_memory_newnode(__p, __LINE__,__func__); \
+    safe_memory_newnode(__p, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \
 }) \
 
 #define sts_calloc(__size__)  ({   \
     void *__p = calloc(1, __size__ + MEMORY_NODE_SIZE); \
-    check_memory_newnode(__p, __LINE__,__func__); \
+    safe_memory_newnode(__p, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \
 }) \
 
-    // __m__==0 ??? 
 #define sts_realloc(__m__, __size__)  ({   \
     void *__p = NULL; \
     if (!__m__) { \
         __p = malloc(__size__ + MEMORY_NODE_SIZE); \
     } else { \
-        void *__s = (char *)__m__ - MEMORY_NODE_SIZE; \
+        s_memory_node *__s = (s_memory_node *)((char *)__m__ - MEMORY_NODE_SIZE); \
+        safe_memory_freenode(__s); \
         __p = realloc(__s, __size__ + MEMORY_NODE_SIZE); \
-        if(__p != __s) { check_memory_freenode(__s); } \
     } \
-    check_memory_newnode(__p, __LINE__,__func__); \
+    safe_memory_newnode(__p, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \
+}) \
+
+#define sts_free(__m__) ({ \
+    if (__m__) {  \
+        void *__p = (char *)__m__ - MEMORY_NODE_SIZE;  \
+        safe_memory_freenode(__p); \
+        free(__p); \
+    } \
 }) \
 
 #endif

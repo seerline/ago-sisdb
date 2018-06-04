@@ -4,14 +4,28 @@
 sts_file_handle sts_file_open(const char *fn_, int mode_, int access_)
 {
 	sts_file_handle fp = NULL;
-	if (mode_ & STS_FILE_IO_CREATE)
-	{
-		fp = fopen(fn_, "wb");
+	char mode[5];
+	int  index = 0;
+	if(mode_ & STS_FILE_IO_TRUCT) {
+		mode[index] = 'w';  index++;
+	} else {
+		if (mode_ & STS_FILE_IO_CREATE) {
+			mode[index] = 'a';  index++;
+		}
+		if (mode_ & STS_FILE_IO_READ) {
+			mode[index] = 'r';  index++;
+		}
 	}
-	else
+	mode[index] = 'b'; index++;
+	if (mode_ & STS_FILE_IO_READ && mode_ & STS_FILE_IO_WRITE) 
 	{
-		fp = fopen(fn_, "rb");
+		mode[index] = '+';
+		index++;
 	}
+	mode[index]=0;
+
+	fp = fopen(fn_, mode);
+	
 	return fp;
 }
 

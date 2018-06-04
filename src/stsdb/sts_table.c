@@ -68,11 +68,11 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 
 	// 顺序不能变，必须最后
 	sts_table_set_fields(tb, sts_json_cmp_child_node(command, "fields"));
-	int count = sts_string_list_getsize(tb->field_name);
-	for (int i = 0; i < count; i++)
-	{
-		printf("---111  %s\n",sts_string_list_get(tb->field_name, i));
-	}
+	// int count = sts_string_list_getsize(tb->field_name);
+	// for (int i = 0; i < count; i++)
+	// {
+	// 	printf("---111  %s\n",sts_string_list_get(tb->field_name, i));
+	// }
 
 	s_sts_json_node *cache = sts_json_cmp_child_node(command, "fields-cache");
 	if (cache)
@@ -91,9 +91,9 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 					fu->catch_method = map->uid;
 				}
 				sts_strcpy(fu->catch_initfield, STS_FIELD_MAXLEN, sts_json_get_str(child, "1"));
-				printf("%s==%d  %s--- %s\n", child->key, fu->catch_method, fu->catch_initfield,fu->name);
+				// printf("%s==%d  %s--- %s\n", child->key, fu->catch_method, fu->catch_initfield,fu->name);
 			}
-			printf("[%s] %s=====%p\n", tb->name, child->key, fu);
+			// printf("[%s] %s=====%p\n", tb->name, child->key, fu);
 			child = child->next;
 		}
 	}
@@ -197,7 +197,7 @@ void sts_table_set_fields(s_sts_table *tb_, s_sts_json_node *fields_)
 			sts_field_unit_create(index++, name, &flags);
 		unit->offset = offset;
 		offset += unit->flags.len;
-		printf("[%d:%d] name=%s len=%d\n", index, offset, name, flags.len);
+		// printf("[%d:%d] name=%s len=%d\n", index, offset, name, flags.len);
 		sts_map_pointer_set(tb_->field_map, name, unit);
 		sts_string_list_push(tb_->field_name, name, strlen(name));
 

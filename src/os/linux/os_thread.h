@@ -34,10 +34,11 @@ s_sts_thread_id_t sts_thread_self();
 
 // 互斥锁定义
 int  sts_mutex_create(s_sts_mutex_t *mutex_);
-#define sts_mutex_destroy pthread_mutex_destroy
-#define sts_mutex_lock    pthread_mutex_lock
-#define sts_mutex_unlock  pthread_mutex_unlock
-#define sts_mutex_init    pthread_mutex_init
+#define sts_mutex_destroy 	pthread_mutex_destroy
+#define sts_mutex_lock    	pthread_mutex_lock
+#define sts_mutex_unlock  	pthread_mutex_unlock
+#define sts_mutex_init    	pthread_mutex_init
+#define sts_mutex_trylock   pthread_mutex_trylock
 
 // 多读一写锁定义
 typedef struct s_sts_mutex_rw {

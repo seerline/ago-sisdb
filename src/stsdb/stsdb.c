@@ -140,12 +140,12 @@ int sts_module_on_unload()
 {
 	printf("--------------close-----------\n");
 	stsdb_close();
-	check_memory_stop();
+	safe_memory_stop();
 	return STS_MODULE_OK;
 }
 int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
 {
-	check_memory_start();
+	safe_memory_start();
 	// 先取得服务名
 	char *service;
 	if (argc_ == 1)
