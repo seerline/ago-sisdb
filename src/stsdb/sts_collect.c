@@ -140,9 +140,9 @@ int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 finder_, int 
 {
 	*mode_ = STS_SEARCH_NONE;
 	int index = stepindex_goto(unit_->stepinfo, finder_);
-	if (index < 0)
+	if(index < 0)
 	{
-		return -1; // 没有任何数据
+		return -1;
 	}
 	int i = index;
 	int dir = 0;
@@ -188,14 +188,14 @@ int sts_collect_unit_search_left(s_sts_collect_unit *unit_, uint64 finder_, int 
 		return -1;
 	}
 }
+// 找到finder的位置，并返回index和相对位置（左还是右）没有记录设置 STS_SEARCH_NONE
 int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 finder_, int *mode_)
 {
-
 	*mode_ = STS_SEARCH_NONE;
 	int index = stepindex_goto(unit_->stepinfo, finder_);
-	if (index < 0)
+	if(index < 0)
 	{
-		return -1; // 没有任何数据
+		return -1;
 	}
 	int i = index;
 	int dir = 0;
@@ -235,19 +235,22 @@ int sts_collect_unit_search_right(s_sts_collect_unit *unit_, uint64 finder_, int
 	{
 		return -1;
 	}
-	else
+	else 
+	// if (dir == -1)
 	{
 		*mode_ = STS_SEARCH_RIGHT;
 		return 0;
 	}
+	// *mode_ = STS_SEARCH_NONE;
+	// return 0;
 }
+// 必须找到一个相等值，否则返回-1
 int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 {
-
 	int index = stepindex_goto(unit_->stepinfo, finder_);
 	if (index < 0)
 	{
-		return -3; // 没有任何数据
+		return -1;
 	}
 	int i = index;
 	int dir = 0;
@@ -258,7 +261,7 @@ int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 		{
 			if (dir == -1)
 			{
-				return i - 1;
+				return -1;
 			}
 			dir = 1;
 			i += dir;
@@ -279,7 +282,7 @@ int sts_collect_unit_search(s_sts_collect_unit *unit_, uint64 finder_)
 			return i;
 		}
 	}
-	return i;
+	return -1;
 }
 int sts_collect_unit_search_check(s_sts_collect_unit *unit_, uint64 finder_)
 {
@@ -583,14 +586,16 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 			// 时间是很早以前的数据，那就重新定位数据
 			int set = STS_SEARCH_NONE;
 			index = sts_collect_unit_search_right(unit_, tt, &set);
-			printf("mode=%d set=%d tt= %lld index=%d\n", mode, set, tt, index);
+			// printf("mode=%d set=%d tt= %lld index=%d\n", mode, set, tt, index);
 
 			if (set == STS_SEARCH_OK) {
 				sts_struct_list_update(unit_->value, index, (void *)in_);
-			} else {
+			}
+			else 
+			{
 				sts_struct_list_insert(unit_->value, index, (void *)in_);
 			}
-			mode = STS_SEARCH_CHECK_OK;
+			// printf("count=%d\n",unit_->value->count);
 		}
 		// printf("----=%d tt= %lld index=%d\n", mode, tt, index);
 		else if (mode == STS_SEARCH_CHECK_INIT)
