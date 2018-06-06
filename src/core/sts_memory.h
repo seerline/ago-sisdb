@@ -7,7 +7,7 @@
 #include <sts_str.h>
 #include <os_file.h>
 
-#define STS_DB_MEMORY_SIZE  32*1024  // 数据区大小，
+#define STS_DB_MEMORY_SIZE  1*1024  // 数据区大小，
 
 typedef struct s_sts_memory {
     size_t  size;

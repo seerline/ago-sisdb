@@ -158,8 +158,8 @@ bool sts_db_file_save_aof(const char *dbpath_, s_sts_db *db_,
 
     s_sts_aof_head head;
     sts_strncpy((char *)&head.table,STS_TABLE_MAXLEN,tb_,STS_TABLE_MAXLEN);
-    sts_strncpy((char *)&head.code,9,key_,9);
-    head.format = STS_DATA_STRUCT;
+    sts_strncpy((char *)&head.code,STS_CODE_MAXLEN,key_,STS_CODE_MAXLEN);
+    head.format = format_;
     head.size = len_;
 
     sts_file_write(fp,(const char *)&head,1,sizeof(s_sts_aof_head));
@@ -202,7 +202,6 @@ bool sts_db_file_load_aof(const char *dbpath_, s_sts_db *db_)
             // 不拷贝内存，只是移动指针，但移动后求出的sts_memory_get_size需要减少
             stsdb_set_format(head.format, head.table, head.code, sts_memory(buffer), head.size);
             sts_memory_move(buffer, head.size);
-            sts_memory_pack(buffer);
             hashead=false;
         }
     }  
@@ -213,6 +212,7 @@ bool sts_db_file_load_aof(const char *dbpath_, s_sts_db *db_)
 }
 bool _sts_db_file_load_table(s_sts_table *tb_,sts_file_handle fp_)
 {
+    tb_->loading = true;  // 为true时不做links工作
     bool hashead =false;
     s_sts_sdb_head head;
     s_sts_memory *buffer = sts_memory_create();    
@@ -227,19 +227,22 @@ bool _sts_db_file_load_table(s_sts_table *tb_,sts_file_handle fp_)
                 sts_memory_move(buffer, sizeof(s_sts_sdb_head));
                 hashead = true;    
             }
+            // printf("load table %lu size=%d\n",sts_memory_get_size(buffer) , head.size);
 			if (sts_memory_get_size(buffer) < head.size) 
             {
                 break;
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sts_memory_get_size需要减少
+            // printf("load table name=%s  %s size=%d\n",tb_->name,head.code,head.size);
             stsdb_set_format(head.format, tb_->name, head.code, sts_memory(buffer), head.size);
             sts_memory_move(buffer, head.size);
-            sts_memory_pack(buffer);
+            // sts_memory_pack(buffer);
             hashead=false;
             // sts_sleep(1000*100);
         }
     }  
     sts_memory_destroy(buffer);
+    tb_->loading = false;
     // 释放没有移动前的指针
     return true;
 }

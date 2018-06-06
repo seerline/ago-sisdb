@@ -35,6 +35,7 @@
 #define s_sts_dict_iter dictIterator
 
 #define sts_dict_add dictAdd
+#define sts_dict_delete dictDelete
 #define sts_dict_find dictFind
 #define sts_dict_empty dictEmpty
 #define sts_dict_setval dictSetVal

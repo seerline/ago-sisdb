@@ -12,5 +12,5 @@ CMakeCache.txt
 *.o
 *.zip
 core.*
-test/test
+test
 

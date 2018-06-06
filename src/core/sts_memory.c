@@ -61,6 +61,8 @@ size_t sts_memory_readfile(s_sts_memory *m_, sts_file_handle fp_, size_t len_)
 	char *mem = (char *)sts_malloc(len_+1);
 	size_t bytes = sts_file_read(fp_,mem,1,len_);
 
+	sts_memory_pack(m_);
+	
 	if (bytes + m_->size > m_->maxsize) {
 		m_->maxsize = bytes + m_->size + STS_DB_MEMORY_SIZE;
 		m_->buffer = (char *)sts_realloc(m_->buffer, m_->maxsize);

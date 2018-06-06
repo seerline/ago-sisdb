@@ -73,7 +73,7 @@ void *_thread_save_plan_task(void *argv_)
     sts_thread_wait_start(&db->thread_wait);
     while (server.status != STS_SERVER_STATUS_CLOSE)
     {
-         printf("server.status ... %d\n",server.status);
+        //  printf("server.status ... %d\n",server.status);
        // 处理
         if (db->save_type==STS_SERVER_SAVE_GAPS) {
             if(sts_thread_wait_sleep(&db->thread_wait, db->save_gaps) == STS_ETIMEDOUT)
@@ -83,7 +83,7 @@ void *_thread_save_plan_task(void *argv_)
                 sts_mutex_unlock(&server.db->save_mutex);
             }
         } else {
-            if(sts_thread_wait_sleep(&db->thread_wait, 5)== STS_ETIMEDOUT)// 30秒判断一次
+            if(sts_thread_wait_sleep(&db->thread_wait, 30)== STS_ETIMEDOUT)// 30秒判断一次
             {
                 int min = sts_time_get_iminute(0);
                 printf("save plan ... -- -- -- %d \n",min);
@@ -99,7 +99,7 @@ void *_thread_save_plan_task(void *argv_)
                 }
             }
         }
-        printf("server.status ... %d\n",server.status);
+        // printf("server.status ... %d\n",server.status);
     }
     sts_thread_wait_stop(&db->thread_wait);
     return NULL;
@@ -263,10 +263,10 @@ char * stsdb_open(const char *conf_)
             goto error_1;
         }
         // 创建数据表
-        s_sts_json_node *node = sts_json_cmp_child_node(service, "tables");
+        s_sts_json_node *node = sts_json_cmp_child_node(sdb_json->node, "tables");
         // 加载conf
         size_t len = 0;
-        char *str = sts_conf_to_json(service, &len);
+        char *str = sts_conf_to_json(sdb_json->node, &len);
         server.db->conf = sdsnewlen(str,len);
         sts_free(str);
 
@@ -367,7 +367,7 @@ int stsdb_set_format(int format_, const char *db_, const char *key_, const char 
     printf("----[%d] %s.%s  %ld\n", format_,key_, db_, len_);
     if (format_ == STS_DATA_STRUCT)
     {
-         sts_out_binary("set", val_, 30);
+        // sts_out_binary("set", val_, len_);
     }   
     else{
         printf("%s val : %s\n", __func__, val_);
@@ -431,10 +431,16 @@ int sdsdb_delete_market(s_sts_table *tb_, const char *market_)
             sts_collect_unit_destroy(val);
             o++;
         }
+        sts_dict_delete(tb_->collect_map, sts_dict_getkey(de));
 	}
-	sts_dict_iter_free(di);    
+	sts_dict_iter_free(di);  
+    // printf("delete [%s] count=%d\n",tb_->name, o);
+    //  
+    sts_map_buffer_clear(tb_->collect_map);
+ 
     return o;
 }
+
 int stsdb_init(const char *market_)
 {
     int o = 0;

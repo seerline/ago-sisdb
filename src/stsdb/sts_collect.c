@@ -86,6 +86,7 @@ s_sts_collect_unit *sts_collect_unit_create(s_sts_table *tb_, const char *key_)
 }
 void sts_collect_unit_destroy(s_sts_collect_unit *unit_)
 {
+	// printf("delete in_collect = %p\n",unit_);
 	if (unit_->value)
 	{
 		sts_struct_list_destroy(unit_->value);
@@ -581,7 +582,8 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 		int mode = sts_collect_unit_search_check(unit_, tt);
 		int size = sts_table_get_fields_size(tb);
 		// printf("mode=%d tt= %lld index=%d\n", mode, tt, index);
-		 
+		// sts_out_binary("update", in_, size);
+
 		if (mode == STS_SEARCH_CHECK_OLD) {
 			// 时间是很早以前的数据，那就重新定位数据
 			int set = STS_SEARCH_NONE;
@@ -608,7 +610,7 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 			}
 			// 2. 写入数据
 			sts_struct_list_push(unit_->value, (void *)in_);
-			sts_out_binary("set push", in_, 30);
+			// sts_out_binary("set push", in_, size);
 		}
 		else if (mode == STS_SEARCH_CHECK_NEW)
 		{
@@ -672,7 +674,7 @@ int sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_, size_t i
 	int count = 0;
 
 	count = (int)(ilen_ / unit_->value->len);
-	printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
+	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
 	for (int i = 0; i < count; i++)
 	{
 		// 是否需要备份数据和进行数据转换
@@ -994,7 +996,7 @@ s_sts_sds sts_collect_struct_to_json_sds(s_sts_collect_unit *unit_, s_sts_sds in
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
-		sts_out_binary("get", val, 30);
+		sts_out_binary("get", val, sts_sdslen(in_));
 		jval = sts_json_create_array();
 		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
 		{
@@ -1091,7 +1093,7 @@ s_sts_sds sts_collect_struct_to_array_sds(s_sts_collect_unit *unit_, s_sts_sds i
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
-		sts_out_binary("get", val, 30);
+		sts_out_binary("get", val, sts_sdslen(in_));
 		jval = sts_json_create_array();
 		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
 		{

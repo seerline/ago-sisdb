@@ -16,20 +16,21 @@
 // printf( "This is line %d.\n", __LINE__ );
 // printf( "This function is %s.\n", __func__ );
 
-#define sts_out_error(a) printf
+#define sts_out_error(a) if(a>10) printf
 // sts_out_error 需要判断如果有回车就自动中断 使用("%.*s", 10, "xxxx") 方式
 
 inline void sts_out_binary(const char *key_, const char *val_, int len_)
 {
-    sts_out_error(0)("%s : ", key_);
+    printf("%s : ", key_);
     char *p = (char *)val_;
+    len_ = len_ >30 ? 30 : len_;
     for (int i = 0; i < len_; i++)
     {
-        if (!*p) break;
-        sts_out_error(0)("%02x ", (unsigned char)*p);
+        // if (!*p) break;
+        printf("%02x ", (unsigned char)*p);
         p++;
     }
-    sts_out_error(0)("\n");
+    printf("\n");
 }
 
 void sts_log_close();

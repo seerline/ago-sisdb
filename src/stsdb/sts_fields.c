@@ -298,7 +298,7 @@ void sts_fields_set_double(s_sts_field_unit *fu_, char *val_, double f64_)
 //获取数据库的各种值
 s_sts_field_unit *sts_field_get_from_key(s_sts_table *tb_, const char *key_)
 {
-	if (!key_)
+	if (!key_||!tb_->field_map)
 	{
 		return NULL;
 	}

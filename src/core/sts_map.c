@@ -86,7 +86,10 @@ void sts_map_buffer_clear(s_sts_map_buffer *map_)
 };
 void *sts_map_buffer_get(s_sts_map_buffer *map_, const char *key_)
 {
-	//??? 这里可能有问题
+	if (!map_)
+	{
+		return NULL;
+	}
 	s_sts_dict_entry *he;
 	s_sts_sds key = sts_sdsnew(key_);
 	he = sts_dict_find(map_, key);

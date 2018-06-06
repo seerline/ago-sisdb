@@ -100,8 +100,10 @@ void sts_db_destroy(s_sts_db *db_) //关闭一个数据库
 			sts_table_destroy(val);
 		}
 		sts_dict_iter_free(di);
+		// 如果没有sts_map_pointer_destroy就必须加下面这句
+		// sts_map_buffer_clear(db_->db);
 	}
-	// 下面仅仅释放
+	// 下面仅仅释放key
 	sts_map_pointer_destroy(db_->db);
 
 	sts_sdsfree(db_->name);

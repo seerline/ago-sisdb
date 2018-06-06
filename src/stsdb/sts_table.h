@@ -63,6 +63,7 @@ typedef struct s_sts_table {
 
 	bool catch;   // 是否对collect建立catch；
 	bool zip; 
+	bool loading;  // 是否磁盘加载中，是的话就不做分发
 
 }s_sts_table;
 
@@ -82,7 +83,7 @@ s_sts_table *sts_table_create(s_sts_db *db_,const char *name_, s_sts_json_node *
 	//  如果limit为1，则总是修改第一条记录
 
 void sts_table_destroy(s_sts_table *);  //删除一个表
-void sts_table_clear(s_sts_table *);    //清理一个表的所有数据
+void sts_table_collect_clear(s_sts_table *);    //清理一个表的所有数据
 //对数据库的各种属性设置
 void sts_table_set_ver(s_sts_table *, uint32);  // time_t格式
 void sts_table_set_limit_rows(s_sts_table *, uint32); // 0 -- 不限制  1 -- 只保留最新的一条  n 
@@ -100,7 +101,7 @@ uint64 sts_table_struct_trans_time(uint64 in_, int inscale_, s_sts_table *out_tb
 int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char *in_, size_t ilen_);
 
 // 来源数据是json或者struct，table是struct数据
-int sts_table_update(int type_, s_sts_table *, const char *key_, const char * in_, size_t ilen_);
+// int sts_table_update(int type_, s_sts_table *, const char *key_, const char * in_, size_t ilen_);
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 s_sts_sds sts_table_get_sds(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
 

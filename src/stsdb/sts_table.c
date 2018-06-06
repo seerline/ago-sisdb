@@ -124,12 +124,12 @@ void sts_table_destroy(s_sts_table *tb_)
 
 	sts_string_list_destroy(tb_->field_name);
 	//删除数据区
-	sts_table_clear(tb_);
+	sts_table_collect_clear(tb_);
 
 	sts_sdsfree(tb_->name);
 	sts_free(tb_);
 }
-void sts_table_clear(s_sts_table *tb_)
+void sts_table_collect_clear(s_sts_table *tb_)
 //清理一个表的所有数据
 {
 	s_sts_dict_entry *de;
@@ -140,6 +140,7 @@ void sts_table_clear(s_sts_table *tb_)
 		sts_collect_unit_destroy(val);
 	}
 	sts_dict_iter_free(di);
+	// sts_map_buffer_clear(tb_->collect_map);
 	sts_map_pointer_destroy(tb_->collect_map);
 }
 /////////////////////////////////////
@@ -366,6 +367,9 @@ s_sts_sds _sts_table_struct_trans(s_sts_collect_unit *in_unit_, s_sts_sds ins_, 
 	s_sts_sds ins = ins_;
 	s_sts_sds outs = outs_;
 
+	// printf("table=%p:%p coll=%p,field=%p \n",
+	// 			out_tb, out_unit_->father, out_unit_,
+	// 			out_tb->field_name);
 	int fields = sts_string_list_getsize(out_tb->field_name);
 
 	for (int k = 0; k < count; k++)
@@ -433,7 +437,55 @@ s_sts_sds _sts_table_struct_trans(s_sts_collect_unit *in_unit_, s_sts_sds ins_, 
 //////////////////////////////////////////////////////////////////////////////////
 // 同时修改多个数据库，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 //////////////////////////////////////////////////////////////////////////////////
+int _sts_table_update_links(s_sts_table *table_,const char *key_, s_sts_collect_unit *collect_,s_sts_sds val_)
+{
+	int count = sts_string_list_getsize(table_->links);
+	// printf("links=%d\n", count);
 
+	s_sts_sds link_val = NULL;
+	s_sts_table *link_table;
+	s_sts_collect_unit *link_collect;
+	for (int k = 0; k < count; k++)
+	{
+		const char *link_db = sts_string_list_get(table_->links, k);
+		link_table = sts_db_get_table(table_->father, link_db);
+		// printf("links=%d  db=%s  fields=%p %p \n", k, link_db,link_table,link_table->field_name);
+		// for (int f=0; f<sts_string_list_getsize(link_table->field_name); f++){
+		// 	printf("  fields=%s\n", sts_string_list_get(link_table->field_name,f));
+		// }
+		if (!link_table)
+		{
+			continue;
+		}
+		// 时间跨度大的不能转到跨度小的数据表
+		if (table_->control.time_scale > link_table->control.time_scale)
+		{
+			continue;
+		}
+		link_collect = sts_map_buffer_get(link_table->collect_map, key_);
+		if (!link_collect)
+		{
+			// printf("new......\n");
+			link_collect = sts_collect_unit_create(link_table, key_);
+			sts_map_buffer_set(link_table->collect_map, key_, link_collect);
+		}
+		// printf("links=%d  db=%s.%s in= %p table=%p:%p coll=%p,field=%p \n", k, link_db,key_,
+		// 		collect_->father,
+		// 		link_table, link_collect->father, link_collect,
+		// 		link_table->field_name);
+		//---- 转换到其他数据库的数据格式 ----//
+		link_val = _sts_table_struct_trans(collect_, val_, link_collect);
+		//---- 修改数据 ----//
+		if (link_val)
+		{
+			// printf("table_=%lld\n",sts_fields_get_uint_from_key(table_,"time",in_val));
+			// printf("link_table=%lld\n",sts_fields_get_uint_from_key(link_table,"time",link_val));
+			sts_collect_unit_update(link_collect, link_val, sts_sdslen(link_val));
+			sts_sdsfree(link_val);
+		}
+	}
+	return count;
+}
 int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const char *in_, size_t ilen_)
 {
 	// 1 . 先把来源数据，转换为srcdb的二进制结构数据集合
@@ -442,6 +494,8 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	{
 		in_collect = sts_collect_unit_create(table_, key_);
 		sts_map_buffer_set(table_->collect_map, key_, in_collect);
+		//if (!sts_strcasecmp(table_->name,"min")&&!sts_strcasecmp(key_,"SH600000"))
+		// printf("[%s.%s]new in_collect = %p = %p | %p\n",key_, table_->name,in_collect->father,table_,in_collect);
 	}
 
 	s_sts_sds in_val = NULL;
@@ -459,109 +513,78 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	default:
 		in_val = sts_sdsnewlen(in_, ilen_);
 	}
+	// sts_out_binary("update 0 ", in_, ilen_);
+
 	// ------- val 就是hi已经转换好的完整的结构化数据 -----//
 	// 2. 先修改自己
 	if (!in_val)
 	{
 		return 0;
 	}
-	printf("in_collect->value = %p\n",in_collect->value);
-	s_sts_sds db_val = sts_sdsnewlen(sts_struct_list_last(in_collect->value),
-						   in_collect->value->len);
+	// printf("[%s] in_collect->value = %p\n",in_collect->father->name,in_collect->value);
+	// s_sts_sds db_val = sts_sdsnewlen(sts_struct_list_last(in_collect->value),
+	// 					   in_collect->value->len);
 	// 先储存上一次的数据，
 	int o = sts_collect_unit_update(in_collect, in_val, sts_sdslen(in_val));
 
 	// 3. 顺序改其他数据表，
 	// **** 修改其他数据表时应该和单独修改min不同，需要修正vol和money两个字段*****
-	int count = sts_string_list_getsize(table_->links);
-	// printf("links=%d\n", count);
-
-	s_sts_sds link_val = NULL;
-	s_sts_table *link_table;
-	s_sts_collect_unit *link_collect;
-	for (int k = 0; k < count; k++)
-	{
-		const char *link_db = sts_string_list_get(table_->links, k);
-		// printf("links=%d  db=%s\n", k, link_db);
-		link_table = sts_db_get_table(table_->father, link_db);
-		if (!link_table)
-		{
-			continue;
-		}
-		// 时间跨度大的不能转到跨度小的数据表
-		if (table_->control.time_scale > link_table->control.time_scale)
-		{
-			continue;
-		}
-		link_collect = sts_map_buffer_get(link_table->collect_map, key_);
-		if (!link_collect)
-		{
-			link_collect = sts_collect_unit_create(link_table, key_);
-			sts_map_buffer_set(link_table->collect_map, key_, link_collect);
-		}
-		//---- 转换到其他数据库的数据格式 ----//
-		link_val = _sts_table_struct_trans(in_collect, in_val, link_collect);
-		//---- 修改数据 ----//
-		if (link_val)
-		{
-			// printf("table_=%lld\n",sts_fields_get_uint_from_key(table_,"time",in_val));
-			// printf("link_table=%lld\n",sts_fields_get_uint_from_key(link_table,"time",link_val));
-			sts_collect_unit_update(link_collect, link_val, sts_sdslen(link_val));
-			sts_sdsfree(link_val);
-		}
+	if(!table_->loading) {
+		// _sts_table_update_links(table_, key_, in_collect, in_val);
 	}
+
 	// 5. 释放内存
 	if (in_val)
 	{
 		sts_sdsfree(in_val);
 	}
-	if (db_val)
-	{
-		sts_sdsfree(db_val);
-	}
+	// if (db_val)
+	// {
+	// 	sts_sdsfree(db_val);
+	// }
 	return o;
 }
 //////////////////////////////////////////////////////////////////////////////////
 //修改数据，key_为股票代码或市场编号，in_为二进制结构化数据或json数据
 //////////////////////////////////////////////////////////////////////////////////
 
-int sts_table_update(int type_, s_sts_table *tb_, const char *key_, const char *in_, size_t ilen_)
-{
-	s_sts_collect_unit *collect = sts_map_buffer_get(tb_->collect_map, key_);
-	// printf("---collect %p---%p--%d\n", collect, tb_->field_map, sts_table_get_fields_size(tb_));
-	if (!collect)
-	{
-		collect = sts_collect_unit_create(tb_, key_);
-		sts_map_buffer_set(tb_->collect_map, key_, collect);
-	}
-	// printf("---collect %p---\n", collect);
-	int o = 0;
-	s_sts_sds val = NULL;
-	switch (type_)
-	{
-	case STS_DATA_JSON:
-		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
-		// 用新的数据进行覆盖，然后返回数据
-		val = sts_collect_json_to_struct_sds(collect, in_, ilen_);
-		if (val)
-		{
-			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
-			sts_sdsfree(val);
-		}
-		break;
-	case STS_DATA_ARRAY:
-		val = sts_collect_array_to_struct_sds(collect, in_, ilen_);
-		if (val)
-		{
-			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
-			sts_sdsfree(val);
-		}
-		break;
-	default:
-		o = sts_collect_unit_update(collect, in_, ilen_);
-	}
-	return o;
-}
+// int sts_table_update(int type_, s_sts_table *tb_, const char *key_, const char *in_, size_t ilen_)
+// {
+// 	s_sts_collect_unit *collect = sts_map_buffer_get(tb_->collect_map, key_);
+// 	// printf("---collect %p---%p--%d\n", collect, tb_->field_map, sts_table_get_fields_size(tb_));
+// 	if (!collect)
+// 	{
+// 		collect = sts_collect_unit_create(tb_, key_);
+// 		sts_map_buffer_set(tb_->collect_map, key_, collect);
+// 	}
+// 	// printf("---collect %p---\n", collect);
+// 	int o = 0;
+// 	s_sts_sds val = NULL;
+// 	switch (type_)
+// 	{
+// 	case STS_DATA_JSON:
+// 		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
+// 		// 用新的数据进行覆盖，然后返回数据
+// 		val = sts_collect_json_to_struct_sds(collect, in_, ilen_);
+// 		if (val)
+// 		{
+// 			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
+// 			sts_sdsfree(val);
+// 		}
+// 		break;
+// 	case STS_DATA_ARRAY:
+// 		val = sts_collect_array_to_struct_sds(collect, in_, ilen_);
+// 		if (val)
+// 		{
+// 			o = sts_collect_unit_update(collect, val, sts_sdslen(val));
+// 			sts_sdsfree(val);
+// 		}
+// 		break;
+// 	default:
+// 		o = sts_collect_unit_update(collect, in_, ilen_);
+// 	}
+// 	return o;
+// }
 //////////////////////////
 //删除数据
 //////////////////////////

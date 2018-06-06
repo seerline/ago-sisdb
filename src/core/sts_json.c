@@ -21,6 +21,7 @@ static const char *_sts_parse_string(s_sts_json_handle *handle_, s_sts_json_node
 {
 	if (*str_ != '\"')
 	{
+		handle_->error = str_;
 		return 0;
 	}
 	int len = 0;
@@ -32,6 +33,7 @@ static const char *_sts_parse_string(s_sts_json_handle *handle_, s_sts_json_node
 	}
 	if (!*ptr)
 	{
+		handle_->error = str_;
 		return 0;
 	}
 	char *out = sts_strdup(str_ + 1, len);
@@ -44,6 +46,11 @@ static const char *_sts_parse_string(s_sts_json_handle *handle_, s_sts_json_node
 		while (*ptr && *ptr != ':')
 		{
 			ptr++;
+		}
+		if (!*ptr)
+		{
+			handle_->error = str_;
+			return 0;
 		}
 		ptr++;
 		ptr = skip(_sts_parse_value(handle_, node_, skip(ptr)));
@@ -110,6 +117,7 @@ static const char *_sts_parse_array(s_sts_json_handle *handle_, s_sts_json_node 
 		value_ = skip(_sts_parse_value(handle_, child, skip(value_))); /* skip any spacing, get the value_. */
 		if (!value_ || !*value_)
 		{
+			handle_->error = value_;
 			return 0;
 		}
 		if (*value_ == ']') // 只有这里才能退出
@@ -150,6 +158,7 @@ static const char *_sts_parse_object(s_sts_json_handle *handle_, s_sts_json_node
 		value_ = skip(_sts_parse_value(handle_, child, value_));
 		if (!value_ || !*value_)
 		{
+			handle_->error = value_;
 			return 0;
 		}
 		if (*value_ == '}') // 只有这里才能退出
@@ -172,6 +181,7 @@ static const char *_sts_parse_value(s_sts_json_handle *handle_, s_sts_json_node 
 	// printf("val: |%.10s| \n", value_);
 	if (!value_)
 	{
+		handle_->error = value_;
 		return 0;
 	} /* Fail on null. */
 	if (*value_ == '\"')
@@ -1171,7 +1181,7 @@ s_sts_json_node *sts_json_find_node(s_sts_json_node *node_, const char *path_)
 	return sts_json_cmp_child_node(node_, path_);
 }
 
-#if 0
+#if 1
 void json_printf(s_sts_json_node *node_, int *i)
 {
 	if (!node_)
@@ -1192,7 +1202,7 @@ void json_printf(s_sts_json_node *node_, int *i)
 			node_->child, node_->prev, node_->next,
 			node_->key, node_->value);
 }
-int main()
+int main1()
 {
 	const char *fn = "./select.json";
 	// const char *fn = "../conf/sts.conf";
@@ -1222,6 +1232,19 @@ int main()
 
 	printf("I %s in command line\n", "0123456\n789");
 
+	return 0;
+}
+int main()
+{
+	const char *command = "{\"format\":\"array\",\"range\":{\"start\":-100,\"count\",1}}";
+	// const char *fn = "../conf/sts.conf";
+	s_sts_json_handle *h = sts_json_load(command,strlen(command));
+	if (!h) return -1;
+	size_t len = 0;
+	char *str = sts_json_output(h->node, &len);
+	printf("%p [%ld]  |%s|\n", h->node, len, str);
+	sts_free(str);
+	sts_json_close(h);
 	return 0;
 }
 #endif
