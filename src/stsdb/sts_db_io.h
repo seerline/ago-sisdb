@@ -44,6 +44,7 @@ typedef struct s_stsdb_server
 	s_sts_conf_handle *config;  // 配置文件句柄
 
 	s_sts_db *db;  // 数据库句柄
+
 	char service_name[STS_TABLE_MAXLEN];  //服务名
 
 }s_stsdb_server;

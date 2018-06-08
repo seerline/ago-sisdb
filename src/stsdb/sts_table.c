@@ -4,8 +4,8 @@
 #include "sts_collect.h"
 #include "sts_db.h"
 
-//command为一个json格式字段定义
-s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node *command)
+//com_为一个json格式字段定义
+s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node *com_)
 {
 	s_sts_table *tb = sts_db_get_table(db_, name_);
 	if (tb)
@@ -18,8 +18,8 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 
 	tb->control.data_type = STS_DATA_STRUCT; // 默认保存的目前都是struct，
 	tb->control.time_scale = STS_SCALE_SECOND;
-	tb->control.limit_rows = sts_json_get_int(command, "limit", 0);
-	tb->control.isinit = sts_json_get_int(command, "isinit", 0);
+	tb->control.limit_rows = sts_json_get_int(com_, "limit", 0);
+	tb->control.isinit = sts_json_get_int(com_, "isinit", 0);
 	// printf("=====%s limit %d\n", name_, tb->control.limit_rows);
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
@@ -32,19 +32,19 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	s_sts_map_define *map = NULL;
 	const char *strval = NULL;
 
-	strval = sts_json_get_str(command, "scale");
+	strval = sts_json_get_str(com_, "scale");
 	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_SCALE);
 	if (map)
 	{
 		tb->control.time_scale = map->uid;
 	}
-	strval = sts_json_get_str(command, "insert-mode");
+	strval = sts_json_get_str(com_, "insert-mode");
 	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_OPTION_MODE);
 	if (map)
 	{
 		tb->control.insert_mode = map->uid;
 	}
-	strval = sts_json_get_str(command, "update-mode");
+	strval = sts_json_get_str(com_, "update-mode");
 	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_OPTION_MODE);
 	if (map)
 	{
@@ -56,9 +56,9 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	//处理链接数据表名
 	tb->links = sts_string_list_create_w();
 
-	if (sts_json_cmp_child_node(command, "links"))
+	if (sts_json_cmp_child_node(com_, "links"))
 	{
-		strval = sts_json_get_str(command, "links");
+		strval = sts_json_get_str(com_, "links");
 		sts_string_list_load(tb->links, strval, strlen(strval), ",");
 	}
 
@@ -67,14 +67,14 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	tb->field_map = sts_map_pointer_create();
 
 	// 顺序不能变，必须最后
-	sts_table_set_fields(tb, sts_json_cmp_child_node(command, "fields"));
+	sts_table_set_fields(tb, sts_json_cmp_child_node(com_, "fields"));
 	// int count = sts_string_list_getsize(tb->field_name);
 	// for (int i = 0; i < count; i++)
 	// {
 	// 	printf("---111  %s\n",sts_string_list_get(tb->field_name, i));
 	// }
 
-	s_sts_json_node *cache = sts_json_cmp_child_node(command, "fields-cache");
+	s_sts_json_node *cache = sts_json_cmp_child_node(com_, "fields-cache");
 	if (cache)
 	{
 		tb->catch = true;
@@ -98,7 +98,7 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 		}
 	}
 
-	s_sts_json_node *zip = sts_json_cmp_child_node(command, "zip-method");
+	s_sts_json_node *zip = sts_json_cmp_child_node(com_, "zip-method");
 	if (zip)
 	{
 		tb->zip = true;
@@ -530,7 +530,7 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	// 3. 顺序改其他数据表，
 	// **** 修改其他数据表时应该和单独修改min不同，需要修正vol和money两个字段*****
 	if(!table_->loading) {
-		// _sts_table_update_links(table_, key_, in_collect, in_val);
+		_sts_table_update_links(table_, key_, in_collect, in_val);
 	}
 
 	// 5. 释放内存
@@ -588,7 +588,7 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 //////////////////////////
 //删除数据
 //////////////////////////
-int sts_table_delete(s_sts_table *tb_, const char *key_, const char *command)
+int sts_table_delete(s_sts_table *tb_, const char *key_, const char *com_)
 {
 	s_sts_collect_unit *collect = sts_map_buffer_get(tb_->collect_map, key_);
 	if (!collect)
@@ -596,7 +596,7 @@ int sts_table_delete(s_sts_table *tb_, const char *key_, const char *command)
 		return 0;
 	}
 
-	s_sts_json_handle *handle = sts_json_load(command, strlen(command));
+	s_sts_json_handle *handle = sts_json_load(com_, strlen(com_));
 	if (!handle)
 	{
 		return 0;
@@ -681,13 +681,48 @@ exit:
 	sts_json_close(handle);
 	return rtn;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-//取数据,读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围
-///////////////////////////////////////////////////////////////////////////////
-s_sts_sds sts_table_get_sds(s_sts_table *tb_, const char *key_, const char *command)
+int sts_from_node_get_format(s_sts_db *db_, s_sts_json_node *node_)
 {
-	s_sts_json_handle *handle = sts_json_load(command, strlen(command));
+	int o = STS_DATA_JSON;
+	s_sts_json_node *format = sts_json_cmp_child_node(node_, "format");
+	if (format)
+	{
+		s_sts_map_define *smd = sts_db_find_map_define(db_, format->value, STS_MAP_DEFINE_DATA_TYPE);
+		if (smd)
+		{
+			o = smd->uid;
+		}
+	}
+	return o;
+}
+
+s_sts_sds sts_table_get_search_sds(s_sts_table *tb_, const char *code_, int min_,int max_)
+{
+	s_sts_collect_unit *collect = sts_map_buffer_get(tb_->collect_map, code_);
+	if (!collect)
+	{
+		return NULL;
+	}
+
+	s_sts_sds o = NULL;
+
+	int start, stop;
+	int maxX, minX;
+
+	start = sts_collect_unit_search_right(collect, min_, &minX);
+	stop = sts_collect_unit_search_left(collect, max_, &maxX);
+	if (minX != STS_SEARCH_NONE && maxX != STS_SEARCH_NONE)
+	{
+		o = sts_collect_unit_get_of_range_sds(collect, start, stop);
+	}	
+	return o;
+}
+///////////////////////////////////////////////////////////////////////////////
+//取数据,读表中代码为key的数据，key为*表示所有股票数据，由 com_ 定义数据范围和字段范围
+///////////////////////////////////////////////////////////////////////////////
+s_sts_sds sts_table_get_sds(s_sts_table *tb_, const char *key_, const char *com_)
+{
+	s_sts_json_handle *handle = sts_json_load(com_, strlen(com_));
 	if (!handle)
 	{
 		return NULL;
@@ -786,16 +821,9 @@ filter:
 	}
 	// 最后转数据格式
 	// 取出数据返回格式，没有就默认为二进制结构数据
-	int iformat = STS_DATA_STRUCT;
-	s_sts_json_node *format = sts_json_cmp_child_node(handle->node, "format");
-	if (format)
-	{
-		s_sts_map_define *smd = sts_db_find_map_define(tb_->father, format->value, STS_MAP_DEFINE_DATA_TYPE);
-		if (smd)
-		{
-			iformat = smd->uid;
-		}
-	}
+	// int iformat = STS_DATA_STRUCT;
+	int iformat = sts_from_node_get_format(tb_->father, handle->node);
+
 	printf("iformat = %c\n", iformat);
 	// 取出字段定义，没有就默认全部字段
 	s_sts_sds sds_fields = NULL;
@@ -835,3 +863,4 @@ nodata:
 	sts_json_close(handle);
 	return out;
 }
+

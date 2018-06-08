@@ -88,6 +88,8 @@ int sts_collect_unit_delete_of_count(s_sts_collect_unit *, int start_, int count
 
 s_sts_sds sts_collect_unit_get_of_range_sds(s_sts_collect_unit *, int start_, int stop_);
 s_sts_sds sts_collect_unit_get_of_count_sds(s_sts_collect_unit *, int start_, int count_);
+//  按股票代码直接从表中获取一组数据
+s_sts_sds sts_table_get_of_range_sds(s_sts_table *tb_, const char *code_, int start_, int stop_);
 
 int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
@@ -104,5 +106,9 @@ s_sts_sds sts_collect_struct_to_array_sds(s_sts_collect_unit *unit_, s_sts_sds i
 
 void sts_collect_struct_trans(s_sts_sds ins_, s_sts_field_unit *infu_, s_sts_table *indb_, s_sts_sds outs_, s_sts_field_unit *outfu_, s_sts_table *outdb_);
 // void sts_collect_struct_trans_incr(s_sts_sds ins_,s_sts_sds dbs_, s_sts_field_unit *infu_, s_sts_table *indb_, s_sts_sds outs_, s_sts_field_unit *outfu_,s_sts_table *outdb_);
+
+bool sts_trans_of_count(s_sts_collect_unit *unit_, int *start_, int *count_);
+bool sts_trans_of_range(s_sts_collect_unit *unit_, int *start_, int *stop_);
+
 
 #endif /* _STS_COLLECT_H */

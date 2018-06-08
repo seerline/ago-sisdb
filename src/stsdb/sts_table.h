@@ -105,6 +105,8 @@ int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char 
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 s_sts_sds sts_table_get_sds(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
 
+s_sts_sds sts_table_get_search_sds(s_sts_table *tb_, const char *code_, int min_,int max_);
+
 // command为json命令
 //读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围
 //用户传入的command中关键字的定义如下：
@@ -130,5 +132,6 @@ int sts_table_delete(s_sts_table *, const char *key_, const char *command);// co
 //						count(和max互斥，正表示向后，负表示向前),
 //数据范围："range":    start，stop 按记录号取数据 0，-1-->表示全部数据
 //						count(和stop互斥，正表示向后，负表示向前),
+
 
 #endif  /* _STS_TABLE_H */

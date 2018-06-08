@@ -312,112 +312,196 @@ int sts_collect_unit_search_check(s_sts_collect_unit *unit_, uint64 finder_)
 		return STS_SEARCH_CHECK_OK;
 	}
 }
+
+bool sts_trans_of_range(s_sts_collect_unit *unit_, int *start_, int *stop_)
+{
+	int llen = sts_collect_unit_recs(unit_);
+
+	if (*start_ < 0)
+	{
+		*start_ = llen + *start_;
+	}
+	if (*stop_ < 0)
+	{
+		*stop_ = llen + *stop_;
+	}
+	if (*start_ < 0)
+	{
+		*start_ = 0;
+	}
+
+	if (*start_ > *stop_ || *start_ >= llen)
+	{
+		return false;
+	}
+	if (*stop_ >= llen)
+	{
+		*stop_ = llen - 1;
+	}
+
+	return true;
+}
 int sts_collect_unit_delete_of_range(s_sts_collect_unit *unit_, int start_, int stop_)
 {
-	int llen, count;
+	// int llen, count;
 
-	llen = sts_collect_unit_recs(unit_);
+	// llen = sts_collect_unit_recs(unit_);
 
-	if (start_ < 0)
-		start_ = llen + start_;
-	if (stop_ < 0)
-		stop_ = llen + stop_;
-	if (start_ < 0)
-		start_ = 0;
+	// if (start_ < 0)
+	// 	start_ = llen + start_;
+	// if (stop_ < 0)
+	// 	stop_ = llen + stop_;
+	// if (start_ < 0)
+	// 	start_ = 0;
 
-	if (start_ > stop_ || start_ >= llen)
-	{
-		return 0;
-	}
-	if (stop_ >= llen)
-		stop_ = llen - 1;
-	count = (stop_ - start_) + 1;
-
+	// if (start_ > stop_ || start_ >= llen)
+	// {
+	// 	return 0;
+	// }
+	// if (stop_ >= llen)
+	// 	stop_ = llen - 1;
+	bool o = sts_trans_of_range(unit_, &start_, &stop_);
+	if(!o) return 0;
+	int count = (stop_ - start_) + 1;
 	return _sts_collect_unit_delete(unit_, start_, count);
+}
+bool sts_trans_of_count(s_sts_collect_unit *unit_, int *start_, int *count_)
+{
+	if (*count_ <= 0)
+	{
+		return false;
+	}
+	int llen = sts_collect_unit_recs(unit_);
+
+	if (*start_ < 0)
+	{
+		*start_ = llen + *start_;
+	}
+	if (*start_ < 0)
+	{
+		*start_ = 0;
+	}
+	if (*start_ >= llen)
+	{
+		return false;
+	}
+	if (*count_ < 0)
+	{
+		*count_ = abs(*count_);
+		if (*count_ > (*start_ + 1))
+		{
+			*count_ = *start_ + 1;
+		}
+		*start_ -= (*count_ - 1);
+	}
+	else // count_ > 0
+	{
+		if ((*start_ + *count_) > llen)
+		{
+			*count_ = llen - *start_;
+		}
+	}
+	return true;
 }
 int sts_collect_unit_delete_of_count(s_sts_collect_unit *unit_, int start_, int count_)
 {
-	int llen;
-	llen = sts_collect_unit_recs(unit_);
+	bool o = sts_trans_of_count(unit_, &start_, &count_);
+	if(!o) return 0;	
+	// int llen;
+	// llen = sts_collect_unit_recs(unit_);
 
-	if (start_ < 0)
-		start_ = llen + start_;
-	if (start_ < 0)
-		start_ = 0;
+	// if (start_ < 0)
+	// 	start_ = llen + start_;
+	// if (start_ < 0)
+	// 	start_ = 0;
 
-	if (start_ >= llen)
-	{
-		return 0;
-	}
-	if (start_ + count_ > llen)
-		count_ = llen - start_;
+	// if (start_ >= llen)
+	// {
+	// 	return 0;
+	// }
+	// if (start_ + count_ > llen)
+	// 	count_ = llen - start_;
 
 	return _sts_collect_unit_delete(unit_, start_, count_);
 }
+
 //////////////////////////////////////////////////////
 //  get  --  先默认二进制格式，全部字段返回数据
 //////////////////////////////////////////////////////
 
 s_sts_sds sts_collect_unit_get_of_count_sds(s_sts_collect_unit *unit_, int start_, int count_)
 {
-	if (count_ == 0)
-	{
-		return NULL;
-	}
-	int llen = sts_collect_unit_recs(unit_);
+	bool o = sts_trans_of_count(unit_, &start_, &count_);
+	if(!o) return NULL;	
+	// if (count_ == 0)
+	// {
+	// 	return NULL;
+	// }
+	// int llen = sts_collect_unit_recs(unit_);
 
-	if (start_ < 0)
-	{
-		start_ = llen + start_;
-	}
-	if (start_ < 0)
-	{
-		start_ = 0;
-	}
-	if (count_ < 0)
-	{
-		count_ = abs(count_);
-		if (count_ > (start_ + 1))
-		{
-			count_ = start_ + 1;
-		}
-		start_ -= (count_ - 1);
-	}
-	else
-	{
-		if ((start_ + count_) > llen)
-		{
-			count_ = llen - start_;
-		}
-	}
+	// if (start_ < 0)
+	// {
+	// 	start_ = llen + start_;
+	// }
+	// if (start_ < 0)
+	// {
+	// 	start_ = 0;
+	// }
+	// if (count_ < 0)
+	// {
+	// 	count_ = abs(count_);
+	// 	if (count_ > (start_ + 1))
+	// 	{
+	// 		count_ = start_ + 1;
+	// 	}
+	// 	start_ -= (count_ - 1);
+	// }
+	// else
+	// {
+	// 	if ((start_ + count_) > llen)
+	// 	{
+	// 		count_ = llen - start_;
+	// 	}
+	// }
 	return sts_sdsnewlen(sts_struct_list_get(unit_->value, start_), count_ * unit_->value->len);
 }
-
+s_sts_sds sts_table_get_of_range_sds(s_sts_table *tb_, const char *code_, int start_, int stop_)
+{
+	s_sts_collect_unit *collect = sts_map_buffer_get(tb_->collect_map, code_);
+	if (!collect)
+	{
+		return 0;
+	}
+	return sts_collect_unit_get_of_range_sds(collect, start_, stop_);
+}
 s_sts_sds sts_collect_unit_get_of_range_sds(s_sts_collect_unit *unit_, int start_, int stop_)
 {
-	int llen = sts_collect_unit_recs(unit_);
+	bool o = sts_trans_of_range(unit_, &start_, &stop_);
+	if(!o) return NULL;	
 
-	if (start_ < 0)
-	{
-		start_ = llen + start_;
-	}
-	if (stop_ < 0)
-	{
-		stop_ = llen + stop_;
-	}
-	if (start_ < 0)
-	{
-		start_ = 0;
-	}
+	// int llen = sts_collect_unit_recs(unit_);
 
-	if (start_ > stop_ || start_ >= llen)
-	{
-		return NULL;
-	}
-	if (stop_ >= llen)
-	{
-		stop_ = llen - 1;
-	}
+	// if (start_ < 0)
+	// {
+	// 	start_ = llen + start_;
+	// }
+	// if (stop_ < 0)
+	// {
+	// 	stop_ = llen + stop_;
+	// }
+	// if (start_ < 0)
+	// {
+	// 	start_ = 0;
+	// }
+
+	// if (start_ > stop_ || start_ >= llen)
+	// {
+	// 	return NULL;
+	// }
+	// if (stop_ >= llen)
+	// {
+	// 	stop_ = llen - 1;
+	// }
 
 	int count = (stop_ - start_) + 1;
 	return sts_sdsnewlen(sts_struct_list_get(unit_->value, start_), count * unit_->value->len);

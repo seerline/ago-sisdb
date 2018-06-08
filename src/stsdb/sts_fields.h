@@ -61,7 +61,7 @@ typedef struct s_sts_field_unit
 	uint8_t index;				 // 位置，结构中第几个字段 最多64个字段
 	uint16 offset;				 // 偏移位置，结构中第几个字段，偏移多少字节
 	char name[STS_FIELD_MAXLEN]; // 字段名，
-	s_sts_fields_flags flags;	// attribute字段属性
+	s_sts_fields_flags flags;	 // attribute字段属性
 	//----以下有些难受，不过先这样处理了，以后再说----//
 	uint8_t catch_method;					// 当fields-catch开启时，由该字段判断评选方法
 	char catch_initfield[STS_FIELD_MAXLEN]; //catch_initfield 时参考的字段索引

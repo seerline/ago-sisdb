@@ -10,16 +10,23 @@
 
 #include "redismodule.h"
 // const define
-#define STS_MODULE_OK REDISMODULE_OK
+#define STS_MODULE_OK    REDISMODULE_OK
 #define STS_MODULE_ERROR REDISMODULE_ERR
-#define STS_MODULE_VER  REDISMODULE_APIVER_1
+#define STS_MODULE_VER   REDISMODULE_APIVER_1
 
 #define STS_MODULE_ERROR_WRONGTYPE REDISMODULE_ERRORMSG_WRONGTYPE
 
 #define STS_MODULE_KEYTYPE_STRING REDISMODULE_KEYTYPE_STRING
-#define STS_MODULE_KEYTYPE_EMPTY REDISMODULE_KEYTYPE_EMPTY
+#define STS_MODULE_KEYTYPE_EMPTY  REDISMODULE_KEYTYPE_EMPTY
 
-#define STS_MODULE_READ REDISMODULE_READ
+#define STS_MODULE_REPLY_UNKNOWN  REDISMODULE_REPLY_UNKNOWN
+#define STS_MODULE_REPLY_STRING   REDISMODULE_REPLY_STRING
+#define STS_MODULE_REPLY_ERROR    REDISMODULE_REPLY_ERROR
+#define STS_MODULE_REPLY_INTEGER  REDISMODULE_REPLY_INTEGER
+#define STS_MODULE_REPLY_ARRAY    REDISMODULE_REPLY_ARRAY
+#define STS_MODULE_REPLY_NULL     REDISMODULE_REPLY_NULL
+
+#define STS_MODULE_READ  REDISMODULE_READ
 #define STS_MODULE_WRITE REDISMODULE_WRITE
 
 #define STS_MODULE_LIST_HEAD REDISMODULE_LIST_HEAD
@@ -63,11 +70,15 @@ typedef struct s_sts_object {
 #define sts_module_call_reply_free RedisModule_FreeCallReply
 #define sts_module_call_reply_int64 RedisModule_CallReplyInteger
 
+#define sts_module_call_reply_type RedisModule_CallReplyType
+#define sts_module_call_reply_with_string RedisModule_CallReplyStringPtr
+
 #define sts_module_reply_with_int64 RedisModule_ReplyWithLongLong
 #define sts_module_reply_with_error RedisModule_ReplyWithError
 #define sts_module_reply_with_string RedisModule_ReplyWithString
 #define sts_module_reply_with_null RedisModule_ReplyWithNull
 #define sts_module_reply_with_simple_string RedisModule_ReplyWithSimpleString
+#define sts_module_reply_with_reply RedisModule_ReplyWithCallReply
 
 #define sts_module_string_create RedisModule_CreateString
 #define sts_module_string_create_printf RedisModule_CreateStringPrintf

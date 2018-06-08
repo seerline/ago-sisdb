@@ -28,6 +28,7 @@
 #define sts_sdslen sdslen
 #define sts_sdsdup sdsdup
 #define sts_sdscatlen sdscatlen
+#define sts_sdscat sdscat
 
 #define s_sts_dict dict
 #define s_sts_dict_type dictType
@@ -36,6 +37,7 @@
 
 #define sts_dict_add dictAdd
 #define sts_dict_delete dictDelete
+#define sts_dict_fetch_value dictFetchValue
 #define sts_dict_find dictFind
 #define sts_dict_empty dictEmpty
 #define sts_dict_setval dictSetVal

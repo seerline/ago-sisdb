@@ -121,7 +121,7 @@ s_sts_table *sts_db_get_table(s_sts_db *db_, const char *name_)
 	if (db_->db)
 	{
 		s_sts_sds key = sts_sdsnew(name_);
-		val = (s_sts_table *)dictFetchValue(db_->db, key);
+		val = (s_sts_table *)sts_dict_fetch_value(db_->db, key);
 		sts_sdsfree(key);
 	}
 	return val;
@@ -155,7 +155,7 @@ s_sts_map_define *sts_db_find_map_define(s_sts_db *db_, const char *name_, uint8
 	}
 	s_sts_sds key = sts_sdsnew(name_);
 	key = sdscatfmt(key, ".%u", style_);
-	s_sts_map_define *val = (s_sts_map_define *)dictFetchValue(db_->map, key);
+	s_sts_map_define *val = (s_sts_map_define *)sts_dict_fetch_value(db_->map, key);
 	sts_sdsfree(key);
 	// printf("%s,%p\n",name_,val);
 	return val;

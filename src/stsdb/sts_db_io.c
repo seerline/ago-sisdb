@@ -6,7 +6,8 @@
 // 一定要用static定义，不然内存混乱
 static s_stsdb_server server = {
     .status = STS_SERVER_STATUS_NOINIT,
-    .config = NULL};
+    .config = NULL,
+    .db = NULL};
 /********************************/
 
 void _get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
@@ -107,6 +108,7 @@ void *_thread_save_plan_task(void *argv_)
 
 char * stsdb_open(const char *conf_)
 {
+
     server.config = sts_conf_open(conf_);
     if (!server.config)
     {
