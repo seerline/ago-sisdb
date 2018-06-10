@@ -9,11 +9,19 @@
 #include "sts_core.h"
 #include "sts_conf.h"
 #include "sts_map.h"
+#include "sts_list.h"
 
 #include "sts_malloc.h"
+#include "sts_stock.h"
+#include "sts_math.h"
+
 #include "digger_io.h"
 
 typedef s_sts_sds _sts_command_proc(s_digger_server *s_,const char *argv_);
+
+#define STS_QUERY_COM_NORMAL  "{\"format\":\"struct\"}"
+#define STS_QUERY_COM_LAST    "{\"format\":\"struct\",\"range\":{\"start\":-1}}"
+#define STS_QUERY_COM_SEARCH  "{\"format\":\"struct\",\"search\":{\"min\":%d,\"max\":%d}}"
 
 #pragma pack(push,1)
 
@@ -30,9 +38,9 @@ s_sts_command *sts_command_get(s_sts_map_pointer *map_, const char *name_);
 ////////////////////////////////
 //  下面是功能调用
 ////////////////////////////////
-s_sts_sds sts_command_get_price_sds(s_digger_server *s_,const char *argv_);
-s_sts_sds sts_command_get_right_sds(s_digger_server *s_,const char *argv_);
+s_sts_sds sts_command_get_price_sds(s_digger_server *s_,const char *com_);
+s_sts_sds sts_command_get_right_sds(s_digger_server *s_,const char *com_);
 
-s_sts_sds sts_command_find_code_sds(s_digger_server *s_,const char *argv_);
+s_sts_sds sts_command_find_code_sds(s_digger_server *s_,const char *com_);
 
 #endif  /* _STS_COMMAND_H */

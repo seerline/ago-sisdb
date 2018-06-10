@@ -287,3 +287,49 @@ const char *sts_str_getline(const char *e_, int *len_, const char *s_, size_t si
 
 	return e_;
 }
+// 判断 字符串是否在source中， 如果在，并且完全匹配就返回0 否则返回1 没有匹配就返回-1
+// source = aaa,bbbbbb,0001 
+int sts_str_match(const char* substr_, const char* source_)
+{
+	char *s = strstr(source_,substr_);
+	if (s) {
+		int len =strlen(substr_);
+		s +=len;
+		// if(!strcmp(substr_,"603096")||!strcmp(substr_,"KDL")) {
+		// 	printf("c == %x\n",*s);
+		// }
+		if(!*s||*s==',') {
+			// printf("c == %x\n",*s);
+			return 0;
+		}
+		return 1;
+	}
+	return -1;
+}
+
+#if 0
+#include <sts_time.h>
+
+int main()
+
+{
+    char* source_ = "blog.csdn,blog,net";
+    char* substr_ = "csdn,blog"    ;
+
+	int start = sts_time_get_isec(0);
+	int count = 1;
+    for(int k=0;k<count;k++){
+		if (k>0)
+		{
+			//sts_str_find(substr_,source_);
+			sts_str_match(substr_,source_);
+		}	else {
+			//printf("The First Occurence at: %d\n",sts_str_find(substr_,source_));
+			printf("The First Occurence at: %d\n",sts_str_match(substr_,source_));
+		}
+	}
+	printf("cost sec: %d \n",sts_time_get_isec(0) - start);
+
+    return 1;
+}
+#endif

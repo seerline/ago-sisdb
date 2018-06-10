@@ -837,6 +837,30 @@ mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.s:
 	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.s
 .PHONY : mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.c.s
 
+mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.o: mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.o
+
+# target to build an object file
+mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.o:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.o
+.PHONY : mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.o
+
+mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.i: mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.i
+
+# target to preprocess a source file
+mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.i:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.i
+.PHONY : mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.i
+
+mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.s: mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.s
+
+# target to generate assembly for a file
+mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.s:
+	$(MAKE) -f CMakeFiles/digger.dir/build.make CMakeFiles/digger.dir/mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.s
+.PHONY : mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -936,6 +960,9 @@ help:
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.o"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.i"
 	@echo "... mnt/hgfs/mysoft/stsdb/src/platform/redis/zmalloc.s"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.o"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.i"
+	@echo "... mnt/hgfs/mysoft/stsdb/src/stock/sts_stock.s"
 .PHONY : help
 
 

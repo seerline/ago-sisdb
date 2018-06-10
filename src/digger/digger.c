@@ -200,7 +200,7 @@ int call_digger_call(s_sts_module_context *ctx_, s_sts_module_string **argv_, in
 	}
 	return sts_module_reply_with_error(ctx_, "digger call error.\n");
 }
-s_sts_sds get_stsdb_info_sds(void *server_, const char *key_, const char *com_)
+s_sts_sds get_stsdb_info_sds(void *server_,  const char *code_, const char *db_, const char *com_)
 {
 	s_digger_server *server = (s_digger_server *)server_;
 	// printf("key = %s  %p\n",key_, server->context);
@@ -208,20 +208,26 @@ s_sts_sds get_stsdb_info_sds(void *server_, const char *key_, const char *com_)
 	if (!cxt) {
 		return NULL;
 	}
-    s_sts_module_call_reply *reply;
 	char command[64];
 	sts_snprintf(command, 64, "%s.get", server->source_name);
-
-	// printf("%s\n",command);
-	if(!com_) {
-		reply = sts_module_call(cxt,command,"c!", key_);
+	char key[64];
+	if (code_&&strlen(code_)>0) {
+		sts_snprintf(key, 64, "%s.%s", code_, db_);
 	} else {
-		reply = sts_module_call(cxt,command,"cc!", key_, com_);
+		sts_snprintf(key, 64, "%s", db_);
+	}
+
+    s_sts_module_call_reply *reply;
+	if(!com_) {
+		reply = sts_module_call(cxt,command,"c!", key);
+	} else {
+		reply = sts_module_call(cxt,command,"cc!", key, com_);
 	}
 	if(reply){
 		if(sts_module_call_reply_type(reply) == STS_MODULE_REPLY_STRING) {
 			size_t len;
 			const char *str=sts_module_call_reply_with_string(reply, &len);
+			printf("len=%lu\n", len);
 			return sts_sdsnewlen(str, len);
 		} else {
 			sts_out_error(3)("get_stsdb_info reply type error.\n");

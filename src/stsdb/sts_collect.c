@@ -758,6 +758,11 @@ int sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_, size_t i
 	int count = 0;
 
 	count = (int)(ilen_ / unit_->value->len);
+	//这里应该判断数据完整性
+	if(count*unit_->value->len!=ilen_){
+		sts_out_error(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
+		return 0;
+	}
 	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
 	for (int i = 0; i < count; i++)
 	{
@@ -1010,6 +1015,7 @@ s_sts_sds sts_collect_array_to_struct_sds(s_sts_collect_unit *unit_, const char 
 
 s_sts_sds sts_collect_struct_filter_sds(s_sts_collect_unit *unit_, s_sts_sds in_, const char *fields_)
 {
+	// 一定不是全字段
 	s_sts_sds o = NULL;
 
 	s_sts_table *tb = unit_->father;

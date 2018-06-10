@@ -511,6 +511,7 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 		in_val = sts_collect_array_to_struct_sds(in_collect, in_, ilen_);
 		break;
 	default:
+		// 这里应该不用申请新的内存
 		in_val = sts_sdsnewlen(in_, ilen_);
 	}
 	// sts_out_binary("update 0 ", in_, ilen_);
@@ -534,6 +535,8 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	}
 
 	// 5. 释放内存
+	// 不要重复释放
+	// if (type_!=STS_DATA_JSON&&type_!=STS_DATA_ARRAY)
 	if (in_val)
 	{
 		sts_sdsfree(in_val);
@@ -722,6 +725,222 @@ s_sts_sds sts_table_get_search_sds(s_sts_table *tb_, const char *code_, int min_
 ///////////////////////////////////////////////////////////////////////////////
 s_sts_sds sts_table_get_sds(s_sts_table *tb_, const char *key_, const char *com_)
 {
+	if (strlen(key_)<1) {
+		return sts_table_get_table_sds(tb_,com_);
+	} 
+	return sts_table_get_code_sds(tb_,key_,com_);
+}
+
+s_sts_sds sts_table_struct_filter_sds(s_sts_table *tb_, s_sts_sds in_, const char *fields_)
+{
+	// 一定不是全字段
+	s_sts_sds o = NULL;
+
+	s_sts_table *tb = tb_;
+	s_sts_string_list *field_list = sts_string_list_create_w();
+	sts_string_list_load(field_list, fields_, strlen(fields_), ",");
+
+	int len = sts_table_get_fields_size(tb) + STS_CODE_MAXLEN;
+	int count = (int)(sts_sdslen(in_) / len);
+	char *val = in_;
+	for (int k = 0; k < count; k++)
+	{
+		if (!o)
+		{
+			o = sts_sdsnewlen(val, STS_CODE_MAXLEN);
+		}
+		else
+		{
+			o = sts_sdscatlen(o, val, STS_CODE_MAXLEN);
+		}
+		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
+		{
+			const char *key = sts_string_list_get(field_list, i);
+			s_sts_field_unit *fu = sts_field_get_from_key(tb, key);
+			if (!fu)
+			{
+				continue;
+			}
+			o = sts_sdscatlen(o, val + STS_CODE_MAXLEN + fu->offset, fu->flags.len);
+		}
+		val += len;
+	}
+	sts_string_list_destroy(field_list);
+	return o;
+}
+s_sts_sds sts_table_struct_to_json_sds(s_sts_table *tb_, s_sts_sds in_, const char *fields_)
+{
+	s_sts_sds o = NULL;
+
+	s_sts_table *tb = tb_;
+	s_sts_string_list *field_list = tb->field_name; //取得全部的字段定义
+	
+	if (!sts_check_fields_all(fields_))
+	{
+		field_list = sts_string_list_create_w();
+		sts_string_list_load(field_list, fields_, strlen(fields_), ",");
+	}
+
+	char *str;
+	s_sts_json_node *jone = sts_json_create_object();
+	s_sts_json_node *jtwo = sts_json_create_object();
+	s_sts_json_node *jval = NULL;
+	s_sts_json_node *jfields = sts_json_create_object();
+
+	// 先处理字段
+	for (int i = 0; i < sts_string_list_getsize(field_list); i++)
+	{
+		const char *key = sts_string_list_get(field_list, i);
+		sts_json_object_add_uint(jfields, key, i);
+	}
+	sts_json_object_add_node(jone, STS_JSON_KEY_FIELDS, jfields);
+
+	// printf("========%s rows=%d\n", tb->name, tb->control.limit_rows);
+
+	int dot = 0; //小数点位数
+	int skip_len = sts_table_get_fields_size(tb) + STS_CODE_MAXLEN;
+	int count = (int)(sts_sdslen(in_) / skip_len);
+	char *val = in_;
+	char code[STS_CODE_MAXLEN];
+	for (int k = 0; k < count; k++)
+	{
+		sts_strncpy(code, STS_CODE_MAXLEN, val, STS_CODE_MAXLEN);
+		// sts_out_binary("get", val, sts_sdslen(in_));
+		jval = sts_json_create_array();
+		for (int i = 0; i < sts_string_list_getsize(field_list); i++)
+		{
+			const char *key = sts_string_list_get(field_list, i);
+			// printf("----2----fields=%s\n",key);
+			s_sts_field_unit *fu = sts_field_get_from_key(tb, key);
+			if (!fu)
+			{
+				sts_json_array_add_string(jval, " ", 1);
+				continue;
+			}
+			const char *ptr = (const char *)val + STS_CODE_MAXLEN;
+			switch (fu->flags.type)
+			{
+			case STS_FIELD_STRING:
+				sts_json_array_add_string(jval, ptr + fu->offset, fu->flags.len);
+				break;
+			case STS_FIELD_INT:
+				// printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
+				sts_json_array_add_int(jval, sts_fields_get_int(fu, ptr));
+				break;
+			case STS_FIELD_UINT:
+				sts_json_array_add_uint(jval, sts_fields_get_uint(fu, ptr));
+				break;
+			case STS_FIELD_DOUBLE:
+				if (!fu->flags.io && fu->flags.zoom > 0)
+				{
+					dot = fu->flags.zoom;
+				}
+				sts_json_array_add_double(jval, sts_fields_get_double(fu, ptr), dot);
+				break;
+			default:
+				sts_json_array_add_string(jval, " ", 1);
+				break;
+			}
+		}
+		sts_json_object_add_node(jtwo, code, jval);
+		val += skip_len;
+	}
+	sts_json_object_add_node(jone, STS_JSON_KEY_GROUPS, jtwo);
+
+	// size_t ll;
+	// printf("jone = %s\n", sts_json_output(jone, &ll));
+	// 输出数据
+	// printf("1112111 [%d]\n",tb->control.limit_rows);
+
+	size_t olen;
+	str = sts_json_output_zip(jone, &olen);
+	o = sts_sdsnewlen(str, olen);
+	sts_free(str);
+	sts_json_delete_node(jone);
+
+	if (!sts_check_fields_all(fields_))
+	{
+		sts_string_list_destroy(field_list);
+	}
+	return o;
+}
+
+s_sts_sds sts_table_get_table_sds(s_sts_table *tb_, const char *com_)
+{
+	s_sts_json_handle *handle = sts_json_load(com_, strlen(com_));
+	if (!handle)
+	{
+		return NULL;
+	}
+	s_sts_sds out = NULL;
+	// 只取最后一条记录
+	s_sts_dict_entry *de;
+	s_sts_dict_iter *di = sts_dict_get_iter(tb_->collect_map);
+	while ((de = sts_dict_next(di)) != NULL)
+	{
+		s_sts_collect_unit *collect = (s_sts_collect_unit *)sts_dict_getval(de);
+		s_sts_sds val = sts_collect_unit_get_of_count_sds(collect, -1, 1);
+		if (!out)
+		{
+			out = sts_sdsnewlen(sts_dict_getkey(de), STS_CODE_MAXLEN);
+		} else {
+			out = sts_sdscatlen(out, sts_dict_getkey(de), STS_CODE_MAXLEN);
+		}
+		out = sts_sdscatlen(out, val, sts_sdslen(val));
+		sts_sdsfree(val);
+	}
+	sts_dict_iter_free(di);
+
+	if (!out)
+	{
+		goto nodata;
+	}
+	int iformat = sts_from_node_get_format(tb_->father, handle->node);
+
+	printf("iformat = %c\n", iformat);
+	// 取出字段定义，没有就默认全部字段
+	s_sts_sds sds_fields = NULL;
+	s_sts_json_node *fields = sts_json_cmp_child_node(handle->node, "fields");
+	if (fields)
+	{
+		sds_fields = sts_sdsnew(fields->value);
+	}
+	printf("sds_fields = %s\n", sds_fields);
+	s_sts_sds other = NULL;
+	switch (iformat)
+	{
+	case STS_DATA_STRUCT:
+		if (!sts_check_fields_all(sds_fields))
+		{
+			other = sts_table_struct_filter_sds(tb_, out, sds_fields);
+			sts_sdsfree(out);
+			out = other;
+		}
+		break;
+	case STS_DATA_JSON:
+		other = sts_table_struct_to_json_sds(tb_, out, sds_fields);
+		sts_sdsfree(out);
+		out = other;
+		break;
+	// case STS_DATA_ARRAY:
+	// 	other = sts_table_struct_to_array_sds(tb_, out, sds_fields);
+	// 	sts_sdsfree(out);
+	// 	out = other;
+	// 	break;
+	default :
+		sts_sdsfree(out);
+		out = NULL;
+	}
+	if (sds_fields)
+	{
+		sts_sdsfree(sds_fields);
+	}
+nodata:
+	sts_json_close(handle);
+	return out;
+}
+s_sts_sds sts_table_get_code_sds(s_sts_table *tb_, const char *key_, const char *com_)
+{
 	s_sts_json_handle *handle = sts_json_load(com_, strlen(com_));
 	if (!handle)
 	{
@@ -734,9 +953,9 @@ s_sts_sds sts_table_get_sds(s_sts_table *tb_, const char *key_, const char *com_
 		return NULL;
 	}
 
-	// 检查取值范围，没有就全部取
 	s_sts_sds out = NULL;
 
+	// 检查取值范围，没有就全部取
 	int64 min, max;
 	int start, stop;
 	int count = 0;

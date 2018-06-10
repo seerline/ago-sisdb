@@ -32,5 +32,6 @@ void sts_str_to_upper(char *in_);
 
 const char *sts_str_getline(const char *e, int *len, const char *s, size_t size_);
 
+int sts_str_match(const char* substr_, const char* source_);
 
 #endif //_STS_STR_H

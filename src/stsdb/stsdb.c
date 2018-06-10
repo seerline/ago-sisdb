@@ -67,7 +67,10 @@ int call_stsdb_get(s_sts_module_context *ctx_, s_sts_module_string **argv_, int 
 	}
 	if (o)
 	{
-		sts_module_reply_with_simple_string(ctx_, o);
+		sts_out_binary("get out",o, 30);
+		printf("get out ...%lu\n",sts_sdslen(o));
+
+		sts_module_reply_with_buffer(ctx_, o, sts_sdslen(o));
 		sts_sdsfree(o);
 		return STS_MODULE_OK;
 	}

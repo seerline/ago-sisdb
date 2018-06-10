@@ -23,7 +23,6 @@
 #define STS_SERVER_STATUS_LOADED    2
 #define STS_SERVER_STATUS_CLOSE     3
 
-
 #pragma pack(push,1)
 
 typedef struct s_digger_server
@@ -49,6 +48,8 @@ typedef struct s_digger_server
 	char service_name[STS_DIGGER_MAXLEN];  //服务名
 	char source_name[STS_DIGGER_MAXLEN];  //服务名
 
+	s_sts_sds catch_code;   // 码表的热备份
+
 }s_digger_server;
 
 #pragma pack(pop)
@@ -67,6 +68,6 @@ int digger_set(const char *db_, const char *key_, const char *com_);
 
 s_sts_sds digger_call_sds(void *context_, const char *func_, const char *argv_);
 
-s_sts_sds get_stsdb_info_sds(void *ctx_, const char *key_, const char *com_);
+s_sts_sds get_stsdb_info_sds(void *ctx_, const char *code_, const char *db_, const char *com_);
 
 #endif  /* _DIGGER_IO_H */

@@ -1181,7 +1181,7 @@ s_sts_json_node *sts_json_find_node(s_sts_json_node *node_, const char *path_)
 	return sts_json_cmp_child_node(node_, path_);
 }
 
-#if 1
+#if 0
 void json_printf(s_sts_json_node *node_, int *i)
 {
 	if (!node_)

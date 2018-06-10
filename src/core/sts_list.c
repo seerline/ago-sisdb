@@ -158,6 +158,9 @@ int sts_struct_list_update(s_sts_struct_list *list_, int index_, void *in_)
 }
 int sts_struct_list_insert(s_sts_struct_list *list_, int index_, void *in_)
 {
+	if(list_->count < 1) {
+		return sts_struct_list_push(list_, in_);
+	}
 	if (index_ < 0 || index_ > list_->count - 1)
 	{
 		return -1;
@@ -524,13 +527,17 @@ int sts_string_list_find_and_update(s_sts_string_list *list_, char *finder_, con
 int sts_string_list_insert(s_sts_string_list *list_, int index_, const char *in_, size_t inlen)
 {
 	if (list_->permissions != STRING_LIST_WR)
+	{
 		return -1;
+	}	
 
 	char *str = (char *)sts_malloc(inlen + 1);
 	sts_strncpy(str, inlen + 1, in_, inlen);
 	int index = sts_pointer_list_insert(list_->strlist, index_, str);
 	if (index < 0)
+	{
 		sts_free(str);
+	}	
 	return index;
 }
 int sts_string_list_delete(s_sts_string_list *list_, int index_)
@@ -561,7 +568,7 @@ void sts_string_list_limit(s_sts_string_list *list_, int limit_)
 }
 
 
-#if 0
+#if 1
 ///////test
 #include <stdio.h>
 //#include <malloc.h>
@@ -569,12 +576,12 @@ int char_to_int(void *str1, void *str2)
 {
 	printf("str1=%s %p %c\n", (char *)str1, (char *)str1, *(char *)(str1 + 1));
 	printf("str2=%s %p %c\n", (char *)str2, (char *)str2, *(char *)(str2 + 1));
-	return;
+	return 0;
 	char buff[100];// = (char *)malloc(100);
 	char **ptr = (char **)buff;
 	printf("buff = %p, ptr=%p %p %p\n", buff, ptr, &ptr[0], &ptr[1]);
 	//ptr[0]=(char *)str1;
-	memmove((char *)buff, &str1, sizeof(char *));
+	memmove((char *)buff, &str1, sizeof(void *));
 	ptr[1] = (char *)str2;
 	printf("ptr=%p %p address=%p %p\n", ptr[0], ptr[1], &ptr[0], &ptr[1]);
 
@@ -583,13 +590,27 @@ int char_to_int(void *str1, void *str2)
 	//free(buff);
 	return 1;
 }
-int main(void) {
+int main1(void) {
 	// your code goes here
 	char *str[] = { "SH", "SZ" };
 	char sss[100];
 	sss[0] = '5'; sss[1] = '6'; sss[2] = 0;
 	int ii = char_to_int(sss, str[0]);
-	printf("str=%s %p %p\n", str[0], str[0], sss);
+	printf("str=%s %p %p  ii=%d\n", str[0], str[0], sss, ii);
+	return 0;
+}
+int main(void) {
+	s_sts_string_list *list = sts_string_list_create_w();
+	sts_string_list_insert(list, 0, "1", 1);
+	sts_string_list_push(list,  "2", 1);
+	sts_string_list_push(list,  "3", 1);
+	sts_string_list_push(list,  "4", 1);
+	sts_string_list_insert(list, 1, "5", 1);
+	for (int i=0;i<sts_string_list_getsize(list);i++) {
+		printf("%s\n",sts_string_list_get(list, i));
+	}
+
+	sts_string_list_destroy(list);
 	return 0;
 }
 #endif

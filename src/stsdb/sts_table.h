@@ -103,7 +103,9 @@ int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char 
 // 来源数据是json或者struct，table是struct数据
 // int sts_table_update(int type_, s_sts_table *, const char *key_, const char * in_, size_t ilen_);
 //修改数据，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
-s_sts_sds sts_table_get_sds(s_sts_table *, const char *key_, const char *command);  //返回数据需要释放
+s_sts_sds sts_table_get_sds(s_sts_table *, const char *key_, const char *com_);  //返回数据需要释放
+s_sts_sds sts_table_get_code_sds(s_sts_table *, const char *key_, const char *com_);  //返回数据需要释放
+s_sts_sds sts_table_get_table_sds(s_sts_table *tb_, const char *com_);
 
 s_sts_sds sts_table_get_search_sds(s_sts_table *tb_, const char *code_, int min_,int max_);
 

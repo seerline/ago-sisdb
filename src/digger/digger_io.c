@@ -10,6 +10,7 @@ static s_digger_server server = {
     .status = STS_SERVER_STATUS_NOINIT,
     .config = NULL,
     .context = NULL,
+    .catch_code = NULL,
     .command = NULL};
 /********************************/
 
