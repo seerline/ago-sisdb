@@ -278,13 +278,17 @@ char * stsdb_open(const char *conf_)
             sts_table_create(server.db, info->key, info);
             info = info->next;
         }
-        // 最后再加载数据
-        if (!sts_db_file_load(server.dbpath, server.db))
-        {
-            sts_out_error(1)("load sdb fail. exit!\n");
-            goto error_1;        
-        }
     }
+        
+    // 这里加载数据
+    // 应该需要判断数据的版本号，如果不同，应该对磁盘上的数据进行数据字段重新匹配
+    // 把老库中有的字段加载到新的库中，再存盘
+    if (!sts_db_file_load(server.dbpath, server.db))
+    {
+        sts_out_error(1)("load sdb fail. exit!\n");
+        goto error_1;        
+    }
+    
     
     server.status = STS_SERVER_STATUS_INITED;
     // sts_out_error(3)("server.status: %d\n", server.status);

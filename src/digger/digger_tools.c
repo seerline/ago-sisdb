@@ -44,6 +44,11 @@ s_sts_command *sts_command_get(s_sts_map_pointer *map_, const char *name_)
 
 //////////////////////////////////////////////////////////////////////
 //   下面是函数实现
+//   返回数据分两种格式，一种是单个股票的，请求什么字段返回什么字段
+//   一种是多个股票的，返回groups的多股票数组，每个股票最多只有一个数组元素，或者没有数组
+//   fields：[close:0,code:1],groups:{{sh600600:[12,222]},{...}}
+//   groups:{{sh600600:[12,222]},{...}}
+//   collects:[sh600600,sh600601]
 //////////////////////////////////////////////////////////////////////
 
 uint32 _sts_from_now_get_price(s_digger_server *s_, const char *code_)
@@ -105,7 +110,12 @@ s_sts_sds sts_command_get_price_sds(s_digger_server *s_,const char *com_)
     } 
 
 	s_sts_json_node *jone = sts_json_create_object();
+	s_sts_json_node *jtwo = sts_json_create_object();
 	s_sts_json_node *jval = NULL;
+	s_sts_json_node *jfields = sts_json_create_object();
+	// 先处理字段
+	sts_json_object_add_uint(jfields, "close", 0);
+	sts_json_object_add_node(jone, STS_JSON_KEY_FIELDS, jfields);
 
 	int dot = 2;
     uint32 close;
@@ -127,12 +137,12 @@ s_sts_sds sts_command_get_price_sds(s_digger_server *s_,const char *com_)
 		if (close==0) {
 			close = info_ps->coinunit;
 		}
-
-		jval = sts_json_create_object();
-		sts_json_object_add_double(jval, "close", (double)close/sts_zoom10(dot), dot);
-		sts_json_object_add_node(jone, code, jval);
+		jval = sts_json_create_array();
+		sts_json_array_add_double(jval, (double)close/sts_zoom10(dot), dot);
+		sts_json_object_add_node(jtwo, code, jval);
 		sts_sdsfree(info);
     }
+	sts_json_object_add_node(jone, STS_JSON_KEY_GROUPS, jtwo);
 	
 	size_t olen;
 	char *str = sts_json_output_zip(jone, &olen);
@@ -263,38 +273,52 @@ s_sts_sds sts_command_find_code_sds(s_digger_server *s_,const char *com_)
 		goto error;
     } 
 
-	s_sts_sds info = get_stsdb_info_sds(s_, NULL, "info", STS_QUERY_COM_NORMAL);
+	s_sts_json_node *jfields = sts_json_create_object();
+	// 先处理字段
+	sts_json_object_add_uint(jfields, "code", 0);
+	sts_json_object_add_uint(jfields, "name", 1);
+	sts_json_object_add_node(handle->node, STS_JSON_KEY_FIELDS, jfields);
 
+	s_sts_sds info = get_stsdb_info_sds(s_, NULL, "info", STS_QUERY_COM_NORMAL);
+	if(!info) {
+        sts_out_error(3)("no info data.\n");
+		goto error;
+	}
 	//开始检索数据
 
 	int count = sts_sdslen(info)/sizeof(s_stock_info_db);
 	s_stock_info_db *info_ps = (s_stock_info_db *)info;
 	int set;
-	char code[64];
-	s_sts_string_list *list = sts_string_list_create_w();
+	s_sts_struct_list *list = sts_pointer_list_create();
 	for (int i=0; i < count; i++){
 		sts_str_to_upper((char *)match);
 		set = sts_str_match(match, info_ps->info.search);
 		if (set == 0)
 		{
-			sts_snprintf(code, 64, "%s,%s",info_ps->code,info_ps->info.name);
-			sts_string_list_insert(list, 0, code, strlen(code));
-			// printf("c list  == %d\n",sts_string_list_getsize(list));
+			sts_pointer_list_insert(list, 0, info_ps);
 		} else if (set == 1)
 		{
-			sts_snprintf(code, 64, "%s,%s",info_ps->code,info_ps->info.name);
-			sts_string_list_push(list, code, strlen(code));
+			sts_pointer_list_push(list, info_ps);
 		}
 		info_ps ++;
 	}
 	s_sts_json_node *jone = sts_json_create_array();
-	const char *s;
-	for (int i=0;i<sts_string_list_getsize(list)&&i < 20;i++) {
-		s = sts_string_list_get(list, i);
-		sts_json_array_add_string(jone, s, strlen(s));
+	s_sts_json_node *jval = NULL;
+
+	count = sts_json_get_int(handle->node, "count", 20);
+	count = sts_between(count, 5, 200);
+	for (int i=0;i<list->count&&i < count;i++) {
+		info_ps = (s_stock_info_db *)sts_struct_list_get(list, i);
+		jval = sts_json_create_array();
+		sts_json_array_add_string(jval, info_ps->code, strlen(info_ps->code));
+		sts_json_array_add_string(jval, info_ps->info.name, strlen(info_ps->info.name));
+		sts_json_array_add_node(jone, jval);
 	}
-	sts_json_object_add_node(handle->node, "codes", jone);
-	sts_string_list_destroy(list);
+	sts_json_object_add_node(handle->node, STS_JSON_KEY_ARRAYS, jone);
+	sts_pointer_list_destroy(list);
+	
+	sts_json_delete_node(sts_json_cmp_child_node(handle->node,"match"));
+	sts_json_delete_node(sts_json_cmp_child_node(handle->node,"count"));
 
 	size_t olen;
 	char *str = sts_json_output_zip(handle->node, &olen);

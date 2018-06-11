@@ -25,7 +25,6 @@ typedef struct s_sts_conf_handle
 //-------- output option function-------- //
 
 s_sts_conf_handle *sts_conf_open(const char *fn_); // 从文件打开 不读取注释
-void sts_conf_delete_node(s_sts_json_node *node_);
 void sts_conf_close(s_sts_conf_handle *handle_); // 关闭并释放
 
 s_sts_conf_handle *sts_conf_load(const char *content_, size_t len_);

@@ -109,7 +109,9 @@ static const char *_sts_parse_array(s_sts_json_handle *handle_, s_sts_json_node 
 	} /* empty array. */
 
 	struct s_sts_json_node *child;
-	node_->child = child = sts_json_create_node();
+	child = sts_json_create_node();
+	node_->child = child;
+	child->father = node_;
 	int index = 0;
 	while (value_ && *value_)
 	{
@@ -151,7 +153,9 @@ static const char *_sts_parse_object(s_sts_json_handle *handle_, s_sts_json_node
 	} /* empty array. */
 
 	struct s_sts_json_node *child;
-	node_->child = child = sts_json_create_node();
+	child = sts_json_create_node();
+	node_->child = child;
+	child->father = node_;
 	while (value_ && *value_)
 	{
 		value_ = skip(value_);
@@ -349,6 +353,7 @@ s_sts_json_node *sts_json_clone(s_sts_json_node *node_, int child_)
 		else
 		{
 			newitem->child = newchild;
+			newchild->father = newitem;
 			nptr = newchild;
 		} /* Set newitem->child and move to it */
 		cptr = cptr->next;
@@ -424,6 +429,7 @@ void sts_json_array_add_node(s_sts_json_node *source_, s_sts_json_node *node_)
 	if (!last)
 	{
 		source_->child = node_;
+		node_->father = source_;
 	}
 	else
 	{
@@ -618,9 +624,15 @@ void sts_json_delete_node(s_sts_json_node *node_)
 	}
 	if (node_->next)
 	{
+		
 		node_->next->prev = node_->prev;
+	}	
+	if (node_->father)
+	{
+		// printf("-%p %p %p---\n",node_->father,node_->father->child,node_->next);
+		node_->father->child = node_->next;
+		if(node_->next) node_->next->father = node_->father;
 	}
-
 	if (node_->child)
 	{
 
@@ -640,7 +652,6 @@ void sts_json_delete_node(s_sts_json_node *node_)
 	{
 		sts_free(node_->value);
 	}
-
 	sts_free(node_);
 }
 
@@ -1022,7 +1033,7 @@ char *_sts_json_to_value(s_sts_json_node *node_, int depth_, int fmt_)
 		out = _sts_json_to_object(node_, depth_, fmt_);
 		break;
 	}
-
+	// if (out) printf("%s\n",out);
 	return out;
 }
 
@@ -1181,7 +1192,7 @@ s_sts_json_node *sts_json_find_node(s_sts_json_node *node_, const char *path_)
 	return sts_json_cmp_child_node(node_, path_);
 }
 
-#if 0
+#if 1
 void json_printf(s_sts_json_node *node_, int *i)
 {
 	if (!node_)
@@ -1198,8 +1209,9 @@ void json_printf(s_sts_json_node *node_, int *i)
 			first = first->next;
 		}
 	}
-	printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_, 
-			node_->child, node_->prev, node_->next,
+	printf("%d| %d| %p, ^ %p,v %p < %p, >%p| k=%s v=%s \n", *i, node_->type, 
+			node_, 
+			node_->father,node_->child, node_->prev, node_->next,
 			node_->key, node_->value);
 }
 int main1()
@@ -1236,10 +1248,30 @@ int main1()
 }
 int main()
 {
-	const char *command = "{\"format\":\"array\",\"range\":{\"start\":-100,\"count\",1}}";
+	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
+	const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *fn = "../conf/sts.conf";
 	s_sts_json_handle *h = sts_json_load(command,strlen(command));
 	if (!h) return -1;
+
+	int iii=1;
+	json_printf(h->node,&iii);
+
+	s_sts_json_node *jone = sts_json_create_array();
+	s_sts_json_node *jval = NULL;
+
+		jval = sts_json_create_array();
+		sts_json_array_add_string(jval, "111", 3);
+		sts_json_array_add_string(jval, "222", 3);
+		sts_json_array_add_node(jone, jval);
+
+	sts_json_object_add_node(h->node, "values", jone);
+
+	sts_json_delete_node(sts_json_cmp_child_node(h->node,"format"));
+	sts_json_delete_node(sts_json_cmp_child_node(h->node,"count"));
+	// printf("----------------\n");
+	// json_printf(h->node,&iii);
+
 	size_t len = 0;
 	char *str = sts_json_output(h->node, &len);
 	printf("%p [%ld]  |%s|\n", h->node, len, str);

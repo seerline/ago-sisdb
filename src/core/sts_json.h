@@ -17,7 +17,7 @@
 typedef struct s_sts_json_node
 {
 	struct s_sts_json_node *next, *prev; 
-	struct s_sts_json_node *child;
+	struct s_sts_json_node *child, *father;
 
 	uint8  type;    // 有include时立即加载文件，并把内容插入content中继续解析
 	char  *key;			

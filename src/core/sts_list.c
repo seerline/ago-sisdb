@@ -568,7 +568,7 @@ void sts_string_list_limit(s_sts_string_list *list_, int limit_)
 }
 
 
-#if 1
+#if 0
 ///////test
 #include <stdio.h>
 //#include <malloc.h>

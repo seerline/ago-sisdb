@@ -437,7 +437,7 @@ fail:
 	return handle;
 }
 // 这个函数只会删除所有的子节点，并不删除自己，原因是结构中没有father，如果删除自己，可能对father->child产生影响
-void sts_conf_delete_node(s_sts_json_node *node_)
+void _sts_conf_delete_node(s_sts_json_node *node_)
 {
 	if (!node_)
 	{
@@ -457,7 +457,7 @@ void sts_conf_delete_node(s_sts_json_node *node_)
 		while (node)
 		{
 			next = node->next;
-			sts_conf_delete_node(node);
+			_sts_conf_delete_node(node);
 			node = next;
 		}
 	}
@@ -481,7 +481,7 @@ void sts_conf_close(s_sts_conf_handle *handle_)
 		return;
 	}
 
-	sts_conf_delete_node(handle_->node);
+	_sts_conf_delete_node(handle_->node);
 	sts_free(handle_);
 }
 // 必须为{...}格式，其他格式错误

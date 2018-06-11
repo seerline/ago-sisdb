@@ -42,6 +42,8 @@ typedef struct s_stock_dynamic
 
 typedef struct s_stock_info
 {
+	char	market[2];		//名称
+	char	code[7];		//名称
 	char	name[16];		//名称
 	char	search[16];		//拼音
 	uint8	type;			//STK_TYPE
