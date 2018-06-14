@@ -234,7 +234,8 @@ bool _sts_db_file_load_table(s_sts_table *tb_,sts_file_handle fp_)
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sts_memory_get_size需要减少
             // printf("load table name=%s  %s size=%d\n",tb_->name,head.code,head.size);
-            stsdb_set_format(head.format, tb_->name, head.code, sts_memory(buffer), head.size);
+            // stsdb_set_format(head.format, tb_->name, head.code, sts_memory(buffer), head.size);
+            sts_table_update_load(head.format, tb_, head.code, sts_memory(buffer), head.size);
             sts_memory_move(buffer, head.size);
             // sts_memory_pack(buffer);
             hashead=false;

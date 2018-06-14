@@ -749,6 +749,7 @@ int _sts_collect_unit_update_one(s_sts_collect_unit *unit_, const char *in_)
 						  unit_->value->count);
 	return 1;
 }
+
 int sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_, size_t ilen_)
 {
 	if (ilen_ < 1)
@@ -769,6 +770,31 @@ int sts_collect_unit_update(s_sts_collect_unit *unit_, const char *in_, size_t i
 		// 是否需要备份数据和进行数据转换
 		_sts_collect_unit_update_one(unit_, in_ + i * unit_->value->len);
 	}
+	return count;
+}
+int sts_collect_unit_update_block(s_sts_collect_unit *unit_, const char *in_, size_t ilen_)
+{
+	if (ilen_ < 1)
+	{
+		return 0;
+	}
+	int count = 0;
+
+	count = (int)(ilen_ / unit_->value->len);
+	//这里应该判断数据完整性
+	if(count*unit_->value->len!=ilen_){
+		sts_out_error(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
+		return 0;
+	}
+	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
+	for (int i = 0; i < count; i++)
+	{
+		sts_struct_list_push(unit_->value, (void *)(in_ + i * unit_->value->len));
+	}
+	sts_stepindex_rebuild(unit_->stepinfo,
+						  sts_collect_unit_get_time(unit_, 0),
+						  sts_collect_unit_get_time(unit_, unit_->value->count - 1),
+						  unit_->value->count);	
 	return count;
 }
 void _sts_fields_json_to_struct(s_sts_sds in_, s_sts_field_unit *fu_, char *key_, s_sts_json_node *node_)

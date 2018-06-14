@@ -15,18 +15,6 @@
 #include "sts_table.h"
 #include "sts_db_file.h"
 
-#define STS_SERVER_OK        0
-#define STS_SERVER_ERROR     1
-
-#define STS_SERVER_STATUS_NOINIT    0
-#define STS_SERVER_STATUS_INITED    1
-#define STS_SERVER_STATUS_LOADED    2
-#define STS_SERVER_STATUS_CLOSE     3
-
-#define STS_SERVER_SAVE_NONE     0
-#define STS_SERVER_SAVE_GAPS     1
-#define STS_SERVER_SAVE_PLANS    2
-
 #pragma pack(push,1)
 
 typedef struct s_stsdb_server

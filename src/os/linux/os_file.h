@@ -26,7 +26,11 @@
 #define STS_FILE_ACCESS_WRITE  0x2
 #define STS_FILE_ACCESS_READ   0x4
 
+#define STS_FILE_IO_O_RDWR  O_RDWR
+
 #define sts_file_handle FILE *
+
+int sts_open(const char *fn_, int mode_);
 
 sts_file_handle sts_file_open(const char *fn_, int mode_, int access_);
 

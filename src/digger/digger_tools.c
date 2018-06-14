@@ -101,6 +101,10 @@ s_sts_sds sts_command_get_price_sds(s_digger_server *s_,const char *com_)
 
     s_sts_string_list *codes = sts_string_list_create_w();
 	const char *co = sts_json_get_str(handle->node, "codes");
+	if (!co) {
+		sts_out_error(3)("no find codes [%s].\n", com_);
+		goto error;
+	}
 	sts_string_list_load(codes,co,strlen(co),",");
 
 	int count = sts_string_list_getsize(codes);
@@ -177,7 +181,7 @@ s_sts_sds sts_command_get_right_sds(s_digger_server *s_,const char *com_)
 
 	const char *code = sts_json_get_str(handle->node, "code");
     if(!code) {
-        sts_out_error(3)("no find codes [%s].\n", com_);
+        sts_out_error(3)("no find code [%s].\n", com_);
 		goto error;
     } 
 
@@ -322,7 +326,7 @@ s_sts_sds sts_command_find_code_sds(s_digger_server *s_,const char *com_)
 
 	size_t olen;
 	char *str = sts_json_output_zip(handle->node, &olen);
-	o = sts_sdsnewlen(str, olen);
+	o = sts_sdsnewlen(str, olen); 
 	sts_free(str);
 
 error:	

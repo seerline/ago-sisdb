@@ -22,3 +22,25 @@ s_sts_sds sts_file_read_to_sds(const char *fn_)
 	sts_file_close(fp);
 	return buffer;
 }
+
+void sts_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
+{
+    if (!inpath_) {
+        sts_sprintf(outpath_,size_,srcpath_);
+    } else {
+        if (*inpath_=='/') {
+            // 如果为根目录，就直接使用
+            sts_sprintf(outpath_,size_,inpath_);
+        } else {
+            // 如果为相对目录，就合并配置文件的目录
+            sts_sprintf(outpath_,size_,"%s%s", srcpath_,inpath_);
+        }
+    }
+    // 创建目录
+    sts_path_complete(outpath_,STS_PATH_LEN);
+    if(!sts_path_mkdir(outpath_))
+    {
+		sts_out_error(3)("cann't create dir [%s].\n", outpath_);   
+    }
+    // sts_out_error(5)("outpath_:%s\n",outpath_);
+}

@@ -7,7 +7,7 @@ void sts_log_close()
 {
 
 }
-bool sts_log_open(const char *log_)
+bool sts_log_open(const char *log_, int level_, int limit_)
 {
 	// 如果指定了 log_ 名就输出到文件，
 	// 如果等于 console 就打印到屏幕上

@@ -28,5 +28,6 @@ typedef struct s_sts_file {
 } s_sts_file;
 
 s_sts_sds sts_file_read_to_sds(const char *fn_);
+void sts_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_);
 
 #endif //_STS_FILE_H

@@ -10,73 +10,23 @@ static s_stsdb_server server = {
     .db = NULL};
 /********************************/
 
-void _get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
-{
-    if (!inpath_) {
-        sts_sprintf(outpath_,size_,srcpath_);
-    } else {
-        if (*inpath_=='/') {
-            // 如果为根目录，就直接使用
-            sts_sprintf(outpath_,size_,inpath_);
-        } else {
-            // 如果为相对目录，就合并配置文件的目录
-            sts_sprintf(outpath_,size_,"%s%s", srcpath_,inpath_);
-        }
-    }
-    // 创建目录
-    sts_path_complete(outpath_,STS_PATH_LEN);
-    if(!sts_path_mkdir(outpath_))
-    {
-		sts_out_error(3)("cann't create dir [%s].\n", outpath_);   
-    }
-    printf("outpath_:%s\n",outpath_);
-}
 
-// void *_thread_init_plan_task(void *argv_)
-// {
-//     s_sts_db *db = (s_sts_db *)argv_;
-
-//     sts_thread_wait_start(&db->thread_wait);
-//     while (server.status != STS_SERVER_STATUS_CLOSE)
-//     {
-//         if(sts_thread_wait_sleep(&db->thread_wait, 5) == STS_ETIMEDOUT)
-//         {
-//             if (db->init_status == STS_INIT_WAIT) 
-//             {
-//                 if (sts_init_check_opened())
-//                 {
-//                     db->init_status = STS_INIT_WORK;
-//                 }
-//             } 
-//             else if (db->init_status == STS_INIT_WORK) 
-//             {
-//                 int min = sts_time_get_iminute(0);
-//                 if (min == db->work_time.first) 
-//                 {
-//                    db->init_status =  STS_INIT_WAIT;
-//                 }
-//                 if (min == db->work_time.second) 
-//                 {
-//                    db->init_status =  STS_INIT_STOP;
-//                 }
-//                 printf("init plan ... %d -- %d \n",db->init_status, min);
-//             }
-//         }
-//         printf("db->init_status %d server.status %d\n",db->init_status , server.status);
-//     }
-//     sts_thread_wait_stop(&db->thread_wait);
-//     return NULL;
-// }
 void *_thread_save_plan_task(void *argv_)
 {
     s_sts_db *db = (s_sts_db *)argv_;
 
+    // 创建等待信号通知
+    sts_thread_wait_create(&server.db->thread_wait);
+
+    sts_mutex_create(&server.db->save_mutex);
+ 
     sts_thread_wait_start(&db->thread_wait);
+    
     while (server.status != STS_SERVER_STATUS_CLOSE)
     {
         //  printf("server.status ... %d\n",server.status);
        // 处理
-        if (db->save_type==STS_SERVER_SAVE_GAPS) {
+        if (db->save_type==STS_WORK_MODE_GAPS) {
             if(sts_thread_wait_sleep(&db->thread_wait, db->save_gaps) == STS_ETIMEDOUT)
             {
                 sts_mutex_lock(&server.db->save_mutex);
@@ -103,6 +53,11 @@ void *_thread_save_plan_task(void *argv_)
         // printf("server.status ... %d\n",server.status);
     }
     sts_thread_wait_stop(&db->thread_wait);
+
+    sts_mutex_destroy(&server.db->save_mutex);
+
+    sts_thread_wait_destroy(&server.db->thread_wait);
+
     return NULL;
 }
 
@@ -122,18 +77,18 @@ char * stsdb_open(const char *conf_)
     char conf_path[STS_PATH_LEN];
     sts_file_getpath(server.conf_name, conf_path, STS_PATH_LEN);
 
-    _get_fixed_path(conf_path,sts_json_get_str(server.config->node, "dbpath"),
+    sts_get_fixed_path(conf_path,sts_json_get_str(server.config->node, "dbpath"),
                 server.dbpath, STS_PATH_LEN);
     // sts_path_complete(server.dbpath,STS_PATH_LEN);
 
     s_sts_json_node *lognode = sts_json_cmp_child_node(server.config->node, "log");
     if(lognode) {
-        _get_fixed_path(conf_path,sts_json_get_str(lognode, "path"),
+        sts_get_fixed_path(conf_path,sts_json_get_str(lognode, "path"),
                 server.logpath, STS_PATH_LEN);
         // sts_path_complete(server.logpath,STS_PATH_LEN);
 
-        server.logsize = sts_json_get_int(lognode,"level",5);
-        server.loglevel = sts_json_get_int(lognode,"maxsize",10) * 1024 * 1024;
+        server.loglevel = sts_json_get_int(lognode,"level",5);
+        server.logsize = sts_json_get_int(lognode,"maxsize",10) * 1024 * 1024;
     }
 
     s_sts_json_node *service = sts_json_cmp_child_node(server.config->node, "service");
@@ -182,11 +137,11 @@ char * stsdb_open(const char *conf_)
         goto error;   
     }
 
-    server.db->save_type = STS_SERVER_SAVE_NONE;
+    server.db->save_type = STS_WORK_MODE_NONE;
     
     s_sts_json_node *stime = sts_json_cmp_child_node(service, "save-gaps");
     if (stime) {
-        server.db->save_type = STS_SERVER_SAVE_GAPS;
+        server.db->save_type = STS_WORK_MODE_GAPS;
         // 默认15秒存盘一次，
         server.db->save_gaps = sts_json_get_int(service, "save-gaps", 30); 
         if (server.db->save_gaps < 5) {
@@ -196,7 +151,7 @@ char * stsdb_open(const char *conf_)
 
     stime = sts_json_cmp_child_node(service, "save-plans");
     if (stime) {
-        server.db->save_type = STS_SERVER_SAVE_PLANS;
+        server.db->save_type = STS_WORK_MODE_PLANS;
         int count = sts_json_get_size(stime);
         char key[16];
         for (int k=0;k<count;k++){
@@ -210,26 +165,8 @@ char * stsdb_open(const char *conf_)
             sts_json_get_str(service, "save-format"), 
             STS_MAP_DEFINE_DATA_TYPE);
 
-    // 创建等待信号通知
-    sts_thread_wait_create(&server.db->thread_wait);
-    // 创建开收市线程      
-    // if (!sts_thread_create(_thread_init_plan_task, server.db, &server.db->init_pid))
-    // {
-    //     sts_out_error(1)("can't start init thread\n");
-    //     goto error;       
-    // }
     // 启动存盘线程
     server.db->save_pid = 0;
-    // 存盘互斥变量
-    if (server.db->save_type!=STS_SERVER_SAVE_NONE) 
-    {
-        if (!sts_thread_create(_thread_save_plan_task, server.db, &server.db->save_pid))
-        {
-            sts_out_error(1)("can't start save thread\n");
-            goto error;       
-        }
-        sts_mutex_create(&server.db->save_mutex);
-    }
     // 检查数据库文件有没有
     char sdb_json_name[STS_PATH_LEN];
     sts_sprintf(sdb_json_name,STS_PATH_LEN, STS_DB_FILE_CONF, server.dbpath, server.service_name);
@@ -256,13 +193,13 @@ char * stsdb_open(const char *conf_)
         if (!sdb_json)
         {
             sts_out_error(1)("load sdb conf %s fail.\n", sdb_json_name);
-            goto error_1;
+            goto error;
         }
         // 检查版本号是否匹配
         if (STS_DB_FILE_VERSION !=  sts_json_get_int(sdb_json->node, "version", 0))
         {
             sts_out_error(1)("file format ver error.\n");
-            goto error_1;
+            goto error;
         }
         // 创建数据表
         s_sts_json_node *node = sts_json_cmp_child_node(sdb_json->node, "tables");
@@ -286,19 +223,22 @@ char * stsdb_open(const char *conf_)
     if (!sts_db_file_load(server.dbpath, server.db))
     {
         sts_out_error(1)("load sdb fail. exit!\n");
-        goto error_1;        
+        goto error;        
+    }
+    // 启动存盘线程
+    if (server.db->save_type!=STS_WORK_MODE_NONE) 
+    {
+        if (!sts_thread_create(_thread_save_plan_task, server.db, &server.db->save_pid))
+        {
+            sts_out_error(1)("can't start save thread\n");
+            goto error;       
+        }
     }
     
-    
     server.status = STS_SERVER_STATUS_INITED;
-    // sts_out_error(3)("server.status: %d\n", server.status);
-    // server.status = STS_SERVER_STATUS_LOADED;
     sts_conf_close(server.config);
+
     return server.service_name;
-
-error_1:
-
-    sts_mutex_destroy(&server.db->save_mutex);
 
 error:
     if(sdb_json) 
@@ -324,9 +264,7 @@ void stsdb_close()
     if(server.db&&server.db->save_pid){
         sts_thread_join(server.db->save_pid);
         printf("save_pid end.\n");
-        sts_mutex_destroy(&server.db->save_mutex);
     }
-    sts_thread_wait_destroy(&server.db->thread_wait);
 
     sts_db_destroy(server.db);
 
@@ -363,13 +301,17 @@ s_sts_sds stsdb_get_sds(const char *db_, const char *key_, const char *com_)
         sts_out_error(3)("no find %s db.\n", db_);
         return NULL;
     }
-    return sts_table_get_sds(table, key_, com_);
+    if(!sts_strcasecmp(key_,"collects")) {
+        return sts_table_get_collects_sds(table, com_);
+    } else {
+        return sts_table_get_sds(table, key_, com_);
+    }
 }
 
 
 int stsdb_set_format(int format_, const char *db_, const char *key_, const char *val_, size_t len_)
 {
-    // if (sts_strcasecmp(key_,"SH600048")) return STS_SERVER_ERROR;
+    // if (sts_strcasecmp(key_,"SH600048")) return STS_SERVER_REPLY_ERR;
     printf("----[%d] %s.%s  %ld\n", format_,key_, db_, len_);
     if (format_ == STS_DATA_STRUCT)
     {
@@ -382,15 +324,15 @@ int stsdb_set_format(int format_, const char *db_, const char *key_, const char 
     if (!table)
     {
         sts_out_error(3)("no find %s db.\n", db_);
-        return STS_SERVER_ERROR;
+        return STS_SERVER_REPLY_ERR;
     }
     // 来源是结构体数据的，必须只能往结构体table写数据，
     int o = sts_table_update_mul(format_, table, key_, val_, len_);
     if(o) {
         sts_out_error(5)("set data ok,[%d].\n", o);
-        return STS_SERVER_OK;
+        return STS_SERVER_REPLY_OK;
     }
-    return STS_SERVER_ERROR;
+    return STS_SERVER_REPLY_ERR;
 }
 
 int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *val_, size_t len_)
@@ -398,26 +340,26 @@ int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *va
     if (server.status != STS_SERVER_STATUS_INITED)
     {
         sts_out_error(3)("no init stsdb.\n");
-        return STS_SERVER_ERROR;
+        return STS_SERVER_REPLY_ERR;
     }
 
 	int uid = sts_db_find_map_uid(server.db, dt_, STS_MAP_DEFINE_DATA_TYPE);
 	if (uid != STS_DATA_STRUCT && uid != STS_DATA_JSON && uid != STS_DATA_ARRAY)
 	{
         sts_out_error(3)("set data type error.\n");
-        return STS_SERVER_ERROR;
+        return STS_SERVER_REPLY_ERR;
 	}
 
     // 如果保存aof失败就返回错误
     if (!sts_db_file_save_aof(server.dbpath, server.db, uid, db_, key_, val_, len_))
     {
         sts_out_error(3)("save aof error.\n");
-        return STS_SERVER_ERROR;
+        return STS_SERVER_REPLY_ERR;
     }
     if (sts_mutex_trylock(&server.db->save_mutex)) {
         // == 0 才是锁住
         sts_out_error(3)("saveing... set fail.\n");
-        return STS_SERVER_OK;
+        return STS_SERVER_REPLY_OK;
     };
     int o = stsdb_set_format(uid,db_,key_,val_,len_);
     sts_mutex_unlock(&server.db->save_mutex);

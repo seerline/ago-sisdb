@@ -1,5 +1,5 @@
 #定义工程名,必须在第一行
-PROJECT(digger)
+PROJECT(dsserver)
 
 #检查版本 必须大于等于2.6版本
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8) 
@@ -30,22 +30,25 @@ ENDIF ()
 #########################目录设置#############################
 
 #设置头文件目录
-INCLUDE_DIRECTORIES(. ../os/linux ../platform/redis ../core )
+INCLUDE_DIRECTORIES(. ../os/linux ../platform/redis ../core ../stock)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(../os/linux DIR_OS)
 AUX_SOURCE_DIRECTORY(../platform/redis DIR_PLATFORM)
+AUX_SOURCE_DIRECTORY(../stock DIR_STOCK)
 AUX_SOURCE_DIRECTORY(../core DIR_CORE)
 
 #把源文件目录设置到环境变量
 SET(SRC_LIST ${DIR_SRCS}
              ${DIR_OS}
 		${DIR_PLATFORM}
-	         ${DIR_CORE})
+		${DIR_STOCK}
+	        ${DIR_CORE})
 
 # 设置输出文件目录
-SET(LIBRARY_OUTPUT_PATH ../../bin/)  
+#SET(LIBRARY_OUTPUT_PATH ../../bin/)  
+SET(EXECUTABLE_OUTPUT_PATH ../../bin/)  
 
 ########################设置编译类型和参数#####################
 
@@ -69,28 +72,29 @@ SET(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} ${SHOBJ_CFLAGS}")
 
 #设置所有需要链接的库名到 LIBRARIES 环境变量
 #SET(LIBRARIES libbson-1.0.so libmongoc-1.0.so pthread z m iconv charset)
-
-#把LIBRARIES链接到输出文件中
-#TARGET_LINK_LIBRARIES(../../bin/xxx ${LIBRARIES})
+SET(LIBRARIES pthread c m)
 
 #生成可执行文件
-#ADD_EXECUTABLE(../../bin/xxx ${SRC_LIST})
+ADD_EXECUTABLE(${PROJECT_NAME} ${SRC_LIST})
+
+#把LIBRARIES链接到输出文件中
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES})
 
 ###########################################################
 
 ######################生成链接库文件##########################
 
 #生成动态库目标
-ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})
+#ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})
 
 # 生成静态库目标
 #SET(STATIC_NAME ${PROJECT_NAME}_A)
 #ADD_LIBRARY(${STATIC_NAME} STATIC ${SRC_LIST})
 
 #设置链接库的环境变量
-SET(LIBRARIES c m)
+# SET(LIBRARIES c m)
 # 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
+# TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
 
 # 指定静态库的输出名称
 #SET_TARGET_PROPERTIES(${STATIC_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME})

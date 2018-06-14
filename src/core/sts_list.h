@@ -55,7 +55,7 @@ int sts_struct_list_pto_recno(s_sts_struct_list *list_,void *);
 //------------------------s_pointer_list --------------------------------//
 //  存储指针的列表,依赖于struct_list,记录长度为sizeof(char *)
 ///////////////////////////////////////////////////////////////////////////
-//!!!要测试
+//
 s_sts_struct_list *sts_pointer_list_create(); 
 
 #define sts_pointer_list_destroy sts_struct_list_destroy

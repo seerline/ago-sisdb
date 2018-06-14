@@ -158,7 +158,8 @@ int sts_struct_list_update(s_sts_struct_list *list_, int index_, void *in_)
 }
 int sts_struct_list_insert(s_sts_struct_list *list_, int index_, void *in_)
 {
-	if(list_->count < 1) {
+	if (list_->count < 1)
+	{
 		return sts_struct_list_push(list_, in_);
 	}
 	if (index_ < 0 || index_ > list_->count - 1)
@@ -414,7 +415,8 @@ s_sts_string_list *sts_string_list_create_w() //¶ÁĞ´
 void sts_string_list_destroy(s_sts_string_list *list_)
 {
 	sts_string_list_clear(list_);
-	if (list_->permissions == STRING_LIST_WR) {
+	if (list_->permissions == STRING_LIST_WR)
+	{
 		sts_pointer_list_destroy(list_->strlist);
 	}
 	sts_free(list_);
@@ -436,7 +438,7 @@ int sts_string_list_load(s_sts_string_list *list_, const char *in_, size_t inlen
 	if (strlen(in_) == 0)
 	{
 		return 0;
-	}	
+	}
 	char *token = NULL;
 	char *src = (char *)sts_malloc(inlen_ + 1);
 	sts_strncpy(src, inlen_ + 1, in_, inlen_);
@@ -529,7 +531,7 @@ int sts_string_list_insert(s_sts_string_list *list_, int index_, const char *in_
 	if (list_->permissions != STRING_LIST_WR)
 	{
 		return -1;
-	}	
+	}
 
 	char *str = (char *)sts_malloc(inlen + 1);
 	sts_strncpy(str, inlen + 1, in_, inlen);
@@ -537,7 +539,7 @@ int sts_string_list_insert(s_sts_string_list *list_, int index_, const char *in_
 	if (index < 0)
 	{
 		sts_free(str);
-	}	
+	}
 	return index;
 }
 int sts_string_list_delete(s_sts_string_list *list_, int index_)
@@ -566,7 +568,6 @@ void sts_string_list_limit(s_sts_string_list *list_, int limit_)
 	int offset = list_->strlist->count - limit_;
 	sts_pointer_list_delete(list_->strlist, 0, offset);
 }
-
 
 #if 0
 ///////test

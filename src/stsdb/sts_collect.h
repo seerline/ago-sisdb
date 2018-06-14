@@ -93,6 +93,8 @@ s_sts_sds sts_collect_unit_get_of_count_sds(s_sts_collect_unit *, int start_, in
 s_sts_sds sts_table_get_of_range_sds(s_sts_table *tb_, const char *code_, int start_, int stop_);
 
 int sts_collect_unit_update(s_sts_collect_unit *, const char *in_, size_t ilen_);
+// 从磁盘加载，整块写入，
+int sts_collect_unit_update_block(s_sts_collect_unit *, const char *in_, size_t ilen_);
 
 //传入json数据时通过该函数转成二进制结构数据
 s_sts_sds sts_collect_json_to_struct_sds(s_sts_collect_unit *, const char *in_, size_t ilen_);

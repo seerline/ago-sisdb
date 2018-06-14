@@ -172,7 +172,7 @@ void *__task_ta(void *argv_)
     sts_thread_wait_start(&__thread_wait);
     while (!__kill)
     {
-        if(sts_thread_wait_sleep(&__thread_wait, 5) == STS_ETIMEDOUT)
+        if(sts_thread_wait_sleep(&__thread_wait, 1) == STS_ETIMEDOUT)
         {
             printf("timeout ..a.. %d \n",__kill);
         } else 
@@ -190,8 +190,9 @@ void *__task_tb(void *argv_)
     sts_thread_wait_start(&__thread_wait);
     while (!__kill)
     {
-        if(sts_thread_wait_sleep(&__thread_wait, 5) == STS_ETIMEDOUT)
+        if(sts_thread_wait_sleep(&__thread_wait, 1) == STS_ETIMEDOUT)
         {
+			sts_sleep(3000);
             printf("timeout ..b.. %d \n",__kill);
         } else 
 		{
@@ -206,6 +207,12 @@ void exithandle(int sig)
 {
 	__kill = 1;
     printf("sighup received kill=%d \n",__kill);
+
+	printf("kill . \n");
+    sts_thread_wait_kill(&__thread_wait);
+	printf("free . \n");
+    sts_thread_wait_destroy(&__thread_wait);
+	printf("ok . \n");
 }
 
 int main()
@@ -222,12 +229,13 @@ int main()
 	printf("thread b ok!\n");
 
     // sts_mutex_rw_create(&save_mutex);
+	signal(SIGINT,exithandle);
+
 	while(!__kill)
 	{
-		signal(SIGINT,exithandle);
 		sts_sleep(300);
 	}
-   sts_thread_wait_kill(&__thread_wait);
+//    sts_thread_wait_kill(&__thread_wait);
     //???这里要好好测试一下，看看两个能不能一起退出来
     // sts_thread_join(server.db->init_pid);
     
@@ -238,9 +246,9 @@ int main()
 	// printf("thread b end!\n");
 
     // sts_mutex_rw_destroy(&save_mutex);
-	printf("ok . \n");
-    sts_thread_wait_destroy(&__thread_wait);
-	printf("ok . \n");
+	// printf("ok . \n");
+    // sts_thread_wait_destroy(&__thread_wait);
+	printf("end . \n");
 	return 1;
 }
 #endif

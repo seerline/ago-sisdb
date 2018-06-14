@@ -99,6 +99,8 @@ uint64 sts_table_struct_trans_time(uint64 in_, int inscale_, s_sts_table *out_tb
 
 // 一个数据同时写多个库
 int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char *in_, size_t ilen_);
+//  直接从库里加载，需要整块无校验加载，加快加载速度
+int sts_table_update_load(int type_, s_sts_table *table_, const char *key_, const char *in_, size_t ilen_);
 
 // 来源数据是json或者struct，table是struct数据
 // int sts_table_update(int type_, s_sts_table *, const char *key_, const char * in_, size_t ilen_);
@@ -106,6 +108,8 @@ int sts_table_update_mul(int type_, s_sts_table *, const char *key_, const char 
 s_sts_sds sts_table_get_sds(s_sts_table *, const char *key_, const char *com_);  //返回数据需要释放
 s_sts_sds sts_table_get_code_sds(s_sts_table *, const char *key_, const char *com_);  //返回数据需要释放
 s_sts_sds sts_table_get_table_sds(s_sts_table *tb_, const char *com_);
+
+s_sts_sds sts_table_get_collects_sds(s_sts_table *, const char *com_);  //返回数据需要释放
 
 s_sts_sds sts_table_get_search_sds(s_sts_table *tb_, const char *code_, int min_,int max_);
 

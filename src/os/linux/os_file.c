@@ -1,6 +1,12 @@
 
 #include <os_file.h>
 
+int sts_open(const char *fn_, int mode_)
+{
+	return open(fn_, mode_);
+}
+
+
 sts_file_handle sts_file_open(const char *fn_, int mode_, int access_)
 {
 	sts_file_handle fp = NULL;

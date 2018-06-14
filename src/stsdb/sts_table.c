@@ -522,9 +522,7 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	{
 		return 0;
 	}
-	// printf("[%s] in_collect->value = %p\n",in_collect->father->name,in_collect->value);
-	// s_sts_sds db_val = sts_sdsnewlen(sts_struct_list_last(in_collect->value),
-	// 					   in_collect->value->len);
+
 	// 先储存上一次的数据，
 	int o = sts_collect_unit_update(in_collect, in_val, sts_sdslen(in_val));
 
@@ -541,10 +539,22 @@ int sts_table_update_mul(int type_, s_sts_table *table_, const char *key_, const
 	{
 		sts_sdsfree(in_val);
 	}
-	// if (db_val)
-	// {
-	// 	sts_sdsfree(db_val);
-	// }
+
+	return o;
+}
+
+int sts_table_update_load(int type_, s_sts_table *table_, const char *key_, const char *in_, size_t ilen_)
+{
+	s_sts_collect_unit *in_collect = sts_map_buffer_get(table_->collect_map, key_);
+	if (!in_collect)
+	{
+		in_collect = sts_collect_unit_create(table_, key_);
+		sts_map_buffer_set(table_->collect_map, key_, in_collect);
+	}
+
+	// 先储存上一次的数据，
+	int o = sts_collect_unit_update_block(in_collect, in_, ilen_);
+
 	return o;
 }
 //////////////////////////////////////////////////////////////////////////////////
@@ -726,6 +736,7 @@ s_sts_sds sts_table_get_search_sds(s_sts_table *tb_, const char *code_, int min_
 s_sts_sds sts_table_get_sds(s_sts_table *tb_, const char *key_, const char *com_)
 {
 	if (strlen(key_)<1) {
+		printf("get all data....\n");
 		return sts_table_get_table_sds(tb_,com_);
 	} 
 	return sts_table_get_code_sds(tb_,key_,com_);
@@ -868,6 +879,7 @@ s_sts_sds sts_table_struct_to_json_sds(s_sts_table *tb_, s_sts_sds in_, const ch
 s_sts_sds sts_table_get_table_sds(s_sts_table *tb_, const char *com_)
 {
 	s_sts_json_handle *handle = sts_json_load(com_, strlen(com_));
+	// printf("com_ = %s -- %lu -- %p\n", com_,strlen(com_),handle);
 	if (!handle)
 	{
 		return NULL;
@@ -886,6 +898,7 @@ s_sts_sds sts_table_get_table_sds(s_sts_table *tb_, const char *com_)
 		} else {
 			out = sts_sdscatlen(out, sts_dict_getkey(de), STS_CODE_MAXLEN);
 		}
+		// printf("out = %lu -- %lu\n", sts_sdslen(out),sts_sdslen(val));
 		out = sts_sdscatlen(out, val, sts_sdslen(val));
 		sts_sdsfree(val);
 	}
@@ -905,7 +918,7 @@ s_sts_sds sts_table_get_table_sds(s_sts_table *tb_, const char *com_)
 	{
 		sds_fields = sts_sdsnew(fields->value);
 	}
-	printf("sds_fields = %s\n", sds_fields);
+	// printf("sds_fields = %s\n", sds_fields);
 	s_sts_sds other = NULL;
 	switch (iformat)
 	{
@@ -938,6 +951,69 @@ s_sts_sds sts_table_get_table_sds(s_sts_table *tb_, const char *com_)
 nodata:
 	sts_json_close(handle);
 	return out;
+}
+
+s_sts_sds sts_table_get_collects_sds(s_sts_table *tb_, const char *com_)
+{
+	s_sts_json_handle *handle = sts_json_load(com_, strlen(com_));
+	printf("com_ = %s -- %lu -- %p\n", com_,strlen(com_),handle);
+	if (!handle)
+	{
+		return NULL;
+	}
+	s_sts_sds out = NULL;
+	// 只取最后一条记录
+	int count = 0;
+	s_sts_dict_entry *de;
+	s_sts_dict_iter *di = sts_dict_get_iter(tb_->collect_map);
+	while ((de = sts_dict_next(di)) != NULL)
+	{
+		if (!out)
+		{
+			out = sts_sdsnewlen(sts_dict_getkey(de), STS_CODE_MAXLEN);
+		} else {
+			out = sts_sdscatlen(out, sts_dict_getkey(de), STS_CODE_MAXLEN);
+		}
+		count++;
+	}
+	sts_dict_iter_free(di);
+
+	if (!out)
+	{
+		goto end;
+	}
+	int iformat = sts_from_node_get_format(tb_->father, handle->node);
+
+	printf("iformat = %c\n", iformat);
+	// 取出字段定义，没有就默认全部字段
+	if (iformat == STS_DATA_STRUCT) {
+		goto end;
+	}
+	char *str;
+	s_sts_json_node *jone = NULL;
+	s_sts_json_node *jval = sts_json_create_array();
+
+	for(int i=0;i<count;i++){
+		sts_json_array_add_string(jval, out + i*STS_CODE_MAXLEN, STS_CODE_MAXLEN);
+	}
+	if (iformat == STS_DATA_ARRAY) {
+		jone = jval;
+	} else {
+		jone = sts_json_create_object();
+		sts_json_object_add_node(jone, STS_JSON_KEY_COLLECTS, jval);
+	}
+
+	size_t olen;
+	str = sts_json_output_zip(jone, &olen);
+	sts_sdsfree(out);
+	out = sts_sdsnewlen(str, olen);
+	sts_free(str);
+	sts_json_delete_node(jone);
+
+end:
+	sts_json_close(handle);
+	return out;
+
 }
 s_sts_sds sts_table_get_code_sds(s_sts_table *tb_, const char *key_, const char *com_)
 {

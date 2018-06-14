@@ -36,7 +36,7 @@
 #define STS_NET_PROTOCOL_WSS    5
 
 typedef struct s_sts_url {
-    char protocol[STS_NET_SIGN_MAX_LEN];  //protocol -- 目前只支持 redis / tcp;
+    char protocol[STS_NET_SIGN_MAX_LEN];  //protocol -- 目前只支持 redis / tcp / file;
     char ip[STS_NET_SIGN_MAX_LEN];  
                         //ip 对方ip地址 为*表示本机为服务器，等待连接
 						//redis://192.168.1.202:3679   从redis上获取数据
@@ -46,6 +46,8 @@ typedef struct s_sts_url {
     bool auth;  // 是否需要用户验证
     char username[STS_NET_SIGN_MAX_LEN];   // username 
     char password[STS_NET_SIGN_MAX_LEN];   // 密码
+	// -------------- //
+	char dbname[STS_NET_SIGN_MAX_LEN];  // 数据库名或文件名  
 } s_sts_url;
 
 typedef struct s_sts_socket {
@@ -57,7 +59,7 @@ typedef struct s_sts_socket {
 						   //  - service   STS_NET_ROLE_REQ | STS_NET_ROLE_SUB | STS_NET_ROLE_PUB 
 	int    status;         //当前的网络连接状态 STS_NET_CONNECTED...
 
-	s_sts_mutex_rw  mutex_message_send;    //发送信息锁
+	s_sts_mutex_rw  mutex_message_send;    //发送队列锁
 	s_sts_list     *message_send;   /* 需要处理的发送信息列表 */
 
 	s_sts_mutex_rw  mutex_message_recv;    //接收信息锁
@@ -71,7 +73,7 @@ typedef struct s_sts_socket {
 	int            status_write; //当前的状态；
 	s_sts_mutex_rw mutex_write;
 
-	s_sts_list *pub_keys;       /* 其他人订阅我的key */
+	s_sts_list *pub_keys;  /* 其他人订阅我的key */
 	s_sts_list *sub_keys;  /* 我要订阅别人的key */
 
 	bool fastwork_mode; //快速通道模式

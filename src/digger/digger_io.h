@@ -15,14 +15,6 @@
 #define STS_DIGGER_MAXLEN   32
 #define STS_DIGGER_FILE_VERSION  1
 
-#define STS_SERVER_OK        0
-#define STS_SERVER_ERROR     1
-
-#define STS_SERVER_STATUS_NOINIT    0
-#define STS_SERVER_STATUS_INITED    1
-#define STS_SERVER_STATUS_LOADED    2
-#define STS_SERVER_STATUS_CLOSE     3
-
 #pragma pack(push,1)
 
 typedef struct s_digger_server

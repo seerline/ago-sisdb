@@ -16,7 +16,7 @@
 // printf( "This is line %d.\n", __LINE__ );
 // printf( "This function is %s.\n", __func__ );
 
-#define sts_out_error(a) if(a>10) printf
+#define sts_out_error(a) if(a>1) printf
 // sts_out_error 需要判断如果有回车就自动中断 使用("%.*s", 10, "xxxx") 方式
 
 inline void sts_out_binary(const char *key_, const char *val_, int len_)
@@ -34,7 +34,7 @@ inline void sts_out_binary(const char *key_, const char *val_, int len_)
 }
 
 void sts_log_close();
-bool sts_log_open(const char *log_);
+bool sts_log_open(const char *log_, int level_, int limit_);
 char *sts_log(int level_, const char *fmt_, ...);
 
 #endif //_STS_LOG_H
