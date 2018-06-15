@@ -12,8 +12,6 @@ s_sts_socket *sts_socket_create(s_sts_url *url_,int rale_)
 	memmove(&sock->url, url_, sizeof(s_sts_url));
 	sock->rale = rale_;
 	
-	sts_redis_open(NULL);
-
 	sock->message_send = s_sts_list_create();
 	sock->message_send->free = sts_message_node_destroy;
 

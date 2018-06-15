@@ -47,4 +47,15 @@ s_sts_time_delay *sts_delay_create(unsigned int msec);
 void sts_delay_busy(s_sts_time_delay *m);
 void sts_delay_destroy(s_sts_time_delay *m);
 
+typedef struct s_sts_time_pair{
+	uint16	first;  // 单位分钟
+	uint16	second; // 单位分钟
+}s_sts_time_pair;
+
+typedef struct s_sts_time_gap{
+	uint16	start; // 单位分钟 如果为0就不判断
+	uint16	stop;  // 单位分钟 如果为0就不判断
+	uint32	delay; // 间隔毫秒数
+}s_sts_time_gap;
+
 #endif //_STS_TIME_H

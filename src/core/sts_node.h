@@ -15,6 +15,7 @@ void sts_sdsnode_destroy(s_sts_list_node *node);
 s_sts_list_node *sts_sdsnode_offset_node(s_sts_list_node *node_, int offset);
 s_sts_list_node *sts_sdsnode_last_node(s_sts_list_node *node_);
 s_sts_list_node *sts_sdsnode_first_node(s_sts_list_node *node_);
+s_sts_list_node *sts_sdsnode_next_node(s_sts_list_node *node_);
 s_sts_list_node *sts_sdsnode_push(s_sts_list_node *node_, const void *in, size_t inlen);
 s_sts_list_node *sts_sdsnode_update(s_sts_list_node *node_, const void *in, size_t inlen);
 s_sts_list_node *sts_sdsnode_clone(s_sts_list_node *node_);
@@ -27,6 +28,8 @@ typedef struct s_sts_message_node {
 	s_sts_sds	key;       //来源信息专用,当前消息的key  sh600600.day 
 	s_sts_sds	argv;      //来源信息的参数，为json格式
 	s_sts_sds	address;   //来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址
+
+	s_sts_sds   format;    //set发送的数据格式 struct json
 
 	s_sts_list_node   *links;     //来源信息专用, 数据来源链路，每次多一跳就增加一个节点
 	s_sts_list_node   *nodes;     //附带的信息数据链表  node->value 为 s_sts_sds 类型

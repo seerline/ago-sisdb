@@ -10,6 +10,7 @@
 #include "sts_map.h"
 #include "sts_table.h"
 #include "sts_malloc.h"
+#include "sts_time.h"
 
 #define STS_TABLE_MAXLEN 32
 #define STS_CODE_MAXLEN  9
@@ -45,11 +46,6 @@ typedef struct s_sts_map_define{
 	uint32  size;
 }s_sts_map_define;
 
-typedef struct s_sts_time_pair{
-	uint16	first;
-	uint16	second;
-}s_sts_time_pair;
-
 typedef struct s_sts_db {
 	s_sts_sds name;  // 数据库名字
 	s_sts_map_pointer  *db; // 一个字典表
@@ -62,7 +58,7 @@ typedef struct s_sts_db {
 	// s_sts_thread_id_t init_pid;
 
 	s_sts_sds conf;    // 保存时使用
-	int save_format; // 存盘文件的方式
+	int save_format;   // 存盘文件的方式
 
 	int  save_type;  // 存盘方式，间隔时间存，还是指定时间存
 	int  save_gaps;  // 存盘的间隔秒数	

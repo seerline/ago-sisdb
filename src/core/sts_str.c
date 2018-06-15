@@ -306,12 +306,20 @@ int sts_str_match(const char* substr_, const char* source_)
 	}
 	return -1;
 }
+const char *sts_str_parse(const char *src_, const char *sign_, char *out_, size_t olen_)
+{
+	char *s = strstr(src_,sign_);
+	if (s) {
+		sts_strncpy(out_, olen_, src_, s - src_);
+		return s + strlen(sign_);
+	}
+	return NULL;
+}
 
 #if 0
 #include <sts_time.h>
 
-int main()
-
+int main1()
 {
     char* source_ = "blog.csdn,blog,net";
     char* substr_ = "csdn,blog"    ;
@@ -329,6 +337,25 @@ int main()
 		}
 	}
 	printf("cost sec: %d \n",sts_time_get_isec(0) - start);
+
+    return 1;
+}
+int main()
+{
+    char* source_ = "sdsd://127.0.0.0:10000";
+    char* substr_ = "@blog"    ;
+	char s1[64],s2[64];
+	int port;
+
+    const char *url = source_; 
+    url = sts_str_parse(url, "://", s1, 64);
+    url = sts_str_parse(url, ":", s2, 64);
+    port = atoi(url);
+	printf("auth: %s  %s  %d\n", s1, s2, port);
+
+    const char *auth = substr_; 
+    auth = sts_str_parse(auth, "@", s1, 64);
+	printf("auth: %s  %s\n", s1, auth);
 
     return 1;
 }

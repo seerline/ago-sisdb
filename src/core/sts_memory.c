@@ -26,6 +26,11 @@ void sts_memory_destroy(s_sts_memory *m_)
 // 		m_->val = m_->buffer;
 // 	}
 // }
+void sts_memory_clear(s_sts_memory *m_)
+{
+	m_->size = 0;
+	m_->offset = 0;	
+}
 void sts_memory_pack(s_sts_memory *m_)
 {
 	if (m_->offset <= 0) return;

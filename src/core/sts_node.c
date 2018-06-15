@@ -90,6 +90,10 @@ s_sts_list_node *sts_sdsnode_first_node(s_sts_list_node *node_)
 	};
 	return node_;
 }
+s_sts_list_node *sts_sdsnode_next_node(s_sts_list_node *node_)
+{
+	return node_->next;
+}
 s_sts_list_node *sts_sdsnode_push_node(s_sts_list_node *node_, const void *in, size_t inlen)
 {
 	if (node_ == NULL)
@@ -192,6 +196,7 @@ void sts_message_node_destroy(void *in_) {
 	sts_sdsfree(in->key);
 	sts_sdsfree(in->argv);
 	sts_sdsfree(in->address);
+	sts_sdsfree(in->format);
 
 	sts_free(in);
 }

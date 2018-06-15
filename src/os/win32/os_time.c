@@ -333,8 +333,8 @@ int sts_time_get_itime_from_str(char* time) //"12:30:38" => 123038
 
 int sts_time_get_idate_from_str(const char* time) //"20150212" = > 20150212
 {
-	int nResult = atoi(time);
-	return nResult;
+	int o = atoi(time);
+	return o;
 }
 
 int sts_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"2015-10-20 12:30:38" => 20151020,123038

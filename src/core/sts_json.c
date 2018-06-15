@@ -1126,6 +1126,30 @@ bool sts_json_get_bool(s_sts_json_node *root_, const char *key_, bool defaultval
 	}
 	return defaultvalue_;
 }
+int64 sts_array_get_int(s_sts_json_node *root_, int index_, int64 defaultvalue_)
+{
+    char key[16];
+    sts_sprintf(key, 10, "%d", index_);
+	return sts_json_get_int(root_, key, defaultvalue_);
+}
+double sts_array_get_double(s_sts_json_node *root_, int index_, double defaultvalue_)
+{
+    char key[16];
+    sts_sprintf(key, 10, "%d", index_);
+	return sts_json_get_double(root_, key, defaultvalue_);
+}
+const char *sts_array_get_str(s_sts_json_node *root_, int index_)
+{
+    char key[16];
+    sts_sprintf(key, 10, "%d", index_);
+	return sts_json_get_str(root_, key);
+}
+bool sts_json_array_bool(s_sts_json_node *root_, int index_, bool defaultvalue_)
+{
+    char key[16];
+    sts_sprintf(key, 10, "%d", index_);
+	return sts_json_get_double(root_, key, defaultvalue_);
+}
 
 int sts_json_get_size(s_sts_json_node *node_)
 {

@@ -97,4 +97,7 @@ void sts_socket_destroy(s_sts_socket *sock_);
 void sts_socket_open(s_sts_socket *sock_);
 void sts_socket_close(s_sts_socket *sock_);
 
+bool sts_socket_send_message(s_sts_socket *sock_, s_sts_message_node *mess_);
+s_sts_message_node *sts_socket_query_message(s_sts_socket *sock_, s_sts_message_node *mess_);
+
 #endif //_STS_NET_H

@@ -153,10 +153,9 @@ char * stsdb_open(const char *conf_)
     if (stime) {
         server.db->save_type = STS_WORK_MODE_PLANS;
         int count = sts_json_get_size(stime);
-        char key[16];
-        for (int k=0;k<count;k++){
-            sts_sprintf(key,10, "%d",k);
-            uint16 min = sts_json_get_int(stime,key,930); 
+        for (int k=0; k< count; k++)
+        {
+            uint16 min = sts_array_get_int(stime,k,930); 
             sts_struct_list_push(server.db->save_plans, &min);
             // printf("save time [%d]\n",min);
         }

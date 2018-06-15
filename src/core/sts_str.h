@@ -34,4 +34,10 @@ const char *sts_str_getline(const char *e, int *len, const char *s, size_t size_
 
 int sts_str_match(const char* substr_, const char* source_);
 
+// 返回值为sign_开始位置，len为长度
+// 例子  http://127.0.0.1:1002  ://
+// 返回  127.0.0.1:1002  len = 4
+// 
+const char *sts_str_parse(const char *src_, const char *sign_, char *out_, size_t olen_);
+
 #endif //_STS_STR_H

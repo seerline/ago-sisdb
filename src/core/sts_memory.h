@@ -20,6 +20,7 @@ s_sts_memory *sts_memory_create();
 void sts_memory_destroy(s_sts_memory *);
 
 void sts_memory_pack(s_sts_memory *m_);
+void sts_memory_clear(s_sts_memory *m_);
 
 size_t sts_memory_cat(s_sts_memory *, char *, size_t);  // 尾部添加，重新清理内存
 size_t sts_memory_readfile(s_sts_memory *, sts_file_handle, size_t);

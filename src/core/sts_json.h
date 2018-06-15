@@ -109,6 +109,11 @@ double sts_json_get_double(s_sts_json_node *root_, const char *key_, double defa
 const char *sts_json_get_str(s_sts_json_node *root_, const char *key_);
 bool sts_json_get_bool(s_sts_json_node *root_, const char *key_, bool defaultvalue_);
 
+int64 sts_array_get_int(s_sts_json_node *root_, int index_, int64 defaultvalue_);
+double sts_array_get_double(s_sts_json_node *root_, int index_, double defaultvalue_);
+const char *sts_array_get_str(s_sts_json_node *root_, int index_);
+bool sts_json_array_bool(s_sts_json_node *root_, int index_, bool defaultvalue_);
+
 int sts_json_get_size(s_sts_json_node *node_);
 s_sts_json_node *sts_json_first_node(s_sts_json_node *node_);
 s_sts_json_node *sts_json_next_node(s_sts_json_node *node_);
