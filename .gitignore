@@ -1,8 +1,6 @@
 bin/
-log/
 db/
 o/
-zip/
 .DS_Store
 .vscode
 CMakeFiles
