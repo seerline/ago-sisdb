@@ -59,7 +59,7 @@ typedef struct s_sts_fields_flags
 typedef struct s_sts_field_unit
 {
 	uint8_t index;				 // 位置，结构中第几个字段 最多64个字段
-	uint16 offset;				 // 偏移位置，结构中第几个字段，偏移多少字节
+	uint16 offset;				 // 偏移位置，偏移多少字节
 	char name[STS_FIELD_MAXLEN]; // 字段名，
 	s_sts_fields_flags flags;	 // attribute字段属性
 	//----以下有些难受，不过先这样处理了，以后再说----//
@@ -108,7 +108,9 @@ void sts_fields_set_double(s_sts_field_unit *fu_, char *val_, double f64_);
 
 //根据名字获取字段
 s_sts_field_unit *sts_field_get_from_key(s_sts_table *tb_, const char *key_);
+int sts_field_get_offset(s_sts_table *tb_, const char *key_);
 
+const char * sts_fields_get_string_from_key(s_sts_table *tb_, const char *key_, const char *val_, size_t *len_);
 uint64 sts_fields_get_uint_from_key(s_sts_table *tb_, const char *key_, const char *val_);
 int64 sts_fields_get_int_from_key(s_sts_table *tb_, const char *key_, const char *val_);
 double sts_fields_get_double_from_key(s_sts_table *tb_, const char *key_, const char *val_);

@@ -10,7 +10,6 @@ static s_stsdb_server server = {
     .db = NULL};
 /********************************/
 
-
 void *_thread_save_plan_task(void *argv_)
 {
     s_sts_db *db = (s_sts_db *)argv_;
@@ -19,33 +18,37 @@ void *_thread_save_plan_task(void *argv_)
     sts_thread_wait_create(&server.db->thread_wait);
 
     sts_mutex_create(&server.db->save_mutex);
- 
+
     sts_thread_wait_start(&db->thread_wait);
-    
+
     while (server.status != STS_SERVER_STATUS_CLOSE)
     {
         //  printf("server.status ... %d\n",server.status);
-       // 处理
-        if (db->save_type==STS_WORK_MODE_GAPS) {
-            if(sts_thread_wait_sleep(&db->thread_wait, db->save_gaps) == STS_ETIMEDOUT)
+        // 处理
+        if (db->save_mode == STS_WORK_MODE_GAPS)
+        {
+            if (sts_thread_wait_sleep(&db->thread_wait, db->save_always.delay) == STS_ETIMEDOUT)
             {
                 sts_mutex_lock(&server.db->save_mutex);
-                sts_db_file_save(server.dbpath,db);
+                sts_db_file_save(server.dbpath, db);
                 sts_mutex_unlock(&server.db->save_mutex);
             }
-        } else {
-            if(sts_thread_wait_sleep(&db->thread_wait, 30)== STS_ETIMEDOUT)// 30秒判断一次
+        }
+        else
+        {
+            if (sts_thread_wait_sleep(&db->thread_wait, 30) == STS_ETIMEDOUT) // 30秒判断一次
             {
                 int min = sts_time_get_iminute(0);
-                printf("save plan ... -- -- -- %d \n",min);
-                for (int k=0;k<db->save_plans->count;k++)
+                // printf("save plan ... -- -- -- %d \n", min);
+                for (int k = 0; k < db->save_plans->count; k++)
                 {
                     uint16 *lm = sts_struct_list_get(db->save_plans, k);
-                    if(min == *lm) {
+                    if (min == *lm)
+                    {
                         sts_mutex_lock(&server.db->save_mutex);
-                        sts_db_file_save(server.dbpath,db);
+                        sts_db_file_save(server.dbpath, db);
                         sts_mutex_unlock(&server.db->save_mutex);
-                        printf("save plan ... %d -- -- %d \n",*lm, min);
+                        printf("save plan ... %d -- -- %d \n", *lm, min);
                     }
                 }
             }
@@ -61,7 +64,7 @@ void *_thread_save_plan_task(void *argv_)
     return NULL;
 }
 
-char * stsdb_open(const char *conf_)
+char *stsdb_open(const char *conf_)
 {
 
     server.config = sts_conf_open(conf_);
@@ -77,27 +80,29 @@ char * stsdb_open(const char *conf_)
     char conf_path[STS_PATH_LEN];
     sts_file_getpath(server.conf_name, conf_path, STS_PATH_LEN);
 
-    sts_get_fixed_path(conf_path,sts_json_get_str(server.config->node, "dbpath"),
-                server.dbpath, STS_PATH_LEN);
+    sts_get_fixed_path(conf_path, sts_json_get_str(server.config->node, "dbpath"),
+                       server.dbpath, STS_PATH_LEN);
     // sts_path_complete(server.dbpath,STS_PATH_LEN);
 
     s_sts_json_node *lognode = sts_json_cmp_child_node(server.config->node, "log");
-    if(lognode) {
-        sts_get_fixed_path(conf_path,sts_json_get_str(lognode, "path"),
-                server.logpath, STS_PATH_LEN);
+    if (lognode)
+    {
+        sts_get_fixed_path(conf_path, sts_json_get_str(lognode, "path"),
+                           server.logpath, STS_PATH_LEN);
         // sts_path_complete(server.logpath,STS_PATH_LEN);
 
-        server.loglevel = sts_json_get_int(lognode,"level",5);
-        server.logsize = sts_json_get_int(lognode,"maxsize",10) * 1024 * 1024;
+        server.loglevel = sts_json_get_int(lognode, "level", 5);
+        server.logsize = sts_json_get_int(lognode, "maxsize", 10) * 1024 * 1024;
     }
 
     s_sts_json_node *service = sts_json_cmp_child_node(server.config->node, "service");
-    if(!service) {
+    if (!service)
+    {
         sts_out_error(1)("no find service define.\n");
         sts_conf_close(server.config);
         return NULL;
     }
-    sts_strcpy(server.service_name, STS_TABLE_MAXLEN, sts_json_get_str(service,"name"));
+    sts_strcpy(server.service_name, STS_TABLE_MAXLEN, sts_json_get_str(service, "name"));
     // 设置文件版本号
     sts_json_object_add_int(service, "version", STS_DB_FILE_VERSION);
 
@@ -109,84 +114,145 @@ char * stsdb_open(const char *conf_)
     // server.db->init_time = sts_json_get_int(service,"init-time",900);
     // server.db->init_status = STS_INIT_WAIT;
 
-    s_sts_json_node *wtime = sts_json_cmp_child_node(service, "work-time");
-    if (!wtime) {
-        sts_out_error(1)("no find work time define.\n");
-        goto error;   
-    }
-    server.db->work_time.first = sts_json_get_int(wtime,"open",900);
-    server.db->work_time.second = sts_json_get_int(wtime,"close",1530);
+    // s_sts_json_node *wtime = sts_json_cmp_child_node(node_, "work-time");
+    // if (!wtime)
+    // {
+    //     sts_out_error(1)("no find work time define.\n");
+    //     goto error;
+    // }
+    // s_sts_json_node *ptime = sts_json_cmp_child_node(wtime, "plans-work");
+    // if (ptime)
+    // {
+    //     server.db->work_mode = STS_WORK_MODE_PLANS;
+    //     server.db->work_plan_first = false;
+    //     int count = sts_json_get_size(ptime);
+    //     for (int k = 0; k < count; k++)
+    //     {
+    //         uint16 min = sts_array_get_int(ptime, k, 0);
+    //         if (min == 0) // 有0表示不开机就运行
+    //         {
+    //             server.db->work_plan_first = true;
+    //             continue;
+    //         }
+    //         sts_struct_list_push(server.db->work_plans, &min);
+    //     }
+    // }
+    // s_sts_json_node *atime = sts_json_cmp_child_node(wtime, "always-work");
+    // if (atime)
+    // {
+    //     server.db->work_mode = STS_WORK_MODE_GAPS;
+    //     server.db->work_always.start = sts_json_get_int(atime, "start", 900);
+    //     server.db->work_always.stop = sts_json_get_int(atime, "stop", 1530);
+    //     server.db->work_always.delay = sts_json_get_int(atime, "delay", 3000);
+    // }
 
     s_sts_json_node *ttime = sts_json_cmp_child_node(service, "trade-time");
-    if (!ttime) {
-        sts_out_error(1)("no find trade time define.\n");
-        goto error;   
-    }
     s_sts_time_pair pair;
-    s_sts_json_node *next = sts_json_first_node(ttime);
-    while(next)
+    if (!ttime)
     {
-        pair.first = sts_json_get_int(next,"0",930);
-        pair.second = sts_json_get_int(next,"1",1130);
+        // sts_out_error(1)("no find trade time define.\n");
+        // goto error;
+        // 不存在就直接赋值一个
+        pair.first = 0;
+        pair.second = 2400;
         sts_struct_list_push(server.db->trade_time, &pair);
-        // printf("trade time [%d, %d]\n",pair.begin,pair.end);
-        next = next->next;
     }
-    if (server.db->trade_time->count < 1) {
-        sts_out_error(1)("trade time < 1.\n");
-        goto error;   
-    }
-
-    server.db->save_type = STS_WORK_MODE_NONE;
-    
-    s_sts_json_node *stime = sts_json_cmp_child_node(service, "save-gaps");
-    if (stime) {
-        server.db->save_type = STS_WORK_MODE_GAPS;
-        // 默认15秒存盘一次，
-        server.db->save_gaps = sts_json_get_int(service, "save-gaps", 30); 
-        if (server.db->save_gaps < 5) {
-            server.db->save_gaps = 5;
-        }
-    }
-
-    stime = sts_json_cmp_child_node(service, "save-plans");
-    if (stime) {
-        server.db->save_type = STS_WORK_MODE_PLANS;
-        int count = sts_json_get_size(stime);
-        for (int k=0; k< count; k++)
+    else
+    {
+        s_sts_json_node *next = sts_json_first_node(ttime);
+        while (next)
         {
-            uint16 min = sts_array_get_int(stime,k,930); 
-            sts_struct_list_push(server.db->save_plans, &min);
-            // printf("save time [%d]\n",min);
+            pair.first = sts_json_get_int(next, "0", 930);
+            pair.second = sts_json_get_int(next, "1", 1130);
+            sts_struct_list_push(server.db->trade_time, &pair);
+            // printf("trade time [%d, %d]\n",pair.begin,pair.end);
+            next = next->next;
         }
     }
-	server.db->save_format = sts_db_find_map_uid(server.db, 
-            sts_json_get_str(service, "save-format"), 
-            STS_MAP_DEFINE_DATA_TYPE);
+    if (server.db->trade_time->count < 1)
+    {
+        sts_out_error(1)("trade time < 1.\n");
+        goto error;
+    }
+
+    server.db->save_mode = STS_WORK_MODE_NONE;
+    s_sts_json_node *stime = sts_json_cmp_child_node(service, "save-time");
+    if (stime)
+    {
+        s_sts_json_node *ptime = sts_json_cmp_child_node(stime, "plans-work");
+        if (ptime)
+        {
+            server.db->save_mode = STS_WORK_MODE_PLANS;
+            int count = sts_json_get_size(ptime);
+            for (int k = 0; k < count; k++)
+            {
+                uint16 min = sts_array_get_int(ptime, k, 0);
+                sts_struct_list_push(server.db->save_plans, &min);
+            }
+        }
+        s_sts_json_node *atime = sts_json_cmp_child_node(stime, "always-work");
+        if (atime)
+        {
+            server.db->save_mode = STS_WORK_MODE_GAPS;
+            server.db->save_always.start = sts_json_get_int(atime, "start", 900);
+            server.db->save_always.stop = sts_json_get_int(atime, "stop", 1530);
+            server.db->save_always.delay = sts_json_get_int(atime, "delay", 300);
+        }
+    }
+    // server.db->save_type = STS_WORK_MODE_NONE;
+
+    // s_sts_json_node *stime = sts_json_cmp_child_node(service, "save-gaps");
+    // if (stime)
+    // {
+    //     server.db->save_type = STS_WORK_MODE_GAPS;
+    //     // 默认15秒存盘一次，
+    //     server.db->save_gaps = sts_json_get_int(service, "save-gaps", 30);
+    //     if (server.db->save_gaps < 5)
+    //     {
+    //         server.db->save_gaps = 5;
+    //     }
+    // }
+
+    // stime = sts_json_cmp_child_node(service, "save-plans");
+    // if (stime)
+    // {
+    //     server.db->save_type = STS_WORK_MODE_PLANS;
+    //     int count = sts_json_get_size(stime);
+    //     for (int k = 0; k < count; k++)
+    //     {
+    //         uint16 min = sts_array_get_int(stime, k, 930);
+    //         sts_struct_list_push(server.db->save_plans, &min);
+    //         // printf("save time [%d]\n",min);
+    //     }
+    // }
+
+    server.db->save_format = sts_db_find_map_uid(server.db,
+                                                 sts_json_get_str(service, "save-format"),
+                                                 STS_MAP_DEFINE_DATA_TYPE);
 
     // 启动存盘线程
     server.db->save_pid = 0;
     // 检查数据库文件有没有
     char sdb_json_name[STS_PATH_LEN];
-    sts_sprintf(sdb_json_name,STS_PATH_LEN, STS_DB_FILE_CONF, server.dbpath, server.service_name);
-    
-    if(!sts_file_exists(sdb_json_name))
+    sts_sprintf(sdb_json_name, STS_PATH_LEN, STS_DB_FILE_CONF, server.dbpath, server.service_name);
+
+    if (!sts_file_exists(sdb_json_name))
     {
         s_sts_json_node *node = sts_json_cmp_child_node(service, "tables");
         // 加载conf
         size_t len = 0;
         char *str = sts_conf_to_json(service, &len);
-        server.db->conf = sdsnewlen(str,len);
+        server.db->conf = sdsnewlen(str, len);
         sts_free(str);
         s_sts_json_node *info = sts_conf_first_node(node);
         while (info)
         {
-        // s_sts_table *table = 
+            // s_sts_table *table =
             sts_table_create(server.db, info->key, info);
             info = info->next;
         }
-    } 
-    else 
+    }
+    else
     {
         sdb_json = sts_json_open(sdb_json_name);
         if (!sdb_json)
@@ -195,7 +261,7 @@ char * stsdb_open(const char *conf_)
             goto error;
         }
         // 检查版本号是否匹配
-        if (STS_DB_FILE_VERSION !=  sts_json_get_int(sdb_json->node, "version", 0))
+        if (STS_DB_FILE_VERSION != sts_json_get_int(sdb_json->node, "version", 0))
         {
             sts_out_error(1)("file format ver error.\n");
             goto error;
@@ -205,7 +271,7 @@ char * stsdb_open(const char *conf_)
         // 加载conf
         size_t len = 0;
         char *str = sts_conf_to_json(sdb_json->node, &len);
-        server.db->conf = sdsnewlen(str,len);
+        server.db->conf = sdsnewlen(str, len);
         sts_free(str);
 
         s_sts_json_node *info = sts_conf_first_node(node);
@@ -215,32 +281,32 @@ char * stsdb_open(const char *conf_)
             info = info->next;
         }
     }
-        
+
     // 这里加载数据
     // 应该需要判断数据的版本号，如果不同，应该对磁盘上的数据进行数据字段重新匹配
     // 把老库中有的字段加载到新的库中，再存盘
     if (!sts_db_file_load(server.dbpath, server.db))
     {
         sts_out_error(1)("load sdb fail. exit!\n");
-        goto error;        
+        goto error;
     }
     // 启动存盘线程
-    if (server.db->save_type!=STS_WORK_MODE_NONE) 
+    if (server.db->save_mode != STS_WORK_MODE_NONE)
     {
         if (!sts_thread_create(_thread_save_plan_task, server.db, &server.db->save_pid))
         {
             sts_out_error(1)("can't start save thread\n");
-            goto error;       
+            goto error;
         }
     }
-    
+
     server.status = STS_SERVER_STATUS_INITED;
     sts_conf_close(server.config);
 
     return server.service_name;
 
 error:
-    if(sdb_json) 
+    if (sdb_json)
     {
         sts_json_close(sdb_json);
     }
@@ -251,22 +317,23 @@ error:
 
 void stsdb_close()
 {
-    if (server.status==STS_SERVER_STATUS_CLOSE) {
-        return ;
+    if (server.status == STS_SERVER_STATUS_CLOSE)
+    {
+        return;
     }
     server.status = STS_SERVER_STATUS_CLOSE;
 
     sts_thread_wait_kill(&server.db->thread_wait);
     //???这里要好好测试一下，看看两个能不能一起退出来
     // sts_thread_join(server.db->init_pid);
-    
-    if(server.db&&server.db->save_pid){
+
+    if (server.db && server.db->save_pid)
+    {
         sts_thread_join(server.db->save_pid);
         printf("save_pid end.\n");
     }
 
     sts_db_destroy(server.db);
-
 }
 bool stsdb_save()
 {
@@ -275,7 +342,24 @@ bool stsdb_save()
         sts_out_error(3)("no init stsdb.\n");
         return false;
     }
-    return sts_db_file_save(server.dbpath,server.db);
+    return sts_db_file_save(server.dbpath, server.db);
+}
+bool stsdb_saveto(const char *dt_, const char *db_)
+{
+    if (server.status != STS_SERVER_STATUS_INITED)
+    {
+        sts_out_error(3)("no init stsdb.\n");
+        return false;
+    }
+
+    int uid = sts_db_find_map_uid(server.db, dt_, STS_MAP_DEFINE_DATA_TYPE);
+    if (uid != STS_DATA_CSV && uid != STS_DATA_JSON && uid != STS_DATA_ARRAY)
+    {
+        sts_out_error(3)("save data type error.\n");
+        return false;
+    }
+
+    return sts_db_file_saveto(server.dbpath, server.db, uid, db_);
 }
 s_sts_sds stsdb_list_sds()
 {
@@ -300,23 +384,26 @@ s_sts_sds stsdb_get_sds(const char *db_, const char *key_, const char *com_)
         sts_out_error(3)("no find %s db.\n", db_);
         return NULL;
     }
-    if(!sts_strcasecmp(key_,"collects")) {
+    if (!sts_strcasecmp(key_, "collects"))
+    {
         return sts_table_get_collects_sds(table, com_);
-    } else {
+    }
+    else
+    {
         return sts_table_get_sds(table, key_, com_);
     }
 }
 
-
 int stsdb_set_format(int format_, const char *db_, const char *key_, const char *val_, size_t len_)
 {
     // if (sts_strcasecmp(key_,"SH600048")) return STS_SERVER_REPLY_ERR;
-    printf("----[%d] %s.%s  %ld\n", format_,key_, db_, len_);
+    printf("----[%d] %s.%s  %ld\n", format_, key_, db_, len_);
     if (format_ == STS_DATA_STRUCT)
     {
         // sts_out_binary("set", val_, len_);
-    }   
-    else{
+    }
+    else
+    {
         printf("%s val : %s\n", __func__, val_);
     }
     s_sts_table *table = sts_db_get_table(server.db, db_);
@@ -327,7 +414,8 @@ int stsdb_set_format(int format_, const char *db_, const char *key_, const char 
     }
     // 来源是结构体数据的，必须只能往结构体table写数据，
     int o = sts_table_update_mul(format_, table, key_, val_, len_);
-    if(o) {
+    if (o)
+    {
         sts_out_error(5)("set data ok,[%d].\n", o);
         return STS_SERVER_REPLY_OK;
     }
@@ -342,12 +430,12 @@ int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *va
         return STS_SERVER_REPLY_ERR;
     }
 
-	int uid = sts_db_find_map_uid(server.db, dt_, STS_MAP_DEFINE_DATA_TYPE);
-	if (uid != STS_DATA_STRUCT && uid != STS_DATA_JSON && uid != STS_DATA_ARRAY)
-	{
+    int uid = sts_db_find_map_uid(server.db, dt_, STS_MAP_DEFINE_DATA_TYPE);
+    if (uid != STS_DATA_STRUCT && uid != STS_DATA_JSON && uid != STS_DATA_ARRAY)
+    {
         sts_out_error(3)("set data type error.\n");
         return STS_SERVER_REPLY_ERR;
-	}
+    }
 
     // 如果保存aof失败就返回错误
     if (!sts_db_file_save_aof(server.dbpath, server.db, uid, db_, key_, val_, len_))
@@ -355,12 +443,13 @@ int stsdb_set(const char *dt_, const char *db_, const char *key_, const char *va
         sts_out_error(3)("save aof error.\n");
         return STS_SERVER_REPLY_ERR;
     }
-    if (sts_mutex_trylock(&server.db->save_mutex)) {
+    if (sts_mutex_trylock(&server.db->save_mutex))
+    {
         // == 0 才是锁住
         sts_out_error(3)("saveing... set fail.\n");
         return STS_SERVER_REPLY_OK;
     };
-    int o = stsdb_set_format(uid,db_,key_,val_,len_);
+    int o = stsdb_set_format(uid, db_, key_, val_, len_);
     sts_mutex_unlock(&server.db->save_mutex);
 
     return o;
@@ -369,37 +458,38 @@ int sdsdb_delete_market(s_sts_table *tb_, const char *market_)
 {
     int o = 0;
     s_sts_dict_entry *de;
-	s_sts_dict_iter *di = sts_dict_get_iter(tb_->collect_map);
-	while ((de = sts_dict_next(di)) != NULL)
-	{
-		s_sts_collect_unit *val = (s_sts_collect_unit *)sts_dict_getval(de);
-        if(!sts_strncasecmp(sts_dict_getkey(de), market_, strlen(market_)))
+    s_sts_dict_iter *di = sts_dict_get_iter(tb_->collect_map);
+    while ((de = sts_dict_next(di)) != NULL)
+    {
+        s_sts_collect_unit *val = (s_sts_collect_unit *)sts_dict_getval(de);
+        if (!sts_strncasecmp(sts_dict_getkey(de), market_, strlen(market_)))
         {
             sts_collect_unit_destroy(val);
             o++;
         }
         sts_dict_delete(tb_->collect_map, sts_dict_getkey(de));
-	}
-	sts_dict_iter_free(di);  
+    }
+    sts_dict_iter_free(di);
     // printf("delete [%s] count=%d\n",tb_->name, o);
-    //  
+    //
     sts_map_buffer_clear(tb_->collect_map);
- 
+
     return o;
 }
 
 int stsdb_init(const char *market_)
 {
     int o = 0;
- 	s_sts_dict_entry *de;
-	s_sts_dict_iter *di = sts_dict_get_iter(server.db->db);
-	while ((de = sts_dict_next(di)) != NULL)
-	{
-		s_sts_table *val = (s_sts_table *)sts_dict_getval(de);
-        if(val->control.isinit) { 
+    s_sts_dict_entry *de;
+    s_sts_dict_iter *di = sts_dict_get_iter(server.db->db);
+    while ((de = sts_dict_next(di)) != NULL)
+    {
+        s_sts_table *val = (s_sts_table *)sts_dict_getval(de);
+        if (val->control.isinit)
+        {
             o += sdsdb_delete_market(val, market_);
         }
-	}
-	sts_dict_iter_free(di);  
-    return o;     
+    }
+    sts_dict_iter_free(di);
+    return o;
 }

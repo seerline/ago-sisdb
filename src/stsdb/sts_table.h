@@ -22,8 +22,9 @@
 #define STS_OPTION_ALWAYS      0  // 不做判断直接追加
 #define STS_OPTION_TIME        1  // 检查时间节点重复就覆盖老的数据，不重复就放对应位置
 #define STS_OPTION_VOL         2  // 检查成交量，成交量增加就写入
-#define STS_OPTION_NONE        3  // 不做判断直接追加
-#define STS_OPTION_MUL_CHECK   4  // 最少3个以上数据才能确认数据的准确性，暂不用
+#define STS_OPTION_CODE        4  // 不做判断直接追加
+#define STS_OPTION_SORT        8  // 按时间排序，同一个时间可以有多个数据
+#define STS_OPTION_NONE        16  // 不能插入只能修改 一般不用
 
 /////////////////////////////////////////////////////////
 //  数据格是定义 
@@ -34,6 +35,7 @@
 #define STS_DATA_JSON    '{'   // 直接传数据  json文档 数组可能消失，利用 groups 表示多支股票的数据
 							   // value 表示最新的一维数组  values 表示二维数组	
 #define STS_DATA_ARRAY   '['   // 直接传数据
+#define STS_DATA_CSV     'C'   // csv格式，需要处理字符串的信息
 
 #pragma pack(push,1)
 
@@ -44,13 +46,13 @@ typedef struct s_sts_table_control {
 	uint8  data_type;    // 数据类型 目前没什么用
 	uint8  time_scale;   // 时序压缩的步长
 	uint32 limit_rows;   // 每个collection的最大记录数
-	uint8  insert_mode;  // 插入数据方式
-	uint8  update_mode;  // 修改数据方式
+	uint16 insert_mode;  // 插入数据方式
+	// uint8  update_mode;  // 修改数据方式
 	uint8  isinit;       // 是否需要初始化， 开盘时间到需要清理这个表
 }s_sts_table_control;
 
-#define STS_TABLE_LINK_COVER  0
-#define STS_TABLE_LINK_INCR   1
+// #define STS_TABLE_LINK_COVER  0
+// #define STS_TABLE_LINK_INCR   1
 
 typedef struct s_sts_table {
 	s_sts_sds name;            //表的名字
@@ -87,7 +89,7 @@ void sts_table_collect_clear(s_sts_table *);    //清理一个表的所有数据
 //对数据库的各种属性设置
 void sts_table_set_ver(s_sts_table *, uint32);  // time_t格式
 void sts_table_set_limit_rows(s_sts_table *, uint32); // 0 -- 不限制  1 -- 只保留最新的一条  n 
-void sts_table_set_insert_mode(s_sts_table *, uint8_t); // 1 -- 判断后修改 0 2
+void sts_table_set_insert_mode(s_sts_table *, uint16); // 1 -- 判断后修改 0 2
 
 void sts_table_set_fields(s_sts_table *, s_sts_json_node *fields_); //command为一个json格式字段定义
 //得到记录的长度

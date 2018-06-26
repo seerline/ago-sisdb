@@ -27,6 +27,26 @@ int call_stsdb_save(s_sts_module_context *ctx_, s_sts_module_string **argv_, int
 	}
 	return sts_module_reply_with_error(ctx_, "stsdb save error.\n");
 }
+int call_stsdb_saveto(s_sts_module_context *ctx_, s_sts_module_string **argv_, int argc_)
+{
+	if (argc_ < 1)
+	{
+		return sts_module_wrong_arity(ctx_);
+	}
+	bool o;
+	if (argc_ == 2) {
+		o = stsdb_saveto(sts_module_string_get(argv_[1], NULL), NULL);
+	} else {
+		o = stsdb_saveto(
+				sts_module_string_get(argv_[1], NULL),
+				sts_module_string_get(argv_[2], NULL));
+	}
+	if (o)
+	{
+		return sts_module_reply_with_simple_string(ctx_, "OK");
+	}
+	return sts_module_reply_with_error(ctx_, "stsdb saveto error.\n");
+}
 // 获取数据可以根据command中的format来确定是json或者是struct
 // 可以单独取数据头定义，比如fields等的定义
 // 但保存在内存中的数据一定是二进制struct的数据格式，仅仅在输出时做数据格式转换
@@ -214,6 +234,13 @@ int sts_module_on_load(s_sts_module_context *ctx_, s_sts_module_string **argv_, 
 	}
 	sts_sprintf(servicename, 64, "%s.save", service);
 	if (sts_module_create_command(ctx_, servicename, call_stsdb_save,
+								  "write deny-oom",
+								  0, 0, 0) == STS_MODULE_ERROR)
+	{
+		return STS_MODULE_ERROR;
+	}
+	sts_sprintf(servicename, 64, "%s.saveto", service);
+	if (sts_module_create_command(ctx_, servicename, call_stsdb_saveto,
 								  "write deny-oom",
 								  0, 0, 0) == STS_MODULE_ERROR)
 	{

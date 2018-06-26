@@ -305,6 +305,25 @@ s_sts_field_unit *sts_field_get_from_key(s_sts_table *tb_, const char *key_)
 	s_sts_field_unit *fu = (s_sts_field_unit *)sts_map_buffer_get(tb_->field_map, key_);
 	return fu;
 }
+int sts_field_get_offset(s_sts_table *tb_, const char *key_)
+{
+	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
+	if (!fu)
+	{
+		return 0;
+	}
+	return fu->offset+fu->flags.len;
+}
+const char * sts_fields_get_string_from_key(s_sts_table *tb_, const char *key_, const char *val_, size_t *len_)
+{
+	s_sts_field_unit *fu = sts_field_get_from_key(tb_, key_);
+	if (!fu)
+	{
+		return NULL;
+	}	
+	*len_ = fu->flags.len;
+	return val_ + fu->offset;
+}
 
 uint64 sts_fields_get_uint_from_key(s_sts_table *tb_, const char *key_, const char *val_)
 {

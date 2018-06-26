@@ -34,6 +34,11 @@
 #define STS_JSON_KEY_FIELDS ("fields")  // 字段定义
 #define STS_JSON_KEY_COLLECTS ("collects") // 获取一个db的所有股票代码
 
+// #define STS_UPDATE_MODE_NO     0   // 放弃数据
+// #define STS_UPDATE_MODE_UPDATE   1   // 修改某条记录
+// #define STS_UPDATE_MODE_INSERT   2   // 插入在某条记录之前
+// #define STS_UPDATE_MODE_OK    1   // 生产新数据
+
 #pragma pack(push, 1)
 // 根据结构化数组的时间序列，自动生成头尾时间，和平均间隔时间
 typedef struct s_sts_step_index

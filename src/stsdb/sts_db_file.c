@@ -139,6 +139,27 @@ bool sts_db_file_save(const char *dbpath_, s_sts_db *db_)
     return true;
 }
 
+bool sts_db_file_saveto(const char *dbpath_, s_sts_db *db_, int format_, const char *tb_)
+{
+    //???
+    sts_db_file_save_conf(dbpath_,db_);
+
+ 	s_sts_dict_entry *de;
+	s_sts_dict_iter *di = sts_dict_get_iter(db_->db);
+	while ((de = sts_dict_next(di)) != NULL)
+	{
+		s_sts_table *val = (s_sts_table *)sts_dict_getval(de);
+        _sts_db_file_save_sdb(dbpath_, db_, val);
+	}
+	sts_dict_iter_free(di);   
+
+    // 最后删除aof文件
+    char aof[STS_PATH_LEN];
+    sts_sprintf(aof,STS_PATH_LEN, STS_DB_FILE_AOF, dbpath_, db_->name);
+    sts_file_delete(aof);
+
+    return true;    
+}
 
 bool sts_db_file_save_aof(const char *dbpath_, s_sts_db *db_, 
             int format_, const char *tb_, const char *key_, 

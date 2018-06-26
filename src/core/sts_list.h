@@ -18,12 +18,12 @@
 #define STRUCT_LIST_POINTER  1
 
 typedef struct s_sts_struct_list {
-	int		     maxcount; //总数
-	int		     count;    //当前个数
-	int          len;      //每条记录的长度
-	int          mode;     //区分什么类型的链表
-	void        *buffer;   //必须是mallco申请的char*类型
-	void(*free)(void *);   //==NULL 不释放对应内存
+	int		     maxcount; // 总数
+	int		     count;    // 当前个数
+	int          len;      // 每条记录的长度
+	int          mode;     // 区分什么类型的链表
+	void        *buffer;   // 必须是mallco申请的char*类型
+	void(*free)(void *);   // ==NULL 不释放对应内存
 } s_sts_struct_list;
 
 #define BUFFLIST_STEP_ROW 128  //默认增加的记录数

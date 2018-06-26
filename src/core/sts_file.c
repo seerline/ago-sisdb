@@ -42,5 +42,5 @@ void sts_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int
     {
 		sts_out_error(3)("cann't create dir [%s].\n", outpath_);   
     }
-    // sts_out_error(5)("outpath_:%s\n",outpath_);
+    sts_out_error(5)("outpath_:%s\n",outpath_);
 }

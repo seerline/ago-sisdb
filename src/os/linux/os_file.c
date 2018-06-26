@@ -50,6 +50,7 @@ size_t sts_file_write(sts_file_handle fp_, const char *in_, size_t size_, size_t
 }
 void sts_file_getpath(const char *fn_, char *out_, int olen_)
 {
+	out_[0] = 0;
 	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{

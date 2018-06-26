@@ -47,6 +47,7 @@ s_sts_sds stsdb_list_sds();
 
 void stsdb_close();
 bool stsdb_save();
+bool stsdb_saveto(const char * dt_, const char *db_);
 
 s_sts_sds stsdb_get_sds(const char *db_, const char *key_, const char *com_);
 

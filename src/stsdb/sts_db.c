@@ -16,8 +16,10 @@ static struct s_sts_map_define _sts_map_defines[] = {
 	/////////////插入和修改方式定义/////////////
 	{"NONE", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_NONE, 0},
 	{"ALWAYS", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_ALWAYS, 0},
+	{"SORT", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_SORT, 0},
 	{"TIME", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_TIME, 0},
 	{"VOL", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_VOL, 0},
+	{"CODE", STS_MAP_DEFINE_OPTION_MODE, STS_OPTION_CODE, 0},
 	/////////////数据类型定义/////////////
 	{"NONE", STS_MAP_DEFINE_SCALE, STS_SCALE_NONE, 0},
 	{"MSEC", STS_MAP_DEFINE_SCALE, STS_SCALE_MSEC, 0},
@@ -51,6 +53,7 @@ static struct s_sts_map_define _sts_map_defines[] = {
 	{"STRUCT", STS_MAP_DEFINE_DATA_TYPE, STS_DATA_STRUCT, 0},
 	{"STRING", STS_MAP_DEFINE_DATA_TYPE, STS_DATA_STRING, 0},
 	{"JSON", STS_MAP_DEFINE_DATA_TYPE, STS_DATA_JSON, 0},
+	{"CSV", STS_MAP_DEFINE_DATA_TYPE, STS_DATA_CSV, 0},
 	{"ARRAY", STS_MAP_DEFINE_DATA_TYPE, STS_DATA_ARRAY, 0}};
 
 void _init_map_define(s_sts_map_pointer *fields_)

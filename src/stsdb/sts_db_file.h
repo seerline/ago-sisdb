@@ -48,6 +48,9 @@ typedef struct s_sts_aof_head{
 //------v1.0采用全部存盘的策略 ---------//
 // 到时间保存
 bool sts_db_file_save(const char *dbpath_, s_sts_db *db_);
+
+bool sts_db_file_saveto(const char *dbpath_, s_sts_db *db_, int format_, const char *tb_);
+
 bool sts_db_file_save_aof(const char *dbpath_, s_sts_db *db_, 
             int format_, const char *tb_, const char *key_, 
             const char *val_, size_t len_);

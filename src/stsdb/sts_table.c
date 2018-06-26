@@ -22,7 +22,6 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	tb->control.isinit = sts_json_get_int(com_, "isinit", 0);
 	// printf("=====%s limit %d\n", name_, tb->control.limit_rows);
 	tb->control.insert_mode = STS_OPTION_ALWAYS;
-	tb->control.insert_mode = STS_OPTION_ALWAYS;
 	tb->control.version = (uint32)sts_time_get_now();
 
 	sts_dict_add(db_->db, sts_sdsnew(name_), tb);
@@ -38,18 +37,25 @@ s_sts_table *sts_table_create(s_sts_db *db_, const char *name_, s_sts_json_node 
 	{
 		tb->control.time_scale = map->uid;
 	}
+
 	strval = sts_json_get_str(com_, "insert-mode");
-	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_OPTION_MODE);
-	if (map)
+	int nums = sts_str_substr_nums(strval, ',');
+	for (int i=0; i < nums; i++) 
 	{
-		tb->control.insert_mode = map->uid;
+		char mode[32];
+		sts_str_substr(mode, 32, strval, ',', i);
+		map = sts_db_find_map_define(db_, mode, STS_MAP_DEFINE_OPTION_MODE);
+		if (map)
+		{
+			tb->control.insert_mode |= map->uid;
+		}
 	}
-	strval = sts_json_get_str(com_, "update-mode");
-	map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_OPTION_MODE);
-	if (map)
-	{
-		tb->control.update_mode = map->uid;
-	}
+	// strval = sts_json_get_str(com_, "update-mode");
+	// map = sts_db_find_map_define(db_, strval, STS_MAP_DEFINE_OPTION_MODE);
+	// if (map)
+	// {
+	// 	tb->control.update_mode = map->uid;
+	// }
 
 	tb->name = sts_sdsnew(name_);
 	tb->collect_map = sts_map_pointer_create();
@@ -154,7 +160,7 @@ void sts_table_set_limit_rows(s_sts_table *tb_, uint32 limits_)
 {
 	tb_->control.limit_rows = limits_;
 }
-void sts_table_set_insert_mode(s_sts_table *tb_, uint8_t insert_)
+void sts_table_set_insert_mode(s_sts_table *tb_, uint16 insert_)
 {
 	tb_->control.insert_mode = insert_;
 }

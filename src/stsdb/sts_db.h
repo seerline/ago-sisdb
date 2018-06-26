@@ -50,21 +50,25 @@ typedef struct s_sts_db {
 	s_sts_sds name;  // 数据库名字
 	s_sts_map_pointer  *db; // 一个字典表
 	s_sts_map_pointer  *map; // 关键字查询表
-	s_sts_time_pair     work_time; // 900 --1530 工作时间
-	s_sts_struct_list  *trade_time; // [[930,1130],[1300,1500]] 交易时间
 
-	// int  init_time; // 900 初始化时间，到达该时间后进入初始化等待状态，等第一个不同日期的now传入时进行初始化状态，并设置状态为work
-	// int  init_status; // wait inited
-	// s_sts_thread_id_t init_pid;
+	s_sts_struct_list  *trade_time; // [[930,1130],[1300,1500]] 交易时间，给分钟线用
+
+    // int    work_mode;
+    // s_sts_struct_list  *work_plans;   // plans-work 定时任务 uint16 的数组
+    // s_sts_time_gap      work_always;  // always-work 循环运行的配置
+
+    int    save_mode;   // 存盘方式，间隔时间存，还是指定时间存
+    s_sts_struct_list  *save_plans;   // plans-work 定时任务 uint16 的数组
+    s_sts_time_gap      save_always;  // always-work 循环运行的配置
+
+	// int  save_type;  // 存盘方式，间隔时间存，还是指定时间存
+	// int  save_gaps;  // 存盘的间隔秒数	
+	// s_sts_struct_list  *save_plans; // uin16的时间序列，如果类型为gap，就表示秒为单位的间隔时间
+	s_sts_thread_id_t save_pid;
+	s_sts_mutex_t save_mutex;  // save时的锁定
 
 	s_sts_sds conf;    // 保存时使用
 	int save_format;   // 存盘文件的方式
-
-	int  save_type;  // 存盘方式，间隔时间存，还是指定时间存
-	int  save_gaps;  // 存盘的间隔秒数	
-	s_sts_struct_list  *save_plans; // uin16的时间序列，如果类型为gap，就表示秒为单位的间隔时间
-	s_sts_thread_id_t save_pid;
-	s_sts_mutex_t save_mutex;  // save时的锁定
 
 	s_sts_wait thread_wait; //线程内部延时处理
 

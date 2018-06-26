@@ -7,6 +7,7 @@
 
 #define sts_sprintf snprintf
 #define sts_printf printf
+// #define sts_snprintf snprintf
 
 // inline void sts_printf(char const *fmt, ...) {
 //     char 

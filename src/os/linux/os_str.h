@@ -14,6 +14,4 @@
 int sts_strcpy(char *out_, size_t olen_, const char *in_);
 int sts_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_);
 
-#define sts_snprintf snprintf
-
 #endif //_OS_STR_H
