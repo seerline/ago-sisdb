@@ -114,9 +114,10 @@ char *sts_str_sprintf(size_t mlen_, const char *fmt_, ...)
     char *str = (char *)sts_malloc(mlen_ + 1);
   	va_list args;
     va_start(args, fmt_);
-	// snprintf(str, mlen_, fmt_, args);
+	//snprintf(str, mlen_, fmt_, args);
 	vsnprintf(str, mlen_, fmt_, args);
     va_end(args);
+	str[mlen_] = 0;
     return str;
 }
 
@@ -316,7 +317,7 @@ const char *sts_str_parse(const char *src_, const char *sign_, char *out_, size_
 	return NULL;
 }
 
-#if 0
+#if 1
 #include <sts_time.h>
 
 int main1()
@@ -346,6 +347,10 @@ int main()
     char* substr_ = "@blog"    ;
 	char s1[64],s2[64];
 	int port;
+
+	char *ss = sts_str_sprintf(64, "ii=%.*f ", 2, 0);
+	printf("s1: %s\n", ss);
+	sts_free(ss);
 
     const char *url = source_; 
     url = sts_str_parse(url, "://", s1, 64);

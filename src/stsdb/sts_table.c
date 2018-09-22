@@ -1060,7 +1060,7 @@ s_sts_sds sts_table_get_code_sds(s_sts_table *tb_, const char *key_, const char 
 		if (sts_json_cmp_child_node(search, "count"))
 		{
 			count = sts_json_get_int(search, "count", 1);
-			start = sts_collect_unit_search(collect, min);
+			start = sts_collect_unit_search_right(collect, min);
 			if (start >= 0)
 			{
 				out = sts_collect_unit_get_of_count_sds(collect, start, count);
