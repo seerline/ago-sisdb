@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>什么是 sisdb ? | sisdb</title>
+    <meta name="description" content="高性能时序数据库">
+    <link rel="icon" href="/sisdb/logo.png">
+  <link rel="manifest" href="/sisdb/manifest.json">
+  <meta name="theme-color" content="#3eaf7c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="apple-touch-icon" href="/sisdb/icons/apple-touch-icon-152x152.png">
+  <link rel="mask-icon" href="/sisdb/icons/safari-pinned-tab.svg" color="#3eaf7c">
+  <meta name="msapplication-TileImage" content="/icons/msapplication-icon-144x144.png">
+  <meta name="msapplication-TileColor" content="#000000">
+    
+    <link rel="preload" href="/sisdb/assets/css/styles.1d823e4c.css" as="style"><link rel="preload" href="/sisdb/assets/js/app.1d823e4c.js" as="script"><link rel="preload" href="/sisdb/assets/css/1.styles.c6f8df2e.css" as="style"><link rel="preload" href="/sisdb/assets/js/1.c6f8df2e.js" as="script"><link rel="preload" href="/sisdb/assets/js/11.b88a5950.js" as="script"><link rel="prefetch" href="/sisdb/assets/css/2.styles.75f2b9dd.css"><link rel="prefetch" href="/sisdb/assets/css/3.styles.69e559b3.css"><link rel="prefetch" href="/sisdb/assets/css/4.styles.edbf551d.css"><link rel="prefetch" href="/sisdb/assets/js/10.d9f04d2c.js"><link rel="prefetch" href="/sisdb/assets/js/2.75f2b9dd.js"><link rel="prefetch" href="/sisdb/assets/js/3.69e559b3.js"><link rel="prefetch" href="/sisdb/assets/js/4.edbf551d.js"><link rel="prefetch" href="/sisdb/assets/js/5.f9e7e58e.js"><link rel="prefetch" href="/sisdb/assets/js/6.ea140c86.js"><link rel="prefetch" href="/sisdb/assets/js/7.2bf72557.js"><link rel="prefetch" href="/sisdb/assets/js/8.1953d0fa.js"><link rel="prefetch" href="/sisdb/assets/js/9.9de7e288.js">
+    <link rel="stylesheet" href="/sisdb/assets/css/1.styles.c6f8df2e.css"><link rel="stylesheet" href="/sisdb/assets/css/2.styles.75f2b9dd.css"><link rel="stylesheet" href="/sisdb/assets/css/3.styles.69e559b3.css"><link rel="stylesheet" href="/sisdb/assets/css/4.styles.edbf551d.css"><link rel="stylesheet" href="/sisdb/assets/css/styles.1d823e4c.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/sisdb/zh/" class="home-link router-link-active"><!----> <span class="site-name">sisdb</span></a> <div class="links" style="max-width:nullpx;"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <nav class="nav-links can-hide"><div class="nav-item"><a href="/sisdb/zh/guide/" class="nav-link router-link-exact-active router-link-active">指南</a></div><div class="nav-item"><a href="/sisdb/zh/config/" class="nav-link">配置</a></div><div class="nav-item"><a href="https://github.com/seerline/sisdb/blob/master/CHANGELOG.md" target="_blank" rel="noopener noreferrer" class="nav-link external">
+  Changelog
+  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></div><div class="nav-item"><div class="dropdown-wrapper"><a class="dropdown-title"><span class="title">选择语言</span> <span class="arrow right"></span></a> <ul class="nav-dropdown" style="display:none;"><li class="dropdown-item"><!----> <a href="/sisdb/guide/" class="nav-link">English</a></li><li class="dropdown-item"><!----> <a href="/sisdb/zh/guide/" class="nav-link router-link-exact-active router-link-active">简体中文</a></li></ul></div></div> <a href="https://github.com/seerline/sisdb" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></nav></div></header> <div class="sidebar-mask"></div> <div class="sidebar"><nav class="nav-links"><div class="nav-item"><a href="/sisdb/zh/guide/" class="nav-link router-link-exact-active router-link-active">指南</a></div><div class="nav-item"><a href="/sisdb/zh/config/" class="nav-link">配置</a></div><div class="nav-item"><a href="https://github.com/seerline/sisdb/blob/master/CHANGELOG.md" target="_blank" rel="noopener noreferrer" class="nav-link external">
+  Changelog
+  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></div><div class="nav-item"><div class="dropdown-wrapper"><a class="dropdown-title"><span class="title">选择语言</span> <span class="arrow right"></span></a> <ul class="nav-dropdown" style="display:none;"><li class="dropdown-item"><!----> <a href="/sisdb/guide/" class="nav-link">English</a></li><li class="dropdown-item"><!----> <a href="/sisdb/zh/guide/" class="nav-link router-link-exact-active router-link-active">简体中文</a></li></ul></div></div> <a href="https://github.com/seerline/sisdb" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></nav>  <ul class="sidebar-links"><li><div class="sidebar-group first"><p class="sidebar-heading open"><span>什么是 sisdb ?</span> <!----></p> <ul class="sidebar-group-items"><li><a href="/sisdb/zh/guide/#什么是-sisdb" class="sidebar-link">什么是 sisdb ?</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#为什么需要-sisdb" class="sidebar-link">为什么需要 sisdb</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#sisdb-的特性" class="sidebar-link">sisdb 的特性</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#输入和输出【速度】瓶颈仅限于网络带宽" class="sidebar-link">输入和输出【速度】瓶颈仅限于网络带宽;</a></li><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#输入和输出【格式】支持二进制数据流和字符串数据流" class="sidebar-link">输入和输出【格式】支持二进制数据流和字符串数据流;</a></li><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#输入一个时间节点的价格-数据库可以自动完成不同时间尺度的数据聚合-而不需要操作者去控制" class="sidebar-link">输入一个时间节点的价格,数据库可以自动完成不同时间尺度的数据聚合,而不需要操作者去控制;</a></li><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#输入和输出的【通讯协议】不仅支持tcp、还应该支持http、ws协议" class="sidebar-link">输入和输出的【通讯协议】不仅支持TCP、还应该支持HTTP、WS协议;</a></li><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#数据库还需要支持可插拔的算法库-v2-0" class="sidebar-link">数据库还需要支持可插拔的算法库(V2.0);</a></li><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#集群节点支持-v2-0" class="sidebar-link">集群节点支持(V2.0);</a></li></ul></li><li><a href="/sisdb/zh/guide/#sisdb-的设计规划" class="sidebar-link">sisdb 的设计规划</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#开始使用-sisdb" class="sidebar-link">开始使用 sisdb</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#下载安装" class="sidebar-link">下载安装</a></li></ul></li><li><a href="/sisdb/zh/guide/#指令集" class="sidebar-link">指令集</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#配置说明" class="sidebar-link">配置说明</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#目录a说明" class="sidebar-link">目录a说明</a></li><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#主配置文件-sisdb-conf" class="sidebar-link">主配置文件  sisdb.conf</a></li><li class="sidebar-sub-header"><a href="/sisdb/zh/guide/#数据表默认配置文件-sisdb-core-conf" class="sidebar-link">数据表默认配置文件 sisdb.core.conf</a></li></ul></li><li><a href="/sisdb/zh/guide/#插件和算法库" class="sidebar-link">插件和算法库</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#集群" class="sidebar-link">集群</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#多种通讯协议支持" class="sidebar-link">多种通讯协议支持</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#任务调度和负载均衡" class="sidebar-link">任务调度和负载均衡</a><ul class="sidebar-sub-headers"></ul></li><li><a href="/sisdb/zh/guide/#数据字典" class="sidebar-link">数据字典</a><ul class="sidebar-sub-headers"></ul></li></ul></div></li></ul> </div> <div class="page"> <div class="content"><h2 id="什么是-sisdb"><a href="#什么是-sisdb" aria-hidden="true" class="header-anchor">#</a> 什么是 sisdb ?</h2> <p>sisdb是一个开源的使用ANSI C语言编写、支持网络、基于内存并可数据持久化，专业用于有价证券行情信息的时序数据库；</p> <h2 id="为什么需要-sisdb"><a href="#为什么需要-sisdb" aria-hidden="true" class="header-anchor">#</a> 为什么需要 sisdb</h2> <blockquote><p>在现有的数据库中，主流的关系数据库因为吞吐量的原因无法满足高速大量的数据写入，即便是现在最流行的mongodb，当发生随机写入时效率也会大幅度降低；而作为速度最快的内存数据库redis，吞吐量足够，但是其所提供的数据结构却并未针对有价证券体系，和普通的文件存储解决方案相比并没有什么优势；</p></blockquote> <blockquote><p>生产环境和开发环境对数据格式要求的不同，对于开发者来说最好的情况是开发阶段用json格式做数据交互，并且数据库存储格式也可以指定为json；一旦进入生产环境就使用压缩（且加密）的二进制数据流，提高系统性能和安全性；</p></blockquote> <blockquote><p>越来越多的跨平台开发需求，要求对各种语言，各种操作系统最好都能支持，得益于redis的开发者提供的资源，sisdb完全遵守redis的通讯协议，因此支持redis的各语言开发包可以无缝接入sisdb；</p></blockquote> <blockquote><p>sisdb是专门为有价证券体系开发的一款高性能、安全、便捷的证券行情数据库；sisdb针对有价证券的行情和交易数据进行优化存取，不仅支持二进制结构化数据流，而且还支持 json、array、csv 数据格式的输入和输出，而对于字符串类型数据仅仅支持，并不具备优势，初期也无意在此方向深入；</p></blockquote> <h2 id="sisdb-的特性"><a href="#sisdb-的特性" aria-hidden="true" class="header-anchor">#</a> sisdb 的特性</h2> <h3 id="输入和输出【速度】瓶颈仅限于网络带宽"><a href="#输入和输出【速度】瓶颈仅限于网络带宽" aria-hidden="true" class="header-anchor">#</a> 输入和输出【速度】瓶颈仅限于网络带宽;</h3> <pre><code>   查询应保证绝大部分都在内存中进行, 除非特定指出,否则只会读取和处理内存中的数据; 
+   写入应保证为硬盘顺序写入的速度, 根据限定内存大小自动存储非活跃数据至存储设备; 
+   由于默认只有时间为索引, 因此建立索引的时间基本可以忽略不计, 并能快速定位;
+   数据安全性保证应该是这样的: 
+    收到写入指令首先写入顺序文件aof中,成功后再处理到数据库中, 当掉电等异常出现时, 首先加载磁盘文件再处理aof中的顺序指令, 以恢复掉电前数据库的状态, 数据库提供对外服务; 
+</code></pre> <h3 id="输入和输出【格式】支持二进制数据流和字符串数据流"><a href="#输入和输出【格式】支持二进制数据流和字符串数据流" aria-hidden="true" class="header-anchor">#</a> 输入和输出【格式】支持二进制数据流和字符串数据流;</h3> <pre><code>   二进制数据流包括结构化数据、压缩数据格式传输;
+   字符串数据流包括JSON格式、数组格式、CSV格式的输入和输出, 对JSON格式还应该支持变量字段传输, 其他字段自动增补的功能;
+   可以指定字段输出、指定时间段输出、指定数量输出;
+   数据库的磁盘文件也可以设定格式为二进制和字符串文件格式，方便数据库数据分析、备份和迁移;
+</code></pre> <h3 id="输入一个时间节点的价格-数据库可以自动完成不同时间尺度的数据聚合-而不需要操作者去控制"><a href="#输入一个时间节点的价格-数据库可以自动完成不同时间尺度的数据聚合-而不需要操作者去控制" aria-hidden="true" class="header-anchor">#</a> 输入一个时间节点的价格,数据库可以自动完成不同时间尺度的数据聚合,而不需要操作者去控制;</h3> <pre><code>   这里引入了数据层级的概念, 数据层级的引入,极大的减轻了数据采集者的工作量,同时提高了访问者的速度和便捷性；
+   
+   数据层级主要表现在 细粒度的时间数据可以分发给粗粒度的时间数据, 并且这些分发和数据合并并不需要人为干预，全部由系统自动完成；
+</code></pre> <h3 id="输入和输出的【通讯协议】不仅支持tcp、还应该支持http、ws协议"><a href="#输入和输出的【通讯协议】不仅支持tcp、还应该支持http、ws协议" aria-hidden="true" class="header-anchor">#</a> 输入和输出的【通讯协议】不仅支持TCP、还应该支持HTTP、WS协议;</h3> <pre><code>   对于大型项目来说,在sisdb和前端中间应该还有一层server用于用户服务和数据调度, 那么支持TCP协议已经足够使用了;
+   但是多数时候, 我们会直接使用 sisdb + clchart 来直接进行图表展示和策略分析, 此时为了敏捷开发, 我们就需要支持HTTP和WS协议, 这样客户端通过浏览器支持的协议就可以直接访问到sisdb的数据;
+</code></pre> <h3 id="数据库还需要支持可插拔的算法库-v2-0"><a href="#数据库还需要支持可插拔的算法库-v2-0" aria-hidden="true" class="header-anchor">#</a> 数据库还需要支持可插拔的算法库(V2.0);</h3> <pre><code>   sisdb的存在就是为了证券智能化交易, 因此基础数据有了之后,就需要建设各类算法库, 用于提供投资交易;
+   V2.0中会支持Pyhon和其他C语言友好的语言插件库;
+   插件库的作用也基本等同于数据库中的存储过程;
+</code></pre> <h3 id="集群节点支持-v2-0"><a href="#集群节点支持-v2-0" aria-hidden="true" class="header-anchor">#</a> 集群节点支持(V2.0);</h3> <pre><code>   V2.0中会支持集群功能,并对所有节点进行分层,这里每个节点并不会对数据进行分片, 而是保留了全部的数据, 扩容时对节点完整复制,执行初始化指令就加入到集群中了; 这样的话即便系统中99%的节点不可恢复的崩溃, 只要有一个节点, 其他节点即可恢复;
+   这样设计的目的是因为证券策略的私密、高速、运算密集的特性决定的, 具有独立而灵活的特点;
+   根节点可能只有最基本的数据, 而子节点可以复制上级节点的所有数据, 
+</code></pre> <h2 id="sisdb-的设计规划"><a href="#sisdb-的设计规划" aria-hidden="true" class="header-anchor">#</a> sisdb 的设计规划</h2> <pre><code>2018年12月31日 -- 完成V1.0开发和使用，对接clchart实现前后端证券行情展示
+                 该阶段以redis的插件形式存在，仅仅解决数据存取，不包括网络和调度等；
+</code></pre> <p><img src="https://github.com/seerline/sisdb.docs/raw/master/zh/guide/sisdb1.png" alt="V1.0"></p> <pre><code>2019年 6月30日 -- 完成V2.0开发和使用，完善数据库性能和功能
+                 该阶段支持独立的多通讯协议，远程过程调用等；
+</code></pre> <p><img src="https://github.com/seerline/sisdb.docs/raw/master/zh/guide/sisdb2.png" alt="V2.0"></p> <pre><code>未来 -- 通过cs网络爬虫，建立全球有价证券的分布式数据网络，所有行情信息由社区力量贡献并分享;
+</code></pre> <p><img src="https://github.com/seerline/sisdb.docs/raw/master/zh/guide/sisdb3.png" alt="未来"></p> <h2 id="开始使用-sisdb"><a href="#开始使用-sisdb" aria-hidden="true" class="header-anchor">#</a> 开始使用 sisdb</h2> <h3 id="下载安装"><a href="#下载安装" aria-hidden="true" class="header-anchor">#</a> 下载安装</h3> <blockquote><p>以redis插件形式安装</p></blockquote> <p>1、从以下地址下载并安装redis，对 antirez 的版本做了些微的修改，以适应json格式的请求命令；</p> <div class="language-shell extra-class"><pre class="language-text"><code> cd /home
+ git clone  https://github.com/coollyer/redis.git
+</code></pre></div><p>安装redis请参考网上流程，相关的自行安装；</p> <p>2、下载并安装sisdb</p> <div class="language-shell extra-class"><pre class="language-text"><code> git clone  https://github.com/seerline/sisdb.git
+ cd sisdb/src/sisdb
+ cmake .
+ make
+</code></pre></div><p>程序安装完成；</p> <p>3、配置 redis.conf 并启动 <code>cd /home/redis</code></p> <blockquote><p>在centos7.0版本配置：
+在 redis.conf 增加一行
+<code>loadmodule ../sisdb/bin/libsisdb.so ../sisdb/bin/sisdb.conf</code></p></blockquote> <blockquote><p>在 apple 版本配置：
+在 redis.conf 增加一行 <code>loadmodule ../sisdb/bin/libsisdb.dylib ../sisdb/bin/sisdb.conf</code></p></blockquote> <pre><code>./src/redis-server redis.conf
+</code></pre> <p>4、运行客户端开始体验</p> <pre><code>  ./src/redis-cli 
+
+  &gt; sisdb.list      
+  --- 列出所有数据表, 系统默认会有一个stock的数据集合
+  --- 用户也可以自行增加不同类别的数据集合，但数据集合名字不能相同，数据表名可重复
+
+  &gt; stock.set sh600999.now json {&quot;time&quot;:1530498214,&quot;close&quot;:100,&quot;vol&quot;:1000}
+  --- 向数据库的now表写入一条行情信息, 虽然只写入了一条数据，数据库已经更新了相关的其他数据
+  --- 由于tick、min、min5、day这些表订阅了now，因此当now数据更新后，会同时更新订阅了now的其他关联表，因此，此时访问其他表也会有数据；
+
+  &gt; stock.get sh600999.tick
+  --- 列出sh600999的分笔成交，默认以json格式返回
+
+  &gt; stock.get sh600999.min 
+  --- 列出sh600999的分钟线数据，未输入字段特殊处理
+
+  &gt;&gt; 下面进行带参数的查询
+
+  &gt; stock.set sh600999.now json {&quot;time&quot;:1530598214,&quot;close&quot;:120,&quot;vol&quot;:5000}
+  --- 再增加一条20180703的数据
+
+  &gt; stock.get sh600999.day {&quot;search&quot;:{&quot;min&quot;:20180702}}    
+  --- 列出 20180702 的日线数据
+
+  &gt; stock.get sh600999.day {&quot;fields&quot;:&quot;time,close&quot;,&quot;format&quot;:&quot;array&quot;,&quot;search&quot;:{&quot;min&quot;:20180702,&quot;count&quot;:10}}
+  --- 以数组格式列出 20180702 后共10条日线数据，只需要time和close字段
+
+  --- 更多参数请阅读后续文档
+</code></pre> <blockquote><p>以独立运行模式安装 (暂时不支持)</p></blockquote> <pre><code>  实质是把网络通讯功能提取为前置机，起到负载均衡，服务调度等功能，后端绑定多个so、python脚本、提供服务连接；
+</code></pre> <p>1、下载并安装sisdb
+<code>git clone https://github.com/seerline/sisdb.git cd sisdb/src cmake . make</code></p> <p>2、下载并安装 cs 通讯中间件
+<code>git clone https://github.com/seerline/cs.git cd cs/src cmake . make</code>
+程序安装完成；</p> <p>2、运行服务端,</p> <p>cd cs/bin</p> <p>./cs-server sisdb.conf</p> <p>-- server默认打开127.0.0.1:20329 端口用于TCP通讯端口;</p> <p>-- 20330 为http端口 20331 为https端口
+-- 20332 为ws端口   20333 为wss端口</p> <p>运行客户端
+./cs-client</p> <pre><code>&gt;restore ...
+--- 恢复指定目录数据到当前数据库
+&gt;backup ...
+--- 备份当前数据库到指定目录
+
+&gt;sisdb.list
+--- 列出所有数据表 
+</code></pre> <hr> <h2 id="指令集"><a href="#指令集" aria-hidden="true" class="header-anchor">#</a> 指令集</h2> <blockquote><p>sisdb.list</p></blockquote> <p>列出所有数据表</p> <blockquote><p>[db].get [key].day [command]</p></blockquote> <p>[db]  表示从哪个数据集合分发的指令
+[key] 表示取哪只股票数据
+key== * 表示所有股票数据，</p> <p>[command] 可有可无，由command定义数据范围和字段范围</p> <p>command为json命令
+stsdb.get collects.exch {&quot;format&quot;:&quot;json&quot;}
+以json格式返回exch的所有记录名；
+获取exch库的所有市场号</p> <p>用户传入的command中关键字的定义如下:</p> <pre><code>       &quot;format&quot;: 表示格式
+              &quot;json&quot; --&gt; STS_DATA_JSON  默认返回json全部数据
+			   &quot;array&quot; --&gt; STS_DATA_ARRAY 仅仅返回value数组
+			   &quot;struct&quot; --&gt; STS_DATA_BIN  
+			   &quot;string&quot; --&gt; STS_DATA_STRING
+			   &quot;zip&quot; --&gt; STS_DATA_ZIP
+</code></pre> <p>字段:     &quot;fields&quot;:  &quot;time,close,vol,name&quot; 表示一共4个字段<br>
+空----&gt;表示全部字段
+--------&lt;以下区域没有表示全部数据&gt;--------
+数据范围: &quot;search&quot;:   min,max 按时序索引取数据
+count(和max互斥，正表示向后，负表示向前),
+force为0表示按实际取，为1若无数据就取min前一个数据，
+数据范围: &quot;range&quot;:    start，stop 按记录号取数据 0，-1--&gt;表示全部数据
+count(和stop互斥，正表示向后，负表示向前),</p> <p>返回数据为:
+[[]];</p> <blockquote><p>[db].set [key].day [format] [data]</p></blockquote> <p>[db]  表示从哪个数据集合分发的指令
+[key] 表示取哪只股票数据，必须有明确的代码 如果代码不存在会直接生成一个，并不会报错</p> <p>[format] 表示传入数据格式
+&quot;json&quot; --&gt; STS_DATA_JSON  默认返回json全部数据
+&quot;array&quot; --&gt; STS_DATA_ARRAY 仅仅返回value数组
+&quot;struct&quot; --&gt; STS_DATA_BIN<br>
+&quot;string&quot; --&gt; STS_DATA_STRING
+&quot;zip&quot; --&gt; STS_DATA_ZIP</p> <p>[data] 表示跟的数据，</p> <h2 id="配置说明"><a href="#配置说明" aria-hidden="true" class="header-anchor">#</a> 配置说明</h2> <h3 id="目录a说明"><a href="#目录a说明" aria-hidden="true" class="header-anchor">#</a> 目录a说明</h3> <pre><code> bin - 输出文件、配置文件等
+
+  src - 源码
+
+  demo - 单元测试
+
+  db - 默认数据文件存放位置（运行期目录）
+
+  log - 日志（运行期目录）
+</code></pre> <h3 id="主配置文件-sisdb-conf"><a href="#主配置文件-sisdb-conf" aria-hidden="true" class="header-anchor">#</a> 主配置文件  sisdb.conf</h3> <pre><code>  主要配置文件，可加载多个数据库文件，每个数据库的结构在配置文件中设定好，用户对配置文件中定义好的表结构不能更改；
+  但用户可以通过指令自行创建表格和字段进行数据库操作；
+  详见配置文件中说明
+</code></pre> <h3 id="数据表默认配置文件-sisdb-core-conf"><a href="#数据表默认配置文件-sisdb-core-conf" aria-hidden="true" class="header-anchor">#</a> 数据表默认配置文件 sisdb.core.conf</h3> <pre><code>  sisdb有两种数据表结构
+  1、 json格式数据表
+     主要用于初始化数据和不定字段的数据表存储；
+     json格式数据表任何时候存储都是以json格式保存，因此一般用于存储数量量不大，字段不固定的信息类数据；
+
+  2、 结构化格式数据表
+     主要用于结构固定，数值型数据的存储； 
+</code></pre> <blockquote><p>首先创建一个市场的基础数据表
+数据以散列hash表方式存储，数据结构如下：</p></blockquote> <pre><code>  key --&gt; tables --&gt; data ;
+
+  主要有以下几种key值；
+  
+  市场编号 -- 仅有且必须有一个market表；（json格式）
+             储存该市场的基础信息和配置，比如开收市时间，时区，市场名称等，这些信息通常在初始化时存入；
+
+  例子：SH  (市场号不区分大小写)
+
+     market表中必要字段：
+
+     1、 trade-time --交易时间段  [[930,1130],[1300,1500]]
+
+     2、 work-time -- 工作时间  [900,1530]
+
+     3、trade-date -- 当前交易日期
+     （当状态为1时更改该日期，因为当周末不交易时也会有0状态，但必须有行情进来才认为是交易开始）
+
+     4、close-date -- 收市日期（工作时间结束，行情不再发生变化时的日期）
+
+     5、status  --  状态，0 初始化等待 1 正常运行 3 收市
+  
+
+  市场编号 + 股票代码 -- 必须有至少一个stock表（json格式）；存储一个股票的信息，保存该股票的特定信息；
+  
+  例子：sh600999
+
+  stock表中必要字段：
+
+  1、market -- 市场号 虽然系统默认前两位为市场号，但并不排除后期有3位的市场号，因此每个代码隶属哪个市场必须要指明
+
+  2、code -- 股票代码
+
+  3、name -- 股票名称  utf8
+
+  4、search -- 检索串
+
+  5、price-unit   -- 价格单位   默认为 100 
+     定义为 price 的字段必须对传入的值放大后取整写入，输出时再缩小以 float 输出；
+
+  6、volume-unit -- 成交量单位  默认为 100
+     定义为volume的字段必须对传入的值缩小后写入，输出时再放大以uint输出；
+  
+  7、type -- 股票类型
+
+  8、before -- 前收盘 
+
+  ---------
+
+  配置文件会设定默认的JSON，如果客户没有输入对应信息，就自动价值默认市场和股票的配置；
+
+  其他字段可自行增补；
+</code></pre> <blockquote><p>每个股票的结构化时序数据库说明</p></blockquote> <pre><code>  数据存储在内存中以key+value的方式存在，key为股票代码，前两位为市场号，后面为不定长的股票代码；
+  value为一个数据集合，包括说有数据表；
+  系统会以hash算法进行key的检索，时间复杂度为1；
+</code></pre> <blockquote><p>type:</p></blockquote> <pre><code>  1、sts  : struct time serial  结构化时序数据表，为主要的行情数据存储结构； 默认值
+
+  2、json  :  该表为json格式数据，只能按json格式读取，通常一个key一条数据，类似key-value的字典
+              支持节点查询
+
+  ---------------------------------------------------------
+
+  非json的数据表一般具备时间字段，时间字段为保留关键字time，并处于第一位，如果传入数据没有该字段，就用服务器的当前时间；
+
+  time字段的格式定义有以下四种: 
+</code></pre> <blockquote><p>format:
+1、incr   :  递增序列号 从1开始按自然数递增 默认尺度为incr
+2、date   :  按日期  -- 20180303 默认尺度为day
+3、second :  按秒    -- time_t 格式存储数据 默认尺度为sec
+4、msec   :  按毫秒  -- mtime_t 64位时间格式 默认尺度为msec</p></blockquote> <pre><code>     5、none   :  该表没有时间字段 scale为none 依然是结构化数据
+
+                 
+
+  time字段的时间尺度定义有以下几种: 
+  时间尺度的定义是保证同一个时间尺度的数据只能覆盖合并，而不能生成新的记录；
+  scale 结合 insert-check 判断是否生成新的数据，检查 insert-check 中字段不为0，并且时间尺度为新记录；
+  需要和format结合起来使用，sclae 的作用是客户端无需了解数据库中数据情况如何，直接把最新数据上传，由服务器来合并数据
+  简化客户端的工作量；
+</code></pre> <blockquote><p>scale:
+0  : incr  : 递增序列号
+1  : msec  : 毫秒  -- msec
+5  : second : 秒    -- secs
+10 : min1  : 1分钟 -- secs
+11 : min5  : 5分钟 -- secs
+15 : hour  : 小时  -- secs
+20 : date   : 天 -- date
+21 : week  : 周 -- date
+25 : month : 月 -- date
+30 : year  : 年 -- date
+insert-check:
+生成新记录时需要检查的字段；</p></blockquote> <blockquote><p>limit:
+最大保存记录数</p></blockquote> <blockquote><p>fields:
+字段定义
+# 字段名| 数据类型| 长度 | io 放大还是缩小| 缩放比例 zoom|压缩类型|压缩参考字段索引</p></blockquote> <pre><code>  &gt; 数据类型
+  1、int     整型 
+  2、uint    无符号整型
+  3、float   浮点数  实际保存依然为整型，通过io和zoom来还原数据
+  4、char    定长字符串
+  5、string  不定长字符串  (暂时不用)
+  6、json    json字符串   (暂时不用)
+  7、price   价格 --放大倍数参考基准单位 (暂时不用)
+  8、volume  数量 --缩放倍数参考基准单位 (暂时不用)
+</code></pre> <blockquote><p>isinit:
+false :  不做初始化；
+true  :  在工作开始时间，进入等待初始化状态，
+当有任何一个SH开头股票的信息传入数据库，那么所有SH开头的代码，对应的等待初始化状态的数据表将会清空数据；</p></blockquote> <blockquote><p>publish:
+当收到本表数据数据并处理后，需要向其他哪些表发布数据，
+这里约定为只能向scale更大的表（小的时间尺度向大的时间尺度）发送数据，否则丢弃；</p></blockquote> <blockquote><p>subscribe-method:
+收到publish过来的信息后，新生成的数据需要通过自行定义的方法来产生；
+而直接输入的数据则不需要进行处理；</p></blockquote> <pre><code>  # 设置该标记表示会生成一个前一时间数据和当前时间数据两个备份区
+  # 新入的数据，会根据前一数据求vol和money，根据当前数据设置open high low close
+
+  1、 copy  直接原样复制, 默认字段配置，如果没有方法就按此处理；
+  2、 incr  特指 vol 和 money 和前一时间数据的增量；
+  3、 once  特指 价格 仅仅在当前数据新生成时写一次 以close为参考
+  4、 max   特指 价格 求最大值
+  5、 min   特指 价格 求最小值
+
+  通过以上5个方法，可以做到字段名无关性；
+
+  例：
+        &quot;open&quot;:	[&quot;init&quot;, &quot;close&quot;],
+			&quot;high&quot;:	[&quot;max&quot;, &quot;close&quot;],
+			&quot;low&quot;:	[&quot;min&quot;, &quot;close&quot;],
+			&quot;vol&quot;:	[&quot;incr&quot;, &quot;vol&quot;],
+			&quot;money&quot;:	[&quot;incr&quot;, &quot;money&quot;]
+</code></pre> <h2 id="插件和算法库"><a href="#插件和算法库" aria-hidden="true" class="header-anchor">#</a> 插件和算法库</h2> <blockquote><p>(暂时不支持)</p></blockquote> <h2 id="集群"><a href="#集群" aria-hidden="true" class="header-anchor">#</a> 集群</h2> <p>对于集群来说, 低等级的节点数据总是以高等级节点为标准的, 这样可以统一因各种原因造成的分片数据不统一的问题, 低级节点可主动请求数据, 高级节点仅在特定时候要求下级节点进行数据更新；</p> <p>设计中对集群数据不分片，任何时候任何节点都可以从高级节点获取全部基础数据；</p> <blockquote><p>(暂时不支持)</p></blockquote> <h2 id="多种通讯协议支持"><a href="#多种通讯协议支持" aria-hidden="true" class="header-anchor">#</a> 多种通讯协议支持</h2> <p>主要是为了满足浏览器直接访问sisdb，从而获取数据进行分析的需求，部署简单，上手迅速；</p> <blockquote><p>(暂时不支持)</p></blockquote> <h2 id="任务调度和负载均衡"><a href="#任务调度和负载均衡" aria-hidden="true" class="header-anchor">#</a> 任务调度和负载均衡</h2> <p>当越来越多的人使用sisdb，并在此基础上开发自己私人或专用的策略算法，但此时并不能保证每个人的程序是安全可靠的，那么由sisdb提供基础行情数据和公共算法库，个人提供算力进行个性化计算就成为必然的趋势；</p> <p>此时安装一个sisdb，并设置接入公共sisdb网格系统，那么就可以使用sisdb公共区域的所有服务，而个人的算法仅仅在本机进行运算，保证安全性的同时，也不会对整个sisdb系统带来不可预测的风险；</p> <blockquote><p>(暂时不支持)</p></blockquote> <h2 id="数据字典"><a href="#数据字典" aria-hidden="true" class="header-anchor">#</a> 数据字典</h2> <blockquote><p>多市场定义</p></blockquote> <p>SH --  上海
+SZ --  深圳
+HK --  香港联交所
+TW --  台湾证券交易所
+NY --  纽约证券交易所
+NS --  纳斯达克证券交易所</p> <p>先以股票交易所为主，未来期货交易所、外汇市场、虚拟货币交易所另行定义标志符；</p> <p>市场编码并不一定是两位字符，也可以是更多位，因此判断市场并不要直接截取关键字的前两位，而是应该通过数据库中唯一的key值，查询其stock中的market来判定市场归属；</p></div> <div class="page-edit"><div class="edit-link"><a href="https://github.com/seerline/sisdb/edit/master/docs/zh/guide/README.md" target="_blank" rel="noopener noreferrer">在 GitHub 上编辑此页</a> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></div> <div class="last-updated"><span class="prefix">上次更新: </span> <span class="time">2018-10-29 19:49:01</span></div></div> <!----> </div></div><div class="global-ui"></div></div>
+    <script src="/sisdb/assets/js/1.c6f8df2e.js" defer></script><script src="/sisdb/assets/js/11.b88a5950.js" defer></script><script src="/sisdb/assets/js/app.1d823e4c.js" defer></script>
+  </body>
+</html>
