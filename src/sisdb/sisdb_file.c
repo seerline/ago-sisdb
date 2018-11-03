@@ -1,12 +1,12 @@
 ﻿
-#include "sis_db_file.h"
+#include "sisdb_file.h"
 
-// bool sis_db_file_check(const char *service_)
+// bool sisdb_file_check(const char *service_)
 // {
 //     return true;
 // }
 
-bool sis_db_file_save_conf(const char *dbpath_, s_sis_db *db_)
+bool sisdb_file_save_conf(const char *dbpath_, s_sis_db *db_)
 {
     char conf[SIS_PATH_LEN];
     sis_sprintf(conf,SIS_PATH_LEN, SIS_DB_FILE_CONF, dbpath_, db_->name);
@@ -32,7 +32,7 @@ bool sis_db_file_save_conf(const char *dbpath_, s_sis_db *db_)
     return true;
 }
   
-bool _sis_db_file_save_collect_struct(s_sis_sds key_, 
+bool _sisdb_file_save_collect_struct(s_sis_sds key_, 
         s_sis_collect_unit *unit_,
         sis_file_handle sdbfp_,
         sis_file_handle zerofp_)
@@ -47,7 +47,7 @@ bool _sis_db_file_save_collect_struct(s_sis_sds key_,
     sis_file_write(sdbfp_,val,1,head.size);
     return true;
 }
-bool _sis_db_file_save_collect(s_sis_sds key_, 
+bool _sisdb_file_save_collect(s_sis_sds key_, 
         s_sis_collect_unit *unit_,
         sis_file_handle sdbfp_,
         sis_file_handle zerofp_)
@@ -63,24 +63,24 @@ bool _sis_db_file_save_collect(s_sis_sds key_,
             break;
         case SIS_DATA_STRUCT:
         default:
-            o = _sis_db_file_save_collect_struct(key_, unit_,sdbfp_,zerofp_);
+            o = _sisdb_file_save_collect_struct(key_, unit_,sdbfp_,zerofp_);
             break;
     }
     return o;
 }
-bool _sis_db_file_save_table(s_sis_table *tb_,sis_file_handle sdbfp_,sis_file_handle zerofp_)
+bool _sisdb_file_save_table(s_sis_table *tb_,sis_file_handle sdbfp_,sis_file_handle zerofp_)
 {
 	s_sis_dict_entry *de;
 	s_sis_dict_iter *di = sis_dict_get_iter(tb_->collect_map);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sis_collect_unit *val = (s_sis_collect_unit *)sis_dict_getval(de);
-        _sis_db_file_save_collect(sis_dict_getkey(de), val, sdbfp_, zerofp_);
+        _sisdb_file_save_collect(sis_dict_getkey(de), val, sdbfp_, zerofp_);
 	}
 	sis_dict_iter_free(di);    
     return true;
 }
-bool _sis_db_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sis_table *tb_)
+bool _sisdb_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sis_table *tb_)
 {
     // 打开sdb并移到文件尾，准备追加数据
     char sdb[SIS_PATH_LEN];
@@ -107,10 +107,10 @@ bool _sis_db_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sis_table *tb_)
 		return false;
 	}
 	sis_file_seek(zero_fp, 0, SEEK_SET);
-    _sis_db_file_save_table(tb_, sdb_fp, zero_fp);
+    _sisdb_file_save_table(tb_, sdb_fp, zero_fp);
     sis_file_close(zero_fp);
 #else
-    _sis_db_file_save_table(tb_, sdb_fp, 0);
+    _sisdb_file_save_table(tb_, sdb_fp, 0);
 #endif
 
     sis_file_close(sdb_fp);
@@ -118,16 +118,16 @@ bool _sis_db_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sis_table *tb_)
     return true;
 }
 
-bool sis_db_file_save(const char *dbpath_, s_sis_db *db_)
+bool sisdb_file_save(const char *dbpath_, s_sis_db *db_)
 {
-    sis_db_file_save_conf(dbpath_,db_);
+    sisdb_file_save_conf(dbpath_,db_);
 
  	s_sis_dict_entry *de;
 	s_sis_dict_iter *di = sis_dict_get_iter(db_->db);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
-        _sis_db_file_save_sdb(dbpath_, db_, val);
+        _sisdb_file_save_sdb(dbpath_, db_, val);
 	}
 	sis_dict_iter_free(di);   
 
@@ -139,17 +139,17 @@ bool sis_db_file_save(const char *dbpath_, s_sis_db *db_)
     return true;
 }
 
-bool sis_db_file_saveto(const char *dbpath_, s_sis_db *db_, int format_, const char *tb_)
+bool sisdb_file_saveto(const char *dbpath_, s_sis_db *db_, int format_, const char *tb_)
 {
     //???
-    sis_db_file_save_conf(dbpath_,db_);
+    sisdb_file_save_conf(dbpath_,db_);
 
  	s_sis_dict_entry *de;
 	s_sis_dict_iter *di = sis_dict_get_iter(db_->db);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
-        _sis_db_file_save_sdb(dbpath_, db_, val);
+        _sisdb_file_save_sdb(dbpath_, db_, val);
 	}
 	sis_dict_iter_free(di);   
 
@@ -161,7 +161,7 @@ bool sis_db_file_saveto(const char *dbpath_, s_sis_db *db_, int format_, const c
     return true;    
 }
 
-bool sis_db_file_save_aof(const char *dbpath_, s_sis_db *db_, 
+bool sisdb_file_save_aof(const char *dbpath_, s_sis_db *db_, 
             int format_, const char *tb_, const char *key_, 
             const char *val_, size_t len_)
 {
@@ -190,7 +190,7 @@ bool sis_db_file_save_aof(const char *dbpath_, s_sis_db *db_,
     return true;
 }
 // ------------------- load file -------------------------- //
-bool sis_db_file_load_aof(const char *dbpath_, s_sis_db *db_)
+bool sisdb_file_load_aof(const char *dbpath_, s_sis_db *db_)
 {
     char aof[SIS_PATH_LEN];
     sis_sprintf(aof,SIS_PATH_LEN, SIS_DB_FILE_AOF, dbpath_, db_->name);
@@ -231,7 +231,7 @@ bool sis_db_file_load_aof(const char *dbpath_, s_sis_db *db_)
     return true;
     
 }
-bool _sis_db_file_load_table(s_sis_table *tb_,sis_file_handle fp_)
+bool _sisdb_file_load_table(s_sis_table *tb_,sis_file_handle fp_)
 {
     tb_->loading = true;  // 为true时不做links工作
     bool hashead =false;
@@ -268,7 +268,7 @@ bool _sis_db_file_load_table(s_sis_table *tb_,sis_file_handle fp_)
     // 释放没有移动前的指针
     return true;
 }
-bool sis_db_file_load(const char *dbpath_, s_sis_db *db_)
+bool sisdb_file_load(const char *dbpath_, s_sis_db *db_)
 {
     // 遍历加载所有数据表
     char sdb[SIS_PATH_LEN];
@@ -283,15 +283,15 @@ bool sis_db_file_load(const char *dbpath_, s_sis_db *db_)
 	    if (fp)
 	    {
 	        sis_file_seek(fp, 0, SEEK_SET);
-            _sis_db_file_load_table(val, fp);
+            _sisdb_file_load_table(val, fp);
             sis_file_close(fp);
 	    }
 	}
 	sis_dict_iter_free(di);   
     // 加载完毕再加载aof文件
     // 如果有aof文件表示非正常退出，需要执行存盘操作，
-    if (sis_db_file_load_aof(dbpath_,db_)) {
-        sis_db_file_save(dbpath_, db_);
+    if (sisdb_file_load_aof(dbpath_,db_)) {
+        sisdb_file_save(dbpath_, db_);
     }
     return true;
 }

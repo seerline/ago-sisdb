@@ -1,5 +1,5 @@
 ﻿
-#include "sis_db_io.h"
+#include "sisdb_io.h"
 #include "os_thread.h"
 
 /********************************/
@@ -30,7 +30,7 @@ void *_thread_save_plan_task(void *argv_)
             if (sis_thread_wait_sleep(&db->thread_wait, db->save_always.delay) == SIS_ETIMEDOUT)
             {
                 sis_mutex_lock(&server.db->save_mutex);
-                sis_db_file_save(server.dbpath, db);
+                sisdb_file_save(server.dbpath, db);
                 sis_mutex_unlock(&server.db->save_mutex);
             }
         }
@@ -46,7 +46,7 @@ void *_thread_save_plan_task(void *argv_)
                     if (min == *lm)
                     {
                         sis_mutex_lock(&server.db->save_mutex);
-                        sis_db_file_save(server.dbpath, db);
+                        sisdb_file_save(server.dbpath, db);
                         sis_mutex_unlock(&server.db->save_mutex);
                         printf("save plan ... %d -- -- %d \n", *lm, min);
                     }
@@ -109,7 +109,7 @@ char *sisdb_open(const char *conf_)
     //-------- db start ----------//
     s_sis_json_handle *sdb_json = NULL;
 
-    server.db = sis_db_create(server.service_name);
+    server.db = sisdb_create(server.service_name);
 
     // server.db->init_time = sis_json_get_int(service,"init-time",900);
     // server.db->init_status = SIS_INIT_WAIT;
@@ -226,7 +226,7 @@ char *sisdb_open(const char *conf_)
     //     }
     // }
 
-    server.db->save_format = sis_db_find_map_uid(server.db,
+    server.db->save_format = sisdb_find_map_uid(server.db,
                                                  sis_json_get_str(service, "save-format"),
                                                  SIS_MAP_DEFINE_DATA_TYPE);
 
@@ -285,7 +285,7 @@ char *sisdb_open(const char *conf_)
     // 这里加载数据
     // 应该需要判断数据的版本号，如果不同，应该对磁盘上的数据进行数据字段重新匹配
     // 把老库中有的字段加载到新的库中，再存盘
-    if (!sis_db_file_load(server.dbpath, server.db))
+    if (!sisdb_file_load(server.dbpath, server.db))
     {
         sis_out_error(1)("load sdb fail. exit!\n");
         goto error;
@@ -310,7 +310,7 @@ error:
     {
         sis_json_close(sdb_json);
     }
-    sis_db_destroy(server.db);
+    sisdb_destroy(server.db);
     sis_conf_close(server.config);
     return NULL;
 }
@@ -333,7 +333,7 @@ void sisdb_close()
         printf("save_pid end.\n");
     }
 
-    sis_db_destroy(server.db);
+    sisdb_destroy(server.db);
 }
 bool sisdb_save()
 {
@@ -342,7 +342,7 @@ bool sisdb_save()
         sis_out_error(3)("no init sisdb.\n");
         return false;
     }
-    return sis_db_file_save(server.dbpath, server.db);
+    return sisdb_file_save(server.dbpath, server.db);
 }
 bool sisdb_saveto(const char *dt_, const char *db_)
 {
@@ -352,14 +352,14 @@ bool sisdb_saveto(const char *dt_, const char *db_)
         return false;
     }
 
-    int uid = sis_db_find_map_uid(server.db, dt_, SIS_MAP_DEFINE_DATA_TYPE);
+    int uid = sisdb_find_map_uid(server.db, dt_, SIS_MAP_DEFINE_DATA_TYPE);
     if (uid != SIS_DATA_CSV && uid != SIS_DATA_JSON && uid != SIS_DATA_ARRAY)
     {
         sis_out_error(3)("save data type error.\n");
         return false;
     }
 
-    return sis_db_file_saveto(server.dbpath, server.db, uid, db_);
+    return sisdb_file_saveto(server.dbpath, server.db, uid, db_);
 }
 s_sis_sds sisdb_list_sds()
 {
@@ -368,7 +368,7 @@ s_sis_sds sisdb_list_sds()
         sis_out_error(3)("no init sisdb.\n");
         return NULL;
     }
-    return sis_db_get_table_info_sds(server.db);
+    return sisdb_get_table_info_sds(server.db);
 }
 
 s_sis_sds sisdb_get_sds(const char *db_, const char *key_, const char *com_)
@@ -378,7 +378,7 @@ s_sis_sds sisdb_get_sds(const char *db_, const char *key_, const char *com_)
         sis_out_error(3)("no init sisdb.\n");
         return NULL;
     }
-    s_sis_table *table = sis_db_get_table(server.db, db_);
+    s_sis_table *table = sisdb_get_table(server.db, db_);
     if (!table)
     {
         sis_out_error(3)("no find %s db.\n", db_);
@@ -406,7 +406,7 @@ int sisdb_set_format(int format_, const char *db_, const char *key_, const char 
     {
         printf("%s val : %s\n", __func__, val_);
     }
-    s_sis_table *table = sis_db_get_table(server.db, db_);
+    s_sis_table *table = sisdb_get_table(server.db, db_);
     if (!table)
     {
         sis_out_error(3)("no find %s db.\n", db_);
@@ -430,7 +430,7 @@ int sisdb_set(const char *dt_, const char *db_, const char *key_, const char *va
         return SIS_SERVER_REPLY_ERR;
     }
 
-    int uid = sis_db_find_map_uid(server.db, dt_, SIS_MAP_DEFINE_DATA_TYPE);
+    int uid = sisdb_find_map_uid(server.db, dt_, SIS_MAP_DEFINE_DATA_TYPE);
     if (uid != SIS_DATA_STRUCT && uid != SIS_DATA_JSON && uid != SIS_DATA_ARRAY)
     {
         sis_out_error(3)("set data type error.\n");
@@ -438,7 +438,7 @@ int sisdb_set(const char *dt_, const char *db_, const char *key_, const char *va
     }
 
     // 如果保存aof失败就返回错误
-    if (!sis_db_file_save_aof(server.dbpath, server.db, uid, db_, key_, val_, len_))
+    if (!sisdb_file_save_aof(server.dbpath, server.db, uid, db_, key_, val_, len_))
     {
         sis_out_error(3)("save aof error.\n");
         return SIS_SERVER_REPLY_ERR;

@@ -1,8 +1,8 @@
 ﻿
 
-#include "sis_fields.h"
+#include "sisdb_fields.h"
 #include "sis_math.h"
-#include "sis_table.h"
+#include "sisdb_table.h"
 
 /*
 inline int zip_zoom(int n)  // 1000 ==> 0x00011  -1000 ==> 0x10011

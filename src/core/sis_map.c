@@ -163,7 +163,7 @@ s_sis_map_sds *sis_map_sds_create()
 };
 
 #if 0
-#include <sis_fields.h>
+#include <sisdb_fields.h>
 
 int main()
 {

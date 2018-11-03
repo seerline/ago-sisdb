@@ -1,13 +1,13 @@
 ﻿
 
-#include "sis_table.h"
-#include "sis_collect.h"
-#include "sis_db.h"
+#include "sisdb_table.h"
+#include "sisdb_collect.h"
+#include "sisdb.h"
 
 //com_为一个json格式字段定义
 s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node *com_)
 {
-	s_sis_table *tb = sis_db_get_table(db_, name_);
+	s_sis_table *tb = sisdb_get_table(db_, name_);
 	if (tb)
 	{
 		sis_table_destroy(tb);
@@ -32,7 +32,7 @@ s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node 
 	const char *strval = NULL;
 
 	strval = sis_json_get_str(com_, "scale");
-	map = sis_db_find_map_define(db_, strval, SIS_MAP_DEFINE_SCALE);
+	map = sisdb_find_map_define(db_, strval, SIS_MAP_DEFINE_SCALE);
 	if (map)
 	{
 		tb->control.time_scale = map->uid;
@@ -44,14 +44,14 @@ s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node 
 	{
 		char mode[32];
 		sis_str_substr(mode, 32, strval, ',', i);
-		map = sis_db_find_map_define(db_, mode, SIS_MAP_DEFINE_OPTION_MODE);
+		map = sisdb_find_map_define(db_, mode, SIS_MAP_DEFINE_OPTION_MODE);
 		if (map)
 		{
 			tb->control.insert_mode |= map->uid;
 		}
 	}
 	// strval = sis_json_get_str(com_, "update-mode");
-	// map = sis_db_find_map_define(db_, strval, SIS_MAP_DEFINE_OPTION_MODE);
+	// map = sisdb_find_map_define(db_, strval, SIS_MAP_DEFINE_OPTION_MODE);
 	// if (map)
 	// {
 	// 	tb->control.update_mode = map->uid;
@@ -91,7 +91,7 @@ s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node 
 			if (fu)
 			{
 				fu->catch_method = SIS_FIELD_METHOD_COVER;
-				map = sis_db_find_map_define(db_, sis_json_get_str(child, "0"), SIS_MAP_DEFINE_FIELD_METHOD);
+				map = sisdb_find_map_define(db_, sis_json_get_str(child, "0"), SIS_MAP_DEFINE_FIELD_METHOD);
 				if (map)
 				{
 					fu->catch_method = map->uid;
@@ -151,7 +151,7 @@ void sis_table_collect_clear(s_sis_table *tb_)
 	// sis_map_pointer_destroy(tb_->collect_map);
 }
 //取数据和写数据
-s_sis_table *sis_db_get_table(s_sis_db *db_, const char *name_)
+s_sis_table *sisdb_get_table(s_sis_db *db_, const char *name_)
 {
 	s_sis_table *val = NULL;
 	if (db_->db)
@@ -208,7 +208,7 @@ void sis_table_set_fields(s_sis_table *tb_, s_sis_json_node *fields_)
 		flags.refer = 0;
 
 		const char *val = sis_json_get_str(node, "1");
-		map = sis_db_find_map_define(tb_->father, val, SIS_MAP_DEFINE_FIELD_TYPE);
+		map = sisdb_find_map_define(tb_->father, val, SIS_MAP_DEFINE_FIELD_TYPE);
 		if (map)
 		{
 			flags.type = map->uid;
@@ -468,7 +468,7 @@ int _sis_table_update_links(s_sis_table *table_,const char *key_, s_sis_collect_
 	for (int k = 0; k < count; k++)
 	{
 		const char *link_db = sis_string_list_get(table_->links, k);
-		link_table = sis_db_get_table(table_->father, link_db);
+		link_table = sisdb_get_table(table_->father, link_db);
 		// printf("links=%d  db=%s  fields=%p %p \n", k, link_db,link_table,link_table->field_name);
 		// for (int f=0; f<sis_string_list_getsize(link_table->field_name); f++){
 		// 	printf("  fields=%s\n", sis_string_list_get(link_table->field_name,f));
@@ -720,7 +720,7 @@ int sis_from_node_get_format(s_sis_db *db_, s_sis_json_node *node_)
 	s_sis_json_node *format = sis_json_cmp_child_node(node_, "format");
 	if (format)
 	{
-		s_sis_map_define *smd = sis_db_find_map_define(db_, format->value, SIS_MAP_DEFINE_DATA_TYPE);
+		s_sis_map_define *smd = sisdb_find_map_define(db_, format->value, SIS_MAP_DEFINE_DATA_TYPE);
 		if (smd)
 		{
 			o = smd->uid;

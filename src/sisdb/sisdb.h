@@ -120,14 +120,14 @@ typedef struct s_sis_db {
 #pragma pack(pop)
 
 
-s_sis_db *sis_db_create(char *name);  //数据库的名称，为空建立一个sys的数据库名
-void sis_db_destroy(s_sis_db *);  //关闭一个数据库
+s_sis_db *sisdb_create(char *name);  //数据库的名称，为空建立一个sys的数据库名
+void sisdb_destroy(s_sis_db *);  //关闭一个数据库
 
-s_sis_sds sis_db_get_table_info_sds(s_sis_db *);
+s_sis_sds sisdb_get_table_info_sds(s_sis_db *);
 
 
-s_sis_map_define *sis_db_find_map_define(s_sis_db *, const char *name_, uint8 style_);
-int sis_db_find_map_uid(s_sis_db *, const char *name_, uint8 style_);
+s_sis_map_define *sisdb_find_map_define(s_sis_db *, const char *name_, uint8 style_);
+int sisdb_find_map_uid(s_sis_db *, const char *name_, uint8 style_);
 
 
 #endif  /* _SIS_DB_H */

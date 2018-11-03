@@ -11,9 +11,9 @@
 #include "sis_str.h"
 #include "sis_file.h"
 
-#include "sis_db.h"
-#include "sis_table.h"
-#include "sis_db_file.h"
+#include "sisdb.h"
+#include "sisdb_table.h"
+#include "sisdb_file.h"
 
 #pragma pack(push,1)
 

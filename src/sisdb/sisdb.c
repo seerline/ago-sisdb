@@ -1,250 +1,164 @@
+﻿
 
-#include <sis_db_io.h>
-#include <sis_comm.h>
+#include "sisdb.h"
+#include "sisdb_table.h"
 
-int call_sisdb_list(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
+static struct s_sis_map_define _sis_map_defines[] = {
+	/////////////类型定义/////////////
+	{"NONE", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_NONE, 4},
+	// {"INDEX", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_INDEX, 4},
+	// {"TIME", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TIME, 8},
+	// {"CODE", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_CODE, 8},
+	{"STRING", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_STRING, 16},
+	{"INT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_INT, 4},
+	{"UINT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_UINT, 4},
+	// {"FLOAT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_FLOAT, 4},
+	{"DOUBLE", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_DOUBLE, 8},
+	/////////////插入和修改方式定义/////////////
+	{"NONE", SIS_MAP_DEFINE_OPTION_MODE, SIS_OPTION_NONE, 0},
+	{"ALWAYS", SIS_MAP_DEFINE_OPTION_MODE, SIS_OPTION_ALWAYS, 0},
+	{"SORT", SIS_MAP_DEFINE_OPTION_MODE, SIS_OPTION_SORT, 0},
+	{"TIME", SIS_MAP_DEFINE_OPTION_MODE, SIS_OPTION_TIME, 0},
+	{"VOL", SIS_MAP_DEFINE_OPTION_MODE, SIS_OPTION_VOL, 0},
+	{"CODE", SIS_MAP_DEFINE_OPTION_MODE, SIS_OPTION_CODE, 0},
+	/////////////数据类型定义/////////////
+	{"NONE", SIS_MAP_DEFINE_SCALE, SIS_SCALE_NONE, 0},
+	{"MSEC", SIS_MAP_DEFINE_SCALE, SIS_SCALE_MSEC, 0},
+	{"SECOND", SIS_MAP_DEFINE_SCALE, SIS_SCALE_SECOND, 0},
+	{"INDEX", SIS_MAP_DEFINE_SCALE, SIS_SCALE_INDEX, 0},
+	{"MIN1", SIS_MAP_DEFINE_SCALE, SIS_SCALE_MIN1, 0},
+	{"MIN5", SIS_MAP_DEFINE_SCALE, SIS_SCALE_MIN5, 0},
+	{"MIN30", SIS_MAP_DEFINE_SCALE, SIS_SCALE_MIN30, 0},
+	{"DAY", SIS_MAP_DEFINE_SCALE, SIS_SCALE_DAY, 0},
+	{"MONTH", SIS_MAP_DEFINE_SCALE, SIS_SCALE_MONTH, 0},
+	/////////////存入数据的方法定义/////////////
+	{"COVER", SIS_MAP_DEFINE_FIELD_METHOD, SIS_FIELD_METHOD_COVER, 0},
+	{"MIN", SIS_MAP_DEFINE_FIELD_METHOD, SIS_FIELD_METHOD_MIN, 0},
+	{"MAX", SIS_MAP_DEFINE_FIELD_METHOD, SIS_FIELD_METHOD_MAX, 0},
+	{"INIT", SIS_MAP_DEFINE_FIELD_METHOD, SIS_FIELD_METHOD_INIT, 0},
+	{"INCR", SIS_MAP_DEFINE_FIELD_METHOD, SIS_FIELD_METHOD_INCR, 0},
+	/////////////压缩类型定义/////////////
+	// { "0", SIS_MAP_DEFINE_ZIP_MODE, SIS_FIELD_NONE, 0 },
+	// { "UP", SIS_MAP_DEFINE_ZIP_MODE, SIS_FIELD_INDEX, 0 },
+	// { "LOCAL", SIS_MAP_DEFINE_ZIP_MODE, SIS_FIELD_NONE, 0 },
+	// { "MULTI", SIS_MAP_DEFINE_ZIP_MODE, SIS_FIELD_SECOND, 0 },
+	/////////////编码定义/////////////
+	// { "SRC", SIS_ENCODEING_SRC, 0 },
+	// { "ROW", SIS_ENCODEING_ROW, 0 },
+	// { "COL", SIS_ENCODEING_COL, 0 },
+	// { "ALL", SIS_ENCODEING_ALL, 0 },
+	// { "STR", SIS_ENCODEING_STR, 0 },
+	// { "COD", SIS_ENCODEING_COD, 0 },
+	/////////////数据类型定义/////////////
+	{"ZIP", SIS_MAP_DEFINE_DATA_TYPE, SIS_DATA_ZIP, 0},
+	{"STRUCT", SIS_MAP_DEFINE_DATA_TYPE, SIS_DATA_STRUCT, 0},
+	{"STRING", SIS_MAP_DEFINE_DATA_TYPE, SIS_DATA_STRING, 0},
+	{"JSON", SIS_MAP_DEFINE_DATA_TYPE, SIS_DATA_JSON, 0},
+	{"CSV", SIS_MAP_DEFINE_DATA_TYPE, SIS_DATA_CSV, 0},
+	{"ARRAY", SIS_MAP_DEFINE_DATA_TYPE, SIS_DATA_ARRAY, 0}};
+
+void _init_map_define(s_sis_map_pointer *fields_)
 {
-	sis_module_not_used(argc_);
-	sis_module_not_used(argv_);
+	sis_map_pointer_clear(fields_);
+	int nums = sizeof(_sis_map_defines) / sizeof(struct s_sis_map_define);
 
-	s_sis_sds o = sisdb_list_sds();
-	if (o)
+	for (int i = 0; i < nums; i++)
 	{
-		sis_module_reply_with_simple_string(ctx_, o);
-		sis_sdsfree(o);
-		return SIS_MODULE_OK;
+		s_sis_sds key = sis_sdsnew(_sis_map_defines[i].key);
+		key = sdscatfmt(key, ".%u", _sis_map_defines[i].style);
+		int rtn = sis_dict_add(fields_, key, &_sis_map_defines[i]);
+		assert(rtn == DICT_OK);
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb list table error.\n");
-}
-int call_sisdb_save(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
-{
-	sis_module_not_used(argc_);
-	sis_module_not_used(argv_);
-
-	if (sisdb_save())
-	{
-		return sis_module_reply_with_simple_string(ctx_, "OK");
-	}
-	return sis_module_reply_with_error(ctx_, "sisdb save error.\n");
-}
-int call_sisdb_saveto(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
-{
-	if (argc_ < 1)
-	{
-		return sis_module_wrong_arity(ctx_);
-	}
-	bool o;
-	if (argc_ == 2) {
-		o = sisdb_saveto(sis_module_string_get(argv_[1], NULL), NULL);
-	} else {
-		o = sisdb_saveto(
-				sis_module_string_get(argv_[1], NULL),
-				sis_module_string_get(argv_[2], NULL));
-	}
-	if (o)
-	{
-		return sis_module_reply_with_simple_string(ctx_, "OK");
-	}
-	return sis_module_reply_with_error(ctx_, "sisdb saveto error.\n");
-}
-// 获取数据可以根据command中的format来确定是json或者是struct
-// 可以单独取数据头定义，比如fields等的定义
-// 但保存在内存中的数据一定是二进制struct的数据格式，仅仅在输出时做数据格式转换
-// set数据时也可以是json或struct格式数据，获得数据后会自动转换成不压缩的struct数据格式
-int call_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
-{
-	if (argc_ < 2)
-	{
-		return sis_module_wrong_arity(ctx_);
-	}
-
-	const char *key = sis_module_string_get(argv_[1], NULL);
-	char db[SIS_TABLE_MAXLEN];
-	char code[SIS_CODE_MAXLEN];
-	int count = sis_str_substr_nums(key, '.');
-	if (count == 1)
-	{
-		sis_strcpy(db, SIS_TABLE_MAXLEN, key);
-		code[0] = 0;
-	}
-	else if (count == 2)
-	{
-		sis_str_substr(db, SIS_TABLE_MAXLEN, key, '.', 1);
-		sis_str_substr(code, SIS_CODE_MAXLEN, key, '.', 0);
-	}
-	else
-	{
-		sis_module_reply_with_error(ctx_, "set data key error.\n");
-	}
-	s_sis_sds o;
-	if (argc_ == 3)
-	{
-		o = sisdb_get_sds(db, code, sis_module_string_get(argv_[2], NULL));
-	}
-	else
-	{
-		o = sisdb_get_sds(db, code, "{\"format\":\"json\"}");
-	}
-	if (o)
-	{
-		sis_out_binary("get out",o, 30);
-		printf("get out ...%lu\n",sis_sdslen(o));
-
-		sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
-		sis_sdsfree(o);
-		return SIS_MODULE_OK;
-	}
-	return sis_module_reply_with_error(ctx_, "sisdb get error.\n");
-}
-int call_sisdb_set(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
-{
-	if (argc_ != 4)
-	{
-		return sis_module_wrong_arity(ctx_);
-	}
-	// printf("%s: %.90s\n", sis_module_string_get(argv_[1], NULL), sis_module_string_get(argv_[3], NULL));
-
-	const char *key = sis_module_string_get(argv_[1], NULL);
-	int count = sis_str_substr_nums(key, '.');
-	if (count != 2)
-	{
-		return sis_module_reply_with_error(ctx_, "set data key error.\n");
-	}
-	char db[SIS_TABLE_MAXLEN];
-	char code[SIS_CODE_MAXLEN];
-	sis_str_substr(db, SIS_TABLE_MAXLEN, key, '.', 1);
-	sis_str_substr(code, SIS_CODE_MAXLEN, key, '.', 0);
-
-	int o;
-	size_t len;
-	const char *val = sis_module_string_get(argv_[3], &len);
-	const char *dt = sis_module_string_get(argv_[2], NULL);
-
-	o = sisdb_set(dt, db, code, val, len);
-
-	if (!o)
-	{
-		return sis_module_reply_with_simple_string(ctx_, "OK");
-	}
-	return sis_module_reply_with_error(ctx_, "sisdb set error.\n");
 }
 
-char *call_sisdb_open(const char *conf_)
+s_sis_db *sisdb_create(char *name_) //数据库的名称，为空建立一个sys的数据库名
 {
-	if (!sis_file_exists(conf_))
+	s_sis_db *db = sis_malloc(sizeof(s_sis_db));
+	memset(db, 0, sizeof(s_sis_db));
+	db->name = sis_sdsnew(name_);
+	db->db = sis_map_pointer_create();
+
+	db->trade_time = sis_struct_list_create(sizeof(s_sis_time_pair), NULL, 0);
+	db->save_plans = sis_struct_list_create(sizeof(uint16), NULL, 0);
+
+	db->map = sis_map_pointer_create();
+
+	_init_map_define(db->map);
+	return db;
+}
+
+void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
+{
+	if (!db_)
 	{
-		sis_out_error(3)("conf file %s no finded.\n", conf_);
+		return;
+	}
+	// 遍历字典中table，手动释放实际的table
+	if (db_->db)
+	{
+		s_sis_dict_entry *de;
+		s_sis_dict_iter *di = sis_dict_get_iter(db_->db);
+		while ((de = sis_dict_next(di)) != NULL)
+		{
+			s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
+			sis_table_destroy(val);
+		}
+		sis_dict_iter_free(di);
+		// 如果没有sis_map_pointer_destroy就必须加下面这句
+		// sis_map_buffer_clear(db_->db);
+	}
+	// 下面仅仅释放key
+	sis_map_pointer_destroy(db_->db);
+
+	sis_sdsfree(db_->name);
+	sis_sdsfree(db_->conf);
+	sis_map_pointer_destroy(db_->map);
+	sis_struct_list_destroy(db_->trade_time);
+	sis_struct_list_destroy(db_->save_plans);
+
+	sis_free(db_);
+}
+
+s_sis_sds sisdb_get_table_info_sds(s_sis_db *db_)
+{
+	s_sis_sds list = sis_sdsempty();
+	if (db_->db)
+	{
+		s_sis_dict_entry *de;
+		s_sis_dict_iter *di = sis_dict_get_iter(db_->db);
+		while ((de = sis_dict_next(di)) != NULL)
+		{
+			s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
+			list = sdscatprintf(list, "  %-10s : fields=%2d, collects=%lu\n",
+								val->name,
+								sis_string_list_getsize(val->field_name),
+								sis_map_buffer_getsize(val->collect_map));
+		}
+	}
+
+	return list;
+}
+
+s_sis_map_define *sisdb_find_map_define(s_sis_db *db_, const char *name_, uint8 style_)
+{
+	if (!name_)
+	{
 		return NULL;
 	}
-	return sisdb_open(conf_);
-}
-int call_sisdb_init(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
-{
-	if (argc_ != 2)
-	{
-		return sis_module_wrong_arity(ctx_);
-	}
-	
-	const char *market = sis_module_string_get(argv_[1], NULL);
-	
-	sisdb_init(market);
-	
-	return sis_module_reply_with_simple_string(ctx_, "OK");
+	s_sis_sds key = sis_sdsnew(name_);
+	key = sdscatfmt(key, ".%u", style_);
+	s_sis_map_define *val = (s_sis_map_define *)sis_dict_fetch_value(db_->map, key);
+	sis_sdsfree(key);
+	// printf("%s,%p\n",name_,val);
+	return val;
 }
 
-int call_sisdb_close(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
+int sisdb_find_map_uid(s_sis_db *db_, const char *name_, uint8 style_)
 {
-	sis_module_not_used(argc_);
-	sis_module_not_used(argv_);
-	sisdb_close();
-	return sis_module_reply_with_simple_string(ctx_, "OK");
-}
-int sis_module_on_unload()
-{
-	printf("--------------close-----------\n");
-	sisdb_close();
-	safe_memory_stop();
-	return SIS_MODULE_OK;
-}
-int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
-{
-	safe_memory_start();
-	// 先取得服务名
-	char *service;
-	if (argc_ == 1)
+	s_sis_map_define *map = sisdb_find_map_define(db_, name_, style_);
+	if (!map)
 	{
-		// service = call_sisdb_open(sis_module_string_get(argv_[0], NULL));
-		service = call_sisdb_open(((s_sis_object *)argv_[0])->ptr);
+		return 0;
 	}
-	else
-	{
-		service = call_sisdb_open("../sisdb/conf/sisdb.conf");
-	}
-	if (!service || !*service)
-	{
-		sis_out_error(3)("init sisdb error.\n");
-		return SIS_MODULE_ERROR;
-	}
-	char servicename[64];
-	sis_sprintf(servicename, 64, "%s", service);
-	if (sis_module_init(ctx_, servicename, 1, SIS_MODULE_VER) == SIS_MODULE_ERROR)
-		return SIS_MODULE_ERROR;
-
-	/* Log the list of parameters passing loading the module. */
-	// for (int k = 0; k < argc_; k++)
-	// {
-	// 	const char *s = sis_module_string_get(argv_[k], NULL);
-	// 	printf("module loaded with argv_[%d] = %s\n", k, s);
-	// }
-
-	sis_sprintf(servicename, 64, "%s.init", service);
-	if (sis_module_create_command(ctx_, servicename, call_sisdb_init,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(servicename, 64, "%s.close", service);
-	if (sis_module_create_command(ctx_, servicename, call_sisdb_close,
-								  "readonly",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(servicename, 64, "%s.list", service);
-	if (sis_module_create_command(ctx_, servicename, call_sisdb_list,
-								  "readonly",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(servicename, 64, "%s.get", service);
-	if (sis_module_create_command(ctx_, servicename, call_sisdb_get,
-								  "readonly",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(servicename, 64, "%s.set", service);
-	if (sis_module_create_command(ctx_, servicename, call_sisdb_set,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(servicename, 64, "%s.save", service);
-	if (sis_module_create_command(ctx_, servicename, call_sisdb_save,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(servicename, 64, "%s.saveto", service);
-	if (sis_module_create_command(ctx_, servicename, call_sisdb_saveto,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	return SIS_MODULE_OK;
+	return map->uid;
 }

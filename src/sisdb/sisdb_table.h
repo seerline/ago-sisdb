@@ -14,8 +14,8 @@
 // #include "sis_math.h"
 #include "sis_time.h"
 
-// #include "sis_fields.h"
-#include "sis_db.h"
+// #include "sisdb_fields.h"
+#include "sisdb.h"
 
 
 #pragma pack(push,1)
@@ -67,7 +67,7 @@ void sis_table_destroy(s_sis_table *);  //删除一个表
 void sis_table_collect_clear(s_sis_table *);    //清理一个表的所有数据
 
 //取数据和写数据
-s_sis_table *sis_db_get_table(s_sis_db *, const char *name_); //name -- table name
+s_sis_table *sisdb_get_table(s_sis_db *, const char *name_); //name -- table name
 
 //对数据库的各种属性设置
 void sis_table_set_ver(s_sis_table *, uint32);  // time_t格式
