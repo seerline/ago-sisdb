@@ -1,29 +1,29 @@
 
 #include <os_file.h>
 
-int sts_open(const char *fn_, int mode_)
+int sis_open(const char *fn_, int mode_)
 {
 	return open(fn_, mode_);
 }
 
 
-sts_file_handle sts_file_open(const char *fn_, int mode_, int access_)
+sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 {
-	sts_file_handle fp = NULL;
+	sis_file_handle fp = NULL;
 	char mode[5];
 	int  index = 0;
-	if(mode_ & STS_FILE_IO_TRUCT) {
+	if(mode_ & SIS_FILE_IO_TRUCT) {
 		mode[index] = 'w';  index++;
 	} else {
-		if (mode_ & STS_FILE_IO_CREATE) {
+		if (mode_ & SIS_FILE_IO_CREATE) {
 			mode[index] = 'a';  index++;
 		}
-		if (mode_ & STS_FILE_IO_READ) {
+		if (mode_ & SIS_FILE_IO_READ) {
 			mode[index] = 'r';  index++;
 		}
 	}
 	mode[index] = 'b'; index++;
-	if (mode_ & STS_FILE_IO_READ && mode_ & STS_FILE_IO_WRITE) 
+	if (mode_ & SIS_FILE_IO_READ && mode_ & SIS_FILE_IO_WRITE) 
 	{
 		mode[index] = '+';
 		index++;
@@ -35,20 +35,20 @@ sts_file_handle sts_file_open(const char *fn_, int mode_, int access_)
 	return fp;
 }
 
-size_t sts_file_size(sts_file_handle fp_)
+size_t sis_file_size(sis_file_handle fp_)
 {
 	fseek(fp_, 0, SEEK_END);
 	return ftell(fp_);
 }
-size_t sts_file_read(sts_file_handle fp_, const char *in_, size_t size_, size_t len_)
+size_t sis_file_read(sis_file_handle fp_, const char *in_, size_t size_, size_t len_)
 {
 	return fread((char *)in_, size_, len_, fp_) * size_;
 }
-size_t sts_file_write(sts_file_handle fp_, const char *in_, size_t size_, size_t len_)
+size_t sis_file_write(sis_file_handle fp_, const char *in_, size_t size_, size_t len_)
 {
 	return fwrite((char *)in_, size_, len_, fp_) * size_;
 }
-void sts_file_getpath(const char *fn_, char *out_, int olen_)
+void sis_file_getpath(const char *fn_, char *out_, int olen_)
 {
 	out_[0] = 0;
 	int i, len = (int)strlen(fn_);
@@ -56,74 +56,74 @@ void sts_file_getpath(const char *fn_, char *out_, int olen_)
 	{
 		if (fn_[i] == '\\' || fn_[i] == '/')
 		{
-			sts_strncpy(out_, olen_, fn_, i + 1);
+			sis_strncpy(out_, olen_, fn_, i + 1);
 			return;
 		}
 	}
 }
-void sts_file_getname(const char *fn_, char *out_, int olen_)
+void sis_file_getname(const char *fn_, char *out_, int olen_)
 {
 	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{
 		if (fn_[i] == '\\' || fn_[i] == '/')
 		{
-			sts_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);
+			sis_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);
 			return;
 		}
 	}
-	sts_strncpy(out_, olen_, fn_, len);
+	sis_strncpy(out_, olen_, fn_, len);
 }
-bool sts_file_exists(const char *fn_)
+bool sis_file_exists(const char *fn_)
 {
-	if (access(fn_, STS_FILE_ACCESS_EXISTS) == 0) return true;
+	if (access(fn_, SIS_FILE_ACCESS_EXISTS) == 0) return true;
 	else return false;
 }
-bool sts_path_exists(const char *path_)
+bool sis_path_exists(const char *path_)
 {
-	char path[STS_PATH_LEN];
-	sts_file_getpath(path_, path, STS_PATH_LEN);
-	if (access(path, STS_FILE_ACCESS_EXISTS) == 0)  return true;
+	char path[SIS_PATH_LEN];
+	sis_file_getpath(path_, path, SIS_PATH_LEN);
+	if (access(path, SIS_FILE_ACCESS_EXISTS) == 0)  return true;
 	else return false;
 }
-bool sts_path_mkdir(const char *path_)
+bool sis_path_mkdir(const char *path_)
 {
 	int len = (int)strlen(path_);
 	if (len == 0) {
 		return false;
 	}
-	char dir[STS_PATH_LEN];
+	char dir[SIS_PATH_LEN];
 	for (int i = 0; i<len; i++)
 	{
 		if (path_[i] == '\\' || path_[i] == '/')
 		{
-			sts_strncpy(dir, STS_PATH_LEN, path_, i + 1);
-			if (sts_path_exists(dir)) {
+			sis_strncpy(dir, SIS_PATH_LEN, path_, i + 1);
+			if (sis_path_exists(dir)) {
 				continue;
 			}
 			mkdir(dir, S_IRWXU | S_IRWXG | S_IRWXO);
 		}
 	}
-	if (sts_path_exists(path_)) return true;
+	if (sis_path_exists(path_)) return true;
 	else  return  false;
 }
 
-void sts_file_rename(char *oldn_, char *newn_)
+void sis_file_rename(char *oldn_, char *newn_)
 {
 	rename(oldn_, newn_);
 }
 
-void sts_file_delete(const char *fn_)
+void sis_file_delete(const char *fn_)
 {
 	unlink(fn_);
 }
 
-char sts_path_separator()
+char sis_path_separator()
 {
 	return '/';
 }
 
-void sts_path_complete(char *path_,int maxlen_)
+void sis_path_complete(char *path_,int maxlen_)
 {
 	size_t len = strlen(path_);
 	for(int i=0;i<len;i++)

@@ -9,9 +9,9 @@
 #include <stdarg.h>
 
 #include <os_types.h>
-#include <sts_malloc.h>
+#include <sis_malloc.h>
 
-int sts_strcpy(char *out_, size_t olen_, const char *in_);
-int sts_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_);
+int sis_strcpy(char *out_, size_t olen_, const char *in_);
+int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_);
 
 #endif //_OS_STR_H

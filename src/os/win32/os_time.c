@@ -1,5 +1,5 @@
 
-#include "sts_time.h"
+#include "sis_time.h"
 #include <stdio.h>
 
 #ifdef _MSC_VER
@@ -23,7 +23,7 @@ int gettimeofday(struct timeval *tp, void *tzp)
 }
 #endif
 
-void sts_time_getgm(struct tm *m, const time_t* t)
+void sis_time_getgm(struct tm *m, const time_t* t)
 {
 #ifdef _MSC_VER
 	gmtime_s(m, t);
@@ -32,7 +32,7 @@ void sts_time_getgm(struct tm *m, const time_t* t)
 #endif
 }
 
-void sts_localtime(struct tm *m, const time_t* t)
+void sis_localtime(struct tm *m, const time_t* t)
 {
 #ifdef _MSC_VER
 	localtime_s(m, t);
@@ -41,14 +41,14 @@ void sts_localtime(struct tm *m, const time_t* t)
 #endif
 }
 
-time_t sts_time_get_now()
+time_t sis_time_get_now()
 {
 	time_t tt;
 	time(&tt);
 	return tt;
 }
 
-unsigned long long sts_time_get_now_msec()
+unsigned long long sis_time_get_now_msec()
 {
 #ifndef _MSC_VER
 	struct timeval tv;
@@ -62,75 +62,75 @@ unsigned long long sts_time_get_now_msec()
 #endif
 }
 
-void sts_time_check(time_t tt, struct tm *ptm)
+void sis_time_check(time_t tt, struct tm *ptm)
 {
 	if (tt == 0)
 	{
 		time(&tt);
-		sts_localtime(ptm, &tt);
+		sis_localtime(ptm, &tt);
 	}
 	else
 	{
-		sts_localtime(ptm, &tt);
+		sis_localtime(ptm, &tt);
 	}
 }
-int sts_time_get_iyear(time_t ttime) //2015
+int sis_time_get_iyear(time_t ttime) //2015
 {
 	struct tm ptm = { 0 };
-	sts_time_check(ttime, &ptm);
+	sis_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900);
 }
-int sts_time_get_imonth(time_t ttime) //201510
+int sis_time_get_imonth(time_t ttime) //201510
 {
 	struct tm ptm = { 0 };
-	sts_time_check(ttime, &ptm);
+	sis_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900) * 100 + (ptm.tm_mon + 1);
 }
 
-int sts_time_get_idate(time_t ttime) //20151012
+int sis_time_get_idate(time_t ttime) //20151012
 {
 	struct tm ptm = { 0 };
-	sts_time_check(ttime, &ptm);
+	sis_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday;
 }
-int sts_time_get_itime(time_t ttime) //103020
+int sis_time_get_itime(time_t ttime) //103020
 {
 	struct tm ptm = { 0 };
-	sts_time_check(ttime, &ptm);
+	sis_time_check(ttime, &ptm);
 	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
-int sts_time_get_iminute(time_t ttime) //1030
+int sis_time_get_iminute(time_t ttime) //1030
 {
 	struct tm ptm = { 0 };
-	sts_time_check(ttime, &ptm);
+	sis_time_check(ttime, &ptm);
 	return ptm.tm_hour * 100 + ptm.tm_min;
 }
-int sts_time_get_isec(time_t ttime)
+int sis_time_get_isec(time_t ttime)
 {
 	struct tm ptm = { 0 };
-	sts_time_check(ttime, &ptm);
+	sis_time_check(ttime, &ptm);
 	return ptm.tm_sec;
 }
-int sts_time_get_showtime(time_t ttime)
+int sis_time_get_showtime(time_t ttime)
 {
 	struct tm ptm = { 0 };
-	sts_time_check(ttime, &ptm);
+	sis_time_check(ttime, &ptm);
 	return (ptm.tm_mon + 1) * 10000 * 10000 + ptm.tm_mday * 100 * 10000 + ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 
 }
-short sts_time_get_offset_iminute(short nMin, int offsec)
+short sis_time_get_offset_iminute(short nMin, int offsec)
 {
-	time_t tt = sts_time_make_time(0, nMin * 100);
+	time_t tt = sis_time_make_time(0, nMin * 100);
 	tt += offsec;
-	return (short)sts_time_get_iminute(tt);
+	return (short)sis_time_get_iminute(tt);
 }
-time_t sts_time_get_offset_time(time_t curTime, int offsec)
+time_t sis_time_get_offset_time(time_t curTime, int offsec)
 {
-	//time_t tt = sts_time_make_time(sts_time_get_idate(&curTime), sts_time_get_iminute(&curTime) * 100 + offsec);
+	//time_t tt = sis_time_make_time(sis_time_get_idate(&curTime), sis_time_get_iminute(&curTime) * 100 + offsec);
 	time_t tt = curTime + offsec;
 	return tt;
 }
-int sts_time_get_iminute_offset_i(int begin, int end) //930-1130 
+int sis_time_get_iminute_offset_i(int begin, int end) //930-1130 
 {
 	int bh, eh, bm, em;
 	int count = 0;
@@ -141,17 +141,17 @@ int sts_time_get_iminute_offset_i(int begin, int end) //930-1130
 	count = (eh * 60 + em) - (bh * 60 + bm);
 	return count;
 }
-int sts_time_get_iminute_offset_time(time_t tstart, time_t tend)
+int sis_time_get_iminute_offset_time(time_t tstart, time_t tend)
 {
 	return (int)((tend - tstart) / 60);
 }
-int sts_time_get_iminute_minnum(int source, int minnum)//minnum为分钟数
+int sis_time_get_iminute_minnum(int source, int minnum)//minnum为分钟数
 {
 	int mincount = (int)(source / 100) * 60 + (int)(source % 100) + minnum;
 	return (int)(mincount / 60) * 100 + (int)(mincount % 60);
 }
 
-time_t sts_time_make_time(int tdate, int ttime)
+time_t sis_time_make_time(int tdate, int ttime)
 {
 	struct tm stime;
 	stime.tm_year = tdate / 10000 - 1900;
@@ -166,58 +166,58 @@ time_t sts_time_make_time(int tdate, int ttime)
 	return mktime(&stime);
 }
 
-int sts_time_get_week_ofday(int today)
+int sis_time_get_week_ofday(int today)
 {
 	time_t tnow;
 	struct tm ptm = { 0 };
 	if (today == 0)
 	{
 		time(&tnow);
-		sts_localtime(&ptm, &tnow);
+		sis_localtime(&ptm, &tnow);
 	}
 	else
 	{
-		tnow = sts_time_make_time(today, 0);
-		sts_localtime(&ptm, &tnow);
+		tnow = sis_time_make_time(today, 0);
+		sis_localtime(&ptm, &tnow);
 	}
 	return ptm.tm_wday;
 }
-int sts_time_get_month_ofday(int today)
+int sis_time_get_month_ofday(int today)
 {
 	time_t tnow;
 	struct tm ptm = { 0 };
 	if (today == 0)
 	{
 		time(&tnow);
-		sts_localtime(&ptm, &tnow);
+		sis_localtime(&ptm, &tnow);
 	}
 	else
 	{
-		tnow = sts_time_make_time(today, 0);
-		sts_localtime(&ptm, &tnow);
+		tnow = sis_time_make_time(today, 0);
+		sis_localtime(&ptm, &tnow);
 	}
 	return ptm.tm_mon + 1;
 }
-int sts_time_get_dayoffset_ofday(int tstart, int tend)
+int sis_time_get_dayoffset_ofday(int tstart, int tend)
 {
-	time_t ttstart = sts_time_make_time(tstart, 0);
-	time_t ttend = sts_time_make_time(tend, 0);
+	time_t ttstart = sis_time_make_time(tstart, 0);
+	time_t ttend = sis_time_make_time(tend, 0);
 
 	return (int)((ttend - ttstart) / (24 * 3600));
 }
-int sts_time_next_work_day(int today_, int offset_ )
+int sis_time_next_work_day(int today_, int offset_ )
 {
-	time_t tt = sts_time_make_time(today_, 0);
+	time_t tt = sis_time_make_time(today_, 0);
 	tt += offset_ * (24 * 3600);
-	int today = sts_time_get_idate(tt);
-	int week = sts_time_get_week_ofday(today);
+	int today = sis_time_get_idate(tt);
+	int week = sis_time_get_week_ofday(today);
 	if (week == 0 || week == 6){
-		sts_time_next_work_day(today, 1);
+		sis_time_next_work_day(today, 1);
 	}
 	return today;
 }
 
-bool sts_time_str_is_date(char* date)
+bool sis_time_str_is_date(char* date)
 {
 	int len = (int)strlen(date);
 	if (len < 8) return false;
@@ -233,35 +233,35 @@ bool sts_time_str_is_date(char* date)
 	return true;
 }
 
-void sts_time_format_minute(char * out_, size_t olen_, time_t tt_) //"930"
+void sis_time_format_minute(char * out_, size_t olen_, time_t tt_) //"930"
 {
 	if (!out_) return;
 	struct tm ptm = { 0 };
-	sts_time_check(tt_, &ptm);
+	sis_time_check(tt_, &ptm);
 
-	sts_sprintf(out_, olen_, "%02d%02d", ptm.tm_hour, ptm.tm_min);
+	sis_sprintf(out_, olen_, "%02d%02d", ptm.tm_hour, ptm.tm_min);
 }
 
-void sts_time_format_date(char * out_, size_t olen_, time_t tt_) //"20150912"
+void sis_time_format_date(char * out_, size_t olen_, time_t tt_) //"20150912"
 {
 	if (!out_) return;
 	struct tm ptm = { 0 };
-	sts_time_check(tt_, &ptm);
+	sis_time_check(tt_, &ptm);
 
-	sts_sprintf(out_, olen_, "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
+	sis_sprintf(out_, olen_, "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
 
 }
-void sts_time_format_datetime(char * out_, size_t olen_, time_t tt_) //"20150912103000"
+void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_) //"20150912103000"
 {
 	if (!out_) return;
 	struct tm ptm = { 0 };
-	sts_time_check(tt_, &ptm);
+	sis_time_check(tt_, &ptm);
 
-	sts_sprintf(out_, olen_, "%d%02d%02d%02d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday,
+	sis_sprintf(out_, olen_, "%d%02d%02d%02d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday,
 		ptm.tm_hour  , ptm.tm_min  , ptm.tm_sec);
 }
 
-int sts_time_get_minute_from_shortstr(char* time)  //"12:30" => 1230
+int sis_time_get_minute_from_shortstr(char* time)  //"12:30" => 1230
 {
 	int nResult = 0;
 	if (strlen(time) < 5) return nResult;
@@ -289,7 +289,7 @@ int sts_time_get_minute_from_shortstr(char* time)  //"12:30" => 1230
 	return nResult;
 }
 
-int sts_time_get_itime_from_str(char* time) //"12:30:38" => 123038
+int sis_time_get_itime_from_str(char* time) //"12:30:38" => 123038
 {
 	int nResult = 0;
 	if (strlen(time)<8) return nResult;
@@ -331,13 +331,13 @@ int sts_time_get_itime_from_str(char* time) //"12:30:38" => 123038
 	return nResult;
 }
 
-int sts_time_get_idate_from_str(const char* time) //"20150212" = > 20150212
+int sis_time_get_idate_from_str(const char* time) //"20150212" = > 20150212
 {
 	int o = atoi(time);
 	return o;
 }
 
-int sts_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"2015-10-20 12:30:38" => 20151020,123038
+int sis_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"2015-10-20 12:30:38" => 20151020,123038
 {
 	int nResult = 0;
 	if (strlen(datetime)<19) return nResult;
@@ -404,7 +404,7 @@ int sts_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"20
 }
 
 //单位毫秒
-void sts_sleep(int msec)
+void sis_sleep(int msec)
 {
 #ifdef _MSC_VER
 	Sleep(msec);
@@ -413,27 +413,27 @@ void sts_sleep(int msec)
 #endif
 }
 
-s_sts_time_delay *sts_delay_create(unsigned int msec)
+s_sis_time_delay *sis_delay_create(unsigned int msec)
 {
-	s_sts_time_delay *m = malloc(sizeof(*m));
+	s_sis_time_delay *m = malloc(sizeof(*m));
 	m->is_busy = false;
 	m->m_msec_i = msec;
 	if (m->m_msec_i < 5) m->m_msec_i = 5;
 	if (m->m_msec_i > 5000) m->m_msec_i = 5000;
-	m->start_msec = sts_time_get_now_msec();
+	m->start_msec = sis_time_get_now_msec();
 	return m;
 }
-void sts_delay_busy(s_sts_time_delay *m)
+void sis_delay_busy(s_sis_time_delay *m)
 {
 	m->is_busy = true;
 }
-void sts_delay_destroy(s_sts_time_delay *m)
+void sis_delay_destroy(s_sis_time_delay *m)
 {
 	if (!m->is_busy) {
-		m->usesd_msec = (unsigned int)(sts_time_get_now_msec() - m->start_msec);
+		m->usesd_msec = (unsigned int)(sis_time_get_now_msec() - m->start_msec);
 		if (m->m_msec_i > m->usesd_msec)
 		{
-			sts_sleep(m->m_msec_i - m->usesd_msec);
+			sis_sleep(m->m_msec_i - m->usesd_msec);
 		}
 	}
 	free(m);

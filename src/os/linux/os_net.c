@@ -1,7 +1,7 @@
 
 #include <os_net.h>
 
-void sts_socket_init()
+void sis_socket_init()
 {
 	struct sigaction sa;
 	sa.sa_handler = SIG_IGN;
@@ -9,7 +9,7 @@ void sts_socket_init()
 	sa.sa_flags = 0;
 	sigaction(SIGPIPE, &sa, 0);
 }
-void sts_socket_uninit()
+void sis_socket_uninit()
 {
 
 }

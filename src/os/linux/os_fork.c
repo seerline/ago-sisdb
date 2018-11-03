@@ -1,6 +1,6 @@
 #include <os_fork.h>
 
-int sts_fork_process()
+int sis_fork_process()
 {
 	pid_t pid = fork();
 	if (pid < 0)
@@ -20,13 +20,13 @@ int sts_fork_process()
 	{
 		close(i);
 	}
-	sts_open("/dev/null", STS_FILE_IO_O_RDWR);
+	sis_open("/dev/null", SIS_FILE_IO_O_RDWR);
 	dup(0);
 	dup(1);
 	dup(2);
 	return (0);
 }
-void sts_sigignore(int sign_)
+void sis_sigignore(int sign_)
 {
 	struct sigaction sa;
 	sa.sa_handler = SIG_IGN;//设定接受到指定信号后的动作为忽略

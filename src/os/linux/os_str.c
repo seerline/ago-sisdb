@@ -1,6 +1,6 @@
 #include <os_str.h>
 
-int sts_strcpy(char *out_, size_t olen_, const char *in_)
+int sis_strcpy(char *out_, size_t olen_, const char *in_)
 {
 	if (!in_ || !out_)
 	{
@@ -14,7 +14,7 @@ int sts_strcpy(char *out_, size_t olen_, const char *in_)
 	return (int)len;
 }
 
-int sts_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_)
+int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_)
 {
 	if (!in_ || !out_)
 	{

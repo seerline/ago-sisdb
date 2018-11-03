@@ -5,11 +5,11 @@
 //#define  "%I64d"  "%lld"
 //#define  "%I64u"  "%llu"
 
-#define sts_sprintf snprintf
-#define sts_printf printf
-// #define sts_snprintf snprintf
+#define sis_sprintf snprintf
+#define sis_printf printf
+// #define sis_snprintf snprintf
 
-// inline void sts_printf(char const *fmt, ...) {
+// inline void sis_printf(char const *fmt, ...) {
 //     char 
 //     va_list ap;
 //     va_start(ap,fmt);

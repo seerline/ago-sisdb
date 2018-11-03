@@ -41,12 +41,12 @@
 // #define s_realloc zrealloc
 // #define s_free zfree
 
-#include "sts_malloc.h"
-#define s_malloc sts_malloc
-#define s_realloc sts_realloc
-#define s_free sts_free
+#include "sis_malloc.h"
+#define s_malloc sis_malloc
+#define s_realloc sis_realloc
+#define s_free sis_free
 
-#define zmalloc sts_malloc
-#define zcalloc sts_calloc
-#define zrealloc sts_realloc
-#define zfree sts_free
+#define zmalloc sis_malloc
+#define zcalloc sis_calloc
+#define zrealloc sis_realloc
+#define zfree sis_free

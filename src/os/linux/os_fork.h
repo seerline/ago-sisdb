@@ -15,11 +15,11 @@
 
 //#include <semaphore.h>
 
-#define sts_signal    signal
-// #define sts_sigignore sigignore
+#define sis_signal    signal
+// #define sis_sigignore sigignore
 
-void sts_sigignore(int sign_);
+void sis_sigignore(int sign_);
 
-int sts_fork_process();
+int sis_fork_process();
 
 #endif //_OS_FORK_H
