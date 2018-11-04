@@ -93,7 +93,6 @@ ADD_EXECUTABLE(test ${SRC_LIST_TEST})
 #把LIBRARIES链接到输出文件中
 TARGET_LINK_LIBRARIES(test ${LIBRARIES_TEST})
 
-
 ###########################################################
 
 ######################生成链接库文件##########################
