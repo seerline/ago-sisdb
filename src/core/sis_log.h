@@ -16,8 +16,8 @@
 // printf( "This is line %d.\n", __LINE__ );
 // printf( "This function is %s.\n", __func__ );
 
-#define sis_out_error(a) if(a>1) printf
-// sis_out_error 需要判断如果有回车就自动中断 使用("%.*s", 10, "xxxx") 方式
+#define sis_out_log(a) if(a>1) printf
+// sis_out_log 需要判断如果有回车就自动中断 使用("%.*s", 10, "xxxx") 方式
 
 inline void sis_out_binary(const char *key_, const char *val_, int len_)
 {

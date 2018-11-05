@@ -7,7 +7,7 @@ s_sis_sds sis_file_read_to_sds(const char *fn_)
 	sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);
 	if (!fp)
 	{
-		sis_out_error(3)("cann't open file [%s].\n", fn_);
+		sis_out_log(3)("cann't open file [%s].\n", fn_);
 		return NULL;
 	}
 	size_t size = sis_file_size(fp);
@@ -40,7 +40,7 @@ void sis_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int
     sis_path_complete(outpath_,SIS_PATH_LEN);
     if(!sis_path_mkdir(outpath_))
     {
-		sis_out_error(3)("cann't create dir [%s].\n", outpath_);   
+		sis_out_log(3)("cann't create dir [%s].\n", outpath_);   
     }
-    sis_out_error(5)("outpath_:%s\n",outpath_);
+    sis_out_log(5)("outpath_:%s\n",outpath_);
 }

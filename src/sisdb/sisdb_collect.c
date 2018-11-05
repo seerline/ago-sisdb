@@ -938,7 +938,7 @@ int sis_collect_unit_update(s_sis_collect_unit *unit_, const char *in_, size_t i
 	//这里应该判断数据完整性
 	if (count * unit_->value->len != ilen_)
 	{
-		sis_out_error(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
+		sis_out_log(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
 		return 0;
 	}
 	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
@@ -975,7 +975,7 @@ int sis_collect_unit_update_block(s_sis_collect_unit *unit_, const char *in_, si
 	//这里应该判断数据完整性
 	if (count * unit_->value->len != ilen_)
 	{
-		sis_out_error(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
+		sis_out_log(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
 		return 0;
 	}
 	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
@@ -1206,7 +1206,7 @@ s_sis_sds sis_collect_array_to_struct_sds(s_sis_collect_unit *unit_, const char 
 		int size = sis_json_get_size(jval);
 		if (size != fields)
 		{
-			sis_out_error(3)("input fields[%d] count error [%d].\n", size, fields);
+			sis_out_log(3)("input fields[%d] count error [%d].\n", size, fields);
 			jval = jval->next;
 			continue;
 		}

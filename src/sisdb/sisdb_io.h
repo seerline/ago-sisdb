@@ -19,21 +19,17 @@
 
 typedef struct s_sisdb_server
 {
-	int status; //是否已经初始化 0 没有初始化
+	int    status; // 是否已经初始化 0 没有初始化
 
-	char conf_name[SIS_PATH_LEN];  //配置文件路径
-
-	char dbpath[SIS_PATH_LEN];    //数据库路径
+	char   service_name[SIS_TABLE_MAXLEN];  //服务名
+	// 以下信息从配置库中读取
+	char   dbpath[SIS_PATH_LEN];    //数据库输出路径
 
 	int    loglevel;
 	size_t logsize;
 	char   logpath[SIS_PATH_LEN];   //log路径
 
-	s_sis_conf_handle *config;  // 配置文件句柄
-
-	s_sis_db *db;  // 数据库句柄
-
-	char service_name[SIS_TABLE_MAXLEN];  //服务名
+	s_sis_db *db;  // 数据库
 
 }s_sisdb_server;
 
@@ -43,9 +39,11 @@ char * sisdb_open(const char *conf_);
 
 int sisdb_init(const char *market_);
 
-s_sis_sds sisdb_list_sds();
+s_sis_sds sisdb_list_sds(const char *com_);
+s_sis_sds sisdb_show_sds(const char *com_);
 
 void sisdb_close();
+
 bool sisdb_save();
 bool sisdb_saveto(const char * dt_, const char *db_);
 

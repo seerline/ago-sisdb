@@ -10,7 +10,7 @@
 // 	cd = iconv_open("utf-8", "gbk");
 // 	if (cd == (iconv_t)-1)
 // 	{
-// 		sis_out_error(3)("iconv_open false!..[%d]\n", errno);
+// 		sis_out_log(3)("iconv_open false!..[%d]\n", errno);
 // 		return;
 // 	}
 // 	memset(out, 0, olen_);
@@ -21,7 +21,7 @@
 
 // 	if (-1 == (int)iconv(cd, &pin, &inlen, &pout, &outlen))
 // 	{
-// 		sis_out_error(3)("iconv false!..[%d]\n", errno);
+// 		sis_out_log(3)("iconv false!..[%d]\n", errno);
 // 	}
 // 	iconv_close(cd);
 // 	olen_ = outlen;
@@ -43,7 +43,7 @@
 
 // 	if (cd == (iconv_t)-1)
 // 	{
-// 		sis_out_error(3)("iconv_open false!..[%d]\n", errno);
+// 		sis_out_log(3)("iconv_open false!..[%d]\n", errno);
 // 	}
 // 	memset(out, 0, olen_);
 // 	char *srcstr;
@@ -58,7 +58,7 @@
 
 // 	if (-1 == (int)iconv(cd, &pin, &inlen, &pout, &outlen))
 // 	{
-// 		sis_out_error(3)("iconv false!..[%d]%s\n", errno, in);
+// 		sis_out_log(3)("iconv false!..[%d]%s\n", errno, in);
 // 	}
 // 	iconv_close(cd);
 // 	olen_ = outlen;

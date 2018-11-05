@@ -13,7 +13,7 @@ bool sisdb_file_save_conf(const char *dbpath_, s_sis_db *db_)
     sis_file_handle fp = sis_file_open(conf, SIS_FILE_IO_CREATE|SIS_FILE_IO_WRITE|SIS_FILE_IO_TRUCT, 0);
 	if (!fp)
 	{
-		sis_out_error(3)("cann't open file [%s].\n", conf);
+		sis_out_log(3)("cann't open file [%s].\n", conf);
 		return false;
 	}
 	sis_file_seek(fp, 0, SEEK_SET);
@@ -26,7 +26,7 @@ bool sisdb_file_save_conf(const char *dbpath_, s_sis_db *db_)
 
     if(!sis_path_mkdir(sdb))
     {
-		sis_out_error(3)("cann't create dir [%s].\n", sdb);
+		sis_out_log(3)("cann't create dir [%s].\n", sdb);
 		return false;        
     }
     return true;
@@ -89,7 +89,7 @@ bool _sisdb_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sis_table *tb_)
     sis_file_handle sdb_fp = sis_file_open(sdb, SIS_FILE_IO_CREATE|SIS_FILE_IO_WRITE|SIS_FILE_IO_TRUCT, 0);
 	if (!sdb_fp)
 	{
-		sis_out_error(3)("cann't open file [%s].\n", sdb);
+		sis_out_log(3)("cann't open file [%s].\n", sdb);
 		return false;
 	}
 	// sis_file_seek(fp, 0, SEEK_END);
@@ -102,7 +102,7 @@ bool _sisdb_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sis_table *tb_)
     sis_file_handle zero_fp = sis_file_open(zero, SIS_FILE_IO_CREATE|SIS_FILE_IO_WRITE|SIS_FILE_IO_TRUCT, 0);
 	if (!zero_fp)
 	{
-		sis_out_error(3)("cann't open file [%s].\n", zero);
+		sis_out_log(3)("cann't open file [%s].\n", zero);
         sis_file_close(sdb_fp);
 		return false;
 	}

@@ -295,7 +295,7 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 	{
 		int len = 0;
 		handle_->error = sis_str_getline(handle_->error, &len, buffer, sis_sdslen(buffer));
-		sis_out_error(3)("parse conf fail : %.*s \n", len, handle_->error);
+		sis_out_log(3)("parse conf fail : %.*s \n", len, handle_->error);
 		handle_->error = value_;
 		sis_free(fn);
 		sis_sdsfree(buffer);
@@ -425,7 +425,7 @@ s_sis_conf_handle *sis_conf_open(const char *fn_)
 	{
 		int len = 0;
 		handle->error = sis_str_getline(handle->error, &len, buffer, sis_sdslen(buffer));
-		sis_out_error(3)("parse conf fail : %.*s \n", len, handle->error);
+		sis_out_log(3)("parse conf fail : %.*s \n", len, handle->error);
 		sis_conf_close(handle);
 		handle = NULL;
 	};
