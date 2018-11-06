@@ -16,8 +16,8 @@ s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node 
 	tb = sis_malloc(sizeof(s_sis_table));
 	memset(tb, 0, sizeof(s_sis_table));
 
-	tb->control.data_type = SIS_DATA_STRUCT; // 默认保存的目前都是struct，
-	tb->control.time_scale = SIS_SCALE_SECOND;
+	tb->control.data_type = SIS_DATA_TYPE_STRUCT; // 默认保存的目前都是struct，
+	tb->control.time_scale = SIS_TIME_SCALE_SECOND;
 	tb->control.limit_rows = sis_json_get_int(com_, "limit", 0);
 	tb->control.isinit = sis_json_get_int(com_, "isinit", 0);
 	// printf("=====%s limit %d\n", name_, tb->control.limit_rows);
@@ -32,7 +32,7 @@ s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node 
 	const char *strval = NULL;
 
 	strval = sis_json_get_str(com_, "scale");
-	map = sisdb_find_map_define(db_, strval, SIS_MAP_DEFINE_SCALE);
+	map = sisdb_find_map_define(db_->map, strval, SIS_MAP_DEFINE_TIME_SCALE);
 	if (map)
 	{
 		tb->control.time_scale = map->uid;
@@ -44,14 +44,14 @@ s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node 
 	{
 		char mode[32];
 		sis_str_substr(mode, 32, strval, ',', i);
-		map = sisdb_find_map_define(db_, mode, SIS_MAP_DEFINE_OPTION_MODE);
+		map = sisdb_find_map_define(db_->map, mode, SIS_MAP_DEFINE_ADD_METHOD);
 		if (map)
 		{
 			tb->control.insert_mode |= map->uid;
 		}
 	}
 	// strval = sis_json_get_str(com_, "update-mode");
-	// map = sisdb_find_map_define(db_, strval, SIS_MAP_DEFINE_OPTION_MODE);
+	// map = sisdb_find_map_define(db_->map, strval, SIS_MAP_DEFINE_ADD_METHOD);
 	// if (map)
 	// {
 	// 	tb->control.update_mode = map->uid;
@@ -91,7 +91,7 @@ s_sis_table *sis_table_create(s_sis_db *db_, const char *name_, s_sis_json_node 
 			if (fu)
 			{
 				fu->catch_method = SIS_FIELD_METHOD_COVER;
-				map = sisdb_find_map_define(db_, sis_json_get_str(child, "0"), SIS_MAP_DEFINE_FIELD_METHOD);
+				map = sisdb_find_map_define(db_->map, sis_json_get_str(child, "0"), SIS_MAP_DEFINE_SUBS_METHOD);
 				if (map)
 				{
 					fu->catch_method = map->uid;
@@ -200,7 +200,7 @@ void sis_table_set_fields(s_sis_table *tb_, s_sis_json_node *fields_)
 		// size_t ss;
 		// printf("node=%s\n", sis_json_output(node, &ss));
 		const char *name = sis_json_get_str(node, "0");
-		flags.type = SIS_FIELD_INT;
+		flags.type = SIS_FIELD_TYPE_INT;
 		flags.len = sis_json_get_int(node, "2", 4);
 		flags.io = sis_json_get_int(node, "3", 0);
 		flags.zoom = sis_json_get_int(node, "4", 0);
@@ -208,7 +208,7 @@ void sis_table_set_fields(s_sis_table *tb_, s_sis_json_node *fields_)
 		flags.refer = 0;
 
 		const char *val = sis_json_get_str(node, "1");
-		map = sisdb_find_map_define(tb_->father, val, SIS_MAP_DEFINE_FIELD_TYPE);
+		map = sisdb_find_map_define(tb_->father->map, val, SIS_MAP_DEFINE_FIELD_TYPE);
 		if (map)
 		{
 			flags.type = map->uid;
@@ -337,38 +337,38 @@ uint64 sis_table_struct_trans_time(uint64 in_, int inscale_, s_sis_table *out_tb
 	{
 		return in_;
 	}
-	if (inscale_ >= SIS_SCALE_DAY)
+	if (inscale_ >= SIS_TIME_SCALE_DATE)
 	{
 		return in_;
 	}
 	uint64 o = in_;
 	int date = sis_time_get_idate(o);
-	if (inscale_ == SIS_SCALE_MSEC)
+	if (inscale_ == SIS_TIME_SCALE_MSEC)
 	{
 		o = (uint64)(o / 1000);
 	}
 	switch (outscale_)
 	{
-	case SIS_SCALE_MSEC:
+	case SIS_TIME_SCALE_MSEC:
 		return in_;
-	case SIS_SCALE_SECOND:
+	case SIS_TIME_SCALE_SECOND:
 		return o;
-	case SIS_SCALE_INDEX:
+	case SIS_TIME_SCALE_INCR:
 		o = _sis_ttime_to_trade_index(o, out_tb_->father->trade_time);
 		break;
-	case SIS_SCALE_MIN1:
+	case SIS_TIME_SCALE_MIN1:
 		o = _sis_ttime_to_trade_index(o, out_tb_->father->trade_time);
 		o = _sis_trade_index_to_ttime(date, o, out_tb_->father->trade_time);
 		break;
-	case SIS_SCALE_MIN5:
+	case SIS_TIME_SCALE_MIN5:
 		o = _sis_ttime_to_trade_index(o, out_tb_->father->trade_time);
 		o = _sis_trade_index_to_ttime(date, ((int)(o / 5) + 1) * 5 - 1, out_tb_->father->trade_time);
 		break;
-	case SIS_SCALE_MIN30:
+	case SIS_TIME_SCALE_HOUR:
 		o = _sis_ttime_to_trade_index(o, out_tb_->father->trade_time);
 		o = _sis_trade_index_to_ttime(date, ((int)(o / 30) + 1) * 30 - 1, out_tb_->father->trade_time);
 		break;
-	case SIS_SCALE_DAY:
+	case SIS_TIME_SCALE_DATE:
 		o = date;
 		break;
 	}
@@ -506,7 +506,7 @@ int _sis_table_update_links(s_sis_table *table_,const char *key_, s_sis_collect_
 	}
 	return count;
 }
-int sis_table_update_mul(int type_, s_sis_table *table_, const char *key_, const char *in_, size_t ilen_)
+int sis_table_update_and_pubs(int type_, s_sis_table *table_, const char *key_, const char *in_, size_t ilen_)
 {
 	// 1 . 先把来源数据，转换为srcdb的二进制结构数据集合
 	s_sis_collect_unit *in_collect = sis_map_buffer_get(table_->collect_map, key_);
@@ -522,12 +522,12 @@ int sis_table_update_mul(int type_, s_sis_table *table_, const char *key_, const
 
 	switch (type_)
 	{
-	case SIS_DATA_JSON:
+	case SIS_DATA_TYPE_JSON:
 		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
 		// 用新的数据进行覆盖，然后返回数据
 		in_val = sis_collect_json_to_struct_sds(in_collect, in_, ilen_);
 		break;
-	case SIS_DATA_ARRAY:
+	case SIS_DATA_TYPE_ARRAY:
 		in_val = sis_collect_array_to_struct_sds(in_collect, in_, ilen_);
 		break;
 	default:
@@ -554,7 +554,7 @@ int sis_table_update_mul(int type_, s_sis_table *table_, const char *key_, const
 
 	// 5. 释放内存
 	// 不要重复释放
-	// if (type_!=SIS_DATA_JSON&&type_!=SIS_DATA_ARRAY)
+	// if (type_!=SIS_DATA_TYPE_JSON&&type_!=SIS_DATA_TYPE_ARRAY)
 	if (in_val)
 	{
 		sis_sdsfree(in_val);
@@ -595,7 +595,7 @@ int sis_table_update_load(int type_, s_sis_table *table_, const char *key_, cons
 // 	s_sis_sds val = NULL;
 // 	switch (type_)
 // 	{
-// 	case SIS_DATA_JSON:
+// 	case SIS_DATA_TYPE_JSON:
 // 		// 取json中字段，如果目标没有记录，新建或者取最后一条记录的信息为模版
 // 		// 用新的数据进行覆盖，然后返回数据
 // 		val = sis_collect_json_to_struct_sds(collect, in_, ilen_);
@@ -605,7 +605,7 @@ int sis_table_update_load(int type_, s_sis_table *table_, const char *key_, cons
 // 			sis_sdsfree(val);
 // 		}
 // 		break;
-// 	case SIS_DATA_ARRAY:
+// 	case SIS_DATA_TYPE_ARRAY:
 // 		val = sis_collect_array_to_struct_sds(collect, in_, ilen_);
 // 		if (val)
 // 		{
@@ -716,11 +716,11 @@ exit:
 }
 int sis_from_node_get_format(s_sis_db *db_, s_sis_json_node *node_)
 {
-	int o = SIS_DATA_JSON;
+	int o = SIS_DATA_TYPE_JSON;
 	s_sis_json_node *format = sis_json_cmp_child_node(node_, "format");
 	if (format)
 	{
-		s_sis_map_define *smd = sisdb_find_map_define(db_, format->value, SIS_MAP_DEFINE_DATA_TYPE);
+		s_sis_map_define *smd = sisdb_find_map_define(db_->map, format->value, SIS_MAP_DEFINE_DATA_TYPE);
 		if (smd)
 		{
 			o = smd->uid;
@@ -771,18 +771,18 @@ s_sis_sds sis_table_struct_filter_sds(s_sis_table *tb_, s_sis_sds in_, const cha
 	s_sis_string_list *field_list = sis_string_list_create_w();
 	sis_string_list_load(field_list, fields_, strlen(fields_), ",");
 
-	int len = sis_table_get_fields_size(tb) + SIS_CODE_MAXLEN;
+	int len = sis_table_get_fields_size(tb) + SIS_MAXLEN_CODE;
 	int count = (int)(sis_sdslen(in_) / len);
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
 		if (!o)
 		{
-			o = sis_sdsnewlen(val, SIS_CODE_MAXLEN);
+			o = sis_sdsnewlen(val, SIS_MAXLEN_CODE);
 		}
 		else
 		{
-			o = sis_sdscatlen(o, val, SIS_CODE_MAXLEN);
+			o = sis_sdscatlen(o, val, SIS_MAXLEN_CODE);
 		}
 		for (int i = 0; i < sis_string_list_getsize(field_list); i++)
 		{
@@ -792,7 +792,7 @@ s_sis_sds sis_table_struct_filter_sds(s_sis_table *tb_, s_sis_sds in_, const cha
 			{
 				continue;
 			}
-			o = sis_sdscatlen(o, val + SIS_CODE_MAXLEN + fu->offset, fu->flags.len);
+			o = sis_sdscatlen(o, val + SIS_MAXLEN_CODE + fu->offset, fu->flags.len);
 		}
 		val += len;
 	}
@@ -829,13 +829,13 @@ s_sis_sds sis_table_struct_to_json_sds(s_sis_table *tb_, s_sis_sds in_, const ch
 	// printf("========%s rows=%d\n", tb->name, tb->control.limit_rows);
 
 	int dot = 0; //小数点位数
-	int skip_len = sis_table_get_fields_size(tb) + SIS_CODE_MAXLEN;
+	int skip_len = sis_table_get_fields_size(tb) + SIS_MAXLEN_CODE;
 	int count = (int)(sis_sdslen(in_) / skip_len);
 	char *val = in_;
-	char code[SIS_CODE_MAXLEN];
+	char code[SIS_MAXLEN_CODE];
 	for (int k = 0; k < count; k++)
 	{
-		sis_strncpy(code, SIS_CODE_MAXLEN, val, SIS_CODE_MAXLEN);
+		sis_strncpy(code, SIS_MAXLEN_CODE, val, SIS_MAXLEN_CODE);
 		// sis_out_binary("get", val, sis_sdslen(in_));
 		jval = sis_json_create_array();
 		for (int i = 0; i < sis_string_list_getsize(field_list); i++)
@@ -848,20 +848,20 @@ s_sis_sds sis_table_struct_to_json_sds(s_sis_table *tb_, s_sis_sds in_, const ch
 				sis_json_array_add_string(jval, " ", 1);
 				continue;
 			}
-			const char *ptr = (const char *)val + SIS_CODE_MAXLEN;
+			const char *ptr = (const char *)val + SIS_MAXLEN_CODE;
 			switch (fu->flags.type)
 			{
-			case SIS_FIELD_STRING:
+			case SIS_FIELD_TYPE_CHAR:
 				sis_json_array_add_string(jval, ptr + fu->offset, fu->flags.len);
 				break;
-			case SIS_FIELD_INT:
+			case SIS_FIELD_TYPE_INT:
 				// printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
 				sis_json_array_add_int(jval, sis_fields_get_int(fu, ptr));
 				break;
-			case SIS_FIELD_UINT:
+			case SIS_FIELD_TYPE_UINT:
 				sis_json_array_add_uint(jval, sis_fields_get_uint(fu, ptr));
 				break;
-			case SIS_FIELD_DOUBLE:
+			case SIS_FIELD_TYPE_FLOAT:
 				if (!fu->flags.io && fu->flags.zoom > 0)
 				{
 					dot = fu->flags.zoom;
@@ -914,9 +914,9 @@ s_sis_sds sis_table_get_table_sds(s_sis_table *tb_, const char *com_)
 		s_sis_sds val = sis_collect_unit_get_of_count_sds(collect, -1, 1);
 		if (!out)
 		{
-			out = sis_sdsnewlen(sis_dict_getkey(de), SIS_CODE_MAXLEN);
+			out = sis_sdsnewlen(sis_dict_getkey(de), SIS_MAXLEN_CODE);
 		} else {
-			out = sis_sdscatlen(out, sis_dict_getkey(de), SIS_CODE_MAXLEN);
+			out = sis_sdscatlen(out, sis_dict_getkey(de), SIS_MAXLEN_CODE);
 		}
 		// printf("out = %lu -- %lu\n", sis_sdslen(out),sis_sdslen(val));
 		out = sis_sdscatlen(out, val, sis_sdslen(val));
@@ -942,7 +942,7 @@ s_sis_sds sis_table_get_table_sds(s_sis_table *tb_, const char *com_)
 	s_sis_sds other = NULL;
 	switch (iformat)
 	{
-	case SIS_DATA_STRUCT:
+	case SIS_DATA_TYPE_STRUCT:
 		if (!sis_check_fields_all(sds_fields))
 		{
 			other = sis_table_struct_filter_sds(tb_, out, sds_fields);
@@ -950,12 +950,12 @@ s_sis_sds sis_table_get_table_sds(s_sis_table *tb_, const char *com_)
 			out = other;
 		}
 		break;
-	case SIS_DATA_JSON:
+	case SIS_DATA_TYPE_JSON:
 		other = sis_table_struct_to_json_sds(tb_, out, sds_fields);
 		sis_sdsfree(out);
 		out = other;
 		break;
-	// case SIS_DATA_ARRAY:
+	// case SIS_DATA_TYPE_ARRAY:
 	// 	other = sis_table_struct_to_array_sds(tb_, out, sds_fields);
 	// 	sis_sdsfree(out);
 	// 	out = other;
@@ -990,9 +990,9 @@ s_sis_sds sis_table_get_collects_sds(s_sis_table *tb_, const char *com_)
 	{
 		if (!out)
 		{
-			out = sis_sdsnewlen(sis_dict_getkey(de), SIS_CODE_MAXLEN);
+			out = sis_sdsnewlen(sis_dict_getkey(de), SIS_MAXLEN_CODE);
 		} else {
-			out = sis_sdscatlen(out, sis_dict_getkey(de), SIS_CODE_MAXLEN);
+			out = sis_sdscatlen(out, sis_dict_getkey(de), SIS_MAXLEN_CODE);
 		}
 		count++;
 	}
@@ -1006,7 +1006,7 @@ s_sis_sds sis_table_get_collects_sds(s_sis_table *tb_, const char *com_)
 
 	printf("iformat = %c\n", iformat);
 	// 取出字段定义，没有就默认全部字段
-	if (iformat == SIS_DATA_STRUCT) {
+	if (iformat == SIS_DATA_TYPE_STRUCT) {
 		goto end;
 	}
 	char *str;
@@ -1014,9 +1014,9 @@ s_sis_sds sis_table_get_collects_sds(s_sis_table *tb_, const char *com_)
 	s_sis_json_node *jval = sis_json_create_array();
 
 	for(int i=0;i<count;i++){
-		sis_json_array_add_string(jval, out + i*SIS_CODE_MAXLEN, SIS_CODE_MAXLEN);
+		sis_json_array_add_string(jval, out + i*SIS_MAXLEN_CODE, SIS_MAXLEN_CODE);
 	}
-	if (iformat == SIS_DATA_ARRAY) {
+	if (iformat == SIS_DATA_TYPE_ARRAY) {
 		jone = jval;
 	} else {
 		jone = sis_json_create_object();
@@ -1033,7 +1033,6 @@ s_sis_sds sis_table_get_collects_sds(s_sis_table *tb_, const char *com_)
 end:
 	sis_json_close(handle);
 	return out;
-
 }
 s_sis_sds sis_table_get_code_sds(s_sis_table *tb_, const char *key_, const char *com_)
 {
@@ -1136,7 +1135,7 @@ filter:
 	}
 	// 最后转数据格式
 	// 取出数据返回格式，没有就默认为二进制结构数据
-	// int iformat = SIS_DATA_STRUCT;
+	// int iformat = SIS_DATA_TYPE_STRUCT;
 	int iformat = sis_from_node_get_format(tb_->father, handle->node);
 
 	printf("iformat = %c\n", iformat);
@@ -1151,7 +1150,7 @@ filter:
 	s_sis_sds other = NULL;
 	switch (iformat)
 	{
-	case SIS_DATA_STRUCT:
+	case SIS_DATA_TYPE_STRUCT:
 		if (!sis_check_fields_all(sds_fields))
 		{
 			other = sis_collect_struct_filter_sds(collect, out, sds_fields);
@@ -1159,12 +1158,12 @@ filter:
 			out = other;
 		}
 		break;
-	case SIS_DATA_JSON:
+	case SIS_DATA_TYPE_JSON:
 		other = sis_collect_struct_to_json_sds(collect, out, sds_fields);
 		sis_sdsfree(out);
 		out = other;
 		break;
-	case SIS_DATA_ARRAY:
+	case SIS_DATA_TYPE_ARRAY:
 		other = sis_collect_struct_to_array_sds(collect, out, sds_fields);
 		sis_sdsfree(out);
 		out = other;

@@ -3,8 +3,8 @@
 // Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
 //*******************************************************
 
-#ifndef _SIS_COLLECT_H
-#define _SIS_COLLECT_H
+#ifndef _SISDB_COLLECT_H
+#define _SISDB_COLLECT_H
 
 #include "sis_core.h"
 #include "sis_math.h"

@@ -3,8 +3,8 @@
 // Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
 //*******************************************************
 
-#ifndef _SIS_DB_H
-#define _SIS_DB_H
+#ifndef _SISDB_H
+#define _SISDB_H
 
 #include "sis_core.h"
 #include "sis_map.h"
@@ -12,106 +12,69 @@
 #include "sis_time.h"
 #include "sis_list.h"
 
-#define SIS_TABLE_MAXLEN 32
-#define SIS_CODE_MAXLEN  9
+#define SIS_MAXLEN_TABLE 32
+#define SIS_MAXLEN_CODE  9
 
-#define SIS_MAP_DEFINE_FIELD_TYPE   0
-#define SIS_MAP_DEFINE_DATA_TYPE    1
-#define SIS_MAP_DEFINE_SCALE        2
-#define SIS_MAP_DEFINE_OPTION_MODE  3
-#define SIS_MAP_DEFINE_ZIP_MODE     4
-#define SIS_MAP_DEFINE_FIELD_METHOD 5
+// 以代码为基本索引，每个代码最基础的信息必须包括
+// 价格小数点 默认为 2  统一从info表中decimal获取
+// 价格单位   默认为 1  比特币，需要设置 千，万等
+//			 统一从info表中coinunit获取
+// 成交量单位 默认为 100 = 1手  统一从info表中volunit获取
+//  		指数单位可能为 10000 = 百手
+// 金额单位   默认为 100 = 百元 统一从info表中volunit获取
+//  		指数单位可能为 10000 = 万元
+// 交易时间 从对应市场的trade-time字段获取
+// 工作时间 从对应市场的work-time字段获取
 
-// 数据转换只能从低到高，如果day要转min一律失败
-#define SIS_SCALE_NONE    0 // "NONE"  //
-#define SIS_SCALE_MSEC    1 // "MSEC"  //int64 格式，精确到毫秒  
-#define SIS_SCALE_SECOND  2 // "SECOND"  //int32 time_t格式，精确到秒  
-#define SIS_SCALE_INDEX   3 // "INDEX"  //int16 0开始的递增数，对应开市分钟
-#define SIS_SCALE_MIN1    4 // "MIN1"  //int32 time_t格式，精确到1分钟
-#define SIS_SCALE_MIN5    5 // "MIN5"  //int32 time_t格式 ，精确到5分钟
-#define SIS_SCALE_MIN30   6 // "MIN30"  //int32 time_t格式，精确到半小时
-#define SIS_SCALE_DAY     7 // "DAY"  //int32 20170101格式，精确到天
-#define SIS_SCALE_MONTH   8 // "MONTH"  //int32 20170101格式，精确到天
+#define SIS_TABLE_EXCH  "exch"   // 默认的市场数据表名称
+#define SIS_TABLE_EXCH  "info"   // 默认的股票数据表名称
 
-/////////////////////////////////////////////////////////
-//  数据库数据插入和修改模式
-/////////////////////////////////////////////////////////
-#define SIS_OPTION_ALWAYS      0  // 不做判断直接追加
-#define SIS_OPTION_TIME        1  // 检查时间节点重复就覆盖老的数据，不重复就放对应位置
-#define SIS_OPTION_VOL         2  // 检查成交量，成交量增加就写入
-#define SIS_OPTION_CODE        4  // 不做判断直接追加
-#define SIS_OPTION_SORT        8  // 按时间排序，同一个时间可以有多个数据
-#define SIS_OPTION_NONE        16  // 不能插入只能修改 一般不用
-
-/////////////////////////////////////////////////////////
-//  数据格是定义 
-/////////////////////////////////////////////////////////
-#define SIS_DATA_ZIP     'R'   // 后面开始为数据 压缩格式，头部应该有字段说明
-#define SIS_DATA_STRUCT  'B'   // 后面开始为数据 二进制结构化数据
-#define SIS_DATA_STRING  'S'   // 后面开始为数据 字符串
-#define SIS_DATA_JSON    '{'   // 直接传数据  json文档 数组可能消失，利用 groups 表示多支股票的数据
-							   // value 表示最新的一维数组  values 表示二维数组	
-#define SIS_DATA_ARRAY   '['   // 直接传数据
-#define SIS_DATA_CSV     'C'   // csv格式，需要处理字符串的信息
-
-// #define SIS_INIT_WAIT    0 // 900或刚开机 开始等待初始化
-// #define SIS_INIT_WORK    1 // 收到now发现日期一样直接改状态，如果日期是新的，就初始化后改状态 
-// #define SIS_INIT_STOP    2 // 收盘
-
-#define SIS_FIELD_METHOD_COVER 0 // 直接替换
-#define SIS_FIELD_METHOD_MIN 1   // 最小值，排除0
-#define SIS_FIELD_METHOD_MAX 2   // 最大值
-#define SIS_FIELD_METHOD_INIT 3  // 如果老数据为0就替换，否则不替换
-#define SIS_FIELD_METHOD_INCR 4  // 求增量
-
-/////////////////////////////////////////////////////////
-//  字段类型定义
-/////////////////////////////////////////////////////////
-//关于时间的定义
-#define SIS_FIELD_NONE 0 // "NONE"  //
-// #define SIS_FIELD_TIME    7 // "TIME"  //int64 毫秒
-// #define SIS_FIELD_INDEX   8 // "INDEX" //int32 一个递增的值
-//8位代码定义
-// #define SIS_FIELD_CODE    9 // "CODE"  //int64 -- char[8] 8位字符转换为一个int64为索引
-//其他类型定义
-#define SIS_FIELD_STRING 10 // "STRING"  //string 类型 后面需跟长度;
-//传入格式为 field名称:数据类型:长度; SIS_FIELD_SIS_NG不填长度默认为16;
-#define SIS_FIELD_INT 11	// "INT"    //int 类型
-#define SIS_FIELD_UINT 12   // "UINT"    //unsigned int 类型
-// #define SIS_FIELD_FLOAT 13  // "FLOAT"  //float
-#define SIS_FIELD_DOUBLE 14 // "DOUBLE" //double & float
-
+// 以上两个表为必要表，如果不存在就报错
 
 #pragma pack(push,1)
-typedef struct s_sis_map_define{
-	const char *key;
-	uint8	style;  // 类别
-	uint16	uid;
-	uint32  size;
-}s_sis_map_define;
+
+// 每个股票都必须跟随的结构化信息，
+typedef struct s_sisdb_sys_exch {
+	s_sis_time_pair     work_time;
+	s_sis_struct_list  *trade_time; // [[930,1130],[1300,1500]] 交易时间，给分钟线用
+}s_sisdb_sys_exch;
+
+// 每个股票都必须跟随的结构化信息，
+typedef struct s_sisdb_sys_info {
+	uint8   decimal;
+	uint32  coinunit;
+	uint32  volunit;	
+	// s_sisdb_sys_exch *exch;  // 从此获取worktime和tradetime;
+}s_sisdb_sys_info;
+// 新增股票时如果没有该股票代码，就需要自动在exch和info中生成对应的信息，直到被再次刷新，
+// 市场编号默认取代码前两位，
+
+// sisdb采用key直接定位到数据 key为 SH.600600.DAY 的方式，以便达到最高的效率，
+typedef struct s_sisdb_stock {
+	s_sis_db            *father;    // 父节点 可通过这里获取 table 结构信息
+	s_sisdb_sys_exch    *exch; 
+	s_sisdb_sys_info     info;      // 必须携带的信息,每个代码一份独立的数据
+	s_sis_collect_unit  *collect;   // 数据区，s_sis_table
+	// s_sis_table collect->table;  // 该数据对应的table指针是哪一个，为快速检索，可在table为空时，向dbs追加一个代码
+}s_sisdb_stock;
 
 typedef struct s_sis_db {
-	s_sis_sds name;  // 数据库名字
-	s_sis_map_pointer  *db; // 一个字典表
-	s_sis_map_pointer  *map; // 关键字查询表
+	s_sis_sds name;            // 数据库名字 sisdb
 
-	s_sis_struct_list  *trade_time; // [[930,1130],[1300,1500]] 交易时间，给分钟线用
+	s_sis_sds conf;            // 当前数据表的配置信息 保存时用
 
-    // int    work_mode;
-    // s_sis_struct_list  *work_plans;   // plans-work 定时任务 uint16 的数组
-    // s_sis_time_gap      work_always;  // always-work 循环运行的配置
+	s_sis_map_pointer  *dbs;     // 数据表的字典表 s_sis_table
+	s_sis_map_pointer  *map;     // 关键字查询表
 
+//  下面的存盘线程应该建立一个结构体来处理，否则看起来很麻烦
+//  等开始处理worktime时一起处理，定时任务线程
     int    save_mode;   // 存盘方式，间隔时间存，还是指定时间存
     s_sis_struct_list  *save_plans;   // plans-work 定时任务 uint16 的数组
     s_sis_time_gap      save_always;  // always-work 循环运行的配置
 
-	// int  save_type;  // 存盘方式，间隔时间存，还是指定时间存
-	// int  save_gaps;  // 存盘的间隔秒数	
-	// s_sis_struct_list  *save_plans; // uin16的时间序列，如果类型为gap，就表示秒为单位的间隔时间
 	s_sis_thread_id_t save_pid;
 	s_sis_mutex_t save_mutex;  // save时的锁定
 
-	s_sis_sds conf;    // 保存时使用
 	int save_format;   // 存盘文件的方式
 
 	s_sis_wait thread_wait; //线程内部延时处理
@@ -120,14 +83,8 @@ typedef struct s_sis_db {
 #pragma pack(pop)
 
 
-s_sis_db *sisdb_create(char *name);  //数据库的名称，为空建立一个sys的数据库名
+s_sis_db *sisdb_create(char *);  //数据库的名称，为空建立一个sys的数据库名
 void sisdb_destroy(s_sis_db *);  //关闭一个数据库
 
-s_sis_sds sisdb_get_table_info_sds(s_sis_db *);
 
-
-s_sis_map_define *sisdb_find_map_define(s_sis_db *, const char *name_, uint8 style_);
-int sisdb_find_map_uid(s_sis_db *, const char *name_, uint8 style_);
-
-
-#endif  /* _SIS_DB_H */
+#endif  /* _SISDB_H */

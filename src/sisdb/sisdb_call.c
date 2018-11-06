@@ -4,7 +4,7 @@
 
 // 入口初始化，根据配置文件获取初始化所有信息，并返回s_sisdb_server指针，
 // 一个实例只有一个server，但是可以有多个
-s_sisdb_server *call_sisdb_open(const char *conf_)
+char *call_sisdb_open(const char *conf_)
 {
 	if (!sis_file_exists(conf_))
 	{
@@ -23,9 +23,6 @@ int call_sisdb_close(s_sis_module_context *ctx_, s_sis_module_string **argv_, in
 }
 
 // 显示表信息和其他系统级别的信息
-// 显示表的key列表信息，可跟查询语句，按代码、市场号、名称等快速检索后返回品种代码
-// 由于sisdb以代码为快速查询key，因此如何获取用户需要的代码列表成为重要需求之一，list指令就是解决这个问题的
-
 int call_sisdb_show(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
 	sis_module_not_used(argc_);
@@ -58,7 +55,7 @@ int call_sisdb_command(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	return sis_module_reply_with_simple_string(ctx_, "OK");
 }
 
-// 获取数据可以根据command中的format来确定是json或者是struct
+// 获取数据可以根据 command中的 format来确定是json或者是struct
 // 可以单独取数据头定义，比如fields等的定义
 // 但保存在内存中的数据一定是二进制struct的数据格式，仅仅在输出时做数据格式转换
 // set数据时也可以是json或struct格式数据，获得数据后会自动转换成不压缩的struct数据格式
@@ -69,12 +66,11 @@ int call_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 		return sis_module_wrong_arity(ctx_);
 	}
 
-	char id[SIS_CODE_MAXLEN];
-	char db[SIS_TABLE_MAXLEN];
+	char id[SIS_MAXLEN_CODE];
+	char db[SIS_MAXLEN_TABLE];
 
 	if (!sis_str_carve(sis_module_string_get(argv_[1], NULL),
-			id, SIS_CODE_MAXLEN, db, SIS_TABLE_MAXLEN, '.'))
-	else
+			id, SIS_MAXLEN_CODE, db, SIS_MAXLEN_TABLE, '.'))
 	{
 		sis_module_reply_with_error(ctx_, "set data key error.\n");
 	}
@@ -106,12 +102,11 @@ int call_sisdb_set(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	}
 	// printf("%s: %.90s\n", sis_module_string_get(argv_[1], NULL), sis_module_string_get(argv_[3], NULL));
 
-	char id[SIS_CODE_MAXLEN];
-	char db[SIS_TABLE_MAXLEN];
+	char id[SIS_MAXLEN_CODE];
+	char db[SIS_MAXLEN_TABLE];
 
 	if (!sis_str_carve(sis_module_string_get(argv_[1], NULL),
-			id, SIS_CODE_MAXLEN, db, SIS_TABLE_MAXLEN, '.'))
-	else
+			id, SIS_MAXLEN_CODE, db, SIS_MAXLEN_TABLE, '.'))
 	{
 		sis_module_reply_with_error(ctx_, "set data key error.\n");
 	}

@@ -3,8 +3,8 @@
 // Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
 //*******************************************************
 
-#ifndef _SIS_TABLE_H
-#define _SIS_TABLE_H
+#ifndef _SISDB_TABLE_H
+#define _SISDB_TABLE_H
 
 #include "sis_core.h"
 // #include "dict.h"
@@ -39,8 +39,8 @@ typedef struct s_sis_table {
 	s_sis_table_control control;       // 表控制定义
 	s_sis_string_list  *links;         // 当修改本数据表时，同时需要修改的其他数据表
 	s_sis_string_list  *field_name;      // 按顺序排的名字
-	s_sis_map_pointer  *field_map;       // 字段定义字典表，按字段名存储的字段内存块，指向sis_field_sis_
-	s_sis_map_pointer  *collect_map;     // 数据定义字典表，按股票名存储的数据内存块，指向sis_collect_sis_
+	s_sis_map_pointer  *field_map;       // 字段定义字典表，按字段名存储的字段内存块，指向sis_field
+	s_sis_map_pointer  *collect_map;     // 数据定义字典表，按股票名存储的数据内存块，指向sis_collect
 
 	bool catch;   // 是否对collect建立catch；
 	bool zip; 
@@ -83,7 +83,7 @@ int sis_table_get_fields_size(s_sis_table *);
 uint64 sis_table_struct_trans_time(uint64 in_, int inscale_, s_sis_table *out_tb_, int outscale_);
 
 // 一个数据同时写多个库
-int sis_table_update_mul(int type_, s_sis_table *, const char *key_, const char *in_, size_t ilen_);
+int sis_table_update_and_pubs(int type_, s_sis_table *, const char *key_, const char *in_, size_t ilen_);
 //  直接从库里加载，需要整块无校验加载，加快加载速度
 int sis_table_update_load(int type_, s_sis_table *table_, const char *key_, const char *in_, size_t ilen_);
 
@@ -102,10 +102,10 @@ s_sis_sds sis_table_get_search_sds(s_sis_table *tb_, const char *code_, int min_
 //读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围
 //用户传入的command中关键字的定义如下：
 //返回数据格式："format":"json" --> SIS_DSIS_JSON
-//						 "array" --> SIS_DATA_ARRAY
-//						 "bin" --> SIS_DATA_STRUCT  ----> 默认
-//					     "string" --> SIS_DATA_STRING
-//						 "zip" --> SIS_DATA_ZIP
+//						 "array" --> SIS_DATA_TYPE_ARRAY
+//						 "bin" --> SIS_DATA_TYPE_STRUCT  ----> 默认
+//					     "string" --> SIS_DATA_TYPE_STRING
+//						 "zip" --> SIS_DATA_TYPE_ZIP
 //字段：    "fields":  "time,close,vol,name" 表示一共4个字段  
 //	
 //                      空,*---->表示全部字段

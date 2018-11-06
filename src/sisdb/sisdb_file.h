@@ -3,8 +3,8 @@
 // Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
 //*******************************************************
 
-#ifndef _SIS_DB_FILE_H
-#define _SIS_DB_FILE_H
+#ifndef _SISDB_FILE_H
+#define _SISDB_FILE_H
 
 #include "sis_core.h"
 #include "sis_conf.h"
@@ -30,17 +30,17 @@
 #pragma pack(push,1)
 typedef struct s_sis_sdb_head{
 	uint32	size;    // 数据大小
-	char    code[SIS_CODE_MAXLEN];
+	char    code[SIS_MAXLEN_CODE];
 	uint8	format;  // 数据格式 json array struct zip 
                 // 还有一个数据结构是 refer 存储 catch 和 zip 三条记录
 }s_sis_sdb_head;
 
 typedef struct s_sis_aof_head{
 	uint32	size;    // 数据大小
-	char    code[SIS_CODE_MAXLEN];
+	char    code[SIS_MAXLEN_CODE];
 	uint8	format;  // 数据格式 json array struct zip 
 	                 // 还有一个数据结构是 refer 存储 catch 和 zip 三条记录
-	char    table[SIS_TABLE_MAXLEN];
+	char    table[SIS_MAXLEN_TABLE];
 }s_sis_aof_head;
 
 #pragma pack(pop)
@@ -64,4 +64,4 @@ bool sisdb_file_load(const char *dbpath_, s_sis_db *db_);
 // bool sisdb_file_save_json(const char *service_, const char *db_);
 // bool sisdb_file_load_json(const char *service_, const char *db_);
 
-#endif  /* _SIS_DB_FILE_H */
+#endif  /* _SISDB_FILE_H */

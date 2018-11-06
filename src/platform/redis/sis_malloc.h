@@ -29,6 +29,7 @@
 #define sis_sdsdup sdsdup
 #define sis_sdscatlen sdscatlen
 #define sis_sdscat sdscat
+#define sis_sdscatfmt sdscatfmt
 
 #define s_sis_dict dict
 #define s_sis_dict_type dictType

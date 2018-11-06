@@ -39,7 +39,7 @@ bool _sisdb_file_save_collect_struct(s_sis_sds key_,
 {
     s_sis_sdb_head head;
     sis_strncpy((char *)&head.code,9,key_,9);
-    head.format = SIS_DATA_STRUCT;
+    head.format = SIS_DATA_TYPE_STRUCT;
     head.size = unit_->value->count*unit_->value->len;
 
     sis_file_write(sdbfp_,(const char *)&head,1,sizeof(s_sis_sdb_head));
@@ -57,11 +57,11 @@ bool _sisdb_file_save_collect(s_sis_sds key_,
     // 目前仅仅以struct来保存
     bool o = false;
     switch (format) {
-        case SIS_DATA_JSON:
-        case SIS_DATA_ARRAY:
-        case SIS_DATA_ZIP:
+        case SIS_DATA_TYPE_JSON:
+        case SIS_DATA_TYPE_ARRAY:
+        case SIS_DATA_TYPE_ZIP:
             break;
-        case SIS_DATA_STRUCT:
+        case SIS_DATA_TYPE_STRUCT:
         default:
             o = _sisdb_file_save_collect_struct(key_, unit_,sdbfp_,zerofp_);
             break;
@@ -178,8 +178,8 @@ bool sisdb_file_save_aof(const char *dbpath_, s_sis_db *db_,
     sis_file_seek(fp, 0 ,SEEK_END);
 
     s_sis_aof_head head;
-    sis_strncpy((char *)&head.table,SIS_TABLE_MAXLEN,tb_,SIS_TABLE_MAXLEN);
-    sis_strncpy((char *)&head.code,SIS_CODE_MAXLEN,key_,SIS_CODE_MAXLEN);
+    sis_strncpy((char *)&head.table,SIS_MAXLEN_TABLE,tb_,SIS_MAXLEN_TABLE);
+    sis_strncpy((char *)&head.code,SIS_MAXLEN_CODE,key_,SIS_MAXLEN_CODE);
     head.format = format_;
     head.size = len_;
 
@@ -221,7 +221,7 @@ bool sisdb_file_load_aof(const char *dbpath_, s_sis_db *db_)
                 break;
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sis_memory_get_size需要减少
-            sisdb_set_format(head.format, head.table, head.code, sis_memory(buffer), head.size);
+            sisdb_set_directcopy(head.format, head.table, head.code, sis_memory(buffer), head.size);
             sis_memory_move(buffer, head.size);
             hashead=false;
         }
@@ -255,7 +255,7 @@ bool _sisdb_file_load_table(s_sis_table *tb_,sis_file_handle fp_)
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sis_memory_get_size需要减少
             // printf("load table name=%s  %s size=%d\n",tb_->name,head.code,head.size);
-            // sisdb_set_format(head.format, tb_->name, head.code, sis_memory(buffer), head.size);
+            // sisdb_set_directcopy(head.format, tb_->name, head.code, sis_memory(buffer), head.size);
             sis_table_update_load(head.format, tb_, head.code, sis_memory(buffer), head.size);
             sis_memory_move(buffer, head.size);
             // sis_memory_pack(buffer);

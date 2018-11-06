@@ -1000,15 +1000,15 @@ void _sis_fields_json_to_struct(s_sis_sds in_, s_sis_field_unit *fu_, char *key_
 	const char *str;
 	switch (fu_->flags.type)
 	{
-	case SIS_FIELD_STRING:
+	case SIS_FIELD_TYPE_CHAR:
 		str = sis_json_get_str(node_, key_);
 		if (str)
 		{
 			memmove(in_ + fu_->offset, str, fu_->flags.len);
 		}
 		break;
-	case SIS_FIELD_INT:
-	case SIS_FIELD_UINT:
+	case SIS_FIELD_TYPE_INT:
+	case SIS_FIELD_TYPE_UINT:
 		if (sis_json_find_node(node_, key_))
 		{
 			i64 = sis_json_get_int(node_, key_, 0);
@@ -1039,7 +1039,7 @@ void _sis_fields_json_to_struct(s_sis_sds in_, s_sis_field_unit *fu_, char *key_
 			}
 		}
 		break;
-	case SIS_FIELD_DOUBLE:
+	case SIS_FIELD_TYPE_FLOAT:
 		if (sis_json_find_node(node_, key_))
 		{
 			f64 = sis_json_get_double(node_, key_, 0.0);
@@ -1075,11 +1075,11 @@ void sis_collect_struct_trans(s_sis_sds ins_, s_sis_field_unit *infu_, s_sis_tab
 
 	switch (infu_->flags.type)
 	{
-	case SIS_FIELD_STRING:
+	case SIS_FIELD_TYPE_CHAR:
 		memmove(outs_ + outfu_->offset, ins_ + infu_->offset, outfu_->flags.len);
 		break;
-	case SIS_FIELD_INT:
-	case SIS_FIELD_UINT:
+	case SIS_FIELD_TYPE_INT:
+	case SIS_FIELD_TYPE_UINT:
 		i64 = sis_fields_get_int(infu_, ins_);
 
 		if (outfu_->flags.io && outfu_->flags.zoom > 0)
@@ -1114,7 +1114,7 @@ void sis_collect_struct_trans(s_sis_sds ins_, s_sis_field_unit *infu_, s_sis_tab
 			memmove(outs_ + outfu_->offset, &i64, outfu_->flags.len);
 		}
 		break;
-	case SIS_FIELD_DOUBLE:
+	case SIS_FIELD_TYPE_FLOAT:
 		f64 = sis_fields_get_double(infu_, ins_);
 		if (!outfu_->flags.io && outfu_->flags.zoom > 0)
 		{
@@ -1321,17 +1321,17 @@ s_sis_sds sis_collect_struct_to_json_sds(s_sis_collect_unit *unit_, s_sis_sds in
 			const char *ptr = (const char *)val;
 			switch (fu->flags.type)
 			{
-			case SIS_FIELD_STRING:
+			case SIS_FIELD_TYPE_CHAR:
 				sis_json_array_add_string(jval, ptr + fu->offset, fu->flags.len);
 				break;
-			case SIS_FIELD_INT:
+			case SIS_FIELD_TYPE_INT:
 				// printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
 				sis_json_array_add_int(jval, sis_fields_get_int(fu, ptr));
 				break;
-			case SIS_FIELD_UINT:
+			case SIS_FIELD_TYPE_UINT:
 				sis_json_array_add_uint(jval, sis_fields_get_uint(fu, ptr));
 				break;
-			case SIS_FIELD_DOUBLE:
+			case SIS_FIELD_TYPE_FLOAT:
 				if (!fu->flags.io && fu->flags.zoom > 0)
 				{
 					dot = fu->flags.zoom;
@@ -1417,17 +1417,17 @@ s_sis_sds sis_collect_struct_to_array_sds(s_sis_collect_unit *unit_, s_sis_sds i
 			const char *ptr = (const char *)val;
 			switch (fu->flags.type)
 			{
-			case SIS_FIELD_STRING:
+			case SIS_FIELD_TYPE_CHAR:
 				sis_json_array_add_string(jval, ptr + fu->offset, fu->flags.len);
 				break;
-			case SIS_FIELD_INT:
+			case SIS_FIELD_TYPE_INT:
 				// printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
 				sis_json_array_add_int(jval, sis_fields_get_int(fu, ptr));
 				break;
-			case SIS_FIELD_UINT:
+			case SIS_FIELD_TYPE_UINT:
 				sis_json_array_add_uint(jval, sis_fields_get_uint(fu, ptr));
 				break;
-			case SIS_FIELD_DOUBLE:
+			case SIS_FIELD_TYPE_FLOAT:
 				if (!fu->flags.io && fu->flags.zoom > 0)
 				{
 					dot = fu->flags.zoom;

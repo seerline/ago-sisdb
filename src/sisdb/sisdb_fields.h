@@ -3,8 +3,8 @@
 // Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
 //*******************************************************
 
-#ifndef _SIS_FIELDS_H
-#define _SIS_FIELDS_H
+#ifndef _SISDB_FIELDS_H
+#define _SISDB_FIELDS_H
 
 #include "sis_str.h"
 #include "sis_map.h"

@@ -4,9 +4,8 @@
 
 /********************************/
 // 一定要用static定义，不然内存混乱
-static s_sisdb_server server = {
+static s_sisdb_io server = {
     .status = SIS_SERVER_STATUS_NOINIT,
-    .config = NULL,
     .db = NULL};
 /********************************/
 
@@ -93,7 +92,7 @@ char *sisdb_open(const char *conf_)
         server.logsize = sis_json_get_int(lognode, "maxsize", 10) * 1024 * 1024;
     }
 
-    sis_strcpy(server.service_name, SIS_TABLE_MAXLEN, sis_json_get_str(config->node, "service-name"));
+    sis_strcpy(server.service_name, SIS_MAXLEN_TABLE, sis_json_get_str(config->node, "service-name"));
 
     s_sis_json_node *service = sis_json_cmp_child_node(config->node, server.service_name);
     if(!service) {
@@ -261,7 +260,7 @@ void sisdb_close()
     server.status = SIS_SERVER_STATUS_CLOSE;
 
     sis_thread_wait_kill(&server.db->thread_wait);
-    //???这里要好好测试一下，看看两个能不能一起退出来
+    //这里要好好测试一下，看看两个以上任务时能不能一起退出来
     // sis_thread_join(server.db->init_pid);
 
     if (server.db && server.db->save_pid)
@@ -281,7 +280,7 @@ bool sisdb_save()
     }
     return sisdb_file_save(server.dbpath, server.db);
 }
-bool sisdb_saveto(const char *dt_, const char *db_)
+bool sisdb_saveto(const char *fmt_, const char *db_)
 {
     if (server.status != SIS_SERVER_STATUS_INITED)
     {
@@ -289,14 +288,34 @@ bool sisdb_saveto(const char *dt_, const char *db_)
         return false;
     }
 
-    int uid = sisdb_find_map_uid(server.db, dt_, SIS_MAP_DEFINE_DATA_TYPE);
-    if (uid != SIS_DATA_CSV && uid != SIS_DATA_JSON && uid != SIS_DATA_ARRAY)
+    int uid = sisdb_find_map_uid(server.db, fmt_, SIS_MAP_DEFINE_DATA_TYPE);
+    if (uid != SIS_DATA_TYPE_CSV && uid != SIS_DATA_TYPE_JSON && uid != SIS_DATA_TYPE_ARRAY)
     {
-        sis_out_log(3)("save data type error.\n");
+        sis_out_log(3)("saveto data type error.\n");
         return false;
     }
 
     return sisdb_file_saveto(server.dbpath, server.db, uid, db_);
+}
+
+s_sis_sds sisdb_show_db_info_sds(s_sis_db *db_)
+{
+	s_sis_sds list = sis_sdsempty();
+	if (db_->dbs)
+	{
+		s_sis_dict_entry *de;
+		s_sis_dict_iter *di = sis_dict_get_iter(db_->dbs);
+		while ((de = sis_dict_next(di)) != NULL)
+		{
+			s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
+			list = sdscatprintf(list, "  %-10s : fields=%2d, collects=%lu\n",
+								val->name,
+								sis_string_list_getsize(val->field_name),
+								sis_map_buffer_getsize(val->collect_map));
+		}
+	}
+
+	return list;
 }
 s_sis_sds sisdb_show_sds(const char *com_)
 {
@@ -305,17 +324,9 @@ s_sis_sds sisdb_show_sds(const char *com_)
         sis_out_log(3)("no init sisdb.\n");
         return NULL;
     }
-    return sisdb_get_table_info_sds(server.db);
+    return sisdb_show_db_info_sds(server.db);
 }
-s_sis_sds sisdb_list_sds(const char *com_)
-{
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return NULL;
-    }
-    return sisdb_get_table_info_sds(server.db);
-}
+
 s_sis_sds sisdb_get_sds(const char *db_, const char *key_, const char *com_)
 {
     if (server.status != SIS_SERVER_STATUS_INITED)
@@ -338,12 +349,12 @@ s_sis_sds sisdb_get_sds(const char *db_, const char *key_, const char *com_)
         return sis_table_get_sds(table, key_, com_);
     }
 }
-
-int sisdb_set_format(int format_, const char *db_, const char *key_, const char *val_, size_t len_)
+// 直接拷贝
+int sisdb_set_directcopy(int format_, const char *db_, const char *key_, const char *val_, size_t len_)
 {
     // if (sis_strcasecmp(key_,"SH600048")) return SIS_SERVER_REPLY_ERR;
     printf("----[%d] %s.%s  %ld\n", format_, key_, db_, len_);
-    if (format_ == SIS_DATA_STRUCT)
+    if (format_ == SIS_DATA_TYPE_STRUCT)
     {
         // sis_out_binary("set", val_, len_);
     }
@@ -358,7 +369,7 @@ int sisdb_set_format(int format_, const char *db_, const char *key_, const char 
         return SIS_SERVER_REPLY_ERR;
     }
     // 来源是结构体数据的，必须只能往结构体table写数据，
-    int o = sis_table_update_mul(format_, table, key_, val_, len_);
+    int o = sis_table_update_and_pubs(format_, table, key_, val_, len_);
     if (o)
     {
         sis_out_log(5)("set data ok,[%d].\n", o);
@@ -367,7 +378,7 @@ int sisdb_set_format(int format_, const char *db_, const char *key_, const char 
     return SIS_SERVER_REPLY_ERR;
 }
 
-int sisdb_set(const char *dt_, const char *db_, const char *key_, const char *val_, size_t len_)
+int sisdb_set(const char *fmt_, const char *db_, const char *key_, const char *val_, size_t len_)
 {
     if (server.status != SIS_SERVER_STATUS_INITED)
     {
@@ -375,8 +386,8 @@ int sisdb_set(const char *dt_, const char *db_, const char *key_, const char *va
         return SIS_SERVER_REPLY_ERR;
     }
 
-    int uid = sisdb_find_map_uid(server.db, dt_, SIS_MAP_DEFINE_DATA_TYPE);
-    if (uid != SIS_DATA_STRUCT && uid != SIS_DATA_JSON && uid != SIS_DATA_ARRAY)
+    int uid = sisdb_find_map_uid(server.db, fmt_, SIS_MAP_DEFINE_DATA_TYPE);
+    if (uid != SIS_DATA_TYPE_STRUCT && uid != SIS_DATA_TYPE_JSON && uid != SIS_DATA_TYPE_ARRAY)
     {
         sis_out_log(3)("set data type error.\n");
         return SIS_SERVER_REPLY_ERR;
@@ -394,7 +405,7 @@ int sisdb_set(const char *dt_, const char *db_, const char *key_, const char *va
         sis_out_log(3)("saveing... set fail.\n");
         return SIS_SERVER_REPLY_OK;
     };
-    int o = sisdb_set_format(uid, db_, key_, val_, len_);
+    int o = sisdb_set_directcopy(uid, db_, key_, val_, len_);
     sis_mutex_unlock(&server.db->save_mutex);
 
     return o;
@@ -416,9 +427,7 @@ int sisdb_delete_market(s_sis_table *tb_, const char *market_)
     }
     sis_dict_iter_free(di);
     // printf("delete [%s] count=%d\n",tb_->name, o);
-    //
     sis_map_buffer_clear(tb_->collect_map);
-
     return o;
 }
 
@@ -426,7 +435,7 @@ int sisdb_init(const char *market_)
 {
     int o = 0;
     s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(server.db->db);
+    s_sis_dict_iter *di = sis_dict_get_iter(server.db->dbs);
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sis_table *val = (s_sis_table *)sis_dict_getval(de);

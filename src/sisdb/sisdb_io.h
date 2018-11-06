@@ -3,8 +3,8 @@
 // Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
 //*******************************************************
 
-#ifndef _SIS_DB_IO_H
-#define _SIS_DB_IO_H
+#ifndef _SISDB_IO_H
+#define _SISDB_IO_H
 
 #include "sis_core.h"
 #include "sis_conf.h"
@@ -14,14 +14,15 @@
 #include "sisdb.h"
 #include "sisdb_table.h"
 #include "sisdb_file.h"
+#include "sisdb_map.h"
 
 #pragma pack(push,1)
 
-typedef struct s_sisdb_server
+typedef struct s_sisdb_io
 {
 	int    status; // 是否已经初始化 0 没有初始化
 
-	char   service_name[SIS_TABLE_MAXLEN];  //服务名
+	char   service_name[SIS_MAXLEN_TABLE];  //服务名
 	// 以下信息从配置库中读取
 	char   dbpath[SIS_PATH_LEN];    //数据库输出路径
 
@@ -31,7 +32,7 @@ typedef struct s_sisdb_server
 
 	s_sis_db *db;  // 数据库
 
-}s_sisdb_server;
+}s_sisdb_io;
 
 #pragma pack(pop)
 
@@ -45,12 +46,12 @@ s_sis_sds sisdb_show_sds(const char *com_);
 void sisdb_close();
 
 bool sisdb_save();
-bool sisdb_saveto(const char * dt_, const char *db_);
+bool sisdb_saveto(const char * fmt_, const char *db_);
 
 s_sis_sds sisdb_get_sds(const char *db_, const char *key_, const char *com_);
 
-int sisdb_set(const char *dt_, const char *db_, const char *key_, const char *val_, size_t len_);
-int sisdb_set_format(int format_, const char *db_, const char *key_, const char *val_, size_t len_);
+int sisdb_set(const char *fmt_, const char *db_, const char *key_, const char *val_, size_t len_);
+int sisdb_set_directcopy(int fmt_, const char *db_, const char *key_, const char *val_, size_t len_);
 
 
-#endif  /* _SIS_DB_IO_H */
+#endif  /* _SISDB_IO_H */
