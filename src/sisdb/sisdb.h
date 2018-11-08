@@ -85,8 +85,8 @@ typedef struct s_sis_db {
 s_sis_db *sisdb_create(char *);  //数据库的名称，为空建立一个sys的数据库名
 void sisdb_destroy(s_sis_db *);  //关闭一个数据库
 
-s_sisdb_table *sisdb_get_db(s_sis_db *db_, const char *dbname_);
-s_sisdb_table *sisdb_get_db_from_key(s_sis_db *db_, const char *key_);
+s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *dbname_);
+s_sisdb_table *sisdb_get_table_from_key(s_sis_db *db_, const char *key_);
 
 s_sisdb_sysinfo *sisdb_get_sysinfo(s_sis_db *db_, const char *key_);
 s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_);

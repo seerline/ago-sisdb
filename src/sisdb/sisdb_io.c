@@ -411,6 +411,15 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 	// sis_out_binary("update 0 ", in_, ilen_);
 
     int o = sisdb_collect_update(collect, in);
+
+    if(!server.loading) 
+    {
+        // 如果属于磁盘加载就不publish
+        char code[SIS_MAXLEN_CODE];
+        sis_str_substr(code, SIS_MAXLEN_TABLE, key_, '.', 0);
+		sisdb_collect_update_publish(collect, in, code);
+	}
+
     if (o)
     {
         sis_out_log(5)("set data ok,[%d].\n", o);

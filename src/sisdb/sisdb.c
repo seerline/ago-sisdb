@@ -71,9 +71,9 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_free(db_);
 }
 
-s_sisdb_table *sisdb_get_db(s_sis_db *db_, const char *dbname_)
+s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *dbname_)
 {
-	s_sisdb_collect *val = NULL;
+	s_sisdb_table *val = NULL;
 	if (db_->dbs)
 	{
 		s_sis_sds key = sis_sdsnew(dbname_);
@@ -82,11 +82,11 @@ s_sisdb_table *sisdb_get_db(s_sis_db *db_, const char *dbname_)
 	}
 	return val;
 }
-s_sisdb_table *sisdb_get_db_from_key(s_sis_db *db_, const char *key_)
+s_sisdb_table *sisdb_get_table_from_key(s_sis_db *db_, const char *key_)
 {
 	char db[SIS_MAXLEN_TABLE];
     sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
-	return sisdb_get_db(db_, db);
+	return sisdb_get_table(db_, db);
 }
 
 s_sisdb_sysinfo *sisdb_get_sysinfo(s_sis_db *db_, const char *key_)
@@ -112,7 +112,6 @@ s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_)
 	}
 	return val;
 }
-
 // ----- //
 s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_,const char *key_)
 {

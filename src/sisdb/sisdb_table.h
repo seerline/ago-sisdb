@@ -51,6 +51,8 @@ int sisdb_table_set_fields(s_sisdb_table *, s_sis_json_node *fields_); //command
 int sisdb_table_get_fields_size(s_sisdb_table *);
 // 
 
+// int sisdb_table_update_publish(s_sisdb_table *table_,const char *key_, 
+// 	s_sisdb_collect *collect_,s_sis_sds val_)
 
 // 获取时间序列,默认为第一个字段，若第一个字段不符合标准，往下找
 // uint64 sisdb_table_struct_trans_time(uint64 in_, int inscale_, s_sisdb_table *out_tb_, int outscale_);

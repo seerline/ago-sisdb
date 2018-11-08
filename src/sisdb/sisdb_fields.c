@@ -330,7 +330,7 @@ uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const
 // 	{
 // 		return 0.0;
 // 	}
-// 	return sisdb_field_get_price(fu, val_);
+// 	return sisdb_field_get_float(fu, val_);
 // }
 
 // void sisdb_field_set_uint_from_key(s_sisdb_table *tb_, const char *key_, char *val_, uint64 u64_)
@@ -403,7 +403,7 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		if (sis_json_find_node(node_, key_))
 		{
 			i64 = sis_json_get_int(node_, key_, 0);
-			sisdb_field_set_uint(fu_, in_, i64);
+			sisdb_field_set_int(fu_, in_, i64);
 		}
 		break;
 	case SIS_FIELD_TYPE_FLOAT:

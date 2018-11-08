@@ -30,7 +30,8 @@ typedef struct s_sisdb_io
 	size_t logsize;
 	char   logpath[SIS_PATH_LEN];   //log路径
 
-	s_sis_db *db;  // 数据库
+	bool   loading;  // 数据加载中
+	s_sis_db *db;    // 数据库
 
 }s_sisdb_io;
 

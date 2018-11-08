@@ -2,6 +2,8 @@
 
 #include <sisdb_collect.h>
 #include <sisdb_fields.h>
+#include <sisdb_map.h>
+#include <sisdb.h>
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_step_index --------------------------------//
@@ -77,7 +79,7 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 		return NULL;
 	}
 
-	s_sisdb_table *tb = sisdb_get_db(db_, table);
+	s_sisdb_table *tb = sisdb_get_table(db_, table);
 	if (!tb) {
 		sis_out_log(3)("table define no find.\n");
 		return NULL;
@@ -146,12 +148,12 @@ void sisdb_collect_clear(s_sisdb_collect *unit_)
 	sisdb_stepindex_clear(unit_->stepinfo);
 	if (unit_->db->control.issubs)
 	{
-		sis_sdsclear(unit_->front);
-		sis_sdsclear(unit_->lasted);
+		memset(unit_->front, 0 ,sis_sdslen(unit_->front));
+		memset(unit_->lasted, 0 ,sis_sdslen(unit_->lasted));
 	}
 	if (unit_->db->control.iszip)
 	{
-		sis_sdsclear(unit_->refer);
+		memset(unit_->lasted, 0 ,sis_sdslen(unit_->lasted));
 	}
 
 }
@@ -484,10 +486,10 @@ s_sis_json_node *_sis_struct_to_array(s_sisdb_collect *unit_, s_sis_sds val_, s_
 			sis_json_array_add_uint(o, sisdb_field_get_uint(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_FLOAT:
-			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr), fu->flags.dot);
+			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, unit_->info->dot), fu->flags.dot);
 			break;
 		case SIS_FIELD_TYPE_PRICE:
-			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr), unit_->info->dot);
+			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, unit_->info->dot), unit_->info->dot);
 			break;
 		default:
 			sis_json_array_add_string(o, " ", 1);
@@ -706,7 +708,7 @@ filter:
 	}
 	printf("query fields = %s\n", fields);
 
-	s_sisdb_table *tb = sisdb_get_db_from_key(db_,key_);
+	s_sisdb_table *tb = sisdb_get_table_from_key(db_,key_);
 	
 	s_sis_string_list *field_list = tb->field_name; //取得全部的字段定义
 	if (!sisdb_field_is_whole(fields_))
@@ -807,7 +809,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const c
 	}
 	printf("query fields = %s\n", fields);
 
-	s_sisdb_table *tb = sisdb_get_db(db_, dbname_);
+	s_sisdb_table *tb = sisdb_get_table(db_, dbname_);
 	s_sis_string_list *field_list = tb->field_name; //取得全部的字段定义
 	if (!sisdb_field_is_whole(fields_))
 	{
@@ -1526,43 +1528,75 @@ int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_)
 
 	return count;
 }
+////////////////
 
-int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t ilen_)
+
+//////////////////////////////////////////////////////////////////////////////////
+// 同时修改多个数据库，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
+//////////////////////////////////////////////////////////////////////////////////
+uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_,s_sisdb_collect *outunit_)
 {
-	if (ilen_ < 1)
-	{
-		return 0;
-	}
-	int count = 0;
+	uint64   o = in_;
+	bool allow = 0;
 
-	count = (int)(ilen_ / unit_->value->len);
-	//这里应该判断数据完整性
-	if (count * unit_->value->len != ilen_)
+	if (inunit_->db->control.scale == SIS_TIME_SCALE_DATE&&outunit_->db->control.scale>=SIS_TIME_SCALE_DATE)
 	{
-		sis_out_log(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
-		return 0;
+		allow = 2;
 	}
-	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
-	for (int i = 0; i < count; i++)
+	if (inunit_->db->control.scale == SIS_TIME_SCALE_SECOND&&outunit_->db->control.scale>=SIS_TIME_SCALE_SECOND)
 	{
-		sis_struct_list_push(unit_->value, (void *)(in_ + i * unit_->value->len));
+		allow = 1;
 	}
+	if (inunit_->db->control.scale == SIS_TIME_SCALE_MSEC)
+	{
+		if (outunit_->db->control.scale > SIS_TIME_SCALE_MSEC)
+		{
+			allow = 1;
+			o = (uint64)(o / 1000);		
+		} else {
+			return o;
+		}
+	}
+	if (!allow) return o;
 
-	sisdb_stepindex_rebuild(unit_->stepinfo,
-						  _sisdb_collect_get_time(unit_, 0),
-						  _sisdb_collect_get_time(unit_, unit_->value->count - 1),
-						  unit_->value->count);
-	return count;
+	switch (outscale_)
+	{
+	case SIS_TIME_SCALE_SECOND:
+		return o;
+	case SIS_TIME_SCALE_INCR:
+		o = sisdb_ttime_to_trade_index(o, outunit_->info->trade_time);
+		break;
+	case SIS_TIME_SCALE_MIN1:
+		o = sisdb_ttime_to_trade_index(o, outunit_->info->trade_time);
+		o = sisdb_trade_index_to_ttime(date, o, outunit_->info->trade_time);
+		break;
+	case SIS_TIME_SCALE_MIN5:
+		o = sisdb_ttime_to_trade_index(o, outunit_->info->trade_time);
+		o = sisdb_trade_index_to_ttime(date, ((int)(o / 5) + 1) * 5 - 1, outunit_->info->trade_time);
+		break;
+	case SIS_TIME_SCALE_HOUR:
+		o = sisdb_ttime_to_trade_index(o, out_tb_->father->trade_time);
+		o = sisdb_trade_index_to_ttime(date, ((int)(o / 60) + 1) * 60 - 1, outunit_->info->trade_time);
+		break;
+	case SIS_TIME_SCALE_DATE:
+	case SIS_TIME_SCALE_WEEK:
+	case SIS_TIME_SCALE_MONTH:
+	case SIS_TIME_SCALE_YEAR:
+		if (allow==1) 
+		{
+			o = sis_time_get_idate(o);
+		}
+		break;
+	}
+	return o;
 }
 
 
-void sisdb_collect_struct_trans(s_sis_sds ins_, s_sisdb_field *infu_, s_sisdb_table *indb_,
-							  s_sis_sds outs_, s_sisdb_field *outfu_, s_sisdb_table *outdb_)
+void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_sisdb_collect *inunit_,
+							  s_sis_sds outs_, s_sisdb_field *outfu_, s_sisdb_collect *outunit_)
 {
-	int8 i8 = 0;
-	int16 i16 = 0;
-	int32 i32 = 0;
-	int64 i64, zoom = 1;
+
+	int64 i64, = 0;
 	double f64 = 0.0;
 
 	switch (infu_->flags.type)
@@ -1570,63 +1604,159 @@ void sisdb_collect_struct_trans(s_sis_sds ins_, s_sisdb_field *infu_, s_sisdb_ta
 	case SIS_FIELD_TYPE_CHAR:
 		memmove(outs_ + outfu_->offset, ins_ + infu_->offset, outfu_->flags.len);
 		break;
-	case SIS_FIELD_TYPE_INT:
 	case SIS_FIELD_TYPE_UINT:
+	case SIS_FIELD_TYPE_VOLUME:
+	case SIS_FIELD_TYPE_AMOUNT:
 		i64 = sisdb_field_get_int(infu_, ins_);
-
-		if (outfu_->flags.io && outfu_->flags.zoom > 0)
-		{
-			zoom = sis_zoom10(outfu_->flags.zoom);
-		}
-		// 对时间进行转换
-		if (sisdb_field_is_time(infu_))
-		{
-			i64 = (int64)sisdb_table_struct_trans_time(i64, indb_->control.scale,
-													 outdb_, outdb_->control.scale);
-		}
-		// 对成交量进行转换，必须是当天写入的数据，才以min为基础进行转换，
-		if (outfu_->flags.len == 1)
-		{
-			i8 = (int8)(i64 / zoom);
-			memmove(outs_ + outfu_->offset, &i8, outfu_->flags.len);
-		}
-		else if (outfu_->flags.len == 2)
-		{
-			i16 = (int16)(i64 / zoom);
-			memmove(outs_ + outfu_->offset, &i16, outfu_->flags.len);
-		}
-		else if (outfu_->flags.len == 4)
-		{
-			i32 = (int32)(i64 / zoom);
-			memmove(outs_ + outfu_->offset, &i32, outfu_->flags.len);
-		}
-		else
-		{
-			i64 = (int64)(i64 / zoom);
-			memmove(outs_ + outfu_->offset, &i64, outfu_->flags.len);
-		}
+		sisdb_field_set_uint(outfu_, outs_, uint64(i64));
+		break;
+	case SIS_FIELD_TYPE_MSEC:
+	case SIS_FIELD_TYPE_SECOND:
+	case SIS_FIELD_TYPE_DATE:
+		i64 = sisdb_field_get_int(infu_, ins_);
+		i64 = (int64)_sisdb_fields_trans_time(i64, inunit_, outunit_);
+		sisdb_field_set_uint(outfu_, outs_, uint64(i64));
+		break;
+	case SIS_FIELD_TYPE_INT:
+		i64 = sisdb_field_get_int(infu_, ins_);
+		sisdb_field_set_int(outfu_, outs_, i64);
 		break;
 	case SIS_FIELD_TYPE_FLOAT:
-		f64 = sisdb_field_get_price(infu_, ins_);
-		if (!outfu_->flags.io && outfu_->flags.zoom > 0)
-		{
-			zoom = sis_zoom10(outfu_->flags.zoom);
-		}
-		if (outfu_->flags.len == 4)
-		{
-			i32 = (int32)(f64 * zoom);
-			memmove(outs_ + outfu_->offset, &i32, outfu_->flags.len);
-		}
-		else
-		{
-			i64 = (int64)(f64 * zoom);
-			memmove(outs_ + outfu_->offset, &i64, outfu_->flags.len);
-		}
-
+	case SIS_FIELD_TYPE_PRICE:
+		f64 = sisdb_field_get_float(infu_, ins_, inunit_->info->dot);
+		sisdb_field_set_float(outfu_, outs_, f64, outunit_->info_->dot);
 		break;
 	default:
 		break;
 	}
 }
+
+
+s_sis_sds _sisdb_collect_struct_trans(s_sisdb_collect *in_unit_, s_sis_sds ins_, s_sisdb_collect *out_unit_)
+{
+	// const char *src = sis_struct_list_get(out_unit_->value, out_unit_->value->count - 1);
+	int count = (int)(sis_sdslen(ins_) / in_unit_->value->len);
+	s_sis_sds outs_ = sis_sdsnewlen(NULL, count * out_unit_->value->len);
+
+	s_sis_sds ins = ins_;
+	s_sis_sds outs = outs_;
+
+	// printf("table=%p:%p coll=%p,field=%p \n",
+	// 			out_tb, out_unit_->father, out_unit_,
+	// 			out_tb->field_name);
+	int fields = sis_string_list_getsize(out_unit_->db->field_name);
+
+	for (int k = 0; k < count; k++)
+	{
+		for (int m = 0; m < fields; m++)
+		{
+			const char *key = sis_string_list_get(out_unit_->db->field_name, m);
+			s_sisdb_field *out_fu = (s_sisdb_field *)sis_map_buffer_get(out_unit_->db->field_map, key);
+			s_sisdb_field *in_fu = (s_sisdb_field *)sis_map_buffer_get(in_unit_->db->field_map, key);
+			if (!in_fu)
+			{
+				continue;
+			}
+			_sisdb_collect_struct_trans_alone(ins, in_fu, in_unit_, outs, out_fu, out_unit_);
+		}
+		ins += in_unit_->value->len;
+		outs += out_unit_->value->len;
+		// 下一块数据
+	}
+	return outs_;
+}
+
+int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const char *code_)
+{
+	int count = sis_string_list_getsize(unit_->db->publishs);
+	// printf("publishs=%d\n", count);
+	s_sis_db * db = unit_->db->father;
+	s_sisdb_table *pub_table;
+
+	s_sis_sds pub_val = NULL;
+	s_sisdb_collect *pub_collect;
+
+	for (int k = 0; k < count; k++)
+	{
+		const char *pub_db_name = sis_string_list_get(unit_->db->publishs, k);
+		pub_table = sisdb_get_table(db, pub_db_name);
+		// printf("publishs=%d  db=%s  fields=%p %p \n", k, link_db,link_table,link_table->field_name);
+		// for (int f=0; f<sis_string_list_getsize(link_table->field_name); f++){
+		// 	printf("  fields=%s\n", sis_string_list_get(link_table->field_name,f));
+		// }
+		if (!pub_table)
+		{
+			continue;
+		}
+		// 时间跨度大的不能转到跨度小的数据表
+		if (unit_->db->control.scale > pub_table->control.scale)
+		{
+			continue;
+		}
+		s_sis_sds key = sis_sdsnew(code_);
+		key = sis_sdscatfmt(key,".%s", pub_db_name);
+
+		pub_collect = sisdb_get_collect(db, key);
+		if (!pub_collect)
+		{
+			pub_collect = sisdb_collect_create(db, key);
+			if (!pub_collect) 
+			{
+				sis_sdsfree(key);
+				continue;
+			}			// printf("new......\n");
+		}
+		sis_sdsfree(key);
+
+		// printf("publishs=%d  db=%s.%s in= %p table=%p:%p coll=%p,field=%p \n", k, link_db,key_,
+		// 		collect_->father,
+		// 		link_table, link_collect->father, link_collect,
+		// 		link_table->field_name);
+		//---- 转换到其他数据库的数据格式 ----//
+		pub_val = _sisdb_collect_struct_trans(unit_, val_, pub_collect);
+		//---- 修改数据 ----//
+		if (pub_val)
+		{
+			// printf("table_=%lld\n",sisdb_field_get_uint_from_key(table_,"time",in_val));
+			// printf("link_table=%lld\n",sisdb_field_get_uint_from_key(link_table,"time",link_val));
+			sisdb_collect_update(pub_collect, pub_val);
+			sis_sdsfree(pub_val);
+		}
+	}
+	return count;
+}
+
+
+
+
+
+// int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t ilen_)
+// {
+// 	if (ilen_ < 1)
+// 	{
+// 		return 0;
+// 	}
+// 	int count = 0;
+
+// 	count = (int)(ilen_ / unit_->value->len);
+// 	//这里应该判断数据完整性
+// 	if (count * unit_->value->len != ilen_)
+// 	{
+// 		sis_out_log(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
+// 		return 0;
+// 	}
+// 	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
+// 	for (int i = 0; i < count; i++)
+// 	{
+// 		sis_struct_list_push(unit_->value, (void *)(in_ + i * unit_->value->len));
+// 	}
+
+// 	sisdb_stepindex_rebuild(unit_->stepinfo,
+// 						  _sisdb_collect_get_time(unit_, 0),
+// 						  _sisdb_collect_get_time(unit_, unit_->value->count - 1),
+// 						  unit_->value->count);
+// 	return count;
+// }
+
 
 ////////////////

@@ -160,15 +160,15 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *, const char *in_, 
 
 int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_);
 
+int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const char *code_)
 
 
 
-int sisdb_collect_update(s_sisdb_collect *, const char *in_, size_t ilen_);
+
+
 // 从磁盘加载，整块写入，
-int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);
+// int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);
 
-void sisdb_collect_struct_trans(s_sis_sds ins_, s_sisdb_field *infu_, s_sisdb_table *indb_, s_sis_sds outs_, s_sisdb_field *outfu_, s_sisdb_table *outdb_);
-// void sisdb_collect_struct_trans_incr(s_sis_sds ins_,s_sis_sds dbs_, s_sisdb_field *infu_, s_sisdb_table *indb_, s_sis_sds outs_, s_sisdb_field *outfu_,s_sisdb_table *outdb_);
 
 
 #endif /* _SIS_COLLECT_H */
