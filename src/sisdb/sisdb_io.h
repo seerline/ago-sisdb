@@ -40,18 +40,22 @@ char * sisdb_open(const char *conf_);
 
 int sisdb_init(const char *market_);
 
-s_sis_sds sisdb_list_sds(const char *com_);
-s_sis_sds sisdb_show_sds(const char *com_);
+s_sis_sds sisdb_show_sds(const char *key_);
 
 void sisdb_close();
 
 bool sisdb_save();
-bool sisdb_saveto(const char * fmt_, const char *db_);
 
-s_sis_sds sisdb_get_sds(const char *db_, const char *key_, const char *com_);
+s_sis_sds sisdb_get_sds(const char *key_, const char *com_);
 
-int sisdb_set(const char *fmt_, const char *db_, const char *key_, const char *val_, size_t len_);
-int sisdb_set_directcopy(int fmt_, const char *db_, const char *key_, const char *val_, size_t len_);
+// 来源数据为二进制结构
+int sisdb_set_struct(const char *key_, const char *val_, size_t len_);
+// 来源数据为JSON数据结构
+int sisdb_set_json(const char *key_, const char *val_, size_t len_);
 
+int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_);
+
+int sisdb_write_begin(const char *com_, const char *key_, const char *val_, size_t len_);
+void sisdb_write_end();
 
 #endif  /* _SISDB_IO_H */

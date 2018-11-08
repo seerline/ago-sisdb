@@ -49,8 +49,6 @@ typedef struct s_sis_aof_head{
 // 到时间保存
 bool sisdb_file_save(const char *dbpath_, s_sis_db *db_);
 
-bool sisdb_file_saveto(const char *dbpath_, s_sis_db *db_, int format_, const char *tb_);
-
 bool sisdb_file_save_aof(const char *dbpath_, s_sis_db *db_, 
             int format_, const char *tb_, const char *key_, 
             const char *val_, size_t len_);

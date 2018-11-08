@@ -163,8 +163,8 @@ char *sisdb_open(const char *conf_)
     }
 
     server.db->save_format = sisdb_find_map_uid(server.db,
-                                                 sis_json_get_str(service, "save-format"),
-                                                 SIS_MAP_DEFINE_DATA_TYPE);
+                                                sis_json_get_str(service, "save-format"),
+                                                SIS_MAP_DEFINE_DATA_TYPE);
 
     // 启动存盘线程
     server.db->save_pid = 0;
@@ -183,8 +183,7 @@ char *sisdb_open(const char *conf_)
         s_sis_json_node *info = sis_conf_first_node(node);
         while (info)
         {
-            // s_sis_table *table =
-            sis_table_create(server.db, info->key, info);
+            sisdb_table_create(server.db, info->key, info);
             info = info->next;
         }
     }
@@ -213,7 +212,7 @@ char *sisdb_open(const char *conf_)
         s_sis_json_node *info = sis_conf_first_node(node);
         while (info)
         {
-            sis_table_create(server.db, info->key, info);
+            sisdb_table_create(server.db, info->key, info);
             info = info->next;
         }
     }
@@ -278,24 +277,8 @@ bool sisdb_save()
         sis_out_log(3)("no init sisdb.\n");
         return false;
     }
+    // 存为struct格式
     return sisdb_file_save(server.dbpath, server.db);
-}
-bool sisdb_saveto(const char *fmt_, const char *db_)
-{
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return false;
-    }
-
-    int uid = sisdb_find_map_uid(server.db, fmt_, SIS_MAP_DEFINE_DATA_TYPE);
-    if (uid != SIS_DATA_TYPE_CSV && uid != SIS_DATA_TYPE_JSON && uid != SIS_DATA_TYPE_ARRAY)
-    {
-        sis_out_log(3)("saveto data type error.\n");
-        return false;
-    }
-
-    return sisdb_file_saveto(server.dbpath, server.db, uid, db_);
 }
 
 s_sis_sds sisdb_show_db_info_sds(s_sis_db *db_)
@@ -307,94 +290,79 @@ s_sis_sds sisdb_show_db_info_sds(s_sis_db *db_)
 		s_sis_dict_iter *di = sis_dict_get_iter(db_->dbs);
 		while ((de = sis_dict_next(di)) != NULL)
 		{
-			s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
-			list = sdscatprintf(list, "  %-10s : fields=%2d, collects=%lu\n",
+			s_sisdb_table *val = (s_sisdb_table *)sis_dict_getval(de);
+			list = sdscatprintf(list, "  %-10s : fields=%2d, len=%lu\n",
 								val->name,
 								sis_string_list_getsize(val->field_name),
-								sis_map_buffer_getsize(val->collect_map));
+								val->len);
 		}
 	}
-
 	return list;
 }
-s_sis_sds sisdb_show_sds(const char *com_)
+// 某个股票有多少条记录
+s_sis_sds sisdb_show_collect_info_sds(s_sis_db *db_, const char *key_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
+    s_sisdb_collect *val = sisdb_get_collect(db_, key_);
+    if (!val)
     {
-        sis_out_log(3)("no init sisdb.\n");
+        sis_out_log(3)("no find %s key.\n", key_);
         return NULL;
-    }
-    return sisdb_show_db_info_sds(server.db);
+    }    
+	s_sis_sds list = sis_sdsempty();
+    list = sdscatprintf(list, "  %-20s : len=%2d, count=%lu\n",
+                        key_,
+                        val->value->len,
+                        sisdb_collect_recs(val));       
+	return list;
 }
-
-s_sis_sds sisdb_get_sds(const char *db_, const char *key_, const char *com_)
+s_sis_sds sisdb_show_sds(const char *key_)
 {
     if (server.status != SIS_SERVER_STATUS_INITED)
     {
         sis_out_log(3)("no init sisdb.\n");
         return NULL;
     }
-    s_sis_table *table = sisdb_get_table(server.db, db_);
-    if (!table)
+    if (!key_)
     {
-        sis_out_log(3)("no find %s db.\n", db_);
-        return NULL;
-    }
-    if (!sis_strcasecmp(key_, "collects"))
-    {
-        return sis_table_get_collects_sds(table, com_);
+        return sisdb_show_db_info_sds(server.db);
     }
     else
     {
-        return sis_table_get_sds(table, key_, com_);
+        // 这里根据key格式不同，可以有以下功能
+        return sisdb_show_collect_info_sds(server.db, key_);
     }
-}
-// 直接拷贝
-int sisdb_set_directcopy(int format_, const char *db_, const char *key_, const char *val_, size_t len_)
-{
-    // if (sis_strcasecmp(key_,"SH600048")) return SIS_SERVER_REPLY_ERR;
-    printf("----[%d] %s.%s  %ld\n", format_, key_, db_, len_);
-    if (format_ == SIS_DATA_TYPE_STRUCT)
-    {
-        // sis_out_binary("set", val_, len_);
-    }
-    else
-    {
-        printf("%s val : %s\n", __func__, val_);
-    }
-    s_sis_table *table = sisdb_get_table(server.db, db_);
-    if (!table)
-    {
-        sis_out_log(3)("no find %s db.\n", db_);
-        return SIS_SERVER_REPLY_ERR;
-    }
-    // 来源是结构体数据的，必须只能往结构体table写数据，
-    int o = sis_table_update_and_pubs(format_, table, key_, val_, len_);
-    if (o)
-    {
-        sis_out_log(5)("set data ok,[%d].\n", o);
-        return SIS_SERVER_REPLY_OK;
-    }
-    return SIS_SERVER_REPLY_ERR;
 }
 
-int sisdb_set(const char *fmt_, const char *db_, const char *key_, const char *val_, size_t len_)
+s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
 {
     if (server.status != SIS_SERVER_STATUS_INITED)
     {
         sis_out_log(3)("no init sisdb.\n");
-        return SIS_SERVER_REPLY_ERR;
+        return NULL;
     }
-
-    int uid = sisdb_find_map_uid(server.db, fmt_, SIS_MAP_DEFINE_DATA_TYPE);
-    if (uid != SIS_DATA_TYPE_STRUCT && uid != SIS_DATA_TYPE_JSON && uid != SIS_DATA_TYPE_ARRAY)
+    // *.DAY -- 取所有股票符合条件的1条数据
+    if (key_[0] == '*')
     {
-        sis_out_log(3)("set data type error.\n");
-        return SIS_SERVER_REPLY_ERR;
+        char db[SIS_MAXLEN_TABLE];
+        sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
+        if (key_[1] == '*')
+        {
+            // 获得某个数据表所有的key键 用 sis_str_match 来判断比较
+            return sisdb_collects_get_code_sds(server.db, db, com_);
+        }
+        else
+        {
+            // 获得多只股票某类数据的一条记录
+            return sisdb_collects_get_last_sds(server.db, db, com_);
+        }
     }
 
-    // 如果保存aof失败就返回错误
-    if (!sisdb_file_save_aof(server.dbpath, server.db, uid, db_, key_, val_, len_))
+    return sisdb_collect_get_sds(server.db, key_, com_);
+}
+
+int _sisdb_write_begin(const char *com_, const char *key_, const char *val_, size_t len_)
+{
+    if (!sisdb_file_save_aof(server.dbpath, server.db, com_, key_, val_, len_))
     {
         sis_out_log(3)("save aof error.\n");
         return SIS_SERVER_REPLY_ERR;
@@ -403,31 +371,98 @@ int sisdb_set(const char *fmt_, const char *db_, const char *key_, const char *v
     {
         // == 0 才是锁住
         sis_out_log(3)("saveing... set fail.\n");
-        return SIS_SERVER_REPLY_OK;
+        return SIS_SERVER_REPLY_ERR;
     };
-    int o = sisdb_set_directcopy(uid, db_, key_, val_, len_);
+    return SIS_SERVER_REPLY_OK;
+}
+void _sisdb_write_end()
+{
     sis_mutex_unlock(&server.db->save_mutex);
+}
+
+// 直接拷贝
+int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
+{
+    // 1 . 先把来源数据，转换为 srcdb 的二进制结构数据集合
+    s_sisdb_collect *collect = sisdb_get_collect(server.db, key_);
+    if (!collect)
+    {
+        collect = sisdb_collect_create(server.db, key_);
+        if (!collect) {
+            return SIS_SERVER_REPLY_ERR;
+        }
+        // 进行其他的处理
+    }
+
+	s_sis_sds in = NULL;
+
+	switch (fmt_)
+	{
+	case SIS_DATA_TYPE_JSON:
+		in = sisdb_collect_json_to_struct_sds(collect, val_, len_);
+		break;
+	case SIS_DATA_TYPE_ARRAY:
+		in = sisdb_collect_array_to_struct_sds(collect, val_, len_);
+		break;
+	default:
+		// 这里应该不用申请新的内存
+		in = sis_sdsnewlen(val_, len_);
+	}
+	// sis_out_binary("update 0 ", in_, ilen_);
+
+    int o = sisdb_collect_update(collect, in);
+    if (o)
+    {
+        sis_out_log(5)("set data ok,[%d].\n", o);
+        return SIS_SERVER_REPLY_OK;
+    }
+    return SIS_SERVER_REPLY_ERR;
+}
+
+int sisdb_set_json(const char *key_, const char *val_, size_t len_)
+{
+    if (server.status != SIS_SERVER_STATUS_INITED)
+    {
+        sis_out_log(3)("no init sisdb.\n");
+        return SIS_SERVER_REPLY_ERR;
+    }
+    int fmt = SIS_DATA_TYPE_JSON;
+    // 先判断是json or array
+    if (val_[0] == '{') {
+        fmt = SIS_DATA_TYPE_JSON;
+    } else if(val_[0] == '[') {
+        fmt = SIS_DATA_TYPE_ARRAY;
+    } else {
+        sis_out_log(3)("set data format error.\n");
+        return SIS_SERVER_REPLY_ERR;
+    }        
+
+    if(_sisdb_write_begin("set",key_,val_,len_)==SIS_SERVER_REPLY_ERR){
+        return SIS_SERVER_REPLY_ERR;
+    }
+    // 如果保存aof失败就返回错误
+    int o = sisdb_set(fmt, key_, val_, len_);
+
+    _sisdb_write_end();
 
     return o;
 }
-int sisdb_delete_market(s_sis_table *tb_, const char *market_)
+int sisdb_set_struct(const char *key_, const char *val_, size_t len_)
 {
-    int o = 0;
-    s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(tb_->collect_map);
-    while ((de = sis_dict_next(di)) != NULL)
+    if (server.status != SIS_SERVER_STATUS_INITED)
     {
-        s_sis_collect_unit *val = (s_sis_collect_unit *)sis_dict_getval(de);
-        if (!sis_strncasecmp(sis_dict_getkey(de), market_, strlen(market_)))
-        {
-            sis_collect_unit_destroy(val);
-            o++;
-        }
-        sis_dict_delete(tb_->collect_map, sis_dict_getkey(de));
+        sis_out_log(3)("no init sisdb.\n");
+        return SIS_SERVER_REPLY_ERR;
     }
-    sis_dict_iter_free(di);
-    // printf("delete [%s] count=%d\n",tb_->name, o);
-    sis_map_buffer_clear(tb_->collect_map);
+
+    if(_sisdb_write_begin("sset",key_,val_,len_)==SIS_SERVER_REPLY_ERR){
+        return SIS_SERVER_REPLY_ERR;
+    }
+    // 如果保存aof失败就返回错误
+    int o = sisdb_set(SIS_DATA_TYPE_STRUCT, key_, val_, len_);
+
+    _sisdb_write_end();
+
     return o;
 }
 
@@ -435,13 +470,15 @@ int sisdb_init(const char *market_)
 {
     int o = 0;
     s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(server.db->dbs);
+    s_sis_dict_iter *di = sis_dict_get_iter(server.db->collects);
     while ((de = sis_dict_next(di)) != NULL)
     {
-        s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
-        if (val->control.isinit)
+        s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
+        if (val->db->control.isinit&&!sis_strncasecmp(sis_dict_getkey(de), market_, strlen(market_)))
         {
-            o += sisdb_delete_market(val, market_);
+            // 只是设置记录数为0
+            sisdb_collect_clear(val);
+            o ++;
         }
     }
     sis_dict_iter_free(di);

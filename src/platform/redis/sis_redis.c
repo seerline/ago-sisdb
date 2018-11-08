@@ -92,15 +92,15 @@ bool _sis_redis_check_connect(s_sis_socket *sock)
 	}
 	return (sock->status==SIS_NET_CONNECTED);
 }
-	s_sis_sds	command;   //来源信息专用,当前消息的key  sisdb.get 
-	s_sis_sds	key;       //来源信息专用,当前消息的key  sh600600.day 
-	s_sis_sds	argv;      //来源信息的参数，为json格式, 无需返回
-	s_sis_sds	address;   //来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址
+	// s_sis_sds	command;   //来源信息专用,当前消息的key  sisdb.get 
+	// s_sis_sds	key;       //来源信息专用,当前消息的key  sh600600.day 
+	// s_sis_sds	argv;      //来源信息的参数，为json格式, 无需返回
+	// s_sis_sds	address;   //来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址
 
-	s_sis_sds   format;    //set发送的数据格式 struct json
+	// s_sis_sds   format;    //set发送的数据格式 struct json
 
-	s_sis_list_node   *links;     //来源信息专用, 数据来源链路，每次多一跳就增加一个节点
-	s_sis_list_node   *nodes;     //附带的信息数据链表  node->value 为 s_sis_sds 类型
+	// s_sis_list_node   *links;     //来源信息专用, 数据来源链路，每次多一跳就增加一个节点
+	// s_sis_list_node   *nodes;     //附带的信息数据链表  node->value 为 s_sis_sds 类型
 
 int _sis_redis_get_cmds(s_sis_message_node * mess_)
 {

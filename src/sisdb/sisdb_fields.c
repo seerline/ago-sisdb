@@ -1,7 +1,6 @@
-﻿
-
+﻿#include "sis_math.h"
+#include "sisdb_map.h"
 #include "sisdb_fields.h"
-#include "sis_math.h"
 #include "sisdb_table.h"
 
 /*
@@ -39,341 +38,326 @@ inline unsigned long long unzip_zoom(int n)  // 1000 ==> 0x00011  -1000 ==> 0x10
 // 	return false;
 // }
 
-s_sis_field_unit *sis_field_unit_create(int index_, const char *name_, s_sis_fields_flags *flags_)
+s_sisdb_field *sisdb_field_create(int index_, const char *name_, s_sisdb_field_flags *flags_)
 {
-	s_sis_field_unit *unit = sis_malloc(sizeof(s_sis_field_unit));
-	memset(unit, 0, sizeof(s_sis_field_unit));
+	s_sisdb_field *unit = sis_malloc(sizeof(s_sisdb_field));
+	memset(unit, 0, sizeof(s_sisdb_field));
 	unit->index = index_;
 	sis_strcpy(unit->name, SIS_FIELD_MAXLEN, name_);
-	memmove(&unit->flags, flags_, sizeof(s_sis_fields_flags));
+	memmove(&unit->flags, flags_, sizeof(s_sisdb_field_flags));
 	return unit;
 }
-void sis_field_unit_destroy(s_sis_field_unit *unit_)
+void sisdb_field_destroy(s_sisdb_field *unit_)
 {
 	sis_free(unit_);
 }
-bool sis_field_is_price(s_sis_field_unit *unit_)
+
+bool sisdb_field_is_time(s_sisdb_field *unit_)
 {
-	if (!sis_strcase_match(unit_->name, "open") ||
-		!sis_strcase_match(unit_->name, "high") ||
-		!sis_strcase_match(unit_->name, "low") ||
-		!sis_strcase_match(unit_->name, "close"))
-	{
-		return true;
-	}
-	return false;
+	return  unit_->flags.type == SIS_FIELD_TYPE_UINT||
+			unit_->flags.type == SIS_FIELD_TYPE_MSEC||
+			unit_->flags.type == SIS_FIELD_TYPE_SECOND||
+			unit_->flags.type == SIS_FIELD_TYPE_DATE;
 }
-bool sis_field_is_time(s_sis_field_unit *unit_)
+bool sisdb_field_is_price(s_sisdb_field *unit_)
 {
-	if (!sis_strcasecmp(unit_->name, "time"))
-	{
-		return true;
-	}
-	return false;
+	return unit_->flags.type == SIS_FIELD_TYPE_PRICE;
 }
-bool sis_field_is_volume(s_sis_field_unit *unit_)
+bool sisdb_field_is_volume(s_sisdb_field *unit_)
 {
-	if (!sis_strcasecmp(unit_->name, "vol") || !sis_strcasecmp(unit_->name, "money"))
-	{
-		return true;
-	}
-	return false;
+	return  unit_->flags.type == SIS_FIELD_TYPE_VOLUME||
+			unit_->flags.type == SIS_FIELD_TYPE_AMOUNT;
 }
-uint64 sis_fields_get_uint(s_sis_field_unit *fu_, const char *val_)
+bool sisdb_field_is_float(s_sisdb_field *unit_)
 {
-	uint64 out = 0;
-	uint8 *u8;
-	uint16 *u16;
-	uint32 *u32;
-	uint64 *u64;
+	return unit_->flags.type == SIS_FIELD_TYPE_FLOAT||
+		   unit_->flags.type == SIS_FIELD_TYPE_PRICE;
+}
+bool sisdb_field_is_integer(s_sisdb_field *unit_)
+{
+	return  unit_->flags.type == SIS_FIELD_TYPE_INT||
+			unit_->flags.type == SIS_FIELD_TYPE_UINT||
+			unit_->flags.type == SIS_FIELD_TYPE_VOLUME||
+			unit_->flags.type == SIS_FIELD_TYPE_AMOUNT||
+			unit_->flags.type == SIS_FIELD_TYPE_MSEC||
+			unit_->flags.type == SIS_FIELD_TYPE_SECOND||
+			unit_->flags.type == SIS_FIELD_TYPE_DATE;
+}
+uint64 sisdb_field_get_uint(s_sisdb_field *unit_, const char *val_)
+{
+	if(!sisdb_field_is_integer(unit_)) return 0;
+
+	uint64  o = 0;
+	uint8  *v8;
+	uint16 *v16;
+	uint32 *v32;
+	uint64 *v64;
+
 	const char *ptr = val_;
 
-	switch (fu_->flags.len)
+	switch (unit_->flags.len)
 	{
 	case 1:
-		u8 = (uint8 *)(ptr + fu_->offset);
-		out = *u8;
+		v8 = (uint8 *)(ptr + unit_->offset);
+		o = *v8;
 		break;
 	case 2:
-		u16 = (uint16 *)(ptr + fu_->offset);
-		out = *u16;
+		v16 = (uint16 *)(ptr + unit_->offset);
+		o = *v16;
 		break;
 	case 4:
-		u32 = (uint32 *)(ptr + fu_->offset);
-		out = *u32;
+		v32 = (uint32 *)(ptr + unit_->offset);
+		o = *v32;
 		break;
 	case 8:
-		u64 = (uint64 *)(ptr + fu_->offset);
-		out = *u64;
+		v64 = (uint64 *)(ptr + unit_->offset);
+		o = *v64;
 		break;
 	default:
 		break;
 	}
-	if (fu_->flags.io && fu_->flags.zoom > 0)
-	{
-		out *= sis_zoom10(fu_->flags.zoom);
-	}
-	return out;
+	return o;
 }
-int64 sis_fields_get_int(s_sis_field_unit *fu_, const char *val_)
+int64 sisdb_field_get_int(s_sisdb_field *unit_, const char *val_)
 {
-	int64 out = 0;
-	int8 *u8;
-	int16 *u16;
-	int32 *u32;
-	int64 *u64;
+	if(!sisdb_field_is_integer(unit_)) return 0;
+	int64  o = 0;
+	int8  *v8;
+	int16 *v16;
+	int32 *v32;
+	int64 *v64;
+
 	const char *ptr = val_;
 
-	switch (fu_->flags.len)
+	switch (unit_->flags.len)
 	{
 	case 1:
-		u8 = (int8 *)(ptr + fu_->offset);
-		out = *u8;
+		v8 = (int8 *)(ptr + unit_->offset);
+		o = *v8;
 		break;
 	case 2:
-		u16 = (int16 *)(ptr + fu_->offset);
-		out = *u16;
+		v16 = (int16 *)(ptr + unit_->offset);
+		o = *v16;
 		break;
 	case 4:
-		u32 = (int32 *)(ptr + fu_->offset);
-		out = *u32;
+		v32 = (int32 *)(ptr + unit_->offset);
+		o = *v32;
 		break;
 	case 8:
-		u64 = (int64 *)(ptr + fu_->offset);
-		out = *u64;
+		v64 = (int64 *)(ptr + unit_->offset);
+		o = *v64;
 		break;
 	default:
 		break;
 	}
-	if (fu_->flags.io && fu_->flags.zoom > 0)
-	{
-		out *= sis_zoom10(fu_->flags.zoom);
-	}
-	return out;
+	return o;
 }
-// double sis_fields_get_double(s_sis_field_unit *fu_, const char *val_)
-// {
-// 	double out = 0.0;
-// 	float *f32;
-// 	double *f64;
-// 	const char *ptr = val_;
-
-// 	switch (fu_->flags.len)
-// 	{
-// 	case 4:
-// 		f32 = (float *)(ptr + fu_->offset);
-// 		out = *f32;
-// 		break;
-// 	case 8:
-// 		f64 = (double *)(ptr + fu_->offset);
-// 		out = *f64;
-// 		break;
-// 	default:
-// 		break;
-// 	}
-// 	printf("---[%s]=%.f\n",fu_->name, out);
-// 	if (!fu_->flags.io && fu_->flags.zoom > 0)
-// 	{
-// 		out /= sis_zoom10(fu_->flags.zoom);
-// 	}
-// 	return out;
-// }
-double sis_fields_get_double(s_sis_field_unit *fu_, const char *val_)
+double sisdb_field_get_float(s_sisdb_field *unit_, const char *val_, int dot_)
 {
-	double out = 0.0;
-	int32 *i32;
-	int64 *i64;
-	const char *ptr = val_;
+	if(!sisdb_field_is_float(unit_)) return 0.0;
 
-	if (!fu_->flags.io && fu_->flags.zoom > 0)
+	double   o = 0.0;
+	int32 *v32;
+	int64 *v64;
+
+	const char *ptr = val_;
+	int zoom = sis_zoom10(unit_->flags.dot);
+	if(sisdb_field_is_price(unit_)) 
 	{
-		out = sis_zoom10(fu_->flags.zoom);
+		zoom = sis_zoom10(dot_);
 	}
-	switch (fu_->flags.len)
+
+	switch (unit_->flags.len)
 	{
 	case 4:
-		i32 = (int32 *)(ptr + fu_->offset);
-		out = (double)*i32/out;
+		v32 = (int32 *)(ptr + unit_->offset);
+		o = (double)*v32/zoom;
 		break;
 	case 8:
-		i64 = (int64 *)(ptr + fu_->offset);
-		out = (double)*i64/out;
+		v64 = (int64 *)(ptr + unit_->offset);
+		o = (double)*v64/zoom;
 		break;
 	default:
 		break;
 	}
 	// printf("---[%s]=%f\n",fu_->name, out);
-	return out;
+	return o;
 }
-void sis_fields_set_uint(s_sis_field_unit *fu_, char *val_, uint64 u64_)
+
+////////////////////////////////
+//   --- set ----
+/////////////////////////////////
+void sisdb_field_set_uint(s_sisdb_field *unit_, char *val_, uint64 v64_)
 {
 	uint64 zoom = 1;
-	uint8 u8 = 0;
-	uint16 u16 = 0;
-	uint32 u32 = 0;
-	uint64 u64 = 0;
+	uint8   v8 = 0;
+	uint16 v16 = 0;
+	uint32 v32 = 0;
+	uint64 v64 = 0;
 
-	if (fu_->flags.io && fu_->flags.zoom > 0)
+	switch (unit_->flags.len)
 	{
-		zoom = sis_zoom10(fu_->flags.zoom);
-	}
-	if (fu_->flags.len == 1)
-	{
-		u8 = (uint8)(u64_ / zoom);
-		memmove(val_ + fu_->offset, &u8, fu_->flags.len);
-	}
-	else if (fu_->flags.len == 2)
-	{
-		u16 = (uint16)(u64_ / zoom);
-		memmove(val_ + fu_->offset, &u16, fu_->flags.len);
-	}
-	else if (fu_->flags.len == 4)
-	{
-		u32 = (uint32)(u64_ / zoom);
-		memmove(val_ + fu_->offset, &u32, fu_->flags.len);
-	}
-	else
-	{
-		u64 = (uint64)(u64_ / zoom);
-		memmove(val_ + fu_->offset, &u64, fu_->flags.len);
-	}
+	case 1:
+		v8 = (uint8)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v8, unit_->flags.len);
+		break;
+	case 2:
+		v16 = (uint16)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v16, unit_->flags.len);
+		break;
+	case 4:
+		v32 = (uint32)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v32, unit_->flags.len);
+		break;
+	case 8:
+	default:
+		v64 = (uint64)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v64, unit_->flags.len);
+		break;
+	}	
 }
 
-void sis_fields_set_int(s_sis_field_unit *fu_, char *val_, int64 i64_)
+void sisdb_field_set_int(s_sisdb_field *unit_, char *val_, int64 v64_)
 {
 	int64 zoom = 1;
-	int8 i8 = 0;
-	int16 i16 = 0;
-	int32 i32 = 0;
-	int64 i64 = 0;
+	int8   v8 = 0;
+	int16 v16 = 0;
+	int32 v32 = 0;
+	int64 v64 = 0;
 
-	if (fu_->flags.io && fu_->flags.zoom > 0)
+	switch (unit_->flags.len)
 	{
-		zoom = sis_zoom10(fu_->flags.zoom);
-	}
-	if (fu_->flags.len == 1)
-	{
-		i8 = (int8)(i64_ / zoom);
-		memmove(val_ + fu_->offset, &i8, fu_->flags.len);
-	}
-	else if (fu_->flags.len == 2)
-	{
-		i16 = (int16)(i64_ / zoom);
-		memmove(val_ + fu_->offset, &i16, fu_->flags.len);
-	}
-	else if (fu_->flags.len == 4)
-	{
-		i32 = (int32)(i64_ / zoom);
-		memmove(val_ + fu_->offset, &i32, fu_->flags.len);
-	}
-	else
-	{
-		i64 = (int64)(i64_ / zoom);
-		memmove(val_ + fu_->offset, &i64, fu_->flags.len);
-	}
+	case 1:
+		v8 = (int8)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v8, unit_->flags.len);
+		break;
+	case 2:
+		v16 = (int16)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v16, unit_->flags.len);
+		break;
+	case 4:
+		v32 = (int32)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v32, unit_->flags.len);
+		break;
+	case 8:
+	default:
+		v64 = (int64)(v64_ / zoom);
+		memmove(val_ + unit_->offset, &v64, unit_->flags.len);
+		break;
+	}	
 }
-
-void sis_fields_set_double(s_sis_field_unit *fu_, char *val_, double f64_)
+void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_, int dot_)
 {
 
-	int32 i32 = 0;
-	int64 i64 = 0;
+	int32 v32 = 0;
+	int64 v64 = 0;
 	int64 zoom = 1;
-	if (!fu_->flags.io && fu_->flags.zoom > 0)
+
+	const char *ptr = val_;
+	int zoom = sis_zoom10(unit_->flags.dot);
+	if(sisdb_field_is_price(unit_)) 
 	{
-		zoom = sis_zoom10(fu_->flags.zoom);
+		zoom = sis_zoom10(dot_);
 	}
-	if (fu_->flags.len == 4)
+
+	switch (unit_->flags.len)
 	{
-		i32 = (int32)(f64_ * zoom);
-		memmove(val_ + fu_->offset, &i32, fu_->flags.len);
+	case 4:
+		v32 = (int32)(f64_ * zoom);
+		memmove(val_ + unit_->offset, &v32, unit_->flags.len);
+		break;
+	case 8:
+	default:
+		v64 = (int64)(f64_ * zoom);
+		memmove(val_ + unit_->offset, &v64, unit_->flags.len);
+		break;
 	}
-	else
-	{
-		i64 = (int64)(f64_ * zoom);
-		memmove(val_ + fu_->offset, &i64, fu_->flags.len);
-	}
+
 }
 
+///////////////////////////////////////
 //获取数据库的各种值
-s_sis_field_unit *sis_field_get_from_key(s_sis_table *tb_, const char *key_)
+///////////////////////////////////////
+s_sisdb_field *sisdb_field_get_from_key(s_sisdb_table *tb_, const char *key_)
 {
-	if (!key_||!tb_->field_map)
-	{
-		return NULL;
-	}
-	s_sis_field_unit *fu = (s_sis_field_unit *)sis_map_buffer_get(tb_->field_map, key_);
+	// if (!key_||!tb_->field_map)
+	// {
+	// 	return NULL;
+	// }
+	s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb_->field_map, key_);
 	return fu;
 }
-int sis_field_get_offset(s_sis_table *tb_, const char *key_)
+int sisdb_field_get_offset(s_sisdb_table *tb_, const char *key_)
 {
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
+	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
 	if (!fu)
 	{
 		return 0;
 	}
-	return fu->offset+fu->flags.len;
+	return fu->offset + fu->flags.len;
 }
-const char * sis_fields_get_string_from_key(s_sis_table *tb_, const char *key_, const char *val_, size_t *len_)
-{
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
-	if (!fu)
-	{
-		return NULL;
-	}	
-	*len_ = fu->flags.len;
-	return val_ + fu->offset;
-}
+// const char * sisdb_field_get_string_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_)
+// {
+// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+// 	if (!fu)
+// 	{
+// 		return NULL;
+// 	}	
+// 	*len_ = fu->flags.len;
+// 	return val_ + fu->offset;
+// }
 
-uint64 sis_fields_get_uint_from_key(s_sis_table *tb_, const char *key_, const char *val_)
+uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const char *val_)
 {
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
+	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
 	if (!fu)
 	{
 		return 0;
 	}
-	return sis_fields_get_uint(fu, val_);
+	return sisdb_field_get_uint(fu, val_);
 }
-int64 sis_fields_get_int_from_key(s_sis_table *tb_, const char *key_, const char *val_)
-{
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
-	if (!fu)
-		return 0;
-	return sis_fields_get_int(fu, val_);
-}
-double sis_fields_get_double_from_key(s_sis_table *tb_, const char *key_, const char *val_)
-{
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
-	if (!fu)
-		return 0.0;
-	return sis_fields_get_double(fu, val_);
-}
+// int64 sisdb_field_get_int_from_key(s_sisdb_table *tb_, const char *key_, const char *val_)
+// {
+// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+// 	if (!fu)
+// 		return 0;
+// 	return sisdb_field_get_int(fu, val_);
+// }
+// double sisdb_field_get_float_from_key(s_sisdb_table *tb_, const char *key_, const char *val_)
+// {
+// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+// 	if (!fu)
+// 	{
+// 		return 0.0;
+// 	}
+// 	return sisdb_field_get_price(fu, val_);
+// }
 
-void sis_fields_set_uint_from_key(s_sis_table *tb_, const char *key_, char *val_, uint64 u64_)
-{
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
-	if (fu)
-	{
-		sis_fields_set_uint(fu, val_, u64_);
-	}
-}
-void sis_fields_set_int_from_key(s_sis_table *tb_, const char *key_, char *val_, int64 i64_)
-{
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
-	if (fu)
-	{
-		sis_fields_set_int(fu, val_, i64_);
-	}
-}
-void sis_fields_set_double_from_key(s_sis_table *tb_, const char *key_, char *val_, double f64_)
-{
-	s_sis_field_unit *fu = sis_field_get_from_key(tb_, key_);
-	if (fu)
-	{
-		sis_fields_set_double(fu, val_, f64_);
-	}
-}
-void sis_fields_copy(char *des_, const char *src_, size_t len_)
+// void sisdb_field_set_uint_from_key(s_sisdb_table *tb_, const char *key_, char *val_, uint64 u64_)
+// {
+// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+// 	if (fu)
+// 	{
+// 		sisdb_field_set_uint(fu, val_, u64_);
+// 	}
+// }
+// void sisdb_field_set_int_from_key(s_sisdb_table *tb_, const char *key_, char *val_, int64 i64_)
+// {
+// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+// 	if (fu)
+// 	{
+// 		sisdb_field_set_int(fu, val_, i64_);
+// 	}
+// }
+// void sisdb_field_set_double_from_key(s_sisdb_table *tb_, const char *key_, char *val_, double f64_)
+// {
+// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+// 	if (fu)
+// 	{
+// 		sisdb_field_set_float(fu, val_, f64_);
+// 	}
+// }
+void sisdb_field_copy(char *des_, const char *src_, size_t len_)
 {
 	if (!des_)
 		return;
@@ -385,5 +369,52 @@ void sis_fields_copy(char *des_, const char *src_, size_t len_)
 	else
 	{
 		memmove(des_, src_, len_);
+	}
+}
+
+void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_, 
+			char *key_, s_sis_json_node *node_,s_sisdb_sysinfo  *info_)
+{
+	int64  i64 = 0;
+	double f64 = 0.0;
+	const char *str;
+	switch (fu_->flags.type)
+	{
+	case SIS_FIELD_TYPE_CHAR:
+		str = sis_json_get_str(node_, key_);
+		if (str)
+		{
+			memmove(in_ + fu_->offset, str, fu_->flags.len);
+		}
+		break;
+	case SIS_FIELD_TYPE_UINT:
+	case SIS_FIELD_TYPE_VOLUME:
+	case SIS_FIELD_TYPE_AMOUNT:
+	case SIS_FIELD_TYPE_MSEC:
+	case SIS_FIELD_TYPE_SECOND:
+	case SIS_FIELD_TYPE_DATE:
+		if (sis_json_find_node(node_, key_))
+		{
+			i64 = sis_json_get_int(node_, key_, 0);
+			sisdb_field_set_uint(fu_, in_, uint64(i64));
+		}
+		break;
+	case SIS_FIELD_TYPE_INT:
+		if (sis_json_find_node(node_, key_))
+		{
+			i64 = sis_json_get_int(node_, key_, 0);
+			sisdb_field_set_uint(fu_, in_, i64);
+		}
+		break;
+	case SIS_FIELD_TYPE_FLOAT:
+	case SIS_FIELD_TYPE_PRICE:
+		if (sis_json_find_node(node_, key_))
+		{
+			f64 = sis_json_get_double(node_, key_, 0.0);
+			sisdb_field_set_float(fu_, in_, f64, info_->dot);
+		}
+		break;
+	default:
+		break;
 	}
 }

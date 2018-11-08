@@ -169,12 +169,12 @@ int main()
 {
 	s_sis_map_pointer *map;
 	map = sis_map_pointer_create();
-	s_sis_fields_flags flag;
+	s_sisdb_field_flags flag;
 	char str[100];
 	sis_map_buffer_clear(map);
 	for (int i=0;i<100;i++){
 		sprintf(str,"name%5d",i);
-		s_sis_field_unit *unit = sis_field_unit_create(i,str,&flag);
+		s_sisdb_field *unit = sisdb_field_create(i,str,&flag);
 		sis_map_pointer_set(map, str, unit);
 	}
 	sis_map_pointer_destroy(map);

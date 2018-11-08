@@ -34,7 +34,7 @@ void sis_str_to_upper(char *in_);
 
 const char *sis_str_getline(const char *e, int *len, const char *s, size_t size_);
 
-int sis_str_match(const char* substr_, const char* source_);
+int sis_str_match(const char* substr_, const char* source_, char c);
 
 // 返回值为sign_开始位置，len为长度
 // 例子  http://127.0.0.1:1002  ://

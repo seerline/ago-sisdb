@@ -33,7 +33,7 @@ bool sisdb_file_save_conf(const char *dbpath_, s_sis_db *db_)
 }
   
 bool _sisdb_file_save_collect_struct(s_sis_sds key_, 
-        s_sis_collect_unit *unit_,
+        s_sisdb_collect *unit_,
         sis_file_handle sdbfp_,
         sis_file_handle zerofp_)
 {
@@ -48,7 +48,7 @@ bool _sisdb_file_save_collect_struct(s_sis_sds key_,
     return true;
 }
 bool _sisdb_file_save_collect(s_sis_sds key_, 
-        s_sis_collect_unit *unit_,
+        s_sisdb_collect *unit_,
         sis_file_handle sdbfp_,
         sis_file_handle zerofp_)
 {
@@ -68,19 +68,19 @@ bool _sisdb_file_save_collect(s_sis_sds key_,
     }
     return o;
 }
-bool _sisdb_file_save_table(s_sis_table *tb_,sis_file_handle sdbfp_,sis_file_handle zerofp_)
+bool _sisdb_file_save_table(s_sisdb_table *tb_,sis_file_handle sdbfp_,sis_file_handle zerofp_)
 {
 	s_sis_dict_entry *de;
 	s_sis_dict_iter *di = sis_dict_get_iter(tb_->collect_map);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
-		s_sis_collect_unit *val = (s_sis_collect_unit *)sis_dict_getval(de);
+		s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
         _sisdb_file_save_collect(sis_dict_getkey(de), val, sdbfp_, zerofp_);
 	}
 	sis_dict_iter_free(di);    
     return true;
 }
-bool _sisdb_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sis_table *tb_)
+bool _sisdb_file_save_sdb(const char *dbpath_, s_sis_db *db_,s_sisdb_table *tb_)
 {
     // 打开sdb并移到文件尾，准备追加数据
     char sdb[SIS_PATH_LEN];
@@ -126,7 +126,7 @@ bool sisdb_file_save(const char *dbpath_, s_sis_db *db_)
 	s_sis_dict_iter *di = sis_dict_get_iter(db_->db);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
-		s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
+		s_sisdb_table *val = (s_sisdb_table *)sis_dict_getval(de);
         _sisdb_file_save_sdb(dbpath_, db_, val);
 	}
 	sis_dict_iter_free(di);   
@@ -137,28 +137,6 @@ bool sisdb_file_save(const char *dbpath_, s_sis_db *db_)
     sis_file_delete(aof);
 
     return true;
-}
-
-bool sisdb_file_saveto(const char *dbpath_, s_sis_db *db_, int format_, const char *tb_)
-{
-    //???
-    sisdb_file_save_conf(dbpath_,db_);
-
- 	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(db_->db);
-	while ((de = sis_dict_next(di)) != NULL)
-	{
-		s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
-        _sisdb_file_save_sdb(dbpath_, db_, val);
-	}
-	sis_dict_iter_free(di);   
-
-    // 最后删除aof文件
-    char aof[SIS_PATH_LEN];
-    sis_sprintf(aof,SIS_PATH_LEN, SIS_DB_FILE_AOF, dbpath_, db_->name);
-    sis_file_delete(aof);
-
-    return true;    
 }
 
 bool sisdb_file_save_aof(const char *dbpath_, s_sis_db *db_, 
@@ -221,7 +199,7 @@ bool sisdb_file_load_aof(const char *dbpath_, s_sis_db *db_)
                 break;
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sis_memory_get_size需要减少
-            sisdb_set_directcopy(head.format, head.table, head.code, sis_memory(buffer), head.size);
+            sisdb_set(head.format, head.code, sis_memory(buffer), head.size);
             sis_memory_move(buffer, head.size);
             hashead=false;
         }
@@ -231,7 +209,7 @@ bool sisdb_file_load_aof(const char *dbpath_, s_sis_db *db_)
     return true;
     
 }
-bool _sisdb_file_load_table(s_sis_table *tb_,sis_file_handle fp_)
+bool _sisdb_file_load_table(s_sisdb_table *tb_,sis_file_handle fp_)
 {
     tb_->loading = true;  // 为true时不做links工作
     bool hashead =false;
@@ -255,8 +233,8 @@ bool _sisdb_file_load_table(s_sis_table *tb_,sis_file_handle fp_)
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sis_memory_get_size需要减少
             // printf("load table name=%s  %s size=%d\n",tb_->name,head.code,head.size);
-            // sisdb_set_directcopy(head.format, tb_->name, head.code, sis_memory(buffer), head.size);
-            sis_table_update_load(head.format, tb_, head.code, sis_memory(buffer), head.size);
+            // sisdb_set_direct(head.format, tb_->name, head.code, sis_memory(buffer), head.size);
+            sisdb_table_update_load(head.format, tb_, head.code, sis_memory(buffer), head.size);
             sis_memory_move(buffer, head.size);
             // sis_memory_pack(buffer);
             hashead=false;
@@ -277,7 +255,7 @@ bool sisdb_file_load(const char *dbpath_, s_sis_db *db_)
 	s_sis_dict_iter *di = sis_dict_get_iter(db_->db);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
-		s_sis_table *val = (s_sis_table *)sis_dict_getval(de);
+		s_sisdb_table *val = (s_sisdb_table *)sis_dict_getval(de);
         sis_sprintf(sdb,SIS_PATH_LEN, SIS_DB_FILE_MAIN, dbpath_, db_->name, val->name);
         sis_file_handle fp = sis_file_open(sdb, SIS_FILE_IO_READ, 0);
 	    if (fp)

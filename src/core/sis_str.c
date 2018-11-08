@@ -24,6 +24,7 @@ int sis_strcase_match(const char *son_, const char *source_)
 	}
 	return 1;
 }
+
 int sis_strcasecmp(const char *s1_, const char *s2_)
 {
 	if (!s1_)
@@ -132,7 +133,7 @@ const char *sis_str_split(const char *s_, size_t *len_, char c_)
 	}
 	return ptr;
 }
-bool sis_str_carve(const char *s_, char *s1_, size_t l1_, char *s2_, size_t l2_, char c_);
+bool sis_str_carve(const char *s_, char *s1_, size_t l1_, char *s2_, size_t l2_, char c_)
 {
 	int o = 0;
 	const char *ptr = s_;
@@ -145,7 +146,7 @@ bool sis_str_carve(const char *s_, char *s1_, size_t l1_, char *s2_, size_t l2_,
 			if (ptr && *ptr) {
 				sis_strcpy(s2_, l2_, ptr);
 			} else {
-				s2[0] = 0;
+				s2_[0] = 0;
 			}
 			return true;
 		} 
@@ -312,7 +313,7 @@ const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t si
 }
 // 判断 字符串是否在source中， 如果在，并且完全匹配就返回0 否则返回1 没有匹配就返回-1
 // source = aaa,bbbbbb,0001 
-int sis_str_match(const char* substr_, const char* source_)
+int sis_str_match(const char* substr_, const char* source_, char c)
 {
 	char *s = strstr(source_,substr_);
 	if (s) {
@@ -321,7 +322,7 @@ int sis_str_match(const char* substr_, const char* source_)
 		// if(!strcmp(substr_,"603096")||!strcmp(substr_,"KDL")) {
 		// 	printf("c == %x\n",*s);
 		// }
-		if(!*s||*s==',') {
+		if(!*s||*s==c) {
 			// printf("c == %x\n",*s);
 			return 0;
 		}

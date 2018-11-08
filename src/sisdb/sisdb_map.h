@@ -19,18 +19,18 @@
 #define SIS_MAP_DEFINE_DATA_TYPE    7   // 读取写入数据类型
 
 // 数据转换只能从低到高，如果day要转min一律失败
-// #define SIS_TABLE_TYPE_STS     0 // struct time serial  默认格式
-// #define SIS_TABLE_TYPE_JSON    1 // "json" 
+#define SIS_TABLE_TYPE_STS     0 // struct time serial  默认格式
+#define SIS_TABLE_TYPE_JSON    1 // "json" 
 
 // #define SIS_TABLE_TYPE_MARKET    100 //市场表
 // #define SIS_TABLE_TYPE_STOCKS    101 //股票表
 
 // 数据转换只能从低到高，如果day要转min一律失败
-#define SIS_TIME_FORMAT_NONE    0 // "NONE"  //
-#define SIS_TIME_FORMAT_INCR    1 // "INCR"  //int16 0开始的递增数，对应开市分钟
-#define SIS_TIME_FORMAT_MSEC    2 // "MSEC"  //int64 格式，精确到毫秒  
-#define SIS_TIME_FORMAT_SECOND  3 // "SECOND"  //int32 time_t格式，精确到秒  
-#define SIS_TIME_FORMAT_DATE    4 // "DATE"  //int32 20170101格式，精确到天
+// #define SIS_TIME_FORMAT_NONE    0 // "NONE"  //
+// #define SIS_TIME_FORMAT_INCR    1 // "INCR"  //int16 0开始的递增数，对应开市分钟
+// #define SIS_TIME_FORMAT_MSEC    2 // "MSEC"  //int64 格式，精确到毫秒  
+// #define SIS_TIME_FORMAT_SECOND  3 // "SECOND"  //int32 time_t格式，精确到秒  
+// #define SIS_TIME_FORMAT_DATE    4 // "DATE"  //int32 20170101格式，精确到天
 
 /////////////////////////////////////////////////////////
 //  字段类型定义
@@ -49,6 +49,9 @@
 // 尾数乘以幂，最大可以表示为32万亿的数量和金额；
 #define SIS_FIELD_TYPE_AMOUNT  14  // "AMOUNT"  // 专指成交金额，特殊类型zint存储，
 // 定义该类型主要是为了压缩时方便
+#define SIS_FIELD_TYPE_MSEC    15 // "MSEC"  //int64 格式，精确到毫秒  
+#define SIS_FIELD_TYPE_SECOND  16 // "SECOND"  //int32 time_t格式，精确到秒  
+#define SIS_FIELD_TYPE_DATE    17 // "DATE"  //int32 20170101格式，精确到天
 
 
 // 数据转换只能从低到高，如果day要转min一律失败

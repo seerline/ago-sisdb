@@ -8,25 +8,26 @@
 
 #include "sis_core.h"
 #include "sis_math.h"
-
 #include "sis_malloc.h"
 
+#include "sisdb.h"
 #include "sisdb_table.h"
 #include "sisdb_fields.h"
+
 /////////////////////////////////////////////////////////
 //  数据库数据搜索模式
 /////////////////////////////////////////////////////////
 #define SIS_SEARCH_NONE -1 // 没有数据符合条件
 #define SIS_SEARCH_NEAR  1  // 附近的数据
-#define SIS_SEARCH_LEFT  2  // 附近的数据
-#define SIS_SEARCH_RIGHT 3  // 附近的数据
-#define SIS_SEARCH_OK    0	// 准确匹配的数据
+#define SIS_SEARCH_LEFT  2  // 虽然发现了数据，但返回的数据比请求查询的更早一些
+#define SIS_SEARCH_RIGHT 3  // 虽然发现了数据，但返回的数据比请求查询的更晚一些
+#define SIS_SEARCH_OK    0	// 准确匹配的数据，时间一致
 
-#define SIS_SEARCH_CHECK_INIT  0  // 当日最新记录，先简单按日期来判定
-#define SIS_SEARCH_CHECK_NEW   1   // 当日新增记录，新来的时间大于最后一条记录
-#define SIS_SEARCH_CHECK_OLD   2   // 记录，新来的时间小于最后一条记录
-#define SIS_SEARCH_CHECK_OK    3   // 等于最后一条记录
-#define SIS_SEARCH_CHECK_ERROR 4 // 错误，不处理
+#define SIS_CHECK_LASTTIME_INIT  0   // 当日最新记录，先简单按日期来判定
+#define SIS_CHECK_LASTTIME_NEW   1   // 当日新增记录，新来的时间大于最后一条记录
+#define SIS_CHECK_LASTTIME_OLD   2   // 记录，新来的时间小于最后一条记录
+#define SIS_CHECK_LASTTIME_OK    3   // 等于最后一条记录
+#define SIS_CHECK_LASTTIME_ERROR 4   // 错误，不处理
 
 #define SIS_JSON_KEY_ARRAY ("value")   // 获取一个股票一条数据
 #define SIS_JSON_KEY_ARRAYS ("values") //获取一个股票多个数据
@@ -50,18 +51,23 @@ typedef struct s_sis_step_index
 } s_sis_step_index;
 
 // 单个股票的数据包
-typedef struct s_sis_collect_unit
+// 实际上定义了一个立体表，外部访问直接通过SH600600.DAY访问到collect，
+// 而collect结构和归属分别作为两个轴，来唯一确定，这两个属性缺一不可，
+// 设计上这样做的目的是快速定位目标数据，同时舍弃冗余数据，
+// 
+typedef struct s_sisdb_collect
 {
-	s_sis_table *father;		// 表的指针，可以获得字段定义的相关信息
-	s_sis_step_index *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
-	s_sis_struct_list *value;   // 结构化数据
+	s_sisdb_table       *db;    // 表的指针，可以获得字段定义的相关信息
+	s_sisdb_sysinfo  *info;	// 股票的指针，可以获得股票相关信息
+
+	s_sis_step_index  *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
+	s_sis_struct_list *value;    // 结构化数据
 
 	s_sis_sds front;  // 前一分钟的记录 catch=true生效 vol为全量 -- 存盘时一定要保存
 	s_sis_sds lasted; // 当前那一分钟的记录 catch=true生效 vol为全量 -- 存盘时一定要保存
 
 	s_sis_sds refer;  // 实际数据的前一条参考数据 zip 时生效 vol为当量 -- 需要保存
-	// s_sis_sds moved;  // 当前数据，直接从数据区获取
-} s_sis_collect_unit;
+} s_sisdb_collect;
 
 #pragma pack(pop)
 
@@ -69,54 +75,100 @@ typedef struct s_sis_collect_unit
 //------------------------s_sis_step_index --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
 
-s_sis_step_index *sis_stepindex_create();
-void sis_stepindex_destroy(s_sis_step_index *);
-void sis_stepindex_rebuild(s_sis_step_index *, uint64 left_, uint64 right_, int count_);
+s_sis_step_index *sisdb_stepindex_create();
+void sisdb_stepindex_destroy(s_sis_step_index *);
+void sisdb_stepindex_clear(s_sis_step_index *);
+void sisdb_stepindex_rebuild(s_sis_step_index *, uint64 left_, uint64 right_, int count_);
 
 ///////////////////////////////////////////////////////////////////////////
-//------------------------s_sis_collect_unit --------------------------------//
+//------------------------s_sisdb_collect --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
 
-s_sis_collect_unit *sis_collect_unit_create(s_sis_table *tb_, const char *key_);
-void sis_collect_unit_destroy(s_sis_collect_unit *);
+s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_);
+void sisdb_collect_destroy(s_sisdb_collect *);
+void sisdb_collect_clear(s_sisdb_collect *unit_);
 
-uint64 sis_collect_unit_get_time(s_sis_collect_unit *unit_, int index_);
+int sisdb_collect_recs(s_sisdb_collect *unit_);
 
-int sis_collect_unit_recs(s_sis_collect_unit *unit_);
-int sis_collect_unit_search(s_sis_collect_unit *unit_, uint64 index_);
-//检查是否增加记录，只和最后一条记录做比较，返回3个，一是当日最新记录，一是新记录，一是老记录
-int sis_collect_unit_search_check(s_sis_collect_unit *unit_, uint64 index_);
-int sis_collect_unit_search_left(s_sis_collect_unit *unit_, uint64 index_, int *mode_);
-int sis_collect_unit_search_right(s_sis_collect_unit *unit_, uint64 index_, int *mode_);
+int sisdb_collect_search(s_sisdb_collect *unit_, uint64 index_);
+int sisdb_collect_search_left(s_sisdb_collect *unit_, uint64 index_, int *mode_);
+int sisdb_collect_search_right(s_sisdb_collect *unit_, uint64 index_, int *mode_);
 
-int sis_collect_unit_delete_of_range(s_sis_collect_unit *, int start_, int stop_);  // 定位后删除
-int sis_collect_unit_delete_of_count(s_sis_collect_unit *, int start_, int count_); // 定位后删除
+s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *, int start_, int stop_);
+s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *, int start_, int count_);
 
-s_sis_sds sis_collect_unit_get_of_range_sds(s_sis_collect_unit *, int start_, int stop_);
-s_sis_sds sis_collect_unit_get_of_count_sds(s_sis_collect_unit *, int start_, int count_);
-//  按股票代码直接从表中获取一组数据
-s_sis_sds sis_table_get_of_range_sds(s_sis_table *tb_, const char *code_, int start_, int stop_);
+///////////////////////////
+//			get     ///////
+///////////////////////////
+//输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
+s_sis_sds sisdb_collect_struct_filter_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
+s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
+s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
 
-int sis_collect_unit_update(s_sis_collect_unit *, const char *in_, size_t ilen_);
-// 从磁盘加载，整块写入，
-int sis_collect_unit_update_block(s_sis_collect_unit *, const char *in_, size_t ilen_);
+s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *, const char *com_);
+// command为json命令
+// 读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围
+// 用户传入的command中关键字的定义如下：
+// 返回数据格式："format":"json" --> SIS_DSIS_JSON
+//						 "array" --> SIS_DATA_TYPE_ARRAY
+//						 "bin" --> SIS_DATA_TYPE_STRUCT  ----> 默认
+//					     "string" --> SIS_DATA_TYPE_STRING
+//						 "zip" --> SIS_DATA_TYPE_ZIP
+// 字段：    "fields":  "time,close,vol,name" 表示一共4个字段  
+//	
+//                      空,*---->表示全部字段
+// ---------<以下区域没有表示全部数据>--------
+// 数据范围："search":  min 和 start 互斥，min表示按数值取数，start表示按记录号取 
+// 					min,max 按时序索引取数据
+//						count(和max互斥，正表示向后，负表示向前),
+//						force为0表示按实际取，为1若无数据就取min前一个数据，
+//				    start，stop 按记录号取数据 0，-1-->表示全部数据
+//						count(和stop互斥，正表示向后，负表示向前),
+// 得到所有股票最新的一条记录
+s_sis_json_node *sisdb_collect_groups_json_init(s_sis_string_list *fields_);
+void sisdb_collect_groups_json_push(s_sis_json_node *node_, char *code, s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
+s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_);
+//////////////////////
 
+s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *, const char *com_);
+// 得到数据表中共有多少股票
+s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_,const char *, const char *com_);  //返回数据需要释放
+
+///////////////////////////
+//			delete     ////
+///////////////////////////
+int sisdb_collect_delete_of_range(s_sisdb_collect *, int start_, int stop_);  // 定位后删除
+int sisdb_collect_delete_of_count(s_sisdb_collect *, int start_, int count_); // 定位后删除
+
+int sisdb_collect_delete(s_sis_db  *, const char *key_, const char *com_); // command为json命令
+//删除
+//用户传入的command中关键字的定义如下：
+//数据范围："search":   min 和 start 互斥，min表示按数值取数，start表示按记录号取 
+// 					  min,max 按时序索引取数据
+//						count(和max互斥，正表示向后，负表示向前),
+//                    start，stop 按记录号取数据 0，-1-->表示全部数据
+//						count(和stop互斥，正表示向后，负表示向前),
+
+///////////////////////////
+//			set        ////
+///////////////////////////
 //传入json数据时通过该函数转成二进制结构数据
-s_sis_sds sis_collect_json_to_struct_sds(s_sis_collect_unit *, const char *in_, size_t ilen_);
+s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *, const char *in_, size_t ilen_);
 
 //传入array数据时通过该函数转成二进制结构数据
-s_sis_sds sis_collect_array_to_struct_sds(s_sis_collect_unit *, const char *in_, size_t ilen_);
+s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *, const char *in_, size_t ilen_);
 
-//输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
-s_sis_sds sis_collect_struct_filter_sds(s_sis_collect_unit *unit_, s_sis_sds in_, const char *fields_);
-s_sis_sds sis_collect_struct_to_json_sds(s_sis_collect_unit *unit_, s_sis_sds in_, const char *fields_);
-s_sis_sds sis_collect_struct_to_array_sds(s_sis_collect_unit *unit_, s_sis_sds in_, const char *fields_);
+int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_);
 
-void sis_collect_struct_trans(s_sis_sds ins_, s_sis_field_unit *infu_, s_sis_table *indb_, s_sis_sds outs_, s_sis_field_unit *outfu_, s_sis_table *outdb_);
-// void sis_collect_struct_trans_incr(s_sis_sds ins_,s_sis_sds dbs_, s_sis_field_unit *infu_, s_sis_table *indb_, s_sis_sds outs_, s_sis_field_unit *outfu_,s_sis_table *outdb_);
 
-bool sis_trans_of_count(s_sis_collect_unit *unit_, int *start_, int *count_);
-bool sis_trans_of_range(s_sis_collect_unit *unit_, int *start_, int *stop_);
+
+
+int sisdb_collect_update(s_sisdb_collect *, const char *in_, size_t ilen_);
+// 从磁盘加载，整块写入，
+int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);
+
+void sisdb_collect_struct_trans(s_sis_sds ins_, s_sisdb_field *infu_, s_sisdb_table *indb_, s_sis_sds outs_, s_sisdb_field *outfu_, s_sisdb_table *outdb_);
+// void sisdb_collect_struct_trans_incr(s_sis_sds ins_,s_sis_sds dbs_, s_sisdb_field *infu_, s_sisdb_table *indb_, s_sis_sds outs_, s_sisdb_field *outfu_,s_sisdb_table *outdb_);
 
 
 #endif /* _SIS_COLLECT_H */
