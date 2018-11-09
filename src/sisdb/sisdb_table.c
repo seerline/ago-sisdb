@@ -4,6 +4,57 @@
 #include "sisdb_map.h"
 #include "sisdb.h"
 
+ // 目前只支持3个必须的值
+void _sisdb_table_load_default(s_sis_db *db_, s_sis_json_node *default_)
+{
+	s_sisdb_sysinfo *info = sis_struct_list_first(db_->info);
+	if (!info) 
+	{
+		info = (s_sisdb_sysinfo *)sis_malloc(sizeof(s_sisdb_sysinfo));
+		memset(info, 0 ,sizeof(s_sisdb_sysinfo));
+		info->trade_time = sis_struct_list_create(sizeof(s_sis_time_pair), NULL, 0);
+		sis_pointer_list_push(db_->info, info);
+	}
+	if (sis_json_cmp_child_node(default_, "dot")) 
+	{
+		info->dot = sis_json_get_int(default_, "dot", 2);
+	}
+	if (sis_json_cmp_child_node(default_, "coinunit")) 
+	{
+		info->prc_unit = sis_json_get_int(default_, "coinunit", 2);
+	}
+	if (sis_json_cmp_child_node(default_, "volunit")) 
+	{
+		info->vol_unit = sis_json_get_int(default_, "volunit", 2);
+	}
+	s_sis_json_node *wtnode = sis_json_cmp_child_node(default_, "work-time");
+	if (wtnode) 
+	{
+        info->work_time.first = sis_json_get_int(wtnode, "0", 900);
+        info->work_time.second = sis_json_get_int(wtnode, "1", 1530);
+	}
+	s_sis_json_node *ttnode = sis_json_cmp_child_node(default_, "trade-time");
+	if (ttnode) 
+	{
+		int index = 0;
+	   	s_sis_time_pair pair;
+       	s_sis_json_node *next = sis_json_first_node(ttnode);
+        while (next)
+        {
+            pair.first = sis_json_get_int(next, "0", 930);
+            pair.second = sis_json_get_int(next, "1", 1130);
+			if (index < info->trade_time->len) {
+				sis_struct_list_push(info->trade_time, &pair);
+			} else {
+	            sis_struct_list_update(info->trade_time, index, &pair);
+			}
+			index++;
+            // printf("trade time [%d, %d]\n",pair.begin,pair.end);
+            next = next->next;
+        } 
+	}	
+}
+
 //com_为一个json格式字段定义
 s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_node *com_)
 {
@@ -22,7 +73,6 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	tb->control.isinit = sis_json_get_int(com_, "isinit", 0);
 	tb->control.issubs = 0;
 	tb->control.iszip = 0;
-	tb->control.isloading = 0;
 
 	tb->version = (uint32)sis_time_get_now();
 	tb->name = sis_sdsnew(name_);
@@ -35,6 +85,12 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	s_sis_map_define *mm = NULL;
 	const char *strval = NULL;
 
+	s_sis_json_node *node = sis_json_cmp_child_node(com_, "default");
+	if (node) 
+	{
+		_sisdb_table_load_default(db_, node);
+	}
+	
 	strval = sis_json_get_str(com_, "scale");
 	mm = sisdb_find_map_define(db_->map, strval, SIS_MAP_DEFINE_TIME_SCALE);
 	if (mm)
@@ -200,52 +256,4 @@ int sisdb_table_get_fields_size(s_sisdb_table *tb_)
 	sis_dict_iter_free(di);
 	return len;
 }
-
-
-
-
-
-
-// int sisdb_table_update_load(int type_, s_sisdb_table *table_, const char *key_, const char *in_, size_t ilen_)
-// {
-// 	s_sisdb_collect *in_collect = sis_map_buffer_get(table_->collect_map, key_);
-// 	if (!in_collect)
-// 	{
-// 		in_collect = sisdb_collect_create(table_, key_);
-// 		sis_map_buffer_set(table_->collect_map, key_, in_collect);
-// 	}
-
-// 	// 先储存上一次的数据，
-// 	int o = sisdb_collect_update_block(in_collect, in_, ilen_);
-
-// 	return o;
-// }
-// //////////////////////////////////////////////////////////////////////////////////
-// //修改数据，key_为股票代码或市场编号，in_为二进制结构化数据或json数据
-// //////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-// s_sis_sds sisdb_table_get_search_sds(s_sisdb_table *tb_, const char *code_, int min_,int max_)
-// {
-// 	s_sisdb_collect *collect = sis_map_buffer_get(tb_->collect_map, code_);
-// 	if (!collect)
-// 	{
-// 		return NULL;
-// 	}
-
-// 	s_sis_sds o = NULL;
-
-// 	int start, stop;
-// 	int maxX, minX;
-
-// 	start = sisdb_collect_search_right(collect, min_, &minX);
-// 	stop = sisdb_collect_search_left(collect, max_, &maxX);
-// 	if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
-// 	{
-// 		o = sisdb_collect_get_of_range_sds(collect, start, stop);
-// 	}	
-// 	return o;
-// }
 

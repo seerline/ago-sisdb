@@ -1726,37 +1726,34 @@ int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const ch
 	return count;
 }
 
+// 从磁盘中整块写入，不逐条进行校验
+int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t ilen_)
+{
+	if (ilen_ < 1)
+	{
+		return 0;
+	}
+	int count = 0;
 
+	count = (int)(ilen_ / unit_->value->len);
+	//这里应该判断数据完整性
+	if (count * unit_->value->len != ilen_)
+	{
+		sis_out_log(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
+		return 0;
+	}
+	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
+	for (int i = 0; i < count; i++)
+	{
+		sis_struct_list_push(unit_->value, (void *)(in_ + i * unit_->value->len));
+	}
 
-
-
-// int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t ilen_)
-// {
-// 	if (ilen_ < 1)
-// 	{
-// 		return 0;
-// 	}
-// 	int count = 0;
-
-// 	count = (int)(ilen_ / unit_->value->len);
-// 	//这里应该判断数据完整性
-// 	if (count * unit_->value->len != ilen_)
-// 	{
-// 		sis_out_log(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
-// 		return 0;
-// 	}
-// 	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
-// 	for (int i = 0; i < count; i++)
-// 	{
-// 		sis_struct_list_push(unit_->value, (void *)(in_ + i * unit_->value->len));
-// 	}
-
-// 	sisdb_stepindex_rebuild(unit_->stepinfo,
-// 						  _sisdb_collect_get_time(unit_, 0),
-// 						  _sisdb_collect_get_time(unit_, unit_->value->count - 1),
-// 						  unit_->value->count);
-// 	return count;
-// }
+	sisdb_stepindex_rebuild(unit_->stepinfo,
+						  _sisdb_collect_get_time(unit_, 0),
+						  _sisdb_collect_get_time(unit_, unit_->value->count - 1),
+						  unit_->value->count);
+	return count;
+}
 
 
 ////////////////

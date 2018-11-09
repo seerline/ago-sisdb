@@ -12,8 +12,9 @@
 #include "sis_time.h"
 #include "sis_list.h"
 
-#define SIS_MAXLEN_TABLE 32
 #define SIS_MAXLEN_CODE  9
+#define SIS_MAXLEN_TABLE 32
+#define SIS_MAXLEN_KEY   (SIS_MAXLEN_CODE + SIS_MAXLEN_TABLE)
 
 // 以代码为基本索引，每个代码最基础的信息必须包括
 // 价格小数点 默认为 2  统一从info表中dot获取
@@ -57,12 +58,14 @@ typedef struct s_sis_db {
 
 	s_sis_map_pointer  *dbs;       // 数据表的字典表 s_sisdb_table 数量为数据表数
 
-	s_sis_struct_list  *info;      // 实际的info数据
+	s_sis_struct_list  *info;      // 实际的info数据 第一条为默认配置，设置默认配置时修改
 	s_sis_map_pointer  *infos;     // 股票信息的字典表 s_sisdb_sysinfo 数量为股票个数
 
 	s_sis_map_pointer  *collects;  // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
 
 	s_sis_map_pointer  *map;     // 关键字查询表
+	
+	bool   loading;  // 数据加载中
 
 //  下面的存盘线程应该建立一个结构体来处理，否则看起来很麻烦
 //  等开始处理worktime时一起处理，定时任务线程
@@ -92,6 +95,7 @@ s_sisdb_sysinfo *sisdb_get_sysinfo(s_sis_db *db_, const char *key_);
 s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_);
 
 s_sisdb_sysinfo *sisdb_sysinfo_create(char *);
+void sisdb_sysinfo_rebuild(s_sis_db *db_);
 void sisdb_sysinfo_destroy(void *);
 
 uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sis_struct_list *tradetime_);

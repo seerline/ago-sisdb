@@ -61,7 +61,7 @@ void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_, int do
 s_sisdb_field *sisdb_field_get_from_key(s_sisdb_table *tb_, const char *key_);
 int sisdb_field_get_offset(s_sisdb_table *tb_, const char *key_);
 
-// const char * sisdb_field_get_string_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_);
+const char * sisdb_field_get_char_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_);
 uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
 // int64 sisdb_field_get_int_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
 // double sisdb_field_get_float_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);

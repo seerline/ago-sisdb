@@ -162,12 +162,8 @@ int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_);
 
 int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const char *code_)
 
-
-
-
-
 // 从磁盘加载，整块写入，
-// int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);
+int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);
 
 
 

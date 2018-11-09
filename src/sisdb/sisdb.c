@@ -112,6 +112,7 @@ s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_)
 	}
 	return val;
 }
+
 // ----- //
 s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_,const char *key_)
 {
@@ -119,22 +120,60 @@ s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_,const char *key_)
 	memset(info, 0 ,sizeof(s_sisdb_sysinfo));
 	info->trade_time = sis_struct_list_create(sizeof(s_sis_time_pair), NULL, 0);
 
-	info->dot = 2;
-	info->prc_unit = 1;
-	info->vol_unit = 1;
-	info->work_time.first = 900;  
-	info->work_time.second = 1530;
+// 这里似乎应该仅仅付出默认值就返回了，
+// 应该另外起一个过程，专门用来处理每个collect的info信息
+	char stock[64], market[32];
+	sis_strcpy(market, 2, key_);
+	sis_str_sprintf(market, "%s.%s", market, SIS_TABLE_EXCH);
+	s_sisdb_collect *exch_collect = sisdb_get_collect(db_, market);
+	sis_str_sprintf(stock, "%s.%s", key_, SIS_TABLE_INFO);
+	s_sisdb_collect *info_collect = sisdb_get_collect(db_, stock);
 
-	s_sis_time_pair t; 
-	t.first =  930, t.second = 1100;
-	sis_struct_list_push(info->trade_time, &t);  
-	t.first = 1300, t.second = 1500;
-	sis_struct_list_push(info->trade_time, &t);  
+	if (exch_collect && info_collect)
+	{
+		size_t len;
+		const char *str;
+		//读数据表相应信息，然后赋值
+		s_sis_sds sbuff = sisdb_collect_get_of_range_sds(exch_collect, 0, -1);
+		if (sbuff) {
+			// 这里需要做一个数组判定转换函数，暂时没时间弄，先放这里，后期有需求再改
+			// str = sisdb_field_get_char_from_key(exch_collect->db, "work-time",sbuff, &len);
+			info->work_time.first = 900;
+    		info->work_time.second = 1530;			
+			// str = sisdb_field_get_char_from_key(exch_collect->db, "trade-time",sbuff, &len);
+			s_sis_time_pair pair;
+	        pair.first = 930;   pair.second = 1130;
+    	    sis_struct_list_push(info->trade_time, &pair);
+        	pair.first = 1300;   pair.second = 1500;
+        	sis_struct_list_push(info->trade_time, &pair);
+
+			sis_sdsfree(sbuff);
+		}
+		sbuff = sisdb_collect_get_of_range_sds(info_collect, 0, -1);
+		if (sbuff) {
+			info->dot = sisdb_field_get_uint_from_key(exch_collect->db, "dot", sbuff);
+			info->vol_unit = sisdb_field_get_uint_from_key(exch_collect->db, "volunit", sbuff);
+			info->prc_unit = sisdb_field_get_uint_from_key(exch_collect->db, "coinunit", sbuff);			
+			sis_sdsfree(sbuff);
+		}
+// const char * sisdb_field_get_char_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_);
+// uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
+
+
+	}
+	else
+	{
+		s_sisdb_sysinfo *first = sis_struct_list_get(db_->info, 0);
+		memmove(info, first, sizeof(s_sisdb_sysinfo) - sizeof(void *));
+		sis_struct_list_clone(first->trade_time, info->trade_time, 0);
+	}
 	// 除了exch和info意以外的表才继续处理
 	// 先根据key 找到info中的信息，如果找不到就用默认值
 	// 再取key前两位，找到exch中的信息，如果找不到就用默认值，这里需要把字符串转换为二进制数据
 	// 最后再把信息注册到db中，方便后续查询
-	for (int i = 0; i < db_->info->count; i++)
+
+	// 第一条为默认配置
+	for (int i = 1; i < db_->info->count; i++)
 	{
 		s_sisdb_sysinfo *val = sis_struct_list_get(db_->info, i);
 		if (!sisdb_sysinfo_compare(val, info))
@@ -148,7 +187,7 @@ s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_,const char *key_)
 	sis_map_buffer_set(db_->infos, key_, info);
 	return info;
 }
-	
+
 bool sisdb_sysinfo_compare(s_sisdb_sysinfo *info1_,s_sisdb_sysinfo *info2_)
 {
 	bool o = 1;

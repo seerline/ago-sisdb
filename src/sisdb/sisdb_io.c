@@ -28,9 +28,9 @@ void *_thread_save_plan_task(void *argv_)
         {
             if (sis_thread_wait_sleep(&db->thread_wait, db->save_always.delay) == SIS_ETIMEDOUT)
             {
-                sis_mutex_lock(&server.db->save_mutex);
-                sisdb_file_save(server.dbpath, db);
-                sis_mutex_unlock(&server.db->save_mutex);
+                // sis_mutex_lock(&server.db->save_mutex);
+                sisdb_file_save(&server);
+                // sis_mutex_unlock(&server.db->save_mutex);
             }
         }
         else
@@ -44,9 +44,9 @@ void *_thread_save_plan_task(void *argv_)
                     uint16 *lm = sis_struct_list_get(db->save_plans, k);
                     if (min == *lm)
                     {
-                        sis_mutex_lock(&server.db->save_mutex);
-                        sisdb_file_save(server.dbpath, db);
-                        sis_mutex_unlock(&server.db->save_mutex);
+                        // sis_mutex_lock(&server.db->save_mutex);
+                        sisdb_file_save(&server);
+                        // sis_mutex_unlock(&server.db->save_mutex);
                         printf("save plan ... %d -- -- %d \n", *lm, min);
                     }
                 }
@@ -107,35 +107,6 @@ char *sisdb_open(const char *conf_)
     s_sis_json_handle *sdb_json = NULL;
 
     server.db = sisdb_create(server.service_name);
-
-    // s_sis_json_node *ttime = sis_json_cmp_child_node(service, "trade-time");
-    // s_sis_time_pair pair;
-    // if (!ttime)
-    // {
-    //     // sis_out_log(1)("no find trade time define.\n");
-    //     // goto error;
-    //     // 不存在就直接赋值一个
-    //     pair.first = 0;
-    //     pair.second = 2400;
-    //     sis_struct_list_push(server.db->trade_time, &pair);
-    // }
-    // else
-    // {
-    //     s_sis_json_node *next = sis_json_first_node(ttime);
-    //     while (next)
-    //     {
-    //         pair.first = sis_json_get_int(next, "0", 930);
-    //         pair.second = sis_json_get_int(next, "1", 1130);
-    //         sis_struct_list_push(server.db->trade_time, &pair);
-    //         // printf("trade time [%d, %d]\n",pair.begin,pair.end);
-    //         next = next->next;
-    //     }
-    // }
-    // if (server.db->trade_time->count < 1)
-    // {
-    //     sis_out_log(1)("trade time < 1.\n");
-    //     goto error;
-    // }
 
     server.db->save_mode = SIS_WORK_MODE_NONE;
     s_sis_json_node *stime = sis_json_cmp_child_node(service, "save-time");
@@ -220,7 +191,7 @@ char *sisdb_open(const char *conf_)
     // 这里加载数据
     // 应该需要判断数据的版本号，如果不同，应该对磁盘上的数据进行数据字段重新匹配
     // 把老库中有的字段加载到新的库中，再存盘
-    if (!sisdb_file_load(server.dbpath, server.db))
+    if (!sisdb_file_load(&server))
     {
         sis_out_log(1)("load sdb fail. exit!\n");
         goto error;
@@ -278,7 +249,7 @@ bool sisdb_save()
         return false;
     }
     // 存为struct格式
-    return sisdb_file_save(server.dbpath, server.db);
+    return sisdb_file_save(&server);
 }
 
 s_sis_sds sisdb_show_db_info_sds(s_sis_db *db_)
@@ -360,9 +331,9 @@ s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
     return sisdb_collect_get_sds(server.db, key_, com_);
 }
 
-int _sisdb_write_begin(const char *com_, const char *key_, const char *val_, size_t len_)
+int _sisdb_write_begin(int fmt_, const char *key_, const char *val_, size_t len_)
 {
-    if (!sisdb_file_save_aof(server.dbpath, server.db, com_, key_, val_, len_))
+    if (!sisdb_file_save_aof(&server, fmt_, key_, val_, len_))
     {
         sis_out_log(3)("save aof error.\n");
         return SIS_SERVER_REPLY_ERR;
@@ -412,7 +383,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 
     int o = sisdb_collect_update(collect, in);
 
-    if(!server.loading) 
+    if(!server.db->loading) 
     {
         // 如果属于磁盘加载就不publish
         char code[SIS_MAXLEN_CODE];
@@ -446,7 +417,7 @@ int sisdb_set_json(const char *key_, const char *val_, size_t len_)
         return SIS_SERVER_REPLY_ERR;
     }        
 
-    if(_sisdb_write_begin("set",key_,val_,len_)==SIS_SERVER_REPLY_ERR){
+    if(_sisdb_write_begin(fmt, key_, val_, len_)==SIS_SERVER_REPLY_ERR){
         return SIS_SERVER_REPLY_ERR;
     }
     // 如果保存aof失败就返回错误
@@ -464,7 +435,7 @@ int sisdb_set_struct(const char *key_, const char *val_, size_t len_)
         return SIS_SERVER_REPLY_ERR;
     }
 
-    if(_sisdb_write_begin("sset",key_,val_,len_)==SIS_SERVER_REPLY_ERR){
+    if(_sisdb_write_begin(SIS_DATA_TYPE_STRUCT,key_,val_,len_)==SIS_SERVER_REPLY_ERR){
         return SIS_SERVER_REPLY_ERR;
     }
     // 如果保存aof失败就返回错误

@@ -296,16 +296,16 @@ int sisdb_field_get_offset(s_sisdb_table *tb_, const char *key_)
 	}
 	return fu->offset + fu->flags.len;
 }
-// const char * sisdb_field_get_string_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_)
-// {
-// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
-// 	if (!fu)
-// 	{
-// 		return NULL;
-// 	}	
-// 	*len_ = fu->flags.len;
-// 	return val_ + fu->offset;
-// }
+const char * sisdb_field_get_char_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_)
+{
+	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+	if (!fu)
+	{
+		return NULL;
+	}	
+	*len_ = fu->flags.len;
+	return val_ + fu->offset;
+}
 
 uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const char *val_)
 {
