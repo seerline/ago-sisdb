@@ -46,6 +46,8 @@ void sisdb_close();
 
 bool sisdb_save();
 
+bool sisdb_out(const char * key_, const char *com_);
+
 s_sis_sds sisdb_get_sds(const char *key_, const char *com_);
 
 // 来源数据为二进制结构

@@ -135,6 +135,85 @@ bool sisdb_file_save(s_sisdb_io *server_)
     sis_mutex_unlock(&server_->db->save_mutex);
     return true;
 }
+bool sisdb_file_out(s_sisdb_io *server_, const char * key_, const char *com_)
+{   
+	char code[SIS_MAXLEN_CODE];
+	char dbname[SIS_MAXLEN_TABLE];
+	if (!sis_str_carve(key_, code, SIS_MAXLEN_CODE, dbname, SIS_MAXLEN_TABLE, '.'))
+	{
+		sis_out_log(3)("key [%s] error.\n", key_);
+		return NULL;
+	}
+
+    s_sisdb_collect *collect = sisdb_get_collect(server_->db, key_);
+    if (!collect)
+    {
+        sis_out_log(3)("no find %s key.\n", key_);
+        return NULL;
+    }	
+	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
+	if (!handle)
+	{
+		return NULL;
+	}
+	s_sis_sds out = sisdb_collect_get_original_sds(collect, handle);
+
+	if (!out)
+	{
+		sis_json_close(handle);
+		return NULL;
+	}
+
+	int iformat = sis_from_node_get_format(server_->db, handle->node);
+    // 不支持字段选择，全部字段输出
+	s_sis_sds other = NULL;
+    char sdb[SIS_PATH_LEN];
+
+	switch (iformat)
+	{
+    // case SIS_DATA_TYPE_ZIP:
+    //     break;    
+	case SIS_DATA_TYPE_STRUCT:
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_STRUCT, server_->dbpath, server_->db->name,
+                    code, dbname);
+        // 直接写文件
+        sis_file_sds_write(sdb, other);
+		break;
+	case SIS_DATA_TYPE_JSON:
+		other = sisdb_collect_struct_to_json_sds(collect, out, collect->db->field_name, false);
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server_->dbpath, server_->db->name,
+                    code, dbname);
+		// 带other去写文件
+        sis_file_sds_write(sdb, other);
+		sis_sdsfree(other);
+		break;
+	case SIS_DATA_TYPE_ARRAY:
+		other = sisdb_collect_struct_to_array_sds(collect, out, collect->db->field_name, false);
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server_->dbpath, server_->db->name,
+                    code, dbname);
+		// 带other去写文件
+        sis_file_sds_write(sdb, other);
+        sis_sdsfree(other);
+		break;
+    // case SIS_DATA_TYPE_ZIP:
+    //     break;    
+    case SIS_DATA_TYPE_CSV:
+		other = sisdb_collect_struct_to_csv_sds(collect, out, collect->db->field_name, false);
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server_->dbpath, server_->db->name,
+                    code, dbname);
+		// 带other去写文件
+        sis_file_sds_write(sdb, other);
+        sis_sdsfree(other);
+        break;  
+    default:
+        sis_out_log(3)("save data type [%d] error.\n", iformat);
+        return false;          
+	}
+	sis_sdsfree(out);
+
+    return true;
+}
+
 
 bool sisdb_file_save_aof(s_sisdb_io *server_,
                          int fmt_, const char *key_,

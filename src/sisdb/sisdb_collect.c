@@ -73,22 +73,25 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 {
 	char code[SIS_MAXLEN_CODE];
 	char table[SIS_MAXLEN_TABLE];
-	if(!sis_str_carve(key_, code, SIS_MAXLEN_CODE, table, SIS_MAXLEN_TABLE, '.'))
+	if (!sis_str_carve(key_, code, SIS_MAXLEN_CODE, table, SIS_MAXLEN_TABLE, '.'))
 	{
 		sis_out_log(3)("key [%s] error.\n", key_);
 		return NULL;
 	}
 
 	s_sisdb_table *tb = sisdb_get_table(db_, table);
-	if (!tb) {
+	if (!tb)
+	{
 		sis_out_log(3)("table define no find.\n");
 		return NULL;
 	}
 	s_sisdb_sysinfo *info = sisdb_get_sysinfo(db_, code);
-	if (!info) {
+	if (!info)
+	{
 		// 需要在info表中创建一条记录，记录使用默认值
 		info = sisdb_sysinfo_create(db_, code);
-		if (!info) {
+		if (!info)
+		{
 			sis_out_log(3)("cannot get info.\n");
 			return NULL;
 		}
@@ -148,17 +151,16 @@ void sisdb_collect_clear(s_sisdb_collect *unit_)
 	sisdb_stepindex_clear(unit_->stepinfo);
 	if (unit_->db->control.issubs)
 	{
-		memset(unit_->front, 0 ,sis_sdslen(unit_->front));
-		memset(unit_->lasted, 0 ,sis_sdslen(unit_->lasted));
+		memset(unit_->front, 0, sis_sdslen(unit_->front));
+		memset(unit_->lasted, 0, sis_sdslen(unit_->lasted));
 	}
 	if (unit_->db->control.iszip)
 	{
-		memset(unit_->lasted, 0 ,sis_sdslen(unit_->lasted));
+		memset(unit_->lasted, 0, sis_sdslen(unit_->lasted));
 	}
-
 }
 ////////////////////////
-//  
+//
 ////////////////////////
 uint64 _sisdb_collect_get_time(s_sisdb_collect *unit_, int index_)
 {
@@ -327,11 +329,9 @@ int sisdb_collect_search_right(s_sisdb_collect *unit_, uint64 finder_, int *mode
 	// return 0;
 }
 
-
 //////////////////////////////////////////////////////
 //  get  --  先默认二进制格式，全部字段返回数据
 //////////////////////////////////////////////////////
-
 
 bool _sisdb_trans_of_range(s_sisdb_collect *unit_, int *start_, int *stop_)
 {
@@ -404,7 +404,7 @@ s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *unit_, int start_, int
 	if (!o)
 	{
 		return NULL;
-	}	
+	}
 	return sis_sdsnewlen(sis_struct_list_get(unit_->value, start_), count_ * unit_->value->len);
 }
 
@@ -414,11 +414,10 @@ s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *unit_, int start_, int
 	if (!o)
 	{
 		return NULL;
-	}	
+	}
 	int count = (stop_ - start_) + 1;
 	return sis_sdsnewlen(sis_struct_list_get(unit_->value, start_), count * unit_->value->len);
 }
-
 
 ////////////////////////////////////////////
 // format trans
@@ -495,11 +494,12 @@ s_sis_json_node *_sis_struct_to_array(s_sisdb_collect *unit_, s_sis_sds val_, s_
 			sis_json_array_add_string(o, " ", 1);
 			break;
 		}
-	}	
+	}
 	return o;
 }
 
-s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_)
+s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_,
+										   s_sis_string_list *fields_, bool zip_)
 {
 	s_sis_sds o = NULL;
 
@@ -548,7 +548,14 @@ s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_
 	// printf("1112111 [%d]\n",tb->control.limits);
 
 	size_t olen;
-	str = sis_json_output_zip(jone, &olen);
+	if (zip_)
+	{
+		str = sis_json_output_zip(jone, &olen);
+	}
+	else
+	{
+		str = sis_json_output(jone, &olen);
+	}
 	o = sis_sdsnewlen(str, olen);
 	sis_free(str);
 	sis_json_delete_node(jone);
@@ -556,7 +563,8 @@ s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_
 	return o;
 }
 
-s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_)
+s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in_,
+											s_sis_string_list *fields_, bool zip_)
 {
 	s_sis_sds o = NULL;
 
@@ -583,12 +591,26 @@ s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in
 	if (unit_->db->control.limits != 1)
 	{
 		// printf("jone = %s\n", sis_json_output(jone, &olen));
-		str = sis_json_output_zip(jone, &olen);
+		if (zip_)
+		{
+			str = sis_json_output_zip(jone, &olen);
+		}
+		else
+		{
+			str = sis_json_output(jone, &olen);
+		}
 	}
 	else
 	{
+		if (zip_)
+		{
+			str = sis_json_output_zip(jval, &olen);
+		}
+		else
+		{
+			str = sis_json_output(jval, &olen);
+		}
 		// printf("jval = %s\n", sis_json_output(jval, &olen));
-		str = sis_json_output_zip(jval, &olen);
 	}
 	// 输出数据
 	// printf("1112111 [%d]\n",unit_->db->control.limits);
@@ -598,25 +620,89 @@ s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in
 
 	return o;
 }
+void _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds val_, s_sis_string_list *fields_)
+{
+	int size = sis_string_list_getsize(fields_);
+	for (int i = 0; i < size; i++)
+	{
+		const char *key = sis_string_list_get(fields_, i);
+		// printf("----2----fields=%s\n",key);
+		s_sisdb_field *fu = sisdb_field_get_from_key(unit_->db, key);
+		if (!fu)
+		{
+			if (i<size-1) {
+				o = sis_sdscat(o, ",");
+			}
+			continue;
+		}
+		const char *ptr = (const char *)val_;
+		switch (fu->flags.type)
+		{
+		case SIS_FIELD_TYPE_CHAR:
+			o = sis_sdscatlen(o, ptr + fu->offset, fu->flags.len);
+			break;
+		case SIS_FIELD_TYPE_INT:
+			// printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
+			o = sis_sdscatfmt(o, "%d", (int32)sisdb_field_get_int(fu, ptr));
+			break;
+		case SIS_FIELD_TYPE_UINT:
+		case SIS_FIELD_TYPE_VOLUME:
+		case SIS_FIELD_TYPE_AMOUNT:
+		case SIS_FIELD_TYPE_MSEC:
+		case SIS_FIELD_TYPE_SECOND:
+		case SIS_FIELD_TYPE_DATE:
+			o = sis_sdscatfmt(o, "%d", (uint32)sisdb_field_get_uint(fu, ptr));
+			break;
+		case SIS_FIELD_TYPE_FLOAT:
+			o = sis_sdscatfmt(o, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr, unit_->info->dot));
+			break;
+		case SIS_FIELD_TYPE_PRICE:
+			o = sis_sdscatfmt(o, "%.*f", unit_->info->dot, sisdb_field_get_float(fu, ptr, unit_->info->dot));
+			break;
+		}
+		if (i<size-1) {
+			o = sis_sdscat(o, ",");
+		}	
+	}
+	return o;
+}
+s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *unit_, s_sis_sds in_,
+											s_sis_string_list *fields_, bool zip_)
+{
+	s_sis_sds o = sis_sdsnewlen(NULL, 128);
+
+	// 先处理字段
+	for (int i = 0; i < sis_string_list_getsize(fields_); i++)
+	{
+		const char *key = sis_string_list_get(fields_, i);
+		if (i<1) {
+			o = sis_sdscatfmt(o, "%s", key);
+		}else {
+			o = sis_sdscatfmt(o, ",%s", key);
+		}
+	}
+	o = sis_sdscat(o, "\n");
+
+	int count = (int)(sis_sdslen(in_) / unit_->value->len);
+	char *val = in_;
+
+	for (int k = 0; k < count; k++)
+	{
+		_sis_struct_to_csv(o, unit_, val, fields_);
+		o = sis_sdscat(o, "\n");
+		val += unit_->value->len;
+	}
+
+	return o;
+}
 ////////////////////////////////////////////
 // main get
 ///////////////////////////////////////////
-s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *key_, const char *com_)
+s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_handle *handle)
 {
-    s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
-    if (!collect)
-    {
-        sis_out_log(3)("no find %s key.\n", key_);
-        return NULL;
-    }	
-	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
-	if (!handle)
-	{
-		return NULL;
-	}
-	s_sis_sds out = NULL;
-
 	// 检查取值范围，没有就全部取
+	s_sis_sds o = NULL;
+
 	int64 min, max;
 	int start, stop;
 	int count = 0;
@@ -625,8 +711,8 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *key_, const char *com_
 	s_sis_json_node *search = sis_json_cmp_child_node(handle->node, "search");
 	if (!search)
 	{
-		out = sisdb_collect_get_of_range_sds(collect, 0, -1);
-		goto filter;
+		o = sisdb_collect_get_of_range_sds(collect, 0, -1);
+		return o;
 	}
 	bool by_time = sis_json_cmp_child_node(search, "min") != NULL;
 	bool by_region = sis_json_cmp_child_node(search, "start") != NULL;
@@ -639,7 +725,7 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *key_, const char *com_
 			start = sisdb_collect_search_right(collect, min, &minX);
 			if (start >= 0)
 			{
-				out = sisdb_collect_get_of_count_sds(collect, start, count);
+				o = sisdb_collect_get_of_count_sds(collect, start, count);
 			}
 		}
 		else
@@ -651,7 +737,7 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *key_, const char *com_
 				stop = sisdb_collect_search_left(collect, max, &maxX);
 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
 				{
-					out = sisdb_collect_get_of_range_sds(collect, start, stop);
+					o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
 			}
 			else
@@ -659,11 +745,11 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *key_, const char *com_
 				start = sisdb_collect_search(collect, min);
 				if (start >= 0)
 				{
-					out = sisdb_collect_get_of_count_sds(collect, start, 1);
+					o = sisdb_collect_get_of_count_sds(collect, start, 1);
 				}
 			}
 		}
-		goto filter;
+		return o;
 	}
 	if (by_region)
 	{
@@ -671,26 +757,42 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *key_, const char *com_
 		if (sis_json_cmp_child_node(search, "count"))
 		{
 			count = sis_json_get_int(search, "count", 1);
-			out = sisdb_collect_get_of_count_sds(collect, start, count);
+			o = sisdb_collect_get_of_count_sds(collect, start, count);
 		}
 		else
 		{
 			if (sis_json_cmp_child_node(search, "stop"))
 			{
 				stop = sis_json_get_int(search, "stop", -1); // -1 为最新一条记录
-				out = sisdb_collect_get_of_range_sds(collect, start, stop);
+				o = sisdb_collect_get_of_range_sds(collect, start, stop);
 			}
 			else
 			{
-				out = sisdb_collect_get_of_count_sds(collect, start, 1);
+				o = sisdb_collect_get_of_count_sds(collect, start, 1);
 			}
 		}
-		goto filter;
 	}
-filter:
+	return o;
+}
+s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com_)
+{
+	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
+	if (!collect)
+	{
+		sis_out_log(3)("no find %s key.\n", key_);
+		return NULL;
+	}
+	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
+	if (!handle)
+	{
+		return NULL;
+	}
+	s_sis_sds out = sisdb_collect_get_original_sds(collect, handle);
+
 	if (!out)
 	{
-		goto nodata;
+		sis_json_close(handle);
+		return NULL;
 	}
 	// 最后转数据格式
 	// 取出数据返回格式，没有就默认为二进制结构数据
@@ -701,15 +803,18 @@ filter:
 	// 取出字段定义，没有就默认全部字段
 
 	s_sis_sds fields = NULL;
-	if(sis_json_cmp_child_node(handle->node, "fields")) {
+	if (sis_json_cmp_child_node(handle->node, "fields"))
+	{
 		fields = sis_sdsnew(sis_json_get_str(handle->node, "fields"));
-	} else {
+	}
+	else
+	{
 		fields = sis_sdsnew("*");
 	}
 	printf("query fields = %s\n", fields);
 
-	s_sisdb_table *tb = sisdb_get_table_from_key(db_,key_);
-	
+	s_sisdb_table *tb = sisdb_get_table_from_key(db_, key_);
+
 	s_sis_string_list *field_list = tb->field_name; //取得全部的字段定义
 	if (!sisdb_field_is_whole(fields_))
 	{
@@ -729,12 +834,12 @@ filter:
 		}
 		break;
 	case SIS_DATA_TYPE_JSON:
-		other = sisdb_collect_struct_to_json_sds(collect, out, field_list);
+		other = sisdb_collect_struct_to_json_sds(collect, out, field_list, true);
 		sis_sdsfree(out);
 		out = other;
 		break;
 	case SIS_DATA_TYPE_ARRAY:
-		other = sisdb_collect_struct_to_array_sds(collect, out, field_list);
+		other = sisdb_collect_struct_to_array_sds(collect, out, field_list, true);
 		sis_sdsfree(out);
 		out = other;
 		break;
@@ -742,12 +847,11 @@ filter:
 	if (!sisdb_field_is_whole(fields_))
 	{
 		sis_string_list_destroy(field_list);
-	}	
+	}
 	if (fields)
 	{
 		sis_sdsfree(fields);
 	}
-nodata:
 	sis_json_close(handle);
 	return out;
 }
@@ -782,29 +886,33 @@ void sisdb_collect_groups_json_push(s_sis_json_node *node_, char *code, s_sisdb_
 }
 s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_)
 {
-	if(!node_) return NULL;
+	if (!node_)
+		return NULL;
 	size_t olen;
 	char *str = sis_json_output_zip(node_, &olen);
 	s_sis_sds o = sis_sdsnewlen(str, olen);
 	sis_free(str);
 }
 
-s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const char *com_)
+s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const char *com_)
 {
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
 	// printf("com_ = %s -- %lu -- %p\n", com_,strlen(com_),handle);
 	if (!handle)
 	{
 		return NULL;
-	}	
+	}
 	int iformat = sis_from_node_get_format(db_, handle->node);
 
 	printf("iformat = %c\n", iformat);
 	// 取出字段定义，没有就默认全部字段
 	s_sis_sds fields = NULL;
-	if(sis_json_cmp_child_node(handle->node, "fields")) {
+	if (sis_json_cmp_child_node(handle->node, "fields"))
+	{
 		fields = sis_sdsnew(sis_json_get_str(handle->node, "fields"));
-	} else {
+	}
+	else
+	{
 		fields = sis_sdsnew("*");
 	}
 	printf("query fields = %s\n", fields);
@@ -827,10 +935,10 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const c
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-		if (!sis_strcasecmp(collect->db->name, dbname_)) 
+		if (!sis_strcasecmp(collect->db->name, dbname_))
 		{
 			s_sis_sds val = sisdb_collect_get_of_count_sds(collect, -1, 1);
-        	sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
+			sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
 
 			// printf("out = %lu -- %lu\n", sis_sdslen(out),sis_sdslen(val));
 			switch (iformat)
@@ -839,7 +947,9 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const c
 				if (!out)
 				{
 					out = sis_sdsnewlen(code, SIS_MAXLEN_CODE);
-				} else {
+				}
+				else
+				{
 					out = sis_sdscatlen(out, code, SIS_MAXLEN_CODE);
 				}
 				if (!sisdb_field_is_whole(fields))
@@ -847,15 +957,20 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const c
 					other = sisdb_collect_struct_filter_sds(collect, val, field_list);
 					out = sis_sdscatlen(out, other, sis_sdslen(other));
 					sis_sdsfree(other);
-				} else {
+				}
+				else
+				{
 					out = sis_sdscatlen(out, val, sis_sdslen(val));
 				}
 				break;
 			case SIS_DATA_TYPE_JSON:
-			default :
-				if (!node) {
+			default:
+				if (!node)
+				{
 					node = sisdb_collect_groups_json_init(field_list);
-				} else {
+				}
+				else
+				{
 					sisdb_collect_groups_json_push(node, code, collect, val, field_list);
 				}
 				break;
@@ -865,7 +980,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const c
 	}
 	sis_dict_iter_free(di);
 
-	if(iformat!=SIS_DATA_TYPE_STRUCT) 
+	if (iformat != SIS_DATA_TYPE_STRUCT)
 	{
 		out = sisdb_collect_groups_json_sds(node);
 		sis_json_delete_node(node);
@@ -882,7 +997,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const c
 	if (!sisdb_field_is_whole(fields_))
 	{
 		sis_string_list_destroy(field_list);
-	}		
+	}
 	if (fields)
 	{
 		sis_sdsfree(fields);
@@ -891,7 +1006,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *dbname_, const c
 	return out;
 }
 
-s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_,const char *dbname_, const char *com_)  //返回数据需要释放
+s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_, const char *dbname_, const char *com_) //返回数据需要释放
 {
 	int count = 0;
 	char code[SIS_MAXLEN_CODE];
@@ -903,13 +1018,15 @@ s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_,const char *dbname_, const c
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-		if (!sis_strcasecmp(collect->db->name, dbname_)) 
+		if (!sis_strcasecmp(collect->db->name, dbname_))
 		{
-        	sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
+			sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
 			if (!out)
 			{
 				out = sis_sdsnewlen(code, SIS_MAXLEN_CODE);
-			} else {
+			}
+			else
+			{
 				out = sis_sdscatlen(out, code, SIS_MAXLEN_CODE);
 			}
 			count++;
@@ -931,7 +1048,7 @@ s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_,const char *dbname_, const c
 
 	printf("iformat = %c\n", iformat);
 	// 取出字段定义，没有就默认全部字段
-	if (iformat == SIS_DATA_TYPE_STRUCT) 
+	if (iformat == SIS_DATA_TYPE_STRUCT)
 	{
 		goto end;
 	}
@@ -943,10 +1060,10 @@ s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_,const char *dbname_, const c
 	{
 		sis_json_array_add_string(jval, out + i * SIS_MAXLEN_CODE, SIS_MAXLEN_CODE);
 	}
-	if (iformat == SIS_DATA_TYPE_ARRAY) 
+	if (iformat == SIS_DATA_TYPE_ARRAY)
 	{
 		jone = jval;
-	} 
+	}
 	else // SIS_DATA_TYPE_JSON
 	{
 		jone = sis_json_create_object();
@@ -972,9 +1089,9 @@ int _sisdb_collect_delete(s_sisdb_collect *unit_, int start_, int count_)
 {
 	sis_struct_list_delete(unit_->value, start_, count_);
 	sisdb_stepindex_rebuild(unit_->stepinfo,
-						  _sisdb_collect_get_time(unit_, 0),
-						  _sisdb_collect_get_time(unit_, unit_->value->count - 1),
-						  unit_->value->count);
+							_sisdb_collect_get_time(unit_, 0),
+							_sisdb_collect_get_time(unit_, unit_->value->count - 1),
+							unit_->value->count);
 	return 0;
 }
 int sisdb_collect_delete_of_range(s_sisdb_collect *unit_, int start_, int stop_)
@@ -1001,11 +1118,11 @@ int sisdb_collect_delete_of_count(s_sisdb_collect *unit_, int start_, int count_
 int sisdb_collect_delete(s_sis_db *db_, const char *key_, const char *com_)
 {
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
-    if (!collect)
-    {
-        sis_out_log(3)("no find %s key.\n", key_);
-        return NULL;
-    }	
+	if (!collect)
+	{
+		sis_out_log(3)("no find %s key.\n", key_);
+		return NULL;
+	}
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
 	if (!handle)
 	{
@@ -1073,7 +1190,7 @@ int sisdb_collect_delete(s_sis_db *db_, const char *key_, const char *com_)
 		{
 			if (sis_json_cmp_child_node(range, "stop"))
 			{
-				stop = sis_json_get_int(range, "stop", -1);					  // -1 为最新一条记录
+				stop = sis_json_get_int(range, "stop", -1);				   // -1 为最新一条记录
 				out = sisdb_collect_delete_of_range(collect, start, stop); // 定位后删除
 			}
 			else
@@ -1357,7 +1474,7 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_)
 	if (tb->append_method & SIS_ADD_METHOD_VOL)
 	{
 		uint64 vol = sisdb_field_get_uint_from_key(tb, "vol", in_); // 得到成交量序列值
-		if (vol == 0)											   // 开市前没有成交的直接返回
+		if (vol == 0)												// 开市前没有成交的直接返回
 		{
 			return 0;
 		}
@@ -1522,28 +1639,27 @@ int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_)
 	}
 	// 重建索引
 	sisdb_stepindex_rebuild(unit_->stepinfo,
-						  _sisdb_collect_get_time(unit_, 0),
-						  _sisdb_collect_get_time(unit_, unit_->value->count - 1),
-						  unit_->value->count);
+							_sisdb_collect_get_time(unit_, 0),
+							_sisdb_collect_get_time(unit_, unit_->value->count - 1),
+							unit_->value->count);
 
 	return count;
 }
 ////////////////
 
-
 //////////////////////////////////////////////////////////////////////////////////
 // 同时修改多个数据库，key_为股票代码或市场编号，value_为二进制结构化数据或json数据
 //////////////////////////////////////////////////////////////////////////////////
-uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_,s_sisdb_collect *outunit_)
+uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_, s_sisdb_collect *outunit_)
 {
-	uint64   o = in_;
+	uint64 o = in_;
 	bool allow = 0;
 
-	if (inunit_->db->control.scale == SIS_TIME_SCALE_DATE&&outunit_->db->control.scale>=SIS_TIME_SCALE_DATE)
+	if (inunit_->db->control.scale == SIS_TIME_SCALE_DATE && outunit_->db->control.scale >= SIS_TIME_SCALE_DATE)
 	{
 		allow = 2;
 	}
-	if (inunit_->db->control.scale == SIS_TIME_SCALE_SECOND&&outunit_->db->control.scale>=SIS_TIME_SCALE_SECOND)
+	if (inunit_->db->control.scale == SIS_TIME_SCALE_SECOND && outunit_->db->control.scale >= SIS_TIME_SCALE_SECOND)
 	{
 		allow = 1;
 	}
@@ -1552,12 +1668,15 @@ uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_,s_sisdb_col
 		if (outunit_->db->control.scale > SIS_TIME_SCALE_MSEC)
 		{
 			allow = 1;
-			o = (uint64)(o / 1000);		
-		} else {
+			o = (uint64)(o / 1000);
+		}
+		else
+		{
 			return o;
 		}
 	}
-	if (!allow) return o;
+	if (!allow)
+		return o;
 
 	switch (outscale_)
 	{
@@ -1582,7 +1701,7 @@ uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_,s_sisdb_col
 	case SIS_TIME_SCALE_WEEK:
 	case SIS_TIME_SCALE_MONTH:
 	case SIS_TIME_SCALE_YEAR:
-		if (allow==1) 
+		if (allow == 1)
 		{
 			o = sis_time_get_idate(o);
 		}
@@ -1591,9 +1710,8 @@ uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_,s_sisdb_col
 	return o;
 }
 
-
 void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_sisdb_collect *inunit_,
-							  s_sis_sds outs_, s_sisdb_field *outfu_, s_sisdb_collect *outunit_)
+									   s_sis_sds outs_, s_sisdb_field *outfu_, s_sisdb_collect *outunit_)
 {
 
 	int64 i64, = 0;
@@ -1631,7 +1749,6 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 	}
 }
 
-
 s_sis_sds _sisdb_collect_struct_trans(s_sisdb_collect *in_unit_, s_sis_sds ins_, s_sisdb_collect *out_unit_)
 {
 	// const char *src = sis_struct_list_get(out_unit_->value, out_unit_->value->count - 1);
@@ -1666,11 +1783,11 @@ s_sis_sds _sisdb_collect_struct_trans(s_sisdb_collect *in_unit_, s_sis_sds ins_,
 	return outs_;
 }
 
-int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const char *code_)
+int sisdb_collect_update_publish(s_sisdb_collect *unit_, s_sis_sds val_, const char *code_)
 {
 	int count = sis_string_list_getsize(unit_->db->publishs);
 	// printf("publishs=%d\n", count);
-	s_sis_db * db = unit_->db->father;
+	s_sis_db *db = unit_->db->father;
 	s_sisdb_table *pub_table;
 
 	s_sis_sds pub_val = NULL;
@@ -1694,17 +1811,17 @@ int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const ch
 			continue;
 		}
 		s_sis_sds key = sis_sdsnew(code_);
-		key = sis_sdscatfmt(key,".%s", pub_db_name);
+		key = sis_sdscatfmt(key, ".%s", pub_db_name);
 
 		pub_collect = sisdb_get_collect(db, key);
 		if (!pub_collect)
 		{
 			pub_collect = sisdb_collect_create(db, key);
-			if (!pub_collect) 
+			if (!pub_collect)
 			{
 				sis_sdsfree(key);
 				continue;
-			}			// printf("new......\n");
+			} // printf("new......\n");
 		}
 		sis_sdsfree(key);
 
@@ -1749,11 +1866,10 @@ int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t i
 	}
 
 	sisdb_stepindex_rebuild(unit_->stepinfo,
-						  _sisdb_collect_get_time(unit_, 0),
-						  _sisdb_collect_get_time(unit_, unit_->value->count - 1),
-						  unit_->value->count);
+							_sisdb_collect_get_time(unit_, 0),
+							_sisdb_collect_get_time(unit_, unit_->value->count - 1),
+							unit_->value->count);
 	return count;
 }
-
 
 ////////////////

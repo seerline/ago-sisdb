@@ -102,9 +102,14 @@ s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *, int start_, int coun
 ///////////////////////////
 //输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
 s_sis_sds sisdb_collect_struct_filter_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
-s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
-s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
+s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_, bool zip_);
+s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_, bool zip_);
 
+s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_, bool zip_);
+
+// 得到二进制原始数据，
+s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_handle *handle);
+// 得到处理过的数据
 s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *, const char *com_);
 // command为json命令
 // 读表中代码为key的数据，key为*表示所有股票数据，由command定义数据范围和字段范围

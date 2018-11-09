@@ -25,6 +25,12 @@
 #define SIS_DB_FILE_ZERO "%s/%s.sdb.0" // 不完备的数据块
 #define SIS_DB_FILE_AOF  "%s/%s.aof"     // 顺序写入
 
+#define SIS_DB_FILE_OUT_CSV  	"%s/%s/%s/%s.csv"    // 主数据库 db/sisdb/sh600600/day.csv
+#define SIS_DB_FILE_OUT_JSON  	"%s/%s/%s/%s.json"   // 主数据库 db/sisdb/sh600600/day.json
+#define SIS_DB_FILE_OUT_ARRAY   "%s/%s/%s/%s.json"   // 主数据库 db/sisdb/sh600600/day.json
+#define SIS_DB_FILE_OUT_STRUCT  "%s/%s/%s/%s.bin"    // 主数据库 db/sisdb/sh600600/day.bin
+#define SIS_DB_FILE_OUT_ZIP  	"%s/%s/%s/%s.zip"    // 主数据库 db/sisdb/sh600600/day.zip
+
 #pragma pack(push,1)
 typedef struct s_sis_sdb_head{
 	uint32	size;    // 数据大小
@@ -45,6 +51,8 @@ typedef struct s_sis_aof_head{
 //------v1.0采用全部存盘的策略 ---------//
 // 到时间保存
 bool sisdb_file_save(s_sisdb_io *server_);
+
+bool sisdb_file_out(s_sisdb_io *server_, const char * key_,const char *com_);
 
 bool sisdb_file_save_aof(s_sisdb_io *server_, 
             int fmt_, const char *key_, 

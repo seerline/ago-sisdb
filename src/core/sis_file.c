@@ -23,6 +23,30 @@ s_sis_sds sis_file_read_to_sds(const char *fn_)
 	return buffer;
 }
 
+bool sis_file_sds_write(const char *fn_, s_sis_sds buffer_)
+{
+	char path[SIS_PATH_LEN];
+    sis_file_getpath(fn_, path, SIS_PATH_LEN);
+
+    if (!sis_path_mkdir(path))
+    {
+        sis_out_log(3)("cann't create dir [%s].\n", path);
+        return false;
+    }
+
+    sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
+    if (!fp)
+    {
+        sis_out_log(3)("cann't open file [%s].\n", fn_);
+        return false;
+    }
+    sis_file_seek(fp, 0, SEEK_SET);
+    sis_file_write(fp, buffer_, 1, sis_sdslen(buffer_));
+    sis_file_close(fp);
+
+    return true;	
+}
+
 void sis_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
 {
     if (!inpath_) {

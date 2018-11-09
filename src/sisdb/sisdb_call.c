@@ -48,12 +48,15 @@ int call_sisdb_command(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 
 	// 只能是先这样，后续需要建立指令map表，然后定位到函数进行处理
 	// 包括一些定制的快速检索类功能
-	if (!sis_strcasecmp(command, "init")) {
-		const char *market = sis_module_string_get(argv_[2], NULL);	
+	if (!sis_strcasecmp(command, "init"))
+	{
+		const char *market = sis_module_string_get(argv_[2], NULL);
 		sisdb_init(market);
-	} else {
+	}
+	else
+	{
 		return sis_module_reply_with_error(ctx_, "sisdb command no finded.\n");
-	}	
+	}
 	return sis_module_reply_with_simple_string(ctx_, "OK");
 }
 
@@ -80,8 +83,8 @@ int call_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	}
 	if (o)
 	{
-		sis_out_binary("get out",o, 30);
-		printf("get out ...%lu\n",sis_sdslen(o));
+		sis_out_binary("get out", o, 30);
+		printf("get out ...%lu\n", sis_sdslen(o));
 
 		sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
 		sis_sdsfree(o);
@@ -99,7 +102,7 @@ int call_sisdb_set(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
-	const char *val = sis_module_string_get(argv_[2], &len);  
+	const char *val = sis_module_string_get(argv_[2], &len);
 
 	int o = sisdb_set_json(key, val, len);
 
@@ -120,7 +123,7 @@ int call_sisdb_sset(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
-	const char *val = sis_module_string_get(argv_[2], &len);  
+	const char *val = sis_module_string_get(argv_[2], &len);
 
 	int o = sisdb_set_struct(key, val, len);
 
@@ -141,7 +144,31 @@ int call_sisdb_save(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	}
 	return sis_module_reply_with_error(ctx_, "sisdb save error.\n");
 }
+int call_sisdb_out(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
+{
+	if (argc_ < 1)
+	{
+		return sis_module_wrong_arity(ctx_);
+	}
 
+	bool o;
+	if (argc_ == 3)
+	{
+		o = sisdb_out(
+			sis_module_string_get(argv_[1], NULL),
+			sis_module_string_get(argv_[2], NULL));
+	}
+	else
+	{
+		o = sisdb_out(sis_module_string_get(argv_[1], NULL),
+					  "{\"format\":\"json\"}");
+	}
+	if (o)
+	{
+		return sis_module_reply_with_simple_string(ctx_, "OK");
+	}
+	return sis_module_reply_with_error(ctx_, "sisdb out error.\n");
+}
 int sis_module_on_unload()
 {
 	sis_out_log(3)("clsoe sisdb.\n");
@@ -219,10 +246,17 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
-	}	
+	}
 	sis_sprintf(command, 64, "%s.save", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_save,
 								  "write deny-oom",
+								  0, 0, 0) == SIS_MODULE_ERROR)
+	{
+		return SIS_MODULE_ERROR;
+	}
+	sis_sprintf(command, 64, "%s.out", service_name);
+	if (sis_module_create_command(ctx_, command, call_sisdb_out,
+								  "readonly",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;

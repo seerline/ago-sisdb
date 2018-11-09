@@ -137,8 +137,7 @@ bool sis_str_carve(const char *s_, char *s1_, size_t l1_, char *s2_, size_t l2_,
 {
 	int o = 0;
 	const char *ptr = s_;
-	while (ptr && *ptr)
-	
+	while (ptr && *ptr)	
 	{
 		if ((unsigned char)*ptr == c_) {
 			sis_strncpy(s1_, l1_, s_, o);
