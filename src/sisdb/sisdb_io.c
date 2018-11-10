@@ -1,10 +1,12 @@
 ﻿
 #include "sisdb_io.h"
 #include "os_thread.h"
+#include "sisdb_file.h"
+#include "sisdb_map.h"
 
 /********************************/
 // 一定要用static定义，不然内存混乱
-static s_sisdb_io server = {
+static s_sisdb_server server = {
     .status = SIS_SERVER_STATUS_NOINIT,
     .db = NULL};
 /********************************/
@@ -134,9 +136,15 @@ char *sisdb_open(const char *conf_)
         }
     }
 
-    server.db->save_format = sisdb_find_map_uid(server.db,
-                                                sis_json_get_str(service, "save-format"),
-                                                SIS_MAP_DEFINE_DATA_TYPE);
+	s_sis_json_node *format = sis_json_cmp_child_node(service, "save-format");
+	if (format)
+	{
+        server.db->save_format = sisdb_find_map_uid(server.db->map,
+                                sis_json_get_str(service, "save-format"),
+                                SIS_MAP_DEFINE_DATA_TYPE);		
+    } else {
+        server.db->save_format = SIS_DATA_TYPE_STRUCT;
+    }
 
     // 启动存盘线程
     server.db->save_pid = 0;
@@ -271,10 +279,10 @@ s_sis_sds sisdb_show_db_info_sds(s_sis_db *db_)
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_table *val = (s_sisdb_table *)sis_dict_getval(de);
-            list = sdscatprintf(list, "  %-10s : fields=%2d, len=%lu\n",
+            list = sdscatprintf(list, "  %-10s : fields=%2d, len=%u\n",
                                 val->name,
                                 sis_string_list_getsize(val->field_name),
-                                val->len);
+                                sisdb_table_get_fields_size(val));
         }
     }
     return list;
@@ -289,7 +297,7 @@ s_sis_sds sisdb_show_collect_info_sds(s_sis_db *db_, const char *key_)
         return NULL;
     }
     s_sis_sds list = sis_sdsempty();
-    list = sdscatprintf(list, "  %-20s : len=%2d, count=%lu\n",
+    list = sdscatprintf(list, "  %-20s : len=%2d, count=%u\n",
                         key_,
                         val->value->len,
                         sisdb_collect_recs(val));

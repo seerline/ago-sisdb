@@ -98,7 +98,7 @@ void sisdb_init_map_define(s_sis_map_pointer *fields_)
 }
 
 
-s_sis_map_define *sisdb_find_map_define(s_sis_map_define *map_, const char *name_, uint8 style_)
+s_sis_map_define *sisdb_find_map_define(s_sis_map_pointer *map_, const char *name_, uint8 style_)
 {
 	if (!name_)
 	{
@@ -112,7 +112,7 @@ s_sis_map_define *sisdb_find_map_define(s_sis_map_define *map_, const char *name
 	return val;
 }
 
-int sisdb_find_map_uid(s_sis_map_define *map_, const char *name_, uint8 style_)
+int sisdb_find_map_uid(s_sis_map_pointer *map_, const char *name_, uint8 style_)
 {
 	s_sis_map_define *val = sisdb_find_map_define(map_, name_, style_);
 	if (!val)

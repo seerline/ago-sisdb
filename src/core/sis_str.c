@@ -339,7 +339,7 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 	return NULL;
 }
 
-#if 1
+#if 0
 #include <sis_time.h>
 
 int main1()
@@ -353,10 +353,10 @@ int main1()
 		if (k>0)
 		{
 			//sis_str_find(substr_,source_);
-			sis_str_match(substr_,source_);
+			sis_str_match(substr_,source_,',');
 		}	else {
 			//printf("The First Occurence at: %d\n",sis_str_find(substr_,source_));
-			printf("The First Occurence at: %d\n",sis_str_match(substr_,source_));
+			printf("The First Occurence at: %d\n",sis_str_match(substr_,source_,','));
 		}
 	}
 	printf("cost sec: %d \n",sis_time_get_isec(0) - start);

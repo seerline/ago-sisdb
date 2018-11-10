@@ -50,17 +50,17 @@ typedef struct s_sis_aof_head{
 
 //------v1.0采用全部存盘的策略 ---------//
 // 到时间保存
-bool sisdb_file_save(s_sisdb_io *server_);
+bool sisdb_file_save(s_sisdb_server *server_);
 
-bool sisdb_file_out(s_sisdb_io *server_, const char * key_,const char *com_);
+bool sisdb_file_out(s_sisdb_server *server_, const char * key_,const char *com_);
 
-bool sisdb_file_save_aof(s_sisdb_io *server_, 
+bool sisdb_file_save_aof(s_sisdb_server *server_, 
             int fmt_, const char *key_, 
             const char *val_, size_t len_);
 
-bool sisdb_file_save_conf(s_sisdb_io *server_);
+bool sisdb_file_save_conf(s_sisdb_server *server_);
 // 开机时加载数据
-bool sisdb_file_load(s_sisdb_io *server_);
+bool sisdb_file_load(s_sisdb_server *server_);
 
 // 检查本地配置和数据库存盘的结构是否一致，如果不一致返回错误
 // bool sisdb_file_check(const char *dbpath_, s_sis_db *db_);

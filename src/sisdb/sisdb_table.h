@@ -45,7 +45,10 @@ typedef struct s_sisdb_table {
 s_sisdb_table *sisdb_table_create(s_sis_db *db_,const char *name_, s_sis_json_node *command);  //command为一个json格式字段定义
 void sisdb_table_destroy(s_sisdb_table *);  //删除一个表
 
-int sisdb_table_set_fields(s_sisdb_table *, s_sis_json_node *fields_); //command为一个json格式字段定义
+s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *dbname_);
+s_sisdb_table *sisdb_get_table_from_key(s_sis_db *db_, const char *key_);
+
+int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *, s_sis_json_node *fields_); //command为一个json格式字段定义
 // 返回记录的长度
 int sisdb_table_get_fields_size(s_sisdb_table *);
 // 

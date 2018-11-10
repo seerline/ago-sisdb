@@ -1216,7 +1216,7 @@ s_sis_json_node *sis_json_find_node(s_sis_json_node *node_, const char *path_)
 	return sis_json_cmp_child_node(node_, path_);
 }
 
-#if 0
+#if 1
 void json_printf(s_sis_json_node *node_, int *i)
 {
 	if (!node_)
@@ -1273,26 +1273,28 @@ int main1()
 int main()
 {
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
-	const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
+	// const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *fn = "../conf/sis.conf";
+	// const char *command = "[[930,1130],[1300,1500]]";
+	const char *command = "[930,1130]";
 	s_sis_json_handle *h = sis_json_load(command,strlen(command));
 	if (!h) return -1;
 
 	int iii=1;
 	json_printf(h->node,&iii);
+	
+	// s_sis_json_node *jone = sis_json_create_array();
+	// s_sis_json_node *jval = NULL;
 
-	s_sis_json_node *jone = sis_json_create_array();
-	s_sis_json_node *jval = NULL;
+	// 	jval = sis_json_create_array();
+	// 	sis_json_array_add_string(jval, "111", 3);
+	// 	sis_json_array_add_string(jval, "222", 3);
+	// 	sis_json_array_add_node(jone, jval);
 
-		jval = sis_json_create_array();
-		sis_json_array_add_string(jval, "111", 3);
-		sis_json_array_add_string(jval, "222", 3);
-		sis_json_array_add_node(jone, jval);
+	// sis_json_object_add_node(h->node, "values", jone);
 
-	sis_json_object_add_node(h->node, "values", jone);
-
-	sis_json_delete_node(sis_json_cmp_child_node(h->node,"format"));
-	sis_json_delete_node(sis_json_cmp_child_node(h->node,"count"));
+	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"format"));
+	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"count"));
 	// printf("----------------\n");
 	// json_printf(h->node,&iii);
 

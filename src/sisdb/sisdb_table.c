@@ -1,10 +1,9 @@
 ﻿
 #include "sisdb_table.h"
-#include "sisdb_collect.h"
 #include "sisdb_map.h"
-#include "sisdb.h"
-
+#include "sisdb_fields.h"
  // 目前只支持3个必须的值
+
 void _sisdb_table_load_default(s_sis_db *db_, s_sis_json_node *default_)
 {
 	s_sisdb_sysinfo *info = sis_struct_list_first(db_->info);
@@ -128,7 +127,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	tb->field_map = sis_map_pointer_create();
 
 	// 顺序不能变，必须最后
-	sisdb_table_set_fields(tb, sis_json_cmp_child_node(com_, "fields"));
+	sisdb_table_set_fields(db_, tb, sis_json_cmp_child_node(com_, "fields"));
 	// int count = sis_string_list_getsize(tb->field_name);
 	// for (int i = 0; i < count; i++)
 	// {
@@ -146,10 +145,10 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 			if (fu)
 			{
 				fu->subscribe_method = SIS_SUBS_METHOD_COPY;
-				map = sisdb_find_map_define(db_->map, sis_json_get_str(child, "0"), SIS_MAP_DEFINE_SUBS_METHOD);
-				if (map)
+				mm = sisdb_find_map_define(db_->map, sis_json_get_str(child, "0"), SIS_MAP_DEFINE_SUBS_METHOD);
+				if (mm)
 				{
-					fu->subscribe_method = map->uid;
+					fu->subscribe_method = mm->uid;
 				}
 				sis_strcpy(fu->subscribe_refer_fields, SIS_FIELD_MAXLEN, sis_json_get_str(child, "1"));
 				// printf("%s==%d  %s--- %s\n", child->key, fu->subscribe_method, fu->subscribe_refer_fields,fu->name);
@@ -189,13 +188,31 @@ void sisdb_table_destroy(s_sisdb_table *tb_)
 	sis_free(tb_);
 }
 
+s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *dbname_)
+{
+	s_sisdb_table *val = NULL;
+	if (db_->dbs)
+	{
+		s_sis_sds key = sis_sdsnew(dbname_);
+		val = (s_sisdb_table *)sis_dict_fetch_value(db_->dbs, key);
+		sis_sdsfree(key);
+	}
+	return val;
+}
+s_sisdb_table *sisdb_get_table_from_key(s_sis_db *db_, const char *key_)
+{
+	char db[SIS_MAXLEN_TABLE];
+    sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
+	return sisdb_get_table(db_, db);
+}
+
 /////////////////////////////////////
 //对数据库的各种属性设置
 ////////////////////////////////////
 
-int sisdb_table_set_fields(s_sisdb_table *tb_, s_sis_json_node *fields_)
+int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *tb_, s_sis_json_node *fields_)
 {
-	int o = 0
+	int o = 0;
 	if (!fields_)
 	{
 		return o;
@@ -218,7 +235,7 @@ int sisdb_table_set_fields(s_sisdb_table *tb_, s_sis_json_node *fields_)
 
 		flags.type = SIS_FIELD_TYPE_INT;
 		const char *val = sis_json_get_str(node, "1");
-		map = sisdb_find_map_define(tb_->father->map, val, SIS_MAP_DEFINE_FIELD_TYPE);
+		map = sisdb_find_map_define(db_->map, val, SIS_MAP_DEFINE_FIELD_TYPE);
 		if (map)
 		{
 			flags.type = map->uid;

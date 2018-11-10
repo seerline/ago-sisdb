@@ -2,6 +2,7 @@
 
 #include "sisdb.h"
 #include "sisdb_map.h"
+#include "sisdb_fields.h"
 #include "sisdb_table.h"
 #include "sisdb_collect.h"
 
@@ -71,24 +72,6 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_free(db_);
 }
 
-s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *dbname_)
-{
-	s_sisdb_table *val = NULL;
-	if (db_->dbs)
-	{
-		s_sis_sds key = sis_sdsnew(dbname_);
-		val = (s_sisdb_table *)sis_dict_fetch_value(db_->dbs, key);
-		sis_sdsfree(key);
-	}
-	return val;
-}
-s_sisdb_table *sisdb_get_table_from_key(s_sis_db *db_, const char *key_)
-{
-	char db[SIS_MAXLEN_TABLE];
-    sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
-	return sisdb_get_table(db_, db);
-}
-
 s_sisdb_sysinfo *sisdb_get_sysinfo(s_sis_db *db_, const char *key_)
 {
 	s_sisdb_sysinfo *val = NULL;
@@ -100,66 +83,111 @@ s_sisdb_sysinfo *sisdb_get_sysinfo(s_sis_db *db_, const char *key_)
 	}
 	return val;
 }
-//获取股票的数据集合， 
-s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_)
-{
-	s_sisdb_collect *val = NULL;
-	if (db_->collects)
-	{
-		s_sis_sds key = sis_sdsnew(key_);
-		val = (s_sisdb_collect *)sis_dict_fetch_value(db_->collects, key);
-		sis_sdsfree(key);
-	}
-	return val;
-}
 
 // ----- //
-s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_,const char *key_)
+
+bool _sisdb_sysinfo_compare(s_sisdb_sysinfo *info1_, s_sisdb_sysinfo *info2_)
+{
+	bool o = 1;
+
+	if (info1_->dot != info2_->dot)
+		return o;
+	if (info1_->prc_unit != info2_->prc_unit)
+		return o;
+	if (info1_->vol_unit != info2_->vol_unit)
+		return o;
+	if (info1_->work_time.first != info2_->work_time.first ||
+		info1_->work_time.second != info2_->work_time.second)
+		return o;
+
+	if (info1_->trade_time->count != info2_->trade_time->count ||
+		info1_->trade_time->len != info2_->trade_time->len)
+		return o;
+
+	for (int i = 0; i < info1_->trade_time->count; i++)
+	{
+		s_sis_time_pair *tt1 = sis_struct_list_get(info1_->trade_time, i);
+		s_sis_time_pair *tt2 = sis_struct_list_get(info2_->trade_time, i);
+		if (tt1->first != tt2->first || tt1->second != tt2->second)
+		{
+			return o;
+		}
+	}
+	return 0;
+}
+s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_, const char *key_)
 {
 	s_sisdb_sysinfo *info = (s_sisdb_sysinfo *)sis_malloc(sizeof(s_sisdb_sysinfo));
-	memset(info, 0 ,sizeof(s_sisdb_sysinfo));
+	memset(info, 0, sizeof(s_sisdb_sysinfo));
 	info->trade_time = sis_struct_list_create(sizeof(s_sis_time_pair), NULL, 0);
 
-// 这里似乎应该仅仅付出默认值就返回了，
-// 应该另外起一个过程，专门用来处理每个collect的info信息
+	// 这里似乎应该仅仅付出默认值就返回了，
+	// 应该另外起一个过程，专门用来处理每个collect的info信息
 	char stock[64], market[32];
 	sis_strcpy(market, 2, key_);
-	sis_str_sprintf(market, "%s.%s", market, SIS_TABLE_EXCH);
+	sis_sprintf(market, 32, "%s.%s", market, SIS_TABLE_EXCH);
 	s_sisdb_collect *exch_collect = sisdb_get_collect(db_, market);
-	sis_str_sprintf(stock, "%s.%s", key_, SIS_TABLE_INFO);
+	sis_sprintf(stock, 64, "%s.%s", key_, SIS_TABLE_INFO);
 	s_sisdb_collect *info_collect = sisdb_get_collect(db_, stock);
 
 	if (exch_collect && info_collect)
 	{
-		size_t len;
-		const char *str;
+		// size_t len;
+		// const char *str;
 		//读数据表相应信息，然后赋值
 		s_sis_sds sbuff = sisdb_collect_get_of_range_sds(exch_collect, 0, -1);
-		if (sbuff) {
-			// 这里需要做一个数组判定转换函数，暂时没时间弄，先放这里，后期有需求再改
-			// str = sisdb_field_get_char_from_key(exch_collect->db, "work-time",sbuff, &len);
-			info->work_time.first = 900;
-    		info->work_time.second = 1530;			
-			// str = sisdb_field_get_char_from_key(exch_collect->db, "trade-time",sbuff, &len);
+		if (sbuff)
+		{
+			size_t len = 0;
+			s_sis_json_handle *handel;
+			const char *str = sisdb_field_get_char_from_key(exch_collect->db, "work-time", sbuff, &len);
+			handel = sis_json_load(str, len);
+			if (!handel)
+			{
+				info->work_time.first = 900;
+				info->work_time.second = 1530;
+			}
+			else
+			{
+				info->work_time.first = sis_json_get_int(handel->node, "0", 900);
+				info->work_time.second = sis_json_get_int(handel->node, "1", 1530);
+			}
+			str = sisdb_field_get_char_from_key(exch_collect->db, "trade-time", sbuff, &len);
+			handel = sis_json_load(str, len);
 			s_sis_time_pair pair;
-	        pair.first = 930;   pair.second = 1130;
-    	    sis_struct_list_push(info->trade_time, &pair);
-        	pair.first = 1300;   pair.second = 1500;
-        	sis_struct_list_push(info->trade_time, &pair);
-
+			if (!handel)
+			{
+				pair.first = 930;
+				pair.second = 1130;
+				sis_struct_list_push(info->trade_time, &pair);
+				pair.first = 1300;
+				pair.second = 1500;
+				sis_struct_list_push(info->trade_time, &pair);
+			}
+			else
+			{
+				s_sis_json_node *next = sis_json_first_node(handel->node);
+				while (next)
+				{
+					pair.first = sis_json_get_int(next, "0", 930);
+					pair.second = sis_json_get_int(next, "1", 1130);
+					sis_struct_list_push(server.db->trade_time, &pair);
+					// printf("trade time [%d, %d]\n",pair.begin,pair.end);
+					next = next->next;
+				}
+			}
 			sis_sdsfree(sbuff);
 		}
 		sbuff = sisdb_collect_get_of_range_sds(info_collect, 0, -1);
-		if (sbuff) {
+		if (sbuff)
+		{
 			info->dot = sisdb_field_get_uint_from_key(exch_collect->db, "dot", sbuff);
 			info->vol_unit = sisdb_field_get_uint_from_key(exch_collect->db, "volunit", sbuff);
-			info->prc_unit = sisdb_field_get_uint_from_key(exch_collect->db, "coinunit", sbuff);			
+			info->prc_unit = sisdb_field_get_uint_from_key(exch_collect->db, "coinunit", sbuff);
 			sis_sdsfree(sbuff);
 		}
-// const char * sisdb_field_get_char_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_);
-// uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
-
-
+		// const char * sisdb_field_get_char_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_);
+		// uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
 	}
 	else
 	{
@@ -176,7 +204,7 @@ s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_,const char *key_)
 	for (int i = 1; i < db_->info->count; i++)
 	{
 		s_sisdb_sysinfo *val = sis_struct_list_get(db_->info, i);
-		if (!sisdb_sysinfo_compare(val, info))
+		if (!_sisdb_sysinfo_compare(val, info))
 		{
 			sisdb_sysinfo_destroy(info);
 			sis_map_buffer_set(db_->infos, key_, val);
@@ -188,30 +216,6 @@ s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_,const char *key_)
 	return info;
 }
 
-bool sisdb_sysinfo_compare(s_sisdb_sysinfo *info1_,s_sisdb_sysinfo *info2_)
-{
-	bool o = 1;
-	
-	if (info1_->dot!=info2_->dot) return o;
-	if (info1_->prc_unit!=info2_->prc_unit) return o;
-	if (info1_->vol_unit!=info2_->vol_unit) return o;
-	if (info1_->work_time.first!=info2_->work_time.first||
-		info1_->work_time.second!=info2_->work_time.second) return o;
-	
-	if (info1_->trade_time->count!=info2_->trade_time->count||
-		info1_->trade_time->len!=info2_->trade_time->len)  return o;
-
-	for (int i = 0; i < info1_->trade_time->count; i++)
-	{
-		s_sis_time_pair *tt1 = sis_struct_list_get(info1_, i);
-		s_sis_time_pair *tt2 = sis_struct_list_get(info2_, i);
-		if (tt1->first!=tt2->first||tt1->second!=tt2->second)
-		{
-			return o;
-		}
-	}
-	return 0;
-}
 void sisdb_sysinfo_destroy(void *info_)
 {
 	s_sisdb_sysinfo *info = (s_sisdb_sysinfo *)info_;
@@ -308,4 +312,3 @@ int sis_from_node_get_format(s_sis_db *db_, s_sis_json_node *node_)
 	}
 	return o;
 }
-

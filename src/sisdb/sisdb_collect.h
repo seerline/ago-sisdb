@@ -12,7 +12,6 @@
 
 #include "sisdb.h"
 #include "sisdb_table.h"
-#include "sisdb_fields.h"
 
 /////////////////////////////////////////////////////////
 //  数据库数据搜索模式
@@ -58,7 +57,7 @@ typedef struct s_sis_step_index
 typedef struct s_sisdb_collect
 {
 	s_sisdb_table       *db;    // 表的指针，可以获得字段定义的相关信息
-	s_sisdb_sysinfo  *info;	// 股票的指针，可以获得股票相关信息
+	s_sisdb_sysinfo  *info;	    // 股票的指针，可以获得股票相关信息
 
 	s_sis_step_index  *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sis_struct_list *value;    // 结构化数据
@@ -87,6 +86,8 @@ void sisdb_stepindex_rebuild(s_sis_step_index *, uint64 left_, uint64 right_, in
 s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_);
 void sisdb_collect_destroy(s_sisdb_collect *);
 void sisdb_collect_clear(s_sisdb_collect *unit_);
+
+s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_);
 
 int sisdb_collect_recs(s_sisdb_collect *unit_);
 
@@ -165,7 +166,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *, const char *in_, 
 
 int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_);
 
-int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const char *code_)
+int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const char *code_);
 
 // 从磁盘加载，整块写入，
 int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);

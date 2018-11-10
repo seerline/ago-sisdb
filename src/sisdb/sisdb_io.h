@@ -13,12 +13,11 @@
 
 #include "sisdb.h"
 #include "sisdb_table.h"
-#include "sisdb_file.h"
 #include "sisdb_map.h"
 
 #pragma pack(push,1)
 
-typedef struct s_sisdb_io
+typedef struct s_sisdb_server
 {
 	int    status; // 是否已经初始化 0 没有初始化
 
@@ -32,7 +31,7 @@ typedef struct s_sisdb_io
 
 	s_sis_db *db;    // 数据库
 
-}s_sisdb_io;
+}s_sisdb_server;
 
 #pragma pack(pop)
 

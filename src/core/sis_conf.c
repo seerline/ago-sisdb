@@ -1,6 +1,6 @@
 
 #include <sis_conf.h>
-
+#include <os_io.h>
 //////////////////////////////////////////////
 //   inside parse function define
 ///////////////////////////////////////////////
@@ -252,7 +252,8 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 		ptr++;
 		len++;
 	}
-	char *fn = sis_str_sprintf(SIS_PATH_LEN, "%s%.*s", handle_->path, len, value_);
+	char fn[SIS_PATH_LEN];
+	sis_sprintf(fn , SIS_PATH_LEN, "%s%.*s", handle_->path, len, value_);
 	// printf("read include is %.10s \n", ptr);
 	// printf("--- path : %s \n", handle_->path);
 	// printf("--- fn : %s \n", fn);
@@ -261,7 +262,6 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 	s_sis_sds buffer = sis_file_read_to_sds(fn);
 	if (!buffer)
 	{
-		sis_free(fn);
 		handle_->error = value_;
 		return 0; // fail
 	}
@@ -297,12 +297,10 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 		handle_->error = sis_str_getline(handle_->error, &len, buffer, sis_sdslen(buffer));
 		sis_out_log(3)("parse conf fail : %.*s \n", len, handle_->error);
 		handle_->error = value_;
-		sis_free(fn);
 		sis_sdsfree(buffer);
 		return 0;
 	}
 
-	sis_free(fn);
 	sis_sdsfree(buffer);
 
 	return ptr;

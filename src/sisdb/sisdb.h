@@ -11,6 +11,7 @@
 #include "sis_malloc.h"
 #include "sis_time.h"
 #include "sis_list.h"
+#include "sis_json.h"
 
 #define SIS_MAXLEN_CODE  9
 #define SIS_MAXLEN_TABLE 32
@@ -88,14 +89,10 @@ typedef struct s_sis_db {
 s_sis_db *sisdb_create(char *);  //数据库的名称，为空建立一个sys的数据库名
 void sisdb_destroy(s_sis_db *);  //关闭一个数据库
 
-s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *dbname_);
-s_sisdb_table *sisdb_get_table_from_key(s_sis_db *db_, const char *key_);
-
 s_sisdb_sysinfo *sisdb_get_sysinfo(s_sis_db *db_, const char *key_);
-s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_);
 
-s_sisdb_sysinfo *sisdb_sysinfo_create(char *);
-void sisdb_sysinfo_rebuild(s_sis_db *db_);
+s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_, const char *);
+void sisdb_sysinfo_rebuild(s_sis_db *db_); ????
 void sisdb_sysinfo_destroy(void *);
 
 uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sis_struct_list *tradetime_);

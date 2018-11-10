@@ -111,8 +111,8 @@ typedef struct s_sis_map_define{
 
 void sisdb_init_map_define(s_sis_map_pointer *fields_);
 
-s_sis_map_define *sisdb_find_map_define(s_sis_map_define *, const char *name_, uint8 style_);
-int sisdb_find_map_uid(s_sis_map_define *, const char *name_, uint8 style_);
+s_sis_map_define *sisdb_find_map_define(s_sis_map_pointer *, const char *name_, uint8 style_);
+int sisdb_find_map_uid(s_sis_map_pointer *, const char *name_, uint8 style_);
 
 
 #endif  /* _SISDB_H */

@@ -738,7 +738,6 @@ void PrintOptimizedCode(LPCSTR name, BITCODE* pCodes, int nNum);
 #define PRINTOPTCODE(y,x)	PrintOptimizedCode(x,y,sizeof(y)/sizeof(y[0]))
 #endif
 
-#pragma pack(pop)
 
 
 

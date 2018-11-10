@@ -253,8 +253,8 @@ void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_, int do
 	int64 v64 = 0;
 	int64 zoom = 1;
 
-	const char *ptr = val_;
-	int zoom = sis_zoom10(unit_->flags.dot);
+	// const char *ptr = val_;
+	zoom = sis_zoom10(unit_->flags.dot);
 	if(sisdb_field_is_price(unit_)) 
 	{
 		zoom = sis_zoom10(dot_);
@@ -396,7 +396,7 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		if (sis_json_find_node(node_, key_))
 		{
 			i64 = sis_json_get_int(node_, key_, 0);
-			sisdb_field_set_uint(fu_, in_, uint64(i64));
+			sisdb_field_set_uint(fu_, in_, (uint64)i64);
 		}
 		break;
 	case SIS_FIELD_TYPE_INT:

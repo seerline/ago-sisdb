@@ -5,7 +5,7 @@ PROJECT(sisdb)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8) 
 
 #设置显示编译参数 方便验证编译参数
-SET(CMAKE_VERBOSE_MAKEFILE 1)
+#SET(CMAKE_VERBOSE_MAKEFILE 1)
 
 ########################运行平台判定和初始化######################
 

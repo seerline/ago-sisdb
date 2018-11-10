@@ -1,6 +1,6 @@
 
-#include <sisdb_io.h>
 #include <sis_comm.h>
+#include <sisdb_io.h>
 
 // 入口初始化，根据配置文件获取初始化所有信息，并返回s_sisdb_server指针，
 // 一个实例只有一个server，但是可以有多个
