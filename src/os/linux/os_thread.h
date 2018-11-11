@@ -9,6 +9,7 @@
 
 #include <errno.h>
 
+// 超过时间才返回该值，如果强制退出不返回该值
 #define SIS_ETIMEDOUT ETIMEDOUT
 // 线程常量定义
 #define SIS_THREAD_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER

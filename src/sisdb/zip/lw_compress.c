@@ -253,8 +253,8 @@ s_memory_node * cl_redis_uncompress_day(uint8 *in, int inlen, OUT_COMPRESS_TYPE 
 		int isindex = stream.Get(1); //是不是指数
 		int expand = stream.Get(3); //
 		expand = cl_power10(expand);
-		int volunit = stream.Get(3);//
-		volunit = cl_power10(volunit);
+		int vol-unit = stream.Get(3);//
+		vol-unit = cl_power10(vol-unit);
 		stream.Get(1); //=0 保存前收盘 =1 不保存
 		if (head.compress){
 			//stream.Move(sizeof(cl_last_info));
@@ -292,7 +292,7 @@ s_memory_node * cl_redis_uncompress_day(uint8 *in, int inlen, OUT_COMPRESS_TYPE 
 			stream.SETBITCODE(dayAmountCode);
 			zint32 mAmountBase(0, 0);
 			if (isindex == 0){
-				mAmountBase = stkDay.m_volume_z*(int)(volunit*stkDay.m_new_dw / expand);
+				mAmountBase = stkDay.m_volume_z*(int)(vol-unit*stkDay.m_new_dw / expand);
 			}
 			stkDay.m_amount_z = stream.DecodeMWordData(&mAmountBase);
 			//stream.SETBITCODE(dayInnerVolCode);
@@ -512,8 +512,8 @@ s_memory_node *cl_redis_uncompress_min(uint8 *in, int inlen, OUT_COMPRESS_TYPE t
 		int isindex = stream.Get(1); //是不是指数
 		int expand = stream.Get(3); //
 		expand = cl_power10(expand);
-		int volunit = stream.Get(3);//
-		volunit = cl_power10(volunit);
+		int vol-unit = stream.Get(3);//
+		vol-unit = cl_power10(vol-unit);
 		int isnow = stream.Get(1); //=0 历史分钟 =1 实时分钟
 		if (head.compress){
 			//last.offset = 
@@ -564,7 +564,7 @@ s_memory_node *cl_redis_uncompress_min(uint8 *in, int inlen, OUT_COMPRESS_TYPE t
 			stream.SETBITCODE(dayAmountCode);
 			zint32 mAmountBase(0, 0);
 			if (isindex == 0){
-				mAmountBase = stkDay.m_volume_z*(int)(volunit*stkDay.m_new_dw / expand);
+				mAmountBase = stkDay.m_volume_z*(int)(vol-unit*stkDay.m_new_dw / expand);
 			}
 			stkDay.m_amount_z = stream.DecodeMWordData(&mAmountBase);
 
@@ -757,8 +757,8 @@ listNode *cl_redis_compress_tmin_new(listNode *src, uint8 *in, int count_, s_sto
 	stream.Get(1); //是不是指数
 	int expand = stream.Get(3); //
 	expand = cl_power10(expand);
-	int volunit = stream.Get(3);//
-	volunit = cl_power10(volunit);
+	int vol-unit = stream.Get(3);//
+	vol-unit = cl_power10(vol-unit);
 	int isnow = stream.Get(1); //=0 历史分钟 =1 实时分钟
 	if (head.count < 1 || head.compress != 1 || isnow != 1){
 		LOG(5)("compress min error.[%d,%d,%d]\n", head.count ,head.compress , isnow);
@@ -889,8 +889,8 @@ s_memory_node *cl_redis_uncompress_tmin(uint8 *in, int inlen, OUT_COMPRESS_TYPE 
 		int isindex = stream.Get(1); //是不是指数
 		int expand = stream.Get(3); //
 		expand = cl_power10(expand);
-		int volunit = stream.Get(3);//
-		volunit = cl_power10(volunit);
+		int vol-unit = stream.Get(3);//
+		vol-unit = cl_power10(vol-unit);
 		int isnow = stream.Get(1); //=0 历史分钟 =1 实时分钟
 		if (isnow == 0) return result;
 		if (head.compress){
@@ -936,7 +936,7 @@ s_memory_node *cl_redis_uncompress_tmin(uint8 *in, int inlen, OUT_COMPRESS_TYPE 
 			stream.SETBITCODE(dayAmountCode);
 			zint32 mAmountBase(0, 0);
 			if (isindex == 0){
-				mAmountBase = stkDay.m_volume_z*(int)(volunit*stkDay.m_new_dw / expand);
+				mAmountBase = stkDay.m_volume_z*(int)(vol-unit*stkDay.m_new_dw / expand);
 			}
 			stkDay.m_amount_z = stream.DecodeMWordData(&mAmountBase);
 			if (type == OUT_COMPRESS_JSON)
@@ -1183,8 +1183,8 @@ s_memory_node * cl_redis_uncompress_tick(uint8 *in, int inlen, OUT_COMPRESS_TYPE
 		stream.Get(1); //是不是指数
 		int expand = stream.Get(3); //
 		expand = cl_power10(expand);
-		int volunit = stream.Get(3);//
-		volunit = cl_power10(volunit);
+		int vol-unit = stream.Get(3);//
+		vol-unit = cl_power10(vol-unit);
 		int isnow = stream.Get(1); //=0 历史分钟 =1 实时分钟
 		if (head.compress){
 			//last.offset = 
@@ -1274,8 +1274,8 @@ s_memory_node * cl_redis_uncompress_tick_to_day(uint8 *in, int inlen, OUT_COMPRE
 		stream.Get(1); //是不是指数
 		int expand = stream.Get(3); //
 		expand = cl_power10(expand);
-		int volunit = stream.Get(3);//
-		volunit = cl_power10(volunit);
+		int vol-unit = stream.Get(3);//
+		vol-unit = cl_power10(vol-unit);
 		int isnow = stream.Get(1); //=0 历史分钟 =1 实时分钟
 		if (head.compress){
 			//last.offset = 
@@ -1488,7 +1488,7 @@ s_memory_node *cl_redis_uncompress_dyna(uint8 *in, int inlen, OUT_COMPRESS_TYPE 
 	
 			int isindex = stream.Get(1);//STK_STATIC::INDEX
 			int expand = cl_power10(stream.Get(3));
-			int volunit = cl_power10(stream.Get(3));
+			int vol-unit = cl_power10(stream.Get(3));
 			stream.Get(1);
 
 			memset(&dyna, 0, sizeof(s_stock_dynamic));
@@ -1515,7 +1515,7 @@ s_memory_node *cl_redis_uncompress_dyna(uint8 *in, int inlen, OUT_COMPRESS_TYPE 
 			stream.SETBITCODE(dayAmountCode);
 			zint32 mAmountBase(0, 0);
 			if (isindex == 0){
-				mAmountBase = dyna.m_volume_z*(int)(volunit*dyna.m_new_dw / expand);
+				mAmountBase = dyna.m_volume_z*(int)(vol-unit*dyna.m_new_dw / expand);
 			}
 			dyna.m_amount_z = stream.DecodeMWordData(&mAmountBase);
 

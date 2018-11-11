@@ -51,11 +51,24 @@ bool _sisdb_file_save_collect_struct(s_sis_sds key_,
 bool _sisdb_file_save_collects(s_sis_db *db_, sis_file_handle sdbfp_, sis_file_handle zerofp_)
 {
     s_sis_dict_entry *de;
+    // 先存有config信息的表
     s_sis_dict_iter *di = sis_dict_get_iter(db_->collects);
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        _sisdb_file_save_collect_struct(sis_dict_getkey(de), val, sdbfp_, zerofp_);
+        if(val->db->control.iscfg) {
+            _sisdb_file_save_collect_struct(sis_dict_getkey(de), val, sdbfp_, zerofp_);
+        }
+    }
+    sis_dict_iter_free(di);
+    // 再存普通的表
+    di = sis_dict_get_iter(db_->collects);
+    while ((de = sis_dict_next(di)) != NULL)
+    {
+        s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
+        if(!val->db->control.iscfg) {
+            _sisdb_file_save_collect_struct(sis_dict_getkey(de), val, sdbfp_, zerofp_);
+        }
     }
     sis_dict_iter_free(di);
     return true;
@@ -112,7 +125,7 @@ bool _sisdb_file_save_collect_other(s_sisdb_server *server_ ,s_sis_sds key_, s_s
     void *val = sis_struct_list_first(unit_->value);
     s_sis_sds out = sis_sdsnewlen(val, unit_->value->count * unit_->value->len);
     s_sis_sds other = NULL;
-    
+
     switch (server_->db->save_format)
     {
     case SIS_DATA_TYPE_JSON:
@@ -162,7 +175,6 @@ bool _sisdb_file_save_other(s_sisdb_server *server_)
 
 bool sisdb_file_save(s_sisdb_server *server_)
 {
-    sis_mutex_lock(&server_->db->save_mutex);
 
     sisdb_file_save_conf(server_);
 
@@ -183,7 +195,6 @@ bool sisdb_file_save(s_sisdb_server *server_)
     sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server_->dbpath, server_->db->name);
     sis_file_delete(aof);
 
-    sis_mutex_unlock(&server_->db->save_mutex);
     return true;
 }
 bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_)
@@ -354,6 +365,8 @@ int _sisdb_file_load_collect_alone(s_sis_db *db_, const char *key_, const char *
     // 先储存上一次的数据，
     o = sisdb_collect_update_block(collect, in_, ilen_);
 
+    sisdb_config_check(db_, key_, collect);        
+ 
     return o;
 }
 bool _sisdb_file_load_collects(s_sis_db *db_, sis_file_handle fp_)
@@ -383,6 +396,7 @@ bool _sisdb_file_load_collects(s_sis_db *db_, sis_file_handle fp_)
             // printf("load table name=%s  %s size=%d\n",tb_->name,head.code,head.size);
             // sisdb_set_direct(head.format, tb_->name, head.code, sis_memory(buffer), head.size);
             _sisdb_file_load_collect_alone(db_, head.key, sis_memory(buffer), head.size);
+
             sis_memory_move(buffer, head.size);
             // sis_memory_pack(buffer);
             hashead = false;
@@ -392,7 +406,6 @@ bool _sisdb_file_load_collects(s_sis_db *db_, sis_file_handle fp_)
     sis_memory_destroy(buffer);
     // 释放没有移动前的指针
     // 这里重建info信息就不用担心写入时key的写入顺序了，可以全部加载完后再统一处理info信息
-    sisdb_sysinfo_rebuild(db_);
 
     return true;
 }

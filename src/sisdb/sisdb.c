@@ -13,15 +13,15 @@ s_sis_db *sisdb_create(char *name_) //数据库的名称，为空建立一个sys
 	db->name = sis_sdsnew(name_);
 
 	db->dbs = sis_map_pointer_create();
-	db->info = sis_pointer_list_create();
-	db->info->free = sisdb_sysinfo_destroy;
-	db->infos = sis_map_pointer_create();
+	db->configs = sis_pointer_list_create();
+	db->configs->free = sisdb_config_destroy;
 	db->collects = sis_map_pointer_create();
 
 	db->map = sis_map_pointer_create();
 	sisdb_init_map_define(db->map);
 
-	db->save_plans = sis_struct_list_create(sizeof(uint16), NULL, 0);
+	db->save_task = sis_plan_task_create();
+	db->init_task = sis_plan_task_create();
 
 	return db;
 }
@@ -32,6 +32,9 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	{
 		return;
 	}
+	sis_plan_task_destroy(db_->save_task);
+	sis_plan_task_destroy(db_->init_task);
+
 	// 遍历字典中table，手动释放实际的table
 	s_sis_dict_entry *de;
 	s_sis_dict_iter *di = sis_dict_get_iter(db_->dbs);
@@ -47,8 +50,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_map_pointer_destroy(db_->dbs);
 
 	// 下面仅仅释放key
-	sis_map_pointer_destroy(db_->infos);
-	sis_struct_list_destroy(db_->info);
+	sis_struct_list_destroy(db_->configs);
 	// 遍历字典中table，手动释放实际的table
 	if (db_->collects)
 	{
@@ -67,167 +69,190 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_sdsfree(db_->name);
 	sis_sdsfree(db_->conf);
 	sis_map_pointer_destroy(db_->map);
-	sis_struct_list_destroy(db_->save_plans);
 
 	sis_free(db_);
 }
 
-s_sisdb_sysinfo *sisdb_get_sysinfo(s_sis_db *db_, const char *key_)
+bool _sisdb_config_load_from_exch(s_sisdb_collect *collect_, s_sisdb_config_exch *exch_)
 {
-	s_sisdb_sysinfo *val = NULL;
-	if (db_->infos)
+	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+	if (!buffer) 
 	{
-		s_sis_sds key = sis_sdsnew(key_);
-		val = (s_sisdb_sysinfo *)sis_dict_fetch_value(db_->infos, key);
-		sis_sdsfree(key);
+		return false;
 	}
-	return val;
+	size_t len = 0;
+	const char *str;
+	s_sis_json_handle *handel;
+
+	str = sisdb_field_get_char_from_key(collect_->db, "market", buffer, &len);
+	sis_strncpy(exch_->market, 3, str, len);
+
+	str = sisdb_field_get_char_from_key(collect_->db, "work-time", buffer, &len);
+	handel = sis_json_load(str, len);
+	if (!handel)
+	{
+		exch_->work_time.first = sis_json_get_int(handel->node, "0", 900);
+		exch_->work_time.second = sis_json_get_int(handel->node, "1", 1530);
+	}
+
+	str = sisdb_field_get_char_from_key(collect_->db, "trade-time", buffer, &len);
+	handel = sis_json_load(str, len);
+	int index = 0;
+	if (handel)
+	{
+		s_sis_json_node *next = sis_json_first_node(handel->node);
+		while (next)
+		{
+			exch_->trade_time[index].first = sis_json_get_int(next, "0", 930);
+			exch_->trade_time[index].second = sis_json_get_int(next, "1", 1500);
+			index++;
+			next = next->next;
+		}
+		exch_->trade_slot = index;
+	}
+	sis_sdsfree(buffer);
+	return true;
+}
+bool _sisdb_config_load_from_info(s_sisdb_collect *collect_, s_sisdb_config_info *info_)
+{
+	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+	if (!buffer) 
+	{
+		return false;
+	}
+	info_->dot = sisdb_field_get_uint_from_key(collect_->db, "dot", buffer);
+	info_->vol_unit = sisdb_field_get_uint_from_key(collect_->db, "vol-unit", buffer);
+	info_->prc_unit = sisdb_field_get_uint_from_key(collect_->db, "prc-unit", buffer);
+	sis_sdsfree(buffer);
+	return true;
 }
 
-// ----- //
-
-bool _sisdb_sysinfo_compare(s_sisdb_sysinfo *info1_, s_sisdb_sysinfo *info2_)
+s_sisdb_config *sisdb_config_create(s_sis_db *db_, const char *code_)
 {
-	bool o = 1;
+	s_sisdb_config *config = (s_sisdb_config *)sis_malloc(sizeof(s_sisdb_config));
+	memset(config, 0, sizeof(s_sisdb_config));
 
-	if (info1_->dot != info2_->dot)
-		return o;
-	if (info1_->prc_unit != info2_->prc_unit)
-		return o;
-	if (info1_->vol_unit != info2_->vol_unit)
-		return o;
-	if (info1_->work_time.first != info2_->work_time.first ||
-		info1_->work_time.second != info2_->work_time.second)
-		return o;
-
-	if (info1_->trade_time->count != info2_->trade_time->count ||
-		info1_->trade_time->len != info2_->trade_time->len)
-		return o;
-
-	for (int i = 0; i < info1_->trade_time->count; i++)
+	// 取出默认值，当系统最初加载的时候就已经生成最少一条默认的值了
+	s_sisdb_config *first = sis_struct_list_first(db_->configs);
+	if (!first)
 	{
-		s_sis_time_pair *tt1 = sis_struct_list_get(info1_->trade_time, i);
-		s_sis_time_pair *tt2 = sis_struct_list_get(info2_->trade_time, i);
-		if (tt1->first != tt2->first || tt1->second != tt2->second)
+		return config;
+	}	
+	memmove(config, first, sizeof(s_sisdb_config));
+
+	// 去exch和info表中找找数据，有匹配的就更新info中对应字段
+	char key[64], market[3];
+	sis_strncpy(market, 2, code_, 2);
+	sis_sprintf(key, 64, "%s.%s", market, SIS_TABLE_EXCH);
+	s_sisdb_collect *collect = sisdb_get_collect(db_, key);
+
+	if (collect)
+	{
+		s_sisdb_config_exch exch;
+		if(_sisdb_config_load_from_exch(collect, &exch))
 		{
-			return o;
+			memmove(&config->exch, &exch, sizeof(s_sisdb_config_exch));
 		}
 	}
-	return 0;
-}
-s_sisdb_sysinfo *sisdb_sysinfo_create(s_sis_db *db_, const char *key_)
-{
-	s_sisdb_sysinfo *info = (s_sisdb_sysinfo *)sis_malloc(sizeof(s_sisdb_sysinfo));
-	memset(info, 0, sizeof(s_sisdb_sysinfo));
-	info->trade_time = sis_struct_list_create(sizeof(s_sis_time_pair), NULL, 0);
 
-	// 这里似乎应该仅仅付出默认值就返回了，
-	// 应该另外起一个过程，专门用来处理每个collect的info信息
-	char stock[64], market[32];
-	sis_strcpy(market, 2, key_);
-	sis_sprintf(market, 32, "%s.%s", market, SIS_TABLE_EXCH);
-	s_sisdb_collect *exch_collect = sisdb_get_collect(db_, market);
-	sis_sprintf(stock, 64, "%s.%s", key_, SIS_TABLE_INFO);
-	s_sisdb_collect *info_collect = sisdb_get_collect(db_, stock);
-
-	if (exch_collect && info_collect)
+	sis_sprintf(key, 64, "%s.%s", code_, SIS_TABLE_INFO);
+	collect = sisdb_get_collect(db_, key);
+	if (collect)
 	{
-		// size_t len;
-		// const char *str;
-		//读数据表相应信息，然后赋值
-		s_sis_sds sbuff = sisdb_collect_get_of_range_sds(exch_collect, 0, -1);
-		if (sbuff)
+		s_sisdb_config_info info;
+		if(_sisdb_config_load_from_info(collect, &info))
 		{
-			size_t len = 0;
-			s_sis_json_handle *handel;
-			const char *str = sisdb_field_get_char_from_key(exch_collect->db, "work-time", sbuff, &len);
-			handel = sis_json_load(str, len);
-			if (!handel)
-			{
-				info->work_time.first = 900;
-				info->work_time.second = 1530;
-			}
-			else
-			{
-				info->work_time.first = sis_json_get_int(handel->node, "0", 900);
-				info->work_time.second = sis_json_get_int(handel->node, "1", 1530);
-			}
-			str = sisdb_field_get_char_from_key(exch_collect->db, "trade-time", sbuff, &len);
-			handel = sis_json_load(str, len);
-			s_sis_time_pair pair;
-			if (!handel)
-			{
-				pair.first = 930;
-				pair.second = 1130;
-				sis_struct_list_push(info->trade_time, &pair);
-				pair.first = 1300;
-				pair.second = 1500;
-				sis_struct_list_push(info->trade_time, &pair);
-			}
-			else
-			{
-				s_sis_json_node *next = sis_json_first_node(handel->node);
-				while (next)
-				{
-					pair.first = sis_json_get_int(next, "0", 930);
-					pair.second = sis_json_get_int(next, "1", 1130);
-					sis_struct_list_push(server.db->trade_time, &pair);
-					// printf("trade time [%d, %d]\n",pair.begin,pair.end);
-					next = next->next;
-				}
-			}
-			sis_sdsfree(sbuff);
+			memmove(&config->info,&info, sizeof(s_sisdb_config_info));
 		}
-		sbuff = sisdb_collect_get_of_range_sds(info_collect, 0, -1);
-		if (sbuff)
-		{
-			info->dot = sisdb_field_get_uint_from_key(exch_collect->db, "dot", sbuff);
-			info->vol_unit = sisdb_field_get_uint_from_key(exch_collect->db, "volunit", sbuff);
-			info->prc_unit = sisdb_field_get_uint_from_key(exch_collect->db, "coinunit", sbuff);
-			sis_sdsfree(sbuff);
-		}
-		// const char * sisdb_field_get_char_from_key(s_sisdb_table *tb_, const char *key_, const char *val_, size_t *len_);
-		// uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
 	}
-	else
-	{
-		s_sisdb_sysinfo *first = sis_struct_list_get(db_->info, 0);
-		memmove(info, first, sizeof(s_sisdb_sysinfo) - sizeof(void *));
-		sis_struct_list_clone(first->trade_time, info->trade_time, 0);
-	}
-	// 除了exch和info意以外的表才继续处理
-	// 先根据key 找到info中的信息，如果找不到就用默认值
-	// 再取key前两位，找到exch中的信息，如果找不到就用默认值，这里需要把字符串转换为二进制数据
+	// 第一条为默认配置,在列表中寻找有没有一样的，有就直接添加索引，没有需要在列表中增加一条
 	// 最后再把信息注册到db中，方便后续查询
-
-	// 第一条为默认配置
-	for (int i = 1; i < db_->info->count; i++)
+	for (int i = 1; i < db_->configs->count; i++)
 	{
-		s_sisdb_sysinfo *val = sis_struct_list_get(db_->info, i);
-		if (!_sisdb_sysinfo_compare(val, info))
+		s_sisdb_config *val = sis_struct_list_get(db_->configs, i);
+		if (!memcmp(val, config, sizeof(s_sisdb_config)))
 		{
-			sisdb_sysinfo_destroy(info);
-			sis_map_buffer_set(db_->infos, key_, val);
+			sis_free(config);
 			return val;
 		}
 	}
-	sis_pointer_list_push(db_->info, info);
-	sis_map_buffer_set(db_->infos, key_, info);
-	return info;
+	sis_struct_list_push(db_->configs, config);
+	return config;
 }
 
-void sisdb_sysinfo_destroy(void *info_)
+void sisdb_config_destroy(void *info_)
 {
-	s_sisdb_sysinfo *info = (s_sisdb_sysinfo *)info_;
-
-	sis_struct_list_destroy(info->trade_time);
-
-	sis_free(info);
+	s_sisdb_config *cfg = (s_sisdb_config *)info_;
+	sis_free(cfg);
 }
+// 修改后，检查config的相关性
+void sisdb_config_check(s_sis_db *db_, const char *key_, void *src_)
+{
+	s_sisdb_collect *collect_ = (s_sisdb_collect *)src_;
+	// 只要不是修改具备config的数据表就不检查
+	s_sisdb_config config;
 
+	if(!sis_strcasecmp(SIS_TABLE_EXCH, collect_->db->name)) 
+	{
+		if(_sisdb_config_load_from_exch(collect_, &config.exch))
+		{
+			for (int i = 1; i < db_->configs->count; i++)
+			{
+				s_sisdb_config *val = sis_struct_list_get(db_->configs, i);			
+				if (!sis_strcasecmp(config.exch.market, val->exch.market))
+				{
+					memmove(&val->exch, &config.exch, sizeof(s_sisdb_config_exch)); 
+				}
+			}
+		}
+	}
+	if(!sis_strcasecmp(SIS_TABLE_INFO, collect_->db->name)) 
+	{
+		if(_sisdb_config_load_from_info(collect_, &config.info))
+		{
+			char key[SIS_MAXLEN_KEY];
+			char code[SIS_MAXLEN_CODE];
+			sis_str_substr(code, SIS_MAXLEN_TABLE, key_, '.', 0);
+
+			s_sis_dict_entry *de;
+			s_sis_dict_iter *di = sis_dict_get_iter(db_->dbs);
+			while ((de = sis_dict_next(di)) != NULL)
+			{
+				s_sisdb_table *table = (s_sisdb_table *)sis_dict_getval(de);
+				if(!sis_strcasecmp(SIS_TABLE_EXCH, table->name)) continue; // 对股票不需要设置市场的变量
+				sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", code, table->name);
+				s_sisdb_collect *collect = sisdb_get_collect(db_,key);
+				if (!collect) continue;  // 没找到对应collect就返回
+				if (!memcmp(&collect->cfg->info, &config.info, sizeof(s_sisdb_config_info))) continue; // 结构体内容相同返回
+				//----增加，不修改，重启后才会清理----//
+				int finded = false;
+				for (int i = 1; i < db_->configs->count; i++)
+				{	
+					s_sisdb_config *cfg = sis_struct_list_get(db_->configs, i);
+					if (!memcmp(&cfg->info, &config.info, sizeof(s_sisdb_config_info))&&
+					    !memcmp(&cfg->exch, &collect->cfg->exch, sizeof(s_sisdb_config_exch)))
+					{
+						collect->cfg = cfg;
+						finded = true;
+						break;
+					}
+				}
+				if (!finded) 
+				{
+					s_sisdb_config *val = (s_sisdb_config *)sis_malloc(sizeof(s_sisdb_config));
+					memmove(&val->exch, &collect->cfg->exch, sizeof(s_sisdb_config_exch));
+					memmove(&val->info, &config.info, sizeof(s_sisdb_config_info));
+					sis_struct_list_push(db_->configs, val);
+					collect->cfg = val;
+				}
+			}
+			sis_dict_iter_free(di);
+		}
+	}
+}
 //time_t 返回０－２３９
 // 不允许返回-1
-uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sis_struct_list *tradetime_)
+uint16 sisdb_ttime_to_trade_index_(uint64 ttime_, s_sis_struct_list *tradetime_)
 {
 	int tt = sis_time_get_iminute(ttime_);
 
@@ -277,7 +302,7 @@ uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sis_struct_list *tradetime_)
 	return out;
 }
 
-uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sis_struct_list *tradetime_)
+uint64 sisdb_trade_index_to_ttime_(int date_, int idx_, s_sis_struct_list *tradetime_)
 {
 	int tt = idx_;
 	int nowmin = 0;
@@ -297,6 +322,81 @@ uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sis_struct_list *tradet
 	}
 	return out;
 }
+
+uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sisdb_config *cfg_)
+{
+	int tt = sis_time_get_iminute(ttime_);
+
+	int nowmin = 0;
+	int out = 0;
+
+	for (int i = 0; i < cfg_->exch.trade_slot; i++)
+	{
+		if (tt > cfg_->exch.trade_time[i].first && 
+			tt < cfg_->exch.trade_time[i].second) //9:31:00--11:29:59  13:01:00--14:59:59
+		{
+			out = nowmin + sis_time_get_iminute_offset_i(cfg_->exch.trade_time[i].first, tt);
+			break;
+		}
+		if (tt <= cfg_->exch.trade_time[i].first && i == 0)
+		{ // 8:00:00---9:30:59秒前都=0
+			return 0;
+		}
+		if (tt <= cfg_->exch.trade_time[i].first && 
+		   (tt > sis_time_get_iminute_minnum(cfg_->exch.trade_time[i].first, -5)))
+		{ //12:55:59--13:00:59秒
+			return nowmin;
+		}
+
+		nowmin += sis_time_get_iminute_offset_i(
+						cfg_->exch.trade_time[i].first, 
+						cfg_->exch.trade_time[i].second);
+
+		if (tt >= cfg_->exch.trade_time[i].second && i == cfg_->exch.trade_slot - 1)
+		{ //15:00:00秒后
+			return nowmin - 1;
+		}
+		// if (tt >= pair->second && (tt < sis_time_get_iminute_minnum(pair->second, 5)))
+		// { //11:30:00--11:34:59秒
+		// 	return nowmin - 1;
+		// }
+		if (tt >= cfg_->exch.trade_time[i].second)
+		{ //11:30:00--11:34:59秒
+			if (tt < sis_time_get_iminute_minnum(cfg_->exch.trade_time[i].second, 5))
+			{
+				return nowmin - 1;
+			}
+			else
+			{
+				out = nowmin;
+			}
+		}
+	}
+	return out;
+}
+
+uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sisdb_config *cfg_)
+{
+	int tt = idx_;
+	int nowmin = 0;
+
+	uint64 out = sis_time_make_time(date_, cfg_->exch.trade_time[cfg_->exch.trade_slot-1].second * 100);
+	for (int i = 0; i < cfg_->exch.trade_slot; i++)
+	{
+		nowmin = sis_time_get_iminute_offset_i(
+			cfg_->exch.trade_time[i].first,
+		    cfg_->exch.trade_time[i].second);
+		if (tt < nowmin)
+		{
+			int min = sis_time_get_iminute_minnum(cfg_->exch.trade_time[i].first, tt + 1);
+			out = sis_time_make_time(date_, min * 100);
+			break;
+		}
+		tt -= nowmin;
+	}
+	return out;
+}
+
 
 int sis_from_node_get_format(s_sis_db *db_, s_sis_json_node *node_)
 {

@@ -1,6 +1,6 @@
 ﻿
+#include "sis_thread.h"
 #include "sisdb_io.h"
-#include "os_thread.h"
 #include "sisdb_file.h"
 #include "sisdb_map.h"
 
@@ -14,57 +14,36 @@ static s_sisdb_server server = {
 void *_thread_save_plan_task(void *argv_)
 {
     s_sis_db *db = (s_sis_db *)argv_;
+    s_sis_plan_task *task = db->save_task;
 
-    // 创建等待信号通知
-    sis_thread_wait_create(&server.db->thread_wait);
-
-    sis_mutex_create(&server.db->save_mutex);
-
-    sis_thread_wait_start(&db->thread_wait);
-
-    while (server.status != SIS_SERVER_STATUS_CLOSE)
-    {
-        //  printf("server.status ... %d\n",server.status);
-        // 处理
-        if (db->save_mode == SIS_WORK_MODE_GAPS)
+	while (sis_plan_task_working(task))
+	{
+        if (sis_plan_task_execute(task)) 
         {
-            if (sis_thread_wait_sleep(&db->thread_wait, db->save_always.delay) == SIS_ETIMEDOUT)
-            {
-                // sis_mutex_lock(&server.db->save_mutex);
-                sisdb_file_save(&server);
-                // sis_mutex_unlock(&server.db->save_mutex);
-            }
+            sis_mutex_lock(&task->mutex);
+            // --------user option--------- //
+            sisdb_file_save(&server);
+            sis_mutex_unlock(&task->mutex);
         }
-        else
-        {
-            if (sis_thread_wait_sleep(&db->thread_wait, 30) == SIS_ETIMEDOUT) // 30秒判断一次
-            {
-                int min = sis_time_get_iminute(0);
-                // printf("save plan ... -- -- -- %d \n", min);
-                for (int k = 0; k < db->save_plans->count; k++)
-                {
-                    uint16 *lm = sis_struct_list_get(db->save_plans, k);
-                    if (min == *lm)
-                    {
-                        // sis_mutex_lock(&server.db->save_mutex);
-                        sisdb_file_save(&server);
-                        // sis_mutex_unlock(&server.db->save_mutex);
-                        printf("save plan ... %d -- -- %d \n", *lm, min);
-                    }
-                }
-            }
-        }
-        // printf("server.status ... %d\n",server.status);
-    }
-    sis_thread_wait_stop(&db->thread_wait);
-
-    sis_mutex_destroy(&server.db->save_mutex);
-
-    sis_thread_wait_destroy(&server.db->thread_wait);
-
+	}
     return NULL;
 }
 
+void *_thread_init_plan_task(void *argv_)
+{
+    s_sis_db *db = (s_sis_db *)argv_;
+    s_sis_plan_task *task = db->init_task;
+
+	while (sis_plan_task_working(task))
+	{
+		if (sis_plan_task_execute(task)) 
+        {
+            // sisdb_check_init(&server);
+            ??? 需要检查所有市场的状态和初始化信息等信息
+        }
+	}
+    return NULL;
+}
 char *sisdb_open(const char *conf_)
 {
     s_sis_conf_handle *config = sis_conf_open(conf_);
@@ -111,28 +90,33 @@ char *sisdb_open(const char *conf_)
 
     server.db = sisdb_create(server.service_name);
 
-    server.db->save_mode = SIS_WORK_MODE_NONE;
+    server.db->init_task->work_mode = SIS_WORK_MODE_GAP;
+    server.db->init_task->work_gap.start = sis_json_get_int(atime, "start", 0);
+    server.db->init_task->work_gap.stop = sis_json_get_int(atime, "stop", 0);
+    server.db->init_task->work_gap.delay = sis_json_get_int(atime, "delay", 30*1000);
+
+    server.db->save_task->work_mode = SIS_WORK_MODE_NONE;
     s_sis_json_node *stime = sis_json_cmp_child_node(service, "save-time");
     if (stime)
     {
         s_sis_json_node *ptime = sis_json_cmp_child_node(stime, "plans-work");
         if (ptime)
         {
-            server.db->save_mode = SIS_WORK_MODE_PLANS;
+            server.db->save_task->work_mode = SIS_WORK_MODE_PLANS;
             int count = sis_json_get_size(ptime);
             for (int k = 0; k < count; k++)
             {
                 uint16 min = sis_array_get_int(ptime, k, 0);
-                sis_struct_list_push(server.db->save_plans, &min);
+                sis_struct_list_push(server.db->save_task->work_plans, &min);
             }
         }
         s_sis_json_node *atime = sis_json_cmp_child_node(stime, "always-work");
         if (atime)
         {
-            server.db->save_mode = SIS_WORK_MODE_GAPS;
-            server.db->save_always.start = sis_json_get_int(atime, "start", 900);
-            server.db->save_always.stop = sis_json_get_int(atime, "stop", 1530);
-            server.db->save_always.delay = sis_json_get_int(atime, "delay", 300);
+            server.db->save_task->work_mode = SIS_WORK_MODE_GAPS;
+            server.db->save_task->work_gap.start = sis_json_get_int(atime, "start", 900);
+            server.db->save_task->work_gap.stop = sis_json_get_int(atime, "stop", 1530);
+            server.db->save_task->work_gap.delay = sis_json_get_int(atime, "delay", 300);
         }
     }
 
@@ -147,24 +131,35 @@ char *sisdb_open(const char *conf_)
     }
 
     // 启动存盘线程
-    server.db->save_pid = 0;
     // 检查数据库文件有没有
     char sdb_json_name[SIS_PATH_LEN];
     sis_sprintf(sdb_json_name, SIS_PATH_LEN, SIS_DB_FILE_CONF, server.dbpath, server.service_name);
 
     if (!sis_file_exists(sdb_json_name))
     {
-        s_sis_json_node *node = sis_json_cmp_child_node(service, "tables");
         // 加载conf
         size_t len = 0;
         char *str = sis_conf_to_json(service, &len);
         server.db->conf = sdsnewlen(str, len);
         sis_free(str);
-        s_sis_json_node *info = sis_conf_first_node(node);
-        while (info)
+
+        s_sis_json_node *node = sis_json_cmp_child_node(service, "tables");
+        s_sis_json_node *next = sis_conf_first_node(node);
+        while (next)
         {
-            sisdb_table_create(server.db, info->key, info);
-            info = info->next;
+            sisdb_table_create(server.db, next->key, next);
+            next = next->next;
+        }
+        // 仅仅没有save前取值
+        node = sis_json_cmp_child_node(service, "values");
+        // 加载默认变量
+        next = sis_conf_first_node(node);
+        while (next)
+        {
+            char *str = sis_conf_to_json(next, &len);
+            sisdb_set(SIS_DATA_TYPE_JSON, next->key, str, len);
+            sis_free(str);
+            next = next->next;
         }
     }
     else
@@ -189,11 +184,11 @@ char *sisdb_open(const char *conf_)
         server.db->conf = sdsnewlen(str, len);
         sis_free(str);
 
-        s_sis_json_node *info = sis_conf_first_node(node);
-        while (info)
+        s_sis_json_node *next = sis_conf_first_node(node);
+        while (next)
         {
-            sisdb_table_create(server.db, info->key, info);
-            info = info->next;
+            sisdb_table_create(server.db, next->key, next);
+            next = next->next;
         }
     }
 
@@ -205,12 +200,23 @@ char *sisdb_open(const char *conf_)
         sis_out_log(1)("load sdb fail. exit!\n");
         goto error;
     }
+
     // 启动存盘线程
-    if (server.db->save_mode != SIS_WORK_MODE_NONE)
+    if (server.db->save_task->work_mode != SIS_WORK_MODE_NONE)
     {
-        if (!sis_thread_create(_thread_save_plan_task, server.db, &server.db->save_pid))
+        if (!sis_plan_task_start(server.db->save_task, _thread_save_plan_task, server.db))
         {
             sis_out_log(1)("can't start save thread\n");
+            goto error;
+        }
+    }
+    // 启动存盘线程
+    if (server.db->init_task->work_mode != SIS_WORK_MODE_NONE)
+    {
+        if (!sis_plan_task_start(server.db->init_task, 
+                _thread_init_plan_task, server.db))
+        {
+            sis_out_log(1)("can't start init thread\n");
             goto error;
         }
     }
@@ -238,16 +244,6 @@ void sisdb_close()
     }
     server.status = SIS_SERVER_STATUS_CLOSE;
 
-    sis_thread_wait_kill(&server.db->thread_wait);
-    //这里要好好测试一下，看看两个以上任务时能不能一起退出来
-    // sis_thread_join(server.db->init_pid);
-
-    if (server.db && server.db->save_pid)
-    {
-        sis_thread_join(server.db->save_pid);
-        printf("save_pid end.\n");
-    }
-
     sisdb_destroy(server.db);
 }
 bool sisdb_save()
@@ -258,7 +254,10 @@ bool sisdb_save()
         return false;
     }
     // 存为struct格式
-    return sisdb_file_save(&server);
+    sis_mutex_lock(&server.db->save_task->mutex);
+    bool o = sdb_file_save(&server);
+    sis_mutex_unlock(&server.db->save_task->mutex);
+    return o;
 }
 bool sisdb_out(const char *key_, const char *com_)
 {
@@ -355,7 +354,7 @@ int _sisdb_write_begin(int fmt_, const char *key_, const char *val_, size_t len_
         sis_out_log(3)("save aof error.\n");
         return SIS_SERVER_REPLY_ERR;
     }
-    if (sis_mutex_trylock(&server.db->save_mutex))
+    if (sis_mutex_trylock(&server.db->save_task->mutex))
     {
         // == 0 才是锁住
         sis_out_log(3)("saveing... set fail.\n");
@@ -365,7 +364,7 @@ int _sisdb_write_begin(int fmt_, const char *key_, const char *val_, size_t len_
 }
 void _sisdb_write_end()
 {
-    sis_mutex_unlock(&server.db->save_mutex);
+    sis_mutex_unlock(&server.db->save_task->mutex);
 }
 
 // 直接拷贝
@@ -400,6 +399,8 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
     // sis_out_binary("update 0 ", in_, ilen_);
 
     int o = sisdb_collect_update(collect, in);
+
+    sisdb_config_check(server.db, key_, collect);
 
     if (!server.db->loading)
     {
@@ -479,7 +480,8 @@ int sisdb_init(const char *market_)
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        if (val->db->control.isinit && !sis_strncasecmp(sis_dict_getkey(de), market_, strlen(market_)))
+        if (val->db->control.isinit && !val->db->control.iscfg &&
+            !sis_strncasecmp(sis_dict_getkey(de), market_, strlen(market_)))
         {
             // 只是设置记录数为0
             sisdb_collect_clear(val);

@@ -163,8 +163,10 @@ void sis_thread_wait_destroy(s_sis_wait *wait_)
 #include <signal.h>
 #include <stdio.h>
 
+int __exit = 0;
 int __kill = 0;
 s_sis_wait __thread_wait; //线程内部延时处理
+s_sis_wait __thread_wait_b; //线程内部延时处理
 
 void *__task_ta(void *argv_)
 {
@@ -172,7 +174,7 @@ void *__task_ta(void *argv_)
     sis_thread_wait_start(&__thread_wait);
     while (!__kill)
     {
-        if(sis_thread_wait_sleep(&__thread_wait, 1) == SIS_ETIMEDOUT)
+        if(sis_thread_wait_sleep(&__thread_wait, 3) == SIS_ETIMEDOUT)
         {
             printf("timeout ..a.. %d \n",__kill);
         } else 
@@ -192,7 +194,7 @@ void *__task_tb(void *argv_)
     {
         if(sis_thread_wait_sleep(&__thread_wait, 1) == SIS_ETIMEDOUT)
         {
-			sis_sleep(3000);
+			// sis_sleep(3000);
             printf("timeout ..b.. %d \n",__kill);
         } else 
 		{
@@ -213,12 +215,20 @@ void exithandle(int sig)
 	printf("free . \n");
     sis_thread_wait_destroy(&__thread_wait);
 	printf("ok . \n");
+
+	// printf("kill b . \n");
+    // sis_thread_wait_kill(&__thread_wait_b);
+	// printf("free b . \n");
+    // sis_thread_wait_destroy(&__thread_wait_b);
+	// printf("ok b . \n");
+
+	// __exit = 1;
 }
 
 int main()
 {
-	// s_sis_mutex_rw save_mutex;
 	sis_thread_wait_create(&__thread_wait);
+	sis_thread_wait_create(&__thread_wait_b);
 
 	s_sis_thread_id_t ta ;
 	sis_thread_create(__task_ta, NULL, &ta);
@@ -228,26 +238,12 @@ int main()
 	sis_thread_create(__task_tb, NULL, &tb);
 	printf("thread b ok!\n");
 
-    // sis_mutex_rw_create(&save_mutex);
 	signal(SIGINT,exithandle);
 
-	while(!__kill)
+	while(!__exit)
 	{
 		sis_sleep(300);
 	}
-//    sis_thread_wait_kill(&__thread_wait);
-    //???这里要好好测试一下，看看两个能不能一起退出来
-    // sis_thread_join(server.db->init_pid);
-    
-    // sis_thread_join(ta);
-	// printf("thread a end!\n");
-
-    // sis_thread_join(tb);
-	// printf("thread b end!\n");
-
-    // sis_mutex_rw_destroy(&save_mutex);
-	// printf("ok . \n");
-    // sis_thread_wait_destroy(&__thread_wait);
 	printf("end . \n");
 	return 1;
 }

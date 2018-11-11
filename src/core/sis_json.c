@@ -1216,7 +1216,7 @@ s_sis_json_node *sis_json_find_node(s_sis_json_node *node_, const char *path_)
 	return sis_json_cmp_child_node(node_, path_);
 }
 
-#if 1
+#if 0
 void json_printf(s_sis_json_node *node_, int *i)
 {
 	if (!node_)

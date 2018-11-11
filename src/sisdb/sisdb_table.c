@@ -4,53 +4,46 @@
 #include "sisdb_fields.h"
  // 目前只支持3个必须的值
 
-void _sisdb_table_load_default(s_sis_db *db_, s_sis_json_node *default_)
+void _sisdb_table_load_config(s_sis_db *db_, s_sis_json_node *config_)
 {
-	s_sisdb_sysinfo *info = sis_struct_list_first(db_->info);
-	if (!info) 
+	s_sisdb_config *cfg = sis_struct_list_first(db_->configs);
+	if (!cfg) 
 	{
-		info = (s_sisdb_sysinfo *)sis_malloc(sizeof(s_sisdb_sysinfo));
-		memset(info, 0 ,sizeof(s_sisdb_sysinfo));
-		info->trade_time = sis_struct_list_create(sizeof(s_sis_time_pair), NULL, 0);
-		sis_pointer_list_push(db_->info, info);
+		cfg = (s_sisdb_config *)sis_malloc(sizeof(s_sisdb_config));
+		memset(cfg, 0 ,sizeof(s_sisdb_config));
+		sis_struct_list_push(db_->configs, cfg);
 	}
-	if (sis_json_cmp_child_node(default_, "dot")) 
+	if (sis_json_cmp_child_node(config_, "dot")) 
 	{
-		info->dot = sis_json_get_int(default_, "dot", 2);
+		cfg->info.dot = sis_json_get_int(config_, "dot", 2);
 	}
-	if (sis_json_cmp_child_node(default_, "coinunit")) 
+	if (sis_json_cmp_child_node(config_, "prc-unit")) 
 	{
-		info->prc_unit = sis_json_get_int(default_, "coinunit", 2);
+		cfg->info.prc_unit = sis_json_get_int(config_, "prc-unit", 1);
 	}
-	if (sis_json_cmp_child_node(default_, "volunit")) 
+	if (sis_json_cmp_child_node(config_, "vol-unit")) 
 	{
-		info->vol_unit = sis_json_get_int(default_, "volunit", 2);
+		cfg->info.vol_unit = sis_json_get_int(config_, "vol-unit", 100);
 	}
-	s_sis_json_node *wtnode = sis_json_cmp_child_node(default_, "work-time");
-	if (wtnode) 
+	s_sis_json_node *node = sis_json_cmp_child_node(config_, "work-time");
+	if (node) 
 	{
-        info->work_time.first = sis_json_get_int(wtnode, "0", 900);
-        info->work_time.second = sis_json_get_int(wtnode, "1", 1530);
+		cfg->exch.work_time.first = sis_json_get_int(node, "0", 900);
+		cfg->exch.work_time.second = sis_json_get_int(node, "1", 1530);
 	}
-	s_sis_json_node *ttnode = sis_json_cmp_child_node(default_, "trade-time");
-	if (ttnode) 
+	node = sis_json_cmp_child_node(config_, "trade-time");
+	if (node) 
 	{
 		int index = 0;
-	   	s_sis_time_pair pair;
-       	s_sis_json_node *next = sis_json_first_node(ttnode);
+       	s_sis_json_node *next = sis_json_first_node(node);
         while (next)
         {
-            pair.first = sis_json_get_int(next, "0", 930);
-            pair.second = sis_json_get_int(next, "1", 1130);
-			if (index < info->trade_time->len) {
-				sis_struct_list_push(info->trade_time, &pair);
-			} else {
-	            sis_struct_list_update(info->trade_time, index, &pair);
-			}
+            cfg->exch.trade_time[index].first = sis_json_get_int(next, "0", 930);
+            cfg->exch.trade_time[index].second = sis_json_get_int(next, "1", 1130);
 			index++;
-            // printf("trade time [%d, %d]\n",pair.begin,pair.end);
             next = next->next;
         } 
+		cfg->exch.trade_slot = index;
 	}	
 }
 
@@ -69,6 +62,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	tb->control.type = SIS_TABLE_TYPE_STS; // 默认保存的目前都是struct，
 	tb->control.scale = SIS_TIME_SCALE_SECOND;
 	tb->control.limits = sis_json_get_int(com_, "limit", 0);
+	tb->control.iscfg = 0;
 	tb->control.isinit = sis_json_get_int(com_, "isinit", 0);
 	tb->control.issubs = 0;
 	tb->control.iszip = 0;
@@ -84,10 +78,12 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	s_sis_map_define *mm = NULL;
 	const char *strval = NULL;
 
-	s_sis_json_node *node = sis_json_cmp_child_node(com_, "default");
+	// table 加载完成时，config一定会有一条缺省信息
+	s_sis_json_node *node = sis_json_cmp_child_node(com_, "config");
 	if (node) 
 	{
-		_sisdb_table_load_default(db_, node);
+		tb->control.iscfg = 1;
+		_sisdb_table_load_config(db_, node);
 	}
 	
 	strval = sis_json_get_str(com_, "scale");

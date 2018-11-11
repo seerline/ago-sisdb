@@ -73,6 +73,6 @@ uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const
 void sisdb_field_copy(char *des_, const char *src_, size_t len_);
 
 void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_, 
-			char *key_, s_sis_json_node *node_,s_sisdb_sysinfo  *info_);
+			char *key_, s_sis_json_node *node_,s_sisdb_config  *);
 
 #endif /* _SIS_FIELDS_H */
