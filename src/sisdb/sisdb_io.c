@@ -153,14 +153,17 @@ char *sisdb_open(const char *conf_)
             next = next->next;
         }
         // 仅仅没有save前取值
-        node = sis_json_cmp_child_node(service, "values");
         // 加载默认变量
+        node = sis_json_cmp_child_node(service, "values");
         next = sis_conf_first_node(node);
         while (next)
         {
-            char *str = sis_conf_to_json(next, &len);
-            sisdb_set(SIS_DATA_TYPE_JSON, next->key, str, len);
+            char *str = sis_conf_to_json_zip(next, &len);
+            printf("[%p] key %s : %s  \n",next, next->key, str);
+           
+            // sisdb_set(SIS_DATA_TYPE_JSON, next->key, str, len);
             sis_free(str);
+            printf("[%p] \n",next);
             next = next->next;
         }
     }
@@ -422,8 +425,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
         in = sis_sdsnewlen(val_, len_);
     }
     // sis_out_binary("update 0 ", in_, ilen_);
-
-    int o = sisdb_collect_update(collect, in);
+     int o = sisdb_collect_update(collect, in);
 
     _sisdb_write_work_time(collect);
     sisdb_write_config(server.db, key_, collect);
@@ -435,7 +437,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
         sis_str_substr(code, SIS_MAXLEN_TABLE, key_, '.', 0);
         sisdb_collect_update_publish(collect, in, code);
     }
-
+    sis_sdsfree(in);
     if (o)
     {
         sis_out_log(5)("set data ok,[%d].\n", o);

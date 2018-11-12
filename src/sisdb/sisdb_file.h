@@ -27,7 +27,7 @@
 
 #define SIS_DB_FILE_OUT_CSV  	"%s/%s/%s/%s.csv"    // 主数据库 db/sisdb/sh600600/day.csv
 #define SIS_DB_FILE_OUT_JSON  	"%s/%s/%s/%s.json"   // 主数据库 db/sisdb/sh600600/day.json
-#define SIS_DB_FILE_OUT_ARRAY   "%s/%s/%s/%s.json"   // 主数据库 db/sisdb/sh600600/day.json
+#define SIS_DB_FILE_OUT_ARRAY   "%s/%s/%s/%s.arr"   // 主数据库 db/sisdb/sh600600/day.json
 #define SIS_DB_FILE_OUT_STRUCT  "%s/%s/%s/%s.bin"    // 主数据库 db/sisdb/sh600600/day.bin
 #define SIS_DB_FILE_OUT_ZIP  	"%s/%s/%s/%s.zip"    // 主数据库 db/sisdb/sh600600/day.zip
 

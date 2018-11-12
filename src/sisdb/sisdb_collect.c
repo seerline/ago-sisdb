@@ -71,26 +71,23 @@ int _stepindex_goto(s_sis_step_index *si_, uint64 curr_)
 s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 {
 	char code[SIS_MAXLEN_CODE];
-	char table[SIS_MAXLEN_TABLE];
-	if (!sis_str_carve(key_, code, SIS_MAXLEN_CODE, table, SIS_MAXLEN_TABLE, '.'))
-	{
-		sis_out_log(3)("key [%s] error.\n", key_);
-		return NULL;
-	}
+	char dbname[SIS_MAXLEN_TABLE];
+	sis_str_substr(code, SIS_MAXLEN_CODE, key_, '.', 0);
+	sis_str_substr(dbname, SIS_MAXLEN_TABLE, key_, '.', 1);
 
-	s_sisdb_table *tb = sisdb_get_table(db_, table);
+	s_sisdb_table *tb = sisdb_get_table(db_, dbname);
 	if (!tb)
 	{
 		sis_out_log(3)("table define no find.\n");
 		return NULL;
 	}
-	
+
 	s_sisdb_collect *unit = sis_malloc(sizeof(s_sisdb_collect));
 	memset(unit, 0, sizeof(s_sisdb_collect));
 	sis_map_buffer_set(db_->collects, key_, unit);
 
 	unit->db = tb;
-	if (tb->control.issys) 
+	if (tb->control.issys)
 	{
 		sis_string_list_push_only(tb->collects, code, strlen(code));
 	}
@@ -153,7 +150,7 @@ void sisdb_collect_clear(s_sisdb_collect *unit_)
 		memset(unit_->lasted, 0, sis_sdslen(unit_->lasted));
 	}
 }
-//获取股票的数据集合， 
+//获取股票的数据集合，
 s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_)
 {
 	s_sisdb_collect *val = NULL;
@@ -182,6 +179,8 @@ uint64 _sisdb_collect_get_time(s_sisdb_collect *unit_, int index_)
 
 int sisdb_collect_recs(s_sisdb_collect *unit_)
 {
+	if (!unit_ || !unit_->value)
+		return 0;
 	return unit_->value->count;
 }
 
@@ -626,30 +625,30 @@ s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in
 
 	return o;
 }
-void _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds val_, s_sis_string_list *fields_)
+s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds val_, s_sis_string_list *fields_)
 {
 	int size = sis_string_list_getsize(fields_);
 	for (int i = 0; i < size; i++)
 	{
 		const char *key = sis_string_list_get(fields_, i);
-		// printf("----2----fields=%s\n",key);
 		s_sisdb_field *fu = sisdb_field_get_from_key(unit_->db, key);
 		if (!fu)
 		{
-			if (i<size-1) {
+			if (i < size - 1)
+			{
 				str_ = sis_sdscat(str_, ",");
 			}
 			continue;
 		}
 		const char *ptr = (const char *)val_;
+		char val[SIS_MAXLEN_STRING];
 		switch (fu->flags.type)
 		{
 		case SIS_FIELD_TYPE_CHAR:
-			str_ = sis_sdscatlen(str_, ptr + fu->offset, fu->flags.len);
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%*s", fu->flags.len, ptr + fu->offset);
 			break;
 		case SIS_FIELD_TYPE_INT:
-			// printf("ptr= %p, name=%s offset=%d\n", ptr, key, fu->offset);
-			str_ = sis_sdscatfmt(str_, "%d", (int32)sisdb_field_get_int(fu, ptr));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%d", (int32)sisdb_field_get_int(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_UINT:
 		case SIS_FIELD_TYPE_VOLUME:
@@ -657,44 +656,50 @@ void _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds val_, 
 		case SIS_FIELD_TYPE_MSEC:
 		case SIS_FIELD_TYPE_SECOND:
 		case SIS_FIELD_TYPE_DATE:
-			str_ = sis_sdscatfmt(str_, "%d", (uint32)sisdb_field_get_uint(fu, ptr));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%d", (uint32)sisdb_field_get_uint(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_FLOAT:
-			str_ = sis_sdscatfmt(str_, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot));
 			break;
 		case SIS_FIELD_TYPE_PRICE:
-			str_ = sis_sdscatfmt(str_, "%.*f", unit_->cfg_info->dot, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", unit_->cfg_info->dot, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot));
 			break;
 		}
-		if (i<size-1) {
+		str_ = sis_sdscatfmt(str_, "%s", val);
+		if (i < size - 1)
+		{
 			str_ = sis_sdscat(str_, ",");
-		}	
+		}
 	}
+	return str_;
 }
 s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *unit_, s_sis_sds in_,
-											s_sis_string_list *fields_, bool zip_)
+										  s_sis_string_list *fields_, bool zip_)
 {
-	s_sis_sds o = sis_sdsnewlen(NULL, 128);
+	s_sis_sds o = sis_sdsempty();
 
 	// 先处理字段
 	for (int i = 0; i < sis_string_list_getsize(fields_); i++)
 	{
 		const char *key = sis_string_list_get(fields_, i);
-		if (i<1) {
+		if (i < 1)
+		{
 			o = sis_sdscatfmt(o, "%s", key);
-		}else {
+		}
+		else
+		{
 			o = sis_sdscatfmt(o, ",%s", key);
 		}
 	}
 	o = sis_sdscat(o, "\n");
-
 	int count = (int)(sis_sdslen(in_) / unit_->value->len);
 	char *val = in_;
 
 	for (int k = 0; k < count; k++)
 	{
-		_sis_struct_to_csv(o, unit_, val, fields_);
+		o = _sis_struct_to_csv(o, unit_, val, fields_);
 		o = sis_sdscat(o, "\n");
+		printf("--- [%d] =%s", k, o);
 		val += unit_->value->len;
 	}
 
@@ -1196,7 +1201,7 @@ int sisdb_collect_delete(s_sis_db *db_, const char *key_, const char *com_)
 		{
 			if (sis_json_cmp_child_node(search, "stop"))
 			{
-				stop = sis_json_get_int(search, "stop", -1);				   // -1 为最新一条记录
+				stop = sis_json_get_int(search, "stop", -1);			   // -1 为最新一条记录
 				out = sisdb_collect_delete_of_range(collect, start, stop); // 定位后删除
 			}
 			else
@@ -1684,7 +1689,7 @@ uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_, s_sisdb_co
 	if (!allow)
 	{
 		return o;
-	}	
+	}
 	int date = sis_time_get_idate(o);
 	switch (outunit_->db->control.scale)
 	{
@@ -1722,7 +1727,7 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 									   s_sis_sds outs_, s_sisdb_field *outfu_, s_sisdb_collect *outunit_)
 {
 
-	int64  i64 = 0;
+	int64 i64 = 0;
 	double f64 = 0.0;
 
 	switch (infu_->flags.type)
@@ -1756,7 +1761,6 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 		break;
 	}
 }
-
 
 s_sis_sds _sisdb_collect_struct_trans(s_sisdb_collect *in_unit_, s_sis_sds ins_, s_sisdb_collect *out_unit_)
 {
@@ -1800,7 +1804,7 @@ int sisdb_collect_update_publish(s_sisdb_collect *unit_, s_sis_sds val_, const c
 	s_sisdb_table *pub_table;
 
 	s_sis_sds pub_val = NULL;
-	 char pub_key[SIS_MAXLEN_KEY];
+	char pub_key[SIS_MAXLEN_KEY];
 	s_sisdb_collect *pub_collect;
 
 	for (int k = 0; k < count; k++)
@@ -1886,7 +1890,7 @@ int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t i
 bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_)
 {
 	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
-	if (!buffer) 
+	if (!buffer)
 	{
 		return false;
 	}
@@ -1929,7 +1933,7 @@ bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_)
 bool sisdb_collect_load_info(s_sisdb_collect *collect_, s_sisdb_cfg_info *info_)
 {
 	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
-	if (!buffer) 
+	if (!buffer)
 	{
 		return false;
 	}

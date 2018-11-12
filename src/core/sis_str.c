@@ -133,27 +133,7 @@ const char *sis_str_split(const char *s_, size_t *len_, char c_)
 	}
 	return ptr;
 }
-bool sis_str_carve(const char *s_, char *s1_, size_t l1_, char *s2_, size_t l2_, char c_)
-{
-	int o = 0;
-	const char *ptr = s_;
-	while (ptr && *ptr)	
-	{
-		if ((unsigned char)*ptr == c_) {
-			sis_strncpy(s1_, l1_, s_, o);
-			ptr++;
-			if (ptr && *ptr) {
-				sis_strcpy(s2_, l2_, ptr);
-			} else {
-				s2_[0] = 0;
-			}
-			return true;
-		} 
-		ptr++;
-		o ++ ;
-	}
-	return false;
-}
+
 const char *sis_str_replace(const char *in_, char ic_,char oc_)
 {
 	char *ptr = (char *)in_;

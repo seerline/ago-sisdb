@@ -25,10 +25,13 @@ int call_sisdb_close(s_sis_module_context *ctx_, s_sis_module_string **argv_, in
 // 显示表信息和其他系统级别的信息
 int call_sisdb_show(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
-	sis_module_not_used(argc_);
-	sis_module_not_used(argv_);
-
-	s_sis_sds o = sisdb_show_sds(sis_module_string_get(argv_[1], NULL));
+	s_sis_sds o = NULL;
+	if (argc_ == 2)
+	{
+		o = sisdb_show_sds(sis_module_string_get(argv_[1], NULL));
+	} else {
+		o = sisdb_show_sds(NULL);
+	}
 	if (o)
 	{
 		sis_module_reply_with_simple_string(ctx_, o);

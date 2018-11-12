@@ -7,7 +7,7 @@
 
 static const char *skip(const char *in)
 {
-	while (in && *in && (unsigned char)*in <= ' ')
+	while (in && *in && (unsigned char)*in <= 0x20)
 	{
 		in++;
 	}
@@ -34,7 +34,7 @@ static const char *_sis_parse_string(s_sis_conf_handle *handle_, s_sis_json_node
 	{
 		value_++;
 		ptr++;
-		while (*ptr && *ptr > ' ' && *ptr != SIS_CONF_NOTE_SIGN)
+		while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != SIS_CONF_NOTE_SIGN)
 		{
 			if (*ptr == '"')
 			{
@@ -44,7 +44,7 @@ static const char *_sis_parse_string(s_sis_conf_handle *handle_, s_sis_json_node
 			ptr++;
 			len++;
 		}
-		while (*ptr && *ptr > ' ' && *ptr != SIS_CONF_NOTE_SIGN)
+		while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != SIS_CONF_NOTE_SIGN)
 		{
 			if (*ptr == ',' || *ptr == ']' || *ptr == '}')
 			{
@@ -55,7 +55,7 @@ static const char *_sis_parse_string(s_sis_conf_handle *handle_, s_sis_json_node
 	}
 	else
 	{
-		while (*ptr && *ptr > ' ' && *ptr != SIS_CONF_NOTE_SIGN)
+		while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != SIS_CONF_NOTE_SIGN)
 		{
 			if (*ptr == ',' || *ptr == ']' || *ptr == '}')
 			{
@@ -67,7 +67,7 @@ static const char *_sis_parse_string(s_sis_conf_handle *handle_, s_sis_json_node
 	}
 	if (len <= 0)
 	{
-		printf("a string is null , [%.10s] %p type[%d]\n", ptr, node_, node_->type);
+		printf("a string is null , [%.12s] %p type[%d]\n", ptr, node_, node_->type);
 		return 0;
 	}
 
@@ -86,7 +86,7 @@ static const char *_sis_parse_number(s_sis_conf_handle *handle_, s_sis_json_node
 
 	while (strchr("-.0123456789", (unsigned char)*ptr) && *ptr)
 	{
-		if (*ptr == '.' && ptr[1] >= '0' && ptr[1] <= '9')
+		if (*ptr == '.' && (unsigned char)ptr[1] >= '0' && (unsigned char)ptr[1] <= '9')
 		{
 			isfloat = 1;
 		}
@@ -145,7 +145,7 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 			return 0;
 		}
 		// printf("::::%p, %s| %s | %c\n", child, child->key, child->value, *value_);
-		if (*value_ == ']') // Ö»ÓÐÕâÀï²ÅÄÜÍË³ö
+		if (*value_ == ']') // Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½
 		{
 			return value_ + 1;
 		}
@@ -195,7 +195,7 @@ static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node
 			return 0;
 		}
 		// printf("::::%p, %s| %s | %.10s\n", child, child->key, child->value, value_);
-		if (*value_ == '}') // Ö»ÓÐÕâÀï²ÅÄÜÍË³ö
+		if (*value_ == '}') // Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½
 		{
 			return value_ + 1;
 		}
@@ -216,7 +216,7 @@ static const char *_sis_parse_value(s_sis_conf_handle *handle_, s_sis_json_node 
 	{
 		return 0;
 	}
-	if (*value_ == '-' || (*value_ >= '0' && *value_ <= '9'))
+	if (*value_ == '-' || ((unsigned char)*value_ >= '0' && (unsigned char)*value_ <= '9'))
 	{
 		value_ = _sis_parse_number(handle_, node_, value_);
 	}
@@ -238,12 +238,12 @@ static const char *_sis_parse_value(s_sis_conf_handle *handle_, s_sis_json_node 
 
 static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_node *node_, const char *value_)
 {
-	// ÏÈËÑË÷Ä¬ÈÏÄ¿Â¼£¬Èç¹û´ò²»¿ª¾Í
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½Ä¿Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ò²»¿ï¿½ï¿½ï¿½
 	value_ = skip(value_ + strlen(SIS_CONF_INCLUDE));
 	const char *ptr = value_;
 	// printf("read include is  %.10s \n", ptr);
 	int len = 0;
-	while (*ptr && *ptr > ' ' && *ptr != SIS_CONF_NOTE_SIGN)
+	while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != SIS_CONF_NOTE_SIGN)
 	{
 		if (*ptr == ',' || *ptr == ']' || *ptr == '}')
 		{
@@ -291,7 +291,7 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 			child = next;
 		}
 	}
-	if (handle_->error) // ¼ÈÒª·µ»ØÎª0£¬²¢ÇÒerrorÓÐÖµ
+	if (handle_->error) // ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½Îª0ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½errorï¿½ï¿½Öµ
 	{
 		int len = 0;
 		handle_->error = sis_str_getline(handle_->error, &len, buffer, sis_sdslen(buffer));
@@ -315,7 +315,7 @@ static const char *_sis_parse_key(s_sis_conf_handle *handle_, s_sis_json_node *n
 	int len = 0;
 	const char *ptr = key_;
 
-	while (*ptr && *ptr > ' ' && *ptr != ':') // ¿Õ¸ñºÍ¿ØÖÆ×Ö·û»òÃ°ºÅÌø³ö
+	while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != ':') // ï¿½Õ¸ï¿½Í¿ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½Ã°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	{
 		ptr++;
 		len++;
@@ -327,7 +327,7 @@ static const char *_sis_parse_key(s_sis_conf_handle *handle_, s_sis_json_node *n
 		return 0;
 	}
 	node_->key = sis_strdup(key_, len);
-	while (*ptr && *ptr >= ' ' && *ptr != ':') // Ìø¹ý¿Õ¸ñµ½Ã°ºÅ
+	while (*ptr && (unsigned char)*ptr >= 0x20 && *ptr != ':') // ï¿½ï¿½ï¿½ï¿½ï¿½Õ¸ï¿½Ã°ï¿½ï¿½
 	{
 		ptr++;
 	}
@@ -388,7 +388,7 @@ bool _sis_conf_parse(s_sis_conf_handle *handle_, const char *content_)
 		// }
 	}
 
-	if (handle_->error) // errorÓÐÖµ,¾ÍÊÇÊ§°Ü
+	if (handle_->error) // errorï¿½ï¿½Öµ,ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½
 	{
 		// sis_conf_delete_node(handle_->node);
 		// handle_->node = NULL;
@@ -434,7 +434,7 @@ fail:
 	}
 	return handle;
 }
-// Õâ¸öº¯ÊýÖ»»áÉ¾³ýËùÓÐµÄ×Ó½Úµã£¬²¢²»É¾³ý×Ô¼º£¬Ô­ÒòÊÇ½á¹¹ÖÐÃ»ÓÐfather£¬Èç¹ûÉ¾³ý×Ô¼º£¬¿ÉÄÜ¶Ôfather->child²úÉúÓ°Ïì
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½É¾ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½ï¿½Ó½Úµã£¬ï¿½ï¿½ï¿½ï¿½É¾ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½Ç½á¹¹ï¿½ï¿½Ã»ï¿½ï¿½fatherï¿½ï¿½ï¿½ï¿½ï¿½É¾ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¶ï¿½father->childï¿½ï¿½ï¿½ï¿½Ó°ï¿½ï¿½
 void _sis_conf_delete_node(s_sis_json_node *node_)
 {
 	if (!node_)
@@ -482,7 +482,7 @@ void sis_conf_close(s_sis_conf_handle *handle_)
 	_sis_conf_delete_node(handle_->node);
 	sis_free(handle_);
 }
-// ±ØÐëÎª{...}¸ñÊ½£¬ÆäËû¸ñÊ½´íÎó
+// ï¿½ï¿½ï¿½ï¿½Îª{...}ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½
 s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 {
 	s_sis_conf_handle *handle = NULL;
@@ -502,7 +502,7 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 	return handle;
 }
 
-#if 0
+#if 1
 void json_printf(s_sis_json_node *node_, int *i)
 {
 	if (!node_)
@@ -526,7 +526,7 @@ void json_printf(s_sis_json_node *node_, int *i)
 
 int main()
 {
-	const char *fn = "../conf/sisdb.conf";
+	const char *fn = "../bin/sisdb.values.conf";
 	// const char *fn = "../conf/sis.conf";
 	s_sis_conf_handle *h = sis_conf_open(fn);
 	if (!h) return -1;

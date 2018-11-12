@@ -28,7 +28,7 @@ void _sisdb_table_load_config(s_sis_db *db_, s_sis_json_node *config_)
 	}
 
 	s_sisdb_cfg_exch *exch = sis_map_buffer_get(db_->cfg_exchs, SIS_DEFAULT_EXCH); 
-	if(exch) 
+	if(!exch) 
 	{
 		exch = (s_sisdb_cfg_exch *)sis_malloc(sizeof(s_sisdb_cfg_exch));
 		sis_map_buffer_set(db_->cfg_exchs, SIS_DEFAULT_EXCH, exch);

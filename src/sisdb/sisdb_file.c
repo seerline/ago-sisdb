@@ -114,11 +114,8 @@ bool _sisdb_file_save_collect_other(s_sisdb_server *server_ ,s_sis_sds key_, s_s
 {
 	char code[SIS_MAXLEN_CODE];
 	char dbname[SIS_MAXLEN_TABLE];
-	if (!sis_str_carve(key_, code, SIS_MAXLEN_CODE, dbname, SIS_MAXLEN_TABLE, '.'))
-	{
-		sis_out_log(3)("key [%s] error.\n", key_);
-		return false;
-	}
+    sis_str_substr(code, SIS_MAXLEN_CODE, key_, '.', 0);
+	sis_str_substr(dbname, SIS_MAXLEN_TABLE, key_, '.', 1);
 
     char sdb[SIS_PATH_LEN];
 
@@ -201,11 +198,8 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
 {   
 	char code[SIS_MAXLEN_CODE];
 	char dbname[SIS_MAXLEN_TABLE];
-	if (!sis_str_carve(key_, code, SIS_MAXLEN_CODE, dbname, SIS_MAXLEN_TABLE, '.'))
-	{
-		sis_out_log(3)("key [%s] error.\n", key_);
-		return NULL;
-	}
+    sis_str_substr(code, SIS_MAXLEN_CODE, key_, '.', 0);
+	sis_str_substr(dbname, SIS_MAXLEN_TABLE, key_, '.', 1);
 
     s_sisdb_collect *collect = sisdb_get_collect(server_->db, key_);
     if (!collect)

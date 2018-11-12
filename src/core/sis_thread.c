@@ -93,7 +93,7 @@ void sis_plan_task_destroy(s_sis_plan_task *task_)
 	sis_free(task_);
 }
 
-#if 1
+#if 0
 #include <signal.h>
 #include <stdio.h>
 
