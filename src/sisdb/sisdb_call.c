@@ -207,57 +207,57 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	// 	printf("module loaded with argv_[%d] = %s\n", k, s);
 	// }
 
-	char command[64];
-	sis_sprintf(command, 64, "%s.close", service_name);
+	char command[SIS_MAXLEN_COMMAND];
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.close", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_close,
 								  "readonly",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, 64, "%s.show", service_name);
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.show", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_show,
 								  "readonly",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, 64, "%s.command", service_name);
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.command", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_command,
 								  "write deny-oom",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, 64, "%s.get", service_name);
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.get", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_get,
 								  "readonly",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, 64, "%s.set", service_name);
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.set", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_set,
 								  "write deny-oom",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, 64, "%s.sset", service_name);
+	sis_sprintf(command, SIS_MAXLEN_KEY, "%s.sset", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_sset,
 								  "write deny-oom",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, 64, "%s.save", service_name);
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.save", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_save,
 								  "write deny-oom",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, 64, "%s.out", service_name);
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.out", service_name);
 	if (sis_module_create_command(ctx_, command, call_sisdb_out,
 								  "readonly",
 								  0, 0, 0) == SIS_MODULE_ERROR)

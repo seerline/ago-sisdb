@@ -110,8 +110,8 @@ s_sisdb_cfg_exch *sisdb_config_create_exch(s_sis_db *db_, const char *code_)
 		}
 	}
 	// 再去对应的exch表更新到最新的数据，数据指针不变；
-	char key[64];
-	sis_sprintf(key, 64, "%s.%s", market, SIS_TABLE_EXCH);
+	char key[SIS_MAXLEN_KEY];
+	sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", market, SIS_TABLE_EXCH);
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key);
 
 	if (collect)
@@ -133,8 +133,8 @@ s_sisdb_cfg_info *sisdb_config_create_info(s_sis_db *db_, const char *code_)
 	}	
 
 	// 去exch和info表中找找数据，有匹配的就更新info中对应字段
-	char key[64];
-	sis_sprintf(key, 64, "%s.%s", code_, SIS_TABLE_INFO);
+	char key[SIS_MAXLEN_KEY];
+	sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", code_, SIS_TABLE_INFO);
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key);
 	if (collect)
 	{
@@ -174,7 +174,7 @@ void sisdb_write_config(s_sis_db *db_, const char *key_, void *src_)
 		{
 			char key[SIS_MAXLEN_KEY];
 			char code[SIS_MAXLEN_CODE];
-			sis_str_substr(code, SIS_MAXLEN_TABLE, key_, '.', 0);
+			sis_str_substr(code, SIS_MAXLEN_CODE, key_, '.', 0);
 
 			s_sis_dict_entry *de;
 			s_sis_dict_iter *di = sis_dict_get_iter(db_->dbs);
