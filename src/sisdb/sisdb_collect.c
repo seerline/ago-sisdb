@@ -1845,7 +1845,7 @@ int sisdb_collect_update_publish(s_sisdb_collect *unit_, s_sis_sds val_, const c
 			// printf("link_table=%lld\n",sisdb_field_get_uint_from_key(link_table,"time",link_val));
 			sisdb_collect_update(pub_collect, pub_val);
 
-			// sisdb_config_check(db, pub_collect); // publish出去的库，不会影响config信息
+			// sisdb_write_config(db, pub_collect); // publish出去的库，不会影响config信息
 
 			sis_sdsfree(pub_val);
 		}

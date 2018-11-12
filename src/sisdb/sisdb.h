@@ -98,7 +98,7 @@ void sisdb_destroy(s_sis_db *);  //关闭一个数据库
 s_sisdb_cfg_exch *sisdb_config_create_exch(s_sis_db *db_, const char *code_);
 s_sisdb_cfg_info *sisdb_config_create_info(s_sis_db *db_, const char *code_);
 
-void sisdb_config_check(s_sis_db *db_, const char *key_, void *src_);
+void sisdb_write_config(s_sis_db *db_, const char *key_, void *src_);
 
 uint16 sisdb_ttime_to_trade_index_(uint64 ttime_, s_sis_struct_list *tradetime_);
 uint64 sisdb_trade_index_to_ttime_(int date_, int idx_, s_sis_struct_list *tradetime_);

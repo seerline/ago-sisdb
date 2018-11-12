@@ -369,6 +369,30 @@ void _sisdb_write_end()
     sis_mutex_unlock(&server.db->save_task->mutex);
 }
 
+void _sisdb_write_work_time(s_sisdb_collect *collect_)
+{
+    s_sisdb_cfg_exch *exch = collect_->cfg_exch;
+    if (!exch)
+    {
+        return;
+    }
+    if (exch->status!=SIS_MARKET_STATUS_INITING) 
+    {
+        return ;
+    }
+    if (!collect_->db->control.isinit) 
+    {
+        // 来源数据并不需要初始化
+        return ;
+    }    
+    s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+    if (!buffer)
+    {
+        return;
+    }
+    exch->init_time = sisdb_field_get_uint_from_key(collect_->db, "time", buffer);
+    sis_free(buffer);
+}
 // 直接拷贝
 int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 {
@@ -383,7 +407,6 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
         }
         // 进行其他的处理
     }
-
     s_sis_sds in = NULL;
 
     switch (fmt_)
@@ -402,7 +425,8 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 
     int o = sisdb_collect_update(collect, in);
 
-    sisdb_config_check(server.db, key_, collect);
+    _sisdb_write_work_time(collect);
+    sisdb_write_config(server.db, key_, collect);
 
     if (!server.db->loading)
     {
@@ -508,7 +532,6 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, const char *market, int
     {
         return;
     }
-    int date = sis_time_get_idate(exch->init_time);
     switch (status)
     {
     case SIS_MARKET_STATUS_INITING:
@@ -535,6 +558,8 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, const char *market, int
 
     sis_free(buffer);
 }
+
+
 
 bool _sisdb_market_start_init(s_sisdb_collect *collect_,  const char *market_)
 {

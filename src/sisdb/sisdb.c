@@ -135,7 +135,7 @@ s_sisdb_cfg_info *sisdb_config_create_info(s_sis_db *db_, const char *code_)
 	// 去exch和info表中找找数据，有匹配的就更新info中对应字段
 	char key[64];
 	sis_sprintf(key, 64, "%s.%s", code_, SIS_TABLE_INFO);
-	collect = sisdb_get_collect(db_, key);
+	s_sisdb_collect *collect = sisdb_get_collect(db_, key);
 	if (collect)
 	{
 		sisdb_collect_load_info(collect, info);
@@ -156,13 +156,13 @@ s_sisdb_cfg_info *sisdb_config_create_info(s_sis_db *db_, const char *code_)
 }
 
 // 修改后，检查config的相关性
-void sisdb_config_check(s_sis_db *db_, const char *key_, void *src_)
+void sisdb_write_config(s_sis_db *db_, const char *key_, void *src_)
 {
 	s_sisdb_collect *collect_ = (s_sisdb_collect *)src_;
 	// 只要不是修改具备config的数据表就不检查
 	if(!sis_strcasecmp(SIS_TABLE_EXCH, collect_->db->name)) 
 	{
-		if(sisdb_collect_load_exch(collect_, collect_->exch_cfg))
+		if(sisdb_collect_load_exch(collect_, collect_->cfg_exch))
 		{
 			// 直接修改完成，什么也不做
 		}

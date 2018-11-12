@@ -365,7 +365,7 @@ int _sisdb_file_load_collect_alone(s_sis_db *db_, const char *key_, const char *
     // 先储存上一次的数据，
     o = sisdb_collect_update_block(collect, in_, ilen_);
 
-    sisdb_config_check(db_, key_, collect);        
+    sisdb_write_config(db_, key_, collect);        
  
     return o;
 }
