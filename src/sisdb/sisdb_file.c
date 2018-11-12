@@ -56,7 +56,7 @@ bool _sisdb_file_save_collects(s_sis_db *db_, sis_file_handle sdbfp_, sis_file_h
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        if(val->db->control.iscfg) {
+        if(val->db->control.issys) {
             _sisdb_file_save_collect_struct(sis_dict_getkey(de), val, sdbfp_, zerofp_);
         }
     }
@@ -66,7 +66,7 @@ bool _sisdb_file_save_collects(s_sis_db *db_, sis_file_handle sdbfp_, sis_file_h
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        if(!val->db->control.iscfg) {
+        if(!val->db->control.issys) {
             _sisdb_file_save_collect_struct(sis_dict_getkey(de), val, sdbfp_, zerofp_);
         }
     }

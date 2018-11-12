@@ -34,6 +34,8 @@
 // 交易时间 从对应市场的trade-time字段获取
 // 工作时间 从对应市场的work-time字段获取
 
+#define SIS_DEFAULT_EXCH  "00"   // 默认的市场编号存储缺省配置
+
 #define SIS_TABLE_EXCH  "exch"   // 默认的市场数据表名称
 #define SIS_TABLE_INFO  "info"   // 默认的股票数据表名称
 
@@ -42,35 +44,20 @@
 
 #pragma pack(push,1)
 
-// 每个股票对应一个config指针，实际数据存在一个列表中，（列表一直存在，不得删除记录，除非程序退出）
-// 市场并不对应，仅仅股票才有config对应关系，切记；
-// 修改info后会对重新进行指针对应，
-typedef struct s_sisdb_config_exch {
-	char    market[3]; // 市场标志符号
-	s_sis_time_pair  work_time; // 初始化时间 单位分钟 900 
-	uint8   		 trade_slot; // 交易实际时间段
-	s_sis_time_pair  trade_time[SIS_TRADETIME_MAX_NUM]; // [[930,1130],[1300,1500]] 交易时间，给分钟线用
-}s_sisdb_config_exch;
-
-typedef struct s_sisdb_config_info {
+typedef struct s_sisdb_cfg_info {
 	uint8   dot;       // 仅对price起作用
 	uint32  prc_unit;  // 仅对price起作用
 	uint32  vol_unit;  // 仅对volume起作用	
-}s_sisdb_config_info;
+}s_sisdb_cfg_info;
 
-typedef struct s_sisdb_config {
-	s_sisdb_config_exch  exch;
-	s_sisdb_config_info  info;
-}s_sisdb_config;
-
-typedef struct s_sisdb_market_info {
+typedef struct s_sisdb_cfg_exch {
 	char    market[3]; 
 	uint8  	status;      // 状态
 	time_t  new_time;    // 最新收到now的时间
 	s_sis_time_pair  work_time; // 初始化时间 单位分钟 900 
 	uint8   		 trade_slot; // 交易实际时间段
 	s_sis_time_pair  trade_time[SIS_TRADETIME_MAX_NUM]; // [[930,1130],[1300,1500]] 交易时间，给分钟线用
-}s_sisdb_market_info;
+}s_sisdb_cfg_exch;
 
 // 新增股票时如果没有该股票代码，就需要自动在exch和info中生成对应的信息，直到被再次刷新，
 // 市场编号默认取代码前两位，
@@ -85,8 +72,8 @@ typedef struct s_sis_db {
 
 	s_sis_map_pointer  *dbs;          // 数据表的字典表 s_sisdb_table 数量为数据表数
 
-	s_sis_struct_list  *configs;      // 实际的info数据 第一条为默认配置，设置默认配置时修改
-	s_sis_map_pointer  *market_info;  // 市场的信息
+	s_sis_map_pointer  *cfg_exchs;    // 市场的信息 一个市场一个记录 默认记录为 “00”  s_sisdb_cfg_exch
+	s_sis_struct_list  *cfg_infos;    // 股票的信息 实际的info数据 第一条为默认配置，不同才增加 s_sisdb_cfg_info
 
 	s_sis_map_pointer  *collects;     // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
 
@@ -107,16 +94,16 @@ typedef struct s_sis_db {
 s_sis_db *sisdb_create(char *);  //数据库的名称，为空建立一个sys的数据库名
 void sisdb_destroy(s_sis_db *);  //关闭一个数据库
 
-s_sisdb_config *sisdb_config_create(s_sis_db *db_, const char *code_);
+s_sisdb_cfg_exch *sisdb_config_create_exch(s_sis_db *db_, const char *code_);
+s_sisdb_cfg_info *sisdb_config_create_info(s_sis_db *db_, const char *code_);
 
 void sisdb_config_check(s_sis_db *db_, const char *key_, void *src_);
-void sisdb_config_destroy(void *);
 
 uint16 sisdb_ttime_to_trade_index_(uint64 ttime_, s_sis_struct_list *tradetime_);
 uint64 sisdb_trade_index_to_ttime_(int date_, int idx_, s_sis_struct_list *tradetime_);
 
-uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sisdb_config *cfg_);
-uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sisdb_config *cfg_);
+uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sisdb_cfg_exch *cfg_);
+uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sisdb_cfg_exch *cfg_);
 
 int sis_from_node_get_format(s_sis_db *db_, s_sis_json_node *node_);
 

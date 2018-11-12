@@ -20,7 +20,7 @@ typedef struct s_sisdb_table_control {
 	uint8  scale;        // 时序压缩的步长
 	uint32 limits;       // 每个collection的最大记录数
 
-	uint8  iscfg;        // 具备config的数据表，具备优先存储的特性，并且不使用info指针
+	uint8  issys;        // 具备system的数据表，具备优先存储的特性，并且不使用info指针
 	uint8  isinit;       // 是否需要初始化， 开盘时间到需要清理这个表
 	uint8  issubs;       // 是否对collect建立 sub 缓存 catch；
 	uint8  iszip; 		 // 数据表是否压缩存储

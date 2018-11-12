@@ -6,31 +6,38 @@
 
 void _sisdb_table_load_config(s_sis_db *db_, s_sis_json_node *config_)
 {
-	s_sisdb_config *cfg = sis_struct_list_first(db_->configs);
-	if (!cfg) 
+	s_sisdb_cfg_info *info = sis_struct_list_first(db_->cfg_infos);
+	if (!info) 
 	{
-		cfg = (s_sisdb_config *)sis_malloc(sizeof(s_sisdb_config));
-		sis_struct_list_push(db_->configs, cfg);
+		info = (s_sisdb_cfg_info *)sis_malloc(sizeof(s_sisdb_cfg_info));
+		sis_struct_list_push(db_->cfg_infos, info);
 	}
 	// 默认的配置没有market信息
-	memset(cfg, 0 ,sizeof(s_sisdb_config));
+	memset(info, 0 ,sizeof(s_sisdb_cfg_info));
 	if (sis_json_cmp_child_node(config_, "dot")) 
 	{
-		cfg->info.dot = sis_json_get_int(config_, "dot", 2);
+		info->dot = sis_json_get_int(config_, "dot", 2);
 	}
 	if (sis_json_cmp_child_node(config_, "prc-unit")) 
 	{
-		cfg->info.prc_unit = sis_json_get_int(config_, "prc-unit", 1);
+		info->prc_unit = sis_json_get_int(config_, "prc-unit", 1);
 	}
 	if (sis_json_cmp_child_node(config_, "vol-unit")) 
 	{
-		cfg->info.vol_unit = sis_json_get_int(config_, "vol-unit", 100);
+		info->vol_unit = sis_json_get_int(config_, "vol-unit", 100);
+	}
+
+	s_sisdb_cfg_exch *exch = sis_map_buffer_get(db_->cfg_exchs, SIS_DEFAULT_EXCH); 
+	if(exch) 
+	{
+		exch = (s_sisdb_cfg_exch *)sis_malloc(sizeof(s_sisdb_cfg_exch));
+		sis_map_buffer_set(db_->cfg_exchs, SIS_DEFAULT_EXCH, exch);
 	}
 	s_sis_json_node *node = sis_json_cmp_child_node(config_, "work-time");
 	if (node) 
 	{
-		cfg->exch.work_time.first = sis_json_get_int(node, "0", 900);
-		cfg->exch.work_time.second = sis_json_get_int(node, "1", 1530);
+		exch->work_time.first = sis_json_get_int(node, "0", 900);
+		exch->work_time.second = sis_json_get_int(node, "1", 1530);
 	}
 	node = sis_json_cmp_child_node(config_, "trade-time");
 	if (node) 
@@ -39,12 +46,12 @@ void _sisdb_table_load_config(s_sis_db *db_, s_sis_json_node *config_)
        	s_sis_json_node *next = sis_json_first_node(node);
         while (next)
         {
-            cfg->exch.trade_time[index].first = sis_json_get_int(next, "0", 930);
-            cfg->exch.trade_time[index].second = sis_json_get_int(next, "1", 1130);
+            exch->trade_time[index].first = sis_json_get_int(next, "0", 930);
+            exch->trade_time[index].second = sis_json_get_int(next, "1", 1130);
 			index++;
             next = next->next;
         } 
-		cfg->exch.trade_slot = index;
+		exch->trade_slot = index;
 	}	
 }
 
@@ -63,7 +70,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	tb->control.type = SIS_TABLE_TYPE_STS; // 默认保存的目前都是struct，
 	tb->control.scale = SIS_TIME_SCALE_SECOND;
 	tb->control.limits = sis_json_get_int(com_, "limit", 0);
-	tb->control.iscfg = 0;
+	tb->control.issys = 0;
 	tb->control.isinit = sis_json_get_int(com_, "isinit", 0);
 	tb->control.issubs = 0;
 	tb->control.iszip = 0;
@@ -82,10 +89,10 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	const char *strval = NULL;
 
 	// table 加载完成时，config一定会有一条缺省信息
-	s_sis_json_node *node = sis_json_cmp_child_node(com_, "config");
+	s_sis_json_node *node = sis_json_cmp_child_node(com_, "system");
 	if (node) 
 	{
-		tb->control.iscfg = 1;
+		tb->control.issys = 1;
 		_sisdb_table_load_config(db_, node);
 	}
 	

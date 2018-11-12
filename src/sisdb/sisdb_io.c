@@ -482,7 +482,7 @@ int sisdb_init(const char *market_)
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        if (val->db->control.isinit && !val->db->control.iscfg &&
+        if (val->db->control.isinit && !val->db->control.issys &&
             !sis_strncasecmp(sis_dict_getkey(de), market_, strlen(market_)))
         {
             // 只是设置记录数为0
@@ -607,14 +607,6 @@ void sisdb_market_work_init(s_sis_db *db_)
                 }
             }
         }
-        // // 修改config中的 status
-        // for (int i = 0; i < db_->configs.count; i++)
-        // {
-        //     s_sisdb_config *val = sis_struct_list_get(db_->configs, i);
-        //     if (!sis_strcasecmp(val->exch.market, market, strlen(market)))
-        //     {
-        //         val->exch.status = status;
-        //     }
-        // }
+
     }
 }
