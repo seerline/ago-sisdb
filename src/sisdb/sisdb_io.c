@@ -494,57 +494,79 @@ int sisdb_init(const char *market_)
     return o;
 }
 
-void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
+void _sisdb_market_set_status(s_sisdb_collect *collect_, const char *market, int status)
 {
+    // s_sisdb_cfg_exch *exch = sis_map_buffer_get(collect_->db->father->cfg_exchs, market);
+    s_sisdb_cfg_exch *exch = collect_->cfg_exch;
+    if (!exch)
+    {
+        return;
+    }
+    exch->status = status;
     s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
     if (!buffer)
     {
-        return ;
+        return;
     }
-
+    int date = sis_time_get_idate(exch->init_time);
     switch (status)
     {
     case SIS_MARKET_STATUS_INITING:
-        sisdb_field_set_uint_from_key(collect_->db, "status", buffer, SIS_MARKET_STATUS_INITING);
+        exch->init_time = 0;
+        // 即便是美国，获取的日期也是上一交易日的，
+        exch->init_date = sisdb_field_get_uint_from_key(collect_->db, "trade-date", buffer);
+        // 接收到now数据后就对new_time赋值，当发现new_time 日期大于交易日期就可以判定需要初始化
         break;
     case SIS_MARKET_STATUS_INITED:
-        sisdb_field_set_uint_from_key(collect_->db, "status", buffer, SIS_MARKET_STATUS_INITED);
         sisdb_field_set_uint_from_key(collect_->db, "version", buffer, sis_time_get_now());
-        sisdb_field_set_uint_from_key(collect_->db, "trade-date", buffer, sis_time_get_idate(0));
+        // sisdb_field_set_uint_from_key(collect_->db, "trade-date", buffer, sis_time_get_idate(0));
+        sisdb_field_set_uint_from_key(collect_->db, "trade-date", buffer, sis_time_get_idate(exch->init_time));
+        
         break;
     case SIS_MARKET_STATUS_CLOSE:
-        sisdb_field_set_uint_from_key(collect_->db, "status", buffer, SIS_MARKET_STATUS_CLOSE);
-        sisdb_field_set_uint_from_key(collect_->db, "close-date", buffer, sis_time_get_idate(0));
-        /* code */
+        // sisdb_field_set_uint_from_key(collect_->db, "close-date", buffer, sis_time_get_idate(0));
+        sisdb_field_set_uint_from_key(collect_->db, "close-date", buffer, sis_time_get_idate(exch->init_time));
         break;
     default:
         break;
     }
+    sisdb_field_set_uint_from_key(collect_->db, "status", buffer, status);
+    sisdb_collect_update(collect_, buffer);
 
     sis_free(buffer);
 }
-int _sisdb_market_get_status(s_sisdb_collect *collect_)
+
+bool _sisdb_market_start_init(s_sisdb_collect *collect_,  const char *market_)
 {
-    s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
-    if (!buffer)
+    // s_sisdb_cfg_exch *exch = sis_map_buffer_get(db_->cfg_exchs, market);
+    s_sisdb_cfg_exch *exch = collect_->cfg_exch;
+    if (!exch)
     {
         return false;
     }
-    int o = (int)sisdb_field_get_uint_from_key(collect_->db, "status", buffer);
-    sis_free(buffer);
-    return o;
-}
-bool _sisdb_market_check_newday(const char *market_)
-{
+    if (exch->status != SIS_MARKET_STATUS_INITING) 
+    {
+        return false;
+    }
+    if (exch->init_time == 0)
+    {
+        return false;
+    }
+    int date = sis_time_get_idate(exch->init_time);
+    if (date > exch->init_date) 
+    {
+        return true;
+    }
     return false;
 }
+
 void sisdb_market_work_init(s_sis_db *db_)
 {
     s_sisdb_table *tb = sisdb_get_table(db_, SIS_TABLE_EXCH);
     int count = sis_string_list_getsize(tb->collects);
 
     char key[SIS_MAXLEN_KEY];
-    s_sisdb_config_exch exch;
+    s_sisdb_cfg_exch exch;
 
     int min = sis_time_get_iminute(0);
 
@@ -559,23 +581,23 @@ void sisdb_market_work_init(s_sis_db *db_)
         if (!sisdb_collect_load_exch(collect, &exch))
             continue;
 
-        int status = _sisdb_market_get_status(collect);
+        int status = exch.status;
         if (exch.work_time.first == exch.work_time.second)
         {
             if (exch.work_time.first == min)
             {
                 if (status != SIS_MARKET_STATUS_INITING)
                 {
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
+                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_CLOSE);
+                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITING);
                 }
                 else
                 {
                     // 需要等待第一个有行情的股票来了数据才初始化完成
-                    if (_sisdb_market_check_newday(market)) 
+                    if (_sisdb_market_start_init(collect, market))
                     {
                         sisdb_init(market);
-                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
+                        _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITED);
                     }
                 }
             }
@@ -587,15 +609,15 @@ void sisdb_market_work_init(s_sis_db *db_)
             {
                 if (status == SIS_MARKET_STATUS_NOINIT || status == SIS_MARKET_STATUS_CLOSE)
                 {
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
+                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITING);
                 }
                 else if (status == SIS_MARKET_STATUS_INITING)
                 {
                     // 需要等待第一个有行情的股票来了数据才初始化完成
-                    if (_sisdb_market_check_newday(market)) 
+                    if (_sisdb_market_start_init(collect, market))
                     {
                         sisdb_init(market);
-                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
+                        _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITED);
                     }
                 }
             }
@@ -603,10 +625,10 @@ void sisdb_market_work_init(s_sis_db *db_)
             {
                 if (status == SIS_MARKET_STATUS_INITED)
                 {
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
+                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_CLOSE);
                 }
             }
         }
-
     }
 }
+
