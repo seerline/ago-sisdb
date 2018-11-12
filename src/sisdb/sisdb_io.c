@@ -44,6 +44,7 @@ void *_thread_init_plan_task(void *argv_)
     }
     return NULL;
 }
+
 char *sisdb_open(const char *conf_)
 {
     s_sis_conf_handle *config = sis_conf_open(conf_);
@@ -159,11 +160,8 @@ char *sisdb_open(const char *conf_)
         while (next)
         {
             char *str = sis_conf_to_json_zip(next, &len);
-            printf("[%p] key %s : %s  \n",next, next->key, str);
-           
-            // sisdb_set(SIS_DATA_TYPE_JSON, next->key, str, len);
+            sisdb_set(SIS_DATA_TYPE_JSON, next->key, str, len);
             sis_free(str);
-            printf("[%p] \n",next);
             next = next->next;
         }
     }
@@ -434,7 +432,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
     {
         // 如果属于磁盘加载就不publish
         char code[SIS_MAXLEN_CODE];
-        sis_str_substr(code, SIS_MAXLEN_TABLE, key_, '.', 0);
+        sis_str_substr(code, SIS_MAXLEN_CODE, key_, '.', 0);
         sisdb_collect_update_publish(collect, in, code);
     }
     sis_sdsfree(in);

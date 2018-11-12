@@ -1244,7 +1244,7 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *unit_, const char *i
 		{
 			continue;
 		}
-		printf("key=%s size=%d offset=%d\n", key, fields, fu->offset);
+		// printf("key=%s i=%d offset=%d\n", key, k, fu->offset);
 
 		sisdb_field_json_to_struct(o, fu, (char *)key, handle->node, unit_->cfg_info);
 	}
@@ -1299,7 +1299,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *unit_, const char *
 		{
 			const char *fname = sis_string_list_get(tb->field_name, k);
 			s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, fname);
-			printf("key=%s size=%d offset=%d\n", fname, fields, fu->offset);
+			// printf("key=%s size=%d offset=%d\n", fname, fields, fu->offset);
 			if (!fu)
 			{
 				continue;
