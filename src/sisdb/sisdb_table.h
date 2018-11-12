@@ -38,7 +38,7 @@ typedef struct s_sisdb_table {
 	s_sis_string_list  *publishs;        // 当修改本数据表时，同时需要修改的其他数据表
 	s_sis_string_list  *field_name;      // 按顺序排的名字
 	s_sis_map_pointer  *field_map;       // 字段定义字典表，按字段名存储的字段内存块，指向 s_sisdb_field
-
+	s_sis_string_list  *collects;		 // 仅仅当iscfg为真时，把collect的key在创建时新串push
 }s_sisdb_table;
 
 #pragma pack(pop)

@@ -12,10 +12,16 @@
 #include "sis_time.h"
 #include "sis_list.h"
 #include "sis_json.h"
+#include "sis_thread.h"
 
 #define SIS_MAXLEN_CODE  9
 #define SIS_MAXLEN_TABLE 32
 #define SIS_MAXLEN_KEY   (SIS_MAXLEN_CODE + SIS_MAXLEN_TABLE)
+
+#define SIS_MARKET_STATUS_NOINIT    0
+#define SIS_MARKET_STATUS_INITED    1  // 正常工作状态
+#define SIS_MARKET_STATUS_INITING   2  // 开始初始化
+#define SIS_MARKET_STATUS_CLOSE     3  // 已收盘,0&3 此状态下可以初始化
 
 // 以代码为基本索引，每个代码最基础的信息必须包括
 // 价格小数点 默认为 2  统一从info表中dot获取
@@ -56,6 +62,16 @@ typedef struct s_sisdb_config {
 	s_sisdb_config_exch  exch;
 	s_sisdb_config_info  info;
 }s_sisdb_config;
+
+typedef struct s_sisdb_market_info {
+	char    market[3]; 
+	uint8  	status;      // 状态
+	time_t  new_time;    // 最新收到now的时间
+	s_sis_time_pair  work_time; // 初始化时间 单位分钟 900 
+	uint8   		 trade_slot; // 交易实际时间段
+	s_sis_time_pair  trade_time[SIS_TRADETIME_MAX_NUM]; // [[930,1130],[1300,1500]] 交易时间，给分钟线用
+}s_sisdb_market_info;
+
 // 新增股票时如果没有该股票代码，就需要自动在exch和info中生成对应的信息，直到被再次刷新，
 // 市场编号默认取代码前两位，
 // ------------------------------------------------------ //
@@ -70,6 +86,7 @@ typedef struct s_sis_db {
 	s_sis_map_pointer  *dbs;          // 数据表的字典表 s_sisdb_table 数量为数据表数
 
 	s_sis_struct_list  *configs;      // 实际的info数据 第一条为默认配置，设置默认配置时修改
+	s_sis_map_pointer  *market_info;  // 市场的信息
 
 	s_sis_map_pointer  *collects;     // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
 

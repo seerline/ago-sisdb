@@ -333,14 +333,14 @@ uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const
 // 	return sisdb_field_get_float(fu, val_);
 // }
 
-// void sisdb_field_set_uint_from_key(s_sisdb_table *tb_, const char *key_, char *val_, uint64 u64_)
-// {
-// 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
-// 	if (fu)
-// 	{
-// 		sisdb_field_set_uint(fu, val_, u64_);
-// 	}
-// }
+void sisdb_field_set_uint_from_key(s_sisdb_table *tb_, const char *key_, char *val_, uint64 u64_)
+{
+	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);
+	if (fu)
+	{
+		sisdb_field_set_uint(fu, val_, u64_);
+	}
+}
 // void sisdb_field_set_int_from_key(s_sisdb_table *tb_, const char *key_, char *val_, int64 i64_)
 // {
 // 	s_sisdb_field *fu = sisdb_field_get_from_key(tb_, key_);

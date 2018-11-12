@@ -73,46 +73,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_free(db_);
 }
 
-bool _sisdb_config_load_from_exch(s_sisdb_collect *collect_, s_sisdb_config_exch *exch_)
-{
-	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
-	if (!buffer) 
-	{
-		return false;
-	}
-	size_t len = 0;
-	const char *str;
-	s_sis_json_handle *handel;
 
-	str = sisdb_field_get_char_from_key(collect_->db, "market", buffer, &len);
-	sis_strncpy(exch_->market, 3, str, len);
-
-	str = sisdb_field_get_char_from_key(collect_->db, "work-time", buffer, &len);
-	handel = sis_json_load(str, len);
-	if (!handel)
-	{
-		exch_->work_time.first = sis_json_get_int(handel->node, "0", 900);
-		exch_->work_time.second = sis_json_get_int(handel->node, "1", 1530);
-	}
-
-	str = sisdb_field_get_char_from_key(collect_->db, "trade-time", buffer, &len);
-	handel = sis_json_load(str, len);
-	int index = 0;
-	if (handel)
-	{
-		s_sis_json_node *next = sis_json_first_node(handel->node);
-		while (next)
-		{
-			exch_->trade_time[index].first = sis_json_get_int(next, "0", 930);
-			exch_->trade_time[index].second = sis_json_get_int(next, "1", 1500);
-			index++;
-			next = next->next;
-		}
-		exch_->trade_slot = index;
-	}
-	sis_sdsfree(buffer);
-	return true;
-}
 bool _sisdb_config_load_from_info(s_sisdb_collect *collect_, s_sisdb_config_info *info_)
 {
 	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
@@ -149,7 +110,7 @@ s_sisdb_config *sisdb_config_create(s_sis_db *db_, const char *code_)
 	if (collect)
 	{
 		s_sisdb_config_exch exch;
-		if(_sisdb_config_load_from_exch(collect, &exch))
+		if(sisdb_collect_load_exch(collect, &exch))
 		{
 			memmove(&config->exch, &exch, sizeof(s_sisdb_config_exch));
 		}
@@ -170,7 +131,8 @@ s_sisdb_config *sisdb_config_create(s_sis_db *db_, const char *code_)
 	for (int i = 1; i < db_->configs->count; i++)
 	{
 		s_sisdb_config *val = sis_struct_list_get(db_->configs, i);
-		if (!memcmp(val, config, sizeof(s_sisdb_config)))
+		if (!memcmp(&val->exch, &config->exch, sizeof(s_sisdb_config_exch))&&
+			!memcmp(&val->info, &config->info, sizeof(s_sisdb_config_info)))
 		{
 			sis_free(config);
 			return val;
@@ -194,7 +156,7 @@ void sisdb_config_check(s_sis_db *db_, const char *key_, void *src_)
 
 	if(!sis_strcasecmp(SIS_TABLE_EXCH, collect_->db->name)) 
 	{
-		if(_sisdb_config_load_from_exch(collect_, &config.exch))
+		if(sisdb_collect_load_exch(collect_, &config.exch))
 		{
 			for (int i = 1; i < db_->configs->count; i++)
 			{

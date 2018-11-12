@@ -10,9 +10,10 @@ void _sisdb_table_load_config(s_sis_db *db_, s_sis_json_node *config_)
 	if (!cfg) 
 	{
 		cfg = (s_sisdb_config *)sis_malloc(sizeof(s_sisdb_config));
-		memset(cfg, 0 ,sizeof(s_sisdb_config));
 		sis_struct_list_push(db_->configs, cfg);
 	}
+	// 默认的配置没有market信息
+	memset(cfg, 0 ,sizeof(s_sisdb_config));
 	if (sis_json_cmp_child_node(config_, "dot")) 
 	{
 		cfg->info.dot = sis_json_get_int(config_, "dot", 2);
@@ -66,6 +67,8 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	tb->control.isinit = sis_json_get_int(com_, "isinit", 0);
 	tb->control.issubs = 0;
 	tb->control.iszip = 0;
+	//
+	tb->collects = sis_string_list_create_w();
 
 	tb->version = (uint32)sis_time_get_now();
 	tb->name = sis_sdsnew(name_);
@@ -176,6 +179,7 @@ void sisdb_table_destroy(s_sisdb_table *tb_)
 	sis_dict_iter_free(di);
 	sis_map_pointer_destroy(tb_->field_map);
 
+	sis_string_list_destroy(tb_->collects);
 	sis_string_list_destroy(tb_->publishs);
 
 	sis_string_list_destroy(tb_->field_name);

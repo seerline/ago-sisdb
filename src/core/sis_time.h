@@ -55,7 +55,7 @@ typedef struct s_sis_time_pair{
 typedef struct s_sis_time_gap{
 	uint16	start; // 单位分钟 如果为0就不判断
 	uint16	stop;  // 单位分钟 如果为0就不判断
-	uint32	delay; // 间隔毫秒数
+	uint32	delay; // 间隔秒数
 }s_sis_time_gap;
 
 #endif //_SIS_TIME_H

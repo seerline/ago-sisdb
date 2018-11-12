@@ -171,6 +171,7 @@ int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const ch
 // 从磁盘加载，整块写入，
 int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);
 
+bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_config_exch *exch_);
 
 
 #endif /* _SIS_COLLECT_H */

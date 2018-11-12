@@ -84,20 +84,17 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 		sis_out_log(3)("table define no find.\n");
 		return NULL;
 	}
-	// 设置info表会有问题，需要特殊处理一下
-	// 当判断是 exch 和 info 表时，在处理完成后，需要刷新该代码所有其他表
-	// s_sisdb_config *info = sisdb_config_create(db_, code);
-	// if (!info)
-	// {
-	// 	sis_out_log(3)("cannot create info.\n");
-	// 	return NULL;
-	// }
-
+	
 	s_sisdb_collect *unit = sis_malloc(sizeof(s_sisdb_collect));
 	memset(unit, 0, sizeof(s_sisdb_collect));
 	sis_map_buffer_set(db_->collects, key_, unit);
 
 	unit->db = tb;
+	if (tb->control.iscfg) 
+	{
+		sis_string_list_push_only(tb->collects, code, strlen(code));
+	}
+
 	unit->cfg = sisdb_config_create(db_, code);
 
 	unit->stepinfo = sisdb_stepindex_create();
@@ -1885,3 +1882,43 @@ int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t i
 }
 
 ////////////////
+bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_config_exch *exch_)
+{
+	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+	if (!buffer) 
+	{
+		return false;
+	}
+	size_t len = 0;
+	const char *str;
+	s_sis_json_handle *handel;
+
+	str = sisdb_field_get_char_from_key(collect_->db, "market", buffer, &len);
+	sis_strncpy(exch_->market, 3, str, len);
+
+	str = sisdb_field_get_char_from_key(collect_->db, "work-time", buffer, &len);
+	handel = sis_json_load(str, len);
+	if (!handel)
+	{
+		exch_->work_time.first = sis_json_get_int(handel->node, "0", 900);
+		exch_->work_time.second = sis_json_get_int(handel->node, "1", 1530);
+	}
+
+	str = sisdb_field_get_char_from_key(collect_->db, "trade-time", buffer, &len);
+	handel = sis_json_load(str, len);
+	int index = 0;
+	if (handel)
+	{
+		s_sis_json_node *next = sis_json_first_node(handel->node);
+		while (next)
+		{
+			exch_->trade_time[index].first = sis_json_get_int(next, "0", 930);
+			exch_->trade_time[index].second = sis_json_get_int(next, "1", 1500);
+			index++;
+			next = next->next;
+		}
+		exch_->trade_slot = index;
+	}
+	sis_sdsfree(buffer);
+	return true;
+}

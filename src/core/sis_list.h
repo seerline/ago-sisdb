@@ -102,6 +102,7 @@ int sis_string_list_update(s_sis_string_list *list_, int index_, const char *in_
 int sis_string_list_find_and_update(s_sis_string_list *list_, char *finder_, const char *in_, size_t inlen);
 int sis_string_list_insert(s_sis_string_list *list_, int index_, const char *in_, size_t inlen);
 int sis_string_list_push(s_sis_string_list *list_, const char *in_, size_t inlen);
+int sis_string_list_push_only(s_sis_string_list *list_, const char *in_, size_t inlen);
 
 void sis_string_list_limit(s_sis_string_list *list_, int limit_);
 

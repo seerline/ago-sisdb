@@ -559,6 +559,20 @@ int sis_string_list_push(s_sis_string_list *list_, const char *in_, size_t inlen
 	sis_strncpy(str, inlen + 1, in_, inlen);
 	return sis_pointer_list_push(list_->strlist, str);
 }
+int sis_string_list_push_only(s_sis_string_list *list_, const char *in_, size_t inlen)
+{
+	if (list_->permissions != STRING_LIST_WR)
+		return -1;
+
+	char *str = (char *)sis_malloc(inlen + 1);
+	sis_strncpy(str, inlen + 1, in_, inlen);
+	int index = sis_string_list_indexofcase(list_, str);
+	if (index < 0)
+	{
+		return sis_pointer_list_push(list_->strlist, str);
+	}
+	return index;
+}
 void sis_string_list_limit(s_sis_string_list *list_, int limit_)
 {
 	if (limit_ < 1 || (!list_->strlist) || limit_ > list_->strlist->count)

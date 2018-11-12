@@ -11,31 +11,32 @@ bool sis_plan_task_execute(s_sis_plan_task *task_)
 	// ??
 	if (task_->work_mode == SIS_WORK_MODE_GAPS)
 	{
-		if (task_->work_gap.start == task_->work_gap.stop) 
+		if (sis_thread_wait_sleep(&task_->wait, task_->work_gap.delay) == SIS_ETIMEDOUT)
 		{
-			if (sis_thread_wait_sleep(&task_->wait, task_->work_gap.delay) == SIS_ETIMEDOUT)
+			if (task_->work_gap.start == task_->work_gap.stop)
 			{
 				return true;
 			}
-			// 24 ??????
-		} else {
-			int min = sis_time_get_iminute(0);
-			if ((task_->work_gap.start < task_->work_gap.stop && min > task_->work_gap.start && min < task_->work_gap.stop)||
-				(task_->work_gap.start > task_->work_gap.stop && (min > task_->work_gap.start || min < task_->work_gap.stop)))
+			else
+			{
+				int min = sis_time_get_iminute(0);
+				if ((task_->work_gap.start < task_->work_gap.stop && min > task_->work_gap.start && min < task_->work_gap.stop) ||
+					(task_->work_gap.start > task_->work_gap.stop && (min > task_->work_gap.start || min < task_->work_gap.stop)))
 				{
 					return true;
 				}
+			}
 		}
 	}
 	else
 	{
-		if (sis_thread_wait_sleep(&task->wait, 30) == SIS_ETIMEDOUT) // 30?????
+		if (sis_thread_wait_sleep(&task_->wait, 30) == SIS_ETIMEDOUT) // 30?????
 		{
 			int min = sis_time_get_iminute(0);
 			// printf("save plan ... -- -- -- %d \n", min);
-			for (int k = 0; k < task->work_plans->count; k++)
+			for (int k = 0; k < task_->work_plans->count; k++)
 			{
-				uint16 *lm = sis_struct_list_get(task->work_plans, k);
+				uint16 *lm = sis_struct_list_get(task_->work_plans, k);
 				if (min == *lm)
 				{
 					return true;

@@ -66,7 +66,7 @@ uint64 sisdb_field_get_uint_from_key(s_sisdb_table *tb_, const char *key_, const
 // int64 sisdb_field_get_int_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
 // double sisdb_field_get_float_from_key(s_sisdb_table *tb_, const char *key_, const char *val_);
 
-// void sisdb_field_set_uint_from_key(s_sisdb_table *tb_, const char *key_, char *val_, uint64 u64_);
+void sisdb_field_set_uint_from_key(s_sisdb_table *tb_, const char *key_, char *val_, uint64 u64_);
 // void sisdb_field_set_int_from_key(s_sisdb_table *tb_, const char *key_, char *val_, int64 i64_);
 // void sisdb_field_set_double_from_key(s_sisdb_table *tb_, const char *key_, char *val_, double f64_);
 

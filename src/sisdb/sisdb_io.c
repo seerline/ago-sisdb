@@ -3,7 +3,7 @@
 #include "sisdb_io.h"
 #include "sisdb_file.h"
 #include "sisdb_map.h"
-
+#include "sisdb_fields.h"
 /********************************/
 // 一定要用static定义，不然内存混乱
 static s_sisdb_server server = {
@@ -16,16 +16,16 @@ void *_thread_save_plan_task(void *argv_)
     s_sis_db *db = (s_sis_db *)argv_;
     s_sis_plan_task *task = db->save_task;
 
-	while (sis_plan_task_working(task))
-	{
-        if (sis_plan_task_execute(task)) 
+    while (sis_plan_task_working(task))
+    {
+        if (sis_plan_task_execute(task))
         {
             sis_mutex_lock(&task->mutex);
             // --------user option--------- //
             sisdb_file_save(&server);
             sis_mutex_unlock(&task->mutex);
         }
-	}
+    }
     return NULL;
 }
 
@@ -34,14 +34,14 @@ void *_thread_init_plan_task(void *argv_)
     s_sis_db *db = (s_sis_db *)argv_;
     s_sis_plan_task *task = db->init_task;
 
-	while (sis_plan_task_working(task))
-	{
-		if (sis_plan_task_execute(task)) 
+    while (sis_plan_task_working(task))
+    {
+        if (sis_plan_task_execute(task))
         {
-            // sisdb_check_init(&server);
-            ??? 需要检查所有市场的状态和初始化信息等信息
+            sisdb_market_work_init(db);
+            // 需要检查所有市场的状态和初始化信息等信息
         }
-	}
+    }
     return NULL;
 }
 char *sisdb_open(const char *conf_)
@@ -90,10 +90,10 @@ char *sisdb_open(const char *conf_)
 
     server.db = sisdb_create(server.service_name);
 
-    server.db->init_task->work_mode = SIS_WORK_MODE_GAP;
-    server.db->init_task->work_gap.start = sis_json_get_int(atime, "start", 0);
-    server.db->init_task->work_gap.stop = sis_json_get_int(atime, "stop", 0);
-    server.db->init_task->work_gap.delay = sis_json_get_int(atime, "delay", 30*1000);
+    server.db->init_task->work_mode = SIS_WORK_MODE_GAPS;
+    server.db->init_task->work_gap.start = 0;
+    server.db->init_task->work_gap.stop = 0;
+    server.db->init_task->work_gap.delay = 30;
 
     server.db->save_task->work_mode = SIS_WORK_MODE_NONE;
     s_sis_json_node *stime = sis_json_cmp_child_node(service, "save-time");
@@ -120,13 +120,15 @@ char *sisdb_open(const char *conf_)
         }
     }
 
-	s_sis_json_node *format = sis_json_cmp_child_node(service, "save-format");
-	if (format)
-	{
+    s_sis_json_node *format = sis_json_cmp_child_node(service, "save-format");
+    if (format)
+    {
         server.db->save_format = sisdb_find_map_uid(server.db->map,
-                                sis_json_get_str(service, "save-format"),
-                                SIS_MAP_DEFINE_DATA_TYPE);		
-    } else {
+                                                    sis_json_get_str(service, "save-format"),
+                                                    SIS_MAP_DEFINE_DATA_TYPE);
+    }
+    else
+    {
         server.db->save_format = SIS_DATA_TYPE_STRUCT;
     }
 
@@ -213,8 +215,8 @@ char *sisdb_open(const char *conf_)
     // 启动存盘线程
     if (server.db->init_task->work_mode != SIS_WORK_MODE_NONE)
     {
-        if (!sis_plan_task_start(server.db->init_task, 
-                _thread_init_plan_task, server.db))
+        if (!sis_plan_task_start(server.db->init_task,
+                                 _thread_init_plan_task, server.db))
         {
             sis_out_log(1)("can't start init thread\n");
             goto error;
@@ -255,7 +257,7 @@ bool sisdb_save()
     }
     // 存为struct格式
     sis_mutex_lock(&server.db->save_task->mutex);
-    bool o = sdb_file_save(&server);
+    bool o = sisdb_file_save(&server);
     sis_mutex_unlock(&server.db->save_task->mutex);
     return o;
 }
@@ -490,4 +492,129 @@ int sisdb_init(const char *market_)
     }
     sis_dict_iter_free(di);
     return o;
+}
+
+void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
+{
+    s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+    if (!buffer)
+    {
+        return ;
+    }
+
+    switch (status)
+    {
+    case SIS_MARKET_STATUS_INITING:
+        sisdb_field_set_uint_from_key(collect_->db, "status", buffer, SIS_MARKET_STATUS_INITING);
+        break;
+    case SIS_MARKET_STATUS_INITED:
+        sisdb_field_set_uint_from_key(collect_->db, "status", buffer, SIS_MARKET_STATUS_INITED);
+        sisdb_field_set_uint_from_key(collect_->db, "version", buffer, sis_time_get_now());
+        sisdb_field_set_uint_from_key(collect_->db, "trade-date", buffer, sis_time_get_idate(0));
+        break;
+    case SIS_MARKET_STATUS_CLOSE:
+        sisdb_field_set_uint_from_key(collect_->db, "status", buffer, SIS_MARKET_STATUS_CLOSE);
+        sisdb_field_set_uint_from_key(collect_->db, "close-date", buffer, sis_time_get_idate(0));
+        /* code */
+        break;
+    default:
+        break;
+    }
+
+    sis_free(buffer);
+}
+int _sisdb_market_get_status(s_sisdb_collect *collect_)
+{
+    s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+    if (!buffer)
+    {
+        return false;
+    }
+    int o = (int)sisdb_field_get_uint_from_key(collect_->db, "status", buffer);
+    sis_free(buffer);
+    return o;
+}
+bool _sisdb_market_check_newday(const char *market_)
+{
+    return false;
+}
+void sisdb_market_work_init(s_sis_db *db_)
+{
+    s_sisdb_table *tb = sisdb_get_table(db_, SIS_TABLE_EXCH);
+    int count = sis_string_list_getsize(tb->collects);
+
+    char key[SIS_MAXLEN_KEY];
+    s_sisdb_config_exch exch;
+
+    int min = sis_time_get_iminute(0);
+
+    for (int k = 0; k < count; k++)
+    {
+        const char *market = sis_string_list_get(tb->collects, k);
+        sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", market, SIS_TABLE_EXCH);
+        s_sisdb_collect *collect = sisdb_get_collect(db_, key);
+        if (!collect)
+            continue;
+
+        if (!sisdb_collect_load_exch(collect, &exch))
+            continue;
+
+        int status = _sisdb_market_get_status(collect);
+        if (exch.work_time.first == exch.work_time.second)
+        {
+            if (exch.work_time.first == min)
+            {
+                if (status != SIS_MARKET_STATUS_INITING)
+                {
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
+                }
+                else
+                {
+                    // 需要等待第一个有行情的股票来了数据才初始化完成
+                    if (_sisdb_market_check_newday(market)) 
+                    {
+                        sisdb_init(market);
+                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
+                    }
+                }
+            }
+        }
+        else
+        {
+            if ((exch.work_time.first < exch.work_time.second && min > exch.work_time.first && min < exch.work_time.second) ||
+                (exch.work_time.first > exch.work_time.second && (min > exch.work_time.first || min < exch.work_time.second)))
+            {
+                if (status == SIS_MARKET_STATUS_NOINIT || status == SIS_MARKET_STATUS_CLOSE)
+                {
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
+                }
+                else if (status == SIS_MARKET_STATUS_INITING)
+                {
+                    // 需要等待第一个有行情的股票来了数据才初始化完成
+                    if (_sisdb_market_check_newday(market)) 
+                    {
+                        sisdb_init(market);
+                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
+                    }
+                }
+            }
+            else
+            {
+                if (status == SIS_MARKET_STATUS_INITED)
+                {
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
+                }
+            }
+        }
+        // // 修改config中的 status
+        // for (int i = 0; i < db_->configs.count; i++)
+        // {
+        //     s_sisdb_config *val = sis_struct_list_get(db_->configs, i);
+        //     if (!sis_strcasecmp(val->exch.market, market, strlen(market)))
+        //     {
+        //         val->exch.status = status;
+        //     }
+        // }
+    }
 }
