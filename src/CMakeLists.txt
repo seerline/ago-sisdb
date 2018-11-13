@@ -5,7 +5,7 @@ PROJECT(sisdb)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6) 
 
 #设置显示编译参数 方便验证编译参数
-SET(CMAKE_VERBOSE_MAKEFILE 1)
+#SET(CMAKE_VERBOSE_MAKEFILE 1)
 
 ########################运行平台判定和初始化######################
 
@@ -35,28 +35,28 @@ ENDIF ()
 #########################目录设置#############################
 
 #设置头文件目录
-INCLUDE_DIRECTORIES(. ./os/linux  ./platform/redis ./core ./src/stsdb)
+INCLUDE_DIRECTORIES(. ./os/linux  ./platform/redis ./core ./sisdb)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(./os/linux DIR_OS)
 AUX_SOURCE_DIRECTORY(./platform/redis DIR_PLATFORM)
 AUX_SOURCE_DIRECTORY(./core DIR_CORE)
-AUX_SOURCE_DIRECTORY(./stsdb DIR_STSDB)
+AUX_SOURCE_DIRECTORY(./sisdb DIR_SISDB)
 AUX_SOURCE_DIRECTORY(../test DIR_TEST)
 
 #把源文件目录设置到环境变量
 SET(SRC_LIST ${DIR_SRCS}
              ${DIR_OS}
 	         ${DIR_PLATFORM}
-             ${DIR_STSDB}
+             ${DIR_SISDB}
 	         ${DIR_CORE})
 
 SET(SRC_LIST_TEST
              ${DIR_SRCS}
              ${DIR_OS}
 	         ${DIR_PLATFORM}
-             ${DIR_STSDB}
+             ${DIR_SISDB}
              ${DIR_TEST}
 	         ${DIR_CORE})
 

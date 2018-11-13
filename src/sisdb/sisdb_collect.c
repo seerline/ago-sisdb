@@ -892,6 +892,7 @@ void sisdb_collect_groups_json_push(s_sis_json_node *node_, char *code, s_sisdb_
 {
 	s_sis_json_node *val = _sis_struct_to_array(unit_, in_, fields_);
 	s_sis_json_node *groups = sis_json_cmp_child_node(node_, SIS_JSON_KEY_GROUPS);
+	printf("groups[%p]: key=%s\n ", groups,code);
 	sis_json_object_add_node(groups, code, val);
 }
 s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_)
@@ -946,48 +947,45 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-		if (!sis_strcasecmp(collect->db->name, dbname_))
-		{
-			s_sis_sds val = sisdb_collect_get_of_count_sds(collect, -1, 1);
-			sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
+		if (sis_strcasecmp(collect->db->name, dbname_)) continue;
 
-			// printf("out = %lu -- %lu\n", sis_sdslen(out),sis_sdslen(val));
-			switch (iformat)
+		printf("collect = %s db = %s %s\n", (char *)sis_dict_getkey(de), collect->db->name, dbname_);
+		s_sis_sds val = sisdb_collect_get_of_count_sds(collect, -1, 1);
+		sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
+
+		// printf("out = %lu -- %lu\n", sis_sdslen(out),sis_sdslen(val));
+		switch (iformat)
+		{
+		case SIS_DATA_TYPE_STRUCT:
+			if (!out)
 			{
-			case SIS_DATA_TYPE_STRUCT:
-				if (!out)
-				{
-					out = sis_sdsnewlen(code, SIS_MAXLEN_CODE);
-				}
-				else
-				{
-					out = sis_sdscatlen(out, code, SIS_MAXLEN_CODE);
-				}
-				if (!sisdb_field_is_whole(fields))
-				{
-					other = sisdb_collect_struct_filter_sds(collect, val, field_list);
-					out = sis_sdscatlen(out, other, sis_sdslen(other));
-					sis_sdsfree(other);
-				}
-				else
-				{
-					out = sis_sdscatlen(out, val, sis_sdslen(val));
-				}
-				break;
-			case SIS_DATA_TYPE_JSON:
-			default:
-				if (!node)
-				{
-					node = sisdb_collect_groups_json_init(field_list);
-				}
-				else
-				{
-					sisdb_collect_groups_json_push(node, code, collect, val, field_list);
-				}
-				break;
+				out = sis_sdsnewlen(code, SIS_MAXLEN_CODE);
 			}
-			sis_sdsfree(val);
+			else
+			{
+				out = sis_sdscatlen(out, code, SIS_MAXLEN_CODE);
+			}
+			if (!sisdb_field_is_whole(fields))
+			{
+				other = sisdb_collect_struct_filter_sds(collect, val, field_list);
+				out = sis_sdscatlen(out, other, sis_sdslen(other));
+				sis_sdsfree(other);
+			}
+			else
+			{
+				out = sis_sdscatlen(out, val, sis_sdslen(val));
+			}
+			break;
+		case SIS_DATA_TYPE_JSON:
+		default:
+			if (!node)
+			{
+				node = sisdb_collect_groups_json_init(field_list);
+			}
+			sisdb_collect_groups_json_push(node, code, collect, val, field_list);
+			break;
 		}
+		sis_sdsfree(val);
 	}
 	sis_dict_iter_free(di);
 

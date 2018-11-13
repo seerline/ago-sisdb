@@ -482,7 +482,7 @@ void sis_conf_close(s_sis_conf_handle *handle_)
 	_sis_conf_delete_node(handle_->node);
 	sis_free(handle_);
 }
-// ����Ϊ{...}��ʽ��������ʽ����
+
 s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 {
 	s_sis_conf_handle *handle = NULL;
