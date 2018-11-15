@@ -67,7 +67,8 @@ void _get_first_letter(const char* in_, char *out_, int olen_)
 			{
 				if (W >= letter_region[j]) 
 				{
-					out_[len] = (char)*letter_first[j];
+					// out_[len] = (char)*letter_first[j];
+					out_[len] = (char)letter_first[j][0];
 					len++;
 					i++;
 					break;
@@ -98,10 +99,9 @@ void _get_first_letter_proc(const char* in_, char *out_, int olen_)
 	int  len, len1, len2;
 
 	char str[255];
-	len = (int)strlen(in_); 
+	len = (int)strlen(in_) + 1; 
 	len = len > 254 ? 254 : len ; 
 	sis_strcpy(str, len, in_);  
-
 	int nums = sizeof(_sis_map_letter_define) / sizeof(struct s_sis_kv_pair);
 	for (int i = 0; i < len; i++)
 	{
@@ -461,6 +461,37 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 	return NULL;
 }
 
+// char *sis_strsep(char **src_, const char *sign_)
+// {
+// 	char *s;
+// 	const char *spanp;
+// 	int c, sc;
+// 	char *tok;
+
+// 	if ((s = *src_) == 0)
+// 	{
+// 		return 0;
+// 	}
+
+// 	tok = s;
+// 	while (1)
+// 	{
+// 		c = *s++;
+// 		spanp = sign_;
+// 		do
+// 		{
+// 			if ((sc = *spanp++) == c)
+// 			{
+// 				if (c == 0)
+// 					s = 0;
+// 				else
+// 					s[-1] = 0;
+// 				*src_ = s;
+// 				return tok;
+// 			}
+// 		} while (sc != 0);
+// 	}
+// }
 #if 0
 #include <sis_time.h>
 
@@ -487,6 +518,26 @@ int main1()
 }
 int main()
 {
+	char cn[20];
+	sis_get_spell_gbk("上证指数",cn, 12);
+	printf("|%s|\n", cn);
+	return 0;
+
+	char* test = "MD001|000001|上证指数|       249282447| 189607223525.60|  2630.5195|  2600.5004|  2666.4853|  2597.3477|  2654.8795|  2654.8795|        |15:01:03.000";
+
+	char source[] = "hello,上海, world! welcome to china!";
+	char delim[] = "|";
+ 
+	char *s = strdup(test);
+	char *token;
+	// for(token = sis_strsep(&s, delim); token != NULL; token = strsep(&s, delim)) {
+	while ((token = sis_strsep(&s, delim)) != NULL){
+		printf(token);
+		printf("+");
+	}
+	printf("\n");
+
+	return 0;
     char* source_ = "sdsd://127.0.0.0:10000";
     char* substr_ = "@blog"    ;
 	char s1[64],s2[64];

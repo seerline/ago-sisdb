@@ -16,4 +16,6 @@ int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_);
 
 void sis_trim(char *s);
 
+#define sis_strsep strsep
+
 #endif //_OS_STR_H

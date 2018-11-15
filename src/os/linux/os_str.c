@@ -41,7 +41,7 @@ void sis_trim(char *s)
 	for (i = len - 1; i >= 0; i--)
 	{
 		// if (s[i] != ' ' && s[i] != 0x0d && s[i] != 0x0a)
-		if (s[i] && s[i] > ' ')
+		if (s[i] && (unsigned char)s[i] > ' ')
 		{
 			break;
 		}
@@ -52,7 +52,7 @@ void sis_trim(char *s)
 	}
 	for (i = 0; i < len; i++)
 	{
-		if (s[i] && s[i] > ' ')
+		if (s[i] && (unsigned char)s[i] > ' ')
 		// if (s[i] != ' ')
 		{
 			break;

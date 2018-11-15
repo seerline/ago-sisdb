@@ -189,49 +189,49 @@ void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_) //"20150912
 
 int sis_time_get_minute_from_shortstr(char* time)  //"12:30" => 1230
 {
-	int nResult = 0;
-	if (strlen(time) < 5) return nResult;
+	int out = 0;
+	if (strlen(time) < 5) return out;
 
 	int i = 0, c = 0;
 	for (c = 0; c<2; ++c)
-	if (!isdigit(time[i++])) return nResult;
-	if (time[i++] != ':') return nResult;
+	if (!isdigit(time[i++])) return out;
+	if (time[i++] != ':') return out;
 	for (c = 0; c < 2; ++c)
-	if (!isdigit(time[i++])) return nResult;
+	if (!isdigit(time[i++])) return out;
 	int hour, min;
 	i = 0;
 
 	hour = time[i++] - '0';
 	hour = 10 * hour + time[i++] - '0';
-	if (23 < hour) return nResult;
+	if (23 < hour) return out;
 	++i; // skip ':'
 
 	min = time[i++] - '0';
 	min = 10 * min + time[i++] - '0';
-	if (59 < min) return nResult;
+	if (59 < min) return out;
 
-	nResult = hour * 100 + min;
+	out = hour * 100 + min;
 
-	return nResult;
+	return out;
 }
 
 int sis_time_get_itime_from_str(char* time) //"12:30:38" => 123038
 {
-	int nResult = 0;
-	if (strlen(time)<8) return nResult;
+	int out = 0;
+	if (strlen(time)<8) return out;
 
 	int i = 0, c = 0;
 
 	for (c = 0; c < 2; ++c)
-	if (!isdigit(time[i++])) return nResult;
-	if (time[i++] != ':') return nResult;
+	if (!isdigit(time[i++])) return out;
+	if (time[i++] != ':') return out;
 
 	for (c = 0; c < 2; ++c)
-	if (!isdigit(time[i++])) return nResult;
-	if (time[i++] != ':') return nResult;
+	if (!isdigit(time[i++])) return out;
+	if (time[i++] != ':') return out;
 
 	for (c = 0; c < 2; ++c)
-	if (!isdigit(time[i++])) return nResult;
+	if (!isdigit(time[i++])) return out;
 
 	int hour, min, sec;// , millis;
 
@@ -239,22 +239,22 @@ int sis_time_get_itime_from_str(char* time) //"12:30:38" => 123038
 
 	hour = time[i++] - '0';
 	hour = 10 * hour + time[i++] - '0';
-	if (23 < hour) return nResult;
+	if (23 < hour) return out;
 	++i; // skip ':'
 
 	min = time[i++] - '0';
 	min = 10 * min + time[i++] - '0';
-	if (59 < min) return nResult;
+	if (59 < min) return out;
 	++i; // skip ':'
 
 	sec = time[i++] - '0';
 	sec = 10 * sec + time[i++] - '0';
 	// No check for >= 0 as no '-' are converted here
-	if (60 < sec) return nResult;
+	if (60 < sec) return out;
 
-	nResult = hour * 10000 + min * 100 + sec;
+	out = hour * 10000 + min * 100 + sec;
 
-	return nResult;
+	return out;
 }
 
 int sis_time_get_idate_from_str(const char* time) //"20150212" = > 20150212
@@ -263,72 +263,128 @@ int sis_time_get_idate_from_str(const char* time) //"20150212" = > 20150212
 	return o;
 }
 
-int sis_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime) //"2015-10-20 12:30:38" => 20151020,123038
+int sis_time_get_time_from_longstr(const char* in_, int* date_, int* time_) //"2015-10-20 12:30:38" => 20151020,123038
 {
-	int nResult = 0;
-	if (strlen(datetime)<19) return nResult;
+	int out = 0;
+	if (strlen(in_)<19) return out;
 
 	int i = 0, c = 0;
 
 	for (c = 0; c < 4; ++c)
-	if (!isdigit(datetime[i++])) return nResult;
-	if (datetime[i++] != '-') return nResult;
+	if (!isdigit(in_[i++])) return out;
+	if (in_[i++] != '-') return out;
 
 	for (c = 0; c < 2; ++c)
-	if (!isdigit(datetime[i++])) return nResult;
-	if (datetime[i++] != '-') return nResult;
+	if (!isdigit(in_[i++])) return out;
+	if (in_[i++] != '-') return out;
 
 	for (c = 0; c < 2; ++c)
-	if (!isdigit(datetime[i++])) return nResult;
+	if (!isdigit(in_[i++])) return out;
 
 	int year, mon, mday, hour, min, sec;// , millis;
 
 	i = 0;
 	//2015-12-20 09:12:00
 
-	year = datetime[i++] - '0';
-	year = 10 * year + datetime[i++] - '0';
-	year = 10 * year + datetime[i++] - '0';
-	year = 10 * year + datetime[i++] - '0';
+	year = in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
 	++i; // skip '-'
 
-	mon = datetime[i++] - '0';
-	mon = 10 * mon + datetime[i++] - '0';
-	if (mon < 1 || 12 < mon) return nResult;
+	mon = in_[i++] - '0';
+	mon = 10 * mon + in_[i++] - '0';
+	if (mon < 1 || 12 < mon) return out;
 	++i; // skip '-'
 
-	mday = datetime[i++] - '0';
-	mday = 10 * mday + datetime[i++] - '0';
-	if (mday < 1 || 31 < mday) return nResult;
+	mday = in_[i++] - '0';
+	mday = 10 * mday + in_[i++] - '0';
+	if (mday < 1 || 31 < mday) return out;
 
 	++i; // skip ' '
 
-	hour = datetime[i++] - '0';
-	hour = 10 * hour + datetime[i++] - '0';
+	hour = in_[i++] - '0';
+	hour = 10 * hour + in_[i++] - '0';
 	// No check for >= 0 as no '-' are converted here
-	if (23 < hour) return nResult;
+	if (23 < hour) return out;
 
 	++i; // skip ':'
 
-	min = datetime[i++] - '0';
-	min = 10 * min + datetime[i++] - '0';
+	min = in_[i++] - '0';
+	min = 10 * min + in_[i++] - '0';
 	// No check for >= 0 as no '-' are converted here
-	if (59 < min) return nResult;
+	if (59 < min) return out;
 
 	++i; // skip ':'
 
-	sec = datetime[i++] - '0';
-	sec = 10 * sec + datetime[i++] - '0';
+	sec = in_[i++] - '0';
+	sec = 10 * sec + in_[i++] - '0';
 
 	// No check for >= 0 as no '-' are converted here
-	if (60 < sec) return nResult;
+	if (60 < sec) return out;
 
-	*nDate = year * 10000 + mon * 100 + mday;
-	*nTime = hour * 10000 + min * 100 + sec;
+	*date_ = year * 10000 + mon * 100 + mday;
+	*time_ = hour * 10000 + min * 100 + sec;
 
 	return 1;
 }
 
+int sis_time_get_time_from_shstr(const char* in_, int* date_, int* time_) //"20151020-12:30:38.110" => 20151020,123038
+{
+	int out = 0;
+	if (strlen(in_)<19) return out;
+
+	int i = 0, c = 0;
+
+	for (c = 0; c < 8; ++c)
+	if (!isdigit(in_[i++])) return out;
+	if (in_[i++] != '-') return out;
+
+	int year, mon, mday, hour, min, sec;// , millis;
+
+	i = 0;
+	//20151020-12:30:38.110
+
+	year = in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+
+	mon = in_[i++] - '0';
+	mon = 10 * mon + in_[i++] - '0';
+	if (mon < 1 || 12 < mon) return out;
+
+	mday = in_[i++] - '0';
+	mday = 10 * mday + in_[i++] - '0';
+	if (mday < 1 || 31 < mday) return out;
+
+	++i; // skip ' '
+
+	hour = in_[i++] - '0';
+	hour = 10 * hour + in_[i++] - '0';
+	// No check for >= 0 as no '-' are converted here
+	if (23 < hour) return out;
+
+	++i; // skip ':'
+
+	min = in_[i++] - '0';
+	min = 10 * min + in_[i++] - '0';
+	// No check for >= 0 as no '-' are converted here
+	if (59 < min) return out;
+
+	++i; // skip ':'
+
+	sec = in_[i++] - '0';
+	sec = 10 * sec + in_[i++] - '0';
+
+	// No check for >= 0 as no '-' are converted here
+	if (60 < sec) return out;
+
+	*date_ = year * 10000 + mon * 100 + mday;
+	*time_ = hour * 10000 + min * 100 + sec;
+
+	return 1;
+}
 s_sis_time_delay *sis_delay_create(unsigned int msec)
 {
 	s_sis_time_delay *m = sis_malloc(sizeof(*m));

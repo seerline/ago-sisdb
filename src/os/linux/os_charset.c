@@ -1,7 +1,7 @@
 
 
 #include <os_charset.h>
-#include </usr/include/iconv.h>
+// #include </usr/include/iconv.h>
 
 
 int sis_gbk_to_utf8(const char *in, char *out_, size_t olen_)

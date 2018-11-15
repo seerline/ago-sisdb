@@ -94,7 +94,9 @@ size_t sis_memory_get_size(s_sis_memory *m_)
 size_t sis_memory_get_line_sign(s_sis_memory *m_)
 {
 	if (!m_)
+	{
 		return 0;
+	}
 	char *ptr = sis_memory(m_);
 	size_t len = 0;
 	while (*ptr && (unsigned char)*ptr != '\n')
@@ -102,10 +104,11 @@ size_t sis_memory_get_line_sign(s_sis_memory *m_)
 		if ((m_->offset + len) < m_->size - 1) {
 			ptr++;  len++;
 		} else {
-			break;
+			// len = 0;
+			return 0;
 		}
 	}
-	len++;
+	len++;  // 跳过回车键
 	return len;
 }
 

@@ -44,4 +44,6 @@ int sis_str_match(const char* substr_, const char* source_, char c);
 // 
 const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_t olen_);
 
+// char *sis_strsep(char **src_, const char *sign_);
+
 #endif //_SIS_STR_H

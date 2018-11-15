@@ -396,6 +396,7 @@ int sis_pointer_list_find_and_delete(s_sis_struct_list *list_, void *finder_)
 s_sis_string_list *sis_string_list_create_r() //Ö»¶Á
 {
 	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
+	memset(l,0,sizeof(s_sis_string_list));
 	l->strlist = sis_pointer_list_create();
 	l->permissions = STRING_LIST_RD;
 	return l;
@@ -407,6 +408,7 @@ void sis_string_listfree(void *p)
 s_sis_string_list *sis_string_list_create_w() //¶ÁĞ´
 {
 	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
+	memset(l,0,sizeof(s_sis_string_list));
 	l->strlist = sis_pointer_list_create();
 	l->permissions = STRING_LIST_WR;
 	l->strlist->free = sis_string_listfree;
@@ -440,7 +442,6 @@ int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen
 	{
 		return 0;
 	}
-	char *token = NULL;
 	char *src = (char *)sis_malloc(inlen_ + 1);
 	sis_strncpy(src, inlen_ + 1, in_, inlen_);
 
@@ -448,10 +449,11 @@ int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen
 	{
 		list_->m_ptr_r = src;
 	}
-	char *ptr = src;
+
 	char *des = NULL;
+	char *token = NULL;
 	size_t len;
-	while ((token = strsep(&ptr, sign)) != NULL)
+	while ((token = sis_strsep(&src, sign)) != NULL)
 	{
 		sis_trim(token);
 		if (list_->permissions == STRING_LIST_WR)
@@ -472,6 +474,7 @@ int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen
 	}
 	return list_->strlist->count;
 }
+
 const char *sis_string_list_get(s_sis_string_list *list_, int index_)
 {
 	return (const char *)sis_pointer_list_get(list_->strlist, index_);

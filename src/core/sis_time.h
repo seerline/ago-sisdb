@@ -33,7 +33,8 @@ void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_); //"2015091
 int sis_time_get_minute_from_shortstr(char* time);//"12:30" => 1230
 int sis_time_get_itime_from_str(char* time);//"12:30:38" => 123038
 int sis_time_get_idate_from_str(const char* time);//"20150212" => 20150212
-int sis_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime); //"2015-10-20 12:30:38" => 20151020,123038
+int sis_time_get_time_from_longstr(const char* , int* , int* ); //"2015-10-20 12:30:38" => 20151020,123038
+int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:38.110" => 20151020,123038
 
 
 typedef struct s_sis_time_delay {
