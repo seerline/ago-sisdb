@@ -2,6 +2,17 @@
 #include <sis_file.h>
 #include <sis_malloc.h>
 
+s_sis_file *sis_file_create()
+{
+    s_sis_file * o =sis_malloc(sizeof(s_sis_file));
+    memset(o, 0, sizeof(s_sis_file));
+    return o;
+}
+void sis_file_destroy(s_sis_file *file_)
+{
+    sis_free(file_);
+}
+
 s_sis_sds sis_file_read_to_sds(const char *fn_)
 {
 	sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);

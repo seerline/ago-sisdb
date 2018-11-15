@@ -94,7 +94,7 @@ char *sisdb_open(const char *conf_)
     server.db->init_task->work_mode = SIS_WORK_MODE_GAPS;
     server.db->init_task->work_gap.start = 0;
     server.db->init_task->work_gap.stop = 0;
-    server.db->init_task->work_gap.delay = 30;
+    server.db->init_task->work_gap.delay = 10;
 
     server.db->save_task->work_mode = SIS_WORK_MODE_NONE;
     s_sis_json_node *stime = sis_json_cmp_child_node(service, "save-time");
@@ -386,13 +386,15 @@ void _sisdb_write_work_time(s_sisdb_collect *collect_)
         // 来源数据并不需要初始化
         return ;
     }    
-    s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+    s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, -1, 1);
+    // sisdb_collect_get_of_range_sds(collect_, 0, -1);
     if (!buffer)
     {
         return;
     }
     exch->init_time = sisdb_field_get_uint_from_key(collect_->db, "time", buffer);
-    sis_free(buffer);
+    printf("work [%s]-- %d\n", exch->market, (int)exch->init_time);
+    sis_sdsfree(buffer);
 }
 // 直接拷贝
 int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
@@ -518,20 +520,23 @@ int sisdb_init(const char *market_)
     return o;
 }
 
-void _sisdb_market_set_status(s_sisdb_collect *collect_, const char *market, int status)
+void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
 {
+    // return ;
     // s_sisdb_cfg_exch *exch = sis_map_buffer_get(collect_->db->father->cfg_exchs, market);
     s_sisdb_cfg_exch *exch = collect_->cfg_exch;
     if (!exch)
     {
         return;
     }
-    exch->status = status;
-    s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+    exch->status = (uint8)status;
+    // count = 0 时传入数据可能会造成core
+    s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, -1, 1);
     if (!buffer)
     {
         return;
     }
+    // printf("--- to me ..1.. \n");
     switch (status)
     {
     case SIS_MARKET_STATUS_INITING:
@@ -553,13 +558,46 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, const char *market, int
     default:
         break;
     }
+    // printf("--- to me ..3.. \n");
     sisdb_field_set_uint_from_key(collect_->db, "status", buffer, status);
     sisdb_collect_update(collect_, buffer);
 
-    sis_free(buffer);
+    sis_sdsfree(buffer);
 }
 
+// void _printf_info()
+// {
 
+//     char key[SIS_MAXLEN_KEY];
+
+//     sis_sprintf(key, SIS_MAXLEN_KEY, "SH.%s", SIS_TABLE_EXCH);
+//     s_sisdb_collect *collect = sisdb_get_collect(server.db, key);
+//     if (!collect)
+//     {
+//         printf("no find %s\n",key);
+//     }    
+//     printf("SH === %p  %s\n", collect->cfg_exch, collect->cfg_exch->market);
+
+//     sis_sprintf(key, SIS_MAXLEN_KEY, "SZ.%s", SIS_TABLE_EXCH);
+//     collect = sisdb_get_collect(server.db, key);
+//     if (!collect)
+//     {
+//         printf("no find %s\n",key);
+//     }    
+//     printf("SZ === %p  %s\n", collect->cfg_exch, collect->cfg_exch->market);
+
+// 		s_sis_dict_entry *de;
+// 		s_sis_dict_iter *di = sis_dict_get_iter(server.db->cfg_exchs);
+// 		while ((de = sis_dict_next(di)) != NULL)
+// 		{
+// 			s_sisdb_cfg_exch *val = (s_sisdb_cfg_exch *)sis_dict_getval(de);
+//             printf("%s === %p  %s\n", val->market, val, (char *)sis_dict_getkey(de));
+			
+// 		}
+// 		sis_dict_iter_free(di);
+
+
+// }
 
 bool _sisdb_market_start_init(s_sisdb_collect *collect_,  const char *market_)
 {
@@ -573,6 +611,7 @@ bool _sisdb_market_start_init(s_sisdb_collect *collect_,  const char *market_)
     {
         return false;
     }
+    // printf("----%s | %s  %d %d %d \n", exch->market, market_, (int)exch->init_time, sis_time_get_idate(exch->init_time), exch->init_date);
     if (exch->init_time == 0)
     {
         return false;
@@ -587,6 +626,8 @@ bool _sisdb_market_start_init(s_sisdb_collect *collect_,  const char *market_)
 
 void sisdb_market_work_init(s_sis_db *db_)
 {
+    // _printf_info();
+
     s_sisdb_table *tb = sisdb_get_table(db_, SIS_TABLE_EXCH);
     int count = sis_string_list_getsize(tb->collects);
 
@@ -601,11 +642,14 @@ void sisdb_market_work_init(s_sis_db *db_)
         sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", market, SIS_TABLE_EXCH);
         s_sisdb_collect *collect = sisdb_get_collect(db_, key);
         if (!collect)
-            continue;
-
+        {
+              continue;
+        }    
+        // printf("%s===%s  %s\n", collect->cfg_exch->market, market, key);
         if (!sisdb_collect_load_exch(collect, &exch))
             continue;
 
+	    // printf("work-time=%d %d\n", exch.work_time.first, exch.work_time.second);
         int status = exch.status;
         if (exch.work_time.first == exch.work_time.second)
         {
@@ -613,8 +657,8 @@ void sisdb_market_work_init(s_sis_db *db_)
             {
                 if (status != SIS_MARKET_STATUS_INITING)
                 {
-                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_CLOSE);
-                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITING);
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
                 }
                 else
                 {
@@ -622,7 +666,8 @@ void sisdb_market_work_init(s_sis_db *db_)
                     if (_sisdb_market_start_init(collect, market))
                     {
                         sisdb_init(market);
-                        _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITED);
+                        printf("init 2 %s\n",market);
+                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
                     }
                 }
             }
@@ -632,9 +677,10 @@ void sisdb_market_work_init(s_sis_db *db_)
             if ((exch.work_time.first < exch.work_time.second && min > exch.work_time.first && min < exch.work_time.second) ||
                 (exch.work_time.first > exch.work_time.second && (min > exch.work_time.first || min < exch.work_time.second)))
             {
+                printf("start work: status %d [%s]\n", status, market);
                 if (status == SIS_MARKET_STATUS_NOINIT || status == SIS_MARKET_STATUS_CLOSE)
                 {
-                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITING);
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
                 }
                 else if (status == SIS_MARKET_STATUS_INITING)
                 {
@@ -642,7 +688,8 @@ void sisdb_market_work_init(s_sis_db *db_)
                     if (_sisdb_market_start_init(collect, market))
                     {
                         sisdb_init(market);
-                        _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_INITED);
+                        printf("init 1 %s\n",market);
+                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
                     }
                 }
             }
@@ -650,7 +697,7 @@ void sisdb_market_work_init(s_sis_db *db_)
             {
                 if (status == SIS_MARKET_STATUS_INITED)
                 {
-                    _sisdb_market_set_status(collect, market, SIS_MARKET_STATUS_CLOSE);
+                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
                 }
             }
         }

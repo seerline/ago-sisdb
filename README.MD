@@ -71,6 +71,8 @@ sisdb是一个开源的使用ANSI C语言编写、支持网络、基于内存并
 
 ## 开始使用 sisdb
 
+      可能需要的库 gcc jemalloc iconv 
+
    ### 下载安装
 
    > 以redis插件形式安装

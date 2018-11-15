@@ -86,7 +86,7 @@ typedef struct s_sis_string_list {
 
 s_sis_string_list *sis_string_list_create_r(); //Ö»¶Á
 s_sis_string_list *sis_string_list_create_w(); //¶ÁĞ´
-void sis_string_list_destroy(s_sis_string_list *list_);
+void sis_string_list_destroy(void *list_);
 void sis_string_list_clear(s_sis_string_list *list_);
 
 // read & write

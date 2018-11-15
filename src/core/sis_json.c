@@ -1275,8 +1275,27 @@ int main()
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *fn = "../conf/sis.conf";
-	// const char *command = "[[930,1130],[1300,1500]]";
-	const char *command = "[930,1130]";
+	const char *command = "[[930,1130],[1300,1500]]";
+
+	s_sis_json_handle *handel = sis_json_load(command, 64);
+	int index = 0;
+	if (handel)
+	{
+		s_sis_json_node *next = sis_json_first_node(handel->node);
+		while (next)
+		{
+			uint16 first = sis_json_get_int(next, "0", 930);
+			uint16 second = sis_json_get_int(next, "1", 1500);
+			index++;
+			next = next->next;
+			printf("trade-time= %p %d %d\n", handel, first, second);
+		}
+	}
+	sis_json_close(handel);
+	return 0;
+
+
+	// const char *command = "[930,1130]";
 	s_sis_json_handle *h = sis_json_load(command,strlen(command));
 	if (!h) return -1;
 

@@ -1404,7 +1404,7 @@ s_sis_sds sisdb_make_catch_moved_sds(s_sisdb_collect *unit_, const char *in_)
 
 		if (fu->subscribe_method == SIS_SUBS_METHOD_INCR)
 		{
-			printf("---- incr key=%s new=%lld front=%lld\n", key, sisdb_field_get_uint(fu, in_), sisdb_field_get_uint(fu, unit_->front));
+			// printf("---- incr key=%s new=%lld front=%lld\n", key, sisdb_field_get_uint(fu, in_), sisdb_field_get_uint(fu, unit_->front));
 			u64 = sisdb_field_get_uint(fu, in_) - sisdb_field_get_uint(fu, unit_->front);
 		}
 		else if (fu->subscribe_method == SIS_SUBS_METHOD_MAX)
@@ -1894,7 +1894,7 @@ bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_)
 	}
 	size_t len = 0;
 	const char *str;
-	s_sis_json_handle *handel;
+	s_sis_json_handle *handle;
 
 	exch_->status = sisdb_field_get_uint_from_key(collect_->db, "status", buffer);
 
@@ -1902,19 +1902,20 @@ bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_)
 	sis_strncpy(exch_->market, 3, str, len);
 
 	str = sisdb_field_get_char_from_key(collect_->db, "work-time", buffer, &len);
-	handel = sis_json_load(str, len);
-	if (!handel)
+	handle = sis_json_load(str, len);
+	if (handle)
 	{
-		exch_->work_time.first = sis_json_get_int(handel->node, "0", 900);
-		exch_->work_time.second = sis_json_get_int(handel->node, "1", 1530);
+		exch_->work_time.first = sis_json_get_int(handle->node, "0", 900);
+		exch_->work_time.second = sis_json_get_int(handle->node, "1", 1530);
 	}
+	sis_json_close(handle);
 
 	str = sisdb_field_get_char_from_key(collect_->db, "trade-time", buffer, &len);
-	handel = sis_json_load(str, len);
+	handle = sis_json_load(str, len);
 	int index = 0;
-	if (handel)
+	if (handle)
 	{
-		s_sis_json_node *next = sis_json_first_node(handel->node);
+		s_sis_json_node *next = sis_json_first_node(handle->node);
 		while (next)
 		{
 			exch_->trade_time[index].first = sis_json_get_int(next, "0", 930);
@@ -1924,6 +1925,8 @@ bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_)
 		}
 		exch_->trade_slot = index;
 	}
+	sis_json_close(handle);
+
 	sis_sdsfree(buffer);
 	return true;
 }

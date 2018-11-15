@@ -92,7 +92,8 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 s_sisdb_cfg_exch *sisdb_config_create_exch(s_sis_db *db_, const char *code_)
 {
 	char market[3];
-	sis_strncpy(market, 2, code_, 2);
+	sis_strncpy(market, 3, code_, 2);
+	// printf("### %s %s\n",market,code_);
 	// 先去公共区查有没有该市场的信息
 	s_sisdb_cfg_exch *exch = sis_map_buffer_get(db_->cfg_exchs, market); 
 

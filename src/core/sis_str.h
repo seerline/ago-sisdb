@@ -4,7 +4,11 @@
 
 #include <os_types.h>
 #include <os_str.h>
+#include <os_charset.h>
 #include <sis_malloc.h>
+
+void sis_get_spell_gbk(const char *in_, char *out_, size_t olen_);
+int sis_get_spell_utf8(const char *in_, char *out_, size_t olen_);
 
 // 以第一个字符串为长度，从头开始进行比较
 int sis_strcase_match(const char *son_, const char *source_);
@@ -12,7 +16,7 @@ int sis_strcase_match(const char *son_, const char *source_);
 int sis_strcasecmp(const char *s1_, const char *s2_);
 int sis_strncasecmp(const char *s1_, const char *s2_, size_t len_);
 
-void sis_trim(char *s);
+int sis_strncmp(const char *s1_, const char *s2_, size_t len_);
 
 //SIS_MALLOC
 char *sis_strdup(const char *str_, size_t len_); 

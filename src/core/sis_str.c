@@ -1,4 +1,154 @@
 #include <sis_str.h>
+#include <sis_map.h>
+
+static struct s_sis_kv_pair _sis_map_letter_define[] = {
+	{"昇", "S"},
+	{"昉", "F"},
+	{"重庆", "CQ"},
+	{"银行", "YH"}
+};
+
+void _get_first_letter(const char* in_, char *out_, int olen_)
+{
+	static int letter_region[] = {
+		1601, 1637, 1833, 2078, 2274, 2302, 2433, 2594, 2787, 3106, 3212,
+		3472, 3635, 3722, 3730, 3858, 4027, 4086, 4390, 4558, 4684, 4925, 5249
+	};
+	const static char* letter_first[] = {
+		"A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "O",
+		"P", "Q", "R", "S", "T", "W", "X", "Y", "Z"
+	};
+	const static char* letter_second =
+		"CJWGNSPGCGNE[Y[BTYYZDXYKYGT[JNNJQMBSGZSCYJSYY[PGKBZGY[YWJKGKLJYWKPJQHY[W[DZLSGMRYPYWWCCKZNKYYGTTNJJNYKKZYTCJNMCYLQLYPYQFQRPZSLWBTGKJFYXJWZLTBNCXJJJJTXDTTSQZYCDXXHGCK[PHFFSS[YBGXLPPBYLL[HLXS[ZM[JHSOJNGHDZQYKLGJHSGQZHXQGKEZZWYSCSCJXYEYXADZPMDSSMZJZQJYZC[J[WQJBYZPXGZNZCPWHKXHQKMWFBPBYDTJZZKQHY"
+		"LYGXFPTYJYYZPSZLFCHMQSHGMXXSXJ[[DCSBBQBEFSJYHXWGZKPYLQBGLDLCCTNMAYDDKSSNGYCSGXLYZAYBNPTSDKDYLHGYMYLCXPY[JNDQJWXQXFYYFJLEJPZRXCCQWQQSBNKYMGPLBMJRQCFLNYMYQMSQYRBCJTHZTQFRXQHXMJJCJLXQGJMSHZKBSWYEMYLTXFSYDSWLYCJQXSJNQBSCTYHBFTDCYZDJWYGHQFRXWCKQKXEBPTLPXJZSRMEBWHJLBJSLYYSMDXLCLQKXLHXJRZJMFQHXHWY"
+		"WSBHTRXXGLHQHFNM[YKLDYXZPYLGG[MTCFPAJJZYLJTYANJGBJPLQGDZYQYAXBKYSECJSZNSLYZHSXLZCGHPXZHZNYTDSBCJKDLZAYFMYDLEBBGQYZKXGLDNDNYSKJSHDLYXBCGHXYPKDJMMZNGMMCLGWZSZXZJFZNMLZZTHCSYDBDLLSCDDNLKJYKJSYCJLKWHQASDKNHCSGANHDAASHTCPLCPQYBSDMPJLPZJOQLCDHJJYSPRCHN[NNLHLYYQYHWZPTCZGWWMZFFJQQQQYXACLBHKDJXDGMMY"
+		"DJXZLLSYGXGKJRYWZWYCLZMSSJZLDBYD[FCXYHLXCHYZJQ[[QAGMNYXPFRKSSBJLYXYSYGLNSCMHZWWMNZJJLXXHCHSY[[TTXRYCYXBYHCSMXJSZNPWGPXXTAYBGAJCXLY[DCCWZOCWKCCSBNHCPDYZNFCYYTYCKXKYBSQKKYTQQXFCWCHCYKELZQBSQYJQCCLMTHSYWHMKTLKJLYCXWHEQQHTQH[PQ[QSCFYMNDMGBWHWLGSLLYSDLMLXPTHMJHWLJZYHZJXHTXJLHXRSWLWZJCBXMHZQXSDZP"
+		"MGFCSGLSXYMJSHXPJXWMYQKSMYPLRTHBXFTPMHYXLCHLHLZYLXGSSSSTCLSLDCLRPBHZHXYYFHB[GDMYCNQQWLQHJJ[YWJZYEJJDHPBLQXTQKWHLCHQXAGTLXLJXMSL[HTZKZJECXJCJNMFBY[SFYWYBJZGNYSDZSQYRSLJPCLPWXSDWEJBJCBCNAYTWGMPAPCLYQPCLZXSBNMSGGFNZJJBZSFZYNDXHPLQKZCZWALSBCCJX[YZGWKYPSGXFZFCDKHJGXDLQFSGDSLQWZKXTMHSBGZMJZRGLYJB"
+		"PMLMSXLZJQQHZYJCZYDJWBMYKLDDPMJEGXYHYLXHLQYQHKYCWCJMYYXNATJHYCCXZPCQLBZWWYTWBQCMLPMYRJCCCXFPZNZZLJPLXXYZTZLGDLDCKLYRZZGQTGJHHGJLJAXFGFJZSLCFDQZLCLGJDJCSNZLLJPJQDCCLCJXMYZFTSXGCGSBRZXJQQCTZHGYQTJQQLZXJYLYLBCYAMCSTYLPDJBYREGKLZYZHLYSZQLZNWCZCLLWJQJJJKDGJZOLBBZPPGLGHTGZXYGHZMYCNQSYCYHBHGXKAMTX"
+		"YXNBSKYZZGJZLQJDFCJXDYGJQJJPMGWGJJJPKQSBGBMMCJSSCLPQPDXCDYYKY[CJDDYYGYWRHJRTGZNYQLDKLJSZZGZQZJGDYKSHPZMTLCPWNJAFYZDJCNMWESCYGLBTZCGMSSLLYXQSXSBSJSBBSGGHFJLYPMZJNLYYWDQSHZXTYYWHMZYHYWDBXBTLMSYYYFSXJC[DXXLHJHF[SXZQHFZMZCZTQCXZXRTTDJHNNYZQQMNQDMMG[YDXMJGDHCDYZBFFALLZTDLTFXMXQZDNGWQDBDCZJDXBZGS"
+		"QQDDJCMBKZFFXMKDMDSYYSZCMLJDSYNSBRSKMKMPCKLGDBQTFZSWTFGGLYPLLJZHGJ[GYPZLTCSMCNBTJBQFKTHBYZGKPBBYMTDSSXTBNPDKLEYCJNYDDYKZDDHQHSDZSCTARLLTKZLGECLLKJLQJAQNBDKKGHPJTZQKSECSHALQFMMGJNLYJBBTMLYZXDCJPLDLPCQDHZYCBZSCZBZMSLJFLKRZJSNFRGJHXPDHYJYBZGDLQCSEZGXLBLGYXTWMABCHECMWYJYZLLJJYHLG[DJLSLYGKDZPZXJ"
+		"YYZLWCXSZFGWYYDLYHCLJSCMBJHBLYZLYCBLYDPDQYSXQZBYTDKYXJY[CNRJMPDJGKLCLJBCTBJDDBBLBLCZQRPPXJCJLZCSHLTOLJNMDDDLNGKAQHQHJGYKHEZNMSHRP[QQJCHGMFPRXHJGDYCHGHLYRZQLCYQJNZSQTKQJYMSZSWLCFQQQXYFGGYPTQWLMCRNFKKFSYYLQBMQAMMMYXCTPSHCPTXXZZSMPHPSHMCLMLDQFYQXSZYYDYJZZHQPDSZGLSTJBCKBXYQZJSGPSXQZQZRQTBDKYXZK"
+		"HHGFLBCSMDLDGDZDBLZYYCXNNCSYBZBFGLZZXSWMSCCMQNJQSBDQSJTXXMBLTXZCLZSHZCXRQJGJYLXZFJPHYMZQQYDFQJJLZZNZJCDGZYGCTXMZYSCTLKPHTXHTLBJXJLXSCDQXCBBTJFQZFSLTJBTKQBXXJJLJCHCZDBZJDCZJDCPRNPQCJPFCZLCLZXZDMXMPHJSGZGSZZQLYLWTJPFSYASMCJBTZKYCWMYTCSJJLJCQLWZMALBXYFBPNLSFHTGJWEJJXXGLLJSTGSHJQLZFKCGNNNSZFDEQ"
+		"FHBSAQTGYLBXMMYGSZLDYDQMJJRGBJTKGDHGKBLQKBDMBYLXWCXYTTYBKMRTJZXQJBHLMHMJJZMQASLDCYXYQDLQCAFYWYXQHZ";
+
+	int H = 0;
+	int L = 0;
+	int W = 0;
+	size_t ilen = strlen(in_);
+
+	int len = 0;
+	for (int i = 0; i < (int)ilen; i++)
+	{
+		if (len >= (olen_ - 1)) 
+			break;
+		H = (uint8)(in_[i + 0]);
+		L = (uint8)(in_[i + 1]);
+
+		if (H == 0x20 ) continue;
+
+		if (H == 0xA3 && (L >= 0xC1 && L <= 0xDA))  //Ａ Ｂ - A3C1 A3DA- A
+		{
+			out_[len] = (char)(0x41 + (L - 0xC1));
+			len++;
+			i++;
+			continue;
+		}
+		if (H < 0xA1 || L < 0xA1) {
+			out_[len] = in_[i];
+			len++;
+			continue;
+		}
+		else 
+		{
+			W = (H - 160) * 100 + L - 160;
+		}
+		if (W > 1600 && W < 5590) {
+			for (int j = 22; j >= 0; j--) 
+			{
+				if (W >= letter_region[j]) 
+				{
+					out_[len] = (char)*letter_first[j];
+					len++;
+					i++;
+					break;
+				}
+			}
+			continue;
+		}
+		else 
+		{
+			i++;
+			W = (H - 160 - 56) * 94 + L - 161;
+			if (W >= 0 && W <= 3007)
+			{
+				out_[len] = letter_second[W];
+				len++;
+			}
+			else
+			{
+				//out_[len] = (char)H;  len++;
+				//out_[len] = (char)L;  len++;
+			}
+		}
+	}
+	out_[len] = 0; 
+}
+void _get_first_letter_proc(const char* in_, char *out_, int olen_)
+{
+	int  len, len1, len2;
+
+	char str[255];
+	len = (int)strlen(in_); 
+	len = len > 254 ? 254 : len ; 
+	sis_strcpy(str, len, in_);  
+
+	int nums = sizeof(_sis_map_letter_define) / sizeof(struct s_sis_kv_pair);
+	for (int i = 0; i < len; i++)
+	{
+		for (int j = 0; j < nums; j++)
+		{
+			len1 = (int)strlen(_sis_map_letter_define[j].key);
+			if (!sis_strncmp(&str[i], _sis_map_letter_define[j].key, len1))
+			{
+				len2 = (int)strlen(_sis_map_letter_define[j].val);
+				sis_strncpy(&str[i], len, _sis_map_letter_define[j].val, len2);
+				for (int k = len2; k < len1; k++) 
+				{
+					str[i + k] = 0x20;
+				}
+				i = i + len1 - 1;
+			}
+		}
+	}
+	_get_first_letter(str, out_, olen_);
+}
+
+void sis_get_spell_gbk(const char *in_, char *out_, size_t olen_)
+{	
+	int len = olen_ < 32 ? olen_: 32;
+	_get_first_letter_proc(in_, out_, len);
+	// sprintf(des, str.c_str());
+}
+int sis_get_spell_utf8(const char *in_, char *out_, size_t olen_)
+{
+	char out[32];
+	int n = sis_utf8_to_gbk(in_,strlen(in_), out, 32);
+	if(n) 
+	{
+		return n;
+	}
+	int len = olen_ < 32 ? olen_: 32;
+	_get_first_letter_proc(out, out_, len);
+	return 0;
+	// int sis_utf8_to_gbk(const char *in, size_t ilen_, char *out_, size_t olen_)
+
+	// char out[32];
+	// utf8_to_gb2312(src, strlen(src), out, 32);
+	// std::string str = _get_first_letter_proc(out,32);
+	// sprintf(des, str.c_str());
+}
+
+
 
 // 以第一个字符串为长度，进行比较
 int sis_strcase_match(const char *son_, const char *source_)
@@ -66,36 +216,28 @@ int sis_strncasecmp(const char *s1_, const char *s2_, size_t len_)
 	return 1;
 	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
 }
-void sis_trim(char *s)
+int sis_strncmp(const char *s1_, const char *s2_, size_t len_)
 {
-	int i, len;
-	len = (int)strlen(s);
-	for (i = len - 1; i >= 0; i--)
+	if (!s1_)
 	{
-		// if (s[i] != ' ' && s[i] != 0x0d && s[i] != 0x0a)
-		if (s[i] && s[i] > ' ')
-		{
-			break;
-		}
-		else
-		{
-			s[i] = 0;
-		}
+		return (s1_ == s2_) ? 0 : 1;
 	}
-	for (i = 0; i < len; i++)
+	if (!s2_)
 	{
-		if (s[i] && s[i] > ' ')
-		// if (s[i] != ' ')
+		return 1;
+	}
+	for (int i = 1; (*s1_) == (*s2_); ++s1_, ++s2_, i++)
+	{
+		// printf("%d|%d|%ld|%d\n",*s1_,*s2_,len_,i);
+		if (*s1_ == 0 || *s2_ == 0 || i >= len_)
 		{
-			break;
+			return 0;
 		}
 	}
-	if (i != 0)
-	{
-		memmove(s, s + i, len - i);
-		s[len - i] = 0;
-	}
+	return 1;
+	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
 }
+
 char *sis_strdup(const char *str_, size_t len_) //SIS_MALLOC
 {
 	if (!str_) { return NULL; }

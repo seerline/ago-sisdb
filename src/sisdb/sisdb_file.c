@@ -205,19 +205,19 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
     if (!collect)
     {
         sis_out_log(3)("no find %s key.\n", key_);
-        return NULL;
+        return false;
     }	
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
 	if (!handle)
 	{
-		return NULL;
+		return false;
 	}
 	s_sis_sds out = sisdb_collect_get_original_sds(collect, handle);
 
 	if (!out)
 	{
 		sis_json_close(handle);
-		return NULL;
+		return false;
 	}
 
 	int iformat = sis_from_node_get_format(server_->db, handle->node);
@@ -263,10 +263,11 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
         break;  
     default:
         sis_out_log(3)("save data type [%d] error.\n", iformat);
-        return false;          
+        break;
+        // return false;          
 	}
 	sis_sdsfree(out);
-
+    sis_json_close(handle);
     return true;
 }
 

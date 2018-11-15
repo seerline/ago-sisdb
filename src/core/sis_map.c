@@ -23,6 +23,11 @@ void _sis_dict_buffer_free(void *privdata, void *val)
 	SIS_NOTUSED(privdata);
 	sis_free(val);
 }
+void *_sis_dict_sds_dup(void *privdata, const void *val)
+{
+	SIS_NOTUSED(privdata);
+	return sis_sdsnew(val);
+}
 void _sis_dict_sds_free(void *privdata, void *val)
 {
 	SIS_NOTUSED(privdata);
@@ -52,8 +57,8 @@ s_sis_dict_type _sis_dict_type_owner_free_val_s = {
 };
 s_sis_dict_type _sis_dict_type_sds_s = {
 	_sis_dict_sdscase_hash,	   /* hash function */
-	NULL,				   /* key dup */
-	NULL,				   /* val dup */
+	_sis_dict_sds_dup,		   /* key dup */
+	_sis_dict_sds_dup,		   /* val dup */
 	_sis_dict_sdscase_compare, /* key compare */
 	_sis_dict_sds_free,	 /* key destructor */
 	_sis_dict_sds_free	  /* val destructor */
@@ -161,7 +166,20 @@ s_sis_map_sds *sis_map_sds_create()
 	s_sis_map_sds *map = sis_dict_create(&_sis_dict_type_sds_s, NULL);
 	return map;
 };
-
+int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
+{
+	s_sis_dict_entry *he;
+	s_sis_sds key = sis_sdsnew(key_);
+	he = sis_dict_find(map_, key_);
+	if (!he)
+	{
+		sis_dict_add(map_, key, val_);
+		return 0;
+	}
+	sis_sdsfree(key);	
+	sis_dict_setval(map_, he, val_);
+	return 0;
+}
 #if 0
 #include <sisdb_fields.h>
 

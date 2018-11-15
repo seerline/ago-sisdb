@@ -35,7 +35,12 @@ ENDIF ()
 #########################目录设置#############################
 
 #设置头文件目录
-INCLUDE_DIRECTORIES(. ./os/linux  ./platform/redis ./core ./sisdb)
+INCLUDE_DIRECTORIES(
+    .
+    ./os/linux  
+    ./platform/redis 
+    ./core 
+    ./sisdb)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
@@ -85,7 +90,7 @@ SET(EXECUTABLE_OUTPUT_PATH ../test)
 
 #设置所有需要链接的库名到 LIBRARIES 环境变量
 #SET(LIBRARIES libbson-1.0.so libmongoc-1.0.so pthread z m iconv charset)
-SET(LIBRARIES_TEST pthread z m )
+SET(LIBRARIES_TEST pthread z m iconv)
 
 #生成可执行文件
 ADD_EXECUTABLE(test ${SRC_LIST_TEST})
@@ -107,7 +112,8 @@ ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})
 #ADD_LIBRARY(${STATIC_NAME} STATIC ${SRC_LIST})
 
 #设置链接库的环境变量
-SET(LIBRARIES c m)
+#SET(LIBRARIES pthread c m iconv charset)
+SET(LIBRARIES pthread c m iconv)
 # 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
 

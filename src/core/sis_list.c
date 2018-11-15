@@ -412,8 +412,9 @@ s_sis_string_list *sis_string_list_create_w() //¶ÁÐ´
 	l->strlist->free = sis_string_listfree;
 	return l;
 }
-void sis_string_list_destroy(s_sis_string_list *list_)
+void sis_string_list_destroy(void *list)
 {
+	s_sis_string_list *list_ = (s_sis_string_list *)list;
 	sis_string_list_clear(list_);
 	if (list_->permissions == STRING_LIST_WR)
 	{

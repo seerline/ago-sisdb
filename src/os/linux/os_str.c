@@ -34,3 +34,33 @@ int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_)
 	return (int)len;
 }
 
+void sis_trim(char *s)
+{
+	int i, len;
+	len = (int)strlen(s);
+	for (i = len - 1; i >= 0; i--)
+	{
+		// if (s[i] != ' ' && s[i] != 0x0d && s[i] != 0x0a)
+		if (s[i] && s[i] > ' ')
+		{
+			break;
+		}
+		else
+		{
+			s[i] = 0;
+		}
+	}
+	for (i = 0; i < len; i++)
+	{
+		if (s[i] && s[i] > ' ')
+		// if (s[i] != ' ')
+		{
+			break;
+		}
+	}
+	if (i != 0)
+	{
+		memmove(s, s + i, len - i);
+		s[len - i] = 0;
+	}
+}

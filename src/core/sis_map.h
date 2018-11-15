@@ -53,6 +53,6 @@ s_sis_map_sds *sis_map_sds_create();
 #define sis_map_sds_destroy sis_map_buffer_destroy
 #define sis_map_sds_clear sis_map_buffer_clear
 #define sis_map_sds_get sis_map_buffer_get
-#define sis_map_sds_set sis_map_buffer_set
+int sis_map_sds_set(s_sis_map_sds *, const char *key_, char *val_);
 
 #endif

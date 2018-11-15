@@ -502,7 +502,7 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 	return handle;
 }
 
-#if 1
+#if 0
 void json_printf(s_sis_json_node *node_, int *i)
 {
 	if (!node_)

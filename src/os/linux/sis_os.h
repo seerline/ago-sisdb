@@ -36,5 +36,6 @@
 #include <os_file.h>
 #include <os_time.h>
 #include <os_thread.h>
+#include <os_malloc.h>
 
 #endif //_SIS_OS_H
