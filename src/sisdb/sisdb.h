@@ -57,7 +57,7 @@ typedef struct s_sisdb_cfg_exch {
 	char    market[3]; 
 	uint8  	status;      // 状态
 	time_t  init_time;    // 最新收到now的时间
-	uint32  init_date;    // 最新收到now的时间
+	uint32  init_date;    // 最新收到now的日期
 	s_sis_time_pair  work_time; // 初始化时间 单位分钟 900 
 	uint8   		 trade_slot; // 交易实际时间段
 	s_sis_time_pair  trade_time[SIS_TRADETIME_MAX_NUM]; // [[930,1130],[1300,1500]] 交易时间，给分钟线用

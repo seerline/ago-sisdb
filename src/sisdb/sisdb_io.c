@@ -370,7 +370,7 @@ void _sisdb_write_end()
     sis_mutex_unlock(&server.db->save_task->mutex);
 }
 
-void _sisdb_write_work_time(s_sisdb_collect *collect_)
+void _sisdb_flush_work_time(s_sisdb_collect *collect_)
 {
     s_sisdb_cfg_exch *exch = collect_->cfg_exch;
     if (!exch)
@@ -427,7 +427,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
     // sis_out_binary("update 0 ", in_, ilen_);
      int o = sisdb_collect_update(collect, in);
 
-    _sisdb_write_work_time(collect);
+    _sisdb_flush_work_time(collect);
     sisdb_write_config(server.db, key_, collect);
 
     if (!server.db->loading)
@@ -542,13 +542,13 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
     case SIS_MARKET_STATUS_INITING:
         exch->init_time = 0;
         // 即便是美国，获取的日期也是上一交易日的，
-        exch->init_date = sisdb_field_get_uint_from_key(collect_->db, "trade-date", buffer);
+        // exch->init_date = sisdb_field_get_uint_from_key(collect_->db, "init-date", buffer);
         // 接收到now数据后就对new_time赋值，当发现new_time 日期大于交易日期就可以判定需要初始化
+        sisdb_field_set_uint_from_key(collect_->db, "init-time", buffer, exch->init_time);
         break;
     case SIS_MARKET_STATUS_INITED:
-        sisdb_field_set_uint_from_key(collect_->db, "version", buffer, sis_time_get_now());
-        // sisdb_field_set_uint_from_key(collect_->db, "trade-date", buffer, sis_time_get_idate(0));
-        sisdb_field_set_uint_from_key(collect_->db, "trade-date", buffer, sis_time_get_idate(exch->init_time));
+        sisdb_field_set_uint_from_key(collect_->db, "init-time", buffer, exch->init_time);
+        sisdb_field_set_uint_from_key(collect_->db, "init-date", buffer, sis_time_get_idate(exch->init_time));
         
         break;
     case SIS_MARKET_STATUS_CLOSE:
@@ -560,7 +560,15 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
     }
     // printf("--- to me ..3.. \n");
     sisdb_field_set_uint_from_key(collect_->db, "status", buffer, status);
-    sisdb_collect_update(collect_, buffer);
+
+    char key[SIS_MAXLEN_KEY];
+    sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", exch->market ,SIS_TABLE_EXCH);
+    if (_sisdb_write_begin(SIS_DATA_TYPE_STRUCT, key, buffer, sis_sdslen(buffer)) != SIS_SERVER_REPLY_ERR)
+    {
+        // 如果保存aof失败就返回错误
+        sisdb_collect_update(collect_, buffer);
+        _sisdb_write_end();
+    }
 
     sis_sdsfree(buffer);
 }
@@ -611,7 +619,7 @@ bool _sisdb_market_start_init(s_sisdb_collect *collect_,  const char *market_)
     {
         return false;
     }
-    // printf("----%s | %s  %d %d %d \n", exch->market, market_, (int)exch->init_time, sis_time_get_idate(exch->init_time), exch->init_date);
+    // printf("----%s | %s  %d %d %d \n", exch->market, market_, (int)exch->init_time, sis_time_get_idate(exch->init_time), exch->init-date);
     if (exch->init_time == 0)
     {
         return false;
@@ -666,6 +674,7 @@ void sisdb_market_work_init(s_sis_db *db_)
                     if (_sisdb_market_start_init(collect, market))
                     {
                         sisdb_init(market);
+                         // 初始化后应该存一次盘，或者清理掉所有该表的写入
                         printf("init 2 %s\n",market);
                         _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
                     }
@@ -688,6 +697,7 @@ void sisdb_market_work_init(s_sis_db *db_)
                     if (_sisdb_market_start_init(collect, market))
                     {
                         sisdb_init(market);
+                        // 初始化后应该存一次盘，或者清理掉所有该表的写入
                         printf("init 1 %s\n",market);
                         _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
                     }

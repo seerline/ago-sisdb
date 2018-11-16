@@ -1898,6 +1898,11 @@ bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_)
 
 	exch_->status = sisdb_field_get_uint_from_key(collect_->db, "status", buffer);
 
+	exch_->init_time = sisdb_field_get_uint_from_key(collect_->db, "init-time", buffer);
+	exch_->init_date = sisdb_field_get_uint_from_key(collect_->db, "init-date", buffer);
+
+	exch_->status = sisdb_field_get_uint_from_key(collect_->db, "status", buffer);
+
 	str = sisdb_field_get_char_from_key(collect_->db, "market", buffer, &len);
 	sis_strncpy(exch_->market, 3, str, len);
 
