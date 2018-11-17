@@ -8,6 +8,7 @@ s_sis_memory *sis_memory_create()
 	m->size = 0;
 	m->maxsize = SIS_DB_MEMORY_SIZE;
 	m->offset = 0;
+
 	return m;
 }
 void sis_memory_destroy(s_sis_memory *m_)
@@ -71,6 +72,11 @@ size_t sis_memory_readfile(s_sis_memory *m_, sis_file_handle fp_, size_t len_)
 {
 	char *mem = (char *)sis_malloc(len_ + 1);
 	size_t bytes = sis_file_read(fp_, mem, 1, len_);
+	if(bytes<=0) 
+	{
+		sis_free(mem);
+		return 0;
+	}
 	sis_memory_pack(m_);
 
 	if (bytes + m_->size > m_->maxsize)
@@ -80,6 +86,7 @@ size_t sis_memory_readfile(s_sis_memory *m_, sis_file_handle fp_, size_t len_)
 	}
 	memmove(m_->buffer + m_->size, mem, bytes);
 	m_->size += bytes;
+	// m_->buffer[m_->size] = 0;
 
 	sis_free(mem);
 
@@ -101,14 +108,15 @@ size_t sis_memory_get_line_sign(s_sis_memory *m_)
 	size_t len = 0;
 	while (*ptr && (unsigned char)*ptr != '\n')
 	{
-		if ((m_->offset + len) < m_->size - 1) {
+		if ((m_->offset + len) < m_->size - 1) 
+		{
 			ptr++;  len++;
 		} else {
 			// len = 0;
 			return 0;
 		}
 	}
-	len++;  // 跳过回车键
+	if((unsigned char)*ptr == '\n') len++;  // 跳过回车键
 	return len;
 }
 

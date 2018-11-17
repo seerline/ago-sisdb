@@ -19,9 +19,10 @@ void safe_memory_stop()
     if(node) {
         printf("no free memory:\n"); 
     }
+    int i=0;
     while(node)
     {
-        printf("    func:%s, lines:%d\n",node->info, node->line);
+        printf("[%4d] func:%s, lines:%d\n",i++, node->info, node->line);
         node = node->next;
     }
 }

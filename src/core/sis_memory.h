@@ -10,10 +10,11 @@
 #define SIS_DB_MEMORY_SIZE  128*1024  // 数据区大小，
 
 typedef struct s_sis_memory {
+    // bool    eof;     // 是否读到文件尾
     size_t  size;
 	size_t  maxsize;
 	size_t  offset;  //偏移距离
-    char *buffer;  // 实际缓存区
+    char   *buffer;  // 实际缓存区
 } s_sis_memory;
 
 s_sis_memory *sis_memory_create();   

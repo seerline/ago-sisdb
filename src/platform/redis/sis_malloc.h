@@ -25,6 +25,7 @@
 #define sis_sdsclear sdsclear
 #define sis_sdsempty sdsempty
 #define sis_sdsnew sdsnew
+#define sis_sdsnewlong sdsfromlonglong
 #define sis_sdsnewlen sdsnewlen
 #define sis_sdscpylen sdscpylen
 #define sis_sdslen sdslen

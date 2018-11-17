@@ -319,6 +319,7 @@ bool _sisdb_file_load_aof(s_sisdb_server *server_)
     while (1)
     {
         size_t bytes = sis_memory_readfile(buffer, fp, SIS_DB_MEMORY_SIZE);
+        // 结构化文件这样读没问题，
         if (bytes <= 0)
             break;
         while (sis_memory_get_size(buffer) > sizeof(s_sis_aof_head))

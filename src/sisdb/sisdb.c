@@ -1,10 +1,10 @@
 ﻿
-
 #include "sisdb.h"
 #include "sisdb_map.h"
 #include "sisdb_fields.h"
 #include "sisdb_table.h"
 #include "sisdb_collect.h"
+#include "sisdb_call.h"
 
 s_sis_db *sisdb_create(char *name_) //数据库的名称，为空建立一个sys的数据库名
 {
@@ -15,13 +15,16 @@ s_sis_db *sisdb_create(char *name_) //数据库的名称，为空建立一个sys
 	db->dbs = sis_map_pointer_create();
 	
 	db->cfg_infos = sis_pointer_list_create();
-	db->cfg_infos->free = sis_free;
+	db->cfg_infos->free = sis_free_call;
 	db->cfg_exchs = sis_map_pointer_create();
 
 	db->collects = sis_map_pointer_create();
 
 	db->map = sis_map_pointer_create();
 	sisdb_init_map_define(db->map);
+
+	db->calls = sis_map_pointer_create();
+	sisdb_init_call_define(db->calls);
 
 	db->save_task = sis_plan_task_create();
 	db->init_task = sis_plan_task_create();
@@ -85,6 +88,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_sdsfree(db_->name);
 	sis_sdsfree(db_->conf);
 	sis_map_pointer_destroy(db_->map);
+	sis_map_pointer_destroy(db_->calls);
 
 	sis_free(db_);
 }

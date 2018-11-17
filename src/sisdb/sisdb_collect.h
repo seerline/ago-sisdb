@@ -137,10 +137,8 @@ s_sis_json_node *sisdb_collect_groups_json_init(s_sis_string_list *fields_);
 void sisdb_collect_groups_json_push(s_sis_json_node *node_, char *code, s_sisdb_collect *unit_, s_sis_sds in_, s_sis_string_list *fields_);
 s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_);
 //////////////////////
-
+// 得到多个股票的最后一条数据集合
 s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *, const char *com_);
-// 得到数据表中共有多少股票
-s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_,const char *, const char *com_);  //返回数据需要释放
 
 ///////////////////////////
 //			delete     ////

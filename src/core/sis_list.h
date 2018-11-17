@@ -77,6 +77,7 @@ int sis_pointer_list_find_and_delete(s_sis_struct_list *list_, void *finder_);
 ///////////////////////////////////////////////////////////////////////////
 #define STRING_LIST_RD  1
 #define STRING_LIST_WR  2
+void sis_free_call(void *p);
 
 typedef struct s_sis_string_list {
 	int    permissions;     //х╗оч

@@ -393,6 +393,10 @@ int sis_pointer_list_find_and_delete(s_sis_struct_list *list_, void *finder_)
 //------------------------s_sis_string_list --------------------------------//
 //  存储不定长字符串的列表，
 ///////////////////////////////////////////////////////////////////////////
+void sis_free_call(void *p)
+{
+	sis_free(p);
+}
 s_sis_string_list *sis_string_list_create_r() //只读
 {
 	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
@@ -401,27 +405,21 @@ s_sis_string_list *sis_string_list_create_r() //只读
 	l->permissions = STRING_LIST_RD;
 	return l;
 }
-void sis_string_listfree(void *p)
-{
-	sis_free(p);
-}
+
 s_sis_string_list *sis_string_list_create_w() //读写
 {
 	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
 	memset(l,0,sizeof(s_sis_string_list));
 	l->strlist = sis_pointer_list_create();
 	l->permissions = STRING_LIST_WR;
-	l->strlist->free = sis_string_listfree;
+	l->strlist->free = sis_free_call;
 	return l;
 }
 void sis_string_list_destroy(void *list)
 {
 	s_sis_string_list *list_ = (s_sis_string_list *)list;
 	sis_string_list_clear(list_);
-	if (list_->permissions == STRING_LIST_WR)
-	{
-		sis_pointer_list_destroy(list_->strlist);
-	}
+	sis_pointer_list_destroy(list_->strlist);
 	sis_free(list_);
 }
 void sis_string_list_clear(s_sis_string_list *list_)
@@ -449,11 +447,11 @@ int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen
 	{
 		list_->m_ptr_r = src;
 	}
-
+	char *ptr = src;
 	char *des = NULL;
 	char *token = NULL;
 	size_t len;
-	while ((token = sis_strsep(&src, sign)) != NULL)
+	while ((token = sis_strsep(&ptr, sign)) != NULL)
 	{
 		sis_trim(token);
 		if (list_->permissions == STRING_LIST_WR)

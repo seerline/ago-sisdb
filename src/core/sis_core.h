@@ -19,4 +19,5 @@
 
 #define SIS_NAME_LEN  32
 
+
 #endif //_SIS_CORE_H

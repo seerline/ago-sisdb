@@ -79,6 +79,7 @@ bool sisdb_field_is_integer(s_sisdb_field *unit_)
 			unit_->flags.type == SIS_FIELD_TYPE_UINT||
 			unit_->flags.type == SIS_FIELD_TYPE_VOLUME||
 			unit_->flags.type == SIS_FIELD_TYPE_AMOUNT||
+			unit_->flags.type == SIS_FIELD_TYPE_PRICE||
 			unit_->flags.type == SIS_FIELD_TYPE_MSEC||
 			unit_->flags.type == SIS_FIELD_TYPE_SECOND||
 			unit_->flags.type == SIS_FIELD_TYPE_DATE;

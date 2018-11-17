@@ -1,5 +1,6 @@
 
 #include <os_thread.h>
+#include <os_malloc.h>
 
 bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread_id_t *thread_)
 {
@@ -127,6 +128,8 @@ void  sis_thread_wait_stop(s_sis_wait *wait_)
 {
 	sis_mutex_unlock(&wait_->mutex); 	
 }
+#ifdef __RELEASE__
+// 要测试，暂时先这样，后期要检查问题
 int  sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
 	struct timeval tv;
@@ -138,6 +141,16 @@ int  sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);  
 	// 返回 ETIMEDOUT 就正常处理
 }
+#else
+int  sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
+{
+	while(delay_)
+	{
+		sis_sleep(1000);
+		delay_--;
+	}
+}
+#endif
 
 void  sis_thread_wait_create(s_sis_wait *wait_)
 {
@@ -222,7 +235,7 @@ void exithandle(int sig)
     // sis_thread_wait_destroy(&__thread_wait_b);
 	// printf("ok b . \n");
 
-	// __exit = 1;
+	__exit = 1;
 }
 
 int main()

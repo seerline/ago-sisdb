@@ -65,7 +65,9 @@ s_sis_socket *sis_socket_create(s_sis_url *url_,int rale_)
 void sis_socket_destroy(s_sis_socket *sock_)
 {
 	if (!sock_) return;
-	if (sock_->status != SIS_NET_INIT) return;
+	// printf("sis_socket_destroy----%d  %d\n",sock_->status, SIS_NET_INIT);
+	// if (sock_->status != SIS_NET_INIT) return;
+	// 无论任何时候都要释放
 	sock_->status = SIS_NET_EXIT;
 	//这里需要 等线程结束,必须加在这里，不能换顺序，否则退出时会有异常
 	sis_socket_close(sock_);
@@ -90,7 +92,10 @@ void sis_socket_open(s_sis_socket *sock_){
 	if (sock_->open) sock_->open(sock_);
 }
 void sis_socket_close(s_sis_socket *sock_){
-	if (sock_->close) sock_->close(sock_);
+	if (sock_->status_read != SIS_NET_CONNECTSTOP ||sock_->status_write != SIS_NET_CONNECTSTOP)
+	{
+		if (sock_->close) sock_->close(sock_);
+	} 
 	sock_->status_read = SIS_NET_CONNECTSTOP;
 	sock_->status_write = SIS_NET_CONNECTSTOP;
 }

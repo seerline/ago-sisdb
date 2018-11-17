@@ -15,6 +15,7 @@
 #include "sis_thread.h"
 
 #define SIS_MAXLEN_CODE  9
+#define SIS_MAXLEN_NAME  32
 #define SIS_MAXLEN_TABLE 32
 #define SIS_MAXLEN_KEY   (SIS_MAXLEN_CODE + SIS_MAXLEN_TABLE)
 
@@ -83,6 +84,8 @@ typedef struct s_sis_db {
 
 	s_sis_map_pointer  *map;          // 关键字查询表
 	
+	s_sis_map_pointer  *calls;          // 远程过程调用
+
 	bool   loading;  // 数据加载中
 
 	int 				save_format;   // 存盘文件的方式

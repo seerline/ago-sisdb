@@ -404,15 +404,6 @@ bool _sisdb_trans_of_count(s_sisdb_collect *unit_, int *start_, int *count_)
 	return true;
 }
 
-s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *unit_, int start_, int count_)
-{
-	bool o = _sisdb_trans_of_count(unit_, &start_, &count_);
-	if (!o)
-	{
-		return NULL;
-	}
-	return sis_sdsnewlen(sis_struct_list_get(unit_->value, start_), count_ * unit_->value->len);
-}
 
 s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *unit_, int start_, int stop_)
 {
@@ -423,6 +414,19 @@ s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *unit_, int start_, int
 	}
 	int count = (stop_ - start_) + 1;
 	return sis_sdsnewlen(sis_struct_list_get(unit_->value, start_), count * unit_->value->len);
+}
+s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *unit_, int start_, int count_)
+{
+	bool o = _sisdb_trans_of_count(unit_, &start_, &count_);
+	if (!o)
+	{
+		return NULL;
+	}
+	return sis_sdsnewlen(sis_struct_list_get(unit_->value, start_), count_ * unit_->value->len);
+}
+s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *unit_)
+{
+	return sis_sdsnewlen(sis_struct_list_get(unit_->value, unit_->value->count - 1), unit_->value->len);
 }
 
 ////////////////////////////////////////////
@@ -642,10 +646,13 @@ s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds v
 		}
 		const char *ptr = (const char *)val_;
 		char val[SIS_MAXLEN_STRING];
+		int len=0;
 		switch (fu->flags.type)
 		{
 		case SIS_FIELD_TYPE_CHAR:
-			sis_sprintf(val, SIS_MAXLEN_STRING, "%*s", fu->flags.len, ptr + fu->offset);
+			len =sis_min(fu->flags.len,strlen(ptr+fu->offset));
+			// 这里应判断如果字符串中有引号该怎么处理，标准处理方式是两个引号即可
+			sis_sprintf(val, SIS_MAXLEN_STRING, "\"%*s\"", len, ptr + fu->offset);
 			break;
 		case SIS_FIELD_TYPE_INT:
 			sis_sprintf(val, SIS_MAXLEN_STRING, "%d", (int32)sisdb_field_get_int(fu, ptr));
@@ -914,6 +921,23 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	{
 		return NULL;
 	}
+
+	// s_sis_string_list *codes = sis_string_list_create_w();
+	const char *codes = sis_json_get_str(handle->node, "codes");
+	// if (!codes)
+	// {
+	// 	sis_out_log(3)("no find codes [%s].\n", com_);
+	// 	goto error;
+	// }
+	// sis_string_list_load(codes, codes, strlen(codes), ",");
+
+	// int count = sis_string_list_getsize(codes);
+	// if (count < 1)
+	// {
+	// 	sis_out_log(3)("no find codes [%s].\n", com_);
+	// 	goto error;
+	// }
+	
 	int iformat = sis_from_node_get_format(db_, handle->node);
 
 	printf("iformat = %c\n", iformat);
@@ -949,9 +973,18 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
 		if (sis_strcasecmp(collect->db->name, dbname_)) continue;
 
+		sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
+		if(codes)
+		{
+			// 如果定义了代码，就检查一下代码是否存在
+			if(sis_str_subcmp(code, codes, ',') < 0) 
+			{
+				continue;
+			} 
+		}
+
 		printf("collect = %s db = %s %s\n", (char *)sis_dict_getkey(de), collect->db->name, dbname_);
 		s_sis_sds val = sisdb_collect_get_of_count_sds(collect, -1, 1);
-		sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
 
 		// printf("out = %lu -- %lu\n", sis_sdslen(out),sis_sdslen(val));
 		switch (iformat)
@@ -1011,82 +1044,6 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	{
 		sis_sdsfree(fields);
 	}
-	sis_json_close(handle);
-	return out;
-}
-
-s_sis_sds sisdb_collects_get_code_sds(s_sis_db *db_, const char *dbname_, const char *com_) //返回数据需要释放
-{
-	int count = 0;
-	char code[SIS_MAXLEN_CODE];
-
-	s_sis_sds out = NULL;
-
-	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(db_->collects);
-	while ((de = sis_dict_next(di)) != NULL)
-	{
-		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-		if (!sis_strcasecmp(collect->db->name, dbname_))
-		{
-			sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
-			if (!out)
-			{
-				out = sis_sdsnewlen(code, SIS_MAXLEN_CODE);
-			}
-			else
-			{
-				out = sis_sdscatlen(out, code, SIS_MAXLEN_CODE);
-			}
-			count++;
-		}
-	}
-	sis_dict_iter_free(di);
-
-	if (!out)
-	{
-		return NULL;
-	}
-	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
-	// printf("com_ = %s -- %lu -- %p\n", com_,strlen(com_),handle);
-	if (!handle)
-	{
-		return NULL;
-	}
-	int iformat = sis_from_node_get_format(db_, handle->node);
-
-	printf("iformat = %c\n", iformat);
-	// 取出字段定义，没有就默认全部字段
-	if (iformat == SIS_DATA_TYPE_STRUCT)
-	{
-		goto end;
-	}
-	char *str;
-	s_sis_json_node *jone = NULL;
-	s_sis_json_node *jval = sis_json_create_array();
-
-	for (int i = 0; i < count; i++)
-	{
-		sis_json_array_add_string(jval, out + i * SIS_MAXLEN_CODE, SIS_MAXLEN_CODE);
-	}
-	if (iformat == SIS_DATA_TYPE_ARRAY)
-	{
-		jone = jval;
-	}
-	else // SIS_DATA_TYPE_JSON
-	{
-		jone = sis_json_create_object();
-		sis_json_object_add_node(jone, SIS_JSON_KEY_COLLECTS, jval);
-	}
-
-	size_t olen;
-	str = sis_json_output_zip(jone, &olen);
-	sis_sdsfree(out);
-	out = sis_sdsnewlen(str, olen);
-	sis_free(str);
-	sis_json_delete_node(jone);
-
-end:
 	sis_json_close(handle);
 	return out;
 }

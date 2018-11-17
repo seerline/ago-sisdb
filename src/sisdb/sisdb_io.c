@@ -4,6 +4,8 @@
 #include "sisdb_file.h"
 #include "sisdb_map.h"
 #include "sisdb_fields.h"
+#include "sisdb_call.h"
+
 /********************************/
 // 一定要用static定义，不然内存混乱
 static s_sisdb_server server = {
@@ -323,6 +325,23 @@ s_sis_sds sisdb_show_sds(const char *key_)
     }
 }
 
+s_sis_sds sisdb_call_sds(const char *key_, const char *com_)
+{
+    if (server.status != SIS_SERVER_STATUS_INITED)
+    {
+        sis_out_log(3)("no init sisdb.\n");
+        return NULL;
+    }
+    s_sisdb_call *call = sisdb_call_find_define(server.db->calls, key_);
+    if (!call)
+    {
+        sis_out_log(3)("no find %s proc.\n", key_);
+        return NULL;
+    }
+    return call->proc(server.db, com_);
+
+}
+
 s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
 {
     if (server.status != SIS_SERVER_STATUS_INITED)
@@ -331,20 +350,14 @@ s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
         return NULL;
     }
     // *.DAY -- 取所有股票符合条件的1条数据
+    // 额外检查codes字段，如果没有代表所有股票，有则只取其中符合条件的股票
     if (key_[0] == '*')
     {
         char db[SIS_MAXLEN_TABLE];
         sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
-        if (key_[1] == '*')
-        {
-            // 获得某个数据表所有的key键 用 sis_str_match 来判断比较
-            return sisdb_collects_get_code_sds(server.db, db, com_);
-        }
-        else
-        {
-            // 获得多只股票某类数据的一条记录
-            return sisdb_collects_get_last_sds(server.db, db, com_);
-        }
+        // 获得多只股票某类数据的最后一条记录
+        // 根据codes字段来判断都需要哪些股票
+        return sisdb_collects_get_last_sds(server.db, db, com_);
     }
 
     return sisdb_collect_get_sds(server.db, key_, com_);
@@ -497,26 +510,6 @@ int sisdb_set_struct(const char *key_, const char *val_, size_t len_)
 
     _sisdb_write_end();
 
-    return o;
-}
-
-int sisdb_init(const char *market_)
-{
-    int o = 0;
-    s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(server.db->collects);
-    while ((de = sis_dict_next(di)) != NULL)
-    {
-        s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        if (val->db->control.isinit && !val->db->control.issys &&
-            !sis_strncasecmp(sis_dict_getkey(de), market_, strlen(market_)))
-        {
-            // 只是设置记录数为0
-            sisdb_collect_clear(val);
-            o++;
-        }
-    }
-    sis_dict_iter_free(di);
     return o;
 }
 
@@ -673,7 +666,7 @@ void sisdb_market_work_init(s_sis_db *db_)
                     // 需要等待第一个有行情的股票来了数据才初始化完成
                     if (_sisdb_market_start_init(collect, market))
                     {
-                        sisdb_init(market);
+                        sisdb_call_market_init(db_, market);
                          // 初始化后应该存一次盘，或者清理掉所有该表的写入
                         printf("init 2 %s\n",market);
                         _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
@@ -696,7 +689,7 @@ void sisdb_market_work_init(s_sis_db *db_)
                     // 需要等待第一个有行情的股票来了数据才初始化完成
                     if (_sisdb_market_start_init(collect, market))
                     {
-                        sisdb_init(market);
+                        sisdb_call_market_init(db_, market);
                         // 初始化后应该存一次盘，或者清理掉所有该表的写入
                         printf("init 1 %s\n",market);
                         _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);

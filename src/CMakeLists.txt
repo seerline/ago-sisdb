@@ -40,6 +40,7 @@ INCLUDE_DIRECTORIES(
     ./os/linux  
     ./platform/redis 
     ./core 
+    ./stock 
     ./sisdb)
 
 #设置源文件目录
@@ -47,6 +48,7 @@ AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(./os/linux DIR_OS)
 AUX_SOURCE_DIRECTORY(./platform/redis DIR_PLATFORM)
 AUX_SOURCE_DIRECTORY(./core DIR_CORE)
+AUX_SOURCE_DIRECTORY(./stock DIR_STOCK)
 AUX_SOURCE_DIRECTORY(./sisdb DIR_SISDB)
 AUX_SOURCE_DIRECTORY(../test DIR_TEST)
 
@@ -55,14 +57,16 @@ SET(SRC_LIST ${DIR_SRCS}
              ${DIR_OS}
 	         ${DIR_PLATFORM}
              ${DIR_SISDB}
+             ${DIR_STOCK}
 	         ${DIR_CORE})
 
 SET(SRC_LIST_TEST
              ${DIR_SRCS}
              ${DIR_OS}
 	         ${DIR_PLATFORM}
-             ${DIR_SISDB}
              ${DIR_TEST}
+             ${DIR_SISDB}
+             ${DIR_STOCK}
 	         ${DIR_CORE})
 
 

@@ -23,7 +23,7 @@ inline void safe_memory_stop(){};
 #pragma pack(push,1)
 typedef struct s_memory_node {
     char   info[MEMORY_INFO_SIZE];
-    unsigned short line;  // 行数 
+    unsigned short line;  //  
 	struct s_memory_node * prev;     
 	struct s_memory_node * next;
 }s_memory_node;
@@ -41,7 +41,7 @@ inline void safe_memory_newnode(void *__p__,int line_,const char *func_)
     s_memory_node *__n = (s_memory_node *)__p__; 
     __n->next = NULL; 
     __n->line = line_; 
-    // memmove(__n->info, func_, MEMORY_INFO_SIZE); __n->info[MEMORY_INFO_SIZE - 1] = 0; 
+    memmove(__n->info, func_, MEMORY_INFO_SIZE); __n->info[MEMORY_INFO_SIZE - 1] = 0; 
 
     if (!__memory_first) { 
         __n->prev = NULL;  
