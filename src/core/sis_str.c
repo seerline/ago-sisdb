@@ -416,21 +416,32 @@ int sis_str_subcmp_head(const char *sub, const char *s, char c)  //-1没有匹配的
 const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t size_)
 {
 	if (!e_||!s_) return NULL;
-	while(*e_&&e_>s_&&!strchr("\r\n", (unsigned char)*e_)) {
-		e_--;
-	}
-	e_++; // 把回车跳过
-	// printf("%.30s\n",e_);
-	*len_ = 0;
-	int slen = size_- (e_ - s_);
-	const char *p = e_;
-	while(*p&&*len_<slen&&!strchr("\r\n", (unsigned char)*p)) {
-		p++;
-		*len_=*len_+1;
-	}
-	// printf("%.30s   %d\n",e_, *len_);
 
-	return e_;
+	*len_ = 0;
+	int lines = 2;
+	int chars = 50;
+
+	const char *start = e_;
+	while(*start&&start>s_&&(lines>0||chars>0))
+	{
+		if((unsigned char)*start == '\n')  lines--;
+		start--;
+		chars--;
+		*len_=*len_ + 1;
+	}
+	// start++; // 把回车跳过
+	// printf("%.30s\n",start);
+	// *len_ = 0;
+	// lines = 2;
+	// int slen = size_- (e_ - s_);
+	// const char *stop = e_;
+	// while(*stop&&*len_<slen&&lines > 0) {
+	// 	if((unsigned char)*stop == '\n')  lines--;
+	// 	stop++;
+	// 	*len_=*len_ + 1;
+	// }
+	// printf("%.30s   %d\n",start, *len_);
+	return start;
 }
 // 判断 字符串是否在source中， 如果在，并且完全匹配就返回0 否则返回1 没有匹配就返回-1
 // source = aaa,bbbbbb,0001 

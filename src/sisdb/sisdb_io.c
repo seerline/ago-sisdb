@@ -5,7 +5,7 @@
 #include "sisdb_map.h"
 #include "sisdb_fields.h"
 #include "sisdb_call.h"
-
+#include "sisdb_sys.h"
 /********************************/
 // 一定要用static定义，不然内存混乱
 static s_sisdb_server server = {
@@ -93,11 +93,6 @@ char *sisdb_open(const char *conf_)
 
     server.db = sisdb_create(server.service_name);
 
-    server.db->init_task->work_mode = SIS_WORK_MODE_GAPS;
-    server.db->init_task->work_gap.start = 0;
-    server.db->init_task->work_gap.stop = 0;
-    server.db->init_task->work_gap.delay = 10;
-
     server.db->save_task->work_mode = SIS_WORK_MODE_NONE;
     s_sis_json_node *stime = sis_json_cmp_child_node(service, "save-time");
     if (stime)
@@ -148,23 +143,43 @@ char *sisdb_open(const char *conf_)
         server.db->conf = sdsnewlen(str, len);
         sis_free(str);
 
-        s_sis_json_node *node = sis_json_cmp_child_node(service, "tables");
-        s_sis_json_node *next = sis_conf_first_node(node);
-        while (next)
+        server.db->special = false;
+        s_sis_json_node *node = sis_json_cmp_child_node(service, "system");
+        if (node) 
         {
-            sisdb_table_create(server.db, next->key, next);
-            next = next->next;
+            server.db->special = true;
+            s_sis_json_node *next = sis_conf_first_node(node);
+            while (next)
+            {
+                s_sisdb_table *tb = sisdb_table_create(server.db, next->key, next);
+                tb->control.issys = 1;
+                sisdb_sys_load_default(server.db, next);
+                next = next->next;
+            }
+        }
+        node = sis_json_cmp_child_node(service, "tables");
+        if (node) 
+        {
+            s_sis_json_node *next = sis_conf_first_node(node);
+            while (next)
+            {
+                sisdb_table_create(server.db, next->key, next);
+                next = next->next;
+            }
         }
         // 仅仅没有save前取值
         // 加载默认变量
         node = sis_json_cmp_child_node(service, "values");
-        next = sis_conf_first_node(node);
-        while (next)
+        if (node) 
         {
-            char *str = sis_conf_to_json_zip(next, &len);
-            sisdb_set(SIS_DATA_TYPE_JSON, next->key, str, len);
-            sis_free(str);
-            next = next->next;
+            s_sis_json_node *next = sis_conf_first_node(node);
+            while (next)
+            {
+                char *str = sis_conf_to_json_zip(next, &len);
+                sisdb_set(SIS_DATA_TYPE_JSON, next->key, str, len);
+                sis_free(str);
+                next = next->next;
+            }
         }
     }
     else
@@ -181,19 +196,37 @@ char *sisdb_open(const char *conf_)
             sis_out_log(1)("file format ver error.\n");
             goto error;
         }
-        // 创建数据表
-        s_sis_json_node *node = sis_json_cmp_child_node(sdb_json->node, "tables");
         // 加载conf
         size_t len = 0;
         char *str = sis_conf_to_json(sdb_json->node, &len);
         server.db->conf = sdsnewlen(str, len);
         sis_free(str);
 
-        s_sis_json_node *next = sis_conf_first_node(node);
-        while (next)
+        // 创建数据表
+        server.db->special = false;
+        s_sis_json_node *node = sis_json_cmp_child_node(sdb_json->node, "system");
+        if (node)
         {
-            sisdb_table_create(server.db, next->key, next);
-            next = next->next;
+            server.db->special = true;
+            s_sis_json_node *next = sis_conf_first_node(node);
+            while (next)
+            {
+                s_sisdb_table *tb = sisdb_table_create(server.db, next->key, next);
+                tb->control.issys = 1;
+                sisdb_sys_load_default(server.db, next);
+                next = next->next;
+            }
+        }
+        /////
+        node = sis_json_cmp_child_node(sdb_json->node, "tables");
+        if (node)
+        {
+            s_sis_json_node *next = sis_conf_first_node(node);
+            while (next)
+            {
+                sisdb_table_create(server.db, next->key, next);
+                next = next->next;
+            }
         }
     }
 
@@ -215,16 +248,24 @@ char *sisdb_open(const char *conf_)
             goto error;
         }
     }
-    // 启动存盘线程
-    if (server.db->init_task->work_mode != SIS_WORK_MODE_NONE)
+    if(server.db->special)
     {
-        if (!sis_plan_task_start(server.db->init_task,
-                                 _thread_init_plan_task, server.db))
+        server.db->init_task->work_mode = SIS_WORK_MODE_GAPS;
+        server.db->init_task->work_gap.start = 0;
+        server.db->init_task->work_gap.stop = 0;
+        server.db->init_task->work_gap.delay = 10;
+        // 启动存盘线程
+        if (server.db->init_task->work_mode != SIS_WORK_MODE_NONE)
         {
-            sis_out_log(1)("can't start init thread\n");
-            goto error;
+            if (!sis_plan_task_start(server.db->init_task,
+                                    _thread_init_plan_task, server.db))
+            {
+                sis_out_log(1)("can't start init thread\n");
+                goto error;
+            }
         }
     }
+ 
 
     server.status = SIS_SERVER_STATUS_INITED;
     sis_conf_close(config);
@@ -363,52 +404,7 @@ s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
     return sisdb_collect_get_sds(server.db, key_, com_);
 }
 
-int _sisdb_write_begin(int fmt_, const char *key_, const char *val_, size_t len_)
-{
-    if (!sisdb_file_save_aof(&server, fmt_, key_, val_, len_))
-    {
-        sis_out_log(3)("save aof error.\n");
-        return SIS_SERVER_REPLY_ERR;
-    }
-    if (sis_mutex_trylock(&server.db->save_task->mutex))
-    {
-        // == 0 才是锁住
-        sis_out_log(3)("saveing... set fail.\n");
-        return SIS_SERVER_REPLY_ERR;
-    };
-    return SIS_SERVER_REPLY_OK;
-}
-void _sisdb_write_end()
-{
-    sis_mutex_unlock(&server.db->save_task->mutex);
-}
 
-void _sisdb_flush_work_time(s_sisdb_collect *collect_)
-{
-    s_sisdb_cfg_exch *exch = collect_->cfg_exch;
-    if (!exch)
-    {
-        return;
-    }
-    if (exch->status!=SIS_MARKET_STATUS_INITING) 
-    {
-        return ;
-    }
-    if (!collect_->db->control.isinit) 
-    {
-        // 来源数据并不需要初始化
-        return ;
-    }    
-    s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, -1, 1);
-    // sisdb_collect_get_of_range_sds(collect_, 0, -1);
-    if (!buffer)
-    {
-        return;
-    }
-    exch->init_time = sisdb_field_get_uint_from_key(collect_->db, "time", buffer);
-    printf("work [%s]-- %d\n", exch->market, (int)exch->init_time);
-    sis_sdsfree(buffer);
-}
 // 直接拷贝
 int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 {
@@ -440,8 +436,8 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
     // sis_out_binary("update 0 ", in_, ilen_);
      int o = sisdb_collect_update(collect, in);
 
-    _sisdb_flush_work_time(collect);
-    sisdb_write_config(server.db, key_, collect);
+    sisdb_sys_flush_work_time(collect);
+    sisdb_sys_check_write(server.db, key_, collect);
 
     if (!server.db->loading)
     {
@@ -482,14 +478,14 @@ int sisdb_set_json(const char *key_, const char *val_, size_t len_)
         return SIS_SERVER_REPLY_ERR;
     }
 
-    if (_sisdb_write_begin(fmt, key_, val_, len_) == SIS_SERVER_REPLY_ERR)
+    if (sisdb_write_begin(fmt, key_, val_, len_) == SIS_SERVER_REPLY_ERR)
     {
         return SIS_SERVER_REPLY_ERR;
     }
     // 如果保存aof失败就返回错误
     int o = sisdb_set(fmt, key_, val_, len_);
 
-    _sisdb_write_end();
+    sisdb_write_end();
 
     return o;
 }
@@ -501,70 +497,18 @@ int sisdb_set_struct(const char *key_, const char *val_, size_t len_)
         return SIS_SERVER_REPLY_ERR;
     }
 
-    if (_sisdb_write_begin(SIS_DATA_TYPE_STRUCT, key_, val_, len_) == SIS_SERVER_REPLY_ERR)
+    if (sisdb_write_begin(SIS_DATA_TYPE_STRUCT, key_, val_, len_) == SIS_SERVER_REPLY_ERR)
     {
         return SIS_SERVER_REPLY_ERR;
     }
     // 如果保存aof失败就返回错误
     int o = sisdb_set(SIS_DATA_TYPE_STRUCT, key_, val_, len_);
 
-    _sisdb_write_end();
+    sisdb_write_end();
 
     return o;
 }
 
-void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
-{
-    // return ;
-    // s_sisdb_cfg_exch *exch = sis_map_buffer_get(collect_->db->father->cfg_exchs, market);
-    s_sisdb_cfg_exch *exch = collect_->cfg_exch;
-    if (!exch)
-    {
-        return;
-    }
-    exch->status = (uint8)status;
-    // count = 0 时传入数据可能会造成core
-    s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, -1, 1);
-    if (!buffer)
-    {
-        return;
-    }
-    // printf("--- to me ..1.. \n");
-    switch (status)
-    {
-    case SIS_MARKET_STATUS_INITING:
-        exch->init_time = 0;
-        // 即便是美国，获取的日期也是上一交易日的，
-        // exch->init_date = sisdb_field_get_uint_from_key(collect_->db, "init-date", buffer);
-        // 接收到now数据后就对new_time赋值，当发现new_time 日期大于交易日期就可以判定需要初始化
-        sisdb_field_set_uint_from_key(collect_->db, "init-time", buffer, exch->init_time);
-        break;
-    case SIS_MARKET_STATUS_INITED:
-        sisdb_field_set_uint_from_key(collect_->db, "init-time", buffer, exch->init_time);
-        sisdb_field_set_uint_from_key(collect_->db, "init-date", buffer, sis_time_get_idate(exch->init_time));
-        
-        break;
-    case SIS_MARKET_STATUS_CLOSE:
-        // sisdb_field_set_uint_from_key(collect_->db, "close-date", buffer, sis_time_get_idate(0));
-        sisdb_field_set_uint_from_key(collect_->db, "close-date", buffer, sis_time_get_idate(exch->init_time));
-        break;
-    default:
-        break;
-    }
-    // printf("--- to me ..3.. \n");
-    sisdb_field_set_uint_from_key(collect_->db, "status", buffer, status);
-
-    char key[SIS_MAXLEN_KEY];
-    sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", exch->market ,SIS_TABLE_EXCH);
-    if (_sisdb_write_begin(SIS_DATA_TYPE_STRUCT, key, buffer, sis_sdslen(buffer)) != SIS_SERVER_REPLY_ERR)
-    {
-        // 如果保存aof失败就返回错误
-        sisdb_collect_update(collect_, buffer);
-        _sisdb_write_end();
-    }
-
-    sis_sdsfree(buffer);
-}
 
 // void _printf_info()
 // {
@@ -577,7 +521,7 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
 //     {
 //         printf("no find %s\n",key);
 //     }    
-//     printf("SH === %p  %s\n", collect->cfg_exch, collect->cfg_exch->market);
+//     printf("SH === %p  %s\n", collect->spec_exch, collect->spec_exch->market);
 
 //     sis_sprintf(key, SIS_MAXLEN_KEY, "SZ.%s", SIS_TABLE_EXCH);
 //     collect = sisdb_get_collect(server.db, key);
@@ -585,13 +529,13 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
 //     {
 //         printf("no find %s\n",key);
 //     }    
-//     printf("SZ === %p  %s\n", collect->cfg_exch, collect->cfg_exch->market);
+//     printf("SZ === %p  %s\n", collect->spec_exch, collect->spec_exch->market);
 
 // 		s_sis_dict_entry *de;
-// 		s_sis_dict_iter *di = sis_dict_get_iter(server.db->cfg_exchs);
+// 		s_sis_dict_iter *di = sis_dict_get_iter(server.db->sys_exchs);
 // 		while ((de = sis_dict_next(di)) != NULL)
 // 		{
-// 			s_sisdb_cfg_exch *val = (s_sisdb_cfg_exch *)sis_dict_getval(de);
+// 			s_sisdb_sys_exch *val = (s_sisdb_sys_exch *)sis_dict_getval(de);
 //             printf("%s === %p  %s\n", val->market, val, (char *)sis_dict_getkey(de));
 			
 // 		}
@@ -600,110 +544,22 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
 
 // }
 
-bool _sisdb_market_start_init(s_sisdb_collect *collect_,  const char *market_)
+int sisdb_write_begin(int fmt_, const char *key_, const char *val_, size_t len_)
 {
-    // s_sisdb_cfg_exch *exch = sis_map_buffer_get(db_->cfg_exchs, market);
-    s_sisdb_cfg_exch *exch = collect_->cfg_exch;
-    if (!exch)
+    if (!sisdb_file_save_aof(&server, fmt_, key_, val_, len_))
     {
-        return false;
+        sis_out_log(3)("save aof error.\n");
+        return SIS_SERVER_REPLY_ERR;
     }
-    if (exch->status != SIS_MARKET_STATUS_INITING) 
+    if (sis_mutex_trylock(&server.db->save_task->mutex))
     {
-        return false;
-    }
-    // printf("----%s | %s  %d %d %d \n", exch->market, market_, (int)exch->init_time, sis_time_get_idate(exch->init_time), exch->init-date);
-    if (exch->init_time == 0)
-    {
-        return false;
-    }
-    int date = sis_time_get_idate(exch->init_time);
-    if (date > exch->init_date) 
-    {
-        return true;
-    }
-    return false;
+        // == 0 才是锁住
+        sis_out_log(3)("saveing... set fail.\n");
+        return SIS_SERVER_REPLY_ERR;
+    };
+    return SIS_SERVER_REPLY_OK;
 }
-
-void sisdb_market_work_init(s_sis_db *db_)
+void sisdb_write_end()
 {
-    // _printf_info();
-
-    s_sisdb_table *tb = sisdb_get_table(db_, SIS_TABLE_EXCH);
-    int count = sis_string_list_getsize(tb->collects);
-
-    char key[SIS_MAXLEN_KEY];
-    s_sisdb_cfg_exch exch;
-
-    int min = sis_time_get_iminute(0);
-
-    for (int k = 0; k < count; k++)
-    {
-        const char *market = sis_string_list_get(tb->collects, k);
-        sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", market, SIS_TABLE_EXCH);
-        s_sisdb_collect *collect = sisdb_get_collect(db_, key);
-        if (!collect)
-        {
-              continue;
-        }    
-        // printf("%s===%s  %s\n", collect->cfg_exch->market, market, key);
-        if (!sisdb_collect_load_exch(collect, &exch))
-            continue;
-
-	    // printf("work-time=%d %d\n", exch.work_time.first, exch.work_time.second);
-        int status = exch.status;
-        if (exch.work_time.first == exch.work_time.second)
-        {
-            if (exch.work_time.first == min)
-            {
-                if (status != SIS_MARKET_STATUS_INITING)
-                {
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
-                }
-                else
-                {
-                    // 需要等待第一个有行情的股票来了数据才初始化完成
-                    if (_sisdb_market_start_init(collect, market))
-                    {
-                        sisdb_call_market_init(db_, market);
-                         // 初始化后应该存一次盘，或者清理掉所有该表的写入
-                        printf("init 2 %s\n",market);
-                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
-                    }
-                }
-            }
-        }
-        else
-        {
-            if ((exch.work_time.first < exch.work_time.second && min > exch.work_time.first && min < exch.work_time.second) ||
-                (exch.work_time.first > exch.work_time.second && (min > exch.work_time.first || min < exch.work_time.second)))
-            {
-                printf("start work: status %d [%s]\n", status, market);
-                if (status == SIS_MARKET_STATUS_NOINIT || status == SIS_MARKET_STATUS_CLOSE)
-                {
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
-                }
-                else if (status == SIS_MARKET_STATUS_INITING)
-                {
-                    // 需要等待第一个有行情的股票来了数据才初始化完成
-                    if (_sisdb_market_start_init(collect, market))
-                    {
-                        sisdb_call_market_init(db_, market);
-                        // 初始化后应该存一次盘，或者清理掉所有该表的写入
-                        printf("init 1 %s\n",market);
-                        _sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
-                    }
-                }
-            }
-            else
-            {
-                if (status == SIS_MARKET_STATUS_INITED)
-                {
-                    _sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
-                }
-            }
-        }
-    }
+    sis_mutex_unlock(&server.db->save_task->mutex);
 }
-

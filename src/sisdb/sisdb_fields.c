@@ -374,8 +374,9 @@ void sisdb_field_copy(char *des_, const char *src_, size_t len_)
 }
 
 void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_, 
-			char *key_, s_sis_json_node *node_,s_sisdb_cfg_info  *cfg_)
+			char *key_, s_sis_json_node *node_, int dot)
 {
+
 	int64  i64 = 0;
 	double f64 = 0.0;
 	const char *str;
@@ -408,14 +409,21 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		}
 		break;
 	case SIS_FIELD_TYPE_FLOAT:
+		if (sis_json_find_node(node_, key_))
+		{
+			f64 = sis_json_get_double(node_, key_, 0.0);
+			sisdb_field_set_float(fu_, in_, f64, fu_->flags.dot);
+		}
+		break;
 	case SIS_FIELD_TYPE_PRICE:
 		if (sis_json_find_node(node_, key_))
 		{
 			f64 = sis_json_get_double(node_, key_, 0.0);
-			sisdb_field_set_float(fu_, in_, f64, cfg_->dot);
+			sisdb_field_set_float(fu_, in_, f64, dot);
 		}
 		break;
 	default:
 		break;
 	}
 }
+

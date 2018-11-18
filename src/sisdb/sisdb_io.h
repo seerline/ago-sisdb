@@ -58,9 +58,8 @@ int sisdb_set_json(const char *key_, const char *val_, size_t len_);
 
 int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_);
 
-int sisdb_write_begin(const char *com_, const char *key_, const char *val_, size_t len_);
-void sisdb_write_end();
 
-void sisdb_market_work_init(s_sis_db *db_);
+int   sisdb_write_begin(int fmt_, const char *key_, const char *val_, size_t len_);
+void  sisdb_write_end();
 
 #endif  /* _SISDB_IO_H */

@@ -74,6 +74,6 @@ void sisdb_field_set_uint_from_key(s_sisdb_table *tb_, const char *key_, char *v
 void sisdb_field_copy(char *des_, const char *src_, size_t len_);
 
 void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_, 
-			char *key_, s_sis_json_node *node_,s_sisdb_cfg_info  *);
+			char *key_, s_sis_json_node *node_, int dot);
 
 #endif /* _SIS_FIELDS_H */

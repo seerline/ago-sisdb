@@ -11,6 +11,7 @@
 #include "sis_malloc.h"
 
 #include "sisdb.h"
+#include "sisdb_sys.h"
 #include "sisdb_table.h"
 
 /////////////////////////////////////////////////////////
@@ -58,9 +59,11 @@ typedef struct s_sisdb_collect
 {
 	s_sisdb_table     *db;    // 表的指针，可以获得字段定义的相关信息
 
-	s_sisdb_cfg_exch  *cfg_exch; // 市场的信息
-	s_sisdb_cfg_info  *cfg_info; // 股票的信息
-
+	////////////////////////////////////////////////////////////
+	//   以下两个结构仅仅在专用数据库时使用
+	s_sisdb_sys_exch  *spec_exch; // 市场的信息
+	s_sisdb_sys_info  *spec_info; // 股票的信息
+	////////////////////////////////////////////////////////////
 	s_sis_step_index  *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sis_struct_list *value;    // 结构化数据
 
@@ -170,9 +173,5 @@ int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const ch
 
 // 从磁盘加载，整块写入，
 int sisdb_collect_update_block(s_sisdb_collect *, const char *in_, size_t ilen_);
-
-bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_);
-bool sisdb_collect_load_info(s_sisdb_collect *collect_, s_sisdb_cfg_info *info_);
-
 
 #endif /* _SIS_COLLECT_H */

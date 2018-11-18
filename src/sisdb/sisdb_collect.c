@@ -3,6 +3,7 @@
 #include <sisdb_collect.h>
 #include <sisdb_fields.h>
 #include <sisdb_map.h>
+#include <sisdb_sys.h>
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_step_index --------------------------------//
@@ -89,11 +90,13 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 	unit->db = tb;
 	if (tb->control.issys)
 	{
-		sis_string_list_push_only(tb->collects, code, strlen(code));
+		sis_string_list_push_only(tb->collect_list, code, strlen(code));
 	}
-
-	unit->cfg_info = sisdb_config_create_info(db_, code);
-	unit->cfg_exch = sisdb_config_create_exch(db_, code);
+	// if (db_->special) // 专用表
+	{
+		unit->spec_info = sisdb_sys_create_info(db_, code);
+		unit->spec_exch = sisdb_sys_create_exch(db_, code);
+	}
 
 	unit->stepinfo = sisdb_stepindex_create();
 	// 仅仅在这里计算了记录长度，
@@ -495,10 +498,11 @@ s_sis_json_node *_sis_struct_to_array(s_sisdb_collect *unit_, s_sis_sds val_, s_
 			sis_json_array_add_uint(o, sisdb_field_get_uint(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_FLOAT:
-			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot), fu->flags.dot);
+			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, fu->flags.dot), fu->flags.dot);
 			break;
 		case SIS_FIELD_TYPE_PRICE:
-			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot), unit_->cfg_info->dot);
+			// 通用数据表没有该类型
+			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, unit_->spec_info->dot), unit_->spec_info->dot);
 			break;
 		default:
 			sis_json_array_add_string(o, " ", 1);
@@ -666,10 +670,10 @@ s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds v
 			sis_sprintf(val, SIS_MAXLEN_STRING, "%d", (uint32)sisdb_field_get_uint(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_FLOAT:
-			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr, fu->flags.dot));
 			break;
 		case SIS_FIELD_TYPE_PRICE:
-			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", unit_->cfg_info->dot, sisdb_field_get_float(fu, ptr, unit_->cfg_info->dot));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", unit_->spec_info->dot, sisdb_field_get_float(fu, ptr, unit_->spec_info->dot));
 			break;
 		}
 		str_ = sis_sdscatfmt(str_, "%s", val);
@@ -1200,8 +1204,8 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *unit_, const char *i
 			continue;
 		}
 		// printf("key=%s i=%d offset=%d\n", key, k, fu->offset);
-
-		sisdb_field_json_to_struct(o, fu, (char *)key, handle->node, unit_->cfg_info);
+		int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+		sisdb_field_json_to_struct(o, fu, (char *)key, handle->node, dot);
 	}
 
 	sis_json_close(handle);
@@ -1261,7 +1265,8 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *unit_, const char *
 			}
 			char key[16];
 			sis_sprintf(key, 10, "%d", k);
-			sisdb_field_json_to_struct(o + index * unit_->value->len, fu, key, jval, unit_->cfg_info);
+			int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+			sisdb_field_json_to_struct(o + index * unit_->value->len, fu, key, jval, dot);
 		}
 		index++;
 		jval = jval->next;
@@ -1651,19 +1656,19 @@ uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_, s_sisdb_co
 	case SIS_TIME_SCALE_SECOND:
 		return o;
 	case SIS_TIME_SCALE_INCR:
-		o = sisdb_ttime_to_trade_index(o, outunit_->cfg_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
 		break;
 	case SIS_TIME_SCALE_MIN1:
-		o = sisdb_ttime_to_trade_index(o, outunit_->cfg_exch);
-		o = sisdb_trade_index_to_ttime(date, o, outunit_->cfg_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
+		o = sisdb_trade_index_to_ttime(date, o, outunit_->spec_exch);
 		break;
 	case SIS_TIME_SCALE_MIN5:
-		o = sisdb_ttime_to_trade_index(o, outunit_->cfg_exch);
-		o = sisdb_trade_index_to_ttime(date, ((int)(o / 5) + 1) * 5 - 1, outunit_->cfg_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
+		o = sisdb_trade_index_to_ttime(date, ((int)(o / 5) + 1) * 5 - 1, outunit_->spec_exch);
 		break;
 	case SIS_TIME_SCALE_HOUR:
-		o = sisdb_ttime_to_trade_index(o, outunit_->cfg_exch);
-		o = sisdb_trade_index_to_ttime(date, ((int)(o / 60) + 1) * 60 - 1, outunit_->cfg_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
+		o = sisdb_trade_index_to_ttime(date, ((int)(o / 60) + 1) * 60 - 1, outunit_->spec_exch);
 		break;
 	case SIS_TIME_SCALE_DATE:
 	case SIS_TIME_SCALE_WEEK:
@@ -1708,9 +1713,12 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 		sisdb_field_set_int(outfu_, outs_, i64);
 		break;
 	case SIS_FIELD_TYPE_FLOAT:
+		f64 = sisdb_field_get_float(infu_, ins_, infu_->flags.dot);
+		sisdb_field_set_float(outfu_, outs_, f64, outfu_->flags.dot);
+		break;
 	case SIS_FIELD_TYPE_PRICE:
-		f64 = sisdb_field_get_float(infu_, ins_, inunit_->cfg_info->dot);
-		sisdb_field_set_float(outfu_, outs_, f64, outunit_->cfg_info->dot);
+		f64 = sisdb_field_get_float(infu_, ins_, inunit_->spec_info->dot);
+		sisdb_field_set_float(outfu_, outs_, f64, outunit_->spec_info->dot);
 		break;
 	default:
 		break;
@@ -1804,7 +1812,7 @@ int sisdb_collect_update_publish(s_sisdb_collect *unit_, s_sis_sds val_, const c
 			// printf("link_table=%lld\n",sisdb_field_get_uint_from_key(link_table,"time",link_val));
 			sisdb_collect_update(pub_collect, pub_val);
 
-			// sisdb_write_config(db, pub_collect); // publish出去的库，不会影响config信息
+			// sisdb_sys_check_write(db, pub_collect); // publish出去的库，不会影响config信息
 
 			sis_sdsfree(pub_val);
 		}
@@ -1841,68 +1849,3 @@ int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t i
 	return count;
 }
 
-////////////////
-bool sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_cfg_exch *exch_)
-{
-	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
-	if (!buffer)
-	{
-		return false;
-	}
-	size_t len = 0;
-	const char *str;
-	s_sis_json_handle *handle;
-
-	exch_->status = sisdb_field_get_uint_from_key(collect_->db, "status", buffer);
-
-	exch_->init_time = sisdb_field_get_uint_from_key(collect_->db, "init-time", buffer);
-	exch_->init_date = sisdb_field_get_uint_from_key(collect_->db, "init-date", buffer);
-
-	exch_->status = sisdb_field_get_uint_from_key(collect_->db, "status", buffer);
-
-	str = sisdb_field_get_char_from_key(collect_->db, "market", buffer, &len);
-	sis_strncpy(exch_->market, 3, str, len);
-
-	str = sisdb_field_get_char_from_key(collect_->db, "work-time", buffer, &len);
-	handle = sis_json_load(str, len);
-	if (handle)
-	{
-		exch_->work_time.first = sis_json_get_int(handle->node, "0", 900);
-		exch_->work_time.second = sis_json_get_int(handle->node, "1", 1530);
-	}
-	sis_json_close(handle);
-
-	str = sisdb_field_get_char_from_key(collect_->db, "trade-time", buffer, &len);
-	handle = sis_json_load(str, len);
-	int index = 0;
-	if (handle)
-	{
-		s_sis_json_node *next = sis_json_first_node(handle->node);
-		while (next)
-		{
-			exch_->trade_time[index].first = sis_json_get_int(next, "0", 930);
-			exch_->trade_time[index].second = sis_json_get_int(next, "1", 1500);
-			index++;
-			next = next->next;
-		}
-		exch_->trade_slot = index;
-	}
-	sis_json_close(handle);
-
-	sis_sdsfree(buffer);
-	return true;
-}
-
-bool sisdb_collect_load_info(s_sisdb_collect *collect_, s_sisdb_cfg_info *info_)
-{
-	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
-	if (!buffer)
-	{
-		return false;
-	}
-	info_->dot = sisdb_field_get_uint_from_key(collect_->db, "dot", buffer);
-	info_->vol_unit = sisdb_field_get_uint_from_key(collect_->db, "vol-unit", buffer);
-	info_->prc_unit = sisdb_field_get_uint_from_key(collect_->db, "prc-unit", buffer);
-	sis_sdsfree(buffer);
-	return true;
-}

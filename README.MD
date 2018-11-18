@@ -91,8 +91,7 @@ sisdb是一个开源的使用ANSI C语言编写、支持网络、基于内存并
 
    ```shell
     git clone  https://github.com/seerline/sisdb.git
-    cd sisdb/src/
-    cmake .
+    cd sisdb
     make
    ```
 
@@ -202,7 +201,6 @@ sisdb是一个开源的使用ANSI C语言编写、支持网络、基于内存并
    [db]  表示从哪个数据集合分发的指令
    [key] 表示取哪只股票数据
    key == *   表示返回符合条件股票最后一条记录的集合数据，
-   key == **  表示返回符合条件的股票代码列表，
 
    [command] 可有可无，由command定义数据范围和字段范围
 
@@ -241,13 +239,14 @@ sisdb是一个开源的使用ANSI C语言编写、支持网络、基于内存并
    [key] 表示取哪只股票数据，必须有明确的代码 
    [data] 表示跟的数据，
 
-> [db].sset [key].day [data]
+> [db].out [key].day [format]
    
    以二进制格式传输数据 
 
    [db]  表示从哪个数据集合分发的指令
    [key] 表示取哪只股票数据，必须有明确的代码 
-   [data] 表示跟的数据，
+   [format] 表示输出数据的格式， 支持json、array、csv、二进制格式
+
 
 ## 配置说明
 

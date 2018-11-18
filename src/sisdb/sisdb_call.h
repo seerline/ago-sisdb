@@ -16,7 +16,7 @@
 #include "sis_time.h"
 #include "sis_json.h"
 #include "sis_str.h"
-#include "sis_stock.h"
+#include "sisdb_sys.h"
 
 #include "sisdb_collect.h" 
 
@@ -24,6 +24,7 @@ typedef s_sis_sds _sisdb_call_proc(s_sis_db *s_,const char *com_);
 
 
 #define SIS_QUERY_COM_NORMAL  "{\"format\":\"struct\"}"
+#define SIS_QUERY_COM_INFO  "{\"format\":\"struct\",\"fields\":\"dot,prc-unit,vol-unit\"}"
 // #define SIS_QUERY_COM_LAST    "{\"format\":\"struct\",\"range\":{\"start\":-1}}"
 #define SIS_QUERY_COM_SEARCH  "{\"format\":\"struct\",\"search\":{\"min\":%d,\"max\":%d}}"
 

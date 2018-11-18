@@ -33,42 +33,27 @@ IF (CMAKE_SIZEOF_VOID_P MATCHES 4)
 ENDIF ()
 
 #########################目录设置#############################
+SET(SISDB_PATH ../)  
 
 #设置头文件目录
 INCLUDE_DIRECTORIES(
     .
-    ./os/linux  
-    ./platform/redis 
-    ./core 
-    ./stock 
-    ./sisdb)
+    ${SISDB_PATH}core    
+    ${SISDB_PATH}os/linux
+	${SISDB_PATH}platform/redis)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
-AUX_SOURCE_DIRECTORY(./os/linux DIR_OS)
-AUX_SOURCE_DIRECTORY(./platform/redis DIR_PLATFORM)
-AUX_SOURCE_DIRECTORY(./core DIR_CORE)
-AUX_SOURCE_DIRECTORY(./stock DIR_STOCK)
-AUX_SOURCE_DIRECTORY(./sisdb DIR_SISDB)
-AUX_SOURCE_DIRECTORY(../test DIR_TEST)
+AUX_SOURCE_DIRECTORY(${SISDB_PATH}core DIR_CORE)
+AUX_SOURCE_DIRECTORY(${SISDB_PATH}os/linux DIR_SYSTEM)
+AUX_SOURCE_DIRECTORY(${SISDB_PATH}platform/redis DIR_PLATFORM)
 
 #把源文件目录设置到环境变量
 SET(SRC_LIST ${DIR_SRCS}
-             ${DIR_OS}
+             ${DIR_SYSTEM}
 	         ${DIR_PLATFORM}
-             ${DIR_SISDB}
              ${DIR_STOCK}
 	         ${DIR_CORE})
-
-SET(SRC_LIST_TEST
-             ${DIR_SRCS}
-             ${DIR_OS}
-	         ${DIR_PLATFORM}
-             ${DIR_TEST}
-             ${DIR_SISDB}
-             ${DIR_STOCK}
-	         ${DIR_CORE})
-
 
 ########################设置编译类型和参数#####################
 
@@ -81,32 +66,32 @@ SET(CMAKE_BUILD_TYPE DEBUG)
 SET(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} ${SHOBJ_CFLAGS}")
 
 # 指定编译类型为RELEASE
-#SET(CMAKE_BUILD_TYPE RELEASE) 
+# SET(CMAKE_BUILD_TYPE RELEASE) 
 # 指定编译参数
-#SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+# SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
 ######################生成可执行文件##########################
 # 设置输出文件目录
-SET(EXECUTABLE_OUTPUT_PATH ../test)  
+# SET(EXECUTABLE_OUTPUT_PATH ../test)  
 
-#设置需要链接的库目录
-#LINK_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/./lib/linux64)
+# 设置需要链接的库目录
+# LINK_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/./lib/linux64)
 
-#设置所有需要链接的库名到 LIBRARIES 环境变量
-#SET(LIBRARIES libbson-1.0.so libmongoc-1.0.so pthread z m iconv charset)
-SET(LIBRARIES_TEST pthread z m iconv)
+# 设置所有需要链接的库名到 LIBRARIES 环境变量
+# SET(LIBRARIES libbson-1.0.so libmongoc-1.0.so pthread z m iconv charset)
+# SET(LIBRARIES_TEST pthread z m iconv)
 
 #生成可执行文件
-ADD_EXECUTABLE(test ${SRC_LIST_TEST})
+# ADD_EXECUTABLE(test ${SRC_LIST_TEST})
 
-#把LIBRARIES链接到输出文件中
-TARGET_LINK_LIBRARIES(test ${LIBRARIES_TEST})
+# 把LIBRARIES链接到输出文件中
+# TARGET_LINK_LIBRARIES(test ${LIBRARIES_TEST})
 
 ###########################################################
 
 ######################生成链接库文件##########################
 # 设置输出库文件目录
-SET(LIBRARY_OUTPUT_PATH ../bin/)  
+SET(LIBRARY_OUTPUT_PATH ../../bin/)  
 
 #生成动态库目标
 ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})

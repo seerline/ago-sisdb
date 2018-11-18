@@ -8,7 +8,7 @@ static struct s_sisdb_call _sisdb_call_table[] = {
 	{"init", sisdb_call_market_init, "init market info. : SH"},
 	{"findcode", sisdb_call_match_code_sds, "match search of info. : {\"match\":\"YH\",\"count\":5}"},
 	// format - json
-	{"collects", sisdb_call_get_keys_sds, "get collects. : {\"table\":\"exch\",\"format\":\"array\"}"},
+	{"collects", sisdb_call_get_keys_sds, "get collects. : {\"table\":\"now\",\"format\":\"array\"}"},
 	// format - json array
 	{"getprice", sisdb_call_get_price_sds, "get mul stock price. : {\"codes\":\"SH600600,SZ000001\"}"},
 	{"getright", sisdb_call_get_right_sds, "get exright val. : {\"code\":\"SH600603\",\"curr-date\":20180515,\"fixed-date\":20181010,\"close\":7.20}"}};
@@ -411,12 +411,12 @@ int _sisdb_get_code_dot(s_sis_db *db_, const char *code_)
 	char key[SIS_MAXLEN_KEY];
 	sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", code_, SIS_TABLE_INFO);
 
-	s_sis_sds info = sisdb_collect_get_sds(db_, key, SIS_QUERY_COM_NORMAL);
+	s_sis_sds info = sisdb_collect_get_sds(db_, key, SIS_QUERY_COM_INFO);
 	if (!info)
 	{
 		return o;
 	}
-	s_stock_info *info_ps = (s_stock_info *)info;
+	s_sisdb_sys_info *info_ps = (s_sisdb_sys_info *)info;
 	o = info_ps->dot;
 	sis_sdsfree(info);
 	return o;
@@ -452,14 +452,14 @@ s_sis_sds sisdb_call_get_right_sds(s_sis_db *db_, const char *com_)
 		sis_sprintf(sql, 64, SIS_QUERY_COM_SEARCH, start, stop);
 	}
 	char key[SIS_MAXLEN_KEY];
-	sis_sprintf(key, SIS_MAXLEN_KEY, "%s.right", code);
+	sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", code, SIS_TABLE_RIGHT);
 	s_sis_sds right = sisdb_collect_get_sds(db_, key, sql);
 	if (!right)
 	{
 		goto error;
 	}
 
-	s_sis_struct_list *right_list = sis_struct_list_create(sizeof(s_stock_right), right, sdslen(right));
+	s_sis_struct_list *right_list = sis_struct_list_create(sizeof(s_sisdb_right), right, sdslen(right));
 	sis_sdsfree(right);
 
 	int dot = _sisdb_get_code_dot(db_, code);

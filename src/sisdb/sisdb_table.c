@@ -4,57 +4,6 @@
 #include "sisdb_fields.h"
  // 目前只支持3个必须的值
 
-void _sisdb_table_load_config(s_sis_db *db_, s_sis_json_node *config_)
-{
-	s_sisdb_cfg_info *info = sis_struct_list_first(db_->cfg_infos);
-	if (!info) 
-	{
-		info = (s_sisdb_cfg_info *)sis_malloc(sizeof(s_sisdb_cfg_info));
-		sis_struct_list_push(db_->cfg_infos, info);
-	}
-	// 默认的配置没有market信息
-	memset(info, 0 ,sizeof(s_sisdb_cfg_info));
-	if (sis_json_cmp_child_node(config_, "dot")) 
-	{
-		info->dot = sis_json_get_int(config_, "dot", 2);
-	}
-	if (sis_json_cmp_child_node(config_, "prc-unit")) 
-	{
-		info->prc_unit = sis_json_get_int(config_, "prc-unit", 1);
-	}
-	if (sis_json_cmp_child_node(config_, "vol-unit")) 
-	{
-		info->vol_unit = sis_json_get_int(config_, "vol-unit", 100);
-	}
-
-	s_sisdb_cfg_exch *exch = sis_map_buffer_get(db_->cfg_exchs, SIS_DEFAULT_EXCH); 
-	if(!exch) 
-	{
-		exch = (s_sisdb_cfg_exch *)sis_malloc(sizeof(s_sisdb_cfg_exch));
-		sis_map_buffer_set(db_->cfg_exchs, SIS_DEFAULT_EXCH, exch);
-	}
-	s_sis_json_node *node = sis_json_cmp_child_node(config_, "work-time");
-	if (node) 
-	{
-		exch->work_time.first = sis_json_get_int(node, "0", 900);
-		exch->work_time.second = sis_json_get_int(node, "1", 1530);
-	}
-	node = sis_json_cmp_child_node(config_, "trade-time");
-	if (node) 
-	{
-		int index = 0;
-       	s_sis_json_node *next = sis_json_first_node(node);
-        while (next)
-        {
-            exch->trade_time[index].first = sis_json_get_int(next, "0", 930);
-            exch->trade_time[index].second = sis_json_get_int(next, "1", 1130);
-			index++;
-            next = next->next;
-        } 
-		exch->trade_slot = index;
-	}	
-}
-
 //com_为一个json格式字段定义
 s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_node *com_)
 {
@@ -75,7 +24,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	tb->control.issubs = 0;
 	tb->control.iszip = 0;
 	//
-	tb->collects = sis_string_list_create_w();
+	tb->collect_list = sis_string_list_create_w();
 
 	tb->version = (uint32)sis_time_get_now();
 	tb->name = sis_sdsnew(name_);
@@ -88,14 +37,6 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	s_sis_map_define *mm = NULL;
 	const char *strval = NULL;
 
-	// table 加载完成时，config一定会有一条缺省信息
-	s_sis_json_node *node = sis_json_cmp_child_node(com_, "system");
-	if (node) 
-	{
-		tb->control.issys = 1;
-		_sisdb_table_load_config(db_, node);
-	}
-	
 	strval = sis_json_get_str(com_, "scale");
 	mm = sisdb_find_map_define(db_->map, strval, SIS_MAP_DEFINE_TIME_SCALE);
 	if (mm)
@@ -186,7 +127,7 @@ void sisdb_table_destroy(s_sisdb_table *tb_)
 	sis_dict_iter_free(di);
 	sis_map_pointer_destroy(tb_->field_map);
 
-	sis_string_list_destroy(tb_->collects);
+	sis_string_list_destroy(tb_->collect_list);
 	sis_string_list_destroy(tb_->publishs);
 
 	sis_string_list_destroy(tb_->field_name);
@@ -247,13 +188,26 @@ int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *tb_, s_sis_json_node *fi
 		{
 			flags.type = map->uid;
 		}
-
 		flags.len = sis_json_get_int(node, "2", 4);
 		if(flags.type==SIS_FIELD_TYPE_STRING||flags.type==SIS_FIELD_TYPE_JSON)
 		{
 			flags.len = sizeof(void *);
 		}
 		flags.dot = sis_json_get_int(node, "3", 0);
+
+		if(!db_->special) 
+		{
+			// 非专用数据表不支持某些字段类型
+			if (flags.type == SIS_FIELD_TYPE_PRICE&&flags.dot==0)
+			{
+				flags.type = SIS_FIELD_TYPE_FLOAT;
+				flags.dot = 2;
+			}
+			if (flags.type == SIS_FIELD_TYPE_VOLUME||flags.type == SIS_FIELD_TYPE_AMOUNT)
+			{
+				flags.type = SIS_FIELD_TYPE_UINT;
+			}
+		}
 
 		s_sisdb_field *unit = sisdb_field_create(index++, name, &flags);
 		unit->offset = offset;

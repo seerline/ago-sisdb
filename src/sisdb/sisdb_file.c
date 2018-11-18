@@ -56,7 +56,8 @@ bool _sisdb_file_save_collects(s_sis_db *db_, sis_file_handle sdbfp_, sis_file_h
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        if(val->db->control.issys) {
+        if(val->db->control.issys) 
+        {
             _sisdb_file_save_collect_struct(sis_dict_getkey(de), val, sdbfp_, zerofp_);
         }
     }
@@ -66,7 +67,8 @@ bool _sisdb_file_save_collects(s_sis_db *db_, sis_file_handle sdbfp_, sis_file_h
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-        if(!val->db->control.issys) {
+        if(!val->db->control.issys) 
+        {
             _sisdb_file_save_collect_struct(sis_dict_getkey(de), val, sdbfp_, zerofp_);
         }
     }
@@ -361,7 +363,7 @@ int _sisdb_file_load_collect_alone(s_sis_db *db_, const char *key_, const char *
     // 先储存上一次的数据，
     o = sisdb_collect_update_block(collect, in_, ilen_);
 
-    sisdb_write_config(db_, key_, collect);        
+    sisdb_sys_check_write(db_, key_, collect);        
  
     return o;
 }
@@ -429,3 +431,4 @@ bool sisdb_file_load(s_sisdb_server *server_)
     server_->db->loading = false;
     return true;
 }
+
