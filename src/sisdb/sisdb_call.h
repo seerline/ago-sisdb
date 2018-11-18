@@ -49,11 +49,10 @@ s_sis_sds sisdb_call_list_command(s_sis_db *db_, const char *com_);
 s_sis_sds sisdb_call_market_init(s_sis_db *db_, const char *com_);
 
 s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_,const char *com_);
-s_sis_sds sisdb_call_get_right_sds(s_sis_db *db_,const char *com_);
 
 // 仅仅在info表中获取匹配的代码
-s_sis_sds sisdb_call_match_code_sds(s_sis_db *db_,const char *com_);
+s_sis_sds sisdb_call_get_code_sds(s_sis_db *db_,const char *com_);
 // 得到任意数据表中共有多少key
-s_sis_sds sisdb_call_get_keys_sds(s_sis_db *db_, const char *com_); 
+s_sis_sds sisdb_call_get_collects_sds(s_sis_db *db_, const char *com_); 
 
 #endif  /* _SIS_COMMAND_H */

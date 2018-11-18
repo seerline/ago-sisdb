@@ -55,14 +55,6 @@ typedef struct s_sisdb_sys_exch {
 	s_sis_time_pair  trade_time[SIS_TRADETIME_MAX_NUM]; // [[930,1130],[1300,1500]] 交易时间，给分钟线用
 }s_sisdb_sys_exch;
 
-typedef struct s_sisdb_right
-{
-	uint32 time;	  // 日期
-	int64 prc_factor; // 价格因子  正代表价格跌，负代表价格涨 (*1000) 和原来价格相加
-	int64 vol_factor; // 成交量因子 正代表股份增加， 负代表股数缩减  (*1000) 和原来股数相乘
-					  //  实际为一个浮点数，放大10000倍保存，代表保留到小数位4位
-} s_sisdb_right;
-
 #pragma pack(pop)
 
 s_sisdb_sys_exch *sisdb_sys_create_exch(s_sis_db *db_, const char *code_);
@@ -82,9 +74,6 @@ uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sisdb_sys_exch *cfg_);
 ///////////--------------------------///
 
 bool sis_stock_cn_get_fullcode(const char *code_, char *fc_, size_t len);
-
-uint32 sis_stock_exright_vol(uint32 now_, uint32 stop_, uint32 vol_, s_sis_struct_list *rights_);
-uint32 sis_stock_exright_price(uint32 now_, uint32 stop_, uint32 price_, int unit_, s_sis_struct_list *rights_);
 
 #endif
 //_SIS_STOCK_H
