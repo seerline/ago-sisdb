@@ -324,7 +324,12 @@ s_sis_sds sisdb_show_db_info_sds(s_sis_db *db_)
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_table *val = (s_sisdb_table *)sis_dict_getval(de);
-            list = sdscatprintf(list, "  %-10s : fields=%2d, len=%u\n",
+            if (val->control.issys) {
+                list = sdscat(list, "[sys] ");
+            } else {
+                list = sdscat(list, "      ");
+            }
+            list = sdscatprintf(list, "%-10s : fields=%2d, len=%u\n",
                                 val->name,
                                 sis_string_list_getsize(val->field_name),
                                 sisdb_table_get_fields_size(val));

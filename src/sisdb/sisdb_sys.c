@@ -169,7 +169,7 @@ void sisdb_sys_flush_work_time(void *collect)
 	printf("work [%s]-- %d\n", exch->market, (int)exch->init_time);
 	sis_sdsfree(buffer);
 }
-
+  
 void sisdb_sys_load_default(s_sis_db *db_, s_sis_json_node *table_)
 {
 	if (!db_->special)

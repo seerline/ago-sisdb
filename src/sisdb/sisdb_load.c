@@ -6,6 +6,7 @@
 // 一个实例只有一个server，但是可以有多个
 char *load_sisdb_open(const char *conf_)
 {
+		
 	if (!sis_file_exists(conf_))
 	{
 		sis_out_log(3)("conf file %s no finded.\n", conf_);

@@ -1253,7 +1253,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *unit_, const char *
 			jval = jval->next;
 			continue;
 		}
-
+ 
 		for (int k = 0; k < fields; k++)
 		{
 			const char *fname = sis_string_list_get(tb->field_name, k);

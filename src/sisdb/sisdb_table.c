@@ -9,7 +9,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 {
 	s_sisdb_table *tb = sisdb_get_table(db_, name_);
 	if (tb)
-	{
+	{ 
 		sisdb_table_destroy(tb);
 	}
 	// 先加载默认配置
