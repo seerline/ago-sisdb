@@ -25,7 +25,6 @@ typedef s_sis_sds _sisdb_call_proc(s_sis_db *s_,const char *com_);
 
 #define SIS_QUERY_COM_NORMAL  "{\"format\":\"struct\"}"
 #define SIS_QUERY_COM_INFO  "{\"format\":\"struct\",\"fields\":\"dot,prc-unit,vol-unit\"}"
-// #define SIS_QUERY_COM_LAST    "{\"format\":\"struct\",\"range\":{\"start\":-1}}"
 #define SIS_QUERY_COM_SEARCH  "{\"format\":\"struct\",\"search\":{\"min\":%d,\"max\":%d}}"
 
 #pragma pack(push,1)
@@ -55,4 +54,4 @@ s_sis_sds sisdb_call_get_code_sds(s_sis_db *db_,const char *com_);
 // 得到任意数据表中共有多少key
 s_sis_sds sisdb_call_get_collects_sds(s_sis_db *db_, const char *com_); 
 
-#endif  /* _SIS_COMMAND_H */
+#endif  /* _SIS_CALL_H */

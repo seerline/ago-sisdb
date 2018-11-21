@@ -602,20 +602,3 @@ uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sisdb_sys_exch *cfg_)
 	}
 	return out;
 }
-
-bool sis_stock_cn_get_fullcode(const char *code_, char *fc_, size_t len)
-{
-	if (!sis_strcase_match("60", code_))
-	{
-		sis_sprintf(fc_, len, "SH%s", code_);
-	}
-	else if (!sis_strcase_match("00", code_) || !sis_strcase_match("300", code_))
-	{
-		sis_sprintf(fc_, len, "SZ%s", code_);
-	}
-	else
-	{
-		return false;
-	}
-	return true;
-}

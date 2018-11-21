@@ -1,7 +1,7 @@
-
 //******************************************************
-// Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
+// Copyright (C) 2018, coollyer <seerlinecoin@gmail.com>
 //*******************************************************
+
 
 #ifndef _SISDB_MAP_H
 #define _SISDB_MAP_H
@@ -95,10 +95,10 @@
 #define SIS_DATA_TYPE_STRING  'S'   // 后面开始为数据 字符串
 #define SIS_DATA_TYPE_JSON    'J'   // 直接传数据  json文档 数组可能消失，利用 groups 表示多支股票的数据
 							        // value 表示最新的一维数组  values 表示二维数组	
-#define SIS_DATA_TYPE_ARRAY   'A'   // 直接传数据
+#define SIS_DATA_TYPE_ARRAY   'A'   // 数组格式
 #define SIS_DATA_TYPE_CSV     'C'   // csv格式，需要处理字符串的信息
 
-#pragma pack(push,1)
+#pragma pack(push,1)  
  
 typedef struct s_sis_map_define{
 	const char *key;

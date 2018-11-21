@@ -73,7 +73,5 @@ uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sisdb_sys_exch *cfg_);
 
 ///////////--------------------------///
 
-bool sis_stock_cn_get_fullcode(const char *code_, char *fc_, size_t len);
-
 #endif
 //_SIS_STOCK_H
