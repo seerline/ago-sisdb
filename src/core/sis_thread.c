@@ -8,7 +8,11 @@ bool sis_plan_task_working(s_sis_plan_task *task_)
 
 bool sis_plan_task_execute(s_sis_plan_task *task_)
 {
-	if (task_->work_mode == SIS_WORK_MODE_GAPS)
+	if (task_->work_mode == SIS_WORK_MODE_ONCE)
+	{
+		return true;
+	}
+	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
 	{
 		if (sis_thread_wait_sleep(&task_->wait, task_->work_gap.delay) == SIS_ETIMEDOUT)
 		{

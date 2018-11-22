@@ -2,7 +2,6 @@
 // Copyright (C) 2018, coollyer <seerlinecoin@gmail.com>
 //*******************************************************
 
-#include "sis_thread.h"
 #include "sisdb_io.h"
 #include "sisdb_file.h"
 #include "sisdb_map.h"

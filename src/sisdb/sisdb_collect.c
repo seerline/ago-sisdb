@@ -797,6 +797,11 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 }
 s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com_)
 {
+	s_sisdb_table *tb = sisdb_get_table_from_key(db_, key_);
+	if (!tb) 
+	{
+		return NULL;
+	}  
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
@@ -833,8 +838,6 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 		fields = sis_sdsnew("*");
 	}
 	printf("query fields = %s\n", fields);
-
-	s_sisdb_table *tb = sisdb_get_table_from_key(db_, key_);
 
 	s_sis_string_list *field_list = tb->field_name; //取得全部的字段定义
 	if (!sisdb_field_is_whole(fields))
@@ -919,6 +922,12 @@ s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_)
 
 s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const char *com_)
 {
+	s_sisdb_table *tb = sisdb_get_table(db_, dbname_);
+	if (!tb) 
+	{
+		return NULL;
+	}  
+
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
 	// printf("com_ = %s -- %lu -- %p\n", com_,strlen(com_),handle);
 	if (!handle)
@@ -957,7 +966,6 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	}
 	printf("query fields = %s\n", fields);
 
-	s_sisdb_table *tb = sisdb_get_table(db_, dbname_);
 	s_sis_string_list *field_list = tb->field_name; //取得全部的字段定义
 	if (!sisdb_field_is_whole(fields))
 	{

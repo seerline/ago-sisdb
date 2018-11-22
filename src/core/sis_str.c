@@ -503,6 +503,25 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 // 		} while (sc != 0);
 // 	}
 // }
+
+bool sis_str_get_id(char *out_, size_t olen_)
+{
+	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+	if (olen_ < 7) return false;
+
+	struct tm ptm = { 0 };
+	sis_time_check(0, &ptm);
+	int len = (int)strlen(sign);
+	out_[0] = sign[(ptm.tm_year - 118) % len];
+	out_[1] = sign[(ptm.tm_mon + 1) % len];
+	out_[2] = sign[ptm.tm_mday];
+	out_[3] = sign[ptm.tm_hour];
+	out_[4] = sign[ptm.tm_min];
+	out_[5] = sign[ptm.tm_sec];
+	out_[6] = 0;
+	return true;
+}
+
 #if 0
 #include <sis_time.h>
 

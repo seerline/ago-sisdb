@@ -45,5 +45,9 @@ int sis_str_match(const char* substr_, const char* source_, char c);
 const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_t olen_);
 
 // char *sis_strsep(char **src_, const char *sign_);
+// olen < 8 ·µ»Ø
+bool sis_str_get_id(char *out_, size_t olen_);
+// olen < 16 ·µ»Ø
+// bool sis_str_get_id_long(char *out_, size_t olen_);
 
 #endif //_SIS_STR_H
