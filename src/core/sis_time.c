@@ -131,6 +131,12 @@ int sis_time_get_dayoffset_ofday(int tstart, int tend)
 
 	return (int)((ttend - ttstart) / (24 * 3600));
 }
+int sis_time_get_offset_day(int today_, int offset_) // ??????20100101??offset??
+{
+	time_t ttstart = sis_time_make_time(today_, 0);
+	ttstart += (offset_ * 24 * 3600);
+	return sis_time_get_idate(ttstart);
+}
 int sis_time_next_work_day(int today_, int offset_ )
 {
 	time_t tt = sis_time_make_time(today_, 0);

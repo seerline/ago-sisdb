@@ -24,6 +24,8 @@ int sis_time_get_month_ofday(int today);// 判断是几月[0,11]
 int sis_time_get_dayoffset_ofday(int tstart, int tend);// 判断中间间隔几天
 int sis_time_next_work_day(int today_, int offset_);//跳过周末
 
+int sis_time_get_offset_day(int today_, int offset_); // 根据当前日期20100101偏移offset天，
+// < 0 往前数 > 0 往后数
 bool sis_time_str_is_date(char* date); //判断字符串是不是日期20150212
 
 void sis_time_format_minute(char * out_, size_t olen_, time_t tt_); //"930"

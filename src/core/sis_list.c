@@ -223,6 +223,17 @@ void *sis_struct_list_next(s_sis_struct_list *list_, void *current_, int offset)
 		return NULL;
 	}
 }
+int sis_struct_list_setlen(s_sis_struct_list *list_, int count_)
+{
+	if (list_->mode == STRUCT_LIST_POINTER)
+	{
+		return 0;
+	}
+	struct_list_setsize(list_, count_);
+	memset(list_->buffer, 0, count_ * list_->len);
+	list_->count = count_;
+	return count_;	
+}
 
 int sis_struct_list_set(s_sis_struct_list *list_, void *in_, int inlen_)
 {

@@ -196,7 +196,6 @@ void sis_message_node_destroy(void *in_) {
 	sis_sdsfree(in->key);
 	sis_sdsfree(in->argv);
 	sis_sdsfree(in->address);
-	sis_sdsfree(in->format);
 
 	sis_free(in);
 }

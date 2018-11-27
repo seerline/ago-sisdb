@@ -29,8 +29,6 @@ typedef struct s_sis_message_node {
 	s_sis_sds	argv;      //来源信息的参数，为json格式
 	s_sis_sds	address;   //来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址
 
-	s_sis_sds   format;    //set发送的数据格式 struct json
-
 	s_sis_list_node   *links;     //来源信息专用, 数据来源链路，每次多一跳就增加一个节点
 	s_sis_list_node   *nodes;     //附带的信息数据链表  node->value 为 s_sis_sds sis_
 

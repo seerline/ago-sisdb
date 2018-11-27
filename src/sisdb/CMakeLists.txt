@@ -102,7 +102,7 @@ ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})
 
 #设置链接库的环境变量
 #SET(LIBRARIES pthread c m iconv charset)
-SET(LIBRARIES pthread c m iconv)
+SET(LIBRARIES pthread c m)
 # 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
 

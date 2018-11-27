@@ -264,7 +264,39 @@ int sis_str_subcmp_head(const char *sub, const char *s, char c)  //-1没有匹配的
 	}
 	return -1;
 }
-
+// s 串为 “01,02”, 检查sub中有没有这些字串，sub=“1111“ 返回-1， ”10200“ 返回 0 表示发现字串
+int sis_str_subcmp_match(const char *sub, const char *s, char c)  //-1没有匹配的
+{
+	if (!sub || !s) {
+		return -1;
+	}
+	char str[16];
+	int i, pos, len, count;
+	len = (int)strlen(s);
+	pos = 0;
+	for (i = 0, count = 0; i<len; i++)
+	{
+		if (s[i] == c)
+		{
+			sis_strncpy(str, 16,&s[pos], i - pos);
+			if (!strstr(sub, str))
+			{
+				return count;
+			}
+			pos = i + 1;
+			count++;
+		}
+	}
+	if (i>pos)
+	{   //strncmp
+		sis_strncpy(str, 16, &s[pos], i - pos);
+		if (!strstr(sub, str))
+		{
+			return count;
+		}
+	}
+	return -1;
+}
 const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t size_)
 {
 	if (!e_||!s_) return NULL;
@@ -299,10 +331,10 @@ const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t si
 // source = aaa,bbbbbb,0001 
 int sis_str_match(const char* substr_, const char* source_, char c)
 {
-	char *s = strstr(source_,substr_);
+	char *s = strstr(source_, substr_);
 	if (s) {
-		int len =strlen(substr_);
-		s +=len;
+		int len = strlen(substr_);
+		s += len;
 		// if(!strcmp(substr_,"603096")||!strcmp(substr_,"KDL")) {
 		// 	printf("c == %x\n",*s);
 		// }

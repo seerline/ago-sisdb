@@ -370,11 +370,15 @@ bool _sisdb_trans_of_range(s_sisdb_collect *unit_, int *start_, int *stop_)
 }
 bool _sisdb_trans_of_count(s_sisdb_collect *unit_, int *start_, int *count_)
 {
-	if (*count_ <= 0)
-	{
-		return false;
-	}
+	// if (*count_ == 0)
+	// {
+	// 	return false;
+	// }
 	int llen = sisdb_collect_recs(unit_);
+	if (*count_ == 0)
+	{
+		*count_ =  llen;
+	}	
 
 	if (*start_ < 0)
 	{
@@ -728,6 +732,7 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 	int start, stop;
 	int count = 0;
 	int maxX, minX;
+	int offset = 0;
 
 	s_sis_json_node *search = sis_json_cmp_child_node(handle->node, "search");
 	if (!search)
@@ -740,12 +745,19 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 	if (by_time)
 	{
 		min = sis_json_get_int(search, "min", 0);
+		if (sis_json_cmp_child_node(search, "offset"))
+		{
+			offset = sis_json_get_int(search, "offset", 0);
+		}		
 		if (sis_json_cmp_child_node(search, "count"))
 		{
 			count = sis_json_get_int(search, "count", 1);
 			start = sisdb_collect_search_right(collect, min, &minX);
 			if (start >= 0)
 			{
+				start += offset;
+				if (start < 0) start = 0;
+				// printf("---- %d %d  %d %d %d\n",start, collect->value->count, offset, min, minX);
 				o = sisdb_collect_get_of_count_sds(collect, start, count);
 			}
 		}
@@ -758,6 +770,8 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 				stop = sisdb_collect_search_left(collect, max, &maxX);
 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
 				{
+					start += offset;
+					if (start < 0) start = 0;
 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
 			}
@@ -766,6 +780,8 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 				start = sisdb_collect_search(collect, min);
 				if (start >= 0)
 				{
+					start += offset;
+					if (start < 0) start = 0;
 					o = sisdb_collect_get_of_count_sds(collect, start, 1);
 				}
 			}

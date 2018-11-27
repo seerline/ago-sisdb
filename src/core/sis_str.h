@@ -26,6 +26,8 @@ void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 int sis_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
 int sis_str_subcmp_head(const char *sub, const char *s, char c);  //-1没有匹配的,比较头部几个字符是否相同
 
+int sis_str_subcmp_match(const char *sub, const char *s, char c);  //-1没有匹配的,比较头部几个字符是否相同
+
 const char *sis_str_replace(const char *in, char ic_,char oc_); // 把in中的ic替换为oc
 void sis_str_to_lower(char *in_);
 void sis_str_to_upper(char *in_);

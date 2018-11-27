@@ -1,5 +1,6 @@
 
 #include "sis_redis.h"
+#include "sis_comm.h"
 
  
 void sis_redis_open(s_sis_socket *sock_)
@@ -97,8 +98,6 @@ bool _sis_redis_check_connect(s_sis_socket *sock)
 	// s_sis_sds	argv;      //来源信息的参数，为json格式, 无需返回
 	// s_sis_sds	address;   //来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址
 
-	// s_sis_sds   format;    //set发送的数据格式 struct json
-
 	// s_sis_list_node   *links;     //来源信息专用, 数据来源链路，每次多一跳就增加一个节点
 	// s_sis_list_node   *nodes;     //附带的信息数据链表  node->value 为 s_sis_sds 类型
 
@@ -107,8 +106,8 @@ int _sis_redis_get_cmds(s_sis_message_node * mess_)
 	int o = 0;
 	if (mess_->command) o++;
 	if (mess_->key) o++;
+	if (mess_->argv) o++;
 	if (mess_->address) o++;
-	if (mess_->format) o++;
 	o += sis_sdsnode_get_count(mess_->nodes);
 	return o++;
 }
@@ -141,10 +140,10 @@ bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 		index++;
 	}
 
-	if (mess_->format)
+	if (mess_->argv)
 	{
-		argvlen[index] = sis_sdslen(mess_->format);
-		argvstr[index] = mess_->format;
+		argvlen[index] = sis_sdslen(mess_->argv);
+		argvstr[index] = mess_->argv;
 		index++;
 	}
 
@@ -176,7 +175,64 @@ bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 
 s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_node *mess_)
 {
-	return NULL;
+	// printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
+	if (!_sis_redis_check_connect(sock_)){
+		printf("redis check connect fail.\n");
+		return false;
+	}
+
+	int argc = _sis_redis_get_cmds(mess_);
+	char **argvstr = (char **)sis_malloc(sizeof(char *)* argc);
+	size_t *argvlen = (size_t *)sis_malloc(sizeof(size_t)* argc);
+	memset(argvstr, 0, sizeof(char *)* argc);
+	memset(argvlen, 0, sizeof(size_t)* argc);
+
+	int index = 0;
+	if (mess_->command)
+	{
+		argvlen[index] = sis_sdslen(mess_->command);
+		argvstr[index] = mess_->command;
+		index++;
+	}
+
+	if (mess_->key)
+	{
+		argvlen[index] = sis_sdslen(mess_->key);
+		argvstr[index] = mess_->key;
+		index++;
+	}
+
+	if (mess_->argv)
+	{
+		argvlen[index] = sis_sdslen(mess_->argv);
+		argvstr[index] = mess_->argv;
+		index++;
+	}
+
+	s_sis_message_node *node = NULL;
+
+	redisReply *reply;
+
+	reply = (redisReply *)redisCommandArgv((redisContext *)sock_->handle_read, index, (const char **)&(argvstr[0]), &(argvlen[0]));
+	if (reply)
+	{
+		node = mess_;
+		if(reply->type == REDIS_REPLY_STRING) 
+		{
+			node->nodes = sis_sdsnode_create(reply->str, reply->len);
+		} else {
+
+		}
+		printf("query data type %s (%s) [%d:%s] \n", mess_->argv, mess_->key, (int)reply->len, reply->str);		
+		freeReplyObject(reply);
+	} else 
+	{
+		printf("connect break. \n");	
+		sock_->status = SIS_NET_WAITCONNECT;
+	}
+	sis_free((void *)argvstr);
+	sis_free((void *)argvlen);
+	return node;
 }
 
 #if 0
@@ -187,7 +243,7 @@ void _test_set_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, s
 	
 	node->command = sdsempty();
 	node->command = sdscatfmt(node->command, "%s.set", socket->url.dbname);
-	node->format = sis_sdsnew("json");
+	node->argv = sis_sdsnew("json");
 	node->key = sdsempty();
 	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
 	node->nodes = sis_sdsnode_create(in_, len_);
@@ -197,6 +253,24 @@ void _test_set_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, s
 	sis_message_node_destroy(node);
 }
 
+void _test_get_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
+{
+	s_sis_message_node *node=sis_message_node_create();
+	
+	node->command = sdsempty();
+	node->command = sdscatfmt(node->command, "%s.get", socket->url.dbname);
+	// node->argv = sis_sdsnew("json");
+	node->key = sdsempty();
+	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
+	node->argv = sdsnewlen(in_, len_);
+
+	s_sis_message_node *reply = sis_socket_query_message(socket, node);
+	if (reply)
+	{
+		printf("reply : %s\n",(char *)reply->nodes->value);
+	}	
+	sis_message_node_destroy(node);
+}
 int main()
 {
 	s_sis_url url = {
@@ -212,8 +286,9 @@ int main()
 	s_sis_socket *socket = sis_socket_create(&url,SIS_NET_ROLE_REQ);
 	sis_redis_open(socket);
 
-	char info[] = "{\"name\"=\"123456\"}";
-	_test_set_socket(socket, "sh900600", "info", info, strlen(info));
+	// char info[] = "{\"name\"=\"123456\"}";
+	// _test_set_socket(socket, "sh900600", "info", info, strlen(info));
+	_test_get_socket(socket, "sh", "_exch", "{\"format\":\"struct\"}", 20); 
 
 	sis_redis_close(socket);
 }
