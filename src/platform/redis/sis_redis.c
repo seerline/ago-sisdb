@@ -223,7 +223,7 @@ s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_n
 		} else {
 
 		}
-		printf("query data type %s (%s) [%d:%s] \n", mess_->argv, mess_->key, (int)reply->len, reply->str);		
+		// printf("query data type %s (%s) [%d:%s] \n", mess_->argv, mess_->key, (int)reply->len, reply->str);		
 		freeReplyObject(reply);
 	} else 
 	{

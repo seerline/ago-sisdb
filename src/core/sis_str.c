@@ -329,6 +329,7 @@ const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t si
 }
 // 判断 字符串是否在source中， 如果在，并且完全匹配就返回0 否则返回1 没有匹配就返回-1
 // source = aaa,bbbbbb,0001 
+// strstr不确定是否会修改source
 int sis_str_match(const char* substr_, const char* source_, char c)
 {
 	char *s = strstr(source_, substr_);
@@ -352,6 +353,9 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 	if (s) {
 		sis_strncpy(out_, olen_, src_, s - src_);
 		return s + strlen(sign_);
+	} else
+	{
+		sis_strncpy(out_, olen_, src_, strlen(src_));
 	}
 	return NULL;
 }
@@ -390,8 +394,9 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 
 bool sis_str_get_id(char *out_, size_t olen_)
 {
-	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
-	if (olen_ < 7) return false;
+	// static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; // 36
+	if (olen_ < 9) return false;
 
 	struct tm ptm = { 0 };
 	sis_time_check(0, &ptm);
@@ -400,9 +405,11 @@ bool sis_str_get_id(char *out_, size_t olen_)
 	out_[1] = sign[(ptm.tm_mon + 1) % len];
 	out_[2] = sign[ptm.tm_mday];
 	out_[3] = sign[ptm.tm_hour];
-	out_[4] = sign[ptm.tm_min];
-	out_[5] = sign[ptm.tm_sec];
-	out_[6] = 0;
+	out_[4] = sign[ptm.tm_min % len];
+	out_[5] = sign[ptm.tm_min / len];
+	out_[6] = sign[ptm.tm_sec % len];
+	out_[7] = sign[ptm.tm_sec / len];
+	out_[8] = 0;
 	return true;
 }
 

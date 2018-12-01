@@ -24,7 +24,7 @@ typedef s_sis_sds _sisdb_call_proc(s_sis_db *s_,const char *com_);
 
 
 #define SIS_QUERY_COM_NORMAL  "{\"format\":\"struct\"}"
-#define SIS_QUERY_COM_INFO  "{\"format\":\"struct\",\"fields\":\"dot,prc-unit,vol-unit\"}"
+#define SIS_QUERY_COM_INFO    "{\"format\":\"struct\",\"fields\":\"dot,prc-unit,vol-unit\"}"
 #define SIS_QUERY_COM_SEARCH  "{\"format\":\"struct\",\"search\":{\"min\":%d,\"max\":%d}}"
 
 #pragma pack(push,1)

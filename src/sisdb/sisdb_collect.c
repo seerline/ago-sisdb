@@ -370,16 +370,12 @@ bool _sisdb_trans_of_range(s_sisdb_collect *unit_, int *start_, int *stop_)
 }
 bool _sisdb_trans_of_count(s_sisdb_collect *unit_, int *start_, int *count_)
 {
-	// if (*count_ == 0)
-	// {
-	// 	return false;
-	// }
-	int llen = sisdb_collect_recs(unit_);
 	if (*count_ == 0)
 	{
-		*count_ =  llen;
-	}	
-
+		return false;
+	}
+	int llen = sisdb_collect_recs(unit_);
+	
 	if (*start_ < 0)
 	{
 		*start_ = llen + *start_;
@@ -756,7 +752,8 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 			if (start >= 0)
 			{
 				start += offset;
-				if (start < 0) start = 0;
+				start = sis_max(0, start);
+				if(offset < 0) count -= offset;
 				// printf("---- %d %d  %d %d %d\n",start, collect->value->count, offset, min, minX);
 				o = sisdb_collect_get_of_count_sds(collect, start, count);
 			}
@@ -771,7 +768,8 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
 				{
 					start += offset;
-					if (start < 0) start = 0;
+					start = sis_max(0, start);
+					if(offset < 0) count -= offset;
 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
 			}
@@ -781,7 +779,8 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 				if (start >= 0)
 				{
 					start += offset;
-					if (start < 0) start = 0;
+					start = sis_max(0, start);
+					if(offset < 0) count -= offset;
 					o = sisdb_collect_get_of_count_sds(collect, start, 1);
 				}
 			}
@@ -922,7 +921,7 @@ void sisdb_collect_groups_json_push(s_sis_json_node *node_, char *code, s_sisdb_
 {
 	s_sis_json_node *val = _sis_struct_to_array(unit_, in_, fields_);
 	s_sis_json_node *groups = sis_json_cmp_child_node(node_, SIS_JSON_KEY_GROUPS);
-	printf("groups[%p]: key=%s\n ", groups,code);
+	// printf("groups[%p]: key=%s\n ", groups,code);
 	sis_json_object_add_node(groups, code, val);
 }
 s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_)
@@ -1011,7 +1010,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 			} 
 		}
 
-		printf("collect = %s db = %s %s\n", (char *)sis_dict_getkey(de), collect->db->name, dbname_);
+		// printf("collect = %s db = %s %s\n", (char *)sis_dict_getkey(de), collect->db->name, dbname_);
 		s_sis_sds val = sisdb_collect_get_of_count_sds(collect, -1, 1);
 
 		// printf("out = %lu -- %lu\n", sis_sdslen(out),sis_sdslen(val));
@@ -1460,7 +1459,7 @@ s_sis_sds sisdb_make_catch_moved_sds(s_sisdb_collect *unit_, const char *in_)
 int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_)
 {
 	s_sisdb_table *tb = unit_->db;
-
+	// printf("tb->append_method [%d]\n", tb->append_method);
 	if (tb->append_method == SIS_ADD_METHOD_ALWAYS)
 	{
 		sis_struct_list_push(unit_->value, (void *)in_);
@@ -1484,6 +1483,22 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_)
 	}
 	if (tb->append_method & SIS_ADD_METHOD_CODE)
 	{
+		size_t len ;
+		const char *code_src = sisdb_field_get_char_from_key(tb, "code", in_, &len);
+		printf("%s [%d]\n", code_src, (int)len);
+		for(int i = 0; i < unit_->value->count; i++)
+		{
+			const char *val = sis_struct_list_get(unit_->value, i);
+			const char *code_des = sisdb_field_get_char_from_key(tb, "code", val, &len);
+			printf("-- %s [%d]\n", code_des, (int)len);
+			if (!sis_strncasecmp(code_src, code_des, len))
+			{
+				return 0;
+			}
+		}
+		sis_struct_list_push(unit_->value, (void *)in_);
+		printf("no find %s [%d]\n", code_src, unit_->value->count);
+		return 1;		
 		// 先取code
 		// 检索code的记录
 		// 如果全部记录都没有该code，就设置ok，否则就no
@@ -1618,7 +1633,7 @@ int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_)
 		sis_out_log(3)("source format error [%d*%d!=%u]\n", count, unit_->value->len, ilen);
 		return 0;
 	}
-	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);
+	printf("-----count =%d len=%d:%d\n", count, ilen, unit_->value->len);
 	const char *ptr = in_;
 	for (int i = 0; i < count; i++)
 	{

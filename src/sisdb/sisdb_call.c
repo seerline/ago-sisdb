@@ -151,6 +151,8 @@ s_sis_sds sisdb_call_get_code_sds(s_sis_db *db_, const char *com_)
 		}
 		ptr+= (size + SIS_MAXLEN_CODE);
 	}
+	sis_sdsfree(buffer);
+	
 	s_sis_json_node *jone = sis_json_create_array();
 	s_sis_json_node *jval = NULL;
 
@@ -270,12 +272,12 @@ error:
 }
 
 
-double _sis_from_now_get_price(s_sis_db *db_, const char *code_)
+uint32 _sis_from_now_get_price(s_sis_db *db_, const char *code_)
 {
 	char key[SIS_MAXLEN_KEY];
 	sis_sprintf(key, SIS_MAXLEN_KEY, "%s.now", code_);
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key);
-printf("===1==%s====\n",code_);
+	// printf("===1==%s====\n",code_);
 
 	if (!collect) 
 	{
@@ -288,7 +290,7 @@ printf("===1==%s====\n",code_);
 	}
 	sis_out_binary("out",buffer, sisdb_table_get_fields_size(collect->db));
 	uint32 close = sisdb_field_get_uint_from_key(collect->db, "close", buffer);
-printf("===112==%s==%d==\n",code_, close);
+	// printf("===112==%s==%d==\n",code_, close);
 	if (close == 0)
 	{
 		close = sisdb_field_get_uint_from_key(collect->db, "askp1", buffer);
@@ -297,7 +299,7 @@ printf("===112==%s==%d==\n",code_, close);
 	{
 		goto success;
 	}
-printf("===12==%s==%d==\n",code_, close);
+	// printf("===12==%s==%d==\n",code_, close);
 
 	if (close == 0)
 	{
@@ -348,6 +350,43 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 		sis_out_log(3)("no find codes [%s].\n", com_);
 		goto error;
 	}
+	const char *fmt = sis_json_get_str(handle->node, "format");
+	if(fmt)
+	{
+		if (!sis_strcasecmp(fmt, "struct"))
+		{
+			o = sis_sdsnewlen(NULL, count*sizeof(uint32));
+			uint32 *close = (uint32 *)o;
+			char key[SIS_MAXLEN_KEY];
+			for (int i = 0; i < count; i++)
+			{
+				close = (uint32 *)o + i;
+				*close = 0;
+				const char *code = sis_string_list_get(codes, i);
+
+				sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", code, SIS_TABLE_INFO);
+				s_sisdb_collect *collect = sisdb_get_collect(db_, key);
+				if (!collect) 
+				{
+					continue;
+				}
+				s_sis_sds info = sisdb_collect_get_of_count_sds(collect, -1, 1);
+				if (!info)
+				{
+					continue;
+				}
+				*close = _sis_from_now_get_price(db_, code);
+				// printf("===2==%d====\n",close);
+				if (*close == 0)
+				{
+					*close = (uint32)sisdb_field_get_uint_from_key(collect->db, "before", info);
+				}
+				sis_sdsfree(info);
+			}	
+			goto error;
+		}
+	}
+	///  json 格式
 	s_sis_json_node *jone = sis_json_create_object();
 	s_sis_json_node *jtwo = sis_json_create_object();
 	s_sis_json_node *jval = NULL;
@@ -377,7 +416,7 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 		dot = sisdb_field_get_uint_from_key(collect->db, "dot", info);
 
 		close = _sis_from_now_get_price(db_, code);
-printf("===2==%d====\n",close);
+		// printf("===2==%d====\n",close);
 		if (close == 0)
 		{
 			close = sisdb_field_get_uint_from_key(collect->db, "before", info);

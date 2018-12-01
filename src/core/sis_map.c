@@ -123,6 +123,12 @@ int sis_map_buffer_set(s_sis_map_buffer *map_, const char *key_, void *value_)
 //////////////////////////////////////////
 //  s_sis_map_int »ù´¡¶¨Òå
 //////////////////////////////////////////
+s_sis_map_pointer *sis_map_custom_create(s_sis_dict_type *type_)
+{
+	s_sis_map_pointer *map = sis_dict_create(type_, NULL);
+	return map;
+}
+
 s_sis_map_pointer *sis_map_pointer_create()
 {
 	s_sis_map_pointer *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);

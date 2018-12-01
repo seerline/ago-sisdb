@@ -441,7 +441,9 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
         in = sis_sdsnewlen(val_, len_);
     }
     // sis_out_binary("update 0 ", in_, ilen_);
-     int o = sisdb_collect_update(collect, in);
+    // printf("----len=%ld:%d\n", sis_sdslen(in), collect->value->len);
+
+    int o = sisdb_collect_update(collect, in);
 
     sisdb_sys_flush_work_time(collect);
     sisdb_sys_check_write(server.db, key_, collect);

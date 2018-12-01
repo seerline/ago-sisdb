@@ -86,7 +86,7 @@ bool sisdb_field_is_integer(s_sisdb_field *unit_)
 }
 uint64 sisdb_field_get_uint(s_sisdb_field *unit_, const char *val_)
 {
-	if(!sisdb_field_is_integer(unit_)) return 0;
+	if(!sisdb_field_is_integer(unit_)||!val_) return 0;
 
 	uint64  o = 0;
 	uint8  *v8;
@@ -121,7 +121,7 @@ uint64 sisdb_field_get_uint(s_sisdb_field *unit_, const char *val_)
 }
 int64 sisdb_field_get_int(s_sisdb_field *unit_, const char *val_)
 {
-	if(!sisdb_field_is_integer(unit_)) return 0;
+	if(!sisdb_field_is_integer(unit_)||!val_) return 0;
 	int64  o = 0;
 	int8  *v8;
 	int16 *v16;
@@ -155,7 +155,7 @@ int64 sisdb_field_get_int(s_sisdb_field *unit_, const char *val_)
 }
 double sisdb_field_get_float(s_sisdb_field *unit_, const char *val_, int dot_)
 {
-	if(!sisdb_field_is_float(unit_)) return 0.0;
+	if(!sisdb_field_is_float(unit_)||!val_) return 0.0;
 
 	double   o = 0.0;
 	int32 *v32;

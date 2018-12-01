@@ -37,6 +37,8 @@ int  sis_map_buffer_set(s_sis_map_buffer *, const char *key_, void *value_);
 #define sis_map_buffer_getsize dictSize
 //设置key对应的数据引用，必须为一个指针，并不提供实体，
 
+s_sis_map_pointer *sis_map_custom_create(s_sis_dict_type *);
+
 s_sis_map_pointer *sis_map_pointer_create();
 #define sis_map_pointer_destroy sis_map_buffer_destroy
 #define sis_map_pointer_clear sis_map_buffer_clear
@@ -55,4 +57,11 @@ s_sis_map_sds *sis_map_sds_create();
 #define sis_map_sds_get sis_map_buffer_get
 int sis_map_sds_set(s_sis_map_sds *, const char *key_, char *val_);
 
+uint64_t _sis_dict_sds_hash(const void *key);
+uint64_t _sis_dict_sdscase_hash(const void *key);
+int _sis_dict_sdscase_compare(void *privdata, const void *key1, const void *key2);
+void _sis_dict_buffer_free(void *privdata, void *val);
+void *_sis_dict_sds_dup(void *privdata, const void *val);
+void _sis_dict_sds_free(void *privdata, void *val);
+void _sis_dict_list_free(void *privdata, void *val);
 #endif

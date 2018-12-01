@@ -149,6 +149,7 @@ int  sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // √Î
 		sis_sleep(1000);
 		delay_--;
 	}
+	return ETIMEDOUT;
 }
 #endif
 
