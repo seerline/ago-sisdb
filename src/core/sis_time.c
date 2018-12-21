@@ -20,6 +20,12 @@ int sis_time_get_idate(time_t ttime) //20151012
 	sis_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday;
 }
+int sis_time_get_id(int id) // 233035-000
+{
+	struct tm ptm = { 0 };
+	sis_time_check(0, &ptm);
+	return (ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec)*1000 + id;
+}
 int sis_time_get_itime(time_t ttime) //103020
 {
 	struct tm ptm = { 0 };

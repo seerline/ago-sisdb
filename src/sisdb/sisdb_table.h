@@ -54,4 +54,10 @@ int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *, s_sis_json_node *field
 int sisdb_table_get_fields_size(s_sisdb_table *);
 // 
 
+int sisdb_table_update(s_sis_db *db_,s_sisdb_table *, const char *key_ ,const char *val_ ,size_t len_); 
+
+int sisdb_table_set_conf(s_sis_db *db_, const char *table_, s_sis_json_node *);
+
+s_sis_json_node *sisdb_table_new_config(const char *val_ ,size_t len_);
+
 #endif  /* _SIS_TABLE_H */

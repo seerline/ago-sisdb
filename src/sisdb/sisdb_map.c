@@ -116,6 +116,20 @@ s_sis_map_define *sisdb_find_map_define(s_sis_map_pointer *map_, const char *nam
 	return val;
 }
 
+const char *sisdb_find_map_name(s_sis_map_pointer *map_, uint16 uid_, uint8 style_)
+{
+	int nums = sizeof(_sis_map_defines) / sizeof(struct s_sis_map_define);
+
+	for (int i = 0; i < nums; i++)
+	{
+		if(_sis_map_defines[i].uid == uid_ &&_sis_map_defines[i].style == style_)
+		{
+			return _sis_map_defines[i].key;
+		}
+	}
+	return NULL;
+}
+
 int sisdb_find_map_uid(s_sis_map_pointer *map_, const char *name_, uint8 style_)
 {
 	s_sis_map_define *val = sisdb_find_map_define(map_, name_, style_);

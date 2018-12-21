@@ -19,7 +19,7 @@ typedef struct s_sis_json_node
 	struct s_sis_json_node *next, *prev; 
 	struct s_sis_json_node *child, *father;
 
-	uint8  type;    // 有include时立即加载文件，并把内容插入content中继续解析
+	uint8  type;
 	char  *key;			
 	char  *value;
 } s_sis_json_node;
@@ -122,5 +122,6 @@ s_sis_json_node *sis_json_last_node(s_sis_json_node *node_);
 s_sis_json_node *sis_json_cmp_child_node(s_sis_json_node *object_, const char *key_);
 s_sis_json_node *sis_json_find_node(s_sis_json_node *node_, const char *path_);
 
+void sis_json_show(s_sis_json_node *node_, int *i);
 
 #endif

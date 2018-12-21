@@ -73,8 +73,8 @@
 #define SIS_ADD_METHOD_ALWAYS      0  // 不做判断直接追加
 #define SIS_ADD_METHOD_TIME        1  // 检查时间节点重复就覆盖老的数据，不重复就放对应位置
 #define SIS_ADD_METHOD_VOL         2  // 检查成交量，成交量增加就写入
-#define SIS_ADD_METHOD_CODE        4  // 不做判断直接追加
-#define SIS_ADD_METHOD_SORT        8  // 按时间排序，同一个时间可以有多个数据
+#define SIS_ADD_METHOD_CODE        4  // 判断代码不同就增加，否则就修改
+#define SIS_ADD_METHOD_SORT        8  // 同一时间下不同代码就增加，同一时间同一代码修改，不同时间就增加
 #define SIS_ADD_METHOD_NONE        16  // 不能插入只能修改 一般不用
 
 // #define SIS_INIT_WAIT    0 // 900或刚开机 开始等待初始化
@@ -114,5 +114,6 @@ void sisdb_init_map_define(s_sis_map_pointer *fields_);
 s_sis_map_define *sisdb_find_map_define(s_sis_map_pointer *, const char *name_, uint8 style_);
 int sisdb_find_map_uid(s_sis_map_pointer *, const char *name_, uint8 style_);
 
+const char *sisdb_find_map_name(s_sis_map_pointer *map_, uint16 uid_, uint8 style_);
 
 #endif  /* _SISDB_H */

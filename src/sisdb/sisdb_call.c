@@ -2,9 +2,10 @@
 #include "sisdb_call.h"
 #include "sisdb_fields.h"
 #include "sisdb_map.h"
+#include "sisdb_io.h"
 
 // 这里的方法只放那些通用的，特殊处理的一概不允许放在这里！！！切记
-static struct s_sisdb_call _sisdb_call_table[] = {
+static struct s_sisdb_call _sisdb_call_table[] = {	// 显示表的字段详细信息
 	// 得到多个符合条件的股票 从search字段中检索 返回代码和名称 format - json
 	{"getcode", sisdb_call_get_code_sds, "match search of info. exp : getcode {\"match\":\"YH\",\"count\":5}"},
 	// 得到多股票的最新价
@@ -13,7 +14,7 @@ static struct s_sisdb_call _sisdb_call_table[] = {
 	{"collects", sisdb_call_get_collects_sds, "get collects. : collects {\"table\":\"now\",\"format\":\"array\"}"},
 	// format - json array
 	{"init", sisdb_call_market_init, "init market info. (warn: delete option): init sh"},
-	{"list", sisdb_call_list_command, ""}
+	{"list", sisdb_call_list_sds, ""}
 };
 
 void sisdb_init_call_define(s_sis_map_pointer *map_)
@@ -41,15 +42,7 @@ s_sisdb_call *sisdb_call_find_define(s_sis_map_pointer *map_, const char *name_)
 	return val;
 }
 
-//////////////////////////////////////////////////////////////////////
-//   下面是一些通用函数实现
-//   返回数据分两种格式,一种是单个股票的,请求什么字段返回什么字段
-//   一种是多个股票的,返回groups的多股票数组,每个股票最多只有一个数组元素,或者没有数组
-//   fields：[close:0,code:1],groups:{{sh600600:[12,222]},{...}}
-//   groups:{{sh600600:[12,222]},{...}}
-//   collects:[sh600600,sh600601]
-//////////////////////////////////////////////////////////////////////
-s_sis_sds sisdb_call_list_command(s_sis_db *db_, const char *com_)
+s_sis_sds sisdb_call_list_sds(s_sis_db *db_, const char *com_)
 {
 	int nums = sizeof(_sisdb_call_table) / sizeof(struct s_sisdb_call);
 	s_sis_sds list = sis_sdsempty();
@@ -61,6 +54,14 @@ s_sis_sds sisdb_call_list_command(s_sis_db *db_, const char *com_)
 	}
 	return list;
 }
+//////////////////////////////////////////////////////////////////////
+//   下面是一些通用函数实现
+//   返回数据分两种格式,一种是单个股票的,请求什么字段返回什么字段
+//   一种是多个股票的,返回groups的多股票数组,每个股票最多只有一个数组元素,或者没有数组
+//   fields：[close:0,code:1],groups:{{sh600600:[12,222]},{...}}
+//   groups:{{sh600600:[12,222]},{...}}
+//   collects:[sh600600,sh600601]
+//////////////////////////////////////////////////////////////////////
 
 s_sis_sds sisdb_call_market_init(s_sis_db *db_, const char *market_)
 {
@@ -80,8 +81,10 @@ s_sis_sds sisdb_call_market_init(s_sis_db *db_, const char *market_)
 		}
 	}
 	sis_dict_iter_free(di);
-	// 该函数需要锁定
-	// 然后写aof。暂时不做
+	
+	// 该函数执行完毕需要写盘，这样就不需要处理aof文件了
+	sisdb_save();
+	
 	return sis_sdsnewlong(o);
 }
 

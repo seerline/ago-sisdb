@@ -39,11 +39,24 @@ typedef struct s_sis_sdb_head{
                      // 还有一个数据结构是 refer 存储 catch 和 zip 三条记录
 }s_sis_sdb_head;
 
+#define SIS_AOF_TYPE_DEL   1   // 删除
+#define SIS_AOF_TYPE_JSET  2   // json写
+#define SIS_AOF_TYPE_SSET  3   // 结构二进制写
+#define SIS_AOF_TYPE_ASET  4   // 数组写
+
+#define SIS_AOF_TYPE_CREATE   10   // 创建新表（默认为结构化数据），需要一起发送字段定义
+// 仅仅在jset中，提供一种直接创建法，例如：
+// sisdb.set mycode.mytable {"time":20110101,"value":1000}
+// mytable并不存在，会自动创建一个，在这个函数中，后面字段只有两种类型，一种是32位整形，一种是32位float
+// #define SIS_AOF_TYPE_FIELD    11   // 字段重构 ，后面跟所有字段定义，需要把相同字段的数据转到新数据字段中
+// 直接封闭所有数据访问，全部重构后，存盘再启动服务，
+
 typedef struct s_sis_aof_head{
 	uint32	size;    // 数据大小
 	char    key[SIS_MAXLEN_KEY];
-	uint8	format;  // 数据格式 json array struct zip 
-	                 // 还有一个数据结构是 refer 存储 catch 和 zip 三条记录
+	uint8   type;    // 操作类型
+	// uint8	format;  // 数据格式 json array struct zip 
+	//                  // 还有一个数据结构是 refer 存储 catch 和 zip 三条记录
 }s_sis_aof_head;
 
 #pragma pack(pop)

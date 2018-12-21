@@ -4,20 +4,31 @@ default: all
 
 all:
 
-	cd ./src/sisdb && cmake . && $(MAKE) $@ 
+ifeq (./src/sisdb/out, $(wildcard ./src/sisdb/out))
+	cd ./src/sisdb/out && cmake ../ && $(MAKE)  $@ 
+else
+	cd ./src/sisdb/ && mkdir out && cd out && cmake ../ && $(MAKE)  $@ 
+endif
 
 sisdb:
 
-	cd ./src/sisdb && cmake . && $(MAKE)
+ifeq (./src/sisdb/out, $(wildcard ./src/sisdb/out))
+	cd ./src/sisdb/out && cmake ../ && $(MAKE)
+else
+	cd ./src/sisdb/ && mkdir out && cd out && cmake ../ && $(MAKE)
+endif
 	cp ./bin/libsisdb.* ../bin
 	
 test:
 
-	cd ./test && cmake . && $(MAKE)
-
+ifeq (./test/out, $(wildcard ./test/out))
+	cd ./test/out && cmake ../ && $(MAKE)
+else
+	cd ./test/ && mkdir out && cd out && cmake ../ && $(MAKE)
+endif
 
 clean:
 
-	cd ./src/sisdb && rm -f CMakeCache.txt && rm -rf CMakeFiles
+	cd ./src/sisdb/ && rm -rf out
 
-	cd ./test && rm -f CMakeCache.txt && rm -rf CMakeFiles
+	cd ./test/ && rm -rf out

@@ -9,7 +9,7 @@
 bool sisdb_file_save_conf(s_sisdb_server *server_)
 {
     char conf[SIS_PATH_LEN];
-    sis_sprintf(conf, SIS_PATH_LEN, SIS_DB_FILE_CONF, server_->dbpath, server_->db->name);
+    sis_sprintf(conf, SIS_PATH_LEN, SIS_DB_FILE_CONF, server_->db_path, server_->db->name);
     sis_file_handle fp = sis_file_open(conf, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
     if (!fp)
     {
@@ -17,11 +17,15 @@ bool sisdb_file_save_conf(s_sisdb_server *server_)
         return false;
     }
     sis_file_seek(fp, 0, SEEK_SET);
-    sis_file_write(fp, server_->db->conf, 1, sis_sdslen(server_->db->conf));
+
+    size_t len = 0;
+    char *str = sis_json_output(server_->db->conf, &len);
+    sis_file_write(fp, str, 1, len);
+    sis_free(str);
     sis_file_close(fp);
 
     char sdb[SIS_PATH_LEN];
-    sis_sprintf(sdb, SIS_PATH_LEN, "%s/%s/", server_->dbpath, server_->db->name);
+    sis_sprintf(sdb, SIS_PATH_LEN, "%s/%s/", server_->db_path, server_->db->name);
     sis_path_complete(sdb, SIS_PATH_LEN);
 
     if (!sis_path_mkdir(sdb))
@@ -79,7 +83,7 @@ bool _sisdb_file_save_sdb(s_sisdb_server *server_)
 {
     // 打开sdb并移到文件尾，准备追加数据
     char sdb[SIS_PATH_LEN];
-    sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_MAIN, server_->dbpath, server_->db->name);
+    sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_MAIN, server_->db_path, server_->db->name);
 
     sis_file_handle sdb_fp = sis_file_open(sdb, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
     if (!sdb_fp)
@@ -93,7 +97,7 @@ bool _sisdb_file_save_sdb(s_sisdb_server *server_)
 #ifdef SIS_DB_FILE_USE_CATCH
     // 打开sdb.0并截断到文件头，准备写入数据
     char zero[SIS_PATH_LEN];
-    sis_sprintf(zero, SIS_PATH_LEN, SIS_DB_FILE_ZERO, server_->dbpath, server_->db->name);
+    sis_sprintf(zero, SIS_PATH_LEN, SIS_DB_FILE_ZERO, server_->db_path, server_->db->name);
     sis_file_handle zero_fp = sis_file_open(zero, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
     if (!zero_fp)
     {
@@ -129,7 +133,7 @@ bool _sisdb_file_save_collect_other(s_sisdb_server *server_ ,s_sis_sds key_, s_s
     {
     case SIS_DATA_TYPE_JSON:
 		other = sisdb_collect_struct_to_json_sds(unit_, out, unit_->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server_->dbpath, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server_->db_path, server_->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -137,7 +141,7 @@ bool _sisdb_file_save_collect_other(s_sisdb_server *server_ ,s_sis_sds key_, s_s
 		break;
 	case SIS_DATA_TYPE_ARRAY:
 		other = sisdb_collect_struct_to_array_sds(unit_, out, unit_->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server_->dbpath, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server_->db_path, server_->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -147,7 +151,7 @@ bool _sisdb_file_save_collect_other(s_sisdb_server *server_ ,s_sis_sds key_, s_s
     //     break;    
     case SIS_DATA_TYPE_CSV:
 		other = sisdb_collect_struct_to_csv_sds(unit_, out, unit_->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server_->dbpath, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server_->db_path, server_->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -191,7 +195,7 @@ bool sisdb_file_save(s_sisdb_server *server_)
     }
     // 最后删除aof文件
     char aof[SIS_PATH_LEN];
-    sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server_->dbpath, server_->db->name);
+    sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server_->db_path, server_->db->name);
     sis_file_delete(aof);
 
     return true;
@@ -232,14 +236,14 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
     // case SIS_DATA_TYPE_ZIP:
     //     break;    
 	case SIS_DATA_TYPE_STRUCT:
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_STRUCT, server_->dbpath, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_STRUCT, server_->db_path, server_->db->name,
                     code, dbname);
         // 直接写文件
         sis_file_sds_write(sdb, out);
 		break;
 	case SIS_DATA_TYPE_JSON:
 		other = sisdb_collect_struct_to_json_sds(collect, out, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server_->dbpath, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server_->db_path, server_->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -247,7 +251,7 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
 		break;
 	case SIS_DATA_TYPE_ARRAY:
 		other = sisdb_collect_struct_to_array_sds(collect, out, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server_->dbpath, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server_->db_path, server_->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -257,7 +261,7 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
     //     break;    
     case SIS_DATA_TYPE_CSV:
 		other = sisdb_collect_struct_to_csv_sds(collect, out, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server_->dbpath, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server_->db_path, server_->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -275,12 +279,12 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
 
 
 bool sisdb_file_save_aof(s_sisdb_server *server_,
-                         int fmt_, const char *key_,
+                         int type_, const char *key_,
                          const char *val_, size_t len_)
 {
     // 打开sdb并移到文件尾，准备追加数据
     char aof[SIS_PATH_LEN];
-    sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server_->dbpath, server_->db->name);
+    sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server_->db_path, server_->db->name);
 
     sis_file_handle fp = sis_file_open(aof, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE, 0);
     if (!fp)
@@ -293,20 +297,24 @@ bool sisdb_file_save_aof(s_sisdb_server *server_,
     s_sis_aof_head head;
     sis_strncpy((char *)&head.key, SIS_MAXLEN_KEY,
                 key_, SIS_MAXLEN_KEY);
-    head.format = fmt_;
+    head.type = type_;
     head.size = len_;
 
     sis_file_write(fp, (const char *)&head, 1, sizeof(s_sis_aof_head));
-    sis_file_write(fp, val_, 1, head.size);
+    if (head.size>0)
+    {
+        sis_file_write(fp, val_, 1, head.size);
+    }
 
     sis_file_close(fp);
     return true;
 }
+//结构体存盘必须写结构长度，方便校验
 // ------------------- load file -------------------------- //
 bool _sisdb_file_load_aof(s_sisdb_server *server_)
 {
     char aof[SIS_PATH_LEN];
-    sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server_->dbpath, server_->db->name);
+    sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server_->db_path, server_->db->name);
 
     sis_file_handle fp = sis_file_open(aof, SIS_FILE_IO_READ, 0);
     if (!fp)
@@ -324,7 +332,8 @@ bool _sisdb_file_load_aof(s_sisdb_server *server_)
         // 结构化文件这样读没问题，
         if (bytes <= 0)
             break;
-        while (sis_memory_get_size(buffer) > sizeof(s_sis_aof_head))
+        // printf("read %d\n",bytes);
+        while (sis_memory_get_size(buffer) >= sizeof(s_sis_aof_head))
         {
             if (!hashead)
             {
@@ -337,7 +346,28 @@ bool _sisdb_file_load_aof(s_sisdb_server *server_)
                 break;
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sis_memory_get_size需要减少
-            sisdb_set(head.format, head.key, sis_memory(buffer), head.size);
+            // printf("head.type %d\n",head.type);
+            switch (head.type)
+            {
+                case SIS_AOF_TYPE_DEL:
+                    // printf("del %s\n",head.key);
+                    sisdb_delete(head.key, sis_memory(buffer), head.size);
+                    break;
+                case SIS_AOF_TYPE_JSET:
+                    sisdb_set(SIS_DATA_TYPE_JSON, head.key, sis_memory(buffer), head.size);
+                    break;
+                case SIS_AOF_TYPE_ASET:
+                    sisdb_set(SIS_DATA_TYPE_ARRAY, head.key, sis_memory(buffer), head.size);
+                    break;
+                case SIS_AOF_TYPE_SSET:
+                    sisdb_set(SIS_DATA_TYPE_STRUCT, head.key, sis_memory(buffer), head.size);
+                    break;            
+                case SIS_AOF_TYPE_CREATE:
+                    sisdb_new(head.key, sis_memory(buffer), head.size);
+                    break;            
+                default:
+                    break;
+            }
             sis_memory_move(buffer, head.size);
             hashead = false;
         }
@@ -412,7 +442,7 @@ bool sisdb_file_load(s_sisdb_server *server_)
     // 遍历加载所有数据表
     char sdb[SIS_PATH_LEN];
 
-    sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_MAIN, server_->dbpath, server_->db->name);
+    sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_MAIN, server_->db_path, server_->db->name);
 
     server_->db->loading = true;
     sis_file_handle fp = sis_file_open(sdb, SIS_FILE_IO_READ, 0);

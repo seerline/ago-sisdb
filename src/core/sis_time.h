@@ -7,6 +7,8 @@
 int sis_time_get_iyear(time_t ttime); //2015
 int sis_time_get_imonth(time_t ttime); //201510
 int sis_time_get_idate(time_t ttime); //20151012
+int sis_time_get_id(int id); // 233035-000
+
 int sis_time_get_itime(time_t ttime); //103020
 int sis_time_get_iminute(time_t ttime); //1030
 int sis_time_get_isec(time_t ttime); // 20

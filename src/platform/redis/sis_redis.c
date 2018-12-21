@@ -142,6 +142,7 @@ bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 
 	if (mess_->argv)
 	{
+		// printf("argv len=%d. \n", sis_sdslen(mess_->argv));	
 		argvlen[index] = sis_sdslen(mess_->argv);
 		argvstr[index] = mess_->argv;
 		index++;
@@ -150,6 +151,7 @@ bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 	s_sis_list_node *node = mess_->nodes;
 	while(node) 
 	{
+		// printf("node len=%d. \n", sis_sdslen(node->value));	
 		argvlen[index] = sis_sdslen(node->value);
 		argvstr[index] = node->value;
 		index++;

@@ -44,7 +44,8 @@ s_sisdb_call *sisdb_call_find_define(s_sis_map_pointer *map_, const char *name_)
 //  下面是功能调用
 ////////////////////////////////
 // 返回值 NULL 
-s_sis_sds sisdb_call_list_command(s_sis_db *db_, const char *com_);
+s_sis_sds sisdb_call_list_sds(s_sis_db *db_, const char *com_);
+
 s_sis_sds sisdb_call_market_init(s_sis_db *db_, const char *com_);
 
 s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_,const char *com_);

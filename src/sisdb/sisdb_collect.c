@@ -498,11 +498,11 @@ s_sis_json_node *_sis_struct_to_array(s_sisdb_collect *unit_, s_sis_sds val_, s_
 			sis_json_array_add_uint(o, sisdb_field_get_uint(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_FLOAT:
-			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, fu->flags.dot), fu->flags.dot);
+			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr), fu->flags.dot);
 			break;
 		case SIS_FIELD_TYPE_PRICE:
 			// 通用数据表没有该类型
-			sis_json_array_add_double(o, sisdb_field_get_float(fu, ptr, unit_->spec_info->dot), unit_->spec_info->dot);
+			sis_json_array_add_double(o, sisdb_field_get_price(fu, ptr, unit_->spec_info->dot), unit_->spec_info->dot);
 			break;
 		default:
 			sis_json_array_add_string(o, " ", 1);
@@ -670,10 +670,10 @@ s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds v
 			sis_sprintf(val, SIS_MAXLEN_STRING, "%d", (uint32)sisdb_field_get_uint(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_FLOAT:
-			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr, fu->flags.dot));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_PRICE:
-			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", unit_->spec_info->dot, sisdb_field_get_float(fu, ptr, unit_->spec_info->dot));
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", unit_->spec_info->dot, sisdb_field_get_price(fu, ptr, unit_->spec_info->dot));
 			break;
 		}
 		str_ = sis_sdscatfmt(str_, "%s", val);
@@ -1493,6 +1493,7 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_)
 			printf("-- %s [%d]\n", code_des, (int)len);
 			if (!sis_strncasecmp(code_src, code_des, len))
 			{
+				sis_struct_list_update(unit_->value, i, (void *)in_);
 				return 0;
 			}
 		}
@@ -1752,12 +1753,12 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 		sisdb_field_set_int(outfu_, outs_, i64);
 		break;
 	case SIS_FIELD_TYPE_FLOAT:
-		f64 = sisdb_field_get_float(infu_, ins_, infu_->flags.dot);
-		sisdb_field_set_float(outfu_, outs_, f64, outfu_->flags.dot);
+		f64 = sisdb_field_get_float(infu_, ins_);
+		sisdb_field_set_float(outfu_, outs_, f64);
 		break;
 	case SIS_FIELD_TYPE_PRICE:
-		f64 = sisdb_field_get_float(infu_, ins_, inunit_->spec_info->dot);
-		sisdb_field_set_float(outfu_, outs_, f64, outunit_->spec_info->dot);
+		f64 = sisdb_field_get_price(infu_, ins_, inunit_->spec_info->dot);
+		sisdb_field_set_price(outfu_, outs_, f64, outunit_->spec_info->dot);
 		break;
 	default:
 		break;

@@ -91,7 +91,7 @@ SET(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} ${SHOBJ_CFLAGS}")
 
 ######################生成链接库文件##########################
 # 设置输出库文件目录
-SET(LIBRARY_OUTPUT_PATH ../../bin/)  
+SET(LIBRARY_OUTPUT_PATH ../../../bin/)  
 
 #生成动态库目标
 ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})

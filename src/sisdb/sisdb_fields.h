@@ -51,12 +51,14 @@ bool sisdb_field_is_time(s_sisdb_field *unit_);
 
 uint64 sisdb_field_get_uint(s_sisdb_field *unit_, const char *val_);
 int64 sisdb_field_get_int(s_sisdb_field *unit_, const char *val_);
-double sisdb_field_get_float(s_sisdb_field *unit_, const char *val_, int dot_);
+double sisdb_field_get_float(s_sisdb_field *unit_, const char *val_);
+double sisdb_field_get_price(s_sisdb_field *unit_, const char *val_, int dot_);
 
 // 实际上只是写入val中，
 void sisdb_field_set_uint(s_sisdb_field *unit_, char *val_, uint64 u64_);
 void sisdb_field_set_int(s_sisdb_field *unit_, char *val_, int64 i64_);
-void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_, int dot_);
+void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_);
+void sisdb_field_set_price(s_sisdb_field *unit_, char *val_, double f64_, int dot_);
 
 //根据名字获取字段
 s_sisdb_field *sisdb_field_get_from_key(s_sisdb_table *tb_, const char *key_);

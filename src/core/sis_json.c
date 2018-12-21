@@ -784,7 +784,7 @@ static char *_sis_json_to_array(s_sis_json_node *node_, int depth_, int fmt_)
 		return 0;
 	}
 	memset(entries, 0, numentries * sizeof(char *));
-	/* Retrieve all the results: */
+	/* retrieve all the results: */
 	child = node_->child;
 	while (child && !fail)
 	{
@@ -1040,11 +1040,11 @@ char *_sis_json_to_value(s_sis_json_node *node_, int depth_, int fmt_)
 //////////////////////////////////////////////////////////////////////////
 ///   output json
 /////////////////////////////////////////////////////////////////////////
-
+#define JSON_DEPTH  0
 char *sis_json_output(s_sis_json_node *node_, size_t *len_)
 {
 	// printf("node= %p\n",node_);
-	char *ptr = _sis_json_to_value(node_, 0, 1);
+	char *ptr = _sis_json_to_value(node_, JSON_DEPTH, 1);
 	if (ptr)
 	{
 		*len_ = strlen(ptr);
@@ -1053,7 +1053,7 @@ char *sis_json_output(s_sis_json_node *node_, size_t *len_)
 }
 char *sis_json_output_zip(s_sis_json_node *node_, size_t *len_)
 {
-	char *ptr = _sis_json_to_value(node_, 0, 0);
+	char *ptr = _sis_json_to_value(node_, JSON_DEPTH, 0);
 	if (ptr)
 	{
 		*len_ = strlen(ptr);
@@ -1216,8 +1216,7 @@ s_sis_json_node *sis_json_find_node(s_sis_json_node *node_, const char *path_)
 	return sis_json_cmp_child_node(node_, path_);
 }
 
-#if 0
-void json_printf(s_sis_json_node *node_, int *i)
+void sis_json_show(s_sis_json_node *node_, int *i)
 {
 	if (!node_)
 	{
@@ -1229,7 +1228,7 @@ void json_printf(s_sis_json_node *node_, int *i)
 		while (first)
 		{
 			int iii = *i+1;
-			json_printf(first,&iii);
+			sis_json_show(first,&iii);
 			first = first->next;
 		}
 	}
@@ -1238,6 +1237,8 @@ void json_printf(s_sis_json_node *node_, int *i)
 			node_->father,node_->child, node_->prev, node_->next,
 			node_->key, node_->value);
 }
+#if 0
+
 int main1()
 {
 	const char *fn = "./select.json";
@@ -1246,7 +1247,7 @@ int main1()
 	if (!h) return -1;
 	
 	int iii=1;
-	json_printf(h->node,&iii);
+	sis_json_show(h->node,&iii);
 	printf("|%s|\n", sis_json_get_str(h->node, "referzs"));
 	// printf("|%s|\n", sis_conf_get_str(h->node, "bbb"));
 	printf("|%s|\n", sis_json_get_str(h->node, "algorithm.peroid"));
@@ -1275,24 +1276,24 @@ int main()
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *fn = "../conf/sis.conf";
-	const char *command = "[[930,1130],[1300,1500]]";
+	const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1},\"val\":{\"time\":[[930,1130],[1300,1500]]}}";
 
-	s_sis_json_handle *handel = sis_json_load(command, 64);
-	int index = 0;
-	if (handel)
-	{
-		s_sis_json_node *next = sis_json_first_node(handel->node);
-		while (next)
-		{
-			uint16 first = sis_json_get_int(next, "0", 930);
-			uint16 second = sis_json_get_int(next, "1", 1500);
-			index++;
-			next = next->next;
-			printf("trade-time= %p %d %d\n", handel, first, second);
-		}
-	}
-	sis_json_close(handel);
-	return 0;
+	// s_sis_json_handle *handel = sis_json_load(command, 64);
+	// int index = 0;
+	// if (handel)
+	// {
+	// 	s_sis_json_node *next = sis_json_first_node(handel->node);
+	// 	while (next)
+	// 	{
+	// 		uint16 first = sis_json_get_int(next, "0", 930);
+	// 		uint16 second = sis_json_get_int(next, "1", 1500);
+	// 		index++;
+	// 		next = next->next;
+	// 		printf("trade-time= %p %d %d\n", handel, first, second);
+	// 	}
+	// }
+	// sis_json_close(handel);
+	// return 0;
 
 
 	// const char *command = "[930,1130]";
@@ -1300,7 +1301,7 @@ int main()
 	if (!h) return -1;
 
 	int iii=1;
-	json_printf(h->node,&iii);
+	sis_json_show(h->node,&iii);
 	
 	// s_sis_json_node *jone = sis_json_create_array();
 	// s_sis_json_node *jval = NULL;
@@ -1315,11 +1316,12 @@ int main()
 	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"format"));
 	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"count"));
 	// printf("----------------\n");
-	// json_printf(h->node,&iii);
+	// sis_json_show(h->node,&iii);
 
 	size_t len = 0;
 	char *str = sis_json_output(h->node, &len);
-	printf("%p [%ld]  |%s|\n", h->node, len, str);
+	printf("%p [%ld]\n", h->node, len);
+	printf("|%s|\n",str);
 	sis_free(str);
 	sis_json_close(h);
 	return 0;

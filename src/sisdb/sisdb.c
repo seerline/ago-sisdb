@@ -86,7 +86,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_map_pointer_destroy(db_->collects);
 
 	sis_sdsfree(db_->name);
-	sis_sdsfree(db_->conf);
+	sis_json_delete_node(db_->conf);
 	sis_map_pointer_destroy(db_->map);
 	sis_map_pointer_destroy(db_->calls);
 

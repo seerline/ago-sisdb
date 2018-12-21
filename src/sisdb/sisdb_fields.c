@@ -70,8 +70,7 @@ bool sisdb_field_is_volume(s_sisdb_field *unit_)
 }
 bool sisdb_field_is_float(s_sisdb_field *unit_)
 {
-	return unit_->flags.type == SIS_FIELD_TYPE_FLOAT||
-		   unit_->flags.type == SIS_FIELD_TYPE_PRICE;
+	return unit_->flags.type == SIS_FIELD_TYPE_FLOAT;
 }
 bool sisdb_field_is_integer(s_sisdb_field *unit_)
 {
@@ -153,20 +152,40 @@ int64 sisdb_field_get_int(s_sisdb_field *unit_, const char *val_)
 	}
 	return o;
 }
-double sisdb_field_get_float(s_sisdb_field *unit_, const char *val_, int dot_)
+double sisdb_field_get_float(s_sisdb_field *unit_, const char *val_)
 {
 	if(!sisdb_field_is_float(unit_)||!val_) return 0.0;
+
+	double   o = 0.0;
+	float32 *f32;
+	float64 *f64;
+	const char *ptr = val_;
+	switch (unit_->flags.len)
+	{
+	case 4:
+		f32 = (float32 *)(ptr + unit_->offset);
+		o = (double)*f32;
+		break;
+	case 8:
+		f64 = (float64 *)(ptr + unit_->offset);
+		o = (double)*f64;
+		break;
+	default:
+		break;
+	}
+	// printf("---[%s]=%f\n",fu_->name, out);
+	return o;
+}
+double sisdb_field_get_price(s_sisdb_field *unit_, const char *val_, int dot_)
+{
+	if(!sisdb_field_is_price(unit_)||!val_) return 0.0;
 
 	double   o = 0.0;
 	int32 *v32;
 	int64 *v64;
 
 	const char *ptr = val_;
-	int zoom = sis_zoom10(unit_->flags.dot);
-	if(sisdb_field_is_price(unit_)) 
-	{
-		zoom = sis_zoom10(dot_);
-	}
+	int zoom = sis_zoom10(dot_);
 
 	switch (unit_->flags.len)
 	{
@@ -184,7 +203,6 @@ double sisdb_field_get_float(s_sisdb_field *unit_, const char *val_, int dot_)
 	// printf("---[%s]=%f\n",fu_->name, out);
 	return o;
 }
-
 ////////////////////////////////
 //   --- set ----
 /////////////////////////////////
@@ -247,20 +265,11 @@ void sisdb_field_set_int(s_sisdb_field *unit_, char *val_, int64 v64_)
 		break;
 	}	
 }
-void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_, int dot_)
+void sisdb_field_set_price(s_sisdb_field *unit_, char *val_, double f64_, int dot_)
 {
-
 	int32 v32 = 0;
 	int64 v64 = 0;
-	int64 zoom = 1;
-
-	// const char *ptr = val_;
-	zoom = sis_zoom10(unit_->flags.dot);
-	if(sisdb_field_is_price(unit_)) 
-	{
-		zoom = sis_zoom10(dot_);
-	}
-
+	int64 zoom = sis_zoom10(dot_);
 	switch (unit_->flags.len)
 	{
 	case 4:
@@ -271,6 +280,24 @@ void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_, int do
 	default:
 		v64 = (int64)(f64_ * zoom);
 		memmove(val_ + unit_->offset, &v64, unit_->flags.len);
+		break;
+	}
+
+}
+void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_)
+{
+	float32 f32 = 0.0;
+	float64 f64 = 0.0;
+	switch (unit_->flags.len)
+	{
+	case 4:
+		f32 = (float32)f64_;
+		memmove(val_ + unit_->offset, &f32, unit_->flags.len);
+		break;
+	case 8:
+	default:
+		f64 = (float32)f64_;
+		memmove(val_ + unit_->offset, &f64, unit_->flags.len);
 		break;
 	}
 
@@ -412,14 +439,14 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		if (sis_json_find_node(node_, key_))
 		{
 			f64 = sis_json_get_double(node_, key_, 0.0);
-			sisdb_field_set_float(fu_, in_, f64, fu_->flags.dot);
+			sisdb_field_set_float(fu_, in_, f64);
 		}
 		break;
 	case SIS_FIELD_TYPE_PRICE:
 		if (sis_json_find_node(node_, key_))
 		{
 			f64 = sis_json_get_double(node_, key_, 0.0);
-			sisdb_field_set_float(fu_, in_, f64, dot);
+			sisdb_field_set_price(fu_, in_, f64, dot);
 		}
 		break;
 	default:

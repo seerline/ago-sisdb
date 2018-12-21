@@ -51,5 +51,10 @@ typedef long long int64;
 #ifndef uint64
 typedef unsigned long long uint64;
 #endif
-
+#ifndef float32
+typedef float float32;
+#endif
+#ifndef float64
+typedef double float64;
+#endif
 #endif //_OS_TYPES_H

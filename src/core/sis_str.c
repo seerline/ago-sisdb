@@ -278,8 +278,9 @@ int sis_str_subcmp_match(const char *sub, const char *s, char c)  //-1没有匹配的
 	{
 		if (s[i] == c)
 		{
-			sis_strncpy(str, 16,&s[pos], i - pos);
-			if (!strstr(sub, str))
+			sis_strncpy(str, 16, &s[pos], i - pos);
+			printf("%s,  %s\n",str, sub);
+			if (strstr(sub, str))
 			{
 				return count;
 			}
@@ -290,7 +291,7 @@ int sis_str_subcmp_match(const char *sub, const char *s, char c)  //-1没有匹配的
 	if (i>pos)
 	{   //strncmp
 		sis_strncpy(str, 16, &s[pos], i - pos);
-		if (!strstr(sub, str))
+		if (strstr(sub, str))
 		{
 			return count;
 		}
@@ -439,6 +440,10 @@ int main1()
 }
 int main()
 {
+// s 串为 “01,02”, 检查sub中有没有这些字串，sub=“1111“ 返回-1， ”10200“ 返回 0 表示发现字串
+	int o = sis_str_subcmp_match("SH600600,SH600601", "600600", ',');  //-1没有匹配的
+	printf("o=%d\n", o);
+	return 0;
 	char cn[20];
 	sis_get_spell_gbk("上证指数",cn, 12);
 	printf("|%s|\n", cn);

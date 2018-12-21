@@ -10,7 +10,9 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	s_sisdb_table *tb = sisdb_get_table(db_, name_);
 	if (tb)
 	{ 
-		sisdb_table_destroy(tb);
+		sis_out_log(1)("%s already exist.", name_);
+		return NULL;
+		// sisdb_table_destroy(tb);
 	}
 	// 先加载默认配置
 	tb = sis_malloc(sizeof(s_sisdb_table));
@@ -198,10 +200,10 @@ int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *tb_, s_sis_json_node *fi
 		if(!db_->special) 
 		{
 			// 非专用数据表不支持某些字段类型
-			if (flags.type == SIS_FIELD_TYPE_PRICE&&flags.dot==0)
+			if (flags.type == SIS_FIELD_TYPE_PRICE)
 			{
 				flags.type = SIS_FIELD_TYPE_FLOAT;
-				flags.dot = 2;
+				flags.dot = flags.dot == 0 ? 2 : flags.dot;
 			}
 			if (flags.type == SIS_FIELD_TYPE_VOLUME||flags.type == SIS_FIELD_TYPE_AMOUNT)
 			{
@@ -234,4 +236,189 @@ int sisdb_table_get_fields_size(s_sisdb_table *tb_)
 	sis_dict_iter_free(di);
 	return len;
 }
+// #define STR_APPEND_METHOD "{ \"$only\":{ \"fields\": \"time\"} }"
+#define STR_APPEND_METHOD "time"
 
+// 这里的source指的就是实际的数据,根据实际数据生成默认的配置字符串
+s_sis_json_node *sisdb_table_new_config(const char *source_ ,size_t len_)
+{
+	s_sis_json_handle *handle = sis_json_load(source_, len_);
+	if (!handle)
+	{
+		return NULL;
+	}
+	s_sis_json_node *source = sis_json_clone(handle->node, 1);
+	sis_json_close(handle);
+
+	s_sis_json_node *node = sis_json_create_object();
+
+	s_sis_json_node *fields = sis_json_create_array(); 
+	s_sis_json_node *next = sis_json_first_node(source);
+	while(next)
+	{
+		s_sis_json_node *one = sis_json_create_array(); 
+		sis_json_array_set_string(one, 0, next->key, strlen(next->key));
+		if (!sis_strcasecmp(next->key, "time"))
+		{	
+			long val = atol(next->value);
+			if((val > 19000101) && (val < 20500101))
+			{
+				sis_json_object_set_string(node, "scale", "date", 4);
+				sis_json_array_set_string(one, 1, "date", strlen("date"));
+				sis_json_array_set_int(one, 2, 4);
+			} else
+			{
+				sis_json_object_set_string(node, "scale", "second", 6);
+				sis_json_array_set_string(one, 1, "second", strlen("second"));
+				sis_json_array_set_int(one, 2, 4);
+			}
+		} 
+		else 
+		{
+			switch (next->type)
+			{
+				case SIS_JSON_STRING:
+					sis_json_array_set_string(one, 1, "char", strlen("char"));
+					sis_json_array_set_int(one, 2, strlen(next->value) * 2);
+					break;
+				case SIS_JSON_DOUBLE:
+					{
+						sis_json_array_set_string(one, 1, "float", strlen("float"));
+						sis_json_array_set_int(one, 2, 4);
+						char tail[16];
+        				sis_str_substr(tail, 16, next->value, '.', 1);
+						sis_json_array_set_int(one, 3, strlen(tail));
+					}
+					break;
+				case SIS_JSON_INT:
+				default:
+					{
+						if (next->value[0]=='-')
+						{
+							sis_json_array_set_string(one, 1, "int", strlen("int"));
+						} else
+						{
+							sis_json_array_set_string(one, 1, "uint", strlen("uint"));
+						} 
+						sis_json_array_set_int(one, 2, 4);
+					}
+					break;
+			}
+		}
+		sis_json_array_add_node(fields, one);
+		next = next->next;
+	}
+	sis_json_object_add_node(node, "fields", fields);
+	// --- 设置其他字段
+	// sis_json_object_add_string(node, "scale", "date", 4);  // 默认为日线数据
+	sis_json_object_add_uint(node, "limit", 0);
+	// sis_json_object_add_uint(node, "isinit", 0);
+	// sis_json_object_add_uint(node, "issys", 0);
+	sis_json_object_add_string(node, "append-method", STR_APPEND_METHOD, strlen(STR_APPEND_METHOD));  
+	// handle = sis_json_load(STR_APPEND_METHOD, strlen(STR_APPEND_METHOD));
+	// if (handle)
+	// {
+	// 	s_sis_json_node *append = sis_json_clone(handle->node, 1);
+	// 	sis_json_object_add_node(node, "append-method", append);
+	// 	sis_json_close(handle);
+	// }
+
+	// size_t len;
+	// char *str = sis_json_output(node, &len);
+	// if (str)
+	// {
+	// 	printf("%s\n", str);
+	// 	sis_free(str);
+	// }
+	return node;
+
+}
+
+// s_sis_json_node *sisdb_table_make(s_sis_db *db_, s_sisdb_table *tb_)
+// {
+// 	s_sis_json_node *node = sis_json_create_node();
+
+// 	const char *str = sisdb_find_map_name(db_->map, tb_->control.scale, SIS_MAP_DEFINE_TIME_SCALE);
+	
+// 	sis_json_object_set_string(node, "scale", str, strlen(str));
+// 	sis_json_object_set_int(node, "limit", tb_->control.limits);
+// 	sis_json_object_set_int(node, "isinit", tb_->control.isinit);
+// 	sis_json_object_set_int(node, "issys", tb_->control.issys);
+
+// 	int count = sis_string_list_getsize(tb_->publishs);
+// 	if (count > 0)
+// 	{
+// 		s_sis_sds val = sis_sdsnew(NULL);
+// 		for(int i = 0; i < count; i++)
+// 		{
+// 			val = sis_sdscat(val, sis_string_list_get(tb_->publishs, i));
+// 		}
+// 		sis_json_object_set_string(node, "publishs", val, sis_sdslen(val));
+// 		sis_sdsfree(val);
+// 	}
+// 	//处理字段定义
+// 	if (count > 0)
+// 	{
+// 		s_sis_json_node *fields = sis_json_create_array(); 
+// 		count = sis_string_list_getsize(tb_->field_name);
+// 		for(int i = 0; i < count; i++)
+// 		{
+// 			const char *key = sis_string_list_get(tb_->field_name, i);
+// 			s_sisdb_field * val = (s_sisdb_field *)sis_map_pointer_get(tb->field_map, key);
+// 			s_sis_json_node *one = sis_json_create_array(); 
+
+// 			sis_json_array_set_string(one, i, val->name, strlen(val->name));
+// 			str = sisdb_find_map_name(db_->map, val->flags.type, SIS_MAP_DEFINE_FIELD_TYPE);
+// 			sis_json_array_set_string(one, i, str, strlen(str));
+// 			sis_json_array_set_int(one, i, val->flags.int);
+// 			if (val->flags.type == SIS_FIELD_TYPE_FLOAT)
+// 			{
+// 				sis_json_array_set_int(one, i, val->flags.dot);
+// 			}
+// 			sis_json_array_add_node(fields, one);
+// 		}
+// 		sis_json_object_add_node(node, "fields", fields);
+// 	}
+// 	if (tb_->append_method != SIS_ADD_METHOD_NONE)
+// 	{
+
+// 	}
+// 	if (tb_->control.issubs)
+// 	{
+
+// 	}
+// 	if (tb_->control.iszip)
+// 	{
+		
+// 	}	
+// }
+
+// 根据各个属性不同，单独处理到json中，然后统一调用, 没有属性什么也不做
+// table.scale  1
+// table.fields []
+int sisdb_table_update(s_sis_db *db_,s_sisdb_table *tb_, const char *key_ ,const char *val_ ,size_t len_) 
+{
+	// if (strlen(key_)<1)
+	// {
+
+	// 	// 如果
+	// 	// return sisdb_table_set_conf();
+	// } 
+	// tb_一定有值
+	return 0;
+} 
+
+// 先从tb中生成一个 只更新有的关键字，没有的关键字用cfg_的值，
+// 仅仅是改conf，并不对数据进行操作
+int sisdb_table_set_conf(s_sis_db *db_, const char *table_, s_sis_json_node *cfg_)
+{
+	s_sis_json_node *tables = sis_json_cmp_child_node(db_->conf, "tables");
+	s_sis_json_node *node = sis_json_cmp_child_node(tables, table_);
+	if (!node)
+	{
+		s_sis_json_node *cfg = sis_json_clone(cfg_, 1);
+		sis_json_object_add_node(tables, table_, cfg);
+		return 0;
+	}
+	return 1;
+}
