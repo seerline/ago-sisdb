@@ -45,6 +45,8 @@ int sisdb_init(const char *market_);
 
 void sisdb_close();
 
+s_sisdb_server *sisdb_get_server();
+
 bool sisdb_save();
 
 bool sisdb_out(const char * key_, const char *com_);

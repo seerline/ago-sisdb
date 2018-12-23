@@ -297,6 +297,12 @@ void sisdb_close()
 
     sisdb_destroy(server.db);
 }
+
+s_sisdb_server *sisdb_get_server()
+{
+    return &server;
+}
+
 bool sisdb_save()
 {
     if (server.status != SIS_SERVER_STATUS_INITED)

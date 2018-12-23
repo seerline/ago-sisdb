@@ -96,6 +96,18 @@ int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen
 const char *sis_string_list_get(s_sis_string_list *list_, int index_);
 int sis_string_list_getsize(s_sis_string_list *list_);
 
+s_sis_sds sis_string_list_sds(s_sis_string_list *list_);
+
+int sis_string_list_clone(
+	s_sis_string_list *src_, 
+	s_sis_string_list *des_);
+int sis_string_list_merge(
+	s_sis_string_list *list_, 
+	s_sis_string_list *other_); 
+int sis_string_list_across(
+	s_sis_string_list *list_, 
+	s_sis_string_list *other_);
+
 int sis_string_list_indexof(s_sis_string_list *list_, const char *in_);
 int sis_string_list_indexofcase(s_sis_string_list *list_, const char *in_);
 

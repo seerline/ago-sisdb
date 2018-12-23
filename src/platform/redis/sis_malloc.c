@@ -22,7 +22,9 @@ void safe_memory_stop()
     int i=0;
     while(node)
     {
-        printf("[%4d] func:%s, lines:%d\n",i++, node->info, node->line);
+        printf("[%4d] %p func:%s, lines:%d\n",i++, 
+            (void *)((char *)node + MEMORY_NODE_SIZE), 
+            node->info, node->line);
         node = node->next;
     }
 }

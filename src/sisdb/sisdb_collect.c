@@ -1338,10 +1338,10 @@ s_sis_sds _sisdb_make_catch_inited_sds(s_sisdb_collect *unit_, const char *in_)
 	{
 		const char *key = sis_string_list_get(tb->field_name, k);
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, key);
-		if (!fu || fu->subscribe_method == SIS_SUBS_METHOD_COPY)
-		{
-			continue;
-		}
+		if (!fu) continue;
+		if (!fu->subscribe_method) continue;
+		if (!sisdb_field_is_integer(fu)) continue;
+
 		uint64 u64 = 0;
 		// printf("fixed--key=%s size=%d offset=%d, method=%d\n", key, fields, fu->offset,fu->subscribe_method);
 		if (fu->subscribe_method == SIS_SUBS_METHOD_INCR)
@@ -1453,7 +1453,6 @@ s_sis_sds sisdb_make_catch_moved_sds(s_sisdb_collect *unit_, const char *in_)
 		}
 		sisdb_field_set_uint(fu, o, u64);
 	}
-
 	return o;
 }
 int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_)

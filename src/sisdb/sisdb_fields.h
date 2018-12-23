@@ -32,8 +32,9 @@ typedef struct s_sisdb_field
 	char name[SIS_FIELD_MAXLEN]; // 字段名，
 	s_sisdb_field_flags flags;	 // attribute字段属性
 	//----以下有些难受，不过先这样处理了，以后再说----//
-	uint8 subscribe_method;					// 当fields-catch开启时，由该字段判断评选方法
-	char  subscribe_refer_fields[SIS_FIELD_MAXLEN]; //subscribe_refer_fields 时参考的字段索引
+	s_sisdb_method_alone *subscribe_method;
+	// uint8 subscribe_method;					// 当fields-catch开启时，由该字段判断评选方法
+	// char  subscribe_refer_fields[SIS_FIELD_MAXLEN]; //subscribe_refer_fields 时参考的字段索引
 } s_sisdb_field;
 
 //对table来说，定义一个map指向一个多记录sis_fieldsis_t数据结构

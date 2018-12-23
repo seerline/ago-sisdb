@@ -26,6 +26,9 @@ s_sis_db *sisdb_create(char *name_) //数据库的名称，为空建立一个sys
 	db->calls = sis_map_pointer_create();
 	sisdb_init_call_define(db->calls);
 
+	db->methods = sis_map_pointer_create();
+	sisdb_init_method_define(db->methods);
+
 	db->save_task = sis_plan_task_create();
 	db->init_task = sis_plan_task_create();
 
@@ -89,6 +92,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_json_delete_node(db_->conf);
 	sis_map_pointer_destroy(db_->map);
 	sis_map_pointer_destroy(db_->calls);
+	sis_map_pointer_destroy(db_->methods);
 
 	sis_free(db_);
 }

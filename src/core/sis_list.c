@@ -492,6 +492,61 @@ int sis_string_list_getsize(s_sis_string_list *list_)
 {
 	return list_->strlist->count;
 }
+s_sis_sds sis_string_list_sds(s_sis_string_list *list_)
+{
+	if (list_->strlist->count<1) return NULL;
+	s_sis_sds o = sis_sdsnew(sis_pointer_list_get(list_->strlist, 0));
+	for (int i = 1; i < list_->strlist->count; i++)
+	{
+		o = sis_sdscatfmt(o, ",%s", sis_pointer_list_get(list_->strlist, i));
+	}	
+	return o;
+}
+int sis_string_list_clone(
+	s_sis_string_list *src_, 
+	s_sis_string_list *des_)
+{
+	if (!src_||!des_) return 0;
+	sis_string_list_clear(des_);
+	for (int i = 0; i < src_->strlist->count; i++)
+	{
+		const char *str = (const char *)sis_pointer_list_get(src_->strlist, i);
+		sis_string_list_push(des_, str, strlen(str));
+	}		
+	return des_->strlist->count;
+}
+int sis_string_list_merge(
+	s_sis_string_list *list_, 
+	s_sis_string_list *other_)
+{
+	if (!list_||!other_) return 0;
+
+	for (int i = 0; i < other_->strlist->count; i++)
+	{
+		const char *str = (const char *)sis_pointer_list_get(other_->strlist, i);
+		sis_string_list_push_only(list_, str, strlen(str));
+	}	
+	return list_->strlist->count;
+}
+
+int sis_string_list_across(
+	s_sis_string_list *list_, 
+	s_sis_string_list *other_)
+{
+	if (!list_||!other_) return 0;
+	for (int i = 0; i < list_->strlist->count; )
+	{
+		const char *str = (const char *)sis_pointer_list_get(list_->strlist, i);
+		int index = sis_string_list_indexofcase(other_, str);
+		if (index < 0)
+		{
+			sis_string_list_delete(list_, i);	
+		} else {
+			i++;
+		}
+	}	
+	return list_->strlist->count;
+}
 
 int sis_string_list_indexof(s_sis_string_list *list_, const char *in_)
 {
@@ -583,6 +638,8 @@ int sis_string_list_push_only(s_sis_string_list *list_, const char *in_, size_t 
 	if (index < 0)
 	{
 		return sis_pointer_list_push(list_->strlist, str);
+	} else {
+		sis_free(str);
 	}
 	return index;
 }
@@ -639,6 +696,37 @@ int main(void) {
 	}
 
 	sis_string_list_destroy(list);
+
+	const char *src = "1,2,3,4,5,6,7,8,9,0";
+	s_sis_string_list *list = sis_string_list_create_w();
+	sis_string_list_load(list, src, strlen(src),",");
+
+	class->in = list;
+	class->out = sis_string_list_create_w();
+	//////////////
+	// const char *des = "1,3,5,7,9,11";
+	// s_sis_string_list *deslist = sis_string_list_create_w();
+	// sis_string_list_load(deslist, des, strlen(des),",");
+
+	// sis_string_list_clone(class->in, class->out);
+	// {
+	// 	s_sis_sds sss = sis_string_list_sds(class->out);
+	// 	printf("::: %s\n  ", sss);
+	// 	sis_sdsfree(sss);		
+	// }	
+	// sis_string_list_merge(class->out, class->in, deslist);
+	// {
+	// 	s_sis_sds sss = sis_string_list_sds(class->out);
+	// 	printf("::: %s\n  ", sss);
+	// 	sis_sdsfree(sss);		
+	// }	
+	// sis_string_list_across(class->out, class->in, deslist);
+	// {
+	// 	s_sis_sds sss = sis_string_list_sds(class->out);
+	// 	printf("::: %s\n  ", sss);
+	// 	sis_sdsfree(sss);		
+	// }	
+
 	return 0;
 }
 #endif

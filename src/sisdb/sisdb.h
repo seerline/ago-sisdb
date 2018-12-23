@@ -46,6 +46,7 @@ typedef struct s_sis_db {
 
 	s_sis_map_pointer  *map;          // 关键字查询表
 	
+	s_sis_map_pointer  *methods;      // 数据库操作方法调用
 	s_sis_map_pointer  *calls;          // 远程过程调用
 
 	bool   loading;  // 数据加载中
