@@ -490,7 +490,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
         s_sisdb_table *tb = sisdb_get_table(server.db, db);
         if (!tb)
         { 
-            printf("fmt = %d db= %s \n",fmt_, db);
+            // printf("fmt = %d db= %s \n",fmt_, db);
             s_sis_json_node *node = sisdb_table_new_config(val_, len_);
             if(!node) 
             {
@@ -498,7 +498,10 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
                 return SIS_SERVER_REPLY_ERR;
             }
             tb = sisdb_table_create(server.db, db, node);
-            sisdb_table_set_conf(server.db, db, node);
+            if(tb)
+            {
+                sisdb_table_set_conf(server.db, db, node);
+            }
             sis_json_delete_node(node); 
         }
     }

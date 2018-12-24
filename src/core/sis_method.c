@@ -4,9 +4,17 @@
 //////////////////////////////////////////////
 //   sis_method_map function define
 ///////////////////////////////////////////////
-s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_)
+s_sis_map_pointer *sis_method_map_create(s_sis_map_pointer *map_, s_sis_method *methods_, int count_)
 {
-	s_sis_map_pointer *map = sis_map_pointer_create();
+	s_sis_map_pointer *map = map_;
+	if (!map)
+	{
+		map = sis_map_pointer_create();
+	}
+	else
+	{
+		sis_map_pointer_clear(map);
+	}
 	for (int i = 0; i < count_; i++)
 	{
 		struct s_sis_method *c = methods_ + i;
@@ -78,7 +86,7 @@ s_sis_method_node* _sis_method_node_load(
 		case SIS_JSON_INT:
 		case SIS_JSON_DOUBLE:
 		case SIS_JSON_STRING:
-			sis_json_object_add_string(new->argv, "argv", node_->value, strlen(node_->value));
+			sis_json_object_add_string(new->argv, SIS_METHOD_ARGV, node_->value, strlen(node_->value));
 			break;
 		case SIS_JSON_ARRAY:
 		case SIS_JSON_OBJECT:
@@ -283,7 +291,7 @@ void *sis_method_class_execute(s_sis_method_class *class_)
 
 
 
-#if 1
+#if 0
 
 void show(s_sis_method_node *node_, int *depth)
 {

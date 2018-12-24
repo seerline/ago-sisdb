@@ -9,12 +9,12 @@
 
 // typedef int _sis_method_define(void *, s_sis_json_node *);
 // typedef int _sis_method_logic_define(void *, void *);
+#define SIS_METHOD_ARGV  "argv"
 
 typedef struct s_sis_method {
-    const char *name;   // 方法的名字
-    const char *style;  // 方法属于的类别，相当于命名空间 subscribe append zip 等
+    const char *name;     // 方法的名字
+    const char *style;    // 方法属于的类别，相当于命名空间 subscribe append zip 等
 	void *(*proc)(void *, s_sis_json_node *);
-    // _sis_method_define *proc;
 	const char *explain;  // 方法的说明
 }s_sis_method;
 
@@ -37,7 +37,7 @@ typedef struct s_sis_method_node {
 // 2.取in的子集，
 
 typedef struct s_sis_method_class {
-	int      	style;  // 类型
+	int      	style;   // 类型
 	void       *obj;     // 入口数据区指针，
 	s_sis_method_node        *node;   // 方法链表，方法传递value的数据
 	void(*merge)(void *, void *);      // 和同一等级的方法求并集
@@ -50,7 +50,7 @@ typedef struct s_sis_method_class {
 //////////////////////////////////////////////
 //   method_map 这里定义的是方法列表
 ///////////////////////////////////////////////
-s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_);
+s_sis_map_pointer *sis_method_map_create(s_sis_map_pointer *map_, s_sis_method *methods_, int count_);
 s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, const char *style_);
 void sis_method_map_destroy(s_sis_map_pointer *map_);
 

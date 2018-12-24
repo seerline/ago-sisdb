@@ -146,7 +146,12 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	{
 		tb->control.scale = mm->uid;
 	}
-
+	if (tb->control.scale == SIS_TIME_SCALE_NONE && tb->control.limits == 0)
+	{
+		tb->control.limits = 1;
+		// 没有时间尺度的数据表，并且还没有设置记录数量，就限定为一条记录，
+		// 防止无限制的增加记录
+	}
 	//处理链接数据表名
 	tb->publishs = sis_string_list_create_w();
 
@@ -173,13 +178,12 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	{
 		tb->append_method = sisdb_method_alone_create("append", appends);
 	} 
-	else 
+	s_sis_json_node *updates = sis_json_cmp_child_node(com_, "update-method");
+	if (updates)
 	{
-		if (tb->control.limits == 0)
-		{
-			tb->control.limits = 1;
-		}
-	}
+		tb->update_method = sisdb_method_alone_create("update", updates);
+	} 
+
 	s_sis_json_node *subs = sis_json_cmp_child_node(com_, "subscribe-method");
 	if (subs)
 	{
