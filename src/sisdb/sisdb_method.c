@@ -38,7 +38,7 @@ void *sisdb_method_write_incr(void *obj_, s_sis_json_node *node_)
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
 
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,"argv");
+	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
 	s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
 
 	if (!fu) return SIS_METHOD_VOID_TRUE;
@@ -72,7 +72,7 @@ void *sisdb_method_write_nonzero(void *obj_, s_sis_json_node *node_)
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
 
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,"argv");
+	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
 	s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
 
 	// printf("---%d--\n", ok);
@@ -104,7 +104,7 @@ void *sisdb_method_subscribe_once(void *obj_, s_sis_json_node *node_)
 
 	uint64 u64 = 0;
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,"argv");
+	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
 	if (obj->init)
 	{
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
@@ -132,7 +132,7 @@ void *sisdb_method_subscribe_min(void *obj_, s_sis_json_node *node_)
 
 	uint64 u64 = 0;
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,"argv");
+	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
 	if (obj->init)
 	{
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
@@ -180,7 +180,7 @@ void *sisdb_method_subscribe_max(void *obj_, s_sis_json_node *node_)
 
 	uint64 u64 = 0;
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,"argv");
+	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
 	if (obj->init)
 	{
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
