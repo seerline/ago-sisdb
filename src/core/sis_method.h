@@ -10,6 +10,9 @@
 // typedef int _sis_method_define(void *, s_sis_json_node *);
 // typedef int _sis_method_logic_define(void *, void *);
 #define SIS_METHOD_ARGV  "argv"
+#define SIS_METHOD_VOID_TRUE   ((void *)1)
+#define SIS_METHOD_VOID_FALSE  ((void *)0)
+
 
 typedef struct s_sis_method {
     const char *name;     // 方法的名字
@@ -22,6 +25,7 @@ typedef struct s_sis_method {
 typedef struct s_sis_method_node {
     s_sis_method    *method;
 	s_sis_json_node *argv;
+	bool             ok;    // 为 SIS_METHOD_CLASS_JUDGE 类型准备
 	void            *out;   // 出口数据区指针，仅仅在SIS_METHOD_CLASS_FILTER才临时生成，并在结果输出后销毁
 	// int              option; // 和上次结果比较是 0 与还是 1或
     struct s_sis_method_node *next, *prev;    // 或的关系
@@ -29,7 +33,10 @@ typedef struct s_sis_method_node {
 }s_sis_method_node;
 
 #define SIS_METHOD_CLASS_MARKING  0 // 对数据源打标记，选股用, 对传入数据运算用
-#define SIS_METHOD_CLASS_FILTER   1 // 输出和in数据同构的结果数据集，数据库查询时用
+#define SIS_METHOD_CLASS_JUDGE    1 // 求一个结果，判断条件是否成立
+#define SIS_METHOD_CLASS_FILTER   2 // 输出和in数据同构的结果数据集，数据库查询时用
+// 应该支持一种与或关系的选项
+
 // 传入方法的结构例子
 // in和out必须是同构的数据，out应该是in的同集或子集
 // 分以下几种情况
@@ -38,6 +45,7 @@ typedef struct s_sis_method_node {
 
 typedef struct s_sis_method_class {
 	int      	style;   // 类型
+	// bool        ok;      // 为 SIS_METHOD_CLASS_JUDGE 类型准备
 	void       *obj;     // 入口数据区指针，
 	s_sis_method_node        *node;   // 方法链表，方法传递value的数据
 	void(*merge)(void *, void *);      // 和同一等级的方法求并集
@@ -50,7 +58,7 @@ typedef struct s_sis_method_class {
 //////////////////////////////////////////////
 //   method_map 这里定义的是方法列表
 ///////////////////////////////////////////////
-s_sis_map_pointer *sis_method_map_create(s_sis_map_pointer *map_, s_sis_method *methods_, int count_);
+s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_);
 s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, const char *style_);
 void sis_method_map_destroy(s_sis_map_pointer *map_);
 
@@ -80,7 +88,7 @@ s_sis_method_class *sis_method_class_create(
 
 void *sis_method_class_execute(s_sis_method_class *class_);
 
-// 0 -  全部清理  1 - 只清理输出的数据
+// 0 -  全部清理  1 - 只清理输出的数据 针对SIS_METHOD_CLASS_FILTER类型
 void sis_method_class_clear(s_sis_method_class *,int);
 
 void sis_method_class_destroy(void *node_, void *other_);

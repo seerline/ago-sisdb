@@ -67,25 +67,10 @@
 #define SIS_TIME_SCALE_MONTH   9 // "MONTH"  //int32 20170101格式，精确到天
 #define SIS_TIME_SCALE_YEAR   10 // "YEAR"  //int32 20170101格式，精确到天
 
-/////////////////////////////////////////////////////////
-//  数据库数据插入和修改模式
-/////////////////////////////////////////////////////////
-#define SIS_ADD_METHOD_ALWAYS      0  // 不做判断直接追加
-#define SIS_ADD_METHOD_TIME        1  // 检查时间节点重复就覆盖老的数据，不重复就放对应位置
-#define SIS_ADD_METHOD_VOL         2  // 检查成交量，成交量增加就写入
-#define SIS_ADD_METHOD_CODE        4  // 判断代码不同就增加，否则就修改
-#define SIS_ADD_METHOD_SORT        8  // 同一时间下不同代码就增加，同一时间同一代码修改，不同时间就增加
-#define SIS_ADD_METHOD_NONE        16  // 不能插入只能修改 一般不用
 
 // #define SIS_INIT_WAIT    0 // 900或刚开机 开始等待初始化
 // #define SIS_INIT_WORK    1 // 收到now发现日期一样直接改状态，如果日期是新的，就初始化后改状态 
 // #define SIS_INIT_STOP    2 // 收盘
-
-#define SIS_SUBS_METHOD_COPY 0 // 直接替换
-#define SIS_SUBS_METHOD_MIN  1   // 最小值，排除0
-#define SIS_SUBS_METHOD_MAX  2   // 最大值
-#define SIS_SUBS_METHOD_ONCE 3  // 如果老数据为0就替换，否则不替换
-#define SIS_SUBS_METHOD_INCR 4  // 求增量
 
 /////////////////////////////////////////////////////////
 //  数据格是定义 

@@ -4,17 +4,9 @@
 //////////////////////////////////////////////
 //   sis_method_map function define
 ///////////////////////////////////////////////
-s_sis_map_pointer *sis_method_map_create(s_sis_map_pointer *map_, s_sis_method *methods_, int count_)
+s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_)
 {
-	s_sis_map_pointer *map = map_;
-	if (!map)
-	{
-		map = sis_map_pointer_create();
-	}
-	else
-	{
-		sis_map_pointer_clear(map);
-	}
+	s_sis_map_pointer *map = sis_map_pointer_create();
 	for (int i = 0; i < count_; i++)
 	{
 		struct s_sis_method *c = methods_ + i;
@@ -179,8 +171,8 @@ void sis_method_class_destroy(void *class_, void *other_)
 	s_sis_method_class *class = (s_sis_method_class *)class_;
 	if (class->free) 
 	{
-		if (class->obj) class->free(class->obj);
-		if(class->style != SIS_METHOD_CLASS_MARKING)
+		if(class->obj) class->free(class->obj);
+		if(class->style == SIS_METHOD_CLASS_FILTER)
 		{
 			if (class->node->out) class->free(class->node->out);
 		}
@@ -260,14 +252,58 @@ void _sis_method_class_filter(
 
 }
 
+void _sis_method_class_judge( s_sis_method_class *cls_, s_sis_method_node *onode_, s_sis_method_node *node_)
+{
+	if (!node_) return;
+
+	void *ok = node_->method->proc(cls_->obj, node_->argv); 
+	node_->ok = (ok != NULL);
+
+	{	
+		printf(" >>> %s : %d\n  ", node_->method->name, node_->ok);
+	} 
+	//  归到第一个，只要父亲为false就不再检查儿子
+	if (node_->child && node_->ok)
+	{
+		s_sis_method_node *first = sis_method_node_first(node_->child);
+		_sis_method_class_judge(cls_, node_, first);
+	}
+
+	if (onode_ != node_) 
+	{
+		if (sis_method_node_first(node_) == onode_)
+		{
+			onode_->ok |= node_->ok;
+			node_->ok = false;
+		}
+	}
+	if (node_->next)
+	{
+		_sis_method_class_judge(cls_, sis_method_node_first(node_), node_->next);
+	} 
+	else 
+	{
+		if (node_->father) 
+		{
+			s_sis_method_node *first = sis_method_node_first(node_);
+			node_->father->ok &= first->ok;
+			first->ok = false;
+		}
+	}
+}
+
 void _sis_method_class_clear(s_sis_method_class *class_)
 {
 	if (class_->free) 
 	{
-		if(class_->style != SIS_METHOD_CLASS_MARKING)
+		if(class_->style == SIS_METHOD_CLASS_FILTER)
 		{
 			if (class_->node->out) class_->free(class_->node->out);
 			class_->node->out = NULL;
+		}
+		if(class_->style == SIS_METHOD_CLASS_JUDGE)
+		{
+			class_->node->ok = false;
 		}
 	}
 }
@@ -279,6 +315,10 @@ void *sis_method_class_execute(s_sis_method_class *class_)
 	{
 		_sis_method_class_marking(class_, class_->node);
 		return class_->obj;
+	} else if(class_->style == SIS_METHOD_CLASS_JUDGE)
+	{							
+		_sis_method_class_judge(class_, class_->node, class_->node);
+		return &class_->node->ok;
 	} else {
 		// 清楚所有临时变量out，对class_->out地址只设置NULL，不释放
 		_sis_method_class_clear(class_);
@@ -291,7 +331,7 @@ void *sis_method_class_execute(s_sis_method_class *class_)
 
 
 
-#if 0
+#if 1
 
 void show(s_sis_method_node *node_, int *depth)
 {
@@ -339,7 +379,24 @@ void calc( s_sis_method_class *cls_, s_sis_method_node *node_)
 
 	calc(cls_, node_->next);
 }
-
+#if 1
+void *demo_f1(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_TRUE;  }
+void *demo_f2(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_FALSE;  }
+void *demo_f3(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_FALSE;  }
+void *demo_f11(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_FALSE;  }
+void *demo_f12(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_TRUE;  }
+void *demo_f121(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_TRUE;  }
+void *demo_f122(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_FALSE;  }
+void *demo_f31(void *c, s_sis_json_node *node_)
+{	return SIS_METHOD_VOID_TRUE;  }
+#else
 void *demo_f1(void *c, s_sis_json_node *node_)
 {	
 	s_sis_string_list *list = sis_string_list_create_w();
@@ -412,7 +469,7 @@ void *demo_f31(void *c, s_sis_json_node *node_)
 	printf("[ %s ] ", sss);
 	sis_sdsfree(sss);
 	printf("i am demo_f31\n");	return list; }
-
+#endif
 void demo_merge(void *out, void *obj)
 {
 	if (!out||!obj) return ;
@@ -534,22 +591,30 @@ int main()
 	sis_string_list_load(class->obj, src, strlen(src),",");
 
 	///////////////
-	class->style = SIS_METHOD_CLASS_FILTER;
+	// class->style = SIS_METHOD_CLASS_FILTER;
+	class->style = SIS_METHOD_CLASS_JUDGE;
 	if (class->style == SIS_METHOD_CLASS_FILTER)
 	{
 		class->merge = demo_merge;
 		class->across = demo_across;
 		class->free = demo_free;
 		class->malloc = demo_malloc;
-	} else{
+	} else 
+	{
 		class->free = demo_free;
 	}
+	if (class->style != SIS_METHOD_CLASS_JUDGE)
+	{
+		s_sis_string_list *out= (s_sis_string_list *)sis_method_class_execute(class);
 
-	s_sis_string_list *out= (s_sis_string_list *)sis_method_class_execute(class);
+		s_sis_sds sss = sis_string_list_sds(out);
+		printf("::: %s\n  ", sss);
+		sis_sdsfree(sss);
+	} else {
+		bool *ok= (bool *)sis_method_class_execute(class);
+		printf("::: ok = %d\n  ", *ok);
+	}	
 
-	s_sis_sds sss = sis_string_list_sds(out);
-	printf("::: %s\n  ", sss);
-	sis_sdsfree(sss);
 
 	sis_json_close(handel);
 

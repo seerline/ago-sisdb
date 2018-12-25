@@ -57,6 +57,8 @@ int sis_struct_list_pto_recno(s_sis_struct_list *list_,void *);
 //  存储指针的列表,依赖于struct_list,记录长度为sizeof(char *)
 ///////////////////////////////////////////////////////////////////////////
 //
+#define s_sis_pointer_list s_sis_struct_list
+
 s_sis_struct_list *sis_pointer_list_create(); 
 
 #define sis_pointer_list_destroy sis_struct_list_destroy

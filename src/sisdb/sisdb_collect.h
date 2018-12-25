@@ -13,7 +13,7 @@
 #include "sisdb.h"
 #include "sisdb_sys.h"
 #include "sisdb_table.h"
-
+#include "sisdb_fields.h"
 /////////////////////////////////////////////////////////
 //  数据库数据搜索模式
 /////////////////////////////////////////////////////////
@@ -73,6 +73,23 @@ typedef struct s_sisdb_collect
 	s_sis_sds refer;  // 实际数据的前一条参考数据 zip 时生效 vol为当量 -- 需要保存
 } s_sisdb_collect;
 
+#define SIS_OPTION_NONE    0
+#define SIS_OPTION_APPEND  1
+#define SIS_OPTION_INSERT  2
+
+typedef struct s_sis_collect_method_buffer
+{
+	int              option;     // APPEND=1 INSERT=2 NONE=0 
+	int              index;      // 在index前插入记录
+	
+	bool             init;       // 
+	const char      *in;         // 来源数据
+	const char      *last;       // 最后一条数据
+	char      	    *out;        // 输出数据
+	s_sisdb_field   *field;      // 当前字段
+	s_sisdb_collect *collect;   // 当前集合
+} s_sis_collect_method_buffer;
+
 #pragma pack(pop)
 
 ///////////////////////////////////////////////////////////////////////////
@@ -96,9 +113,13 @@ s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_);
 
 int sisdb_collect_recs(s_sisdb_collect *unit_);
 
-int sisdb_collect_search(s_sisdb_collect *unit_, uint64 index_);
-int sisdb_collect_search_left(s_sisdb_collect *unit_, uint64 index_, int *mode_);
-int sisdb_collect_search_right(s_sisdb_collect *unit_, uint64 index_, int *mode_);
+int sisdb_collect_search(s_sisdb_collect *unit_, uint64 finder_);
+int sisdb_collect_search_left(s_sisdb_collect *unit_, uint64 finder_, int *mode_);
+int sisdb_collect_search_right(s_sisdb_collect *unit_, uint64 finder_, int *mode_);
+// 最后一个匹配的时间 
+// 1355579  查5返回4，查4返回2 
+int sisdb_collect_search_last(s_sisdb_collect *unit_, uint64 finder_, int *mode_);
+
 
 s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *, int start_, int stop_);
 s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *, int start_, int count_);

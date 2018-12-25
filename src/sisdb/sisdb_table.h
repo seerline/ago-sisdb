@@ -10,26 +10,22 @@
 #include "sis_list.h"
 #include "sis_json.h"
 #include "sis_time.h"
+#include "sis_method.h"
 
 #include "sisdb.h"
 
 #pragma pack(push,1)
 
-typedef int _sisdb_method_define(void *, s_sis_json_node *);
+#define SIS_WRITE_ALWAYS           0  // 不做判断直接追加
+#define SIS_WRITE_CHECKED          1  // 需要检查
+#define SIS_WRITE_SORT_TIME        2  // 按时间排序
+#define SIS_WRITE_SORT_OTHER       4  // 按其他字段排序
+#define SIS_WRITE_SORT_NONE        8  // 不排序
 
-typedef struct s_sisdb_method {
-    const char *name;   // 方法的名字
-    const char *style;  // 方法属于的类别，相当于命名空间 subscribe append zip 等
-    _sisdb_method_define *proc;
-}s_sisdb_method;
-
-// 参数默认为一串字段
-typedef struct s_sisdb_method_alone {
-    s_sisdb_method *method;
-	s_sis_json_node *argv;
-    struct s_sisdb_method_alone *next, *prev;   // 或的关系
-    struct s_sisdb_method_alone *child, *father; // 与的关系
-}s_sisdb_method_alone;
+#define SIS_WRITE_SOLE_TIME        16 // 只有时间唯一
+#define SIS_WRITE_SOLE_MULS        32 // 除了时间字段还有其他字段同时唯一 
+#define SIS_WRITE_SOLE_OTHER       64 // 没有时间字段，一个或多个字段同时唯一 
+#define SIS_WRITE_SOLE_NONE        128  // 不判断是否唯一
 
 
 typedef struct s_sisdb_table_control {
@@ -43,32 +39,24 @@ typedef struct s_sisdb_table_control {
 	uint8  iszip; 		 // 数据表是否压缩存储
 }s_sisdb_table_control;
 
-// #define SIS_TABLE_LINK_COVER  0
-// #define SIS_TABLE_LINK_INCR   1
-
 typedef struct s_sisdb_table {
 	uint32    version;      		     // 数据表的版本号time_t格式
 	s_sis_sds name;                      // 表的名字
 	s_sis_db *father;                    // 数据库的指针，在install表格时赋值
-	s_sisdb_method_alone *append_method; // 插入数据的方法
-	// uint16    append_method;             // 插入数据方式
+
+	uint32              write_style;     // 写入类型
+	s_sis_sds           write_sort;  	 // 排序字段
+	s_sis_pointer_list *write_solely;    // 唯一性字段集合 字段索引
+	s_sis_method_class *write_method;    // 数据的检查方法
+
 	s_sisdb_table_control control;       // 表控制定义
 	s_sis_string_list  *publishs;        // 当修改本数据表时，同时需要修改的其他数据表
 	s_sis_string_list  *field_name;      // 按顺序排的名字
 	s_sis_map_pointer  *field_map;       // 字段定义字典表，按字段名存储的字段内存块，指向 s_sisdb_field
-	s_sis_string_list  *collect_list;		 // 仅仅当iscfg为真时，把collect的key在创建时新串push
+	s_sis_string_list  *collect_list;    // 仅仅当iscfg为真时，把collect的key在创建时新串push
 }s_sisdb_table;
 
-
-
 #pragma pack(pop)
-
-void sisdb_init_method_define(s_sis_map_pointer *map_);
-s_sisdb_method *sisdb_method_find_define(s_sis_map_pointer *map_, const char *name_, const char *style_);
-
-/////
-///
-////
 
 s_sisdb_table *sisdb_table_create(s_sis_db *db_,const char *name_, s_sis_json_node *command);  //command为一个json格式字段定义
 void sisdb_table_destroy(s_sisdb_table *);  //删除一个表

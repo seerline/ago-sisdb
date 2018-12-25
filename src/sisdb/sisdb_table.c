@@ -3,108 +3,7 @@
 #include "sisdb_map.h"
 #include "sisdb_fields.h"
 #include "sisdb_io.h"
-
-static struct s_sisdb_method _sis_method_table[] = {
-	{"incr",     "append", sisdb_append_method_incr},
-	{"nonzero",  "append", sisdb_append_method_nonezero},
-	{"only",     "append", sisdb_append_method_only},
-
-	{"once",    "subscribe", sisdb_subscribe_method_once},
-	{"max",  	"subscribe", sisdb_subscribe_method_max},
-	{"min", 	"subscribe", sisdb_subscribe_method_min},
-	{"incr", 	"subscribe", sisdb_subscribe_method_incr},
-};
-
-void sisdb_init_method_define(s_sis_map_pointer *map_)
-{
-	sis_map_pointer_clear(map_);
-	int nums = sizeof(_sis_method_table) / sizeof(struct s_sisdb_method);
-
-	for (int i = 0; i < nums; i++)
-	{
-		struct s_sisdb_method *c = _sis_method_table + i;
-		// int o = sis_dict_add(map, sis_sdsnew(c->name), c);
-		s_sis_sds key = sis_sdsnew(c->style);
-        key = sis_sdscatfmt(key, ".%s", c->name);
-		int o = sis_dict_add(map, key, c);
-		assert(o == DICT_OK);
-	}    
-}
-
-s_sisdb_method *sisdb_method_find_define(s_sis_map_pointer *map_, const char *name_, const char *style_)
-{
-    if (!map_) 
-    {
-        s_sisdb_server *server = digger_get_server();
-        map_ = server->db->methods;
-    }
-	s_sisdb_method *val = NULL;
-	if (map_)
-	{
-		s_sis_sds key = sis_sdsnew(style_);
-        key = sis_sdscatfmt(key, ".%s", name_);
-		val = (s_sisdb_method *)sis_dict_fetch_value(map_, key);
-		sis_sdsfree(key);
-	} 
-	return val;
-}
-
-s_sisdb_method_alone* _sisdb_method_alone_load(const char *style_,
-    s_sis_json_node *node_, s_sisdb_method_alone *prev_)
-{
-	if (!node_) return NULL;
-
-	s_sisdb_method_alone *new = (s_sisdb_method_alone *)sis_malloc(sizeof(s_sisdb_method_alone));
-	memset(new, 0 ,sizeof(s_sisdb_method_alone));
-
-    new->method = sisdb_method_find_define(NULL, (const char *)&node_->key[1], style_);
-    new->argv = sis_json_clone(sis_json_cmp_child_node(node_,"argv"), 1); // 全节点赋值
-
-	if (prev_) 
-	{
-		prev_->next = new;
-		new->prev = prev_;
-	}
-    return new;
-}
-
-s_sisdb_method_alone *sisdb_method_alone_create(const char *style_, s_sis_json_node *node_)
-{
-    s_sisdb_method_alone *first = NULL;
-
-    s_sis_json_node *next = sis_json_first_node(node_);
-    while (next)
-    {
-        if (next->key[0] == '$') 
-        {
-            first = _sisdb_method_alone_load(style_, next, first);
-        }
-        next = next->next;
-    }
-    return sisdb_method_alone_first(first);
-}
-
-void sisdb_method_alone_destroy(void *other_, void *node_)
-{
-    SIS_NOTUSED(other_);
-	s_sisdb_method_alone *node = sisdb_method_alone_first((s_sisdb_method_alone *)node_);
-	while (node)
-	{
-		s_sisdb_method_alone *next = node->next;
-    	sis_json_delete_node(node->argv);
-	    sis_free(node);
-        node = next;
-	} 
-}
-s_sisdb_method_alone *sisdb_method_alone_first(s_sisdb_method_alone *node_)
-{
-	while (node_->prev)
-	{
-		node_ = node_->prev;
-	}
-    return node_;
-}
-
+#include "sisdb_method.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +34,11 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	tb->version = (uint32)sis_time_get_now();
 	tb->name = sis_sdsnew(name_);
 	tb->father = db_;
-	tb->append_method = NULL;
+
+	tb->write_style = SIS_WRITE_ALWAYS;
+	tb->write_sort = NULL;
+	tb->write_solely = sis_pointer_list_create();
+	tb->write_method = NULL;
 
 	sis_dict_add(db_->dbs, sis_sdsnew(name_), tb);
 
@@ -173,15 +76,72 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	// 	printf("---111  %s\n",sis_string_list_get(tb->field_name, i));
 	// }
 
-	s_sis_json_node *appends = sis_json_cmp_child_node(com_, "append-method");
-	if (appends)
+	s_sis_json_node *writes = sis_json_cmp_child_node(com_, "write-method");
+	if (writes)
 	{
-		tb->append_method = sisdb_method_alone_create("append", appends);
-	} 
-	s_sis_json_node *updates = sis_json_cmp_child_node(com_, "update-method");
-	if (updates)
-	{
-		tb->update_method = sisdb_method_alone_create("update", updates);
+		tb->write_style |= SIS_WRITE_CHECKED;
+		if (sis_json_cmp_child_node(writes, "sort"))
+		{
+			tb->write_sort = sis_sdsnew(sis_json_get_str(writes, "sort"));
+			if(!sis_strcasecmp(tb->write_sort, "time")) 
+			{
+				tb->write_style |= SIS_WRITE_SORT_TIME;
+			} else 
+			{
+				tb->write_style |= SIS_WRITE_SORT_OTHER;
+			}
+		} 
+		else
+		{
+			tb->write_style |= SIS_WRITE_SORT_NONE;
+		}
+		if (sis_json_cmp_child_node(writes, "solely"))
+		{
+			strval = sis_json_get_str(writes, "solely");
+			int count = sis_str_substr_nums(strval, ',');	
+			for(int i = 0; i < count; i++)
+			{
+				char field[32];
+				sis_str_substr(field, 32, strval, ',', i);
+				s_sisdb_field *fu = sisdb_field_get_from_key(tb, field);
+				sis_pointer_list_push(tb->write_solely, fu);
+			}
+		}
+		if (tb->write_solely->count < 1)
+		{
+			tb->write_style |= SIS_WRITE_SOLE_NONE;
+		} else 
+		{
+			bool finded = false;
+			for(int i = 0; i < tb->write_solely->count; i++)
+			{
+				s_sisdb_field *fu = (s_sisdb_field *)sis_pointer_list_get(tb->write_solely, i);
+				if(!sis_strcasecmp(fu->name, "time")) 
+				{
+					finded = true;
+					break;
+				}
+			}
+			if (!finded)
+			{
+				tb->write_style |= SIS_WRITE_SOLE_OTHER;
+			} else 
+			{
+				if (tb->write_solely->count == 1)
+				{
+					tb->write_style |= SIS_WRITE_SOLE_TIME;
+				} else 
+				{
+					tb->write_style |= SIS_WRITE_SOLE_MULS;
+				}
+			}
+		}		
+		s_sis_json_node *methods = sis_json_cmp_child_node(writes, "checked");
+		if (methods)
+		{
+			tb->write_method = sis_method_class_create(db_->methods, SISDB_METHOD_STYLE_WRITE, methods);
+			tb->write_method->style = SIS_METHOD_CLASS_JUDGE;
+		}
 	} 
 
 	s_sis_json_node *subs = sis_json_cmp_child_node(com_, "subscribe-method");
@@ -194,8 +154,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 			s_sisdb_field *fu = sisdb_field_get_from_key(tb, child->key);
 			if (fu)
 			{
-				fu->subscribe_method = sisdb_method_alone_create("subscribe", child);
-				// printf("%s==%d  %s--- %s\n", child->key, fu->subscribe_method, fu->subscribe_refer_fields,fu->name);
+				fu->subscribe_method = sis_method_class_create(db_->methods, SISDB_METHOD_STYLE_SUBSCRIBE, child);
 			}
 			// printf("[%s] %s=====%p\n", tb->name, child->key, fu);
 			child = child->next;
@@ -227,6 +186,12 @@ void sisdb_table_destroy(s_sisdb_table *tb_)
 	sis_string_list_destroy(tb_->collect_list);
 	sis_string_list_destroy(tb_->publishs);
 
+	if (tb_->write_sort) sis_sdsfree(tb_->write_sort);
+	sis_pointer_list_destroy(tb_->write_solely);
+	if(tb_->write_method)
+	{
+		sis_method_class_destroy(tb_->write_method, NULL);
+	}
 	sis_string_list_destroy(tb_->field_name);
 	
 	sis_sdsfree(tb_->name);
@@ -331,8 +296,8 @@ int sisdb_table_get_fields_size(s_sisdb_table *tb_)
 	sis_dict_iter_free(di);
 	return len;
 }
-// #define STR_APPEND_METHOD "{ \"$only\":{ \"fields\": \"time\"} }"
-#define STR_APPEND_METHOD "time"
+
+#define STR_APPEND_METHOD "{ \"sort\": \"time\", \"solely\": \"time\" }"
 
 // 这里的source指的就是实际的数据,根据实际数据生成默认的配置字符串
 s_sis_json_node *sisdb_table_new_config(const char *source_ ,size_t len_)
@@ -409,12 +374,12 @@ s_sis_json_node *sisdb_table_new_config(const char *source_ ,size_t len_)
 	sis_json_object_add_uint(node, "limit", 0);
 	// sis_json_object_add_uint(node, "isinit", 0);
 	// sis_json_object_add_uint(node, "issys", 0);
-	sis_json_object_add_string(node, "append-method", STR_APPEND_METHOD, strlen(STR_APPEND_METHOD));  
+	sis_json_object_add_string(node, "write-method", STR_APPEND_METHOD, strlen(STR_APPEND_METHOD));  
 	// handle = sis_json_load(STR_APPEND_METHOD, strlen(STR_APPEND_METHOD));
 	// if (handle)
 	// {
 	// 	s_sis_json_node *append = sis_json_clone(handle->node, 1);
-	// 	sis_json_object_add_node(node, "append-method", append);
+	// 	sis_json_object_add_node(node, "write-method", append);
 	// 	sis_json_close(handle);
 	// }
 
@@ -473,10 +438,6 @@ s_sis_json_node *sisdb_table_new_config(const char *source_ ,size_t len_)
 // 			sis_json_array_add_node(fields, one);
 // 		}
 // 		sis_json_object_add_node(node, "fields", fields);
-// 	}
-// 	if (tb_->append_method != SIS_ADD_METHOD_NONE)
-// 	{
-
 // 	}
 // 	if (tb_->control.issubs)
 // 	{

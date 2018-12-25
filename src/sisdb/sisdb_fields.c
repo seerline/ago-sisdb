@@ -45,10 +45,15 @@ s_sisdb_field *sisdb_field_create(int index_, const char *name_, s_sisdb_field_f
 	unit->index = index_;
 	sis_strcpy(unit->name, SIS_FIELD_MAXLEN, name_);
 	memmove(&unit->flags, flags_, sizeof(s_sisdb_field_flags));
+	unit->subscribe_method = NULL;
 	return unit;
 }
 void sisdb_field_destroy(s_sisdb_field *unit_)
 {
+	if(unit_->subscribe_method)
+	{
+		sis_method_class_destroy(unit_->subscribe_method, NULL);
+	}
 	sis_free(unit_);
 }
 
@@ -413,7 +418,8 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		str = sis_json_get_str(node_, key_);
 		if (str)
 		{
-			memmove(in_ + fu_->offset, str, fu_->flags.len);
+			sis_strncpy(in_+ fu_->offset, fu_->flags.len, str, strlen(str));
+			// memmove(in_ + fu_->offset, str, fu_->flags.len);
 		}
 		break;
 	case SIS_FIELD_TYPE_UINT:

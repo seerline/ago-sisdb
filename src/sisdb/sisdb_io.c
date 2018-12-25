@@ -63,7 +63,7 @@ char *sisdb_open(const char *conf_)
     //  获取conf文件目录，
     sis_file_getpath(conf_, config_path, SIS_PATH_LEN);
 
-    sis_get_fixed_path(config_path, sis_json_get_str(config->node, "db_path"),
+    sis_get_fixed_path(config_path, sis_json_get_str(config->node, "dbpath"),
                        server.db_path, SIS_PATH_LEN);
     // sis_path_complete(server.db_path,SIS_PATH_LEN);
 
