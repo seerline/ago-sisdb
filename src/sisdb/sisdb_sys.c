@@ -411,7 +411,7 @@ void sisdb_market_work_init(s_sis_db *db_)
 					// 需要等待第一个有行情的股票来了数据才初始化完成
 					if (_sisdb_market_start_init(collect, market))
 					{
-						sisdb_call_market_init(db_, market);
+						sisdb_call_market_init(db_, (void *)market);
 						// 初始化后应该存一次盘，或者清理掉所有该表的写入
 						printf("init 2 %s\n", market);
 						_sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
@@ -434,7 +434,7 @@ void sisdb_market_work_init(s_sis_db *db_)
 					// 需要等待第一个有行情的股票来了数据才初始化完成
 					if (_sisdb_market_start_init(collect, market))
 					{
-						sisdb_call_market_init(db_, market);
+						sisdb_call_market_init(db_, (void *)market);
 						// 初始化后应该存一次盘，或者清理掉所有该表的写入
 						printf("init 1 %s\n", market);
 						_sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);

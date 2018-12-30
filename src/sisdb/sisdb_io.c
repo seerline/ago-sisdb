@@ -8,9 +8,12 @@
 #include "sisdb_fields.h"
 #include "sisdb_call.h"
 #include "sisdb_sys.h"
+#include "sisdb_method.h"
 /********************************/
 // 一定要用static定义，不然内存混乱
 static s_sisdb_server server = {
+    .switch_disk = false,
+    .switch_supper = false,
     .status = SIS_SERVER_STATUS_NOINIT,
     .db = NULL};
 /********************************/
@@ -271,7 +274,6 @@ char *sisdb_open(const char *conf_)
         }
     }
  
-
     server.status = SIS_SERVER_STATUS_INITED;
     sis_conf_close(config);
 
@@ -302,139 +304,158 @@ s_sisdb_server *sisdb_get_server()
 {
     return &server;
 }
-
+int sisdb_get_server_status()
+{
+    return server.status;
+}
 bool sisdb_save()
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return false;
-    }
-    // 存为struct格式
     sis_mutex_lock(&server.db->save_task->mutex);
     bool o = sisdb_file_save(&server);
     sis_mutex_unlock(&server.db->save_task->mutex);
     return o;
 }
-bool sisdb_out(const char *key_, const char *com_)
+int sisdb_get_dbs_collects(const char *com_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
+    int o= 0;
+    if (!com_) return o;
+ 
+    char table[SIS_MAXLEN_TABLE];
+    s_sis_dict_entry *de;
+    s_sis_dict_iter *di = sis_dict_get_iter(server.db->collects);
+    while ((de = sis_dict_next(di)) != NULL)
     {
-        sis_out_log(3)("no init sisdb.\n");
-        return false;
+        sis_str_substr(table, SIS_MAXLEN_TABLE, sis_dict_getkey(de), '.', 1);
+        if (!sis_strcasecmp(com_, table))
+        {
+            o++;
+        }
     }
-    return sisdb_file_out(&server, key_, com_);
+    sis_dict_iter_free(di);
+    return o;
 }
-s_sis_sds sisdb_show_db_info_sds(s_sis_db *db_)
+s_sis_sds sisdb_show_dbs_sds(const char *com_)
 {
-    s_sis_sds list = sis_sdsempty();
-    if (db_->dbs)
+    s_sis_sds list = NULL;
+    if (server.db->dbs)
     {
         s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(db_->dbs);
+        s_sis_dict_iter *di = sis_dict_get_iter(server.db->dbs);
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_table *val = (s_sisdb_table *)sis_dict_getval(de);
-            if (val->control.issys) {
+            if (!list) list = sis_sdsempty();
+            if (val->control.issys) 
+            {
                 list = sdscat(list, "[sys] ");
             } else {
-                list = sdscat(list, "      ");
+                list = sdscat(list, "[usr] ");
             }
-            list = sdscatprintf(list, "%-10s : fields=%2d, len=%u\n",
+            list = sdscatprintf(list, "%-10s : fields=%2d, len=%3u, collects=%d\n",
                                 val->name,
                                 sis_string_list_getsize(val->field_name),
-                                sisdb_table_get_fields_size(val));
+                                sisdb_table_get_fields_size(val),
+                                sisdb_get_dbs_collects(val->name));
         }
     }
     return list;
 }
-// 某个股票有多少条记录
-s_sis_sds sisdb_show_collect_info_sds(s_sis_db *db_, const char *key_)
+s_sis_sds sisdb_show_keys_sds(const char *com_)
 {
-    s_sisdb_collect *val = sisdb_get_collect(db_, key_);
-    if (!val)
+    int count = 0;
+    s_sis_sds list = NULL;
+    s_sis_dict_entry *de;
+    s_sis_dict_iter *di = sis_dict_get_iter(server.db->collects);
+    while ((de = sis_dict_next(di)) != NULL)
     {
-        sis_out_log(3)("no find %s key.\n", key_);
-        return NULL;
+        if (!com_||(com_&&strstr(sis_dict_getkey(de), com_)))
+        {
+            if (!list) list = sis_sdsempty();
+            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+            count++;
+            list = sdscatprintf(list, " %-15s : len=%2d, count=%u\n",
+                        (char *)sis_dict_getkey(de),
+                        collect->value->len,
+                        sisdb_collect_recs(collect));
+            
+        }
+        if (count >= SISDB_MAX_ONE_OUTS) 
+        {
+            list = sdscat(list, " ...(more)...");
+            break;
+        }
     }
-    s_sis_sds list = sis_sdsempty();
-    list = sdscatprintf(list, "  %-20s : len=%2d, count=%u\n",
-                        key_,
-                        val->value->len,
-                        sisdb_collect_recs(val));
-    return list;
+    sis_dict_iter_free(di);
+    return list;       
 }
-s_sis_sds sisdb_show_sds(const char *key_)
+s_sis_sds sisdb_show_sds(const char *key_, const char *com_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
+    s_sis_sds o = NULL;
+    if (!sis_strcasecmp(key_,"keys"))
     {
-        sis_out_log(3)("no init sisdb.\n");
-        return NULL;
-    }
-    if (!key_)
+        o = sisdb_show_keys_sds(com_);
+    } else  if (!sis_strcasecmp(key_, "dbs"))
     {
-        return sisdb_show_db_info_sds(server.db);
+        o = sisdb_show_dbs_sds(com_);
     }
-    else
+	else 
     {
-        // 这里根据key格式不同，可以有以下功能
-        return sisdb_show_collect_info_sds(server.db, key_);
-    }
+		o = sisdb_show_dbs_sds(NULL);
+	}  
+    return o;  
 }
+
 s_sis_sds sisdb_call_sds(const char *key_, const char *com_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
+    // 先去找本地调用，再去找远程调用，
+    s_sis_method *method = sis_method_map_find(server.db->methods, key_, SISDB_CALL_STYLE_SYSTEM);
+    if (method)
     {
-        sis_out_log(3)("no init sisdb.\n");
-        return NULL;
+        return (s_sis_sds)method->proc(server.db, (void *)com_);
     }
-    s_sisdb_call *call = sisdb_call_find_define(server.db->calls, &key_[1]);
-    if (!call)
+    else 
     {
         sis_out_log(3)("no find %s proc.\n", key_);
-        return NULL;
+        return NULL;       
     }
-    return call->proc(server.db, com_);
-
+    return NULL;
 }
 
+s_sis_sds sisdb_fast_get_sds(const char *key_)
+{
+    return sisdb_collect_fastget_sds(server.db, key_);
+}
+// 为保证最快速度，尽量不加参数
+// 默认返回最后不超过8K的数据，以json格式
+// com 中携带的为返回格式和search针对时间定位的查询语句，需要解析
 s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return NULL;
-    }
-    // // 利用方法获取数据，
-    // if (key_[0] == '$')
+    // if (key_[0] == '*'&&key_[1] != '.') // ??? 要改成从com中方法调用
     // {
-    //     return sisdb_call_sds(key_, com_);
+    //     char db[SIS_MAXLEN_TABLE];
+    //     sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
+    //     // 获得多只股票某类数据的最后一条记录
+    //     // 根据codes字段来判断都需要哪些股票
+    //     return sisdb_collects_get_last_sds(server.db, db, com_);
     // }
-    // *.DAY -- 取所有股票符合条件的1条数据
-    // 额外检查codes字段，如果没有代表所有股票，有则只取其中符合条件的股票
-    if (key_[0] == '*')
-    {
-        char db[SIS_MAXLEN_TABLE];
-        sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
-        // 获得多只股票某类数据的最后一条记录
-        // 根据codes字段来判断都需要哪些股票
-        return sisdb_collects_get_last_sds(server.db, db, com_);
-    }
-
     return sisdb_collect_get_sds(server.db, key_, com_);
 }
-int sisdb_delete(const char *key_, const char *com_, size_t len_)
+// 所有系统级别的开关设置都在这里
+int sisdb_cfg_option(const char *key_)
 {
-    int o = 0 ;
-    s_sisdb_collect *collect = sisdb_get_collect(server.db, key_);
-    if (collect)
+    if (!sis_strcasecmp(key_,"disk"))
     {
-        sisdb_collect_clear(collect);
-        o = 1;
+        server.switch_disk = !server.switch_disk;
+        return server.switch_disk;
+    } else  if (!sis_strcasecmp(key_, "supper"))
+    {
+        server.switch_supper = !server.switch_supper;
+        return server.switch_supper;
     }
-    return o;
+    return -1;
 }
-int sisdb_delete_mul(const char *dbname_, const char *com_, size_t len_)
+
+int sisdb_delete_collect_of_table(const char *dbname_, const char *com_, size_t len_)
 {
     s_sis_dict_entry *de;
     int o = 0 ;
@@ -444,35 +465,71 @@ int sisdb_delete_mul(const char *dbname_, const char *com_, size_t len_)
         s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
         if (collect&&!sis_strcasecmp(collect->db->name, dbname_))
         {
-            sisdb_collect_clear(collect);
+            sisdb_collect_destroy(collect);
+            sis_dict_delete(server.db->collects, sis_dict_getkey(de));
             o ++;
         }
     }
     sis_dict_iter_free(di);
     return o;
 }
+
+int sisdb_delete_collect_of_code(const char *code_, const char *com_, size_t len_)
+{
+    s_sis_dict_entry *de;
+    int o = 0 ;
+    s_sis_dict_iter *di = sis_dict_get_iter(server.db->collects);
+    while ((de = sis_dict_next(di)) != NULL)
+    {
+        char code[SIS_MAXLEN_TABLE];
+        sis_str_substr(code, SIS_MAXLEN_TABLE, sis_dict_getkey(de), '.', 0);
+        if (!sis_strcasecmp(code_, code))
+        {
+            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+            sisdb_collect_destroy(collect);
+            sis_dict_delete(server.db->collects, sis_dict_getkey(de));
+            o++;
+        }
+    }
+    sis_dict_iter_free(di);
+    return o;
+}
+int sisdb_delete(const char *key_, const char *com_, size_t len_)
+{
+    int o = 0 ;
+    char db[SIS_MAXLEN_TABLE];
+    char code[SIS_MAXLEN_TABLE];
+    sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
+    sis_str_substr(code, SIS_MAXLEN_TABLE, key_, '.', 0);
+
+    if (code[0] == '*'&&!code[1])
+    {
+        o = sisdb_delete_collect_of_table(db, com_, len_);
+    } else if (db[0] == '*'&&!db[1])
+    {
+        o = sisdb_delete_collect_of_code(code, com_, len_);
+    } else{
+        s_sisdb_collect *collect = sisdb_get_collect(server.db, key_);
+        if (collect)
+        {
+            sisdb_collect_destroy(collect);
+            sis_dict_delete(server.db->collects, key_);
+            o = 1;
+        }        
+    }
+
+    return o;
+}
+
 int sisdb_del(const char *key_, const char *com_, size_t len_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return SIS_SERVER_REPLY_ERR;
-    }
+
     if (sisdb_write_begin(SIS_AOF_TYPE_DEL, key_, com_, len_) == SIS_SERVER_REPLY_ERR)
     {
         return SIS_SERVER_REPLY_ERR;
     }
-    int o = 0;
-    // 如果保存aof失败就返回错误
-    if (key_[0] == '*')
-    {
-        char db[SIS_MAXLEN_TABLE];
-        sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
-        o = sisdb_delete_mul(db, com_, len_);
-    } else {
-        o = sisdb_delete(key_, com_, len_);
-    }
-    
+    int o = sisdb_delete(key_, com_, len_);
+
     sisdb_write_end();
 
     return o;
@@ -556,11 +613,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 
 int sisdb_set_json(const char *key_, const char *val_, size_t len_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return SIS_SERVER_REPLY_ERR;
-    }
+
     int fmt = SIS_DATA_TYPE_JSON;
     int type = SIS_AOF_TYPE_JSET;
     // 先判断是json or array
@@ -594,12 +647,6 @@ int sisdb_set_json(const char *key_, const char *val_, size_t len_)
 }
 int sisdb_set_struct(const char *key_, const char *val_, size_t len_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return SIS_SERVER_REPLY_ERR;
-    }
-
     if (sisdb_write_begin(SIS_AOF_TYPE_SSET, key_, val_, len_) == SIS_SERVER_REPLY_ERR)
     {
         return SIS_SERVER_REPLY_ERR;
@@ -614,11 +661,6 @@ int sisdb_set_struct(const char *key_, const char *val_, size_t len_)
 
 int sisdb_new(const char *table_, const char *attrs_, size_t len_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return SIS_SERVER_REPLY_ERR;
-    }
     s_sis_conf_handle *config = sis_conf_load(attrs_, len_);
     if (!config)
     {
@@ -652,11 +694,7 @@ int sisdb_new(const char *table_, const char *attrs_, size_t len_)
 // 
 int sisdb_update(const char *key_, const char *val_, size_t len_)
 {
-    if (server.status != SIS_SERVER_STATUS_INITED)
-    {
-        sis_out_log(3)("no init sisdb.\n");
-        return SIS_SERVER_REPLY_ERR;
-    }
+
     char db[SIS_MAXLEN_TABLE];
     sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 0);
     char attr[SIS_MAXLEN_STRING];

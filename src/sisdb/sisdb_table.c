@@ -116,7 +116,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 			for(int i = 0; i < tb->write_solely->count; i++)
 			{
 				s_sisdb_field *fu = (s_sisdb_field *)sis_pointer_list_get(tb->write_solely, i);
-				if(!sis_strcasecmp(fu->name, "time")) 
+				if(fu&&!sis_strcasecmp(fu->name, "time")) 
 				{
 					finded = true;
 					break;
@@ -297,8 +297,6 @@ int sisdb_table_get_fields_size(s_sisdb_table *tb_)
 	return len;
 }
 
-#define STR_APPEND_METHOD "{ \"sort\": \"time\", \"solely\": \"time\" }"
-
 // 这里的source指的就是实际的数据,根据实际数据生成默认的配置字符串
 s_sis_json_node *sisdb_table_new_config(const char *source_ ,size_t len_)
 {
@@ -374,14 +372,11 @@ s_sis_json_node *sisdb_table_new_config(const char *source_ ,size_t len_)
 	sis_json_object_add_uint(node, "limit", 0);
 	// sis_json_object_add_uint(node, "isinit", 0);
 	// sis_json_object_add_uint(node, "issys", 0);
-	sis_json_object_add_string(node, "write-method", STR_APPEND_METHOD, strlen(STR_APPEND_METHOD));  
-	// handle = sis_json_load(STR_APPEND_METHOD, strlen(STR_APPEND_METHOD));
-	// if (handle)
-	// {
-	// 	s_sis_json_node *append = sis_json_clone(handle->node, 1);
-	// 	sis_json_object_add_node(node, "write-method", append);
-	// 	sis_json_close(handle);
-	// }
+
+	s_sis_json_node *write_method = sis_json_create_object(); 
+	sis_json_object_add_string(write_method, "sort", "time", strlen("time"));  
+	sis_json_object_add_string(write_method, "solely", "time", strlen("time"));  
+	sis_json_object_add_node(node, "write-method", write_method);
 
 	// size_t len;
 	// char *str = sis_json_output(node, &len);

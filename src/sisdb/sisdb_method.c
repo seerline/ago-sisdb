@@ -6,6 +6,7 @@
 #include "sis_json.h"
 #include "sisdb_collect.h"
 #include "sisdb_method.h"
+#include "sisdb_call.h"
 
 static struct s_sis_method _sis_method_table[] = {
 	{"incr",    SISDB_METHOD_STYLE_WRITE, sisdb_method_write_incr},     // 数值必须增长且不为零
@@ -15,7 +16,26 @@ static struct s_sis_method _sis_method_table[] = {
 	{"min",     SISDB_METHOD_STYLE_SUBSCRIBE, sisdb_method_subscribe_min},   // 求最小值
 	{"max",     SISDB_METHOD_STYLE_SUBSCRIBE, sisdb_method_subscribe_max},   // 求最大值
 	{"gap",     SISDB_METHOD_STYLE_SUBSCRIBE, sisdb_method_subscribe_gap},  // 和上一笔的差值
+	// 以下是系统函数调用,
+	{"list", SISDB_CALL_STYLE_SYSTEM, sisdb_call_list_sds, 
+			"> sisdb.call list"},
+	// 得到多个符合条件的股票 从search字段中检索 返回代码和名称 format - json
+	{"matchcode", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_code_sds, 
+			"> sisdb.call matchcode {\"match\":\"YH\",\"count\":5}"},
+	// 得到多股票的最新价
+	{"lastclose", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_close_sds, 
+			"> sisdb.call lastclose {\"codes\":\"SH600600,SZ000001\"}"},
+	// format - json
+	{"collects", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_collects_sds, 
+			"> sisdb.call collects {\"table\":\"now\",\"format\":\"array\"}"},
+	// format - json array
+	// {"exright", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_right_sds, 
+	// 		"> sisdb.call collects {\"code\":\"sh600600\",\"start\":20180101, \"stop\":20180301,\"vol\":1000, \"close\":12.34}"},
+	// format - json
+	{"init", SISDB_CALL_STYLE_SYSTEM, sisdb_call_market_init, 
+			"> sisdb.call init sh"},
 };
+
 
 s_sis_map_pointer *sisdb_method_define_create()
 {
@@ -33,12 +53,13 @@ void sisdb_method_define_destroy(s_sis_map_pointer *map_)
 // sis_method_class_execute(class);
 //////////////////////////////////////////////////////////////////////
 
-void *sisdb_method_write_incr(void *obj_, s_sis_json_node *node_)
+void *sisdb_method_write_incr(void *obj_, void *node_)
 {	
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
+	s_sis_json_node *node = (s_sis_json_node *)node_;
 
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
+	const char *field = sis_json_get_str(node,SIS_METHOD_ARGV);
 	s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
 
 	if (!fu) return SIS_METHOD_VOID_TRUE;
@@ -67,12 +88,13 @@ void *sisdb_method_write_incr(void *obj_, s_sis_json_node *node_)
 	}
 	return SIS_METHOD_VOID_TRUE;
 }
-void *sisdb_method_write_nonzero(void *obj_, s_sis_json_node *node_)
+void *sisdb_method_write_nonzero(void *obj_, void *node_)
 {	
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
+	s_sis_json_node *node = (s_sis_json_node *)node_;
 
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
+	const char *field = sis_json_get_str(node,SIS_METHOD_ARGV);
 	s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
 
 	// printf("---%d--\n", ok);
@@ -96,15 +118,16 @@ void *sisdb_method_write_nonzero(void *obj_, s_sis_json_node *node_)
 // sis_method_class_execute(class);
 //////////////////////////////////////////////////////////////////////
 
-void *sisdb_method_subscribe_once(void *obj_, s_sis_json_node *node_)
+void *sisdb_method_subscribe_once(void *obj_, void *node_)
 {	
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
-
+	s_sis_json_node *node = (s_sis_json_node *)node_;
+	
 	if (!sisdb_field_is_integer(obj->field)) return NULL;
 
 	uint64 u64 = 0;
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
+	const char *field = sis_json_get_str(node,SIS_METHOD_ARGV);
 	if (obj->init)
 	{
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
@@ -124,15 +147,16 @@ void *sisdb_method_subscribe_once(void *obj_, s_sis_json_node *node_)
 	sisdb_field_set_uint(obj->field, obj->out, u64);
 	return NULL; 
 }
-void *sisdb_method_subscribe_min(void *obj_, s_sis_json_node *node_)
+void *sisdb_method_subscribe_min(void *obj_, void *node_)
 {	
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
+	s_sis_json_node *node = (s_sis_json_node *)node_;
 
 	if (!sisdb_field_is_integer(obj->field)) return NULL;
 
 	uint64 u64 = 0;
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
+	const char *field = sis_json_get_str(node,SIS_METHOD_ARGV);
 	if (obj->init)
 	{
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
@@ -172,15 +196,16 @@ void *sisdb_method_subscribe_min(void *obj_, s_sis_json_node *node_)
 	
 	return NULL; 
 }
-void *sisdb_method_subscribe_max(void *obj_, s_sis_json_node *node_)
+void *sisdb_method_subscribe_max(void *obj_, void *node_)
 {	
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
+	s_sis_json_node *node = (s_sis_json_node *)node_;
 
 	if (!sisdb_field_is_integer(obj->field)) return NULL;
 
 	uint64 u64 = 0;
 	s_sisdb_table *tb = obj->collect->db;
-	const char *field = sis_json_get_str(node_,SIS_METHOD_ARGV);
+	const char *field = sis_json_get_str(node,SIS_METHOD_ARGV);
 	if (obj->init)
 	{
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, field);
@@ -217,9 +242,10 @@ void *sisdb_method_subscribe_max(void *obj_, s_sis_json_node *node_)
 
 	return NULL; 
 }
-void *sisdb_method_subscribe_gap(void *obj_, s_sis_json_node *node_)
+void *sisdb_method_subscribe_gap(void *obj_, void *node_)
 {	
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
+	// s_sis_json_node *node = (s_sis_json_node *)node_;
 
 	uint64 u64 = sisdb_field_get_uint(obj->field, obj->in) - sisdb_field_get_uint(obj->field, obj->collect->front);
 	sisdb_field_set_uint(obj->field, obj->out, u64);

@@ -200,58 +200,45 @@ bool sisdb_file_save(s_sisdb_server *server_)
 
     return true;
 }
-bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_)
+bool sisdb_file_to_disk(const char * key_,  int fmt_, s_sis_sds in_)
 {   
+    s_sisdb_server *server = sisdb_get_server();
+
+	s_sisdb_collect *collect = sisdb_get_collect(server->db, key_);
+	if (!collect)
+	{
+		sis_out_log(3)("no find %s key.\n", key_);
+		return false;
+	}
 	char code[SIS_MAXLEN_CODE];
 	char dbname[SIS_MAXLEN_TABLE];
     sis_str_substr(code, SIS_MAXLEN_CODE, key_, '.', 0);
 	sis_str_substr(dbname, SIS_MAXLEN_TABLE, key_, '.', 1);
 
-    s_sisdb_collect *collect = sisdb_get_collect(server_->db, key_);
-    if (!collect)
-    {
-        sis_out_log(3)("no find %s key.\n", key_);
-        return false;
-    }	
-	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
-	if (!handle)
-	{
-		return false;
-	}
-	s_sis_sds out = sisdb_collect_get_original_sds(collect, handle);
-
-	if (!out)
-	{
-		sis_json_close(handle);
-		return false;
-	}
-
-	int iformat = sis_from_node_get_format(server_->db, handle->node);
-    // 不支持字段选择，全部字段输出
 	s_sis_sds other = NULL;
     char sdb[SIS_PATH_LEN];
 
-	switch (iformat)
+	switch (fmt_)
 	{
     // case SIS_DATA_TYPE_ZIP:
     //     break;    
 	case SIS_DATA_TYPE_STRUCT:
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_STRUCT, server_->db_path, server_->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_STRUCT, server->db_path, server->db->name,
                     code, dbname);
         // 直接写文件
-        sis_file_sds_write(sdb, out);
+        sis_file_sds_write(sdb, in_);
 		break;
 	case SIS_DATA_TYPE_JSON:
-		other = sisdb_collect_struct_to_json_sds(collect, out, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server_->db_path, server_->db->name,
+		other = sisdb_collect_struct_to_json_sds(collect, in_, collect->db->field_name, false);
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server->db_path, server->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
 		sis_sdsfree(other);
 		break;
 	case SIS_DATA_TYPE_ARRAY:
-		other = sisdb_collect_struct_to_array_sds(collect, out, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server_->db_path, server_->db->name,
+		other = sisdb_collect_struct_to_array_sds(collect, in_, collect->db->field_name, false);
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server->db_path, server->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -260,20 +247,18 @@ bool sisdb_file_out(s_sisdb_server *server_, const char * key_, const char *com_
     // case SIS_DATA_TYPE_ZIP:
     //     break;    
     case SIS_DATA_TYPE_CSV:
-		other = sisdb_collect_struct_to_csv_sds(collect, out, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server_->db_path, server_->db->name,
+		other = sisdb_collect_struct_to_csv_sds(collect, in_, collect->db->field_name, false);
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server->db_path, server->db->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
         sis_sdsfree(other);
         break;  
     default:
-        sis_out_log(3)("save data type [%d] error.\n", iformat);
+        sis_out_log(3)("save data type [%d] error.\n", fmt_);
         break;
         // return false;          
 	}
-	sis_sdsfree(out);
-    sis_json_close(handle);
     return true;
 }
 

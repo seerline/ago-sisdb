@@ -7,8 +7,8 @@
 #include "sis_map.h"
 #include "sis_list.h"
 
-// typedef int _sis_method_define(void *, s_sis_json_node *);
-// typedef int _sis_method_logic_define(void *, void *);
+// typedef void *_sis_method_define(void *, void *);
+
 #define SIS_METHOD_ARGV  "argv"
 #define SIS_METHOD_VOID_TRUE   ((void *)1)
 #define SIS_METHOD_VOID_FALSE  ((void *)0)
@@ -17,7 +17,8 @@
 typedef struct s_sis_method {
     const char *name;     // 方法的名字
     const char *style;    // 方法属于的类别，相当于命名空间 subscribe append zip 等
-	void *(*proc)(void *, s_sis_json_node *);
+	void *(*proc)(void *, void *);
+	// _sis_method_define *proc;
 	const char *explain;  // 方法的说明
 }s_sis_method;
 
@@ -52,8 +53,6 @@ typedef struct s_sis_method_class {
 	void(*across)(void *, void *);     // 和上一等级的方法求交集
 	void(*free)(void *);          // free的方法,释放in和out
 	void*(*malloc)();       // malloc的方法,用于申请out和下一集in时使用
-	// _sis_method_logic_define *merge;  // 和同一等级的方法求并集
-	// _sis_method_logic_define *across; // 和上一等级的方法求交集
 }s_sis_method_class;
 //////////////////////////////////////////////
 //   method_map 这里定义的是方法列表
@@ -80,7 +79,10 @@ void sis_method_map_destroy(s_sis_map_pointer *map_);
 // 	s_sis_json_node *node_);
 
 // void sis_method_node_destroy(void *node_, void *other_);
-// 
+//////////////////////////////////////////////
+//   method_class 管理多个方法的类，嵌套或并列
+///////////////////////////////////////////////
+
 s_sis_method_class *sis_method_class_create(
 	s_sis_map_pointer *map_,
 	const char *style_, 
@@ -91,6 +93,6 @@ void *sis_method_class_execute(s_sis_method_class *class_);
 // 0 -  全部清理  1 - 只清理输出的数据 针对SIS_METHOD_CLASS_FILTER类型
 void sis_method_class_clear(s_sis_method_class *,int);
 
-void sis_method_class_destroy(void *node_, void *other_);
+void sis_method_class_destroy(void *class_, void *other_);
 
 #endif

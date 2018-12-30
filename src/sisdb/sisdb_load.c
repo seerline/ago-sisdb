@@ -2,11 +2,13 @@
 #include <sis_comm.h>
 #include <sisdb_io.h>
 
+#define CHECK_SERVER_STATUS  { if (sisdb_get_server_status()!= SIS_SERVER_STATUS_INITED)  \
+								return sis_module_reply_with_error(ctx_, "server starting..."); }
+
 // 入口初始化，根据配置文件获取初始化所有信息，并返回s_sisdb_server指针，
 // 一个实例只有一个server，但是可以有多个
 char *load_sisdb_open(const char *conf_)
-{
-		
+{		
 	if (!sis_file_exists(conf_))
 	{
 		sis_out_log(3)("conf file %s no finded.\n", conf_);
@@ -29,6 +31,8 @@ int load_sisdb_close(s_sis_module_context *ctx_, s_sis_module_string **argv_, in
 // set数据时也可以是json或struct格式数据，获得数据后会自动转换成不压缩的struct数据格式
 int load_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
+
 	if (argc_ < 2)
 	{
 		return sis_module_wrong_arity(ctx_);
@@ -42,66 +46,70 @@ int load_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	}
 	else
 	{
-		o = sisdb_get_sds(key, "{\"format\":\"json\"}");
+		o = sisdb_fast_get_sds(key);
 	}
 	if (o)
 	{
-		sis_out_binary("get out", o, 30);
-		printf("get out ...%lu\n", sis_sdslen(o));
-
+		// sis_out_binary("get out", o, 30);
+		// printf("get out ...%lu\n", sis_sdslen(o));
 		sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
 		sis_sdsfree(o);
 		return SIS_MODULE_OK;
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb get end.\n");
+	return sis_module_reply_with_null(ctx_);
 }
-int load_sisdb_out(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
+// 设置系统级别的一些默认操作，通过用于一些危险操作的授权，例如：
+	// disk   查询结果写入磁盘，
+    // super  允许删除表格，系统的del只能清除表格内容，不能删除表结构
+int load_sisdb_cfg(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
-	if (argc_ < 1)
+	CHECK_SERVER_STATUS;
+
+	if (argc_ < 2)
 	{
 		return sis_module_wrong_arity(ctx_);
 	}
 
-	bool o;
-	if (argc_ == 3)
+	int o = sisdb_cfg_option(sis_module_string_get(argv_[1], NULL));
+	
+	if (o >=0 )
 	{
-		o = sisdb_out(
-			sis_module_string_get(argv_[1], NULL),
-			sis_module_string_get(argv_[2], NULL));
-	}
-	else
-	{
-		o = sisdb_out(sis_module_string_get(argv_[1], NULL),
-					  "{\"format\":\"json\"}");
-	}
-	if (o)
-	{
-		return sis_module_reply_with_simple_string(ctx_, "OK");
-	}
-	return sis_module_reply_with_error(ctx_, "sisdb out error.\n");
+		return sis_module_reply_with_int64(ctx_, o);
+	} 
+	return sis_module_reply_with_null(ctx_);
+
 }
+
 // 显示表信息和其他系统级别的信息
 int load_sisdb_show(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
-	s_sis_sds o = NULL;
-	if (argc_ == 2)
+	CHECK_SERVER_STATUS;
+
+	const char *key = NULL;
+	const char *com = NULL;
+
+	if (argc_ >= 2)
 	{
-		o = sisdb_show_sds(sis_module_string_get(argv_[1], NULL));
-	} else {
-		o = sisdb_show_sds(NULL);
+		key = sis_module_string_get(argv_[1], NULL);
+		if (argc_ >= 3) com = sis_module_string_get(argv_[2], NULL);
 	}
+
+	s_sis_sds o = sisdb_show_sds(key, com);
+
 	if (o)
 	{
 		sis_module_reply_with_simple_string(ctx_, o);
 		sis_sdsfree(o);
 		return SIS_MODULE_OK;
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb show table error.\n");
+	return sis_module_reply_with_null(ctx_);
 }
+
 // sisdb.call [procname] [command]
 // 提供更高级的查询语句，仅仅返回特定格式数据
 int load_sisdb_call(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
 	if (argc_ < 2)
 	{
 		return sis_module_wrong_arity(ctx_);
@@ -119,17 +127,18 @@ int load_sisdb_call(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	}
 	if (o)
 	{
-		sis_out_binary("call out", o, 30);
-		printf("call out ...%lu\n", sis_sdslen(o));
+		// sis_out_binary("call out", o, 30);
+		// printf("call out ...%lu\n", sis_sdslen(o));
 		sis_module_reply_with_simple_string(ctx_, o);
 		// sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
 		sis_sdsfree(o);
 		return SIS_MODULE_OK;
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb call end.\n");
+	return sis_module_reply_with_null(ctx_);
 }
 int load_sisdb_del(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
 	if (argc_ < 2)
 	{
 		return sis_module_wrong_arity(ctx_);
@@ -148,12 +157,13 @@ int load_sisdb_del(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	}
 	if (o > 0)
 	{
-		return sis_module_reply_with_simple_string(ctx_, "OK");
+		return sis_module_reply_with_int64(ctx_, o);
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb del end.\n");
+	return sis_module_reply_with_null(ctx_);
 }
 int load_sisdb_set(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
 	if (argc_ != 3)
 	{
 		return sis_module_wrong_arity(ctx_);
@@ -170,11 +180,12 @@ int load_sisdb_set(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	{
 		return sis_module_reply_with_simple_string(ctx_, "OK");
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb set end.\n");
+	return sis_module_reply_with_null(ctx_);
 }
 
 int load_sisdb_sset(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
 	if (argc_ != 3)
 	{
 		return sis_module_wrong_arity(ctx_);
@@ -191,10 +202,11 @@ int load_sisdb_sset(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	{
 		return sis_module_reply_with_simple_string(ctx_, "OK");
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb sset end.\n");
+	return sis_module_reply_with_null(ctx_);
 }
 int load_sisdb_save(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
 	sis_module_not_used(argc_);
 	sis_module_not_used(argv_);
 
@@ -202,11 +214,12 @@ int load_sisdb_save(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	{
 		return sis_module_reply_with_simple_string(ctx_, "OK");
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb save end.\n");
+	return sis_module_reply_with_null(ctx_);
 }
 
 int load_sisdb_new(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
 	if (argc_ != 3)
 	{
 		return sis_module_wrong_arity(ctx_);
@@ -223,11 +236,12 @@ int load_sisdb_new(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	{
 		return sis_module_reply_with_simple_string(ctx_, "OK");
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb create error.\n");
+	return sis_module_reply_with_null(ctx_);
 }
 
 int load_sisdb_update(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+	CHECK_SERVER_STATUS;
 	if (argc_ != 3)
 	{
 		return sis_module_wrong_arity(ctx_);
@@ -244,7 +258,7 @@ int load_sisdb_update(s_sis_module_context *ctx_, s_sis_module_string **argv_, i
 	{
 		return sis_module_reply_with_simple_string(ctx_, "OK");
 	}
-	return sis_module_reply_with_error(ctx_, "sisdb set end.\n");
+	return sis_module_reply_with_null(ctx_);
 }
 
 int sis_module_on_unload()
@@ -281,6 +295,7 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	// 	const char *s = sis_module_string_get(argv_[k], NULL);
 	// 	printf("module loaded with argv_[%d] = %s\n", k, s);
 	// }
+	// printf("====1.2===\n");
 
 	char command[SIS_MAXLEN_COMMAND];
 	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.close", service_name);
@@ -297,14 +312,13 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	{
 		return SIS_MODULE_ERROR;
 	}
-	// 输出到数据库的目录下便于进行数据分析
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.out", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_out,
+	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.cfg", service_name);
+	if (sis_module_create_command(ctx_, command, load_sisdb_cfg,
 								  "readonly",
 								  0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
-	}	
+	}
 	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.show", service_name);
 	if (sis_module_create_command(ctx_, command, load_sisdb_show,
 								  "readonly",
@@ -367,6 +381,8 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	// 							  0, 0, 0) == SIS_MODULE_ERROR)
 	// {
 	// 	return SIS_MODULE_ERROR;
-	// }		
+	// }	
+	// printf("====1.3===\n");
+	
 	return SIS_MODULE_OK;
 }

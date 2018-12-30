@@ -32,7 +32,6 @@ s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, co
 void sis_method_map_destroy(s_sis_map_pointer *map_)
 {
 	sis_map_pointer_destroy(map_);
-
 }
 
 //////////////////////////////////////////////
@@ -118,7 +117,7 @@ s_sis_method_node *sis_method_node_first(s_sis_method_node *node_)
 // 起点，最外层为一个或者关系的方法列表，
 s_sis_method_node *sis_method_node_create(s_sis_map_pointer *map_, const char *style_, s_sis_json_node *node_)
 {
-	if (!map_) return NULL;
+	if (!map_||!node_) return NULL;
 
     s_sis_method_node *first = NULL;
 
@@ -331,7 +330,7 @@ void *sis_method_class_execute(s_sis_method_class *class_)
 
 
 
-#if 1
+#if 0
 
 void show(s_sis_method_node *node_, int *depth)
 {

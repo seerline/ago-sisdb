@@ -4,7 +4,8 @@
 #include <sisdb_fields.h>
 #include <sisdb_map.h>
 #include <sisdb_sys.h>
-
+#include <sisdb_io.h>
+#include <sisdb_file.h>
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_step_index --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
@@ -94,6 +95,7 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 	}
 	// if (db_->special) // 专用表
 	{
+		// 返回的指针，实体存放在 sys_exchs 中，
 		unit->spec_info = sisdb_sys_create_info(db_, code);
 		unit->spec_exch = sisdb_sys_create_exch(db_, code);
 	}
@@ -898,6 +900,44 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 	}
 	return o;
 }
+// 为保证最快速度，尽量不加参数
+// 默认返回最后不超过8K的数据，以json格式
+#define SISDB_MAX_BUFFER 8196
+s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_,const char *key_)
+{
+	s_sisdb_table *tb = sisdb_get_table_from_key(db_, key_);
+	if (!tb) 
+	{
+		return NULL;
+	}  
+	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
+	if (!collect)
+	{
+		sis_out_log(3)("no find %s key.\n", key_);
+		return NULL;
+	}
+	int start = 0;
+	int count =  collect->value->count;
+
+	if (count * collect->value->len > SISDB_MAX_BUFFER)
+	{
+		count = SISDB_MAX_BUFFER / collect->value->len;
+		start = -1 * count;
+	}
+	// printf("%d,%d\n",start,count);
+	s_sis_sds out = sisdb_collect_get_of_count_sds(collect, start, count);
+
+	if (!out)
+	{
+		return NULL;
+	}
+	// 最后转数据格式
+	s_sis_sds other = sisdb_collect_struct_to_json_sds(collect, out, tb->field_name, true);
+
+	sis_sdsfree(out);
+	return other;	
+}
+
 s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com_)
 {
 	s_sisdb_table *tb = sisdb_get_table_from_key(db_, key_);
@@ -940,13 +980,18 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 	{
 		fields = sis_sdsnew("*");
 	}
-	printf("query fields = %s\n", fields);
+	// printf("query fields = %s\n", fields);
 
 	s_sis_string_list *field_list = tb->field_name; //取得全部的字段定义
 	if (!sisdb_field_is_whole(fields))
 	{
 		field_list = sis_string_list_create_w();
 		sis_string_list_load(field_list, fields, strlen(fields), ",");
+	}
+	// 判断是否写盘
+	if (sisdb_get_server()->switch_disk)
+	{
+		sisdb_file_to_disk(key_, iformat, out);
 	}
 
 	s_sis_sds other = NULL;
@@ -980,8 +1025,10 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 		sis_sdsfree(fields);
 	}
 	sis_json_close(handle);
+
 	return out;
 }
+
 
 // ///////////////////////////////////////////////////////////////////////////////
 // //取数据,读表中代码为key的数据，key为*表示所有股票数据，由 com_ 定义数据范围和字段范围

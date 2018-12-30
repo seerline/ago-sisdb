@@ -3,56 +3,42 @@
 #include "sisdb_fields.h"
 #include "sisdb_map.h"
 #include "sisdb_io.h"
+#include "sisdb_method.h"
 
-// 这里的方法只放那些通用的，特殊处理的一概不允许放在这里！！！切记
-static struct s_sisdb_call _sisdb_call_table[] = {	// 显示表的字段详细信息
-	// 得到多个符合条件的股票 从search字段中检索 返回代码和名称 format - json
-	{"getcode", sisdb_call_get_code_sds, "match search of info. exp : getcode {\"match\":\"YH\",\"count\":5}"},
-	// 得到多股票的最新价
-	{"getclose", sisdb_call_get_price_sds, "get new price. : getclose {\"codes\":\"SH600600,SZ000001\"}"},
-	// format - json
-	{"collects", sisdb_call_get_collects_sds, "get collects. : collects {\"table\":\"now\",\"format\":\"array\"}"},
-	// format - json array
-	{"init", sisdb_call_market_init, "init market info. (warn: delete option): init sh"},
-	{"list", sisdb_call_list_sds, ""}
-};
-
-void sisdb_init_call_define(s_sis_map_pointer *map_)
+void *sisdb_call_list_sds(void *db_, void *com_)
 {
-	sis_map_pointer_clear(map_);
-	int nums = sizeof(_sisdb_call_table) / sizeof(struct s_sisdb_call);
+	s_sis_db *db = (s_sis_db *)db_;
+	const char *com = (const char *)com_;
 
-	for (int i = 0; i < nums; i++)
-	{
-		s_sis_sds key = sis_sdsnew(_sisdb_call_table[i].name);
-		int rtn = sis_dict_add(map_, key, &_sisdb_call_table[i]);
-		assert(rtn == DICT_OK);
-	}
-}
+    s_sis_sds list = NULL;
 
-s_sisdb_call *sisdb_call_find_define(s_sis_map_pointer *map_, const char *name_)
-{
-	s_sisdb_call *val = NULL;
-	if (map_)
+	s_sis_dict_entry *de;
+	s_sis_dict_iter *di = sis_dict_get_iter(db->methods);
+	while ((de = sis_dict_next(di)) != NULL)
 	{
-		s_sis_sds key = sis_sdsnew(name_);
-		val = (s_sisdb_call *)sis_dict_fetch_value(map_, key);
-		sis_sdsfree(key);
+		s_sis_method *method = (s_sis_method *)sis_dict_getval(de);
+		if (com)
+		{
+			if(!sis_strcasecmp(method->style, com))
+			{
+				if (!list) list = sis_sdsempty();
+				list = sdscatprintf(list, "[%s] %-10s : %s \n",
+								method->style, method->name, method->explain);
+			}
+		}
+		else 
+		{
+			if (!sis_strcasecmp(method->style,SISDB_CALL_STYLE_SYSTEM)||
+				!sis_strcasecmp(method->style,SISDB_CALL_STYLE_LOCAL)||
+				!sis_strcasecmp(method->style,SISDB_CALL_STYLE_REMOTE))
+			{
+				if (!list) list = sis_sdsempty();
+				list = sdscatprintf(list, "[%s] %-10s : %s \n",
+								method->style, method->name, method->explain);
+			}
+		}
 	}
-	return val;
-}
-
-s_sis_sds sisdb_call_list_sds(s_sis_db *db_, const char *com_)
-{
-	int nums = sizeof(_sisdb_call_table) / sizeof(struct s_sisdb_call);
-	s_sis_sds list = sis_sdsempty();
-	for (int i = 0; i < nums - 1; i++)
-	{
-		list = sdscatprintf(list, " %-10s : %s \n",
-							_sisdb_call_table[i].name,
-							_sisdb_call_table[i].explain);
-	}
-	return list;
+    return list;
 }
 //////////////////////////////////////////////////////////////////////
 //   下面是一些通用函数实现
@@ -63,17 +49,20 @@ s_sis_sds sisdb_call_list_sds(s_sis_db *db_, const char *com_)
 //   collects:[sh600600,sh600601]
 //////////////////////////////////////////////////////////////////////
 
-s_sis_sds sisdb_call_market_init(s_sis_db *db_, const char *market_)
+void *sisdb_call_market_init(void *db_, void *com_)
 {
-	if (!market_) return NULL;
+	s_sis_db *db = (s_sis_db *)db_;
+	const char *market = (const char *)com_;
+
+	if (!market) return NULL;
 	int o = 0;
 	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(db_->collects);
+	s_sis_dict_iter *di = sis_dict_get_iter(db->collects);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
 		if (val->db->control.isinit && !val->db->control.issys &&
-			!sis_strncasecmp(sis_dict_getkey(de), market_, strlen(market_)))
+			!sis_strncasecmp(sis_dict_getkey(de), market, strlen(market)))
 		{
 			// 只是设置记录数为0
 			sisdb_collect_clear(val);
@@ -88,12 +77,15 @@ s_sis_sds sisdb_call_market_init(s_sis_db *db_, const char *market_)
 	return sis_sdsnewlong(o);
 }
 
-s_sis_sds sisdb_call_get_code_sds(s_sis_db *db_, const char *com_)
+void * sisdb_call_get_code_sds(void *db_, void *com_)
 {
-	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
+	s_sis_db *db = (s_sis_db *)db_;
+	const char *com = (const char *)com_;
+
+	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
 	if (!handle)
 	{
-		sis_out_log(3)("parse %s error.\n", com_);
+		sis_out_log(3)("parse %s error.\n", com);
 		return NULL;
 	}
 
@@ -102,22 +94,22 @@ s_sis_sds sisdb_call_get_code_sds(s_sis_db *db_, const char *com_)
 	const char *match = sis_json_get_str(handle->node, "match");
 	if (!match)
 	{
-		sis_out_log(3)("no find match [%s].\n", com_);
+		sis_out_log(3)("no find match [%s].\n", com);
 		goto error;
 	}
 	if (strlen(match) < 2)
 	{
-		sis_out_log(3)("match too short [%s].\n", com_);
+		sis_out_log(3)("match too short [%s].\n", com);
 		goto error;
 	}
 
-	s_sisdb_table *tb = sisdb_get_table(db_, SIS_TABLE_INFO);
+	s_sisdb_table *tb = sisdb_get_table(db, SIS_TABLE_INFO);
 	if (!tb)
 	{
 		sis_out_log(3)("no info table.\n");
 		goto error;
 	}	
-	s_sis_sds buffer = sisdb_collects_get_last_sds(db_, SIS_TABLE_INFO, SIS_QUERY_COM_NORMAL);
+	s_sis_sds buffer = sisdb_collects_get_last_sds(db, SIS_TABLE_INFO, SIS_QUERY_COM_NORMAL);
 	if (!buffer)
 	{
 		sis_out_log(3)("no info data.\n");
@@ -192,10 +184,12 @@ error:
 }
 
 // 获得某个数据表所有的key键 com_ 即表名
-s_sis_sds sisdb_call_get_collects_sds(s_sis_db *db_, const char *com_) 
+void *sisdb_call_get_collects_sds(void *db_, void *com_)
 {
-	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
-	// printf("com_ = %s -- %lu -- %p\n", com_,strlen(com_),handle);
+	s_sis_db *db = (s_sis_db *)db_;
+	const char *com = (const char *)com_;
+
+	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
 	if (!handle)
 	{
 		return NULL;
@@ -212,7 +206,7 @@ s_sis_sds sisdb_call_get_collects_sds(s_sis_db *db_, const char *com_)
 	s_sis_sds out = NULL;
 
 	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(db_->collects);
+	s_sis_dict_iter *di = sis_dict_get_iter(db->collects);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
@@ -236,7 +230,7 @@ s_sis_sds sisdb_call_get_collects_sds(s_sis_db *db_, const char *com_)
 	{
 		goto error;
 	}
-	int iformat = sis_from_node_get_format(db_, handle->node);
+	int iformat = sis_from_node_get_format(db, handle->node);
 
 	printf("iformat = %c\n", iformat);
 	// 取出字段定义,没有就默认全部字段
@@ -328,12 +322,15 @@ success:
 //            "sh600048":{"close":10.32},
 //			  "sh600601":{"close":3.72}}
 ////////////////////////////////////////////////////////////////
-s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
+void *sisdb_call_get_close_sds(void *db_, void *com_)
 {
-	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
+	s_sis_db *db = (s_sis_db *)db_;
+	const char *com = (const char *)com_;
+
+	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
 	if (!handle)
 	{
-		sis_out_log(3)("parse %s error.\n", com_);
+		sis_out_log(3)("parse %s error.\n", com);
 		return NULL;
 	}
 	s_sis_sds o = NULL;
@@ -342,7 +339,7 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 	const char *co = sis_json_get_str(handle->node, "codes");
 	if (!co)
 	{
-		sis_out_log(3)("no find codes [%s].\n", com_);
+		sis_out_log(3)("no find codes [%s].\n", com);
 		goto error;
 	}
 	sis_string_list_load(codes, co, strlen(co), ",");
@@ -350,7 +347,7 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 	int count = sis_string_list_getsize(codes);
 	if (count < 1)
 	{
-		sis_out_log(3)("no find codes [%s].\n", com_);
+		sis_out_log(3)("no find codes [%s].\n", com);
 		goto error;
 	}
 	const char *fmt = sis_json_get_str(handle->node, "format");
@@ -368,7 +365,7 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 				const char *code = sis_string_list_get(codes, i);
 
 				sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", code, SIS_TABLE_INFO);
-				s_sisdb_collect *collect = sisdb_get_collect(db_, key);
+				s_sisdb_collect *collect = sisdb_get_collect(db, key);
 				if (!collect) 
 				{
 					continue;
@@ -378,7 +375,7 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 				{
 					continue;
 				}
-				*close = _sis_from_now_get_price(db_, code);
+				*close = _sis_from_now_get_price(db, code);
 				// printf("===2==%d====\n",close);
 				if (*close == 0)
 				{
@@ -406,7 +403,7 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 		const char *code = sis_string_list_get(codes, i);
 
 		sis_sprintf(key, SIS_MAXLEN_KEY, "%s.%s", code, SIS_TABLE_INFO);
-		s_sisdb_collect *collect = sisdb_get_collect(db_, key);
+		s_sisdb_collect *collect = sisdb_get_collect(db, key);
 		if (!collect) 
 		{
 			continue;
@@ -418,7 +415,7 @@ s_sis_sds sisdb_call_get_price_sds(s_sis_db *db_, const char *com_)
 		}
 		dot = sisdb_field_get_uint_from_key(collect->db, "dot", info);
 
-		close = _sis_from_now_get_price(db_, code);
+		close = _sis_from_now_get_price(db, code);
 		// printf("===2==%d====\n",close);
 		if (close == 0)
 		{
@@ -442,4 +439,107 @@ error:
 	sis_string_list_destroy(codes);
 
 	return o;
+}
+
+/////////////////////////////////////////
+// 传入格式为 code = "sh600600" , 
+// fixed-date:20180101,curr-date:20180301, vol:1000, close:12.34}
+// 由于用户传入的数据可能有多个价格，所以返回格式只有json一种格式，用户要什么就传回给什么
+// 除vol外，其他支持open，high，low，close四个字段
+// 默认vol为股，其他都是带小数点的，需要根据info的价格单位处理后再传入
+/////////////////////////////////////////
+
+void * sisdb_call_get_right_sds(void *db_, void *com_)
+{
+	// s_sis_db *db = (s_sis_db *)db_;
+	const char *com = (const char *)com_;
+
+	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
+	if (!handle)
+	{
+        sis_out_log(3)("parse %s error.\n", com);
+		return NULL;
+	}
+    
+	s_sis_sds o = NULL;
+
+// 	const char *code = sis_json_get_str(handle->node, "code");
+//     if(!code) {
+//         sis_out_log(3)("no find code [%s].\n", com);
+// 		goto error;
+//     } 
+
+// 	int start = sis_json_get_int(handle->node, "start", sis_time_get_idate(0));  // curr-date
+// 	int stop = sis_json_get_int(handle->node, "stop", sis_time_get_idate(0)); // fixed-date
+// 	char query[SIS_MAXLEN_QUERY];
+// 	if(start > stop) {
+// 		sis_sprintf(query,SIS_MAXLEN_QUERY, SIS_QUERY_COM_SEARCH, stop, start);
+// 	} else {
+// 		sis_sprintf(query,SIS_MAXLEN_QUERY, SIS_QUERY_COM_SEARCH, start, stop);
+// 	}
+
+// 	char key[SIS_MAXLEN_COMMAND];
+//     sis_sprintf(key, SIS_MAXLEN_COMMAND, "%s.%s", code, "right");
+// 	s_sis_sds right = digger_get_local_sds(DIGGER_DB_IN, "get", key, query);
+// 	if (!right) {
+// 		o = sdsnewlen(com,strlen(com));
+// 		return o;
+// 	}
+// 	s_sis_struct_list *right_list = sis_struct_list_create(sizeof(s_stock_right), right, sdslen(right));
+// 	sis_sdsfree(right);	
+
+// 	int dot = 2;
+// 	s_stock_info *info_ps;
+//     sis_sprintf(key, SIS_MAXLEN_COMMAND, "%s.%s", code, "_info");
+// 	s_sis_sds info = digger_get_local_sds(DIGGER_DB_IN, "get", key, SIS_QUERY_COM_NORMAL);
+// 	if (!info) {
+// 		goto error;
+// 	}
+// 	info_ps = (s_stock_info *)info;
+// 	dot = info_ps->prc_unit;
+// 	sis_sdsfree(info);
+
+// 	uint32 ui = sis_json_get_int(handle->node, "vol", 0);
+// 	if(ui>0) {
+// 		ui = sis_stock_exright_vol(start, stop, ui, right_list);
+// 		sis_json_object_set_uint(handle->node, "vol", ui);
+// 	}
+// 	// 得到股票的价格放大倍数
+// 	int zoom = sis_zoom10(dot);
+// 	double open = sis_json_get_double(handle->node, "open", 0.0001);
+// 	if(open>0.0001) {
+// 		ui = (uint32)(open*zoom);
+// 		ui = sis_stock_exright_price(start, stop, ui, zoom, right_list);
+// 		sis_json_object_set_double(handle->node, "open", (double)ui/zoom, dot);
+// 	}
+// 	double high= sis_json_get_double(handle->node, "high", 0.0001);
+// 	if(high > 0.0001) {
+// 		ui = (uint32)(high*zoom);
+// 		ui = sis_stock_exright_price(start, stop, ui, zoom, right_list);
+// 		sis_json_object_set_double(handle->node, "high", (double)ui/zoom, dot);
+// 	}
+// 	double low= sis_json_get_double(handle->node, "low", 0.0001);
+// 	if(low > 0.0001) {
+// 		ui = (uint32)(low*zoom);
+// 		ui = sis_stock_exright_price(start, stop, ui, zoom, right_list);
+// 		sis_json_object_set_double(handle->node, "low", (double)ui/zoom, dot);
+// 	}
+// 	double close= sis_json_get_double(handle->node, "close", 0.0001);
+// 	if(close > 0.0001) {
+// 		ui = (uint32)(close*zoom);
+// 		ui = sis_stock_exright_price(start, stop, ui, zoom, right_list);
+// 		// printf("5 close: %d\n", ui);
+// 		sis_json_object_set_double(handle->node, "close", (double)ui/zoom, dot);
+// 	}	
+// 	sis_struct_list_destroy(right_list);
+
+// 	size_t olen;
+// 	char *str = sis_json_output_zip(handle->node, &olen);
+// 	o = sis_sdsnewlen(str, olen);
+// 	sis_free(str);
+
+// error:	
+	sis_json_close(handle);
+
+   	return o;
 }

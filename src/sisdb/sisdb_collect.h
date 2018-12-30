@@ -136,6 +136,8 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *unit_, s_sis_sds in_,
 
 // 得到二进制原始数据，
 s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_handle *handle);
+
+s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_,const char *);
 // 得到处理过的数据
 s_sis_sds sisdb_collect_get_sds(s_sis_db *db_,const char *, const char *com_);
 // command为json命令

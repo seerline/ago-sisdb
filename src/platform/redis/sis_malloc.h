@@ -48,6 +48,9 @@
 #define sis_dict_getval dictGetVal
 #define sis_dict_getkey dictGetKey
 
+#define sis_dict_unlink       dictUnlink
+#define sis_dict_unlink_free  dictFreeUnlinkedEntry
+ 
 #define sis_dict_get_iter dictGetSafeIterator
 #define sis_dict_next dictNext
 #define sis_dict_iter_free dictReleaseIterator
