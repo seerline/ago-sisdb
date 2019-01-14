@@ -1,6 +1,7 @@
 bin/*
 !bin/*.conf
 db/
+other/
 o/
 zip/
 .DS_Store

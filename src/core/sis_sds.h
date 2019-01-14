@@ -1,4 +1,4 @@
-/* SDSLib 2.0 -- A C dynamic strings library
+﻿/* SDSLib 2.0 -- A C dynamic strings library
  *
  * Copyright (c) 2006-2015, Salvatore Sanfilippo <antirez at gmail dot com>
  * Copyright (c) 2015, Oran Agra
@@ -30,63 +30,50 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SDS_H
-#define __SDS_H
+#ifndef _SIS_SDS_H
+#define _SIS_SDS_H
 
 #define SDS_MAX_PREALLOC (1024*1024)
+const char *SDS_NOINIT;
 
-#include <sys/types.h>
-#include <stdarg.h>
-#include <stdint.h>
+#include <sis_os.h>
 
-#ifdef _MSC_VER
-#define  inline __inline
-#pragma warning(disable: 4200 4267 4047 4996)
-#endif
 
-typedef char *sds;
+typedef char * sds;
 
-#ifdef _MSC_VER
-#define  _PACKED_
 #pragma pack(push,1)
-#else
-#define  _PACKED_  __attribute__ ((__packed__))
-#endif
-
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
  * However is here to document the layout of type 5 SDS strings. */
-struct _PACKED_ sdshdr5 {
+struct sdshdr5 {
     unsigned char flags; /* 3 lsb of type, and 5 msb of string length */
     char buf[];
 };
-struct _PACKED_ sdshdr8 {
+struct sdshdr8 {
     uint8_t len; /* used */
     uint8_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
     char buf[];
 };
-struct _PACKED_ sdshdr16 {
+struct sdshdr16 {
     uint16_t len; /* used */
     uint16_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
     char buf[];
 };
-struct _PACKED_ sdshdr32{
+struct sdshdr32{
     uint32_t len; /* used */
     uint32_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
     char buf[];
 };
-struct _PACKED_ sdshdr64 {
+struct sdshdr64 {
     uint64_t len; /* used */
     uint64_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
     char buf[];
 };
-
-#ifdef _MSC_VER
 #pragma pack(pop)
-#endif
+
 
 #define SDS_TYPE_5  0
 #define SDS_TYPE_8  1
@@ -256,11 +243,11 @@ sds sdscatprintf(sds s, const char *fmt, ...);
 
 sds sdscatfmt(sds s, char const *fmt, ...);
 sds sdstrim(sds s, const char *cset);
-void sdsrange(sds s, int start, int end);
+void sdsrange(sds s, ssize_t start, ssize_t end);
 void sdsupdatelen(sds s);
 void sdsclear(sds s);
 int sdscmp(const sds s1, const sds s2);
-sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count);
+sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count);
 void sdsfreesplitres(sds *tokens, int count);
 void sdstolower(sds s);
 void sdstoupper(sds s);
@@ -273,7 +260,7 @@ sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
 
 /* Low level functions exposed to the user API */
 sds sdsMakeRoomFor(sds s, size_t addlen);
-void sdsIncrLen(sds s, int incr);
+void sdsIncrLen(sds s, ssize_t incr);
 sds sdsRemoveFreeSpace(sds s);
 size_t sdsAllocSize(sds s);
 void *sdsAllocPtr(sds s);
@@ -290,8 +277,18 @@ void sds_free(void *ptr);
 }
 #endif
 
-#ifdef REDIS_TEST
-int sdsTest(int argc, char *argv[]);
-#endif
+#define s_sis_sds sds
+#define sis_sdsfree sdsfree
+#define sis_sdsclear sdsclear
+#define sis_sdsempty sdsempty
+#define sis_sdsnew sdsnew
+#define sis_sdsnewlong sdsfromlonglong
+#define sis_sdsnewlen sdsnewlen
+#define sis_sdscpylen sdscpylen
+#define sis_sdslen sdslen
+#define sis_sdsdup sdsdup
+#define sis_sdscatlen sdscatlen
+#define sis_sdscat sdscat
+#define sis_sdscatfmt sdscatfmt
 
 #endif

@@ -1,4 +1,4 @@
-#ifndef _SIS_MATH_H
+ï»¿#ifndef _SIS_MATH_H
 #define _SIS_MATH_H
 
 #include <sis_core.h>
@@ -12,7 +12,7 @@
 #define  sis_max(a,b)    (((a) > (b)) ? (a) : (b))
 #define  sis_min(a,b)    (((a) < (b)) ? (a) : (b))
 
-//ÏŞÖÆ·µ»ØÖµaÔÚÄ³¸öÇøÓòÄÚ
+//é™åˆ¶è¿”å›å€¼aåœ¨æŸä¸ªåŒºåŸŸå†…
 #define  sis_between(a,min,max)    (((a) < (min)) ? (min) : (((a) > (max)) ? (max) : (a)))
 
 inline int64 sis_zoom10(int n)  // 3 ==> 1000
@@ -97,9 +97,9 @@ inline void gauss_solve(int n, double A[], double x[], double b[])
 
 }
 /*==================polyfit(n,x,y,poly_n,a)===================*/
-/*=======ÄâºÏy=a0+a1*x+a2*x^2+¡­¡­+apoly_n*x^poly_n========*/
-/*=====nÊÇÊı¾İ¸öÊı xyÊÇÊı¾İÖµ poly_nÊÇ¶àÏîÊ½µÄÏîÊı======*/
-/*===·µ»Øa0,a1,a2,¡­¡­a[poly_n]£¬ÏµÊı±ÈÏîÊı¶àÒ»£¨³£ÊıÏî£©=====*/
+/*=======æ‹Ÿåˆy=a0+a1*x+a2*x^2+â€¦â€¦+apoly_n*x^poly_n========*/
+/*=====næ˜¯æ•°æ®ä¸ªæ•° xyæ˜¯æ•°æ®å€¼ poly_næ˜¯å¤šé¡¹å¼çš„é¡¹æ•°======*/
+/*===è¿”å›a0,a1,a2,â€¦â€¦a[poly_n]ï¼Œç³»æ•°æ¯”é¡¹æ•°å¤šä¸€ï¼ˆå¸¸æ•°é¡¹ï¼‰=====*/
 inline void polyfit(int n, double x[], double y[], int poly_n, double a[])
 {
 	int i, j;

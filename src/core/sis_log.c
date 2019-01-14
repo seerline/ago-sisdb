@@ -1,4 +1,4 @@
-
+ï»¿
 #include <sis_log.h>
 
 char __log_error[255];
@@ -9,11 +9,11 @@ void sis_log_close()
 }
 bool sis_log_open(const char *log_, int level_, int limit_)
 {
-	// Èç¹ûÖ¸¶¨ÁË log_ Ãû¾ÍÊä³öµ½ÎÄ¼þ£¬
-	// Èç¹ûµÈÓÚ console ¾Í´òÓ¡µ½ÆÁÄ»ÉÏ
-	// ÅäÖÃÖÐÓ¦¸ÃÓÐÒ»¸ölogÎÄ¼þÃûºÍ×î¸ß¼¶±ð
-	// ½¨Á¢Ò»¸öÈ«¾Ö±äÁ¿£¬×¨ÃÅÓÃÓÚÊä³ölog
-	// errorÖ±½ÓÊä³öµ½ÆÁÄ»
+	// å¦‚æžœæŒ‡å®šäº† log_ åå°±è¾“å‡ºåˆ°æ–‡ä»¶ï¼Œ
+	// å¦‚æžœç­‰äºŽ console å°±æ‰“å°åˆ°å±å¹•ä¸Š
+	// é…ç½®ä¸­åº”è¯¥æœ‰ä¸€ä¸ªlogæ–‡ä»¶åå’Œæœ€é«˜çº§åˆ«
+	// å»ºç«‹ä¸€ä¸ªå…¨å±€å˜é‡ï¼Œä¸“é—¨ç”¨äºŽè¾“å‡ºlog
+	// errorç›´æŽ¥è¾“å‡ºåˆ°å±å¹•
 	return true;
 }
 char *sis_log(int level_, const char *fmt_, ...)

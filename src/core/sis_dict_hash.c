@@ -1,4 +1,4 @@
-/*
+﻿/*
    SipHash reference C implementation
 
    Copyright (c) 2012-2016 Jean-Philippe Aumasson
@@ -333,17 +333,17 @@ int siphash_test(void) {
     uint64_t h1, h2;
     h1 = siphash((uint8_t*)"hello world",11,(uint8_t*)"1234567812345678");
     h2 = siphash_nocase((uint8_t*)"hello world",11,(uint8_t*)"1234567812345678");
-    if (h1 != h2) fails++;
+    if (h1 != h2) {fails++;}
 
     h1 = siphash((uint8_t*)"hello world",11,(uint8_t*)"1234567812345678");
     h2 = siphash_nocase((uint8_t*)"HELLO world",11,(uint8_t*)"1234567812345678");
-    if (h1 != h2) fails++;
+    if (h1 != h2){ fails++;}
 
     h1 = siphash((uint8_t*)"HELLO world",11,(uint8_t*)"1234567812345678");
     h2 = siphash_nocase((uint8_t*)"HELLO world",11,(uint8_t*)"1234567812345678");
-    if (h1 == h2) fails++;
+    if (h1 == h2) {fails++;}
 
-    if (!fails) return 0;
+    if (!fails) {return 0;}
     return 1;
 }
 

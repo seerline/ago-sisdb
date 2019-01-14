@@ -1,4 +1,4 @@
-
+﻿
 #ifndef _SIS_FILE_CSV_H
 #define _SIS_FILE_CSV_H
 
@@ -8,9 +8,9 @@
 
 typedef struct s_sis_file_csv 
 {
-	sis_file_handle    fp;
-	char 			   sign[8];
-	s_sis_struct_list *list;
+	sis_file_handle     fp;
+	char 			    sign[8];
+	s_sis_pointer_list *list;
 }s_sis_file_csv;
 
 s_sis_file_csv * sis_file_csv_open(const char *name_, char c_, int mode_, int access_);

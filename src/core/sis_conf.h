@@ -1,34 +1,34 @@
-
+ï»¿
 #ifndef _SIS_CONF_H
 #define _SIS_CONF_H
 
-// °üº¬ÁËÕâ¸öÍ·£¬¾Í»ù±¾°üÀ¨ÁËËùÓĞµÄosÄ¿Â¼µÄÎÄ¼şÍ·ÁË
+// åŒ…å«äº†è¿™ä¸ªå¤´ï¼Œå°±åŸºæœ¬åŒ…æ‹¬äº†æ‰€æœ‰çš„osç›®å½•çš„æ–‡ä»¶å¤´äº†
 #include <sis_core.h>
 #include <sis_file.h>
 #include <sis_json.h>
 
-// ÒªÇó¿ÉÒÔ´Ójson×Ö·û´®×ª»¯Îªconf¸ñÊ½£¬·½±ãjs¿Í»§¶ËÅäÖÃºÃ²ÎÊıºóÖ±½Ó·¢»Ø¸ø·şÎñÆ÷½øĞĞ´¦Àí
-// ÒªÇóÖ§³Ö # ×¢ÊÍ
-// ÒªÇóÖ§³Ö include xxxx.conf 
-// Ö»ĞèÒªÖ§³Ö½âÎöºÍ¶ÁÈ¡£¬Êä³ö£¬²»ÒªÇóĞŞ¸Ä
+// è¦æ±‚å¯ä»¥ä»jsonå­—ç¬¦ä¸²è½¬åŒ–ä¸ºconfæ ¼å¼ï¼Œæ–¹ä¾¿jså®¢æˆ·ç«¯é…ç½®å¥½å‚æ•°åç›´æ¥å‘å›ç»™æœåŠ¡å™¨è¿›è¡Œå¤„ç†
+// è¦æ±‚æ”¯æŒ # æ³¨é‡Š
+// è¦æ±‚æ”¯æŒ include xxxx.conf 
+// åªéœ€è¦æ”¯æŒè§£æå’Œè¯»å–ï¼Œè¾“å‡ºï¼Œä¸è¦æ±‚ä¿®æ”¹
 
 #define SIS_CONF_NOTE_SIGN '#'  
 #define SIS_CONF_INCLUDE "include"  
 
 typedef struct s_sis_conf_handle
 {
-	const char * error;     // Ö¸Ïò´íÎóµÄµØÖ· ´íÎóµØÖ·Îª¿Õ±íÊ¾Õı³£´¦ÀíÍê±Ï
-	char   path[SIS_PATH_LEN];  //±£´æÖ÷confµÄÂ·¾¶
+	const char * error;     // æŒ‡å‘é”™è¯¯çš„åœ°å€ é”™è¯¯åœ°å€ä¸ºç©ºè¡¨ç¤ºæ­£å¸¸å¤„ç†å®Œæ¯•
+	char   path[SIS_PATH_LEN];  //ä¿å­˜ä¸»confçš„è·¯å¾„
 	struct s_sis_json_node *node;
-} s_sis_conf_handle;         //×¨ÃÅÌá¹©¸ø¶ÁjsonµÄ¿ìËÙ½á¹¹Ìå
+} s_sis_conf_handle;         //ä¸“é—¨æä¾›ç»™è¯»jsonçš„å¿«é€Ÿç»“æ„ä½“
 
 //-------- output option function-------- //
 
-s_sis_conf_handle *sis_conf_open(const char *fn_); // ´ÓÎÄ¼ş´ò¿ª ²»¶ÁÈ¡×¢ÊÍ
-void sis_conf_close(s_sis_conf_handle *handle_); // ¹Ø±Õ²¢ÊÍ·Å
+s_sis_conf_handle *sis_conf_open(const char *fn_); // ä»æ–‡ä»¶æ‰“å¼€ ä¸è¯»å–æ³¨é‡Š
+void sis_conf_close(s_sis_conf_handle *handle_); // å…³é—­å¹¶é‡Šæ”¾
 
 s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_);
-// Êä³öjsonµÄ¸ñÊ½Êı¾İ£¬²»º¬confµÄ×¢ÊÍ
+// è¾“å‡ºjsonçš„æ ¼å¼æ•°æ®ï¼Œä¸å«confçš„æ³¨é‡Š
 #define sis_conf_to_json sis_json_output
 #define sis_conf_to_json_zip sis_json_output_zip
 

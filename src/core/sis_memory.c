@@ -1,4 +1,4 @@
-
+﻿
 #include <sis_memory.h>
 
 s_sis_memory *sis_memory_create()
@@ -36,7 +36,9 @@ void sis_memory_clear(s_sis_memory *m_)
 void sis_memory_pack(s_sis_memory *m_)
 {
 	if (m_->offset <= 0)
+	{
 		return;
+	}
 	if (m_->offset > m_->size - 1)
 	{
 		m_->size = 0;
@@ -53,7 +55,9 @@ void sis_memory_pack(s_sis_memory *m_)
 char *sis_memory(s_sis_memory *m_)
 {
 	if (!m_->buffer)
+	{
 		return NULL;
+	}
 	return m_->buffer + m_->offset;
 }
 size_t sis_memory_cat(s_sis_memory *m_, char *in_, size_t ilen_)
@@ -72,7 +76,7 @@ size_t sis_memory_readfile(s_sis_memory *m_, sis_file_handle fp_, size_t len_)
 {
 	char *mem = (char *)sis_malloc(len_ + 1);
 	size_t bytes = sis_file_read(fp_, mem, 1, len_);
-	if(bytes<=0) 
+	if (bytes <= 0)
 	{
 		sis_free(mem);
 		return 0;
@@ -108,15 +112,21 @@ size_t sis_memory_get_line_sign(s_sis_memory *m_)
 	size_t len = 0;
 	while (*ptr && (unsigned char)*ptr != '\n')
 	{
-		if ((m_->offset + len) < m_->size - 1) 
+		if ((m_->offset + len) < m_->size - 1)
 		{
-			ptr++;  len++;
-		} else {
+			ptr++;
+			len++;
+		}
+		else
+		{
 			// len = 0;
 			return 0;
 		}
 	}
-	if((unsigned char)*ptr == '\n') len++;  // 跳过回车键
+	if ((unsigned char)*ptr == '\n')
+	{
+		len++;
+	} // skip return key
 	return len;
 }
 

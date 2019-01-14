@@ -108,6 +108,7 @@ void sisdb_stepindex_rebuild(s_sis_step_index *, uint64 left_, uint64 right_, in
 s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_);
 void sisdb_collect_destroy(s_sisdb_collect *);
 void sisdb_collect_clear(s_sisdb_collect *unit_);
+void sisdb_collect_clear_subs(s_sisdb_collect *unit_);
 
 s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_);
 
@@ -190,7 +191,7 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *, const char *in_, s
 //传入array数据时通过该函数转成二进制结构数据
 s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *, const char *in_, size_t ilen_);
 
-int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_);
+int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_, bool ispub_);
 
 int sisdb_collect_update_publish(s_sisdb_collect *unit_,s_sis_sds val_, const char *code_);
 

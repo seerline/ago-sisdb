@@ -59,7 +59,7 @@ int load_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	return sis_module_reply_with_null(ctx_);
 }
 // 设置系统级别的一些默认操作，通过用于一些危险操作的授权，例如：
-	// disk   查询结果写入磁盘，
+	// output   查询结果写入磁盘，
     // super  允许删除表格，系统的del只能清除表格内容，不能删除表结构
 int load_sisdb_cfg(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {

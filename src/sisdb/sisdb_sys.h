@@ -60,6 +60,8 @@ typedef struct s_sisdb_sys_exch {
 s_sisdb_sys_exch *sisdb_sys_create_exch(s_sis_db *db_, const char *code_);
 s_sisdb_sys_info *sisdb_sys_create_info(s_sis_db *db_, const char *code_);
 
+// 分走两套体系，一套是正常流程，还有一套是收市后或前，倒数据使用，直接判断具备初始化属性的collect是否是新的一天
+// 是就删除重来
 void sisdb_sys_flush_work_time(void *);
 void sisdb_sys_load_default(s_sis_db *db_, s_sis_json_node *table_);
 

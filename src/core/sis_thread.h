@@ -1,27 +1,49 @@
-#ifndef _SIS_THREAD_H
+ï»¿#ifndef _SIS_THREAD_H
 #define _SIS_THREAD_H
 
+#include <sis_os.h>
 #include <sis_core.h>
 #include <sis_time.h>
 #include <sis_list.h>
+#include <os_thread.h>
 
-// ÈÎÎñÔËĞĞÄ£Ê½ ¼ä¸ôÃëÊıÔËĞĞ£¬°´·ÖÖÓÊ±¼äµãÔËĞĞ
+// å¤šè¯»ä¸€å†™é”å®šä¹‰
+typedef struct s_sis_mutex_rw {
+	s_sis_mutex_t mutex_s;
+	volatile bool try_write_b;
+	volatile int reads_i;
+	volatile int writes_i;
+} s_sis_mutex_rw;
+
+int  sis_mutex_rw_create(s_sis_mutex_rw *mutex_);
+void sis_mutex_rw_destroy(s_sis_mutex_rw *mutex_);
+void sis_mutex_rw_lock_r(s_sis_mutex_rw *mutex_);
+void sis_mutex_rw_unlock_r(s_sis_mutex_rw *mutex_);
+void sis_mutex_rw_lock_w(s_sis_mutex_rw *mutex_);
+void sis_mutex_rw_unlock_w(s_sis_mutex_rw *mutex_);
+
+
+////////////////////////
+// çº¿ç¨‹ä»»åŠ¡å®šä¹‰
+/////////////////////////
+
+// ä»»åŠ¡è¿è¡Œæ¨¡å¼ é—´éš”ç§’æ•°è¿è¡Œï¼ŒæŒ‰åˆ†é’Ÿæ—¶é—´ç‚¹è¿è¡Œ
 #define SIS_WORK_MODE_NONE     0
-#define SIS_WORK_MODE_GAPS     1  // ¼ä¸ôÃëÊıÔËĞĞ£¬ĞèÒªÅäºÏ¿ªÊ¼ºÍ½áÊøÊ±¼ä
-#define SIS_WORK_MODE_PLANS    2  // °´Ê±¼äÁĞ±íÔËĞĞ£¬Ê±¼ä¾«È·µ½·ÖÖÓ
-#define SIS_WORK_MODE_ONCE     3  // Ö»ÔËĞĞÒ»´Î
+#define SIS_WORK_MODE_GAPS     1  // é—´éš”ç§’æ•°è¿è¡Œï¼Œéœ€è¦é…åˆå¼€å§‹å’Œç»“æŸæ—¶é—´
+#define SIS_WORK_MODE_PLANS    2  // æŒ‰æ—¶é—´åˆ—è¡¨è¿è¡Œï¼Œæ—¶é—´ç²¾ç¡®åˆ°åˆ†é’Ÿ
+#define SIS_WORK_MODE_ONCE     3  // åªè¿è¡Œä¸€æ¬¡
 
 typedef struct s_sis_plan_task {
 	int  		 		work_mode; 
-	bool         		working;          // ÍË³öÊ±ÉèÖÃÎªfalse 
-	s_sis_struct_list  *work_plans;       // plans-work ¶¨Ê±ÈÎÎñ uint16 µÄÊı×é
-	s_sis_time_gap      work_gap; 		  // always-work Ñ­»·ÔËĞĞµÄÅäÖÃ
+	bool         		working;          // é€€å‡ºæ—¶è®¾ç½®ä¸ºfalse 
+	s_sis_struct_list  *work_plans;       // plans-work å®šæ—¶ä»»åŠ¡ uint16 çš„æ•°ç»„
+	s_sis_time_gap      work_gap; 		  // always-work å¾ªç¯è¿è¡Œçš„é…ç½®
 
-	s_sis_mutex_t 		mutex;  // Ëø
+	s_sis_mutex_t 		mutex;  // é”
 	s_sis_thread_id_t   work_pid;
 
-	s_sis_wait 			wait;   //   Ïß³ÌÄÚ²¿ÑÓÊ±´¦Àí
-	void(*call)(void *);        // ==NULL ²»ÊÍ·Å¶ÔÓ¦ÄÚ´æ
+	s_sis_wait 			wait;   //   çº¿ç¨‹å†…éƒ¨å»¶æ—¶å¤„ç†
+	void(*call)(void *);        // ==NULL ä¸é‡Šæ”¾å¯¹åº”å†…å­˜
 } s_sis_plan_task;
 
 s_sis_plan_task *sis_plan_task_create();
@@ -31,7 +53,7 @@ void sis_plan_task_destroy(s_sis_plan_task *task_);
 bool sis_plan_task_start(s_sis_plan_task *task_,SIS_THREAD_START_ROUTINE func_, void* val_);
 
 bool sis_plan_task_working(s_sis_plan_task *task_);
-bool sis_plan_task_execute(s_sis_plan_task *task_);  // ¼ì²éÊ±¼äÊÇ·ñµ½ÁË£¬¿ÉÒÔÖ´ĞĞ¾Í·µ»ØÕæ
+bool sis_plan_task_execute(s_sis_plan_task *task_);  // æ£€æŸ¥æ—¶é—´æ˜¯å¦åˆ°äº†ï¼Œå¯ä»¥æ‰§è¡Œå°±è¿”å›çœŸ
 
 
 #endif //_SIS_TIME_H

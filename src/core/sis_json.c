@@ -1,4 +1,4 @@
-
+ï»¿
 #include <sis_json.h>
 
 //////////////////////////////////////////////
@@ -122,7 +122,7 @@ static const char *_sis_parse_array(s_sis_json_handle *handle_, s_sis_json_node 
 			handle_->error = value_;
 			return 0;
 		}
-		if (*value_ == ']') // Ö»ÓĞÕâÀï²ÅÄÜÍË³ö
+		if (*value_ == ']') // åªæœ‰è¿™é‡Œæ‰èƒ½é€€å‡º
 		{
 			return value_ + 1;
 		}
@@ -165,7 +165,7 @@ static const char *_sis_parse_object(s_sis_json_handle *handle_, s_sis_json_node
 			handle_->error = value_;
 			return 0;
 		}
-		if (*value_ == '}') // Ö»ÓĞÕâÀï²ÅÄÜÍË³ö
+		if (*value_ == '}') // åªæœ‰è¿™é‡Œæ‰èƒ½é€€å‡º
 		{
 			return value_ + 1;
 		}
@@ -383,7 +383,7 @@ s_sis_json_node *sis_json_create_object(void)
 	}
 	return n;
 }
-// ´ÓÖ»¶ÁÄ£Ê½ÇĞ»»µ½Ğ´ÈëÄ£Ê½ĞèÒªÈÃËùÓĞµÄkeyºÍvalueÖØĞÂµ¥¶ÀÉêÇëÄÚ´æ
+// ä»åªè¯»æ¨¡å¼åˆ‡æ¢åˆ°å†™å…¥æ¨¡å¼éœ€è¦è®©æ‰€æœ‰çš„keyå’Œvalueé‡æ–°å•ç‹¬ç”³è¯·å†…å­˜
 // void _sis_json_malloc(s_sis_json_node *node_)
 // {
 // 	if (!node_)
@@ -440,7 +440,7 @@ void sis_json_array_add_node(s_sis_json_node *source_, s_sis_json_node *node_)
 void sis_json_object_add_node(s_sis_json_node *source_, const char *key_, s_sis_json_node *node_)
 {
 	if (!node_)
-		return;
+	{	return;}
 	if (node_->key)
 	{
 		sis_free(node_->key);
@@ -631,7 +631,7 @@ void sis_json_delete_node(s_sis_json_node *node_)
 	{
 		// printf("-%p %p %p---\n",node_->father,node_->father->child,node_->next);
 		node_->father->child = node_->next;
-		if(node_->next) node_->next->father = node_->father;
+		if(node_->next) {node_->next->father = node_->father;}
 	}
 	if (node_->child)
 	{
@@ -665,13 +665,13 @@ static char *_sis_json_to_number(s_sis_json_node *node_)
 	return sis_strdup(node_->value, 0);
 }
 
-// \n, new line£¬ÁíÆğÒ»ĞĞ
-// \t, tab£¬±í¸ñ
-// \b, word boundary£¬´Ê±ß½ç
-// \r, return£¬»Ø³µ
-// \f, form feed£¬»»Ò³
-// \" ÒıºÅ
-// \\ Ğ±¸Ü
+// \n, new lineï¼Œå¦èµ·ä¸€è¡Œ
+// \t, tabï¼Œè¡¨æ ¼
+// \b, word boundaryï¼Œè¯è¾¹ç•Œ
+// \r, returnï¼Œå›è½¦
+// \f, form feedï¼Œæ¢é¡µ
+// \" å¼•å·
+// \\ æ–œæ 
 static char *_sis_json_to_string(const char *str_)
 {
 	const char *ptr;
@@ -958,7 +958,7 @@ static char *_sis_json_to_object(s_sis_json_node *node_, int depth_, int fmt_)
 	*out = '{';
 	ptr = out + 1;
 	if (fmt_)
-		*ptr++ = '\n';
+	{	*ptr++ = '\n';}
 	*ptr = 0;
 	for (i = 0; i < numentries; i++)
 	{
@@ -1033,7 +1033,7 @@ char *_sis_json_to_value(s_sis_json_node *node_, int depth_, int fmt_)
 		out = _sis_json_to_object(node_, depth_, fmt_);
 		break;
 	}
-	// if (out) printf("%s\n",out);
+	// if (out) {printf("%s\n",out);}
 	return out;
 }
 
@@ -1244,7 +1244,7 @@ int main1()
 	const char *fn = "./select.json";
 	// const char *fn = "../conf/sis.conf";
 	s_sis_json_handle *h = sis_json_open(fn);
-	if (!h) return -1;
+	if (!h) {return -1;}
 	
 	int iii=1;
 	sis_json_show(h->node,&iii);
@@ -1298,7 +1298,7 @@ int main()
 
 	// const char *command = "[930,1130]";
 	s_sis_json_handle *h = sis_json_load(command,strlen(command));
-	if (!h) return -1;
+	if (!h) {return -1;}
 
 	int iii=1;
 	sis_json_show(h->node,&iii);

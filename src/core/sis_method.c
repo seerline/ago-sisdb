@@ -1,4 +1,4 @@
-
+ï»¿
 #include <sis_method.h>
 
 //////////////////////////////////////////////
@@ -11,11 +11,11 @@ s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_)
 	{
 		struct s_sis_method *c = methods_ + i;
 		s_sis_sds key = sis_sdsnew(c->style);
-        key = sis_sdscatfmt(key, ".%s", c->name);
+		key = sis_sdscatfmt(key, ".%s", c->name);
 		int o = sis_dict_add(map, key, c);
 		assert(o == DICT_OK);
-	} 
-	return map;	
+	}
+	return map;
 }
 s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, const char *style_)
 {
@@ -23,10 +23,10 @@ s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, co
 	if (map_)
 	{
 		s_sis_sds key = sis_sdsnew(style_);
-        key = sis_sdscatfmt(key, ".%s", name_);
+		key = sis_sdscatfmt(key, ".%s", name_);
 		val = (s_sis_method *)sis_dict_fetch_value(map_, key);
 		sis_sdsfree(key);
-	} 
+	}
 	return val;
 }
 void sis_method_map_destroy(s_sis_map_pointer *map_)
@@ -38,17 +38,17 @@ void sis_method_map_destroy(s_sis_map_pointer *map_)
 //   sis_method_node function define
 ///////////////////////////////////////////////
 
-s_sis_method_node* _sis_method_node_load(
-		s_sis_map_pointer *map_,
-		s_sis_method_node *first_,
-		s_sis_method_node *father_,
-		const char *style_, 
-		s_sis_json_node *node_)
+s_sis_method_node *_sis_method_node_load(
+	s_sis_map_pointer *map_,
+	s_sis_method_node *first_,
+	s_sis_method_node *father_,
+	const char *style_,
+	s_sis_json_node *node_)
 {
 	s_sis_method_node *new = (s_sis_method_node *)sis_malloc(sizeof(s_sis_method_node));
-	memset(new, 0 ,sizeof(s_sis_method_node));
+	memset(new, 0, sizeof(s_sis_method_node));
 
-    new->method = sis_method_map_find(map_, (const char *)&node_->key[1], style_);
+	new->method = sis_method_map_find(map_, (const char *)&node_->key[1], style_);
 	if (!new->method)
 	{
 		sis_out_log(5)("no find method %s\n", (const char *)&node_->key[1]);
@@ -56,86 +56,92 @@ s_sis_method_node* _sis_method_node_load(
 		return NULL;
 	}
 
-	if (first_) 
+	if (first_)
 	{
 		first_->next = new;
 		new->prev = first_;
 	}
-	if (father_) 
+	if (father_)
 	{
 		father_->child = new;
 		new->father = father_;
 	}
-    
+
 	new->argv = sis_json_create_object();
 
-	// printf("%s| %p, ^ %p,v %p < %p, >%p \n", new->method->name, 
+	// printf("%s| %p, ^ %p,v %p < %p, >%p \n", new->method->name,
 	// 		new, new->father,new->child, new->prev, new->next);
 
 	switch (node_->type)
 	{
-		case SIS_JSON_INT:
-		case SIS_JSON_DOUBLE:
-		case SIS_JSON_STRING:
-			sis_json_object_add_string(new->argv, SIS_METHOD_ARGV, node_->value, strlen(node_->value));
-			break;
-		case SIS_JSON_ARRAY:
-		case SIS_JSON_OBJECT:
+	case SIS_JSON_INT:
+	case SIS_JSON_DOUBLE:
+	case SIS_JSON_STRING:
+		sis_json_object_add_string(new->argv, SIS_METHOD_ARGV, node_->value, strlen(node_->value));
+		break;
+	case SIS_JSON_ARRAY:
+	case SIS_JSON_OBJECT:
+	{
+		s_sis_method_node *first = NULL;
+		s_sis_json_node *next = sis_json_first_node(node_);
+		while (next)
+		{
+			if (next->key[0] == '$')
 			{
-				s_sis_method_node *first = NULL;
-				s_sis_json_node *next = sis_json_first_node(node_);
-				while (next)
-				{
-					if (next->key[0] == '$') 
-					{
-						first = _sis_method_node_load(map_, first, new, style_, next);
-					}
-					else
-					{
-						// printf("key=%s, v =%s\n", next->key, next->value);
-						sis_json_object_add_node(new->argv, next->key, sis_json_clone(next, 1));
-					}
-					next = next->next;
-				}	
+				first = _sis_method_node_load(map_, first, new, style_, next);
 			}
-			break;
-		default:
-			break;
+			else
+			{
+				// printf("key=%s, v =%s\n", next->key, next->value);
+				sis_json_object_add_node(new->argv, next->key, sis_json_clone(next, 1));
+			}
+			next = next->next;
+		}
+	}
+	break;
+	default:
+		break;
 	}
 
-    return new;
+	return new;
 }
 s_sis_method_node *sis_method_node_first(s_sis_method_node *node_)
 {
-	if (!node_) return NULL;
+	if (!node_)
+	{
+		return NULL;
+	}
 	while (node_->prev)
 	{
 		node_ = node_->prev;
 	}
-    return node_;
+	return node_;
 }
-// Æðµã£¬×îÍâ²ãÎªÒ»¸ö»òÕß¹ØÏµµÄ·½·¨ÁÐ±í£¬
+// èµ·ç‚¹ï¼Œæœ€å¤–å±‚ä¸ºä¸€ä¸ªæˆ–è€…å…³ç³»çš„æ–¹æ³•åˆ—è¡¨ï¼Œ
 s_sis_method_node *sis_method_node_create(s_sis_map_pointer *map_, const char *style_, s_sis_json_node *node_)
 {
-	if (!map_||!node_) return NULL;
+	if (!map_ || !node_)
+	{
+		return NULL;
+	}
 
-    s_sis_method_node *first = NULL;
+	s_sis_method_node *first = NULL;
 
-    s_sis_json_node *next = sis_json_first_node(node_);
-    while (next)
-    {
-        if (next->key[0] == '$') 
-        {
-            first = _sis_method_node_load(map_, first, NULL, style_, next);
-        }
-        next = next->next;
-    }
-    return sis_method_node_first(first);
+	s_sis_json_node *next = sis_json_first_node(node_);
+	while (next)
+	{
+		if (next->key[0] == '$')
+		{
+			first = _sis_method_node_load(map_, first, NULL, style_, next);
+		}
+		next = next->next;
+	}
+	return sis_method_node_first(first);
 }
 
 void sis_method_node_destroy(void *node_, void *other_)
 {
-    SIS_NOTUSED(other_);
+	SIS_NOTUSED(other_);
 	s_sis_method_node *node = (s_sis_method_node *)node_;
 	while (node)
 	{
@@ -146,21 +152,21 @@ void sis_method_node_destroy(void *node_, void *other_)
 			sis_method_node_destroy(child, other_);
 		}
 		next = node->next;
-    	sis_json_delete_node(node->argv);
-	    sis_free(node);
-        node = next;
-	} 
+		sis_json_delete_node(node->argv);
+		sis_free(node);
+		node = next;
+	}
 }
 
 s_sis_method_class *sis_method_class_create(s_sis_map_pointer *map_, const char *style_, s_sis_json_node *node_)
 {
-	s_sis_method_node *node = sis_method_node_create(map_,style_, node_);
+	s_sis_method_node *node = sis_method_node_create(map_, style_, node_);
 	if (!node)
 	{
 		return NULL;
 	}
 	s_sis_method_class *class = (s_sis_method_class *)sis_malloc(sizeof(s_sis_method_class));
-	memset(class, 0 ,sizeof(s_sis_method_class));
+	memset(class, 0, sizeof(s_sis_method_class));
 	class->node = node;
 	return class;
 }
@@ -168,58 +174,72 @@ s_sis_method_class *sis_method_class_create(s_sis_map_pointer *map_, const char 
 void sis_method_class_destroy(void *class_, void *other_)
 {
 	s_sis_method_class *class = (s_sis_method_class *)class_;
-	if (class->free) 
+	if (class->free)
 	{
-		if(class->obj) class->free(class->obj);
-		if(class->style == SIS_METHOD_CLASS_FILTER)
+		if (class->obj)
 		{
-			if (class->node->out) class->free(class->node->out);
+			class->free(class->obj);
+		}
+		if (class->style == SIS_METHOD_CLASS_FILTER)
+		{
+			if (class->node->out)
+			{
+				class->free(class->node->out);
+			}
 		}
 	}
 	sis_method_node_destroy(class->node, other_);
 	sis_free(class);
 }
 
-void _sis_method_class_marking( s_sis_method_class *cls_, s_sis_method_node *node_)
+void _sis_method_class_marking(s_sis_method_class *cls_, s_sis_method_node *node_)
 {
-	if (!node_) return;
+	if (!node_)
+	{
+		return;
+	}
 
 	if (node_->method->proc)
 	{
-		void * out = node_->method->proc(cls_->obj, node_->argv);
-		if (out&&cls_->free) cls_->free(out);
+		void *out = node_->method->proc(cls_->obj, node_->argv);
+		if (out && cls_->free)
+		{
+			cls_->free(out);
+		}
 	}
 	if (node_->child)
 	{
 		s_sis_method_node *first = sis_method_node_first(node_->child);
 		_sis_method_class_marking(cls_, first);
-	} 
+	}
 	_sis_method_class_marking(cls_, node_->next);
 }
 
 void _sis_method_class_filter(
-			s_sis_method_class *cls_, // ·½·¨
-			void *in_,   // À´Ô´Êý¾Ý£¬Ã¿Ò»²ã²»Í¬
-			s_sis_method_node *onode_,  // nodeºÍÖ®ÔËËãµÄ½Úµã,Ã¿²ãµÚÒ»¸ö½Úµã»òÕß¸¸½Úµã
-			s_sis_method_node *node_
-			)   // µ±Ç°½Úµã
+	s_sis_method_class *cls_,  // æ–¹æ³•
+	void *in_,				   // æ¥æºæ•°æ®ï¼Œæ¯ä¸€å±‚ä¸åŒ
+	s_sis_method_node *onode_, // nodeå’Œä¹‹è¿ç®—çš„èŠ‚ç‚¹,æ¯å±‚ç¬¬ä¸€ä¸ªèŠ‚ç‚¹æˆ–è€…çˆ¶èŠ‚ç‚¹
+	s_sis_method_node *node_)  // å½“å‰èŠ‚ç‚¹
 {
-	if (!node_) return;
-
-	node_->out = node_->method->proc(in_, node_->argv);
-	if (!node_->out) 
+	if (!node_)
 	{
-		node_->out = cls_->malloc(); 
+		return;
 	}
 
-	{	
-		size_t len;
-		char *str = sis_json_output_zip(node_->argv, &len);
-		s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)node_->out);
-		printf(" >>> %s : %s  %s\n  ", node_->method->name, sss, str);
-		sis_sdsfree(sss);
-		sis_free(str);
-	} 
+	node_->out = node_->method->proc(in_, node_->argv);
+	if (!node_->out)
+	{
+		node_->out = cls_->malloc();
+	}
+
+	// {
+	// 	size_t len;
+	// 	char *str = sis_json_output_zip(node_->argv, &len);
+	// 	s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)node_->out);
+	// 	printf(" >>> %s : %s  %s\n  ", node_->method->name, sss, str);
+	// 	sis_sdsfree(sss);
+	// 	sis_free(str);
+	// }
 
 	if (node_->child)
 	{
@@ -227,48 +247,56 @@ void _sis_method_class_filter(
 		_sis_method_class_filter(cls_, node_->out, node_, first);
 	}
 
-	if (onode_ != node_) 
+	if (onode_ != node_)
 	{
 		if (sis_method_node_first(node_) == onode_)
 		{
 			cls_->merge(onode_->out, node_->out);
-			if (node_->out) cls_->free(node_->out);
+			if (node_->out)
+			{
+				cls_->free(node_->out);
+			}
 		}
 	}
 	if (node_->next)
 	{
 		_sis_method_class_filter(cls_, in_, sis_method_node_first(node_), node_->next);
-	} 
-	else 
+	}
+	else
 	{
-		if (node_->father) 
+		if (node_->father)
 		{
 			s_sis_method_node *first = sis_method_node_first(node_);
 			cls_->across(node_->father->out, first->out);
-			if (first->out) cls_->free(first->out);
+			if (first->out)
+			{
+				cls_->free(first->out);
+			}
 		}
 	}
-
 }
 
-void _sis_method_class_judge( s_sis_method_class *cls_, s_sis_method_node *onode_, s_sis_method_node *node_)
+void _sis_method_class_judge(s_sis_method_class *cls_, s_sis_method_node *onode_, s_sis_method_node *node_)
 {
-	if (!node_) return;
+	if (!node_)
+	{
+		return;
+	}
 
-	void *ok = node_->method->proc(cls_->obj, node_->argv); 
+	void *ok = node_->method->proc(cls_->obj, node_->argv);
 	node_->ok = (ok != NULL);
 
-	{	
-		printf(" >>> %s : %d\n  ", node_->method->name, node_->ok);
-	} 
-	//  ¹éµ½µÚÒ»¸ö£¬Ö»Òª¸¸Ç×Îªfalse¾Í²»ÔÙ¼ì²é¶ù×Ó
+	// {
+	// 	printf(" >>> %s : %d\n  ", node_->method->name, node_->ok);
+	// }
+	//  å½’åˆ°ç¬¬ä¸€ä¸ªï¼Œåªè¦çˆ¶äº²ä¸ºfalseå°±ä¸å†æ£€æŸ¥å„¿å­
 	if (node_->child && node_->ok)
 	{
 		s_sis_method_node *first = sis_method_node_first(node_->child);
 		_sis_method_class_judge(cls_, node_, first);
 	}
 
-	if (onode_ != node_) 
+	if (onode_ != node_)
 	{
 		if (sis_method_node_first(node_) == onode_)
 		{
@@ -279,10 +307,10 @@ void _sis_method_class_judge( s_sis_method_class *cls_, s_sis_method_node *onode
 	if (node_->next)
 	{
 		_sis_method_class_judge(cls_, sis_method_node_first(node_), node_->next);
-	} 
-	else 
+	}
+	else
 	{
-		if (node_->father) 
+		if (node_->father)
 		{
 			s_sis_method_node *first = sis_method_node_first(node_);
 			node_->father->ok &= first->ok;
@@ -293,42 +321,44 @@ void _sis_method_class_judge( s_sis_method_class *cls_, s_sis_method_node *onode
 
 void _sis_method_class_clear(s_sis_method_class *class_)
 {
-	if (class_->free) 
+	if (class_->free)
 	{
-		if(class_->style == SIS_METHOD_CLASS_FILTER)
+		if (class_->style == SIS_METHOD_CLASS_FILTER)
 		{
-			if (class_->node->out) class_->free(class_->node->out);
+			if (class_->node->out)
+			{
+				class_->free(class_->node->out);
+			}
 			class_->node->out = NULL;
 		}
-		if(class_->style == SIS_METHOD_CLASS_JUDGE)
+		if (class_->style == SIS_METHOD_CLASS_JUDGE)
 		{
 			class_->node->ok = false;
 		}
 	}
 }
 
-
 void *sis_method_class_execute(s_sis_method_class *class_)
 {
-	if(class_->style == SIS_METHOD_CLASS_MARKING)
+	if (class_->style == SIS_METHOD_CLASS_MARKING)
 	{
 		_sis_method_class_marking(class_, class_->node);
 		return class_->obj;
-	} else if(class_->style == SIS_METHOD_CLASS_JUDGE)
-	{							
+	}
+	else if (class_->style == SIS_METHOD_CLASS_JUDGE)
+	{
 		_sis_method_class_judge(class_, class_->node, class_->node);
 		return &class_->node->ok;
-	} else {
-		// Çå³þËùÓÐÁÙÊ±±äÁ¿out£¬¶Ôclass_->outµØÖ·Ö»ÉèÖÃNULL£¬²»ÊÍ·Å
+	}
+	else
+	{
+		// æ¸…æ¥šæ‰€æœ‰ä¸´æ—¶å˜é‡outï¼Œå¯¹class_->outåœ°å€åªè®¾ç½®NULLï¼Œä¸é‡Šæ”¾
 		_sis_method_class_clear(class_);
-		// ÏÈÖ´ÐÐ
+		// å…ˆæ‰§è¡Œ
 		_sis_method_class_filter(class_, class_->obj, class_->node, class_->node);
 		return class_->node->out;
 	}
 }
-
-
-
 
 #if 0
 
@@ -491,7 +521,7 @@ void demo_across(void *out, void *obj)
 	sis_string_list_across(
 		(s_sis_string_list *)out,
 		(s_sis_string_list *)obj);
-	// Çó½»¼¯
+	// æ±‚äº¤é›†
 	{
 		s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)out);
 		printf(" across : %s\n  ", sss);

@@ -1,9 +1,9 @@
-
+﻿
 #ifndef _SIS_NET_H
 #define _SIS_NET_H
 
 #include <os_net.h>
-#include <os_thread.h>
+#include <sis_thread.h>
 #include <sis_malloc.h>
 #include <sis_str.h>
 #include <sis_node.h>
@@ -27,14 +27,6 @@
 
 #define SIS_NET_SIGN_MAX_LEN  128
 
-#define SIS_NET_PROTOCOL_TYPE  "redis,tcp,http,https,ws,wss"
-#define SIS_NET_PROTOCOL_REDIS  0
-#define SIS_NET_PROTOCOL_TCP    1
-#define SIS_NET_PROTOCOL_HTTP   2
-#define SIS_NET_PROTOCOL_HTTPS  3
-#define SIS_NET_PROTOCOL_WS     4
-#define SIS_NET_PROTOCOL_WSS    5
-
 typedef struct s_sis_url {
     char protocol[SIS_NET_SIGN_MAX_LEN];  //protocol -- 目前只支持 redis / tcp / file;
     char ip[SIS_NET_SIGN_MAX_LEN];  
@@ -47,7 +39,11 @@ typedef struct s_sis_url {
     char username[SIS_NET_SIGN_MAX_LEN];   // username 
     char password[SIS_NET_SIGN_MAX_LEN];   // 密码
 	// -------------- //
+	// 下面应该建立一个key-value的对照表，作为指针存在，方便存储各种数据
 	char dbname[SIS_NET_SIGN_MAX_LEN];  // 数据库名或文件名  
+
+	char workpath[SIS_PATH_LEN];  // 需要处理的路径名  
+	char workfile[SIS_PATH_LEN];   // 需要处理的文件名  
 } s_sis_url;
 
 typedef struct s_sis_socket {
@@ -92,12 +88,39 @@ typedef struct s_sis_socket {
 
 
 s_sis_socket *sis_socket_create(s_sis_url *url_,int rale_); //rale_ 表示身份
-void sis_socket_destroy(s_sis_socket *sock_);
+void sis_socket_destroy(void *sock_);
 
 void sis_socket_open(s_sis_socket *sock_);
 void sis_socket_close(s_sis_socket *sock_);
 
 bool sis_socket_send_message(s_sis_socket *sock_, s_sis_message_node *mess_);
 s_sis_message_node *sis_socket_query_message(s_sis_socket *sock_, s_sis_message_node *mess_);
+
+
+// #define SIS_NET_PROTOCOL_TYPE  "redis,tcp,http,https,ws,wss"
+// #define SIS_NET_PROTOCOL_REDIS  0
+// #define SIS_NET_PROTOCOL_TCP    1
+// #define SIS_NET_PROTOCOL_HTTP   2
+// #define SIS_NET_PROTOCOL_HTTPS  3
+// #define SIS_NET_PROTOCOL_WS     4
+// #define SIS_NET_PROTOCOL_WSS    5
+
+// 	int style = sis_str_subcmp(url_->protocol,SIS_NET_PROTOCOL_TYPE,',');
+// 	if (style < 0) {
+// 		return NULL;
+// 	}
+//     	switch (style)
+// 	{
+// 		case SIS_NET_PROTOCOL_REDIS:
+// 			sock->open = sis_redis_open;
+// 			sock->close = sis_redis_close;
+
+// 			sock->socket_send_message = sis_redis_send_message;
+// 			sock->socket_query_message = sis_redis_query_message;
+// 			break;	
+// 		default:
+// 			sock->status = SIS_NET_ERROR;
+// 			break;
+// 	}
 
 #endif //_SIS_NET_H

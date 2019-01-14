@@ -20,9 +20,9 @@
 
 typedef struct s_sisdb_field_flags
 {
-	unsigned type : 5;      // 数据类型  一共32种数据类型
-	unsigned len : 7;       // 字段长度(按字节)  0...63 最大不超过64个字符串，公司名称最大限制
-	unsigned dot : 4;       // 小数点 最大15个小数位
+	unsigned type : 4;      // 数据类型  一共16种数据类型
+	unsigned dot :  4;      // 小数点 最大15个小数位
+	unsigned len :  8;      // 字段长度(按字节)  0...255 最大不超过255个字符串，公司名称最大限制
 } s_sisdb_field_flags;
 
 typedef struct s_sisdb_field

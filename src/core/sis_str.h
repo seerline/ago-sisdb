@@ -1,12 +1,13 @@
-
+ï»¿
 #ifndef _SIS_STR_H
 #define _SIS_STR_H
 
 #include <os_types.h>
 #include <os_str.h>
+#include <os_time.h>
 #include <sis_malloc.h>
 
-// ÒÔµÚÒ»¸ö×Ö·û´®Îª³¤¶È£¬´ÓÍ·¿ªÊ¼½øĞĞ±È½Ï
+// ä»¥ç¬¬ä¸€ä¸ªå­—ç¬¦ä¸²ä¸ºé•¿åº¦ï¼Œä»å¤´å¼€å§‹è¿›è¡Œæ¯”è¾ƒ
 int sis_strcase_match(const char *son_, const char *source_);
 
 int sis_strcasecmp(const char *s1_, const char *s2_);
@@ -14,21 +15,21 @@ int sis_strncasecmp(const char *s1_, const char *s2_, size_t len_);
 
 int sis_strncmp(const char *s1_, const char *s2_, size_t len_);
 
-//SIS_MALLOC
-char *sis_strdup(const char *str_, size_t len_); 
-//SIS_MALLOC
-char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...);
+
+char *sis_strdup(const char *str_, size_t len_);  SIS_MALLOC
+
+char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...); SIS_MALLOC
 
 const char *sis_str_split(const char *s, size_t *len_, char c);
 
 int sis_str_substr_nums(const char *s, char c);
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);
-int sis_str_subcmp(const char *sub, const char *s, char c);  //-1Ã»ÓĞÆ¥ÅäµÄ
-int sis_str_subcmp_head(const char *sub, const char *s, char c);  //-1Ã»ÓĞÆ¥ÅäµÄ,±È½ÏÍ·²¿¼¸¸ö×Ö·ûÊÇ·ñÏàÍ¬
+int sis_str_subcmp(const char *sub, const char *s, char c);  //-1æ²¡æœ‰åŒ¹é…çš„
+int sis_str_subcmp_head(const char *sub, const char *s, char c);  //-1æ²¡æœ‰åŒ¹é…çš„,æ¯”è¾ƒå¤´éƒ¨å‡ ä¸ªå­—ç¬¦æ˜¯å¦ç›¸åŒ
 
-int sis_str_subcmp_match(const char *sub, const char *s, char c);  //-1Ã»ÓĞÆ¥ÅäµÄ,±È½ÏÍ·²¿¼¸¸ö×Ö·ûÊÇ·ñÏàÍ¬
+int sis_str_subcmp_match(const char *sub, const char *s, char c);  //-1æ²¡æœ‰åŒ¹é…çš„,æ¯”è¾ƒå¤´éƒ¨å‡ ä¸ªå­—ç¬¦æ˜¯å¦ç›¸åŒ
 
-const char *sis_str_replace(const char *in, char ic_,char oc_); // °ÑinÖĞµÄicÌæ»»Îªoc
+const char *sis_str_replace(const char *in, char ic_,char oc_); // æŠŠinä¸­çš„icæ›¿æ¢ä¸ºoc
 void sis_str_to_lower(char *in_);
 void sis_str_to_upper(char *in_);
 
@@ -36,16 +37,16 @@ const char *sis_str_getline(const char *e, int *len, const char *s, size_t size_
 
 int sis_str_match(const char* substr_, const char* source_, char c);
 
-// ·µ»ØÖµÎªsign_¿ªÊ¼Î»ÖÃ£¬lenÎª³¤¶È
-// Àı×Ó  http://127.0.0.1:1002  ://
-// ·µ»Ø  127.0.0.1:1002  len = 4
+// è¿”å›å€¼ä¸ºsign_å¼€å§‹ä½ç½®ï¼Œlenä¸ºé•¿åº¦
+// ä¾‹å­  http://127.0.0.1:1002  ://
+// è¿”å›  127.0.0.1:1002  len = 4
 // 
 const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_t olen_);
 
 // char *sis_strsep(char **src_, const char *sign_);
-// olen < 8 ·µ»Ø
+// olen < 8 è¿”å›
 bool sis_str_get_id(char *out_, size_t olen_);
-// olen < 16 ·µ»Ø
+// olen < 16 è¿”å›
 // bool sis_str_get_id_long(char *out_, size_t olen_);
 
 #endif //_SIS_STR_H

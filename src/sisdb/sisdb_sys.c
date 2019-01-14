@@ -113,7 +113,7 @@ s_sisdb_sys_info *sisdb_sys_create_info(s_sis_db *db_, const char *code_)
 	memset(info, 0, sizeof(s_sisdb_sys_info));
 
 	// 取出默认值，当系统最初加载的时候就已经生成最少一条默认的值了
-	s_sisdb_sys_info *first = sis_struct_list_first(db_->sys_infos);
+	s_sisdb_sys_info *first = sis_pointer_list_first(db_->sys_infos);
 	if (first)
 	{
 		memmove(info, first, sizeof(s_sisdb_sys_info));
@@ -131,14 +131,14 @@ s_sisdb_sys_info *sisdb_sys_create_info(s_sis_db *db_, const char *code_)
 	// 最后再把信息注册到db中，方便后续查询
 	for (int i = 1; i < db_->sys_infos->count; i++)
 	{
-		s_sisdb_sys_info *val = sis_struct_list_get(db_->sys_infos, i);
+		s_sisdb_sys_info *val = sis_pointer_list_get(db_->sys_infos, i);
 		if (!memcmp(val, info, sizeof(s_sisdb_sys_info)))
 		{
 			sis_free(info);
 			return val;
 		}
 	}
-	sis_struct_list_push(db_->sys_infos, info);
+	sis_pointer_list_push(db_->sys_infos, info);
 	return info;
 }
 
@@ -166,7 +166,7 @@ void sisdb_sys_flush_work_time(void *collect)
 		return;
 	}
 	exch->init_time = sisdb_field_get_uint_from_key(collect_->db, "time", buffer);
-	printf("work [%s]-- %d\n", exch->market, (int)exch->init_time);
+	// printf("work [%s]-- %d\n", exch->market, (int)exch->init_time);
 	sis_sdsfree(buffer);
 }
   
@@ -181,11 +181,11 @@ void sisdb_sys_load_default(s_sis_db *db_, s_sis_json_node *table_)
 	{
 		return;
 	}
-	s_sisdb_sys_info *info = sis_struct_list_first(db_->sys_infos);
+	s_sisdb_sys_info *info = sis_pointer_list_first(db_->sys_infos);
 	if (!info)
 	{
 		info = (s_sisdb_sys_info *)sis_malloc(sizeof(s_sisdb_sys_info));
-		sis_struct_list_push(db_->sys_infos, info);
+		sis_pointer_list_push(db_->sys_infos, info);
 	}
 	// 默认的配置没有market信息
 	memset(info, 0, sizeof(s_sisdb_sys_info));
@@ -270,7 +270,7 @@ void sisdb_sys_check_write(s_sis_db *db_, const char *key_, void *src_)
 				int finded = false;
 				for (int i = 1; i < db_->sys_infos->count; i++)
 				{
-					s_sisdb_sys_info *ninfo = sis_struct_list_get(db_->sys_infos, i);
+					s_sisdb_sys_info *ninfo = sis_pointer_list_get(db_->sys_infos, i);
 					if (!memcmp(ninfo, &info, sizeof(s_sisdb_sys_info)))
 					{
 						collect->spec_info = ninfo;
@@ -282,7 +282,7 @@ void sisdb_sys_check_write(s_sis_db *db_, const char *key_, void *src_)
 				{
 					s_sisdb_sys_info *ninfo = (s_sisdb_sys_info *)sis_malloc(sizeof(s_sisdb_sys_info));
 					memmove(ninfo, &info, sizeof(s_sisdb_sys_info));
-					sis_struct_list_push(db_->sys_infos, ninfo);
+					sis_pointer_list_push(db_->sys_infos, ninfo);
 					collect->spec_info = ninfo;
 				}
 			}
@@ -337,7 +337,7 @@ void _sisdb_market_set_status(s_sisdb_collect *collect_, int status)
 	if (sisdb_write_begin(SIS_DATA_TYPE_STRUCT, key, buffer, sis_sdslen(buffer)) != SIS_SERVER_REPLY_ERR)
 	{
 		// 如果保存aof失败就返回错误
-		sisdb_collect_update(collect_, buffer);
+		sisdb_collect_update(collect_, buffer, false);
 		sisdb_write_end();
 	}
 

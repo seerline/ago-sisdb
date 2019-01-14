@@ -1,4 +1,4 @@
-#ifndef _SIS_NODE_H
+ï»¿#ifndef _SIS_NODE_H
 #define _SIS_NODE_H
 
 #include "sis_core.h"
@@ -6,8 +6,8 @@
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_list_node --------------------------------//
-//  ²Ù×÷ s_sis_list_node ÁĞ±íµÄº¯Êı
-//  value Îª s_sis_sds ÀàĞÍ
+//  æ“ä½œ s_sis_list_node åˆ—è¡¨çš„å‡½æ•°
+//  value ä¸º s_sis_sds ç±»å‹
 ///////////////////////////////////////////////////////////////////////////
 s_sis_list_node *sis_sdsnode_create(const void *in, size_t inlen);
 void sis_sdsnode_destroy(s_sis_list_node *node);
@@ -24,13 +24,13 @@ int sis_sdsnode_get_count(s_sis_list_node *node_);
 
 //------------------------sdsnode ------------------------------//
 typedef struct s_sis_message_node {
-	s_sis_sds	command;   //À´Ô´ĞÅÏ¢×¨ÓÃ,µ±Ç°ÏûÏ¢µÄkey  sisdb.get 
-	s_sis_sds	key;       //À´Ô´ĞÅÏ¢×¨ÓÃ,µ±Ç°ÏûÏ¢µÄkey  sh600600.day 
-	s_sis_sds	argv;      //À´Ô´ĞÅÏ¢µÄ²ÎÊı£¬Îªjson¸ñÊ½
-	s_sis_sds	address;   //À´Ô´ĞÅÏ¢×¨ÓÃ, Êı¾İÀ´Ô´ĞÅÏ¢£¬ĞèÒªÔ­Ñù·µ»Ø£»ÓÃ»§Ğ´µÄÍ¶µİµØÖ·
+	s_sis_sds	command;   //æ¥æºä¿¡æ¯ä¸“ç”¨,å½“å‰æ¶ˆæ¯çš„key  sisdb.get 
+	s_sis_sds	key;       //æ¥æºä¿¡æ¯ä¸“ç”¨,å½“å‰æ¶ˆæ¯çš„key  sh600600.day 
+	s_sis_sds	argv;      //æ¥æºä¿¡æ¯çš„å‚æ•°ï¼Œä¸ºjsonæ ¼å¼
+	s_sis_sds	address;   //æ¥æºä¿¡æ¯ä¸“ç”¨, æ•°æ®æ¥æºä¿¡æ¯ï¼Œéœ€è¦åŸæ ·è¿”å›ï¼›ç”¨æˆ·å†™çš„æŠ•é€’åœ°å€
 
-	s_sis_list_node   *links;     //À´Ô´ĞÅÏ¢×¨ÓÃ, Êı¾İÀ´Ô´Á´Â·£¬Ã¿´Î¶àÒ»Ìø¾ÍÔö¼ÓÒ»¸ö½Úµã
-	s_sis_list_node   *nodes;     //¸½´øµÄĞÅÏ¢Êı¾İÁ´±í  node->value Îª s_sis_sds sis_
+	s_sis_list_node   *links;     //æ¥æºä¿¡æ¯ä¸“ç”¨, æ•°æ®æ¥æºé“¾è·¯ï¼Œæ¯æ¬¡å¤šä¸€è·³å°±å¢åŠ ä¸€ä¸ªèŠ‚ç‚¹
+	s_sis_list_node   *nodes;     //é™„å¸¦çš„ä¿¡æ¯æ•°æ®é“¾è¡¨  node->value ä¸º s_sis_sds sis_
 
 } s_sis_message_node;
 
@@ -39,7 +39,7 @@ typedef struct s_sis_message_node {
 #define SIS_MSN_ONE_LEN(a) (a->nodes ? sis_sdslen((s_sis_sds)(a->nodes->value)) : 0)
 
 ////////////////////////////////////////////////////////
-//  ËùÓĞµÄÏß³ÌºÍÍøÂç¶ËÊı¾İ½»»»Í³Í³ÓÃÕâ¸ö¸ñÊ½µÄÏûÏ¢½á¹¹
+//  æ‰€æœ‰çš„çº¿ç¨‹å’Œç½‘ç»œç«¯æ•°æ®äº¤æ¢ç»Ÿç»Ÿç”¨è¿™ä¸ªæ ¼å¼çš„æ¶ˆæ¯ç»“æ„
 ////////////////////////////////////////////////////////
 
 s_sis_message_node *sis_message_node_create();

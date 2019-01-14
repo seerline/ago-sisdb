@@ -1,75 +1,27 @@
-#ifndef __SIS_TIME_H
-#define __SIS_TIME_H
+Ôªø#ifndef _OS_TIME_H
+#define _OS_TIME_H
 
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <time.h>
-#include <stdbool.h>
-#pragma warning(disable: 4101 4996)
-#else
-#include <time.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include <sis_os.h>
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include <sis_funcs.h>
-#include <sis_str.h>
+int sis_time_get_day(struct timeval *tp, void *tzp);
 
-#ifdef _MSC_VER
-int gettimeofday(struct timeval *tp, void *tzp);
+void sis_localtime(struct tm *m, const time_t* t);
+
+//Ëé∑ÂèñÂΩìÂâçÁßíÊï∞
+time_t sis_time_get_now(); 
+//Ëé∑ÂæóÂΩìÂâçÊØ´ÁßíÊï∞
+unsigned long long sis_time_get_now_msec(); 
+// Ê£ÄÊü•ttÁî®ÂΩìÂâçÊó∂Èó¥ÊõøÊç¢
+void sis_time_check(time_t tt_, struct tm *ptm_);
+//Áù°Áú†Âçï‰ΩçÊØ´Áßí
+void sis_sleep(int msec);
+
+#ifdef __cplusplus
+}
 #endif
-
-void sis_time_getgm(struct tm *m, const time_t* t);
-
-time_t sis_time_get_now(); //ªÒ»°µ±«∞√Î ˝
-unsigned long long sis_time_get_now_msec();  //ªÒµ√µ±«∞∫¡√Î ˝
-
-int sis_time_get_iyear(time_t ttime); //2015
-int sis_time_get_imonth(time_t ttime); //201510
-int sis_time_get_idate(time_t ttime); //20151012
-int sis_time_get_itime(time_t ttime); //103020
-int sis_time_get_iminute(time_t ttime); //1030
-int sis_time_get_isec(time_t ttime); // 20
-int sis_time_get_showtime(time_t ttime); //0212103020 ‘¬»’ ±º‰
-
-short sis_time_get_offset_iminute(short nMin, int offsec);
-time_t sis_time_get_offset_time(time_t curTime, int offsec);  //‘ˆº”ªÚºı…Ÿ√Î£¨∑µªÿtime_t
-int sis_time_get_iminute_offset_i(int begin, int end); //930-1130 
-int sis_time_get_iminute_offset_time(time_t tstart, time_t tend);// ≈–∂œ÷–º‰º‰∏Ùº∏∑÷÷”
-int sis_time_get_iminute_minnum(int source, int minnum);  //‘ˆº”ªÚºı…Ÿ∑÷÷”  900,-5 --> 855
-
-time_t sis_time_make_time(int tdate, int ttime);
-int sis_time_get_week_ofday(int today);// ≈–∂œ «÷‹º∏ [0,6]
-int sis_time_get_month_ofday(int today);// ≈–∂œ «º∏‘¬[0,11]
-int sis_time_get_dayoffset_ofday(int tstart, int tend);// ≈–∂œ÷–º‰º‰∏Ùº∏ÃÏ
-int sis_time_next_work_day(int today_, int offset_);//Ã¯π˝÷‹ƒ©
-
-bool sis_time_str_is_date(char* date); //≈–∂œ◊÷∑˚¥Æ «≤ª «»’∆⁄20150212
-
-void sis_time_format_minute(char * out_, size_t olen_, time_t tt_); //"930"
-void sis_time_format_date(char * out_, size_t olen_, time_t tt_); //"20150912"
-void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_); //"20150912103000"
-
-int sis_time_get_minute_from_shortstr(char* time);//"12:30" => 1230
-int sis_time_get_itime_from_str(char* time);//"12:30:38" => 123038
-int sis_time_get_idate_from_str(const char* time);//"20150212" => 20150212
-int sis_time_get_time_from_longstr(char* datetime, int* nDate, int* nTime); //"2015-10-20 12:30:38" => 20151020,123038
-
-void sis_sleep(int msec);//µ•Œª∫¡√Î
-
-typedef struct s_sis_time_delay {
-	bool is_busy;
-	unsigned int m_msec_i;
-	unsigned int usesd_msec;
-	unsigned long long start_msec;
-} s_sis_time_delay;
-
-s_sis_time_delay *sis_delay_create(unsigned int msec);
-void sis_delay_busy(s_sis_time_delay *m);
-void sis_delay_destroy(s_sis_time_delay *m);
 
 #endif //__SIS_TIME_H

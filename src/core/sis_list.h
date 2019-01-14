@@ -1,37 +1,35 @@
-#ifndef _SIS_LIST_H
+ï»¿#ifndef _SIS_LIST_H
 #define _SIS_LIST_H
 
 #include "sis_core.h"
 #include "sis_str.h"
+#include "sis_sds.h"
 
 #include "sis_malloc.h"
 
-// ¶¨ÒåÒ»¸ö½á¹¹ÌåÁ´±í
-// ¶¨ÒåÒ»¸öÖ¸Õë¶ÁĞ´Á´±í
-// ¶¨ÒåÒ»¸ö×Ö·û´®¶ÁĞ´Á´±í
+// å®šä¹‰ä¸€ä¸ªç»“æ„ä½“é“¾è¡¨
+// å®šä¹‰ä¸€ä¸ªæŒ‡é’ˆè¯»å†™é“¾è¡¨
+// å®šä¹‰ä¸€ä¸ªå­—ç¬¦ä¸²è¯»å†™é“¾è¡¨
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_struct_list ---------------------------------//
-//  ¹Ì¶¨³¤¶ÈµÄÁĞ±í
+//  å›ºå®šé•¿åº¦çš„åˆ—è¡¨
 //////////////////////////////////////////////////////////////////////////
-#define STRUCT_LIST_NORMAL   0
-#define STRUCT_LIST_POINTER  1
+
 
 typedef struct s_sis_struct_list {
-	int		     maxcount; // ×ÜÊı
-	int		     count;    // µ±Ç°¸öÊı
-	int          len;      // Ã¿Ìõ¼ÇÂ¼µÄ³¤¶È
-	int          mode;     // Çø·ÖÊ²Ã´ÀàĞÍµÄÁ´±í
-	void        *buffer;   // ±ØĞëÊÇmallcoÉêÇëµÄchar*ÀàĞÍ
-	void(*free)(void *);   // ==NULL ²»ÊÍ·Å¶ÔÓ¦ÄÚ´æ
+	int		     maxcount; // æ€»æ•°
+	int		     count;    // å½“å‰ä¸ªæ•°
+	int		     start;    // å¼€å§‹ä½ç½® ä¼˜åŒ–limitå¼•èµ·çš„é¢‘ç¹å†…å­˜ç§»åŠ¨
+	int          len;      // æ¯æ¡è®°å½•çš„é•¿åº¦
+	void        *buffer;   // å¿…é¡»æ˜¯mallcoç”³è¯·çš„char*ç±»å‹
 } s_sis_struct_list;
 
-#define BUFFLIST_STEP_ROW 128  //Ä¬ÈÏÔö¼ÓµÄ¼ÇÂ¼Êı
+#define STRUCT_LIST_STEP_ROW 256  //é»˜è®¤å¢åŠ çš„è®°å½•æ•°
 
-s_sis_struct_list *sis_struct_list_create(int len_, void *in_, int inlen_); //len_ÎªÃ¿Ìõ¼ÇÂ¼³¤¶È
+s_sis_struct_list *sis_struct_list_create(int len_, void *in_, int inlen_); //len_ä¸ºæ¯æ¡è®°å½•é•¿åº¦
 void sis_struct_list_destroy(s_sis_struct_list *list_);
 void sis_struct_list_clear(s_sis_struct_list *list_);
-void struct_list_setsize(s_sis_struct_list *list_, int len_);
 
 int sis_struct_list_push(s_sis_struct_list *, void *in_);
 int sis_struct_list_insert(s_sis_struct_list *, int index_, void *in_);
@@ -39,57 +37,67 @@ int sis_struct_list_update(s_sis_struct_list *, int index_, void *in_);
 void *sis_struct_list_first(s_sis_struct_list *);
 void *sis_struct_list_last(s_sis_struct_list *);
 void *sis_struct_list_get(s_sis_struct_list *, int index_);
-void *sis_struct_list_next(s_sis_struct_list *list_, void *, int offset);
+void *sis_struct_list_next(s_sis_struct_list *list_, void *);
 
+void struct_list_set_size(s_sis_struct_list *list_, int len_);
 int sis_struct_list_set(s_sis_struct_list *, void *in_, int inlen_);
-int sis_struct_list_setlen(s_sis_struct_list *, int count_);
 
 void sis_struct_list_limit(s_sis_struct_list *, int limit_);
-int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *dst_, int limit_);
+int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *dst_);
 int sis_struct_list_delete(s_sis_struct_list *src_, int start_, int count_);
 int sis_struct_list_pack(s_sis_struct_list *list_);
 
-// »ñÈ¡Ö¸ÕëµÄÎ»ÖÃ±àºÅ
-int sis_struct_list_pto_recno(s_sis_struct_list *list_,void *);
+// è·å–æŒ‡é’ˆçš„ä½ç½®ç¼–å·
+// int sis_struct_list_pto_recno(s_sis_struct_list *list_,void *);
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_pointer_list --------------------------------//
-//  ´æ´¢Ö¸ÕëµÄÁĞ±í,ÒÀÀµÓÚstruct_list,¼ÇÂ¼³¤¶ÈÎªsizeof(char *)
+//  å­˜å‚¨æŒ‡é’ˆçš„åˆ—è¡¨,è®°å½•é•¿åº¦ä¸ºsizeof(char *)
 ///////////////////////////////////////////////////////////////////////////
-//
-#define s_sis_pointer_list s_sis_struct_list
+#define POINTER_LIST_STEP_ROW 1024  //é»˜è®¤å¢åŠ çš„è®°å½•æ•°
 
-s_sis_struct_list *sis_pointer_list_create(); 
+typedef struct s_sis_pointer_list {
+	int		     maxcount; // æ€»æ•°
+	int		     count;    // å½“å‰ä¸ªæ•°
+	int          len;      // æ¯æ¡è®°å½•çš„é•¿åº¦
+	void        *buffer;   // å¿…é¡»æ˜¯mallcoç”³è¯·çš„char*ç±»å‹
+	void(*free)(void *);   // ==NULL ä¸é‡Šæ”¾å¯¹åº”å†…å­˜
+} s_sis_pointer_list;
 
-#define sis_pointer_list_destroy sis_struct_list_destroy
-#define sis_pointer_list_clear sis_struct_list_clear
-#define sis_pointer_list_setlen struct_list_setlen
-#define sis_pointer_list_push sis_struct_list_push
-#define sis_pointer_list_update sis_struct_list_update
-#define sis_pointer_list_get sis_struct_list_get
-#define sis_pointer_list_insert sis_struct_list_insert
-#define sis_pointer_list_delete sis_struct_list_delete
+s_sis_pointer_list *sis_pointer_list_create(); 
 
-int sis_pointer_list_indexof(s_sis_struct_list *list_, void *in_);
-int sis_pointer_list_find_and_update(s_sis_struct_list *, void *finder_, void *in_);
-int sis_pointer_list_find_and_delete(s_sis_struct_list *list_, void *finder_);
+void sis_pointer_list_destroy(s_sis_pointer_list *list_);
+void sis_pointer_list_clear(s_sis_pointer_list *list_);
+
+int sis_pointer_list_push(s_sis_pointer_list *, void *in_);
+int sis_pointer_list_update(s_sis_pointer_list *, int index_, void *in_);
+int sis_pointer_list_insert(s_sis_pointer_list *, int index_, void *in_);
+
+void *sis_pointer_list_get(s_sis_pointer_list *, int index_);
+void *sis_pointer_list_first(s_sis_pointer_list *);
+
+int sis_pointer_list_delete(s_sis_pointer_list *src_, int start_, int count_);
+
+int sis_pointer_list_indexof(s_sis_pointer_list *list_, void *in_);
+int sis_pointer_list_find_and_update(s_sis_pointer_list *, void *finder_, void *in_);
+int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_string_list --------------------------------//
-//  ´æ´¢²»¶¨³¤×Ö·û´®µÄÁĞ±í£¬
+//  å­˜å‚¨ä¸å®šé•¿å­—ç¬¦ä¸²çš„åˆ—è¡¨ï¼Œ
 ///////////////////////////////////////////////////////////////////////////
 #define STRING_LIST_RD  1
 #define STRING_LIST_WR  2
 void sis_free_call(void *p);
 
 typedef struct s_sis_string_list {
-	int    permissions;     //È¨ÏŞ
-	char*  m_ptr_r;         // ±£´æµÄÖ»¶Á×Ö·û´®
-	s_sis_struct_list *strlist; //´æ´¢Ö¸ÕëÁĞ±í --freeÎª¿ÕÖ»¶Á ²»Îª¿Õ¿ÉĞ´
+	int    permissions;     //æƒé™
+	char*  m_ptr_r;         // ä¿å­˜çš„åªè¯»å­—ç¬¦ä¸²
+	s_sis_pointer_list *strlist; //å­˜å‚¨æŒ‡é’ˆåˆ—è¡¨ --freeä¸ºç©ºåªè¯» ä¸ä¸ºç©ºå¯å†™
 } s_sis_string_list;
 
-s_sis_string_list *sis_string_list_create_r(); //Ö»¶Á
-s_sis_string_list *sis_string_list_create_w(); //¶ÁĞ´
+s_sis_string_list *sis_string_list_create_r(); //åªè¯»
+s_sis_string_list *sis_string_list_create_w(); //è¯»å†™
 void sis_string_list_destroy(void *list_);
 void sis_string_list_clear(s_sis_string_list *list_);
 
@@ -114,7 +122,7 @@ int sis_string_list_indexof(s_sis_string_list *list_, const char *in_);
 int sis_string_list_indexofcase(s_sis_string_list *list_, const char *in_);
 
 int sis_string_list_update(s_sis_string_list *list_, int index_, const char *in_, size_t inlen);
-//±È½Ï×Ö·û´®µØÖ·²¢ĞŞ¸Ä£¬×Ö·û´®±È½ÏÓ¦¸ÃÊ¹ÓÃstring_list_indexof&sis_string_sis__update
+//æ¯”è¾ƒå­—ç¬¦ä¸²åœ°å€å¹¶ä¿®æ”¹ï¼Œå­—ç¬¦ä¸²æ¯”è¾ƒåº”è¯¥ä½¿ç”¨string_list_indexof&sis_string_sis__update
 int sis_string_list_find_and_update(s_sis_string_list *list_, char *finder_, const char *in_, size_t inlen);
 int sis_string_list_insert(s_sis_string_list *list_, int index_, const char *in_, size_t inlen);
 int sis_string_list_push(s_sis_string_list *list_, const char *in_, size_t inlen);
@@ -123,7 +131,7 @@ int sis_string_list_push_only(s_sis_string_list *list_, const char *in_, size_t 
 void sis_string_list_limit(s_sis_string_list *list_, int limit_);
 
 int sis_string_list_delete(s_sis_string_list *list_, int index_);
-//±È½Ï×Ö·û´®µØÖ·²¢É¾³ı£¬×Ö·û´®±È½ÏÓ¦¸ÃÊ¹ÓÃstring_list_indexof&sis_string_lsis_delete
+//æ¯”è¾ƒå­—ç¬¦ä¸²åœ°å€å¹¶åˆ é™¤ï¼Œå­—ç¬¦ä¸²æ¯”è¾ƒåº”è¯¥ä½¿ç”¨string_list_indexof&sis_string_lsis_delete
 int sis_string_list_find_and_delete(s_sis_string_list *list_, const char *finder_);
 
 

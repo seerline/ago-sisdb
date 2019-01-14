@@ -1,4 +1,4 @@
-
+ï»¿
 #include "sis_list.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,7 +9,6 @@
 
 s_sis_struct_list *sis_struct_list_create(int len_, void *in_, int inlen_)
 {
-	// printf("new list...%d\n", len_);
 	if (len_ < 1)
 	{
 		return NULL;
@@ -18,9 +17,8 @@ s_sis_struct_list *sis_struct_list_create(int len_, void *in_, int inlen_)
 	sbl->len = len_;
 	sbl->maxcount = 0;
 	sbl->count = 0;
+	sbl->start = 0;
 	sbl->buffer = NULL;
-	sbl->free = NULL;
-	sbl->mode = STRUCT_LIST_NORMAL;
 	if (in_ && inlen_ > 0)
 	{
 		sis_struct_list_set(sbl, in_, inlen_);
@@ -40,120 +38,64 @@ void sis_struct_list_destroy(s_sis_struct_list *list_)
 }
 void sis_struct_list_clear(s_sis_struct_list *list_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		char **ptr = (char **)list_->buffer;
-		for (int i = 0; i < list_->count; i++)
-		{
-			if (list_->free)
-			{
-				list_->free(ptr[i]);
-				ptr[i] = NULL;
-			}
-		}
-	}
 	list_->count = 0;
+	list_->start = 0;
 }
-void struct_list_grow(s_sis_struct_list *list_, int len_)
+void _struct_list_grow(s_sis_struct_list *list_, int addlen_)
 {
-	if (len_ < list_->maxcount)
+	int newlen = list_->start + list_->count + addlen_;
+	if (newlen > list_->maxcount && list_->start > 0)
+	{
+		memmove((char *)list_->buffer,
+				(char *)list_->buffer + (list_->start * list_->len),
+				list_->count * list_->len);
+		list_->start = 0;
+		newlen = list_->count + addlen_;
+	}
+	if (newlen <= list_->maxcount)
 	{
 		return;
 	}
-	int maxlen = len_;
-	if (len_ < 8)
+
+	int maxlen = newlen;
+	if (newlen < 16)
 	{
-		maxlen = 8;
+		maxlen = 16;
 	}
-	else if (len_ >= 8 && len_ < 64)
+	else if (newlen >= 16 && newlen < 64)
 	{
 		maxlen = 64;
 	}
-	else if (len_ >= 64 && len_ < 256)
+	else if (newlen >= 64 && newlen < 256)
 	{
 		maxlen = 256;
 	}
 	else
 	{
-		maxlen = len_ + BUFFLIST_STEP_ROW;
+		maxlen = newlen + STRUCT_LIST_STEP_ROW;
 	}
-
-	// void *buffer = sis_malloc(maxlen * list_->len);
-	// memmove(buffer, list_->buffer, list_->maxcount*list_->len);
-	// sis_free(list_->buffer);
-	// list_->buffer = buffer;
 	list_->buffer = sis_realloc(list_->buffer, maxlen * list_->len);
 	list_->maxcount = maxlen;
-}
-void struct_list_setsize(s_sis_struct_list *list_, int len_)
-{
-	if (len_ < list_->maxcount)
-	{
-		return;
-	}
-	// void *buffer = sis_malloc(len_ * list_->len);
-	// memmove(buffer, list_->buffer, list_->maxcount*list_->len);
-	// sis_free(list_->buffer);
-	// list_->buffer = buffer;
-	list_->buffer = sis_realloc(list_->buffer, len_ * list_->len);
-	list_->maxcount = len_;
 }
 
 int sis_struct_list_push(s_sis_struct_list *list_, void *in_)
 {
-	struct_list_grow(list_, list_->count + 1);
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		char **ptr = (char **)list_->buffer;
-		ptr[list_->count] = (char *)in_;
-	}
-	else
-	{
-		memmove((char *)list_->buffer + (list_->count * list_->len), in_, list_->len);
-	}
+	_struct_list_grow(list_, 1);
+
+	int offset = list_->count + list_->start;
+	memmove((char *)list_->buffer + (offset * list_->len), in_, list_->len);
+
 	list_->count++;
-	return list_->count;
+	return list_->count - 1;
 }
 int sis_struct_list_update(s_sis_struct_list *list_, int index_, void *in_)
 {
 	if (index_ >= 0 && index_ < list_->count)
 	{
-		if (list_->mode == STRUCT_LIST_POINTER)
-		{
-			char **ptr = (char **)list_->buffer;
-			if (list_->free)
-			{
-				list_->free(ptr[index_]);
-			}
-			ptr[index_] = (char *)in_;
-		}
-		else
-		{
-			// if (index_==0)
-			// printf("---2---value =%p %p len=%d\n", list_->buffer, list_, list_->len);
-			memmove((char *)list_->buffer + (index_ * list_->len), in_, list_->len);
-		}
+		int offset = index_ + list_->start;
+		memmove((char *)list_->buffer + (offset * list_->len), in_, list_->len);
 		return index_;
 	}
-#if 0
-	else
-	{
-		if (index_ < 0) {
-			index_ = list_->count;
-		}
-		struct_list_grow(list_, index_ + 1);    // ÕâÀï¿ÉÄÜ»áÌøÔ¾×îºóÒ»Ìõ¼ÇÂ¼ 
-		if (list_->mode == STRUCT_LIST_POINTER) 
-		{
-			char **ptr = (char **)list_->buffer;
-			ptr[index_] = (char *)in_;
-		}
-		else
-		{
-			memmove((char *)list_->buffer + (index_ * list_->len), in_, list_->len);
-		}
-		list_->count = index_ + 1;
-	}
-#endif
 	return -1;
 }
 int sis_struct_list_insert(s_sis_struct_list *list_, int index_, void *in_)
@@ -166,19 +108,13 @@ int sis_struct_list_insert(s_sis_struct_list *list_, int index_, void *in_)
 	{
 		return -1;
 	}
-	struct_list_grow(list_, list_->count + 1);
-	memmove((char *)list_->buffer + ((index_ + 1) * list_->len), (char *)list_->buffer + (index_ * list_->len),
+	_struct_list_grow(list_, 1);
+	int offset = index_ + list_->start;
+	memmove((char *)list_->buffer + ((offset + 1) * list_->len),
+			(char *)list_->buffer + (offset * list_->len),
 			(list_->count - index_) * list_->len);
 
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		char **ptr = (char **)list_->buffer;
-		ptr[index_] = (char *)in_;
-	}
-	else
-	{
-		memmove((char *)list_->buffer + (index_ * list_->len), in_, list_->len);
-	}
+	memmove((char *)list_->buffer + (offset * list_->len), in_, list_->len);
 	list_->count++;
 	return index_;
 }
@@ -192,57 +128,44 @@ void *sis_struct_list_last(s_sis_struct_list *list_)
 }
 void *sis_struct_list_get(s_sis_struct_list *list_, int index_)
 {
-	char *rtn = NULL;
+	char *o = NULL;
 	if (index_ >= 0 && index_ < list_->count)
 	{
-		if (list_->mode == STRUCT_LIST_POINTER)
-		{
-			char **ptr = (char **)list_->buffer;
-			rtn = ptr[index_];
-		}
-		else
-		{
-			rtn = (char *)list_->buffer + (index_ * list_->len);
-		}
+		int offset = index_ + list_->start;
+		o = (char *)list_->buffer + (offset * list_->len);
 	}
-	return rtn;
+	return o;
 }
-void *sis_struct_list_next(s_sis_struct_list *list_, void *current_, int offset)
+void *sis_struct_list_next(s_sis_struct_list *list_, void *current_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
+	int offset = 1;
+	char *o = (char *)current_ + offset * list_->len;
+	if (o >= (char *)list_->buffer + list_->start * list_->len &&
+		o <= (char *)list_->buffer + (list_->start + list_->count - 1) * list_->len)
 	{
-		return current_;
-	}
-	char *rtn = (char *)current_ + offset * list_->len;
-	if (rtn >= (char *)list_->buffer && rtn <= (char *)list_->buffer + (list_->count - 1) * list_->len)
-	{
-		return rtn;
+		return o;
 	}
 	else
 	{
 		return NULL;
 	}
 }
-int sis_struct_list_setlen(s_sis_struct_list *list_, int count_)
+// ä»…ä»…è®¾ç½®å°ºå¯¸ï¼Œä¸åˆå§‹åŒ–
+void struct_list_set_size(s_sis_struct_list *list_, int len_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
+	if (len_ <= list_->maxcount)
 	{
-		return 0;
+		return;
 	}
-	struct_list_setsize(list_, count_);
-	memset(list_->buffer, 0, count_ * list_->len);
-	list_->count = count_;
-	return count_;	
+	list_->buffer = sis_realloc(list_->buffer, len_ * list_->len);
+	list_->maxcount = len_;
 }
 
 int sis_struct_list_set(s_sis_struct_list *list_, void *in_, int inlen_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		return 0;
-	}
+
 	int count = inlen_ / list_->len;
-	struct_list_setsize(list_, count);
+	struct_list_set_size(list_, count);
 	if (in_)
 	{
 		memmove(list_->buffer, in_, inlen_);
@@ -252,57 +175,33 @@ int sis_struct_list_set(s_sis_struct_list *list_, void *in_, int inlen_)
 		memset(list_->buffer, 0, count * list_->len);
 	}
 	list_->count = count;
+	list_->start = 0;
 	return count;
 }
 
 void sis_struct_list_limit(s_sis_struct_list *list_, int limit_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		return;
-	}
 	if (limit_ < 1 || limit_ > list_->count)
 	{
 		return;
 	}
-	int offset = list_->count - limit_;
-	memmove(list_->buffer, (char *)list_->buffer + (offset * list_->len), limit_ * list_->len);
+	list_->start = list_->start + list_->count - limit_;
+	// int offset = list_->count - limit_;
+	// memmove(list_->buffer, (char *)list_->buffer + (offset * list_->len), limit_ * list_->len);
 	list_->count = limit_;
 }
-int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *list_, int limit_)
+int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *list_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		return 0;
-	}
-	int count;
-	int offset;
-	if (limit_ < 1 || limit_ > src_->count)
-	{
-		count = src_->count;
-	}
-	else
-	{
-		count = limit_;
-	}
-	offset = src_->count - count;
-	sis_struct_list_set(list_, (char *)src_->buffer + (offset * src_->len), count * list_->len);
-	return count;
+	sis_struct_list_set(list_, (char *)src_->buffer + (src_->start * src_->len), src_->count * list_->len);
+	return src_->count;
 }
 int sis_struct_list_pack(s_sis_struct_list *list_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		return 0;
-	}
-	if (!list_)
-	{
-		return 0;
-	}
 	char *tmp = (char *)sis_malloc(list_->count * list_->len);
-	memmove(tmp, list_->buffer, list_->count * list_->len);
+	memmove(tmp, (char *)list_->buffer + (list_->start * list_->len), list_->count * list_->len);
 	sis_free(list_->buffer);
 	list_->buffer = tmp;
+	list_->start = 0;
 	list_->maxcount = list_->count;
 	return list_->count;
 }
@@ -312,16 +211,160 @@ int sis_struct_list_delete(s_sis_struct_list *list_, int start_, int count_)
 	{
 		return 0;
 	}
+	// åˆ é™¤æ—¶
+	if (list_->start > 0)
+	{
+		memmove((char *)list_->buffer, (char *)list_->buffer + (list_->start * list_->len), list_->count * list_->len);
+		list_->start = 0;
+	}
+	memmove((char *)list_->buffer + (start_ * list_->len), (char *)list_->buffer + ((start_ + count_) * list_->len),
+			(list_->count - count_ - start_) * list_->len);
 
-	if (list_->mode == STRUCT_LIST_POINTER)
+	list_->count = list_->count - count_;
+	return count_;
+}
+
+// int sis_struct_list_pto_recno(s_sis_struct_list *list_, void *p_)
+// {
+// 	if ((char *)p_ < (char *)list_->buffer + list_->start * list_->len ||
+// 		(char *)p_ > ((char *)list_->buffer + (list_->start + list_->count - 1) * list_->len))
+// 	{
+// 		return -1;
+// 	}
+// 	return (int)(((char *)p_ - (char *)list_->buffer) / list_->len) - list_->start;
+// }
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_pointer_list --------------------------------//
+//  å­˜å‚¨æŒ‡é’ˆçš„åˆ—è¡¨,ä¾èµ–äºŽstruct_list,è®°å½•é•¿åº¦ä¸ºsizeof(char *)
+///////////////////////////////////////////////////////////////////////////
+s_sis_pointer_list *sis_pointer_list_create()
+{
+	s_sis_pointer_list *sbl = (s_sis_pointer_list *)sis_malloc(sizeof(s_sis_pointer_list));
+	sbl->len = sizeof(char *);
+	sbl->maxcount = 0;
+	sbl->count = 0;
+	sbl->buffer = NULL;
+	sbl->free = NULL;
+	return sbl;
+}
+void sis_pointer_list_destroy(s_sis_pointer_list *list_)
+{
+	sis_pointer_list_clear(list_);
+	if (list_->buffer)
+	{
+		sis_free(list_->buffer);
+	}
+	list_->buffer = NULL;
+	list_->maxcount = 0;
+	sis_free(list_);
+}
+void sis_pointer_list_clear(s_sis_pointer_list *list_)
+{
+	char **ptr = (char **)list_->buffer;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->free)
+		{
+			list_->free(ptr[i]);
+			ptr[i] = NULL;
+		}
+	}
+	list_->count = 0;
+}
+
+void _pointer_list_grow(s_sis_pointer_list *list_, int len_)
+{
+	if (len_ < list_->maxcount)
+	{
+		return;
+	}
+	int maxlen = len_;
+	if (len_ < 256)
+	{
+		maxlen = 256;
+	}
+	else
+	{
+		maxlen = len_ + POINTER_LIST_STEP_ROW;
+	}
+	// void *buffer = sis_malloc(maxlen * list_->len);
+	// memmove(buffer, list_->buffer, list_->maxcount*list_->len);
+	// sis_free(list_->buffer);
+	// list_->buffer = buffer;
+	list_->buffer = sis_realloc(list_->buffer, maxlen * list_->len);
+	list_->maxcount = maxlen;
+}
+int sis_pointer_list_push(s_sis_pointer_list *list_, void *in_)
+{
+	_pointer_list_grow(list_, list_->count + 1);
+	char **ptr = (char **)list_->buffer;
+	ptr[list_->count] = (char *)in_;
+	list_->count++;
+	return list_->count;
+}
+int sis_pointer_list_update(s_sis_pointer_list *list_, int index_, void *in_)
+{
+	if (index_ >= 0 && index_ < list_->count)
 	{
 		char **ptr = (char **)list_->buffer;
-		for (int i = start_; i < start_ + count_; i++)
+		if (list_->free)
 		{
-			if (list_->free)
-			{
-				list_->free(ptr[i]);
-			}
+			list_->free(ptr[index_]);
+		}
+		ptr[index_] = (char *)in_;
+		return index_;
+	}
+	return -1;
+}
+int sis_pointer_list_insert(s_sis_pointer_list *list_, int index_, void *in_)
+{
+	if (list_->count < 1)
+	{
+		return sis_pointer_list_push(list_, in_);
+	}
+	if (index_ < 0 || index_ > list_->count - 1)
+	{
+		return -1;
+	}
+	_pointer_list_grow(list_, list_->count + 1);
+	memmove((char *)list_->buffer + ((index_ + 1) * list_->len), (char *)list_->buffer + (index_ * list_->len),
+			(list_->count - index_) * list_->len);
+
+	char **ptr = (char **)list_->buffer;
+	ptr[index_] = (char *)in_;
+
+	list_->count++;
+	return index_;
+}
+
+void *sis_pointer_list_get(s_sis_pointer_list *list_, int index_)
+{
+	char *rtn = NULL;
+	if (index_ >= 0 && index_ < list_->count)
+	{
+		char **ptr = (char **)list_->buffer;
+		rtn = ptr[index_];
+	}
+	return rtn;
+}
+void *sis_pointer_list_first(s_sis_pointer_list *list_)
+{
+	return sis_pointer_list_get(list_, 0);
+}
+
+int sis_pointer_list_delete(s_sis_pointer_list *list_, int start_, int count_)
+{
+	if (start_ < 0 || count_ < 1 || start_ + count_ > list_->count)
+	{
+		return 0;
+	}
+
+	char **ptr = (char **)list_->buffer;
+	for (int i = start_; i < start_ + count_; i++)
+	{
+		if (list_->free)
+		{
+			list_->free(ptr[i]);
 		}
 	}
 	memmove((char *)list_->buffer + (start_ * list_->len), (char *)list_->buffer + ((start_ + count_) * list_->len),
@@ -331,38 +374,8 @@ int sis_struct_list_delete(s_sis_struct_list *list_, int start_, int count_)
 	return count_;
 }
 
-int sis_struct_list_pto_recno(s_sis_struct_list *list_, void *p_)
+int sis_pointer_list_indexof(s_sis_pointer_list *list_, void *in_)
 {
-	if (list_->mode == STRUCT_LIST_POINTER)
-	{
-		return 0;
-	}
-	if ((char *)p_ < (char *)list_->buffer ||
-		(char *)p_ > ((char *)list_->buffer + list_->len * (list_->count - 1)))
-	{
-		return -1;
-	}
-	return (int)(((char *)p_ - (char *)list_->buffer) / list_->len);
-}
-///////////////////////////////////////////////////////////////////////////
-//------------------------s_pointer_list --------------------------------//
-//  ´æ´¢Ö¸ÕëµÄÁÐ±í,ÒÀÀµÓÚstruct_list,¼ÇÂ¼³¤¶ÈÎªsizeof(char *)
-///////////////////////////////////////////////////////////////////////////
-s_sis_struct_list *sis_pointer_list_create()
-{
-	s_sis_struct_list *sbl = (s_sis_struct_list *)sis_malloc(sizeof(s_sis_struct_list));
-	sbl->len = sizeof(char *);
-	sbl->maxcount = 0;
-	sbl->count = 0;
-	sbl->buffer = NULL;
-	sbl->free = NULL;
-	sbl->mode = STRUCT_LIST_POINTER;
-	return sbl;
-}
-int sis_pointer_list_indexof(s_sis_struct_list *list_, void *in_)
-{
-	if (list_->mode != STRUCT_LIST_POINTER)
-		return -1;
 	char **ptr = (char **)list_->buffer;
 	for (int i = 0; i < list_->count; i++)
 	{
@@ -373,17 +386,13 @@ int sis_pointer_list_indexof(s_sis_struct_list *list_, void *in_)
 	}
 	return -1;
 }
-int sis_pointer_list_find_and_update(s_sis_struct_list *list_, void *finder_, void *in_)
+int sis_pointer_list_find_and_update(s_sis_pointer_list *list_, void *finder_, void *in_)
 {
-	if (list_->mode != STRUCT_LIST_POINTER)
-		return -1;
 	int index = sis_pointer_list_indexof(list_, finder_);
-	return sis_struct_list_update(list_, index, in_);
+	return sis_pointer_list_update(list_, index, in_);
 }
-int sis_pointer_list_find_and_delete(s_sis_struct_list *list_, void *finder_)
+int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_)
 {
-	if (list_->mode != STRUCT_LIST_POINTER)
-		return -1;
 	char **ptr = (char **)list_->buffer;
 	for (int i = 0; i < list_->count; i++)
 	{
@@ -402,25 +411,25 @@ int sis_pointer_list_find_and_delete(s_sis_struct_list *list_, void *finder_)
 }
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_string_list --------------------------------//
-//  ´æ´¢²»¶¨³¤×Ö·û´®µÄÁÐ±í£¬
+//  å­˜å‚¨ä¸å®šé•¿å­—ç¬¦ä¸²çš„åˆ—è¡¨ï¼Œ
 ///////////////////////////////////////////////////////////////////////////
 void sis_free_call(void *p)
 {
 	sis_free(p);
 }
-s_sis_string_list *sis_string_list_create_r() //Ö»¶Á
+s_sis_string_list *sis_string_list_create_r() //åªè¯»
 {
 	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
-	memset(l,0,sizeof(s_sis_string_list));
+	memset(l, 0, sizeof(s_sis_string_list));
 	l->strlist = sis_pointer_list_create();
 	l->permissions = STRING_LIST_RD;
 	return l;
 }
 
-s_sis_string_list *sis_string_list_create_w() //¶ÁÐ´
+s_sis_string_list *sis_string_list_create_w() //è¯»å†™
 {
 	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
-	memset(l,0,sizeof(s_sis_string_list));
+	memset(l, 0, sizeof(s_sis_string_list));
 	l->strlist = sis_pointer_list_create();
 	l->permissions = STRING_LIST_WR;
 	l->strlist->free = sis_free_call;
@@ -494,104 +503,134 @@ int sis_string_list_getsize(s_sis_string_list *list_)
 }
 s_sis_sds sis_string_list_sds(s_sis_string_list *list_)
 {
-	if (list_->strlist->count<1) return NULL;
+	if (list_->strlist->count < 1)
+	{
+		return NULL;
+	}
 	s_sis_sds o = sis_sdsnew(sis_pointer_list_get(list_->strlist, 0));
 	for (int i = 1; i < list_->strlist->count; i++)
 	{
 		o = sis_sdscatfmt(o, ",%s", sis_pointer_list_get(list_->strlist, i));
-	}	
+	}
 	return o;
 }
 int sis_string_list_clone(
-	s_sis_string_list *src_, 
+	s_sis_string_list *src_,
 	s_sis_string_list *des_)
 {
-	if (!src_||!des_) return 0;
+	if (!src_ || !des_)
+	{
+		return 0;
+	}
 	sis_string_list_clear(des_);
 	for (int i = 0; i < src_->strlist->count; i++)
 	{
 		const char *str = (const char *)sis_pointer_list_get(src_->strlist, i);
 		sis_string_list_push(des_, str, strlen(str));
-	}		
+	}
 	return des_->strlist->count;
 }
 int sis_string_list_merge(
-	s_sis_string_list *list_, 
+	s_sis_string_list *list_,
 	s_sis_string_list *other_)
 {
-	if (!list_||!other_) return 0;
+	if (!list_ || !other_)
+	{
+		return 0;
+	}
 
 	for (int i = 0; i < other_->strlist->count; i++)
 	{
 		const char *str = (const char *)sis_pointer_list_get(other_->strlist, i);
 		sis_string_list_push_only(list_, str, strlen(str));
-	}	
+	}
 	return list_->strlist->count;
 }
 
 int sis_string_list_across(
-	s_sis_string_list *list_, 
+	s_sis_string_list *list_,
 	s_sis_string_list *other_)
 {
-	if (!list_||!other_) return 0;
-	for (int i = 0; i < list_->strlist->count; )
+	if (!list_ || !other_)
+	{
+		return 0;
+	}
+	for (int i = 0; i < list_->strlist->count;)
 	{
 		const char *str = (const char *)sis_pointer_list_get(list_->strlist, i);
 		int index = sis_string_list_indexofcase(other_, str);
 		if (index < 0)
 		{
-			sis_string_list_delete(list_, i);	
-		} else {
+			sis_string_list_delete(list_, i);
+		}
+		else
+		{
 			i++;
 		}
-	}	
+	}
 	return list_->strlist->count;
 }
 
 int sis_string_list_indexof(s_sis_string_list *list_, const char *in_)
 {
 	if (!in_)
+	{
 		return -1;
+	}
 	for (int i = 0; i < list_->strlist->count; i++)
 	{
 		if (!strcmp(sis_string_list_get(list_, i), in_))
+		{
 			return i;
+		}
 	}
 	return -1;
 }
 int sis_string_list_indexofcase(s_sis_string_list *list_, const char *in_)
 {
 	if (!in_)
+	{
 		return -1;
+	}
 	for (int i = 0; i < list_->strlist->count; i++)
 	{
-		if (!strcasecmp(sis_string_list_get(list_, i), in_))
+		if (!sis_strcasecmp(sis_string_list_get(list_, i), in_))
+		{
 			return i;
+		}
 	}
 	return -1;
 }
 int sis_string_list_update(s_sis_string_list *list_, int index_, const char *in_, size_t inlen)
 {
 	if (list_->permissions != STRING_LIST_WR)
+	{
 		return -1;
+	}
 
 	char *str = (char *)sis_malloc(inlen + 1);
 	sis_strncpy(str, inlen + 1, in_, inlen);
 	int index = sis_pointer_list_update(list_->strlist, index_, str);
 	if (index < 0)
+	{
 		sis_free(str);
+	}
 	return index;
 }
 int sis_string_list_find_and_update(s_sis_string_list *list_, char *finder_, const char *in_, size_t inlen)
 {
 	if (list_->permissions != STRING_LIST_WR)
+	{
 		return -1;
+	}
 
 	char *str = (char *)sis_malloc(inlen + 1);
 	sis_strncpy(str, inlen + 1, in_, inlen);
 	int index = sis_pointer_list_find_and_update(list_->strlist, finder_, str);
 	if (index < 0)
+	{
 		sis_free(str);
+	}
 	return index;
 }
 int sis_string_list_insert(s_sis_string_list *list_, int index_, const char *in_, size_t inlen)
@@ -621,7 +660,9 @@ int sis_string_list_find_and_delete(s_sis_string_list *list_, const char *finder
 int sis_string_list_push(s_sis_string_list *list_, const char *in_, size_t inlen)
 {
 	if (list_->permissions != STRING_LIST_WR)
+	{
 		return -1;
+	}
 
 	char *str = (char *)sis_malloc(inlen + 1);
 	sis_strncpy(str, inlen + 1, in_, inlen);
@@ -630,7 +671,9 @@ int sis_string_list_push(s_sis_string_list *list_, const char *in_, size_t inlen
 int sis_string_list_push_only(s_sis_string_list *list_, const char *in_, size_t inlen)
 {
 	if (list_->permissions != STRING_LIST_WR)
+	{
 		return -1;
+	}
 
 	char *str = (char *)sis_malloc(inlen + 1);
 	sis_strncpy(str, inlen + 1, in_, inlen);
@@ -638,7 +681,9 @@ int sis_string_list_push_only(s_sis_string_list *list_, const char *in_, size_t 
 	if (index < 0)
 	{
 		return sis_pointer_list_push(list_->strlist, str);
-	} else {
+	}
+	else
+	{
 		sis_free(str);
 	}
 	return index;

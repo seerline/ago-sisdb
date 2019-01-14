@@ -28,11 +28,21 @@
 // #include <sys/time.h>
 // #include <dirent.h>
 // #include <fnmatch.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <limits.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <sys/time.h>
+#include <stddef.h>
+#include <time.h>
 
 #include <os_types.h>
-#include <os_io.h>
+#include <os_str.h>
 #include <os_file.h>
 #include <os_time.h>
 #include <os_thread.h>

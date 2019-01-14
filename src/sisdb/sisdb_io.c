@@ -12,8 +12,8 @@
 /********************************/
 // 一定要用static定义，不然内存混乱
 static s_sisdb_server server = {
-    .switch_disk = false,
-    .switch_supper = false,
+    .switch_output = false,
+    .switch_super = false,
     .status = SIS_SERVER_STATUS_NOINIT,
     .db = NULL};
 /********************************/
@@ -351,7 +351,7 @@ s_sis_sds sisdb_show_dbs_sds(const char *com_)
             } else {
                 list = sdscat(list, "[usr] ");
             }
-            list = sdscatprintf(list, "%-10s : fields=%2d, len=%3u, collects=%d\n",
+            list = sdscatprintf(list, "%-10s : fields=%3d, len=%3u, collects=%d\n",
                                 val->name,
                                 sis_string_list_getsize(val->field_name),
                                 sisdb_table_get_fields_size(val),
@@ -443,14 +443,14 @@ s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
 // 所有系统级别的开关设置都在这里
 int sisdb_cfg_option(const char *key_)
 {
-    if (!sis_strcasecmp(key_,"disk"))
+    if (!sis_strcasecmp(key_,"output"))
     {
-        server.switch_disk = !server.switch_disk;
-        return server.switch_disk;
-    } else  if (!sis_strcasecmp(key_, "supper"))
+        server.switch_output = !server.switch_output;
+        return server.switch_output;
+    } else  if (!sis_strcasecmp(key_, "super"))
     {
-        server.switch_supper = !server.switch_supper;
-        return server.switch_supper;
+        server.switch_super = !server.switch_super;
+        return server.switch_super;
     }
     return -1;
 }
@@ -590,7 +590,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
     // sis_out_binary("update 0 ", in_, ilen_);
     // printf("----len=%ld:%d\n", sis_sdslen(in), collect->value->len);
 
-    int o = sisdb_collect_update(collect, in);
+    int o = sisdb_collect_update(collect, in, false);
 
     sisdb_sys_flush_work_time(collect);
     sisdb_sys_check_write(server.db, key_, collect);
@@ -605,7 +605,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
     sis_sdsfree(in);
     if (o)
     {
-        sis_out_log(5)("set data ok,[%d].\n", o);
+        // sis_out_log(5)("set data ok,[%d].\n", o);
         return SIS_SERVER_REPLY_OK;
     }
     return SIS_SERVER_REPLY_ERR;
@@ -766,7 +766,7 @@ int sisdb_write_begin(int type_, const char *key_, const char *val_, size_t len_
     if (sis_mutex_trylock(&server.db->save_task->mutex))
     {
         // == 0 才是锁住
-        sis_out_log(3)("saveing... set fail.\n");
+        sis_out_log(3)("saveing... set fail.[%s]\n", key_);
         return SIS_SERVER_REPLY_ERR;
     };
     return SIS_SERVER_REPLY_OK;

@@ -113,7 +113,7 @@ int _sis_redis_get_cmds(s_sis_message_node * mess_)
 }
 bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 {
-	printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
+	// printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
 	if (!_sis_redis_check_connect(sock_)){
 		printf("redis check connect fail.\n");
 		return false;
@@ -163,7 +163,7 @@ bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 	reply = (redisReply *)redisCommandArgv((redisContext *)sock_->handle_read, index, (const char **)&(argvstr[0]), &(argvlen[0]));
 	if (reply)
 	{
-		printf("send data type %s [%d:%s] \n", mess_->key, reply->type, reply->str);		
+		// printf("send data type %s [%d:%s] \n", mess_->key, reply->type, reply->str);		
 		freeReplyObject(reply);
 	} else 
 	{

@@ -1,4 +1,4 @@
-
+ï»¿
 #ifndef _SIS_METHOD_H
 #define _SIS_METHOD_H
 
@@ -15,54 +15,54 @@
 
 
 typedef struct s_sis_method {
-    const char *name;     // ·½·¨µÄÃû×Ö
-    const char *style;    // ·½·¨ÊôÓÚµÄÀà±ğ£¬Ïàµ±ÓÚÃüÃû¿Õ¼ä subscribe append zip µÈ
+    const char *name;     // æ–¹æ³•çš„åå­—
+    const char *style;    // æ–¹æ³•å±äºçš„ç±»åˆ«ï¼Œç›¸å½“äºå‘½åç©ºé—´ subscribe append zip ç­‰
 	void *(*proc)(void *, void *);
 	// _sis_method_define *proc;
-	const char *explain;  // ·½·¨µÄËµÃ÷
+	const char *explain;  // æ–¹æ³•çš„è¯´æ˜
 }s_sis_method;
 
-// ²ÎÊıÄ¬ÈÏÎªÒ»´®×Ö¶Î
+// å‚æ•°é»˜è®¤ä¸ºä¸€ä¸²å­—æ®µ
 typedef struct s_sis_method_node {
     s_sis_method    *method;
 	s_sis_json_node *argv;
-	bool             ok;    // Îª SIS_METHOD_CLASS_JUDGE ÀàĞÍ×¼±¸
-	void            *out;   // ³ö¿ÚÊı¾İÇøÖ¸Õë£¬½ö½öÔÚSIS_METHOD_CLASS_FILTER²ÅÁÙÊ±Éú³É£¬²¢ÔÚ½á¹ûÊä³öºóÏú»Ù
-	// int              option; // ºÍÉÏ´Î½á¹û±È½ÏÊÇ 0 Óë»¹ÊÇ 1»ò
-    struct s_sis_method_node *next, *prev;    // »òµÄ¹ØÏµ
-    struct s_sis_method_node *child, *father; // ÓëµÄ¹ØÏµ
+	bool             ok;    // ä¸º SIS_METHOD_CLASS_JUDGE ç±»å‹å‡†å¤‡
+	void            *out;   // å‡ºå£æ•°æ®åŒºæŒ‡é’ˆï¼Œä»…ä»…åœ¨SIS_METHOD_CLASS_FILTERæ‰ä¸´æ—¶ç”Ÿæˆï¼Œå¹¶åœ¨ç»“æœè¾“å‡ºåé”€æ¯
+	// int              option; // å’Œä¸Šæ¬¡ç»“æœæ¯”è¾ƒæ˜¯ 0 ä¸è¿˜æ˜¯ 1æˆ–
+    struct s_sis_method_node *next, *prev;    // æˆ–çš„å…³ç³»
+    struct s_sis_method_node *child, *father; // ä¸çš„å…³ç³»
 }s_sis_method_node;
 
-#define SIS_METHOD_CLASS_MARKING  0 // ¶ÔÊı¾İÔ´´ò±ê¼Ç£¬Ñ¡¹ÉÓÃ, ¶Ô´«ÈëÊı¾İÔËËãÓÃ
-#define SIS_METHOD_CLASS_JUDGE    1 // ÇóÒ»¸ö½á¹û£¬ÅĞ¶ÏÌõ¼şÊÇ·ñ³ÉÁ¢
-#define SIS_METHOD_CLASS_FILTER   2 // Êä³öºÍinÊı¾İÍ¬¹¹µÄ½á¹ûÊı¾İ¼¯£¬Êı¾İ¿â²éÑ¯Ê±ÓÃ
-// Ó¦¸ÃÖ§³ÖÒ»ÖÖÓë»ò¹ØÏµµÄÑ¡Ïî
+#define SIS_METHOD_CLASS_MARKING  0 // å¯¹æ•°æ®æºæ‰“æ ‡è®°ï¼Œé€‰è‚¡ç”¨, å¯¹ä¼ å…¥æ•°æ®è¿ç®—ç”¨
+#define SIS_METHOD_CLASS_JUDGE    1 // æ±‚ä¸€ä¸ªç»“æœï¼Œåˆ¤æ–­æ¡ä»¶æ˜¯å¦æˆç«‹
+#define SIS_METHOD_CLASS_FILTER   2 // è¾“å‡ºå’Œinæ•°æ®åŒæ„çš„ç»“æœæ•°æ®é›†ï¼Œæ•°æ®åº“æŸ¥è¯¢æ—¶ç”¨
+// åº”è¯¥æ”¯æŒä¸€ç§ä¸æˆ–å…³ç³»çš„é€‰é¡¹
 
-// ´«Èë·½·¨µÄ½á¹¹Àı×Ó
-// inºÍout±ØĞëÊÇÍ¬¹¹µÄÊı¾İ£¬outÓ¦¸ÃÊÇinµÄÍ¬¼¯»ò×Ó¼¯
-// ·ÖÒÔÏÂ¼¸ÖÖÇé¿ö
-// 1.½ö½ö×ö±ê¼Ç£¬outºÍinÒ»Ñù£¬mergeºÍacrossÉèÖÃÎª¿Õ¾Í¿ÉÒÔÁË£¬·½·¨ÖĞ²»×öÊı¾İ¼õÉÙ¶¯×÷
-// 2.È¡inµÄ×Ó¼¯£¬
+// ä¼ å…¥æ–¹æ³•çš„ç»“æ„ä¾‹å­
+// inå’Œoutå¿…é¡»æ˜¯åŒæ„çš„æ•°æ®ï¼Œoutåº”è¯¥æ˜¯inçš„åŒé›†æˆ–å­é›†
+// åˆ†ä»¥ä¸‹å‡ ç§æƒ…å†µ
+// 1.ä»…ä»…åšæ ‡è®°ï¼Œoutå’Œinä¸€æ ·ï¼Œmergeå’Œacrossè®¾ç½®ä¸ºç©ºå°±å¯ä»¥äº†ï¼Œæ–¹æ³•ä¸­ä¸åšæ•°æ®å‡å°‘åŠ¨ä½œ
+// 2.å–inçš„å­é›†ï¼Œ
 
 typedef struct s_sis_method_class {
-	int      	style;   // ÀàĞÍ
-	// bool        ok;      // Îª SIS_METHOD_CLASS_JUDGE ÀàĞÍ×¼±¸
-	void       *obj;     // Èë¿ÚÊı¾İÇøÖ¸Õë£¬
-	s_sis_method_node        *node;   // ·½·¨Á´±í£¬·½·¨´«µİvalueµÄÊı¾İ
-	void(*merge)(void *, void *);      // ºÍÍ¬Ò»µÈ¼¶µÄ·½·¨Çó²¢¼¯
-	void(*across)(void *, void *);     // ºÍÉÏÒ»µÈ¼¶µÄ·½·¨Çó½»¼¯
-	void(*free)(void *);          // freeµÄ·½·¨,ÊÍ·ÅinºÍout
-	void*(*malloc)();       // mallocµÄ·½·¨,ÓÃÓÚÉêÇëoutºÍÏÂÒ»¼¯inÊ±Ê¹ÓÃ
+	int      	style;      // ç±»å‹
+	// bool        ok;      // ä¸º SIS_METHOD_CLASS_JUDGE ç±»å‹å‡†å¤‡
+	void       *obj;        // å…¥å£æ•°æ®åŒºæŒ‡é’ˆï¼Œ
+	s_sis_method_node *node;   // æ–¹æ³•é“¾è¡¨ï¼Œæ–¹æ³•ä¼ é€’valueçš„æ•°æ®
+	void(*merge)(void *, void *);      // å’ŒåŒä¸€ç­‰çº§çš„æ–¹æ³•æ±‚å¹¶é›†
+	void(*across)(void *, void *);     // å’Œä¸Šä¸€ç­‰çº§çš„æ–¹æ³•æ±‚äº¤é›†
+	void(*free)(void *);          // freeçš„æ–¹æ³•,é‡Šæ”¾inå’Œout
+	void*(*malloc)();       // mallocçš„æ–¹æ³•,ç”¨äºç”³è¯·outå’Œä¸‹ä¸€é›†inæ—¶ä½¿ç”¨
 }s_sis_method_class;
 //////////////////////////////////////////////
-//   method_map ÕâÀï¶¨ÒåµÄÊÇ·½·¨ÁĞ±í
+//   method_map è¿™é‡Œå®šä¹‰çš„æ˜¯æ–¹æ³•åˆ—è¡¨
 ///////////////////////////////////////////////
 s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_);
 s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, const char *style_);
 void sis_method_map_destroy(s_sis_map_pointer *map_);
 
 //////////////////////////////////////////////
-//   method_node ÕâÀï¶¨ÒåµÄÊÇÊµ¼Ê·½·¨µÄ²ÎÊıºÍÁ´±í
+//   method_node è¿™é‡Œå®šä¹‰çš„æ˜¯å®é™…æ–¹æ³•çš„å‚æ•°å’Œé“¾è¡¨
 ///////////////////////////////////////////////
 
 // s_sis_method_node* _sis_method_node_load(
@@ -72,7 +72,7 @@ void sis_method_map_destroy(s_sis_map_pointer *map_);
 // 		const char *style_, 
 // 		s_sis_json_node *node_);
 
-// // Æğµã£¬×îÍâ²ãÎªÒ»¸ö»òÕß¹ØÏµµÄ·½·¨ÁĞ±í£¬
+// // èµ·ç‚¹ï¼Œæœ€å¤–å±‚ä¸ºä¸€ä¸ªæˆ–è€…å…³ç³»çš„æ–¹æ³•åˆ—è¡¨ï¼Œ
 // s_sis_method_node *sis_method_node_create(
 // 	s_sis_map_pointer *map_,
 // 	const char *style_, 
@@ -80,7 +80,7 @@ void sis_method_map_destroy(s_sis_map_pointer *map_);
 
 // void sis_method_node_destroy(void *node_, void *other_);
 //////////////////////////////////////////////
-//   method_class ¹ÜÀí¶à¸ö·½·¨µÄÀà£¬Ç¶Ì×»ò²¢ÁĞ
+//   method_class ç®¡ç†å¤šä¸ªæ–¹æ³•çš„ç±»ï¼ŒåµŒå¥—æˆ–å¹¶åˆ—
 ///////////////////////////////////////////////
 
 s_sis_method_class *sis_method_class_create(
@@ -90,7 +90,7 @@ s_sis_method_class *sis_method_class_create(
 
 void *sis_method_class_execute(s_sis_method_class *class_);
 
-// 0 -  È«²¿ÇåÀí  1 - Ö»ÇåÀíÊä³öµÄÊı¾İ Õë¶ÔSIS_METHOD_CLASS_FILTERÀàĞÍ
+// 0 -  å…¨éƒ¨æ¸…ç†  1 - åªæ¸…ç†è¾“å‡ºçš„æ•°æ® é’ˆå¯¹SIS_METHOD_CLASS_FILTERç±»å‹
 void sis_method_class_clear(s_sis_method_class *,int);
 
 void sis_method_class_destroy(void *class_, void *other_);

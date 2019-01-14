@@ -64,8 +64,8 @@ typedef struct s_sis_aof_head{
 //------v1.0采用全部存盘的策略 ---------//
 // 到时间保存
 bool sisdb_file_save(s_sisdb_server *server_);
-
-bool sisdb_file_to_disk(const char * key_,  int fmt_, s_sis_sds in_);
+// 对用户的get请求同时输出到磁盘中，方便检查数据
+bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_);
 
 bool sisdb_file_save_aof(s_sisdb_server *server_, 
             int fmt_, const char *key_, 

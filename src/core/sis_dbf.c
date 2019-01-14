@@ -1,13 +1,12 @@
-
+ï»¿
 
 #include "sis_dbf.h"
 
 int _sis_file_dbf_parse(s_sis_file_dbf *dbf_)
 {
-	if (!dbf_ || !dbf_->fp) return  0;
-
+	if (!dbf_ || !dbf_->fp) {return  0;}
 	size_t size = sis_file_size(dbf_->fp);
-	if (size == 0) return  0;
+	if (size == 0) {return  0;}
 
 	dbf_->buffer = (char *)sis_malloc(size + 1);
 	sis_file_seek(dbf_->fp, 0 ,SEEK_SET);
@@ -22,7 +21,7 @@ int _sis_file_dbf_parse(s_sis_file_dbf *dbf_)
     }
     char* ptr = dbf_->buffer;
  	memmove(&dbf_->head, ptr, sizeof(s_sis_dbf_head));
-	// dbf_->current_record_i = -1;  //  ÉèÖÃµ±Ç°¼ÇÂ¼ºÅ
+	// dbf_->current_record_i = -1;  //  è®¾ç½®å½“å‰è®°å½•å·
 
 	int fieldnums = (dbf_->head.head_len - sizeof(s_sis_dbf_head)) / sizeof(s_sis_dbf_field);
 	
@@ -33,16 +32,24 @@ int _sis_file_dbf_parse(s_sis_file_dbf *dbf_)
     ptr += sizeof(s_sis_dbf_head);
 	for (int k = 0; k < fieldnums; k++)
 	{
-        s_sis_dbf_field field;
-        memmove(&field, ptr, sizeof(s_sis_dbf_field));
+        s_sis_dbf_field *field = (s_sis_dbf_field *)sis_malloc(sizeof(s_sis_dbf_field));
+        memmove(field,  ptr, sizeof(s_sis_dbf_field));
 		ptr += sizeof(s_sis_dbf_field);
-		if (field.type != 'N' && field.type != 'F')
+		if (field->type != 'N' && field->type != 'F')
 		{
-			field.dot = 0;
+			field->dot = 0;
 		}
-        sis_struct_list_push(dbf_->fields, &field);
+		sis_map_buffer_set(dbf_->map_fields, field->name, field);
+        sis_struct_list_push(dbf_->fields, field);
 	}
-
+	//æœ‰æ—¶å€™å®žé™…è®°å½•æ•°æ²¡æœ‰é‚£ä¹ˆå¤šï¼Œä¼šé€ æˆå†…å­˜æº¢å‡º
+	//è¿™é‡Œæ ¡éªŒä¸€ä¸‹
+	int count = (size - dbf_->head.head_len) / dbf_->head.record_len;
+	count = count < 0 ? 0 : count;
+	if (count < (int)dbf_->head.count)
+	{
+		dbf_->head.count = count;
+	}
 	return dbf_->head.count;
 }
 
@@ -60,9 +67,10 @@ s_sis_file_dbf * sis_file_dbf_open(const char *name_,int mode_, int access_)
 
 	o->fp = fp;
 	o->fields = sis_struct_list_create(sizeof(s_sis_dbf_field), 0, 0);
+	o->map_fields = sis_map_buffer_create();
 
     _sis_file_dbf_parse(o);
-	printf("field=%d  record=%d\n", o->fields->count, o->head.count);
+	// printf("field=%d  record=%d\n", o->fields->count, o->head.count);
     sis_file_close(o->fp);
     o->fp = NULL;
     return o;    
@@ -70,14 +78,15 @@ s_sis_file_dbf * sis_file_dbf_open(const char *name_,int mode_, int access_)
 
 void sis_file_dbf_close(s_sis_file_dbf *dbf_)
 {
-	if(!dbf_) return ;
+	if(!dbf_) {return ;}
 	sis_free(dbf_->buffer);   
     sis_struct_list_destroy(dbf_->fields);
+	sis_map_buffer_destroy(dbf_->map_fields);
 	sis_free(dbf_);    
 }
 char * _sis_file_dbf_find_record(s_sis_file_dbf *dbf_, int index)
 {
-	if (index <0 || index>dbf_->head.count-1)
+	if (index <0 || index>(int)dbf_->head.count - 1)
 	{
 		return NULL;
 	}
@@ -85,18 +94,21 @@ char * _sis_file_dbf_find_record(s_sis_file_dbf *dbf_, int index)
 }
 s_sis_dbf_field * _sis_file_dbf_find_field(s_sis_file_dbf *dbf_, const char *key_)
 {
-	s_sis_dbf_field * field ;
-	for (int i=0;i <dbf_->fields->count ; i++)
-	{
-		field = (s_sis_dbf_field *) sis_struct_list_get(dbf_->fields, i);
-		// printf("m_ %s -- %s \n", key_, field->name);
+	s_sis_dbf_field * field = (s_sis_dbf_field *)sis_map_buffer_get(dbf_->map_fields, key_);
+	return field;
 
-		if (!sis_strncmp(key_,field->name,strlen(key_)))
-		{
-			return field;
-		}
-	}
-	return NULL;
+	// s_sis_dbf_field * field ;
+	// for (int i=0;i <dbf_->fields->count ; i++)
+	// {
+	// 	field = (s_sis_dbf_field *) sis_struct_list_get(dbf_->fields, i);
+	// 	// printf("m_ %s -- %s \n", key_, field->name);
+
+	// 	if (!sis_strncmp(key_,field->name,strlen(key_)))
+	// 	{
+	// 		return field;
+	// 	}
+	// }
+	// return NULL;
 }
 int64 sis_file_dbf_get_int(s_sis_file_dbf *dbf_, int index, const char *key_, int64 defaultvalue_)
 {
@@ -123,20 +135,30 @@ double sis_file_dbf_get_double(s_sis_file_dbf *dbf_, int index, const char *key_
 	// printf("key_=%s val=%s\n",key_, val);
 	return atof(val);
 }
+
 void sis_file_dbf_get_str(s_sis_file_dbf *dbf_, int index, const char *key_,char *out_, size_t olen_)
 {
 	char *buffer = (char *)_sis_file_dbf_find_record(dbf_, index);
 	s_sis_dbf_field *field = _sis_file_dbf_find_field(dbf_, key_);
-	// printf("%p, %p %s\n",buffer,field, key_);
 	if (!field||!buffer) 
 	{
 		out_[0] = 0;
 		return ;
 	}
 	// sis_out_binary("str",buffer+field->offset, field->len);
+	sis_strncpy(out_, olen_, buffer + field->offset, field->len);
+}
+void sis_file_dbf_get_str_of_fid(s_sis_file_dbf *dbf_, int index, int fid, char *out_, size_t olen_)
+{
+	char *buffer = (char *)_sis_file_dbf_find_record(dbf_, index);
+	s_sis_dbf_field *field = (s_sis_dbf_field *)sis_struct_list_get(dbf_->fields, fid);
+	if (!field||!buffer) 
+	{
+		out_[0] = 0;
+		return ;
+	}
 	sis_strncpy(out_, olen_, buffer+field->offset, field->len);	
 }
-
 void sis_file_dbf_set_int(s_sis_file_dbf *dbf_, int index, char *key_, uint64 in_)
 {
 
@@ -151,6 +173,49 @@ void sis_file_dbf_set_str(s_sis_file_dbf *dbf_, int index, char *key_, const cha
 
 }
 
+#if 1
+
+int main()
+{
+
+	s_sis_file_dbf *dbf = sis_file_dbf_open("order.dbf", 0, 0);
+    if (!dbf) 
+    {
+        printf("error");    
+        return 0;
+    }
+	
+	char value[164];
+	int start =sis_time_get_now();
+/*	for(uint32 i = 0; i < dbf->head.count; i++)
+	{
+		// printf("\n---- i= %d -------\n", i);
+		for(int k = 0; k < 200; k++)
+		{
+			sis_file_dbf_get_str_of_fid(dbf,i,k%20,value,64);
+		}
+		if(i%10000==0)
+		printf("--%d-- sec = %d -------\n", i, (int)sis_time_get_now() - start);
+	}*/
+	start =sis_time_get_now();
+	printf("\n %d * %d + %d = [%d] \n", dbf->head.record_len, dbf->head.count, dbf->head.head_len, (dbf->head.head_len - sizeof(s_sis_dbf_head)) / sizeof(s_sis_dbf_field));
+	for(uint32 i = 0; i < dbf->head.count ; i++)
+	{
+		// 
+		for(int k = 0; k < 200; k++)
+		{
+			char *key = sis_struct_list_get(dbf->fields,k%20);
+			// char *key = sis_struct_list_get(dbf->fields,19);
+			sis_file_dbf_get_str(dbf,i,key,value,64);
+		}
+		if(i%10000==0)
+			printf("--%d-- sec = %d ----%s---\n", i, (int)sis_time_get_now() - start, value);
+	}
+	sis_file_dbf_close(dbf);
+	system("pause");
+	return 0;
+}
+#endif
 // int c_dbf_option::get_fields_count()
 // {
 //     if (m_dbf_info_ps == NULL) return 0;
@@ -239,7 +304,7 @@ void sis_file_dbf_set_str(s_sis_file_dbf *dbf_, int index, char *key_, const cha
 //     {
 //         record_offset = m_dbf_info_ps->record_len * entity_ + m_dbf_info_ps->header_len;
 // 		if(m_dbf_info_ps->m_fp)
-// 		{//ÎÄ¼þ
+// 		{//æ–‡ä»¶
 // 			if ( fseek( m_dbf_info_ps->m_fp, record_offset, 0 ) != 0 )
 // 			{
 // 				return FALSE;
@@ -249,9 +314,9 @@ void sis_file_dbf_set_str(s_sis_file_dbf *dbf_, int index, char *key_, const cha
 // 				return FALSE;
 // 			}
 // 		}else
-// 		{//ÄÚ´æ
+// 		{//å†…å­˜
 // 			if (record_offset > m_dbf_info_ps->m_dbf_buffer_size_i)
-// 			{//³¬³öÄÚ´æÇøÓò 
+// 			{//è¶…å‡ºå†…å­˜åŒºåŸŸ 
 // 				return FALSE;
 // 			}
 // 			memmove(m_dbf_info_ps->m_current_record_ptr, m_dbf_info_ps->m_dbf_buffer_ptr+record_offset, m_dbf_info_ps->record_len);
@@ -283,7 +348,7 @@ void sis_file_dbf_set_str(s_sis_file_dbf *dbf_, int index, char *key_, const cha
 //     {
 //         record_offset = m_dbf_info_ps->record_len * entity_ + m_dbf_info_ps->header_len;
 // 		if (m_dbf_info_ps->m_fp)
-// 		{//ÎÄ¼þ
+// 		{//æ–‡ä»¶
 // 			if ( fseek( m_dbf_info_ps->m_fp, record_offset, 0 ) != 0 )
 // 			{
 // 				return NULL;
@@ -293,9 +358,9 @@ void sis_file_dbf_set_str(s_sis_file_dbf *dbf_, int index, char *key_, const cha
 // 				return NULL;
 // 			}
 // 		}else
-// 		{//ÄÚ´æ
+// 		{//å†…å­˜
 // 			if (record_offset > m_dbf_info_ps->m_dbf_buffer_size_i)
-// 			{//³¬³öÄÚ´æÇøÓò 
+// 			{//è¶…å‡ºå†…å­˜åŒºåŸŸ 
 // 				return FALSE;
 // 			}
 // 			memmove(m_dbf_info_ps->m_current_record_ptr, m_dbf_info_ps->m_dbf_buffer_ptr+record_offset, m_dbf_info_ps->record_len);
@@ -395,7 +460,7 @@ void sis_file_dbf_set_str(s_sis_file_dbf *dbf_, int index, char *key_, const cha
 // 		}else
 // 		{
 // 			if (record_offset > m_dbf_info_ps->m_dbf_buffer_size_i)
-// 			{//³¬³öÄÚ´æÇøÓò 
+// 			{//è¶…å‡ºå†…å­˜åŒºåŸŸ 
 // 				return FALSE;
 // 			}
 // 			memmove(m_dbf_info_ps->m_current_record_ptr, m_dbf_info_ps->m_dbf_buffer_ptr+record_offset, m_dbf_info_ps->record_len);

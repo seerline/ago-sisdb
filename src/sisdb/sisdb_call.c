@@ -127,7 +127,7 @@ void * sisdb_call_get_code_sds(void *db_, void *com_)
 	int count = sis_sdslen(buffer) / (size + SIS_MAXLEN_CODE);
 	int set;
 	
-	s_sis_struct_list *list = sis_pointer_list_create();
+	s_sis_pointer_list *list = sis_pointer_list_create();
 	
 	sis_str_to_upper((char *)match);
 	char *ptr = buffer;
@@ -156,7 +156,7 @@ void * sisdb_call_get_code_sds(void *db_, void *com_)
 	char code[SIS_MAXLEN_CODE];
 	for (int i = 0; i < list->count && i < count; i++)
 	{
-		ptr = (char *)sis_struct_list_get(list, i);
+		ptr = (char *)sis_pointer_list_get(list, i);
 		jval = sis_json_create_array();
 		sis_strncpy(code, SIS_MAXLEN_CODE, ptr, SIS_MAXLEN_CODE);
 		sis_json_array_add_string(jval, code, strlen(code));

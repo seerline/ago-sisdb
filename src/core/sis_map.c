@@ -1,4 +1,4 @@
-
+ï»¿
 #include "sis_map.h"
 #include "sis_list.h"
 
@@ -15,7 +15,7 @@ uint64_t _sis_dict_sdscase_hash(const void *key)
 int _sis_dict_sdscase_compare(void *privdata, const void *key1, const void *key2)
 {
 	SIS_NOTUSED(privdata);
-	return strcasecmp((const char *)key1, (const char *)key2) == 0;
+	return sis_strcasecmp((const char *)key1, (const char *)key2) == 0;
 }
 
 void _sis_dict_buffer_free(void *privdata, void *val)
@@ -73,11 +73,11 @@ s_sis_dict_type _sis_dict_list_sds_s = {
 };
 
 //////////////////////////////////////////
-//  s_sis_map_buffer »ù´¡¶¨Òå
+//  s_sis_map_buffer åŸºç¡€å®šä¹‰
 ///////////////////////////////////////////////
 
 s_sis_map_buffer *sis_map_buffer_create()
-{ //Ã÷È·ÖªµÀvalµÄ³¤¶È
+{ //æ˜ç¡®çŸ¥é“valçš„é•¿åº¦
 	s_sis_map_buffer *map = sis_dict_create(&_sis_dict_type_buffer_s, NULL);
 	return map;
 };
@@ -121,7 +121,7 @@ int sis_map_buffer_set(s_sis_map_buffer *map_, const char *key_, void *value_)
 }
 
 //////////////////////////////////////////
-//  s_sis_map_int »ù´¡¶¨Òå
+//  s_sis_map_int åŸºç¡€å®šä¹‰
 //////////////////////////////////////////
 s_sis_map_pointer *sis_map_custom_create(s_sis_dict_type *type_)
 {
@@ -136,7 +136,7 @@ s_sis_map_pointer *sis_map_pointer_create()
 };
 
 //////////////////////////////////////////
-//  s_sis_map_int »ù´¡¶¨Òå
+//  s_sis_map_int åŸºç¡€å®šä¹‰
 //////////////////////////////////////////
 s_sis_map_int *sis_map_int_create()
 {
@@ -165,7 +165,7 @@ int sis_map_int_set(s_sis_map_int *map_, const char *key_, uint64_t value_)
 	return 0;
 }
 //////////////////////////////////////////
-//  s_sis_map_sds »ù´¡¶¨Òå
+//  s_sis_map_sds åŸºç¡€å®šä¹‰
 //////////////////////////////////////////
 s_sis_map_sds *sis_map_sds_create()
 {

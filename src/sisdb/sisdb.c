@@ -56,7 +56,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sis_map_pointer_destroy(db_->dbs);
 
 	// 下面释放股票信息
-	sis_struct_list_destroy(db_->sys_infos);
+	sis_pointer_list_destroy(db_->sys_infos);
 	// 下面释放市场信息
 	if (db_->sys_exchs)
 	{

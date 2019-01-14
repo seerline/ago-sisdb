@@ -200,7 +200,7 @@ bool sisdb_file_save(s_sisdb_server *server_)
 
     return true;
 }
-bool sisdb_file_to_disk(const char * key_,  int fmt_, s_sis_sds in_)
+bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_)
 {   
     s_sisdb_server *server = sisdb_get_server();
 

@@ -1,12 +1,12 @@
-#ifndef _SIS_MAP_H
+ï»¿#ifndef _SIS_MAP_H
 #define _SIS_MAP_H
 
 #include "sis_core.h"
 
 #include "sis_malloc.h"
 
-// ¶¨ÒåÒ»¸öÖ¸ÕëÀàĞÍµÄ×Öµä  string -- void*
-// ¶¨ÒåÒ»¸öÕûÊıÀàĞÍµÄ×Öµä  string -- int
+// å®šä¹‰ä¸€ä¸ªæŒ‡é’ˆç±»å‹çš„å­—å…¸  string -- void*
+// å®šä¹‰ä¸€ä¸ªæ•´æ•°ç±»å‹çš„å­—å…¸  string -- int
 #pragma pack(push,1)
 
 typedef struct s_sis_kv_int{
@@ -21,7 +21,7 @@ typedef struct s_sis_kv_pair{
 #pragma pack(pop)
 
 //////////////////////////////////////////
-//  s_sis_map_buffer »ù´¡¶¨Òå
+//  s_sis_map_buffer åŸºç¡€å®šä¹‰
 ///////////////////////////////////////////////
 
 #define s_sis_map_buffer dict
@@ -35,7 +35,7 @@ void sis_map_buffer_clear(s_sis_map_buffer *);
 void *sis_map_buffer_get(s_sis_map_buffer *, const char *key_);
 int  sis_map_buffer_set(s_sis_map_buffer *, const char *key_, void *value_); 
 #define sis_map_buffer_getsize dictSize
-//ÉèÖÃkey¶ÔÓ¦µÄÊı¾İÒıÓÃ£¬±ØĞëÎªÒ»¸öÖ¸Õë£¬²¢²»Ìá¹©ÊµÌå£¬
+//è®¾ç½®keyå¯¹åº”çš„æ•°æ®å¼•ç”¨ï¼Œå¿…é¡»ä¸ºä¸€ä¸ªæŒ‡é’ˆï¼Œå¹¶ä¸æä¾›å®ä½“ï¼Œ
 
 s_sis_map_pointer *sis_map_custom_create(s_sis_dict_type *);
 

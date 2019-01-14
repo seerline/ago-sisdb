@@ -1,7 +1,8 @@
+﻿
 
-
-#include <sis_malloc.h>
+#include <os_malloc.h>
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #ifndef __RELEASE__
@@ -54,7 +55,7 @@ void safe_memory_stop()
 
 // void sis_free(void *__p__)
 // {
-//     if (!__p__) return;
+//     if (!__p__) {return;}
 //     void *p = (char *)__p__ - MEMORY_NODE_SIZE; 
 //     check_memory_freenode(p); 
 //     free(p); 

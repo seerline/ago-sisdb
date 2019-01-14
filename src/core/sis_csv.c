@@ -1,25 +1,29 @@
-
+﻿
 #include <sis_csv.h>
 #include <sis_memory.h>
 
 int _sis_file_csv_parse(s_sis_file_csv *csv_)
 {
 	if (!csv_ || !csv_->fp)
+	{
 		return 0;
+	}
 
 	sis_file_seek(csv_->fp, 0, SEEK_SET);
 
 	s_sis_memory *buffer = sis_memory_create();
 	while (1)
 	{
-        size_t bytes = sis_memory_readfile(buffer, csv_->fp, SIS_DB_MEMORY_SIZE);
-        // �ṹ���ļ�������û���⣬�����������һ�п��ܾʹ���������
-        if (bytes <= 0)
-            break;
+		size_t bytes = sis_memory_readfile(buffer, csv_->fp, SIS_DB_MEMORY_SIZE);
+		// 结构化文件这样读没问题，这里这样最后一行可能就处理不到了
+		if (bytes <= 0)
+		{
+			break;
+		}
 
 		size_t offset = sis_memory_get_line_sign(buffer);
 		// printf("1 offset=%d %d %d %d\n", (int)offset, (int)buffer->offset, (int)buffer->size, (int)buffer->maxsize);
-		// ƫ��λ�ð����س��ַ� 0 ��ʾû�лس����ţ���Ҫ������
+		// 偏移位置包括回车字符 0 表示没有回车符号，需要继续读
 		// sis_sleep(1000);
 		while (offset)
 		{
@@ -28,7 +32,7 @@ int _sis_file_csv_parse(s_sis_file_csv *csv_)
 			sis_string_list_load(str, sis_memory(buffer), offset, csv_->sign);
 			if (sis_string_list_getsize(str) > 0)
 			{
-				sis_struct_list_push(csv_->list, str);
+				sis_pointer_list_push(csv_->list, str);
 			}
 			else
 			{
@@ -55,7 +59,9 @@ s_sis_file_csv *sis_file_csv_open(const char *name_, char c_, int mode_, int acc
 	s_sis_file_csv *o = sis_malloc(sizeof(s_sis_file_csv));
 	memset(o, 0, sizeof(s_sis_file_csv));
 	if (!c_)
+	{
 		c_ = ',';
+	}
 	o->sign[0] = c_, o->sign[1] = 0;
 	o->list = sis_pointer_list_create();
 	o->list->free = sis_string_list_destroy;
@@ -69,7 +75,9 @@ s_sis_file_csv *sis_file_csv_open(const char *name_, char c_, int mode_, int acc
 void sis_file_csv_close(s_sis_file_csv *csv_)
 {
 	if (!csv_)
+	{
 		return;
+	}
 	sis_pointer_list_destroy(csv_->list);
 	sis_free(csv_);
 }
@@ -77,7 +85,9 @@ void sis_file_csv_close(s_sis_file_csv *csv_)
 int sis_file_csv_getsize(s_sis_file_csv *csv_)
 {
 	if (!csv_)
+	{
 		return 0;
+	}
 	return csv_->list->count;
 }
 int64 sis_file_csv_get_int(s_sis_file_csv *csv_, int idx_, int field, int64 defaultvalue_)
@@ -119,12 +129,12 @@ const char *sis_file_csv_get_ptr(s_sis_file_csv *csv_, int idx_, int field)
 }
 // size_t sis_file_csv_read(s_sis_file_csv *csv_, char *in_, size_t ilen_)
 // {
-// 	// if (!csv_ || !csv_->fp) return  0;
+// 	// if (!csv_ || !csv_->fp) {return  0;}
 // 	return sis_file_read(csv_->fp, in_, 1, ilen_);
 // }
 // size_t sis_file_csv_write(s_sis_file_csv *csv_, char *in_, size_t ilen_)
 // {
-// 	// if (!csv_ || !csv_->fp) return  0;
+// 	// if (!csv_ || !csv_->fp) {return  0;}
 // 	return sis_file_write(csv_->fp, in_, 1, ilen_);
 // }
 

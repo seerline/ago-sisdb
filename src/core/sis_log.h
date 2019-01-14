@@ -1,10 +1,10 @@
-
+﻿
 #ifndef _SIS_LOG_H
 #define _SIS_LOG_H
 
+#include <sis_os.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <os_types.h>
 
 // LOG(0) -- 输出内存无法申请的错误，写log后直接退出程序
 // LOG(1) -- 程序初始化发生的错误，写log后正常退出程序
@@ -26,7 +26,7 @@ inline void sis_out_binary(const char *key_, const char *val_, int len_)
     len_ = len_ >30 ? 30 : len_;
     for (int i = 0; i < len_; i++)
     {
-        // if (!*p) break;
+        // if (!*p){ break;}
         printf("%02x ", (unsigned char)*p);
         p++;
     }

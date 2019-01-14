@@ -41,7 +41,7 @@
 #include <ctype.h>
 
 #include "read.h"
-#include "sds.h"
+#include "sis_malloc.h"
 
 static void __redisReaderSetError(redisReader *r, int type, const char *str) {
     size_t len;

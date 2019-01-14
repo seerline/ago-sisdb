@@ -1,8 +1,7 @@
-#include <sis_str.h>
+ï»¿#include <sis_str.h>
 #include <sis_map.h>
 
-
-// ÒÔµÚÒ»¸ö×Ö·û´®Îª³¤¶È£¬½øĞĞ±È½Ï
+// ä»¥ç¬¬ä¸€ä¸ªå­—ç¬¦ä¸²ä¸ºé•¿åº¦ï¼Œè¿›è¡Œæ¯”è¾ƒ
 int sis_strcase_match(const char *son_, const char *source_)
 {
 	if (!son_)
@@ -57,7 +56,7 @@ int sis_strncasecmp(const char *s1_, const char *s2_, size_t len_)
 	{
 		return 1;
 	}
-	for (int i = 1; tolower(*s1_) == tolower(*s2_); ++s1_, ++s2_, i++)
+	for (size_t i = 1; tolower(*s1_) == tolower(*s2_); ++s1_, ++s2_, i++)
 	{
 		// printf("%d|%d|%ld|%d\n",*s1_,*s2_,len_,i);
 		if (*s1_ == 0 || *s2_ == 0 || i >= len_)
@@ -78,7 +77,7 @@ int sis_strncmp(const char *s1_, const char *s2_, size_t len_)
 	{
 		return 1;
 	}
-	for (int i = 1; (*s1_) == (*s2_); ++s1_, ++s2_, i++)
+	for (size_t i = 1; (*s1_) == (*s2_); ++s1_, ++s2_, i++)
 	{
 		// printf("%d|%d|%ld|%d\n",*s1_,*s2_,len_,i);
 		if (*s1_ == 0 || *s2_ == 0 || i >= len_)
@@ -90,9 +89,12 @@ int sis_strncmp(const char *s1_, const char *s2_, size_t len_)
 	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
 }
 
-char *sis_strdup(const char *str_, size_t len_) //SIS_MALLOC
+char *sis_strdup(const char *str_, size_t len_) SIS_MALLOC
 {
-	if (!str_) { return NULL; }
+	if (!str_)
+	{
+		return NULL;
+	}
 	size_t len = len_;
 	if (len_ == 0)
 	{
@@ -104,16 +106,16 @@ char *sis_strdup(const char *str_, size_t len_) //SIS_MALLOC
 	return buffer;
 }
 
-char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...) 
+char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...) SIS_MALLOC
 {
-    char *str = (char *)sis_malloc(mlen_ + 1);
-  	va_list args;
-    va_start(args, fmt_);
+	char *str = (char *)sis_malloc(mlen_ + 1);
+	va_list args;
+	va_start(args, fmt_);
 	//snprintf(str, mlen_, fmt_, args);
 	vsnprintf(str, mlen_, fmt_, args);
-    va_end(args);
+	va_end(args);
 	str[mlen_] = 0;
-    return str;
+	return str;
 }
 
 const char *sis_str_split(const char *s_, size_t *len_, char c_)
@@ -128,12 +130,13 @@ const char *sis_str_split(const char *s_, size_t *len_, char c_)
 	return ptr;
 }
 
-const char *sis_str_replace(const char *in_, char ic_,char oc_)
+const char *sis_str_replace(const char *in_, char ic_, char oc_)
 {
 	char *ptr = (char *)in_;
 	while (ptr && *ptr)
 	{
-		if ((unsigned char)*ptr == ic_) {
+		if ((unsigned char)*ptr == ic_)
+		{
 			*ptr = oc_;
 		}
 		ptr++;
@@ -167,54 +170,67 @@ void sis_str_to_lower(char *in_)
 }
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 {
-    int count = 0;
-    const char *ptr = in_;
-    const char *start = ptr;
-    while(ptr&&*ptr)
-    {
-        if (*ptr == c) {           
-            if(idx_ == count){
-               	sis_strncpy(out_, olen_, start, ptr - start);
-				return; 
-            }
-            ptr++;
+	int count = 0;
+	const char *ptr = in_;
+	const char *start = ptr;
+	while (ptr && *ptr)
+	{
+		if (*ptr == c)
+		{
+			if (idx_ == count)
+			{
+				sis_strncpy(out_, olen_, start, ptr - start);
+				return;
+			}
+			ptr++;
 			start = ptr;
-			count++;            
-        } else {
-            ptr++;
-        }
-    }
-    if (ptr > start) {
-        sis_strncpy(out_, olen_, start, ptr - start);
-    } else {
-        sis_strcpy(out_, olen_, in_);
-    }
+			count++;
+		}
+		else
+		{
+			ptr++;
+		}
+	}
+	if (ptr > start)
+	{
+		sis_strncpy(out_, olen_, start, ptr - start);
+	}
+	else
+	{
+		sis_strcpy(out_, olen_, in_);
+	}
 }
 int sis_str_substr_nums(const char *s, char c)
 {
-	if (!s) {
+	if (!s)
+	{
 		return 0;
 	}
 	int i, len, count;
 	len = (int)strlen(s);
-	for (i = 0, count = 0; i<len; i++)
+	for (i = 0, count = 0; i < len; i++)
 	{
-		if (s[i] == c) count++;
+		if (s[i] == c)
+		{
+			count++;
+		}
 	}
-	if (len>0 && s[len - 1] != c) {
+	if (len > 0 && s[len - 1] != c)
+	{
 		count++;
 	}
 	return count;
 }
-int sis_str_subcmp(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
+int sis_str_subcmp(const char *sub, const char *s, char c) //-1æ²¡æœ‰åŒ¹é…çš„
 {
-	if (!sub || !s) {
+	if (!sub || !s)
+	{
 		return -1;
 	}
 	int i, pos, len, count;
 	len = (int)strlen(s);
 	pos = 0;
-	for (i = 0, count = 0; i<len; i++)
+	for (i = 0, count = 0; i < len; i++)
 	{
 		if (s[i] == c)
 		{
@@ -236,15 +252,16 @@ int sis_str_subcmp(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
 	}
 	return -1;
 }
-int sis_str_subcmp_head(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
+int sis_str_subcmp_head(const char *sub, const char *s, char c) //-1æ²¡æœ‰åŒ¹é…çš„
 {
-	if (!sub || !s) {
+	if (!sub || !s)
+	{
 		return -1;
 	}
 	int i, pos, len, count;
 	len = (int)strlen(s);
 	pos = 0;
-	for (i = 0, count = 0; i<len; i++)
+	for (i = 0, count = 0; i < len; i++)
 	{
 		if (s[i] == c)
 		{
@@ -256,30 +273,32 @@ int sis_str_subcmp_head(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
 			count++;
 		}
 	}
-	if (i>pos)
-	{   //strncmp
-		if (!sis_strncasecmp(sub, &s[pos], i - pos)){
+	if (i > pos)
+	{ //strncmp
+		if (!sis_strncasecmp(sub, &s[pos], i - pos))
+		{
 			return count;
 		}
 	}
 	return -1;
 }
-// s ´®Îª ¡°01,02¡±, ¼ì²ésubÖĞÓĞÃ»ÓĞÕâĞ©×Ö´®£¬sub=¡°1111¡° ·µ»Ø-1£¬ ¡±10200¡° ·µ»Ø 0 ±íÊ¾·¢ÏÖ×Ö´®
-int sis_str_subcmp_match(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
+// s ä¸²ä¸º â€œ01,02â€, æ£€æŸ¥subä¸­æœ‰æ²¡æœ‰è¿™äº›å­—ä¸²ï¼Œsub=â€œ1111â€œ è¿”å›-1ï¼Œ â€10200â€œ è¿”å› 0 è¡¨ç¤ºå‘ç°å­—ä¸²
+int sis_str_subcmp_match(const char *sub, const char *s, char c) //-1æ²¡æœ‰åŒ¹é…çš„
 {
-	if (!sub || !s) {
+	if (!sub || !s)
+	{
 		return -1;
 	}
 	char str[16];
 	int i, pos, len, count;
 	len = (int)strlen(s);
 	pos = 0;
-	for (i = 0, count = 0; i<len; i++)
+	for (i = 0, count = 0; i < len; i++)
 	{
 		if (s[i] == c)
 		{
 			sis_strncpy(str, 16, &s[pos], i - pos);
-			printf("%s,  %s\n",str, sub);
+			printf("%s,  %s\n", str, sub);
 			if (strstr(sub, str))
 			{
 				return count;
@@ -288,8 +307,8 @@ int sis_str_subcmp_match(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
 			count++;
 		}
 	}
-	if (i>pos)
-	{   //strncmp
+	if (i > pos)
+	{ //strncmp
 		sis_strncpy(str, 16, &s[pos], i - pos);
 		if (strstr(sub, str))
 		{
@@ -300,47 +319,55 @@ int sis_str_subcmp_match(const char *sub, const char *s, char c)  //-1Ã»ÓĞÆ¥ÅäµÄ
 }
 const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t size_)
 {
-	if (!e_||!s_) return NULL;
+	if (!e_ || !s_)
+	{
+		return NULL;
+	}
 
 	*len_ = 0;
 	int lines = 2;
 	int chars = 50;
 
 	const char *start = e_;
-	while(*start&&start>s_&&(lines>0||chars>0))
+	while (*start && start > s_ && (lines > 0 || chars > 0))
 	{
-		if((unsigned char)*start == '\n')  lines--;
+		if ((unsigned char)*start == '\n')
+		{
+			lines--;
+		}
 		start--;
 		chars--;
-		*len_=*len_ + 1;
+		*len_ = *len_ + 1;
 	}
-	// start++; // °Ñ»Ø³µÌø¹ı
+	// start++; // æŠŠå›è½¦è·³è¿‡
 	// printf("%.30s\n",start);
 	// *len_ = 0;
 	// lines = 2;
 	// int slen = size_- (e_ - s_);
 	// const char *stop = e_;
 	// while(*stop&&*len_<slen&&lines > 0) {
-	// 	if((unsigned char)*stop == '\n')  lines--;
+	// 	if((unsigned char)*stop == '\n') { lines--;}
 	// 	stop++;
 	// 	*len_=*len_ + 1;
 	// }
 	// printf("%.30s   %d\n",start, *len_);
 	return start;
 }
-// ÅĞ¶Ï ×Ö·û´®ÊÇ·ñÔÚsourceÖĞ£¬ Èç¹ûÔÚ£¬²¢ÇÒÍêÈ«Æ¥Åä¾Í·µ»Ø0 ·ñÔò·µ»Ø1 Ã»ÓĞÆ¥Åä¾Í·µ»Ø-1
-// source = aaa,bbbbbb,0001 
-// strstr²»È·¶¨ÊÇ·ñ»áĞŞ¸Äsource
-int sis_str_match(const char* substr_, const char* source_, char c)
+// åˆ¤æ–­ å­—ç¬¦ä¸²æ˜¯å¦åœ¨sourceä¸­ï¼Œ å¦‚æœåœ¨ï¼Œå¹¶ä¸”å®Œå…¨åŒ¹é…å°±è¿”å›0 å¦åˆ™è¿”å›1 æ²¡æœ‰åŒ¹é…å°±è¿”å›-1
+// source = aaa,bbbbbb,0001
+// strsträ¸ç¡®å®šæ˜¯å¦ä¼šä¿®æ”¹source
+int sis_str_match(const char *substr_, const char *source_, char c)
 {
 	char *s = strstr(source_, substr_);
-	if (s) {
+	if (s)
+	{
 		int len = strlen(substr_);
 		s += len;
 		// if(!strcmp(substr_,"603096")||!strcmp(substr_,"KDL")) {
 		// 	printf("c == %x\n",*s);
 		// }
-		if(!*s||*s==c) {
+		if (!*s || *s == c)
+		{
 			// printf("c == %x\n",*s);
 			return 0;
 		}
@@ -350,11 +377,13 @@ int sis_str_match(const char* substr_, const char* source_, char c)
 }
 const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_t olen_)
 {
-	char *s = strstr(src_,sign_);
-	if (s) {
+	char *s = strstr(src_, sign_);
+	if (s)
+	{
 		sis_strncpy(out_, olen_, src_, s - src_);
 		return s + strlen(sign_);
-	} else
+	}
+	else
 	{
 		sis_strncpy(out_, olen_, src_, strlen(src_));
 	}
@@ -397,9 +426,12 @@ bool sis_str_get_id(char *out_, size_t olen_)
 {
 	// static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
 	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; // 36
-	if (olen_ < 9) return false;
+	if (olen_ < 9)
+	{
+		return false;
+	}
 
-	struct tm ptm = { 0 };
+	struct tm ptm = {0};
 	sis_time_check(0, &ptm);
 	int len = (int)strlen(sign);
 	out_[0] = sign[(ptm.tm_year - 118) % len];
@@ -440,18 +472,18 @@ int main1()
 }
 int main()
 {
-// s ´®Îª ¡°01,02¡±, ¼ì²ésubÖĞÓĞÃ»ÓĞÕâĞ©×Ö´®£¬sub=¡°1111¡° ·µ»Ø-1£¬ ¡±10200¡° ·µ»Ø 0 ±íÊ¾·¢ÏÖ×Ö´®
-	int o = sis_str_subcmp_match("SH600600,SH600601", "600600", ',');  //-1Ã»ÓĞÆ¥ÅäµÄ
+// s ä¸²ä¸º â€œ01,02â€, æ£€æŸ¥subä¸­æœ‰æ²¡æœ‰è¿™äº›å­—ä¸²ï¼Œsub=â€œ1111â€œ è¿”å›-1ï¼Œ â€10200â€œ è¿”å› 0 è¡¨ç¤ºå‘ç°å­—ä¸²
+	int o = sis_str_subcmp_match("SH600600,SH600601", "600600", ',');  //-1æ²¡æœ‰åŒ¹é…çš„
 	printf("o=%d\n", o);
 	return 0;
 	char cn[20];
-	sis_get_spell_gbk("ÉÏÖ¤Ö¸Êı",cn, 12);
+	sis_get_spell_gbk("ä¸Šè¯æŒ‡æ•°",cn, 12);
 	printf("|%s|\n", cn);
 	return 0;
 
-	char* test = "MD001|000001|ÉÏÖ¤Ö¸Êı|       249282447| 189607223525.60|  2630.5195|  2600.5004|  2666.4853|  2597.3477|  2654.8795|  2654.8795|        |15:01:03.000";
+	char* test = "MD001|000001|ä¸Šè¯æŒ‡æ•°|       249282447| 189607223525.60|  2630.5195|  2600.5004|  2666.4853|  2597.3477|  2654.8795|  2654.8795|        |15:01:03.000";
 
-	char source[] = "hello,ÉÏº£, world! welcome to china!";
+	char source[] = "hello,ä¸Šæµ·, world! welcome to china!";
 	char delim[] = "|";
  
 	char *s = strdup(test);

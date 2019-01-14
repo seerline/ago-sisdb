@@ -1,4 +1,4 @@
-/* Hash Tables Implementation.
+﻿/* Hash Tables Implementation.
  *
  * This file implements in-memory hash tables with insert/del/replace/find/
  * get-random-element operations. Hash tables will auto-resize if needed
@@ -33,12 +33,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stddef.h>
-#include <time.h>
+#include <sis_os.h>
+#include "os_str.h"
+#include "os_time.h"
 
-#ifndef __DICT_H
-#define __DICT_H
+#ifndef _SIS_DICT_H
+#define _SIS_DICT_H
 
 #define DICT_OK 0
 #define DICT_ERR 1
@@ -196,4 +196,32 @@ extern "C" {
 }
 #endif
 
-#endif /* __DICT_H */
+#define s_sis_dict dict
+#define s_sis_dict_type dictType
+#define s_sis_dict_entry dictEntry
+#define s_sis_dict_iter dictIterator
+
+#define sis_dict_add dictAdd
+#define sis_dict_delete dictDelete
+#define sis_dict_fetch_value dictFetchValue
+#define sis_dict_find dictFind
+#define sis_dict_empty dictEmpty
+#define sis_dict_setval dictSetVal
+#define sis_dict_getval dictGetVal
+#define sis_dict_getkey dictGetKey
+
+#define sis_dict_unlink       dictUnlink
+#define sis_dict_unlink_free  dictFreeUnlinkedEntry
+ 
+#define sis_dict_get_iter dictGetSafeIterator
+#define sis_dict_next dictNext
+#define sis_dict_iter_free dictReleaseIterator
+
+#define sis_dict_create dictCreate
+#define sis_dict_destroy dictRelease
+#define sis_dict_get_uint dictGetUnsignedIntegerVal
+#define sis_dict_set_uint dictSetUnsignedIntegerVal
+#define sis_dict_hash_func dictGenHashFunction
+#define sis_dict_casehash_func dictGenCaseHashFunction
+
+#endif /* _SIS_DICT_H */

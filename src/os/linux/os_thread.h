@@ -54,20 +54,6 @@ int  sis_mutex_create(s_sis_mutex_t *mutex_);
 #define sis_mutex_init    	pthread_mutex_init
 #define sis_mutex_trylock   pthread_mutex_trylock
 
-// 多读一写锁定义
-typedef struct s_sis_mutex_rw {
-	s_sis_mutex_t mutex_s;
-	volatile bool try_write_b;
-	volatile int reads_i;
-	volatile int writes_i;
-} s_sis_mutex_rw;
-
-int  sis_mutex_rw_create(s_sis_mutex_rw *mutex_);
-void sis_mutex_rw_destroy(s_sis_mutex_rw *mutex_);
-void sis_mutex_rw_lock_r(s_sis_mutex_rw *mutex_);
-void sis_mutex_rw_unlock_r(s_sis_mutex_rw *mutex_);
-void sis_mutex_rw_lock_w(s_sis_mutex_rw *mutex_);
-void sis_mutex_rw_unlock_w(s_sis_mutex_rw *mutex_);
 
 typedef struct s_sis_wait {
 	s_sis_cond_t  cond;  

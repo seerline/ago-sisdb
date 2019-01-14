@@ -1,13 +1,9 @@
-
+﻿
 #include <sis_net.h>
-#include <sis_redis.h>
 
 s_sis_socket *sis_socket_create(s_sis_url *url_,int rale_)
 {
-	int style = sis_str_subcmp(url_->protocol,SIS_NET_PROTOCOL_TYPE,',');
-	if (style < 0) {
-		return NULL;
-	}
+
 	s_sis_socket *sock = sis_malloc(sizeof(s_sis_socket));
 	memmove(&sock->url, url_, sizeof(s_sis_url));
 	sock->rale = rale_;
@@ -45,56 +41,45 @@ s_sis_socket *sis_socket_create(s_sis_url *url_,int rale_)
 	sock->socket_send_message = NULL;
 	sock->socket_query_message = NULL;
 
-	switch (style)
-	{
-		case SIS_NET_PROTOCOL_REDIS:
-			sock->open = sis_redis_open;
-			sock->close = sis_redis_close;
-
-			sock->socket_send_message = sis_redis_send_message;
-			sock->socket_query_message = sis_redis_query_message;
-			break;	
-		default:
-			sock->status = SIS_NET_ERROR;
-			break;
-	}
 	sock->status = SIS_NET_INIT;
 	return sock;
 }
 
-void sis_socket_destroy(s_sis_socket *sock_)
+void sis_socket_destroy(void *sock_)
 {
-	if (!sock_) return;
-	// printf("sis_socket_destroy----%d  %d\n",sock_->status, SIS_NET_INIT);
-	// if (sock_->status != SIS_NET_INIT) return;
+	if (!sock_) {return;}
+	s_sis_socket *sock = (s_sis_socket *)sock_;
+
+	// printf("sis_socket_destroy----%d  %d\n",sock->status, SIS_NET_INIT);
+	// if (sock->status != SIS_NET_INIT) {return;}
 	// 无论任何时候都要释放
-	sock_->status = SIS_NET_EXIT;
+	sock->status = SIS_NET_EXIT;
 	//这里需要 等线程结束,必须加在这里，不能换顺序，否则退出时会有异常
-	sis_socket_close(sock_);
+	sis_socket_close(sock);
 
-	sis_mutex_rw_destroy(&sock_->mutex_message_send);
-	sis_mutex_rw_destroy(&sock_->mutex_message_recv);
+	sis_mutex_rw_destroy(&sock->mutex_message_send);
+	sis_mutex_rw_destroy(&sock->mutex_message_recv);
 
-	sis_mutex_rw_destroy(&sock_->mutex_read);
-	sis_mutex_rw_destroy(&sock_->mutex_write);
+	sis_mutex_rw_destroy(&sock->mutex_read);
+	sis_mutex_rw_destroy(&sock->mutex_write);
 
-	s_sis_list_destroy(sock_->message_send);
-	s_sis_list_destroy(sock_->message_recv);
-	s_sis_list_destroy(sock_->sub_keys);
-	s_sis_list_destroy(sock_->pub_keys);
+	s_sis_list_destroy(sock->message_send);
+	s_sis_list_destroy(sock->message_recv);
+	s_sis_list_destroy(sock->sub_keys);
+	s_sis_list_destroy(sock->pub_keys);
 
-	sis_free(sock_);
+	sis_free(sock);
 }
 
 void sis_socket_open(s_sis_socket *sock_){
 	sock_->status_read = SIS_NET_WAITCONNECT;
 	sock_->status_write = SIS_NET_WAITCONNECT;
-	if (sock_->open) sock_->open(sock_);
+	if (sock_->open) {sock_->open(sock_);}
 }
 void sis_socket_close(s_sis_socket *sock_){
 	if (sock_->status_read != SIS_NET_CONNECTSTOP ||sock_->status_write != SIS_NET_CONNECTSTOP)
 	{
-		if (sock_->close) sock_->close(sock_);
+		if (sock_->close) {sock_->close(sock_);}
 	} 
 	sock_->status_read = SIS_NET_CONNECTSTOP;
 	sock_->status_write = SIS_NET_CONNECTSTOP;

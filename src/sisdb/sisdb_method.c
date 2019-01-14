@@ -70,7 +70,7 @@ void *sisdb_method_write_incr(void *obj_, void *node_)
 	{
 		return  SIS_METHOD_VOID_FALSE;
 	} 
-	if (tb->control.issubs)
+	if (tb->control.ispubs)
 	{
 		uint64 u64_last = sisdb_field_get_uint(fu, obj->collect->lasted);
 		if (u64 <= u64_last)
@@ -79,7 +79,7 @@ void *sisdb_method_write_incr(void *obj_, void *node_)
 		}
 	} else 
 	{
-		const char *last = sis_struct_list_get(obj->collect->value, obj->collect->value->count - 1);
+		const char *last = sis_struct_list_last(obj->collect->value);
 		uint64 u64_last = sisdb_field_get_uint(fu, last);
 		if (u64 <= u64_last)
 		{
@@ -246,8 +246,9 @@ void *sisdb_method_subscribe_gap(void *obj_, void *node_)
 {	
 	s_sis_collect_method_buffer *obj = (s_sis_collect_method_buffer *)obj_;
 	// s_sis_json_node *node = (s_sis_json_node *)node_;
-
 	uint64 u64 = sisdb_field_get_uint(obj->field, obj->in) - sisdb_field_get_uint(obj->field, obj->collect->front);
+
+	// printf("gap: %d - %d = %d\n",sisdb_field_get_uint(obj->field, obj->in),sisdb_field_get_uint(obj->field, obj->collect->front), u64);
 	sisdb_field_set_uint(obj->field, obj->out, u64);
 
 	return NULL; 

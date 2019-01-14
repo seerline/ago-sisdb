@@ -4,14 +4,9 @@
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
-// #include <string.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <ctype.h>
 
-#define set_time_get_day gettimeofday
+#define sis_time_get_day gettimeofday
 
-void sis_time_getgm(struct tm *m_, const time_t* t_);
 void sis_localtime(struct tm *m, const time_t* t);
 
 //获取当前秒数

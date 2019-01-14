@@ -41,6 +41,10 @@
 #define SIS_FIELD_TYPE_FLOAT   3  // "FLOAT"  //float
 #define SIS_FIELD_TYPE_CHAR    4  // "CHAR"  定长字符串
 #define SIS_FIELD_TYPE_STRING  5  // "STRING"  // 不定长字符串;
+// 定义该类型主要是为了压缩时方便
+#define SIS_FIELD_TYPE_MSEC    8 // "MSEC"  //int64 格式，精确到毫秒  
+#define SIS_FIELD_TYPE_SECOND  9 // "SECOND"  //int32 time_t格式，精确到秒  
+#define SIS_FIELD_TYPE_DATE    10 // "DATE"  //int32 20170101格式，精确到天
 //传入格式为 field名称:数据类型:长度; SIS_FIELD_TYPE_STRING不填长度默认为16;SIS
 #define SIS_FIELD_TYPE_JSON    11  // "JSON"    // json格式字符串;
 #define SIS_FIELD_TYPE_PRICE   12  // "PRICE"   // 专指价格，需要和股票info中的小数点匹配
@@ -48,10 +52,6 @@
 // zint 1个符号位，2位取值为 00 = 1 | 01 = 16 | 10 = 256 | 11 = 65536
 // 尾数乘以幂，最大可以表示为32万亿的数量和金额；
 #define SIS_FIELD_TYPE_AMOUNT  14  // "AMOUNT"  // 专指成交金额，特殊类型zint存储，
-// 定义该类型主要是为了压缩时方便
-#define SIS_FIELD_TYPE_MSEC    15 // "MSEC"  //int64 格式，精确到毫秒  
-#define SIS_FIELD_TYPE_SECOND  16 // "SECOND"  //int32 time_t格式，精确到秒  
-#define SIS_FIELD_TYPE_DATE    17 // "DATE"  //int32 20170101格式，精确到天
 
 
 // 数据转换只能从低到高，如果day要转min一律失败

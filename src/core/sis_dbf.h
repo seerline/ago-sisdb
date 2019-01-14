@@ -1,9 +1,11 @@
-#ifndef _SIS_FILE_DBF_H
+﻿#ifndef _SIS_FILE_DBF_H
 #define _SIS_FILE_DBF_H
 
+#include <sis_os.h>
 #include <sis_core.h>
 #include <sis_file.h>
 #include <sis_list.h>
+#include <sis_map.h>
 
 #pragma pack(push,1)
 
@@ -18,7 +20,7 @@ typedef struct s_sis_dbf_head
 	uint16 record_len; // 记录长度
 	uint8  res1[20];
 }s_sis_dbf_head;
-
+//32
 typedef struct s_sis_dbf_field
 {
 	char name[11];
@@ -29,13 +31,14 @@ typedef struct s_sis_dbf_field
 	char dot;
 	char res2[14];
 }s_sis_dbf_field;
-
+//32
 typedef struct s_sis_file_dbf 
 {
 	sis_file_handle    fp;
 	s_sis_dbf_head     head;
 
 	s_sis_struct_list *fields;   // 存储所有字段  s_sis_dbf_field 结构体列表
+	s_sis_map_buffer  *map_fields;   // 存储所有字段  s_sis_dbf_field 结构体列表
 
 	char  *buffer;
 
@@ -61,6 +64,8 @@ void sis_file_dbf_close(s_sis_file_dbf *dbf_);
 int64 sis_file_dbf_get_int(s_sis_file_dbf *dbf_, int index, const char *key_, int64 defaultvalue_);
 double sis_file_dbf_get_double(s_sis_file_dbf *dbf_, int index, const char *key_, double defaultvalue_);
 void sis_file_dbf_get_str(s_sis_file_dbf *dbf_, int index, const char *key_,char *out_, size_t olen_);
+
+void sis_file_dbf_get_str_of_fid(s_sis_file_dbf *dbf_, int index, int fid, char *out_, size_t olen_);
 
 void sis_file_dbf_set_int(s_sis_file_dbf *dbf_, int index, char *key_, uint64 in_);
 void sis_file_dbf_set_double(s_sis_file_dbf *dbf_, int index, char *key_, double in_, int dot_);

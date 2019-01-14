@@ -1,8 +1,8 @@
-
+ï»¿
 #include "sis_node.h"
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_list_node --------------------------------//
-//  ²Ù×÷ s_sis_list_node ÁĞ±íµÄº¯Êı
+//  æ“ä½œ s_sis_list_node åˆ—è¡¨çš„å‡½æ•°
 ///////////////////////////////////////////////////////////////////////////
 s_sis_list_node *sis_sdsnode_create(const void *in, size_t inlen)
 {
@@ -100,7 +100,7 @@ s_sis_list_node *sis_sdsnode_push_node(s_sis_list_node *node_, const void *in, s
 	{
 		return sis_sdsnode_create(in, inlen);
 	}
-	s_sis_list_node *last = sis_sdsnode_last_node(node_); //ÕâÀïÒ»¶¨·µ»ØÕæ
+	s_sis_list_node *last = sis_sdsnode_last_node(node_); //è¿™é‡Œä¸€å®šè¿”å›çœŸ
 	s_sis_list_node *node = (s_sis_list_node *)sis_malloc(sizeof(s_sis_list_node));
 	s_sis_sds ptr = sis_sdsnewlen(in, inlen);
 	node->value = ptr;
@@ -174,20 +174,24 @@ int sis_sdsnode_get_count(s_sis_list_node *node_)
 }
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_list_node --------------------------------//
-//  ²Ù×÷ s_stsis_ssage_node ÁĞ±íµÄº¯Êı
+//  æ“ä½œ s_stsis_ssage_node åˆ—è¡¨çš„å‡½æ•°
 ///////////////////////////////////////////////////////////////////////////
 
 s_sis_message_node *sis_message_node_create()
 {
 	s_sis_message_node *o = (s_sis_message_node *)sis_malloc(sizeof(*o));
-	memset(o,0,sizeof(s_sis_message_node));
+	memset(o, 0, sizeof(s_sis_message_node));
 	// o->links = sis_sdsnode_create(NULL,0);
 	// o->nodes = sis_sdsnode_create(NULL,0);
 	return o;
 }
 
-void sis_message_node_destroy(void *in_) {
-	if (in_==NULL) return;
+void sis_message_node_destroy(void *in_)
+{
+	if (in_ == NULL)
+	{
+		return;
+	}
 	s_sis_message_node *in = (s_sis_message_node *)in_;
 	sis_sdsnode_destroy(in->links);
 	sis_sdsnode_destroy(in->nodes);
@@ -202,16 +206,31 @@ void sis_message_node_destroy(void *in_) {
 
 s_sis_message_node *sis_message_node_clone(s_sis_message_node *in_)
 {
-	if (in_==NULL) return NULL;
+	if (in_ == NULL)
+	{
+		return NULL;
+	}
 	s_sis_message_node *o = sis_message_node_create();
 
-	if (in_->command) o->command = sis_sdsdup(in_->command);
-	if (in_->key) o->key = sis_sdsdup(in_->key);
-	if (in_->argv) o->argv = sis_sdsdup(in_->argv);
-	if (in_->address) o->address = sis_sdsdup(in_->address);
+	if (in_->command)
+	{
+		o->command = sis_sdsdup(in_->command);
+	}
+	if (in_->key)
+	{
+		o->key = sis_sdsdup(in_->key);
+	}
+	if (in_->argv)
+	{
+		o->argv = sis_sdsdup(in_->argv);
+	}
+	if (in_->address)
+	{
+		o->address = sis_sdsdup(in_->address);
+	}
 
 	o->links = sis_sdsnode_clone(in_->links);
 	o->nodes = sis_sdsnode_clone(in_->nodes);
-	
+
 	return o;
 }

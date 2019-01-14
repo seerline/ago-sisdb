@@ -1,6 +1,79 @@
-
+﻿
 #include "sis_thread.h"
 
+////////////////////////
+// 多读一写锁定义
+////////////////////////
+int sis_mutex_rw_create(s_sis_mutex_rw *mutex_)
+{
+	int o = sis_mutex_create(&mutex_->mutex_s);
+	mutex_->try_write_b = false;
+	mutex_->reads_i = 0;
+	mutex_->writes_i = 0;
+	return o;
+}
+void sis_mutex_rw_destroy(s_sis_mutex_rw *mutex_)
+{
+	assert(mutex_);
+	sis_mutex_destroy(&mutex_->mutex_s);
+}
+void sis_mutex_rw_lock_r(s_sis_mutex_rw *mutex_)
+{
+	assert(mutex_);
+	for (;;)
+	{
+		sis_mutex_lock(&mutex_->mutex_s);
+		if (mutex_->try_write_b || mutex_->writes_i > 0)
+		{
+			sis_mutex_unlock(&mutex_->mutex_s);
+			sis_sleep(50);
+			continue;
+		}
+		assert(mutex_->reads_i >= 0);
+		++mutex_->reads_i;
+		sis_mutex_unlock(&mutex_->mutex_s);
+		break;
+	}
+}
+void sis_mutex_rw_unlock_r(s_sis_mutex_rw *mutex_)
+{
+	assert(mutex_);
+	sis_mutex_lock(&mutex_->mutex_s);
+	--mutex_->reads_i;
+	assert(mutex_->reads_i >= 0);
+	sis_mutex_unlock(&mutex_->mutex_s);
+}
+void sis_mutex_rw_lock_w(s_sis_mutex_rw *mutex_)
+{
+	for (;;)
+	{
+		sis_mutex_lock(&mutex_->mutex_s);
+		mutex_->try_write_b = true;
+		if (mutex_->reads_i > 0 || mutex_->writes_i > 0)
+		{
+			sis_mutex_unlock(&mutex_->mutex_s);
+			sis_sleep(50);
+			continue;
+		}
+		mutex_->try_write_b = false;
+		assert(mutex_->writes_i >= 0);
+		++mutex_->writes_i;
+		sis_mutex_unlock(&mutex_->mutex_s);
+		break;
+	}
+}
+
+void sis_mutex_rw_unlock_w(s_sis_mutex_rw *mutex_)
+{
+	assert(mutex_);
+	sis_mutex_lock(&mutex_->mutex_s);
+	--mutex_->writes_i;
+	assert(mutex_->writes_i >= 0);
+	sis_mutex_unlock(&mutex_->mutex_s);
+}
+////////////////////////
+// 线程任务定义
+/////////////////////////
 bool sis_plan_task_working(s_sis_plan_task *task_)
 {
 	return task_->working;
@@ -79,7 +152,7 @@ void sis_plan_task_destroy(s_sis_plan_task *task_)
 	task_->working = false;
 
 	sis_thread_wait_kill(&task_->wait);
-	sis_sleep(300); // ?????????
+	sis_sleep(300); 
 	if (task_->work_pid)
 	{
 		sis_thread_join(task_->work_pid);

@@ -1,4 +1,4 @@
-
+ï»¿
 #ifndef _SIS_JSON_H
 #define _SIS_JSON_H
 
@@ -7,7 +7,7 @@
 #include <sis_str.h>
 
 #define SIS_JSON_NULL    0
-#define SIS_JSON_ROOT    1 // ¸ù½Úµã
+#define SIS_JSON_ROOT    1 // æ ¹èŠ‚ç‚¹
 #define SIS_JSON_INT     2
 #define SIS_JSON_DOUBLE  3
 #define SIS_JSON_STRING  4
@@ -27,12 +27,12 @@ typedef struct s_sis_json_node
 
 typedef struct s_sis_json_handle
 {
-	const char * error;      // Ö¸Ïò´íÎóµÄµØÖ·
-	// bool   readonly;   // ¶ÁĞ´Ä£Ê½£¬Ö»¶Á¾Í´Ócontent
-	// char  *content;    // ÎÄ¼şÄÚÈİ£¬Ö»¶ÁÄ£Ê½ÏÂÊ¹ÓÃµÄÓ³Éä
-	// size_t position;   // µ±Ç°Î»ÖÃ£¬ÁÙÊ±±äÁ¿£¬Ö»¶Á½âÎöÊ±ÓÃ 
+	const char * error;      // æŒ‡å‘é”™è¯¯çš„åœ°å€
+	// bool   readonly;   // è¯»å†™æ¨¡å¼ï¼Œåªè¯»å°±ä»content
+	// char  *content;    // æ–‡ä»¶å†…å®¹ï¼Œåªè¯»æ¨¡å¼ä¸‹ä½¿ç”¨çš„æ˜ å°„
+	// size_t position;   // å½“å‰ä½ç½®ï¼Œä¸´æ—¶å˜é‡ï¼Œåªè¯»è§£ææ—¶ç”¨ 
 	struct s_sis_json_node *node;
-} s_sis_json_handle; //×¨ÃÅÌá¹©¸ø¶ÁjsonµÄ¿ìËÙ½á¹¹Ìå
+} s_sis_json_handle; //ä¸“é—¨æä¾›ç»™è¯»jsonçš„å¿«é€Ÿç»“æ„ä½“
 
 //////////////////////////////////////////////
 //   output main function define
@@ -41,29 +41,29 @@ s_sis_json_handle *sis_json_open(const char *fn_);
 void sis_json_delete_node(s_sis_json_node *node_);
 void sis_json_close(s_sis_json_handle *handle_);
 
-s_sis_json_handle *sis_json_load(const char *content_, size_t len_);  //°´ÄÚÈİ¼ÓÔØ
-void sis_json_save(s_sis_json_node *node_, const char *fn_); //°Ñjson´æµ½ÎÄ¼şÖĞ
+s_sis_json_handle *sis_json_load(const char *content_, size_t len_);  //æŒ‰å†…å®¹åŠ è½½
+void sis_json_save(s_sis_json_node *node_, const char *fn_); //æŠŠjsonå­˜åˆ°æ–‡ä»¶ä¸­
 
-s_sis_json_node *sis_json_clone(s_sis_json_node *src_, int child_); // child_==0 ±íÊ¾Ö»µ±Ç°½Úµã
+s_sis_json_node *sis_json_clone(s_sis_json_node *src_, int child_); // child_==0 è¡¨ç¤ºåªå½“å‰èŠ‚ç‚¹
 
 //////////////////////////////////////////////
 //======== write option =============//
 //   write function define
 ///////////////////////////////////////////////
-s_sis_json_node *sis_json_create_array();  //´´½¨Ò»¸öÊı×é
-s_sis_json_node *sis_json_create_object(); //´´½¨Ò»¸ö¶ÔÏó
+s_sis_json_node *sis_json_create_array();  //åˆ›å»ºä¸€ä¸ªæ•°ç»„
+s_sis_json_node *sis_json_create_object(); //åˆ›å»ºä¸€ä¸ªå¯¹è±¡
 
 //*********************************//
-//  ÒÔÏÂº¯Êı¶¼»á¸Ä±äÖ»¶ÁÊôĞÔ
+//  ä»¥ä¸‹å‡½æ•°éƒ½ä¼šæ”¹å˜åªè¯»å±æ€§
 //*********************************//
 
-// ×·¼Óµ½childµÄÄ©Î²£¬key²»ÄÜÓĞ'.'
+// è¿½åŠ åˆ°childçš„æœ«å°¾ï¼Œkeyä¸èƒ½æœ‰'.'
 void sis_json_array_add_node(s_sis_json_node *source_, s_sis_json_node *node_);
 void sis_json_object_add_node(s_sis_json_node *source_, const char *key_, s_sis_json_node *node_);
 
-// ×·¼Óµ½childµÄÄ©Î²£¬key²»ÄÜÓĞ'.'
-// Ôö¼Óµ½child£¬ÔÚÄ©Î²Ôö¼ÓÒ»¸öÔªËØ
-// ĞŞ¸Äµ½child£¬Èç¹ûÃ»ÓĞ·¢ÏÖkey_,¾ÍÔö¼ÓÒ»¸ö
+// è¿½åŠ åˆ°childçš„æœ«å°¾ï¼Œkeyä¸èƒ½æœ‰'.'
+// å¢åŠ åˆ°childï¼Œåœ¨æœ«å°¾å¢åŠ ä¸€ä¸ªå…ƒç´ 
+// ä¿®æ”¹åˆ°childï¼Œå¦‚æœæ²¡æœ‰å‘ç°key_,å°±å¢åŠ ä¸€ä¸ª
 void sis_json_object_add_int(s_sis_json_node *node_, const char *key_, long value_);
 void sis_json_object_set_int(s_sis_json_node *node_, const char *key_, long value_);
 
@@ -77,9 +77,9 @@ void sis_json_object_add_string(s_sis_json_node *node_, const char *key_, const 
 void sis_json_object_set_string(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_);
 
 //----------------------------------------------//
-// ×·¼Óµ½childµÄÄ©Î²£¬key²»ÄÜÓĞ'.'
-// Ôö¼Óµ½child£¬ÔÚÄ©Î²Ôö¼ÓÒ»¸öÔªËØ
-// ĞŞ¸Äµ½child£¬Èç¹ûÃ»ÓĞ·¢ÏÖkey_,¾ÍÔö¼ÓÒ»¸ö 
+// è¿½åŠ åˆ°childçš„æœ«å°¾ï¼Œkeyä¸èƒ½æœ‰'.'
+// å¢åŠ åˆ°childï¼Œåœ¨æœ«å°¾å¢åŠ ä¸€ä¸ªå…ƒç´ 
+// ä¿®æ”¹åˆ°childï¼Œå¦‚æœæ²¡æœ‰å‘ç°key_,å°±å¢åŠ ä¸€ä¸ª 
 void sis_json_array_add_int(s_sis_json_node *node_, long value_);
 void sis_json_array_set_int(s_sis_json_node *node_, int index_, long value_);
 
@@ -94,7 +94,7 @@ void sis_json_array_set_string(s_sis_json_node *node_, int index_,  const char *
 
 //-------------------------------------------------------------//
 //======== read & print option =============//
-//  Ìá¹©¸øÆäËûÒÔs_sis_sis__nodeÎª»ù´¡µÄÎÄ¼şreadºÍÊä³öµÄ²Ù×÷
+//  æä¾›ç»™å…¶ä»–ä»¥s_sis_sis__nodeä¸ºåŸºç¡€çš„æ–‡ä»¶readå’Œè¾“å‡ºçš„æ“ä½œ
 //-------------------------------------------------------------//
 s_sis_json_node *sis_json_create_node(void);
 
@@ -118,7 +118,7 @@ int sis_json_get_size(s_sis_json_node *node_);
 s_sis_json_node *sis_json_first_node(s_sis_json_node *node_);
 s_sis_json_node *sis_json_next_node(s_sis_json_node *node_);
 s_sis_json_node *sis_json_last_node(s_sis_json_node *node_);
-//¸ù¾İÂ·¾¶¶ÁÈ¡Êı¾İ£¬Â·¾¶Îª aaa.bbb.ccc
+//æ ¹æ®è·¯å¾„è¯»å–æ•°æ®ï¼Œè·¯å¾„ä¸º aaa.bbb.ccc
 s_sis_json_node *sis_json_cmp_child_node(s_sis_json_node *object_, const char *key_);
 s_sis_json_node *sis_json_find_node(s_sis_json_node *node_, const char *path_);
 

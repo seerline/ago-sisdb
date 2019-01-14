@@ -2,19 +2,31 @@
 #include <os_thread.h>
 #include <os_malloc.h>
 
-bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread_id_t *thread_)
+bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void *val_, s_sis_thread_id_t *thread_)
 {
 	s_sis_thread_id_t result = 0;
 	pthread_attr_t attr;
 	int irc;
-	irc = pthread_attr_init(&attr); 
-	if(irc) { return false; }
-	irc = pthread_attr_setstacksize(&attr, 1024 * 64);//测试2008-07-15
-	if(irc) { return false; }
+	irc = pthread_attr_init(&attr);
+	if (irc)
+	{
+		return false;
+	}
+	irc = pthread_attr_setstacksize(&attr, 1024 * 64); //测试2008-07-15
+	if (irc)
+	{
+		return false;
+	}
 	irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	if(irc) { return false; }
+	if (irc)
+	{
+		return false;
+	}
 	irc = pthread_create(&result, &attr, func_, val_);
-	if(irc) { return false; }
+	if (irc)
+	{
+		return false;
+	}
 	pthread_attr_destroy(&attr);
 	*thread_ = result;
 	return true;
@@ -47,129 +59,60 @@ int sis_mutex_create(s_sis_mutex_t *mutex_)
 	pthread_mutexattr_settype(&attr, SIS_PTHREAD_MUTEX_RECURSIVE);
 	return pthread_mutex_init(mutex_, &attr);
 }
-
-////////////////////////
-// 多读一写锁定义
-////////////////////////
-int sis_mutex_rw_create(s_sis_mutex_rw *mutex_)
+/////////////////////////////////////
+//
+//////////////////////////////////////////
+void sis_thread_wait_start(s_sis_wait *wait_)
 {
-	int o = sis_mutex_create(&mutex_->mutex_s);
-	mutex_->try_write_b = false;
-	mutex_->reads_i = 0;
-	mutex_->writes_i = 0;
-	return o;
+	sis_mutex_lock(&wait_->mutex);
 }
-void sis_mutex_rw_destroy(s_sis_mutex_rw *mutex_)
+void sis_thread_wait_stop(s_sis_wait *wait_)
 {
-	assert(mutex_);
-	sis_mutex_destroy(&mutex_->mutex_s);
-}
-void sis_mutex_rw_lock_r(s_sis_mutex_rw *mutex_)
-{
-	assert(mutex_);
-	for (;;)
-	{
-		sis_mutex_lock(&mutex_->mutex_s);
-		if (mutex_->try_write_b || mutex_->writes_i > 0)
-		{
-			sis_mutex_unlock(&mutex_->mutex_s);
-			sis_sleep(50);
-			continue;
-		}
-		assert(mutex_->reads_i >= 0);
-		++mutex_->reads_i;
-		sis_mutex_unlock(&mutex_->mutex_s);
-		break;
-	}
-}
-void sis_mutex_rw_unlock_r(s_sis_mutex_rw *mutex_)
-{
-	assert(mutex_);
-	sis_mutex_lock(&mutex_->mutex_s);
-	--mutex_->reads_i;
-	assert(mutex_->reads_i >= 0);
-	sis_mutex_unlock(&mutex_->mutex_s);
-}
-void sis_mutex_rw_lock_w(s_sis_mutex_rw *mutex_)
-{
-	for (;;)
-	{
-		sis_mutex_lock(&mutex_->mutex_s);
-		mutex_->try_write_b = true;
-		if (mutex_->reads_i > 0 || mutex_->writes_i > 0)
-		{
-			sis_mutex_unlock(&mutex_->mutex_s);
-			sis_sleep(50);
-			continue;
-		}
-		mutex_->try_write_b = false;
-		assert(mutex_->writes_i >= 0);
-		++mutex_->writes_i;
-		sis_mutex_unlock(&mutex_->mutex_s);
-		break;
-	}
-}
-
-void sis_mutex_rw_unlock_w(s_sis_mutex_rw *mutex_)
-{
-	assert(mutex_);
-	sis_mutex_lock(&mutex_->mutex_s);
-	--mutex_->writes_i;
-	assert(mutex_->writes_i >= 0);
-	sis_mutex_unlock(&mutex_->mutex_s);
-}
-
-  
-void  sis_thread_wait_start(s_sis_wait *wait_) 
-{
-	sis_mutex_lock(&wait_->mutex); 	
-}
-void  sis_thread_wait_stop(s_sis_wait *wait_) 
-{
-	sis_mutex_unlock(&wait_->mutex); 	
+	sis_mutex_unlock(&wait_->mutex);
 }
 #ifdef __RELEASE__
 // 要测试，暂时先这样，后期要检查问题
-int  sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
+int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
 	struct timeval tv;
-	struct timespec ts; 
-	set_time_get_day(&tv, NULL);
-	ts.tv_sec = tv.tv_sec + delay_;  
-    ts.tv_nsec = tv.tv_usec * 1000;  
+	struct timespec ts;
+	sis_time_get_day(&tv, NULL);
+	ts.tv_sec = tv.tv_sec + delay_;
+	ts.tv_nsec = tv.tv_usec * 1000;
 
-	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);  
-	// 返回 ETIMEDOUT 就正常处理
+	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
+	// 返回 SIS_ETIMEDOUT 就正常处理
 }
 #else
-int  sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
+// #include <stdio.h>
+int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
-	while(delay_)
+	while (delay_)
 	{
+		// printf("%d\n",delay_);
 		sis_sleep(1000);
 		delay_--;
 	}
-	return ETIMEDOUT;
+	return SIS_ETIMEDOUT;
 }
 #endif
 
-void  sis_thread_wait_create(s_sis_wait *wait_)
+void sis_thread_wait_create(s_sis_wait *wait_)
 {
-    pthread_cond_init(&wait_->cond, NULL);  
-    pthread_mutex_init(&wait_->mutex, NULL);  
-	
+	pthread_cond_init(&wait_->cond, NULL);
+	pthread_mutex_init(&wait_->mutex, NULL);
 }
 void sis_thread_wait_kill(s_sis_wait *wait_)
 {
-    pthread_mutex_lock(&wait_->mutex);  
-    // pthread_cond_signal(&wait_.cond);  
-	pthread_cond_broadcast(&wait_->cond); 
-    pthread_mutex_unlock(&wait_->mutex);  
+	pthread_mutex_lock(&wait_->mutex);
+	// pthread_cond_signal(&wait_.cond);
+	pthread_cond_broadcast(&wait_->cond);
+	pthread_mutex_unlock(&wait_->mutex);
 }
 void sis_thread_wait_destroy(s_sis_wait *wait_)
 {
-    pthread_cond_destroy(&wait_->cond);  
-    pthread_mutex_destroy(&wait_->mutex);  
+	pthread_cond_destroy(&wait_->cond);
+	pthread_mutex_destroy(&wait_->mutex);
 }
 
 #if 0

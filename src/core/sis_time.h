@@ -1,8 +1,10 @@
-#ifndef _SIS_TIME_H
+ï»¿#ifndef _SIS_TIME_H
 #define _SIS_TIME_H
 
 #include <sis_core.h>
 #include <sis_str.h>
+#include <sis_os.h>
+#include <os_time.h>
 
 int sis_time_get_iyear(time_t ttime); //2015
 int sis_time_get_imonth(time_t ttime); //201510
@@ -12,31 +14,33 @@ int sis_time_get_id(int id); // 233035-000
 int sis_time_get_itime(time_t ttime); //103020
 int sis_time_get_iminute(time_t ttime); //1030
 int sis_time_get_isec(time_t ttime); // 20
-int sis_time_get_showtime(time_t ttime); //0212103020 ÔÂÈÕÊ±¼ä
+int sis_time_get_showtime(time_t ttime); //0212103020 æœˆæ—¥æ—¶é—´
 
 short sis_time_get_offset_iminute(short nMin, int offsec);
-time_t sis_time_get_offset_time(time_t curTime, int offsec);  //Ôö¼Ó»ò¼õÉÙÃë£¬·µ»Øtime_t
+time_t sis_time_get_offset_time(time_t curTime, int offsec);  //å¢åŠ æˆ–å‡å°‘ç§’ï¼Œè¿”å›time_t
 int sis_time_get_iminute_offset_i(int begin, int end); //930-1130 
-int sis_time_get_iminute_offset_time(time_t tstart, time_t tend);// ÅĞ¶ÏÖĞ¼ä¼ä¸ô¼¸·ÖÖÓ
-int sis_time_get_iminute_minnum(int source, int minnum);  //Ôö¼Ó»ò¼õÉÙ·ÖÖÓ  900,-5 --> 855
+int sis_time_get_iminute_offset_time(time_t tstart, time_t tend);// åˆ¤æ–­ä¸­é—´é—´éš”å‡ åˆ†é’Ÿ
+int sis_time_get_iminute_minnum(int source, int minnum);  //å¢åŠ æˆ–å‡å°‘åˆ†é’Ÿ  900,-5 --> 855
 
 time_t sis_time_make_time(int tdate, int ttime);
-int sis_time_get_week_ofday(int today);// ÅĞ¶ÏÊÇÖÜ¼¸ [0,6]
-int sis_time_get_month_ofday(int today);// ÅĞ¶ÏÊÇ¼¸ÔÂ[0,11]
-int sis_time_get_dayoffset_ofday(int tstart, int tend);// ÅĞ¶ÏÖĞ¼ä¼ä¸ô¼¸Ìì
-int sis_time_next_work_day(int today_, int offset_);//Ìø¹ıÖÜÄ©
+int sis_time_get_week_ofday(int today);// åˆ¤æ–­æ˜¯å‘¨å‡  [0,6]
+int sis_time_get_month_ofday(int today);// åˆ¤æ–­æ˜¯å‡ æœˆ[0,11]
+int sis_time_get_dayoffset_ofday(int tstart, int tend);// åˆ¤æ–­ä¸­é—´é—´éš”å‡ å¤©
+int sis_time_next_work_day(int today_, int offset_);//è·³è¿‡å‘¨æœ«
 
-int sis_time_get_offset_day(int today_, int offset_); // ¸ù¾İµ±Ç°ÈÕÆÚ20100101Æ«ÒÆoffsetÌì£¬
-// < 0 ÍùÇ°Êı > 0 ÍùºóÊı
-bool sis_time_str_is_date(char* date); //ÅĞ¶Ï×Ö·û´®ÊÇ²»ÊÇÈÕÆÚ20150212
+int sis_time_get_offset_day(int today_, int offset_); // æ ¹æ®å½“å‰æ—¥æœŸ20100101åç§»offsetå¤©ï¼Œ
+// < 0 å¾€å‰æ•° > 0 å¾€åæ•°
+bool sis_time_str_is_date(char* date); //åˆ¤æ–­å­—ç¬¦ä¸²æ˜¯ä¸æ˜¯æ—¥æœŸ20150212
 
 void sis_time_format_minute(char * out_, size_t olen_, time_t tt_); //"930"
 void sis_time_format_date(char * out_, size_t olen_, time_t tt_); //"20150912"
 void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_); //"20150912103000"
+void sis_time_format_datetime_longstr(char * out_, size_t olen_, int idate_, int itime_); // "2008-12-13 09:30:00"
 
 int sis_time_get_minute_from_shortstr(char* time);//"12:30" => 1230
 int sis_time_get_itime_from_str(char* time);//"12:30:38" => 123038
 int sis_time_get_idate_from_str(const char* time);//"20150212" => 20150212
+int sis_time_get_idate_from_shstr(const char* time);//"2015-02-12" => 20150212
 int sis_time_get_time_from_longstr(const char* , int* , int* ); //"2015-10-20 12:30:38" => 20151020,123038
 int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:38.110" => 20151020,123038
 
@@ -53,14 +57,14 @@ void sis_delay_busy(s_sis_time_delay *m);
 void sis_delay_destroy(s_sis_time_delay *m);
 
 typedef struct s_sis_time_pair{
-	uint16	first;  // µ¥Î»·ÖÖÓ
-	uint16	second; // µ¥Î»·ÖÖÓ
+	uint16	first;  // å•ä½åˆ†é’Ÿ
+	uint16	second; // å•ä½åˆ†é’Ÿ
 }s_sis_time_pair;
 
 typedef struct s_sis_time_gap{
-	uint16	start; // µ¥Î»·ÖÖÓ Èç¹ûÎª0¾Í²»ÅĞ¶Ï
-	uint16	stop;  // µ¥Î»·ÖÖÓ Èç¹ûÎª0¾Í²»ÅĞ¶Ï
-	uint32	delay; // ¼ä¸ôÃëÊı
+	uint16	start; // å•ä½åˆ†é’Ÿ å¦‚æœä¸º0å°±ä¸åˆ¤æ–­
+	uint16	stop;  // å•ä½åˆ†é’Ÿ å¦‚æœä¸º0å°±ä¸åˆ¤æ–­
+	uint32	delay; // é—´éš”ç§’æ•°
 }s_sis_time_gap;
 
 #endif //_SIS_TIME_H

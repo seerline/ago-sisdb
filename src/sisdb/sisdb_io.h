@@ -17,7 +17,7 @@
 
 #pragma pack(push,1)
 
-#define  SISDB_MAX_ONE_OUTS  3
+#define  SISDB_MAX_ONE_OUTS  100
 
 typedef struct s_sisdb_server
 {
@@ -37,8 +37,8 @@ typedef struct s_sisdb_server
 
 	s_sis_db *db;    // 数据库
 
-	bool switch_disk;
-	bool switch_supper;
+	bool switch_output;
+	bool switch_super;
 
 }s_sisdb_server;
 
@@ -66,7 +66,7 @@ s_sis_sds sisdb_fast_get_sds(const char *key_);
 int sisdb_cfg_option(const char *key_);
 
 // bool sisdb_out(const char * key_, const char *com_); 
-// 取消该功能，放到sisdb_get_sds利用参数 disk:1 表示输出到磁盘
+// 取消该功能，放到sisdb_get_sds利用参数 output:1 表示输出到磁盘
 
 int sisdb_delete(const char *key_, const char *com_, size_t len_);
 

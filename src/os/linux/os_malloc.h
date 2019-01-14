@@ -5,6 +5,7 @@
 // #define __RELEASE__
 
 #ifdef __RELEASE__
+
 #define sis_malloc  malloc
 #define sis_calloc(a)  calloc(1,a)
 #define sis_realloc  realloc
@@ -31,10 +32,10 @@ typedef struct s_memory_node {
 
 #define MEMORY_NODE_SIZE  (sizeof(s_memory_node))
 
+extern s_memory_node *__memory_first, *__memory_last;
+
 void safe_memory_start();
 void safe_memory_stop();
-
-extern s_memory_node *__memory_first, *__memory_last;
 
 inline void safe_memory_newnode(void *__p__,int line_,const char *func_)
 {

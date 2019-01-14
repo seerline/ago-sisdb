@@ -1,4 +1,4 @@
-/* adlist.h - A generic doubly linked list implementation
+﻿/* adlist.h - A generic doubly linked list implementation
  *
  * Copyright (c) 2006-2012, Salvatore Sanfilippo <antirez at gmail dot com>
  * All rights reserved.
@@ -28,8 +28,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __ADLIST_H__
-#define __ADLIST_H__
+#ifndef _SIS_NODE_LIST_H
+#define _SIS_NODE_LIST_H
 
 /* Node, List, and Iterator are the only data structures used currently. */
 
@@ -92,4 +92,9 @@ void listJoin(list *l, list *o);
 #define AL_START_HEAD 0
 #define AL_START_TAIL 1
 
-#endif /* __ADLIST_H__ */
+#define s_sis_list list
+#define s_sis_list_create listCreate
+#define s_sis_list_destroy listRelease
+#define s_sis_list_node listNode
+
+#endif /* _SIS_NODE_LIST_H */

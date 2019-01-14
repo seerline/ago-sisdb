@@ -33,10 +33,12 @@ typedef struct s_sisdb_table_control {
 	uint8  scale;        // 时序压缩的步长
 	uint32 limits;       // 每个collection的最大记录数
 
-	uint8  issys;        // 具备system的数据表，具备优先存储的特性，并且不使用info指针
-	uint8  isinit;       // 是否需要初始化， 开盘时间到需要清理这个表
-	uint8  issubs;       // 是否对collect建立 sub 缓存 catch；
-	uint8  iszip; 		 // 数据表是否压缩存储
+	unsigned issys  : 1; // 具备system的数据表，具备优先存储的特性，并且不使用info指针
+	unsigned isinit : 1; // 是否需要初始化， 开盘时间到需要清理这个表
+	unsigned issubs : 1; // 是否对collect建立 sub 缓存 catch； 是否有订阅方法，仅在pub数据时起作用
+	unsigned ispubs : 1; // 写入数据是否为发布数据
+	unsigned iszip  : 1; // 数据表是否压缩存储
+	unsigned other  : 3;
 }s_sisdb_table_control;
 
 typedef struct s_sisdb_table {

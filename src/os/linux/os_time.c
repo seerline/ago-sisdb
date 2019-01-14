@@ -1,10 +1,6 @@
 
 #include "os_time.h"
 
-void sis_time_getgm(struct tm *m, const time_t* t)
-{
-	gmtime_r(t, m);
-}
 
 void sis_localtime(struct tm *m, const time_t* t)
 {
@@ -22,7 +18,7 @@ unsigned long long sis_time_get_now_msec()
 {
 	struct timeval tv;
 	struct timezone tz;
-	set_time_get_day(&tv, &tz);
+	sis_time_get_day(&tv, &tz);
 	return ((unsigned long long)tv.tv_sec) * 1000 + tv.tv_usec / 1000;
 }
 
