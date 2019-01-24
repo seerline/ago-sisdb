@@ -351,7 +351,7 @@ s_sis_sds sisdb_show_dbs_sds(const char *com_)
             } else {
                 list = sdscat(list, "[usr] ");
             }
-            list = sdscatprintf(list, "%-10s : fields=%3d, len=%3u, collects=%d\n",
+            list = sdscatprintf(list, "%-15s : fields=%3d, len=%3u, collects=%d\n",
                                 val->name,
                                 sis_string_list_getsize(val->field_name),
                                 sisdb_table_get_fields_size(val),
@@ -430,14 +430,14 @@ s_sis_sds sisdb_fast_get_sds(const char *key_)
 // com 中携带的为返回格式和search针对时间定位的查询语句，需要解析
 s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
 {
-    // if (key_[0] == '*'&&key_[1] != '.') // ??? 要改成从com中方法调用
-    // {
-    //     char db[SIS_MAXLEN_TABLE];
-    //     sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
-    //     // 获得多只股票某类数据的最后一条记录
-    //     // 根据codes字段来判断都需要哪些股票
-    //     return sisdb_collects_get_last_sds(server.db, db, com_);
-    // }
+    if (key_[0] == '*'&&key_[1] == '.') // ??? 要改成从com中方法调用
+    {
+        char db[SIS_MAXLEN_TABLE];
+        sis_str_substr(db, SIS_MAXLEN_TABLE, key_, '.', 1);
+        // 获得多只股票某类数据的最后一条记录
+        // 根据codes字段来判断都需要哪些股票
+        return sisdb_collects_get_last_sds(server.db, db, com_);
+    }
     return sisdb_collect_get_sds(server.db, key_, com_);
 }
 // 所有系统级别的开关设置都在这里

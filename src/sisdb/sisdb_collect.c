@@ -141,7 +141,7 @@ void sisdb_collect_destroy(s_sisdb_collect *unit_)
 	sis_free(unit_);
 }
 void sisdb_collect_clear_subs(s_sisdb_collect *unit_)
-{	
+{
 	if (unit_->db->control.issubs)
 	{
 		memset(unit_->front, 0, sis_sdslen(unit_->front));
@@ -188,7 +188,9 @@ uint64 _sisdb_collect_get_time(s_sisdb_collect *unit_, int index_)
 int sisdb_collect_recs(s_sisdb_collect *unit_)
 {
 	if (!unit_ || !unit_->value)
+	{
 		return 0;
+	}
 	return unit_->value->count;
 }
 
@@ -244,7 +246,8 @@ int sisdb_collect_search_left(s_sisdb_collect *unit_, uint64 finder_, int *mode_
 	}
 	int i = index;
 	int dir = 0;
-	while (i >= 0 && i < sisdb_collect_recs(unit_))
+	int size = sisdb_collect_recs(unit_);
+	while (i >= 0 && i < size)
 	{
 		uint64 ts = _sisdb_collect_get_time(unit_, i);
 		// printf("  %lld --- %lld  mode= %d\n", finder_, ts, *mode_);
@@ -273,6 +276,19 @@ int sisdb_collect_search_left(s_sisdb_collect *unit_, uint64 finder_, int *mode_
 		else
 		{
 			*mode_ = SIS_SEARCH_OK;
+			int k = i + 1;
+			for (; k < size; k++)
+			{
+				ts = _sisdb_collect_get_time(unit_, k);
+				if (finder_ != ts)
+				{
+					break;
+				}
+				else
+				{
+					i = k;
+				}
+			}
 			return i;
 		}
 	}
@@ -325,6 +341,20 @@ int sisdb_collect_search_right(s_sisdb_collect *unit_, uint64 finder_, int *mode
 		else
 		{
 			*mode_ = SIS_SEARCH_OK;
+			// 如果相等，需要继续向前检索
+			int k = i - 1;
+			for (; k >= 0; k--)
+			{
+				ts = _sisdb_collect_get_time(unit_, k);
+				if (finder_ != ts)
+				{
+					break;
+				}
+				else
+				{
+					i = k;
+				}
+			}
 			return i;
 		}
 	}
@@ -342,7 +372,7 @@ int sisdb_collect_search_right(s_sisdb_collect *unit_, uint64 finder_, int *mode
 	// *mode_ = SIS_SEARCH_NONE;
 	// return 0;
 }
-uint64 _sisdb_collect_get_time_fast(s_sisdb_collect *unit_, int index_,s_sisdb_field *fu_)
+uint64 _sisdb_collect_get_time_fast(s_sisdb_collect *unit_, int index_, s_sisdb_field *fu_)
 {
 	uint64 tt = 0;
 	void *val = sis_struct_list_get(unit_->value, index_);
@@ -353,8 +383,8 @@ uint64 _sisdb_collect_get_time_fast(s_sisdb_collect *unit_, int index_,s_sisdb_f
 	return tt;
 }
 
-// 最后一个匹配的时间 
-// 12355579  查5返回5，查4返回3 
+// 最后一个匹配的时间
+// 12355579  查5返回5，查4返回3
 
 int sisdb_collect_search_last(s_sisdb_collect *unit_, uint64 finder_, int *mode_)
 {
@@ -366,7 +396,7 @@ int sisdb_collect_search_last(s_sisdb_collect *unit_, uint64 finder_, int *mode_
 	}
 	int i = index;
 	int dir = 0;
-	
+
 	s_sisdb_field *tfield = sisdb_field_get_from_key(unit_->db, "time");
 	int count = sisdb_collect_recs(unit_);
 	while (i >= 0 && i < count)
@@ -387,7 +417,7 @@ int sisdb_collect_search_last(s_sisdb_collect *unit_, uint64 finder_, int *mode_
 		{
 			if (*mode_ == SIS_SEARCH_OK)
 			{
-				return i-1;
+				return i - 1;
 			}
 			if (dir == 1)
 			{
@@ -404,10 +434,12 @@ int sisdb_collect_search_last(s_sisdb_collect *unit_, uint64 finder_, int *mode_
 			if (dir == -1)
 			{
 				return i;
-			} else if (dir == 1)
+			}
+			else if (dir == 1)
 			{
 				i += dir;
-			} else 
+			}
+			else
 			{
 				dir = 1;
 				i += dir;
@@ -468,7 +500,7 @@ bool _sisdb_trans_of_count(s_sisdb_collect *unit_, int *start_, int *count_)
 		return false;
 	}
 	int llen = sisdb_collect_recs(unit_);
-	
+
 	if (*start_ < 0)
 	{
 		*start_ = llen + *start_;
@@ -499,7 +531,6 @@ bool _sisdb_trans_of_count(s_sisdb_collect *unit_, int *start_, int *count_)
 	}
 	return true;
 }
-
 
 s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *unit_, int start_, int stop_)
 {
@@ -743,17 +774,19 @@ s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds v
 		}
 		const char *ptr = (const char *)val_;
 		char val[SIS_MAXLEN_STRING];
-		int len=0;
+		int len = 0;
 		switch (fu->flags.type)
 		{
 		case SIS_FIELD_TYPE_CHAR:
-			len =sis_min(fu->flags.len,strlen(ptr+fu->offset));
+			len = sis_min(fu->flags.len, strlen(ptr + fu->offset));
 			if (fu->flags.len == 1)
 			{
 				val[0] = *(ptr + fu->offset);
 				val[1] = 0;
-			} else {
-			// 这里应判断如果字符串中有引号该怎么处理，标准处理方式是两个引号即可
+			}
+			else
+			{
+				// 这里应判断如果字符串中有引号该怎么处理，标准处理方式是两个引号即可
 				sis_sprintf(val, SIS_MAXLEN_STRING, "\"%*s\"", len, ptr + fu->offset);
 			}
 			break;
@@ -819,6 +852,17 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *unit_, s_sis_sds in_,
 }
 ////////////////////////////////////////////
 // main get
+// 定义默认的检索工具 还需要定义
+// 方法万能方法，不过速度慢，用于检索其他非排序字段的内容
+// 有以下运算方法
+// scope -- field min max 字段内容在min和max之间 【数值】
+// same -- field val 字段和变量值相等 【字符串和数值】 根据字段类型比较，不区分大小写
+// match -- first val 字段值有val内容 【字符串】val为子集 val:"sh600"
+// in -- first val 字段值有val内容 【字符串】val为母集 
+// contain -- field set 字段内容包含在set集合中 set:"600600,600601" val为母集，相等才返回真【字符串或数值】
+// 
+// $same : { field: code, value:600600 } 
+// $same : { field: code, value:600600, $scope:{ field: in_time, min: 111, max:222}} //复合条件查询 
 ///////////////////////////////////////////
 s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_handle *handle)
 {
@@ -842,10 +886,11 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 	if (by_time)
 	{
 		min = sis_json_get_int(search, "min", 0);
-		if (sis_json_cmp_child_node(search, "offset"))
-		{
-			offset = sis_json_get_int(search, "offset", 0);
-		}		
+		offset = sis_json_get_int(search, "offset", 0);
+		// if (sis_json_cmp_child_node(search, "offset"))
+		// {
+		// 	offset = sis_json_get_int(search, "offset", 0);
+		// }
 		if (sis_json_cmp_child_node(search, "count"))
 		{
 			count = sis_json_get_int(search, "count", 1);
@@ -854,7 +899,10 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 			{
 				start += offset;
 				start = sis_max(0, start);
-				if(offset < 0) count -= offset;
+				if (offset < 0)
+				{
+					count -= offset;
+				}
 				// printf("---- %d %d  %d %d %d\n",start, collect->value->count, offset, min, minX);
 				o = sisdb_collect_get_of_count_sds(collect, start, count);
 			}
@@ -866,24 +914,40 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 				max = sis_json_get_int(search, "max", 0);
 				start = sisdb_collect_search_right(collect, min, &minX);
 				stop = sisdb_collect_search_left(collect, max, &maxX);
+				// printf("%d---%d\n", start, stop);
 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
 				{
 					start += offset;
 					start = sis_max(0, start);
-					if(offset < 0) count -= offset;
+					// if (offset < 0)
+					// {
+					// 	count -= offset;
+					// }
 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
 			}
 			else
 			{
-				start = sisdb_collect_search(collect, min);
-				if (start >= 0)
+				start = sisdb_collect_search_right(collect, min, &minX);
+				stop = sisdb_collect_search_left(collect, min, &maxX);
+				// printf("%d---%d\n", start, stop);
+				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
 				{
 					start += offset;
 					start = sis_max(0, start);
-					if(offset < 0) count -= offset;
-					o = sisdb_collect_get_of_count_sds(collect, start, 1);
-				}
+					o = sisdb_collect_get_of_range_sds(collect, start, stop);
+				}				
+				// start = sisdb_collect_search(collect, min);
+				// if (start >= 0)
+				// {
+				// 	start += offset;
+				// 	start = sis_max(0, start);
+				// 	if (offset < 0)
+				// 	{
+				// 		count -= offset;
+				// 	}
+				// 	o = sisdb_collect_get_of_count_sds(collect, start, 1);
+				// }
 			}
 		}
 		return o;
@@ -912,13 +976,13 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 	return o;
 }
 // 为保证最快速度，尽量不加参数
-s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_,const char *key_)
+s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_, const char *key_)
 {
 	s_sisdb_table *tb = sisdb_get_table_from_key(db_, key_);
-	if (!tb) 
+	if (!tb)
 	{
 		return NULL;
-	}  
+	}
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
@@ -926,7 +990,7 @@ s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_,const char *key_)
 		return NULL;
 	}
 	int start = 0;
-	int count =  collect->value->count;
+	int count = collect->value->count;
 
 	if (count * collect->value->len > SISDB_MAXLEN_RETURN)
 	{
@@ -944,16 +1008,16 @@ s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_,const char *key_)
 	s_sis_sds other = sisdb_collect_struct_to_json_sds(collect, out, tb->field_name, true);
 
 	sis_sdsfree(out);
-	return other;	
+	return other;
 }
 
 s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com_)
 {
 	s_sisdb_table *tb = sisdb_get_table_from_key(db_, key_);
-	if (!tb) 
+	if (!tb)
 	{
 		return NULL;
-	}  
+	}
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
@@ -1001,7 +1065,7 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 	// 判断是否写盘
 	if (sisdb_get_server()->switch_output)
 	{
-		
+
 		sisdb_file_get_outdisk(key_, iformat, out);
 	}
 
@@ -1039,7 +1103,6 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 
 	return out;
 }
-
 
 // ///////////////////////////////////////////////////////////////////////////////
 // //取数据,读表中代码为key的数据，key为*表示所有股票数据，由 com_ 定义数据范围和字段范围
@@ -1084,10 +1147,10 @@ s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_)
 s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const char *com_)
 {
 	s_sisdb_table *tb = sisdb_get_table(db_, dbname_);
-	if (!tb) 
+	if (!tb)
 	{
 		return NULL;
-	}  
+	}
 
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
 	// printf("com_ = %s -- %lu -- %p\n", com_,strlen(com_),handle);
@@ -1111,7 +1174,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	// 	sis_out_log(3)("no find codes [%s].\n", com_);
 	// 	goto error;
 	// }
-	
+
 	int iformat = sis_from_node_get_format(db_, handle->node);
 
 	printf("iformat = %c\n", iformat);
@@ -1144,16 +1207,17 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-		if (sis_strcasecmp(collect->db->name, dbname_)) continue;
+		if (sis_strcasecmp(collect->db->name, dbname_))
+			continue;
 
 		sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
-		if(codes)
+		if (codes)
 		{
 			// 如果定义了代码，就检查一下代码是否存在
-			if(sis_str_subcmp(code, codes, ',') < 0) 
+			if (sis_str_subcmp(code, codes, ',') < 0)
 			{
 				continue;
-			} 
+			}
 		}
 
 		// printf("collect = %s db = %s %s\n", (char *)sis_dict_getkey(de), collect->db->name, dbname_);
@@ -1354,7 +1418,6 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *unit_, const char *i
 	const char *src = sis_struct_list_last(unit_->value);
 	s_sis_sds o = sis_sdsnewlen(src, unit_->value->len);
 
-
 	s_sis_json_handle *handle = sis_json_load(in_, ilen_);
 	if (!handle)
 	{
@@ -1423,7 +1486,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *unit_, const char *
 			jval = jval->next;
 			continue;
 		}
- 
+
 		for (int k = 0; k < fields; k++)
 		{
 			const char *fname = sis_string_list_get(tb->field_name, k);
@@ -1476,7 +1539,6 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *unit_, const char *
 // 	}
 // }
 
-
 s_sis_sds _sisdb_make_catch_inited_sds(s_sisdb_collect *unit_, const char *in_)
 {
 	s_sisdb_table *tb = unit_->db;
@@ -1493,8 +1555,10 @@ s_sis_sds _sisdb_make_catch_inited_sds(s_sisdb_collect *unit_, const char *in_)
 	{
 		const char *key = sis_string_list_get(tb->field_name, k);
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, key);
-		if (!fu || !fu->subscribe_method) continue;
-		if (!sisdb_field_is_integer(fu)) continue;
+		if (!fu || !fu->subscribe_method)
+			continue;
+		if (!sisdb_field_is_integer(fu))
+			continue;
 
 		obj.field = fu;
 		fu->subscribe_method->obj = &obj;
@@ -1526,39 +1590,39 @@ s_sis_sds sisdb_make_catch_moved_sds(s_sisdb_collect *unit_, const char *in_)
 		const char *key = sis_string_list_get(tb->field_name, k);
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, key);
 
-		if (!fu || !fu->subscribe_method) continue;
-		if (!sisdb_field_is_integer(fu)) continue;
+		if (!fu || !fu->subscribe_method)
+			continue;
+		if (!sisdb_field_is_integer(fu))
+			continue;
 
 		obj.field = fu;
 		fu->subscribe_method->obj = &obj;
 		sis_method_class_execute(fu->subscribe_method);
-
 	}
 	return o;
 }
-
 
 int _sisdb_collect_update_alone_check_solely(s_sisdb_collect *unit_, const char *in_)
 {
 	s_sisdb_table *tb = unit_->db;
 	// 采用直接内存比较
-	
-	for(int i = 0; i < unit_->value->count; i++)
+
+	for (int i = 0; i < unit_->value->count; i++)
 	{
 		const char *val = sis_struct_list_get(unit_->value, i);
-		bool ok =true;
-		for(int k = 0; k < tb->write_solely->count; k++)
+		bool ok = true;
+		for (int k = 0; k < tb->write_solely->count; k++)
 		{
 			s_sisdb_field *fu = (s_sisdb_field *)sis_pointer_list_get(tb->write_solely, k);
-	// sis_out_binary("in :", in_+fu->offset, fu->flags.len);
-	// sis_out_binary("val:", val+fu->offset, fu->flags.len);
-			if (memcmp(in_+fu->offset, val+fu->offset, fu->flags.len))
+			// sis_out_binary("in :", in_+fu->offset, fu->flags.len);
+			// sis_out_binary("val:", val+fu->offset, fu->flags.len);
+			if (memcmp(in_ + fu->offset, val + fu->offset, fu->flags.len))
 			{
 				ok = false;
 				break;
 			}
-		}		
-	// printf("ok=%d\n", ok);	
+		}
+		// printf("ok=%d\n", ok);
 		if (ok) //  所有字段都相同
 		{
 			sis_struct_list_update(unit_->value, i, (void *)in_);
@@ -1574,26 +1638,26 @@ int _sisdb_collect_update_alone_check_solely_time(s_sisdb_collect *unit_, const 
 	s_sisdb_table *tb = unit_->db;
 	// 采用直接内存比较
 	s_sisdb_field *field = sisdb_field_get_from_key(tb, "time");
-	for(int i = index_; i >=0; i--)
+	for (int i = index_; i >= 0; i--)
 	{
 		const char *val = sis_struct_list_get(unit_->value, i);
-		if (sisdb_field_get_uint(field, val) != time_) 
+		if (sisdb_field_get_uint(field, val) != time_)
 		{
 			break;
 		}
-		bool ok =true;
-		for(int k = 0; k < tb->write_solely->count; k++)
+		bool ok = true;
+		for (int k = 0; k < tb->write_solely->count; k++)
 		{
 			s_sisdb_field *fu = (s_sisdb_field *)sis_pointer_list_get(tb->write_solely, k);
-	// sis_out_binary("in :", in_+fu->offset, fu->flags.len);
-	// sis_out_binary("val:", val+fu->offset, fu->flags.len);
-			if (memcmp(in_+fu->offset, val+fu->offset, fu->flags.len) )
+			// sis_out_binary("in :", in_+fu->offset, fu->flags.len);
+			// sis_out_binary("val:", val+fu->offset, fu->flags.len);
+			if (memcmp(in_ + fu->offset, val + fu->offset, fu->flags.len))
 			{
 				ok = false;
 				break;
 			}
 		}
-		// printf("ok=%d\n", ok);	
+		// printf("ok=%d\n", ok);
 		if (ok) //  所有字段都相同
 		{
 			sis_struct_list_update(unit_->value, i, (void *)in_);
@@ -1603,7 +1667,8 @@ int _sisdb_collect_update_alone_check_solely_time(s_sisdb_collect *unit_, const 
 	if (index_ == unit_->value->count - 1)
 	{
 		sis_struct_list_push(unit_->value, (void *)in_);
-	} else
+	}
+	else
 	{
 		sis_struct_list_insert(unit_->value, index_, (void *)in_);
 	}
@@ -1617,12 +1682,12 @@ int _sisdb_collect_check_lasttime(s_sisdb_collect *unit_, uint64 finder_)
 		return SIS_CHECK_LASTTIME_INIT;
 	}
 	s_sisdb_table *tb = unit_->db;
-	
+
 	s_sisdb_field *field = sisdb_field_get_from_key(tb, "time");
 	const char *last = sis_struct_list_last(unit_->value);
 	uint64 last_time = sisdb_field_get_uint(field, last); // 得到时间序列值
 
-	if (finder_  ==  last_time)
+	if (finder_ == last_time)
 	{
 		return SIS_CHECK_LASTTIME_OK;
 	}
@@ -1650,7 +1715,8 @@ void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 {
 	s_sisdb_table *tb = unit_->db;
 	s_sisdb_field *field = sisdb_field_get_from_key(tb, "time");
-	if (!field) return;
+	if (!field)
+		return;
 
 	uint64 finder_ = sisdb_field_get_uint(field, in_); // 得到时间序列值
 	const char *last = sis_struct_list_last(unit_->value);
@@ -1659,26 +1725,28 @@ void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 	if (field->flags.type == SIS_FIELD_TYPE_SECOND &&
 		sis_time_get_idate(finder_) != sis_time_get_idate(last_time))
 	{
-		if(tb->control.isinit)
+		if (tb->control.isinit)
 		{
-			sisdb_collect_clear(unit_);		
-		} else if (tb->control.ispubs)
+			sisdb_collect_clear(unit_);
+		}
+		else if (tb->control.ispubs)
 		{
-			sisdb_collect_clear_subs(unit_);	
+			sisdb_collect_clear_subs(unit_);
 		}
 		// printf(">>> %s : [%d] %d %d %d %d\n", tb->name, unit_->value->count,
-		// field->flags.type, tb->control.isinit, sis_time_get_idate(finder_), 
+		// field->flags.type, tb->control.isinit, sis_time_get_idate(finder_),
 		// sis_time_get_idate(last_time));
 	}
 	if (field->flags.type == SIS_FIELD_TYPE_UINT && tb->control.scale == SIS_TIME_SCALE_INCR &&
 		finder_ < last_time)
 	{
-		if(tb->control.isinit)
+		if (tb->control.isinit)
 		{
-			sisdb_collect_clear(unit_);		
-		} else if (tb->control.ispubs)
+			sisdb_collect_clear(unit_);
+		}
+		else if (tb->control.ispubs)
 		{
-			sisdb_collect_clear_subs(unit_);	
+			sisdb_collect_clear_subs(unit_);
 		}
 		// printf(">>>>> %s : [%d] %d %d %d %d\n", tb->name, unit_->value->count,
 		// field->flags.type, tb->control.isinit, finder_, last_time);
@@ -1688,11 +1756,11 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool is
 {
 	s_sisdb_table *tb = unit_->db;
 	tb->control.ispubs = (ispub_ & tb->control.issubs);
-	if(tb->control.isinit||tb->control.ispubs)
+	if (tb->control.isinit || tb->control.ispubs)
 	{
 		_sisdb_collect_check_lastdate(unit_, in_);
 	}
-	if(tb->write_style == SIS_WRITE_ALWAYS) 
+	if (tb->write_style == SIS_WRITE_ALWAYS)
 	{
 		// 不做任何检查直接写入
 		sis_struct_list_push(unit_->value, (void *)in_);
@@ -1707,58 +1775,60 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool is
 		tb->write_method->obj = &obj;
 
 		bool *ok = sis_method_class_execute(tb->write_method);
-		if (!*ok) 
+		if (!*ok)
 		{
-	// s_sisdb_field *field = sisdb_field_get_from_key(tb, "time");
-	// if (field)
-	// {
-	// 	uint64 in_time = sisdb_field_get_uint(field, in_); // 得到时间序列值
-	// 	uint64 last_time = sisdb_field_get_uint(field, sis_struct_list_last(unit_->value)); // 得到时间序列值
-	// 	uint64 sub_time = sisdb_field_get_uint(field, unit_->lasted); 
-	// 	printf("xxxx time %s %lld %lld %lld\n", tb->name, last_time, in_time, sub_time);
-	// }
-	// field = sisdb_field_get_from_key(tb, "vol");
-	// if (field)
-	// {
-	// 	uint64 in_time= sisdb_field_get_uint(field, in_); // 得到时间序列值
-	// 	uint64 last_time = sisdb_field_get_uint(field, sis_struct_list_last(unit_->value)); // 得到时间序列值
-	// 	uint64 sub_time = sisdb_field_get_uint(field, unit_->lasted); 
-	// 	printf("xxxx vol %s %lld %lld %lld\n", tb->name, last_time, in_time, sub_time);
-	// }
+			// s_sisdb_field *field = sisdb_field_get_from_key(tb, "time");
+			// if (field)
+			// {
+			// 	uint64 in_time = sisdb_field_get_uint(field, in_); // 得到时间序列值
+			// 	uint64 last_time = sisdb_field_get_uint(field, sis_struct_list_last(unit_->value)); // 得到时间序列值
+			// 	uint64 sub_time = sisdb_field_get_uint(field, unit_->lasted);
+			// 	printf("xxxx time %s %lld %lld %lld\n", tb->name, last_time, in_time, sub_time);
+			// }
+			// field = sisdb_field_get_from_key(tb, "vol");
+			// if (field)
+			// {
+			// 	uint64 in_time= sisdb_field_get_uint(field, in_); // 得到时间序列值
+			// 	uint64 last_time = sisdb_field_get_uint(field, sis_struct_list_last(unit_->value)); // 得到时间序列值
+			// 	uint64 sub_time = sisdb_field_get_uint(field, unit_->lasted);
+			// 	printf("xxxx vol %s %lld %lld %lld\n", tb->name, last_time, in_time, sub_time);
+			// }
 			// 数据检查不合法
 			return 0;
 		}
 	}
 
 	// 不需要排序，应该仅仅处理唯一字段即可
-	if(tb->write_style & SIS_WRITE_SORT_NONE) 
+	if (tb->write_style & SIS_WRITE_SORT_NONE)
 	{
 
 		// printf("tb->write_style= %d %d \n", tb->write_style , tb->write_style & SIS_WRITE_SOLE_NONE);
-		if(tb->write_style & SIS_WRITE_SOLE_NONE) 
+		if (tb->write_style & SIS_WRITE_SOLE_NONE)
 		{
 			sis_struct_list_push(unit_->value, (void *)in_);
 			return 1;
-		} else 
+		}
+		else
 		{
 			return _sisdb_collect_update_alone_check_solely(unit_, in_);
 		}
 	}
 	// 需要检查按什么排序，目前暂时只能按time排序
-	if(tb->write_style & SIS_WRITE_SORT_OTHER) 
+	if (tb->write_style & SIS_WRITE_SORT_OTHER)
 	{
 		return 0;
-	}	
+	}
 	/////////////////////////////////////////////////
 	// 下面按 time 为索引操作数据，
 	////////////////////////////////////////////////
 
 	s_sisdb_field *field = sisdb_field_get_from_key(tb, "time");
-	if (!field) return 0;
+	if (!field)
+		return 0;
 	uint64 in_time = sisdb_field_get_uint(field, in_); // 得到时间序列值
 
-	int offset = field->offset + field->flags.len;     // 得到实际数据区，用于数据比较
-	
+	int offset = field->offset + field->flags.len; // 得到实际数据区，用于数据比较
+
 	// 检查待插入的时间位置
 	int search_mode = _sisdb_collect_check_lasttime(unit_, in_time);
 	// if (search_mode==SIS_CHECK_LASTTIME_INIT)
@@ -1789,7 +1859,8 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool is
 		{
 			sis_struct_list_push(unit_->value, (void *)in_);
 		}
-	} else if (search_mode == SIS_CHECK_LASTTIME_INIT)
+	}
+	else if (search_mode == SIS_CHECK_LASTTIME_INIT)
 	{
 		// 1. 初始化
 		if (tb->control.ispubs)
@@ -1829,26 +1900,29 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool is
 			}
 		}
 		else
-		{	
+		{
 			// printf("tb->write_style= %d \n", tb->write_style );
 			if (tb->write_style & SIS_WRITE_SOLE_TIME)
 			{
 				sis_struct_list_update(unit_->value, index, (void *)in_);
-			} else if (tb->write_style & SIS_WRITE_SOLE_MULS || tb->write_style & SIS_WRITE_SOLE_OTHER)
+			}
+			else if (tb->write_style & SIS_WRITE_SOLE_MULS || tb->write_style & SIS_WRITE_SOLE_OTHER)
 			{
 				_sisdb_collect_update_alone_check_solely_time(unit_, in_, index, in_time);
-			} else
+			}
+			else
 			{
 				sis_struct_list_push(unit_->value, (void *)in_);
 			}
-
 		}
-	} else // if (search_mode == SIS_CHECK_LASTTIME_OLD)
+	}
+	else // if (search_mode == SIS_CHECK_LASTTIME_OLD)
 	{
 		if (tb->control.ispubs)
 		{
 			// 广播数据，不能插入，只能追加
-		} else
+		}
+		else
 		{
 			// 时间是很早以前的数据，那就重新定位数据
 			int set = SIS_SEARCH_NONE;
@@ -1859,12 +1933,14 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool is
 				if (tb->write_style & SIS_WRITE_SOLE_TIME)
 				{
 					sis_struct_list_update(unit_->value, index, (void *)in_);
-				} else if (tb->write_style & SIS_WRITE_SOLE_MULS||tb->write_style & SIS_WRITE_SOLE_OTHER)
+				}
+				else if (tb->write_style & SIS_WRITE_SOLE_MULS || tb->write_style & SIS_WRITE_SOLE_OTHER)
 				{
 					_sisdb_collect_update_alone_check_solely_time(unit_, in_, index, in_time);
-				} else
+				}
+				else
 				{
-					sis_struct_list_insert(unit_->value, index, (void *)in_);
+					sis_struct_list_insert(unit_->value, index + 1, (void *)in_);
 				}
 			}
 			else
@@ -1922,7 +1998,7 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool is
 // 		}
 // 		sis_struct_list_push(unit_->value, (void *)in_);
 // 		printf("no find %s [%d]\n", code_src, unit_->value->count);
-// 		return 1;		
+// 		return 1;
 // 		// 先取code
 // 		// 检索code的记录
 // 		// 如果全部记录都没有该code，就设置ok，否则就no
@@ -2311,4 +2387,3 @@ int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t i
 							unit_->value->count);
 	return count;
 }
-

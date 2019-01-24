@@ -44,6 +44,7 @@ int sis_time_get_idate_from_shstr(const char* time);//"2015-02-12" => 20150212
 int sis_time_get_time_from_longstr(const char* , int* , int* ); //"2015-10-20 12:30:38" => 20151020,123038
 int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:38.110" => 20151020,123038
 
+#define SIS_WAIT(_a_) ({ while(!(_a_)) { sis_sleep(300); }})
 
 typedef struct s_sis_time_delay {
 	bool is_busy;
@@ -60,6 +61,12 @@ typedef struct s_sis_time_pair{
 	uint16	first;  // 单位分钟
 	uint16	second; // 单位分钟
 }s_sis_time_pair;
+
+typedef struct s_sis_date_pair{
+	uint32	start;  // 开始日期
+	uint32	stop;   // 结束日期
+	uint32	move;   // 当前日期
+}s_sis_date_pair;
 
 typedef struct s_sis_time_gap{
 	uint16	start; // 单位分钟 如果为0就不判断

@@ -8,7 +8,7 @@
 ////////////////
 bool _sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_sys_exch *exch_)
 {
-	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+	s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, 0, sisdb_collect_recs(collect_));
 	if (!buffer)
 	{
 		return false;
@@ -59,7 +59,7 @@ bool _sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_sys_exch *exch_
 
 bool _sisdb_collect_load_info(s_sisdb_collect *collect_, s_sisdb_sys_info *info_)
 {
-	s_sis_sds buffer = sisdb_collect_get_of_range_sds(collect_, 0, -1);
+	s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, 0, sisdb_collect_recs(collect_));
 	if (!buffer)
 	{
 		return false;
@@ -160,7 +160,7 @@ void sisdb_sys_flush_work_time(void *collect)
 		return;
 	}
 	s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, -1, 1);
-	// sisdb_collect_get_of_range_sds(collect_, 0, -1);
+	// sisdb_collect_get_of_count_sds(collect_, 0, sisdb_collect_recs(collect_));
 	if (!buffer)
 	{
 		return;

@@ -180,7 +180,7 @@ s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_n
 	// printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
 	if (!_sis_redis_check_connect(sock_)){
 		printf("redis check connect fail.\n");
-		return false;
+		return NULL;
 	}
 
 	int argc = _sis_redis_get_cmds(mess_);

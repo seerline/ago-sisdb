@@ -418,8 +418,13 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		str = sis_json_get_str(node_, key_);
 		if (str)
 		{
-			sis_strncpy(in_+ fu_->offset, fu_->flags.len, str, strlen(str));
-			// memmove(in_ + fu_->offset, str, fu_->flags.len);
+			//sis_strncpy(in_+ fu_->offset, fu_->flags.len, str, strlen(str));
+			int len = sis_min(fu_->flags.len, strlen(str));
+			memmove(in_ + fu_->offset, str, len);
+			if (len < fu_->flags.len)
+			{
+				in_[len] = 0;
+			}
 		}
 		break;
 	case SIS_FIELD_TYPE_UINT:

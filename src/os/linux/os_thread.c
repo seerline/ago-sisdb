@@ -87,6 +87,7 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // √Î
 // #include <stdio.h>
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // √Î
 {
+	delay_ = 3;
 	while (delay_)
 	{
 		// printf("%d\n",delay_);

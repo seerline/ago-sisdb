@@ -322,7 +322,7 @@ static const char *_sis_parse_key(s_sis_conf_handle *handle_, s_sis_json_node *n
 	}
 	if (len <= 0)
 	{
-		printf("a key is null , [%.10s] type[%d]\n", ptr, node_->type);
+		// printf("a key is null , [%.10s] type[%d]\n", ptr, node_->type);
 		handle_->error = ptr;
 		return 0;
 	}
@@ -333,7 +333,7 @@ static const char *_sis_parse_key(s_sis_conf_handle *handle_, s_sis_json_node *n
 	}
 	if (*ptr && *ptr != ':')
 	{
-		printf("a line no find ':' [%x] %.10s\n", *ptr, key_);
+		// printf("a line no find ':' [%x] %.10s\n", *ptr, key_);
 		handle_->error = key_;
 		return 0;
 	}
@@ -526,8 +526,8 @@ void json_printf(s_sis_json_node *node_, int *i)
 
 int main()
 {
-	const char *fn = "../bin/sisdb.values.conf";
-	// const char *fn = "../conf/sis.conf";
+	// const char *fn = "../bin/sisdb.values.conf";
+	const char *fn = "test.conf";
 	s_sis_conf_handle *h = sis_conf_open(fn);
 	if (!h) return -1;
 	printf("====================\n");

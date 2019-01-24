@@ -334,6 +334,10 @@ const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t si
 		if ((unsigned char)*start == '\n')
 		{
 			lines--;
+			if (lines == 0) 
+			{
+				break;
+			}
 		}
 		start--;
 		chars--;
@@ -342,14 +346,21 @@ const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t si
 	// start++; // 把回车跳过
 	// printf("%.30s\n",start);
 	// *len_ = 0;
-	// lines = 2;
+	lines = 1;
 	// int slen = size_- (e_ - s_);
-	// const char *stop = e_;
-	// while(*stop&&*len_<slen&&lines > 0) {
-	// 	if((unsigned char)*stop == '\n') { lines--;}
-	// 	stop++;
-	// 	*len_=*len_ + 1;
-	// }
+	const char *stop = e_;
+	while(*stop&&(stop - s_) < (size_ - 1)&&lines > 0) {
+		if((unsigned char)*stop == '\n') 
+		{ 
+			lines--;
+			if (lines == 0) 
+			{
+				break;
+			}
+		}
+		stop++;
+		*len_=*len_ + 1;
+	}
 	// printf("%.30s   %d\n",start, *len_);
 	return start;
 }

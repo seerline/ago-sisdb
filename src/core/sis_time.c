@@ -612,6 +612,7 @@ int sis_time_get_time_from_shstr(const char *in_, int *date_, int *time_) //"201
 
 	return 1;
 }
+
 s_sis_time_delay *sis_delay_create(unsigned int msec)
 {
 	s_sis_time_delay *m = sis_malloc(sizeof(*m));

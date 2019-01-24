@@ -173,7 +173,7 @@ void sis_file_dbf_set_str(s_sis_file_dbf *dbf_, int index, char *key_, const cha
 
 }
 
-#if 1
+#if 0
 
 int main()
 {
