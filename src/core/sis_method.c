@@ -45,6 +45,7 @@ s_sis_method_node *_sis_method_node_load(
 	const char *style_,
 	s_sis_json_node *node_)
 {
+	// printf("new = %s %p\n",style_, node_);
 	s_sis_method_node *new = (s_sis_method_node *)sis_malloc(sizeof(s_sis_method_node));
 	memset(new, 0, sizeof(s_sis_method_node));
 
@@ -53,11 +54,14 @@ s_sis_method_node *_sis_method_node_load(
 	{
 		sis_out_log(5)("no find method %s\n", (const char *)&node_->key[1]);
 		sis_free(new);
-		return NULL;
+		return first_;
 	}
 
 	if (first_)
 	{
+		// while (first_->next) {
+		// 	first_ = first_->next;
+		// }
 		first_->next = new;
 		new->prev = first_;
 	}
@@ -68,7 +72,7 @@ s_sis_method_node *_sis_method_node_load(
 	}
 
 	new->argv = sis_json_create_object();
-
+	
 	// printf("%s| %p, ^ %p,v %p < %p, >%p \n", new->method->name,
 	// 		new, new->father,new->child, new->prev, new->next);
 
@@ -136,12 +140,14 @@ s_sis_method_node *sis_method_node_create(s_sis_map_pointer *map_, const char *s
 		}
 		next = next->next;
 	}
-	return sis_method_node_first(first);
+	first = sis_method_node_first(first);
+	// printf("+++ = %p\n", first);
+	return first;
 }
 
-void sis_method_node_destroy(void *node_, void *other_)
+void sis_method_node_destroy(void *node_)
 {
-	SIS_NOTUSED(other_);
+	// SIS_NOTUSED(other_);
 	s_sis_method_node *node = (s_sis_method_node *)node_;
 	while (node)
 	{
@@ -149,10 +155,12 @@ void sis_method_node_destroy(void *node_, void *other_)
 		if (node->child)
 		{
 			s_sis_method_node *child = sis_method_node_first(node->child);
-			sis_method_node_destroy(child, other_);
+			sis_method_node_destroy(child);
 		}
 		next = node->next;
 		sis_json_delete_node(node->argv);
+		// printf("free = %s %p\n",node->method->name, node);
+
 		sis_free(node);
 		node = next;
 	}
@@ -171,8 +179,12 @@ s_sis_method_class *sis_method_class_create(s_sis_map_pointer *map_, const char 
 	return class;
 }
 
-void sis_method_class_destroy(void *class_, void *other_)
+void sis_method_class_destroy(s_sis_method_class *class_)
 {
+	if(!class_)
+	{
+		return;
+	}
 	s_sis_method_class *class = (s_sis_method_class *)class_;
 	if (class->free)
 	{
@@ -188,7 +200,7 @@ void sis_method_class_destroy(void *class_, void *other_)
 			}
 		}
 	}
-	sis_method_node_destroy(class->node, other_);
+	sis_method_node_destroy(class->node);
 	sis_free(class);
 }
 

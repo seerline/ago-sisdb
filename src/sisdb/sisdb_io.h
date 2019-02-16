@@ -37,8 +37,8 @@ typedef struct s_sisdb_server
 
 	s_sis_db *db;    // 数据库
 
-	bool switch_output;
-	bool switch_super;
+	bool switch_output;  // 设置后所有get会同时存盘
+	bool switch_super;   // 获取到超级用户权限，可以执行删除操作
 
 }s_sisdb_server;
 

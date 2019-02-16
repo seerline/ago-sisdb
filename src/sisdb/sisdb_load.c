@@ -263,8 +263,8 @@ int load_sisdb_update(s_sis_module_context *ctx_, s_sis_module_string **argv_, i
 
 int sis_module_on_unload()
 {
-	sis_out_log(3)("close sisdb.\n");
 	sisdb_close();
+	sis_out_log(3)("close sisdb.\n");
 	safe_memory_stop();
 	return SIS_MODULE_OK;
 }
@@ -382,7 +382,6 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	// {
 	// 	return SIS_MODULE_ERROR;
 	// }	
-	// printf("====1.3===\n");
 	
 	return SIS_MODULE_OK;
 }

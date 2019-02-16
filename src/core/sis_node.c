@@ -234,3 +234,4 @@ s_sis_message_node *sis_message_node_clone(s_sis_message_node *in_)
 
 	return o;
 }
+

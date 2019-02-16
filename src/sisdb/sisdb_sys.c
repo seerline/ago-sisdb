@@ -371,7 +371,7 @@ bool _sisdb_market_start_init(s_sisdb_collect *collect_, const char *market_)
 
 void sisdb_market_work_init(s_sis_db *db_)
 {
-	if (!db_->special) return ;
+	if (!db_->special) {return ;}
 	// _printf_info();
 
 	s_sisdb_table *tb = sisdb_get_table(db_, SIS_TABLE_EXCH);

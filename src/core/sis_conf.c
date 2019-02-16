@@ -183,7 +183,7 @@ static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node
 		{
 			value_ = skip(_sis_parse_include(handle_, child, value_));
 			while (child->next)
-				child = child->next;
+			{	child = child->next;}
 		}
 		else
 		{

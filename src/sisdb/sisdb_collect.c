@@ -626,7 +626,11 @@ s_sis_json_node *_sis_struct_to_array(s_sisdb_collect *unit_, s_sis_sds val_, s_
 			break;
 		case SIS_FIELD_TYPE_PRICE:
 			// 通用数据表没有该类型
-			sis_json_array_add_double(o, sisdb_field_get_price(fu, ptr, unit_->spec_info->dot), unit_->spec_info->dot);
+			{
+				int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+				// printf("dot: %d %d \n",unit_->db->father->special ,fu->flags.dot);
+				sis_json_array_add_double(o, sisdb_field_get_price(fu, ptr, dot), dot);
+			}
 			break;
 		default:
 			sis_json_array_add_string(o, " ", 1);
@@ -659,7 +663,7 @@ s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
-		sis_out_binary("get", val, sis_sdslen(in_));
+		// sis_out_binary("get", val, sis_sdslen(in_));
 		jval = _sis_struct_to_array(unit_, val, fields_);
 		if (unit_->db->control.limits != 1)
 		{
@@ -714,7 +718,7 @@ s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *unit_, s_sis_sds in
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
-		sis_out_binary("get", val, sis_sdslen(in_));
+		// sis_out_binary("get", val, sis_sdslen(in_));
 		jval = _sis_struct_to_array(unit_, val, fields_);
 		sis_json_array_add_node(jone, jval);
 		if (unit_->db->control.limits == 1)
@@ -807,8 +811,11 @@ s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds v
 			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", fu->flags.dot, sisdb_field_get_float(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_PRICE:
-			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", unit_->spec_info->dot, sisdb_field_get_price(fu, ptr, unit_->spec_info->dot));
-			break;
+		{
+			int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", dot, sisdb_field_get_price(fu, ptr, dot));
+		}
+		break;
 		}
 		str_ = sis_sdscatfmt(str_, "%s", val);
 		if (i < size - 1)
@@ -858,11 +865,11 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *unit_, s_sis_sds in_,
 // scope -- field min max 字段内容在min和max之间 【数值】
 // same -- field val 字段和变量值相等 【字符串和数值】 根据字段类型比较，不区分大小写
 // match -- first val 字段值有val内容 【字符串】val为子集 val:"sh600"
-// in -- first val 字段值有val内容 【字符串】val为母集 
+// in -- first val 字段值有val内容 【字符串】val为母集
 // contain -- field set 字段内容包含在set集合中 set:"600600,600601" val为母集，相等才返回真【字符串或数值】
-// 
-// $same : { field: code, value:600600 } 
-// $same : { field: code, value:600600, $scope:{ field: in_time, min: 111, max:222}} //复合条件查询 
+//
+// $same : { field: code, value:600600 }
+// $same : { field: code, value:600600, $scope:{ field: in_time, min: 111, max:222}} //复合条件查询
 ///////////////////////////////////////////
 s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_handle *handle)
 {
@@ -936,7 +943,7 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 					start += offset;
 					start = sis_max(0, start);
 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
-				}				
+				}
 				// start = sisdb_collect_search(collect, min);
 				// if (start >= 0)
 				// {
@@ -1061,11 +1068,10 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 		field_list = sis_string_list_create_w();
 		sis_string_list_load(field_list, fields, strlen(fields), ",");
 	}
-	printf("out: %d\n", sisdb_get_server()->switch_output);
+	// printf("----- out: %d\n", sisdb_get_server()->switch_output);
 	// 判断是否写盘
 	if (sisdb_get_server()->switch_output)
 	{
-
 		sisdb_file_get_outdisk(key_, iformat, out);
 	}
 
@@ -1414,6 +1420,7 @@ exit:
 
 s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *unit_, const char *in_, size_t ilen_)
 {
+
 	// 取最后一条记录的数据
 	const char *src = sis_struct_list_last(unit_->value);
 	s_sis_sds o = sis_sdsnewlen(src, unit_->value->len);
@@ -1556,9 +1563,13 @@ s_sis_sds _sisdb_make_catch_inited_sds(s_sisdb_collect *unit_, const char *in_)
 		const char *key = sis_string_list_get(tb->field_name, k);
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, key);
 		if (!fu || !fu->subscribe_method)
+		{
 			continue;
+		}
 		if (!sisdb_field_is_integer(fu))
+		{
 			continue;
+		}
 
 		obj.field = fu;
 		fu->subscribe_method->obj = &obj;
@@ -1591,9 +1602,13 @@ s_sis_sds sisdb_make_catch_moved_sds(s_sisdb_collect *unit_, const char *in_)
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_buffer_get(tb->field_map, key);
 
 		if (!fu || !fu->subscribe_method)
+		{
 			continue;
+		}
 		if (!sisdb_field_is_integer(fu))
+		{
 			continue;
+		}
 
 		obj.field = fu;
 		fu->subscribe_method->obj = &obj;
@@ -2169,10 +2184,15 @@ uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_, s_sisdb_co
 	{
 		allow = 2;
 	}
-	if (inunit_->db->control.scale == SIS_TIME_SCALE_SECOND && outunit_->db->control.scale >= SIS_TIME_SCALE_SECOND)
+	if ((inunit_->db->control.scale == SIS_TIME_SCALE_SECOND ||
+		 inunit_->db->control.scale == SIS_TIME_SCALE_MIN1 ||
+		 inunit_->db->control.scale == SIS_TIME_SCALE_MIN5 ||
+		 inunit_->db->control.scale == SIS_TIME_SCALE_HOUR) &&
+		outunit_->db->control.scale >= SIS_TIME_SCALE_SECOND)
 	{
 		allow = 1;
 	}
+
 	if (inunit_->db->control.scale == SIS_TIME_SCALE_MSEC)
 	{
 		if (outunit_->db->control.scale > SIS_TIME_SCALE_MSEC)
@@ -2256,9 +2276,14 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 		sisdb_field_set_float(outfu_, outs_, f64);
 		break;
 	case SIS_FIELD_TYPE_PRICE:
-		f64 = sisdb_field_get_price(infu_, ins_, inunit_->spec_info->dot);
-		sisdb_field_set_price(outfu_, outs_, f64, outunit_->spec_info->dot);
-		break;
+	{
+		int indot = inunit_->db->father->special ? inunit_->spec_info->dot : infu_->flags.dot;
+		int outdot = outunit_->db->father->special ? outunit_->spec_info->dot : outfu_->flags.dot;
+
+		f64 = sisdb_field_get_price(infu_, ins_, indot);
+		sisdb_field_set_price(outfu_, outs_, f64, outdot);
+	}
+	break;
 	default:
 		break;
 	}

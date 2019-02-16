@@ -236,6 +236,7 @@ char *sisdb_open(const char *conf_)
                 next = next->next;
             }
         }
+        sis_json_close(sdb_json);
     }
 
     // 这里加载数据
@@ -298,6 +299,9 @@ void sisdb_close()
     server.status = SIS_SERVER_STATUS_CLOSE;
 
     sisdb_destroy(server.db);
+
+    server.status = SIS_SERVER_STATUS_NOINIT;
+    server.db = NULL;
 }
 
 s_sisdb_server *sisdb_get_server()
@@ -587,7 +591,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
         // 这里应该不用申请新的内存
         in = sis_sdsnewlen(val_, len_);
     }
-    // sis_out_binary("update 0 ", in_, ilen_);
+    // sis_out_binary("update 0 ", in, 60);
     // printf("----len=%ld:%d\n", sis_sdslen(in), collect->value->len);
 
     int o = sisdb_collect_update(collect, in, false);

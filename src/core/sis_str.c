@@ -453,7 +453,12 @@ bool sis_str_get_id(char *out_, size_t olen_)
 	out_[5] = sign[ptm.tm_min / len];
 	out_[6] = sign[ptm.tm_sec % len];
 	out_[7] = sign[ptm.tm_sec / len];
-	out_[8] = 0;
+	for(int i = 8; i < olen_ - 1; i++)
+	{
+		out_[i] = sign[rand() % len];
+	}
+	
+	out_[olen_ - 1] = 0;
 	return true;
 }
 

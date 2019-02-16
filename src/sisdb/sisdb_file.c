@@ -45,10 +45,17 @@ bool _sisdb_file_save_collect_struct(s_sis_sds key_,
     sis_strcpy((char *)&head.key, SIS_MAXLEN_KEY, key_);
     head.format = SIS_DATA_TYPE_STRUCT;
     head.size = unit_->value->count * unit_->value->len;
-
+    // if(head.size <1)
+    // {
+    //     return true;
+    //     // 没有内容
+    // }
     sis_file_write(sdbfp_, (const char *)&head, 1, sizeof(s_sis_sdb_head));
     void *val = sis_struct_list_first(unit_->value);
-    sis_file_write(sdbfp_, val, 1, head.size);
+    if(val)
+    {
+        sis_file_write(sdbfp_, val, 1, head.size);
+    }
     return true;
 }
 

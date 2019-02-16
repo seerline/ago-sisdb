@@ -24,7 +24,8 @@ inline void safe_memory_stop(){};
 #pragma pack(push,1)
 typedef struct s_memory_node {
     char   info[MEMORY_INFO_SIZE];
-    unsigned short line;  //  
+    unsigned int size; 
+    unsigned short line;  
 	struct s_memory_node * prev;     
 	struct s_memory_node * next;
 }s_memory_node;
@@ -37,9 +38,10 @@ extern s_memory_node *__memory_first, *__memory_last;
 void safe_memory_start();
 void safe_memory_stop();
 
-inline void safe_memory_newnode(void *__p__,int line_,const char *func_)
+inline void safe_memory_newnode(void *__p__,unsigned int size_, int line_,const char *func_)
 {
     s_memory_node *__n = (s_memory_node *)__p__; 
+    __n->size = size_;
     __n->next = NULL; 
     __n->line = line_; 
     memmove(__n->info, func_, MEMORY_INFO_SIZE); __n->info[MEMORY_INFO_SIZE - 1] = 0; 
@@ -75,13 +77,13 @@ inline void safe_memory_freenode(void *__p__)
 
 #define sis_malloc(__size__) ({   \
     void *__p = malloc(__size__ + MEMORY_NODE_SIZE); \
-    safe_memory_newnode(__p, __LINE__,__func__); \
+    safe_memory_newnode(__p, __size__, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \
 }) \
 
 #define sis_calloc(__size__)  ({   \
     void *__p = calloc(1, __size__ + MEMORY_NODE_SIZE); \
-    safe_memory_newnode(__p, __LINE__,__func__); \
+    safe_memory_newnode(__p, __size__, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \
 }) \
 
@@ -94,7 +96,7 @@ inline void safe_memory_freenode(void *__p__)
         safe_memory_freenode(__s); \
         __p = realloc(__s, __size__ + MEMORY_NODE_SIZE); \
     } \
-    safe_memory_newnode(__p, __LINE__,__func__); \
+    safe_memory_newnode(__p, __size__, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \
 }) \
 

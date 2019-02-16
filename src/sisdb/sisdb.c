@@ -38,9 +38,12 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	{
 		return;
 	}
+	// if (db_->special)
+	{
+		// 普通数据库没有init线程
+		sis_plan_task_destroy(db_->init_task);
+	}
 	sis_plan_task_destroy(db_->save_task);
-	sis_plan_task_destroy(db_->init_task);
-
 	// 遍历字典中table，手动释放实际的table
 	s_sis_dict_entry *de;
 	s_sis_dict_iter *di = sis_dict_get_iter(db_->dbs);
@@ -50,6 +53,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 		sisdb_table_destroy(val);
 	}
 	sis_dict_iter_free(di);
+
 	// 如果没有sis_map_pointer_destroy就必须加下面这句
 	// sis_map_buffer_clear(db_->db);
 	// 下面仅仅释放key
@@ -70,7 +74,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 		sis_dict_iter_free(di);
 	}
 	sis_map_pointer_destroy(db_->sys_exchs);
-	// 遍历字典中table，手动释放实际的table
+	// 遍历字典中collects，手动释放实际的 collects
 	if (db_->collects)
 	{
 		s_sis_dict_entry *de;
@@ -92,6 +96,7 @@ void sisdb_destroy(s_sis_db *db_) //关闭一个数据库
 	sisdb_method_define_destroy(db_->methods);
 
 	sis_free(db_);
+
 }
 
 

@@ -106,7 +106,7 @@ bool sis_plan_task_execute(s_sis_plan_task *task_)
 	}
 	else
 	{
-		if (sis_thread_wait_sleep(&task_->wait, 30) == SIS_ETIMEDOUT) // 30?????
+		if (sis_thread_wait_sleep(&task_->wait, 30) == SIS_ETIMEDOUT) 
 		{
 			int min = sis_time_get_iminute(0);
 			// printf("save plan ... -- -- -- %d \n", min);
@@ -149,24 +149,25 @@ bool sis_plan_task_start(s_sis_plan_task *task_, SIS_THREAD_START_ROUTINE func_,
 }
 void sis_plan_task_destroy(s_sis_plan_task *task_)
 {
-	task_->working = false;
-
-	sis_thread_wait_kill(&task_->wait);
-	sis_sleep(300); 
-	if (task_->work_pid)
+	if(task_->working)
 	{
-		sis_thread_join(task_->work_pid);
-		sis_out_log(5)("plan_task end.\n");
+		task_->working = false;
+		
+		sis_thread_wait_kill(&task_->wait);
+		sis_sleep(30); 
+		if (task_->work_pid)
+		{
+			sis_thread_join(task_->work_pid);
+		}
+		sis_thread_wait_stop(&task_->wait);
+		sis_mutex_destroy(&task_->mutex);
+		sis_thread_wait_destroy(&task_->wait);
 	}
-	sis_thread_wait_stop(&task_->wait);
-
-	sis_mutex_destroy(&task_->mutex);
-
-	sis_thread_wait_destroy(&task_->wait);
 
 	sis_struct_list_destroy(task_->work_plans);
 
 	sis_free(task_);
+	sis_out_log(5)("plan_task end.\n");
 }
 
 #if 0

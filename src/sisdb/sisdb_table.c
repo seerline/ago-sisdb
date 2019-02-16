@@ -56,12 +56,6 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 		}
 	}
 
-	if (tb->control.scale == SIS_TIME_SCALE_NONE && tb->control.limits == 0)
-	{
-		tb->control.limits = 1;
-		// 没有时间尺度的数据表，并且还没有设置记录数量，就限定为一条记录，
-		// 防止无限制的增加记录
-	}
 	//处理链接数据表名
 	tb->publishs = sis_string_list_create_w();
 
@@ -197,7 +191,7 @@ void sisdb_table_destroy(s_sisdb_table *tb_)
 	sis_pointer_list_destroy(tb_->write_solely);
 	if(tb_->write_method)
 	{
-		sis_method_class_destroy(tb_->write_method, NULL);
+		sis_method_class_destroy(tb_->write_method);
 	}
 	sis_string_list_destroy(tb_->field_name);
 	
@@ -279,7 +273,7 @@ int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *tb_, s_sis_json_node *fi
 			count = sis_json_get_int(node, "4", 1);
 		} else 
 		{
-			flags.dot = 0;
+			flags.dot = sis_json_get_int(node, "3", 0);
 			count = sis_json_get_int(node, "4", 1);
 		}
 		
@@ -290,11 +284,11 @@ int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *tb_, s_sis_json_node *fi
 			// ??? info和exch不再作为表格存在，而是系统信息存在
 			// ??? 每个键的私有信息，包括市场和个体信息，也包括一个table的结构信息，这些信息都是映射表
 			// 非专用数据表不支持某些字段类型
-			if (flags.type == SIS_FIELD_TYPE_PRICE)
-			{
-				flags.type = SIS_FIELD_TYPE_FLOAT;
-				flags.dot = flags.dot == 0 ? 2 : flags.dot;
-			}
+			// if (flags.type == SIS_FIELD_TYPE_PRICE)
+			// {
+			// 	flags.type = SIS_FIELD_TYPE_FLOAT;
+			// 	flags.dot = flags.dot == 0 ? 2 : flags.dot;
+			// }
 			if (flags.type == SIS_FIELD_TYPE_VOLUME||flags.type == SIS_FIELD_TYPE_AMOUNT)
 			{
 				flags.type = SIS_FIELD_TYPE_UINT;

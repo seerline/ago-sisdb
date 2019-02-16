@@ -93,6 +93,6 @@ void *sis_method_class_execute(s_sis_method_class *class_);
 // 0 -  全部清理  1 - 只清理输出的数据 针对SIS_METHOD_CLASS_FILTER类型
 void sis_method_class_clear(s_sis_method_class *,int);
 
-void sis_method_class_destroy(void *class_, void *other_);
+void sis_method_class_destroy(s_sis_method_class *class_);
 
 #endif

@@ -52,7 +52,7 @@ void sisdb_field_destroy(s_sisdb_field *unit_)
 {
 	if(unit_->subscribe_method)
 	{
-		sis_method_class_destroy(unit_->subscribe_method, NULL);
+		sis_method_class_destroy(unit_->subscribe_method);
 	}
 	sis_free(unit_);
 }
@@ -420,12 +420,14 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		{
 			//sis_strncpy(in_+ fu_->offset, fu_->flags.len, str, strlen(str));
 			int len = sis_min(fu_->flags.len, strlen(str));
+			// printf("info = %s  %d  %d\n",str, len, fu_->flags.len);
 			memmove(in_ + fu_->offset, str, len);
 			if (len < fu_->flags.len)
 			{
-				in_[len] = 0;
+				in_[fu_->offset + len] = 0;
 			}
 		}
+		// sis_out_binary("update 0 ", in_, 60);
 		break;
 	case SIS_FIELD_TYPE_UINT:
 	case SIS_FIELD_TYPE_VOLUME:

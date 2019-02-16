@@ -282,9 +282,11 @@ s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 	memset(handle, 0, sizeof(s_sis_json_handle));
 	if (!_sis_json_parse(handle, content_))
 	{
+		// printf("fail : %s \n", content_);
 		int len = 0;
 		handle->error = sis_str_getline(handle->error, &len, content_, len_);
 		sis_out_log(3)("json parse fail : %.*s \n", len, handle->error);
+		
 		sis_json_close(handle);
 		return NULL;
 	};
@@ -647,10 +649,12 @@ void sis_json_delete_node(s_sis_json_node *node_)
 	if (node_->key)
 	{
 		sis_free(node_->key);
+		node_->key = NULL;
 	}
 	if (node_->value)
 	{
 		sis_free(node_->value);
+		node_->key = NULL;
 	}
 	sis_free(node_);
 }
@@ -786,13 +790,18 @@ static char *_sis_json_to_array(s_sis_json_node *node_, int depth_, int fmt_)
 	memset(entries, 0, numentries * sizeof(char *));
 	/* retrieve all the results: */
 	child = node_->child;
+	depth_++;
+	if (fmt_)
+	{
+		len += depth_;
+	}
 	while (child && !fail)
 	{
-		ret = _sis_json_to_value(child, depth_ + 1, fmt_);
-		entries[i++] = ret;
+		// printf("child=%d\n", child->type);
+		entries[i++] = ret = _sis_json_to_value(child, depth_, fmt_);
 		if (ret)
 		{
-			len += strlen(ret) + 2 + (fmt_ ? 1 : 0);
+			len += strlen(ret) + 2 + (fmt_ ? 2 + depth_ : 0);
 		}
 		else
 		{
@@ -829,9 +838,19 @@ static char *_sis_json_to_array(s_sis_json_node *node_, int depth_, int fmt_)
 	/* Compose the output array. */
 	*out = '[';
 	ptr = out + 1;
+	
+	if (fmt_&&node_->child->type==SIS_JSON_ARRAY)
+	{	*ptr++ = '\n';}
 	*ptr = 0;
 	for (i = 0; i < numentries; i++)
 	{
+		if (fmt_&&node_->child->type==SIS_JSON_ARRAY)
+		{
+			for (int j = 0; j < depth_; j++)
+			{
+				*ptr++ = '\t';
+			}
+		}
 		int el = (int)strlen(entries[i]);
 		memmove(ptr, entries[i], el);
 		ptr += el;
@@ -842,11 +861,22 @@ static char *_sis_json_to_array(s_sis_json_node *node_, int depth_, int fmt_)
 			{
 				*ptr++ = ' ';
 			}
-			*ptr = 0;
 		}
+		if (fmt_&&node_->child->type==SIS_JSON_ARRAY)
+		{
+			*ptr++ = '\n';
+		}
+		*ptr = 0;
 		sis_free(entries[i]);
 	}
 	sis_free(entries);
+	if (fmt_&&node_->child->type==SIS_JSON_ARRAY)
+	{
+		for (i = 0; i < depth_ - 1; i++)
+		{
+			*ptr++ = '\t';
+		}
+	}
 	*ptr++ = ']';
 	*ptr++ = 0;
 	return out;
@@ -870,19 +900,11 @@ static char *_sis_json_to_object(s_sis_json_node *node_, int depth_, int fmt_)
 
 	if (!numentries)
 	{
-		out = (char *)sis_malloc(fmt_ ? depth_ + 3 : 3);
+		out = (char *)sis_malloc(3);
 		if (out)
 		{
 			ptr = out;
 			*ptr++ = '{';
-			if (fmt_)
-			{
-				*ptr++ = '\n';
-				for (i = 0; i < depth_ - 1; i++)
-				{
-					*ptr++ = '\t';
-				}
-			}
 			*ptr++ = '}';
 			*ptr++ = 0;
 		}
@@ -910,10 +932,12 @@ static char *_sis_json_to_object(s_sis_json_node *node_, int depth_, int fmt_)
 	{
 		len += depth_;
 	}
-	while (child)
+	while (child && !fail)
 	{
 		names[i] = str = _sis_json_to_string(child->key);
-		entries[i++] = ret = _sis_json_to_value(child, depth_, fmt_);
+		// entries[i++] = ret = _sis_json_to_value(child, depth_, fmt_);
+		entries[i] = ret = _sis_json_to_value(child, depth_, fmt_);
+		i++;
 		if (str && ret)
 		{
 			len += strlen(ret) + strlen(str) + 2 + (fmt_ ? 2 + depth_ : 0);
@@ -990,6 +1014,7 @@ static char *_sis_json_to_object(s_sis_json_node *node_, int depth_, int fmt_)
 		}
 		*ptr = 0;
 		sis_free(names[i]);
+		// printf("[%d : %d] [%s] : [%s]\n",i, numentries, names[i], entries[i]);
 		sis_free(entries[i]);
 	}
 
@@ -1237,7 +1262,7 @@ void sis_json_show(s_sis_json_node *node_, int *i)
 			node_->father,node_->child, node_->prev, node_->next,
 			node_->key, node_->value);
 }
-#if 0
+#if 1
 
 int main1()
 {
@@ -1273,11 +1298,12 @@ int main1()
 }
 int main()
 {
+	safe_memory_start();
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *fn = "../conf/sis.conf";
 	const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1},\"val\":{\"time\":[[930,1130],[1300,1500]]}}";
-
+	// const char *command = "{\"format\":\"array\",\"null-json\":{},\"null-array\":[],\"range\":100}";
 	// s_sis_json_handle *handel = sis_json_load(command, 64);
 	// int index = 0;
 	// if (handel)
@@ -1323,7 +1349,17 @@ int main()
 	printf("%p [%ld]\n", h->node, len);
 	printf("|%s|\n",str);
 	sis_free(str);
+
+	str = sis_json_output_zip(h->node, &len);
+	printf("|%s|\n",str);	
+	sis_free(str);
+
+	s_sis_json_node *no = sis_json_clone(h->node, 1);
+
+	sis_json_delete_node(no);
+
 	sis_json_close(h);
+	safe_memory_stop();
 	return 0;
 }
 #endif

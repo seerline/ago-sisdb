@@ -6,7 +6,7 @@
 #include <assert.h>
 
 #include <os_time.h>
-
+#include <stdio.h>
 #include <errno.h>
 
 // 超过时间才返回该值，如果强制退出不返回该值
