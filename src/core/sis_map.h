@@ -45,11 +45,11 @@ s_sis_map_pointer *sis_map_pointer_create();
 #define sis_map_pointer_get sis_map_buffer_get
 #define sis_map_pointer_set sis_map_buffer_set
 
-s_sis_map_int *sis_map_int_create();
-#define sis_map_int_destroy sis_map_buffer_destroy
-#define sis_map_int_clear sis_map_buffer_clear
-uint64_t sis_map_int_get(s_sis_map_int *, const char *key_);
-int sis_map_int_set(s_sis_map_int *, const char *key_, uint64_t value_);
+// s_sis_map_int *sis_map_int_create();
+// #define sis_map_int_destroy sis_map_buffer_destroy
+// #define sis_map_int_clear sis_map_buffer_clear
+// uint64_t sis_map_int_get(s_sis_map_int *, const char *key_);
+// int sis_map_int_set(s_sis_map_int *, const char *key_, uint64_t value_);
 
 s_sis_map_sds *sis_map_sds_create();
 #define sis_map_sds_destroy sis_map_buffer_destroy

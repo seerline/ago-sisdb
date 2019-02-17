@@ -105,18 +105,18 @@ void *sis_map_buffer_get(s_sis_map_buffer *map_, const char *key_)
 	}
 	return sis_dict_getval(he);
 };
-int sis_map_buffer_set(s_sis_map_buffer *map_, const char *key_, void *value_)
+int sis_map_buffer_set(s_sis_map_buffer *map_, const char *key_, void *val_)
 {
 	s_sis_dict_entry *he;
 	s_sis_sds key = sis_sdsnew(key_);
-	he = sis_dict_find(map_, key_);
+	he = sis_dict_find(map_, key);
 	if (!he)
 	{
-		sis_dict_add(map_, key, value_);
+		sis_dict_add(map_, key, val_);
 		return 0;
 	}
+	sis_dict_replace(map_, key, val_);
 	sis_sdsfree(key);	
-	sis_dict_setval(map_, he, value_);
 	return 0;
 }
 
@@ -138,32 +138,38 @@ s_sis_map_pointer *sis_map_pointer_create()
 //////////////////////////////////////////
 //  s_sis_map_int 基础定义
 //////////////////////////////////////////
-s_sis_map_int *sis_map_int_create()
-{
-	s_sis_map_int *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);
-	return map;
-};
-uint64_t sis_map_int_get(s_sis_map_int *map_, const char *key_)
-{
-	s_sis_dict_entry *he;
-	he = sis_dict_find(map_, key_);
-	if (!he)
-	{
-		return 0;
-	}
-	return sis_dict_get_uint(he);
-};
-int sis_map_int_set(s_sis_map_int *map_, const char *key_, uint64_t value_)
-{
-	s_sis_dict_entry *he;
-	he = sis_dict_find(map_, key_);
-	if (!he)
-	{
-		return 0;
-	}
-	sis_dict_set_uint(he, value_);
-	return 0;
-}
+// s_sis_map_int *sis_map_int_create()
+// {
+// 	s_sis_map_int *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);
+// 	return map;
+// };
+// uint64_t sis_map_int_get(s_sis_map_int *map_, const char *key_)
+// {
+// 	s_sis_dict_entry *he;
+// 	s_sis_sds key = sis_sdsnew(key_);
+// 	he = sis_dict_find(map_, key);
+// 	sis_sdsfree(key);	
+// 	if (!he)
+// 	{
+// 		return 0;
+// 	}
+// 	return sis_dict_get_uint(he);
+// };
+// int sis_map_int_set(s_sis_map_int *map_, const char *key_, uint64_t value_)
+// {
+// 	s_sis_dict_entry *he;
+// 	s_sis_sds key = sis_sdsnew(key_);
+// 	he = sis_dict_find(map_, key);
+// 	if (!he)
+// 	{
+// 		sis_dict_add(map_, key, NULL);
+
+// 		return 0;
+// 	}
+// 	sis_dict_set_uint(he, value_);
+// 	sis_sdsfree(key);	
+// 	return 0;
+// }
 //////////////////////////////////////////
 //  s_sis_map_sds 基础定义
 //////////////////////////////////////////
@@ -176,33 +182,42 @@ int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
 {
 	s_sis_dict_entry *he;
 	s_sis_sds key = sis_sdsnew(key_);
-	he = sis_dict_find(map_, key_);
+	he = sis_dict_find(map_, key);
 	if (!he)
 	{
 		sis_dict_add(map_, key, val_);
 		return 0;
 	}
+	sis_dict_replace(map_, key, val_);
 	sis_sdsfree(key);	
-	sis_dict_setval(map_, he, val_);
 	return 0;
 }
-#if 0
-#include <sisdb_fields.h>
+#if 1
 
 int main()
 {
-	s_sis_map_pointer *map;
-	map = sis_map_pointer_create();
-	s_sisdb_field_flags flag;
-	char str[100];
-	sis_map_buffer_clear(map);
-	for (int i=0;i<100;i++){
-		sprintf(str,"name%5d",i);
-		s_sisdb_field *unit = sisdb_field_create(i,str,&flag);
-		sis_map_pointer_set(map, str, unit);
-	}
-	sis_map_pointer_destroy(map);
+	safe_memory_start();
+	s_sis_map_buffer *map = sis_map_buffer_create();
+	
+	char *str = sis_malloc(100);
+	sis_map_buffer_set(map, "key1", str);
+	printf("in %p %p\n",map, str);
+	char *sss = sis_map_buffer_get(map, "key1");
+	printf("out %p %p\n",map, sss);
 
+	str = sis_malloc(100);
+	sis_map_buffer_set(map, "key1", str);
+	printf("in %p %p\n",map, str);
+	sss = sis_map_buffer_get(map, "key1");
+	printf("out %p %p\n",map, sss);
+
+	str = sis_malloc(100);
+	sis_map_buffer_set(map, "key1", str);
+	printf("in %p %p\n",map, str);
+	sss = sis_map_buffer_get(map, "key1");
+	printf("out %p %p\n",map, sss);
+
+	sis_map_buffer_destroy(map);
+	safe_memory_stop();
 }
-
 #endif

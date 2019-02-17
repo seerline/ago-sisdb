@@ -206,9 +206,11 @@ extern "C" {
 #define sis_dict_fetch_value dictFetchValue
 #define sis_dict_find dictFind
 #define sis_dict_empty dictEmpty
-#define sis_dict_setval dictSetVal
-#define sis_dict_getval dictGetVal
-#define sis_dict_getkey dictGetKey
+
+#define sis_dict_replace dictReplace
+// #define sis_dict_setval  dictSetVal
+#define sis_dict_getval  dictGetVal
+#define sis_dict_getkey  dictGetKey
 
 #define sis_dict_unlink       dictUnlink
 #define sis_dict_unlink_free  dictFreeUnlinkedEntry

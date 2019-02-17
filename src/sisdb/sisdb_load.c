@@ -129,7 +129,8 @@ int load_sisdb_call(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	{
 		// sis_out_binary("call out", o, 30);
 		// printf("call out ...%lu\n", sis_sdslen(o));
-		sis_module_reply_with_simple_string(ctx_, o);
+		sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
+		// sis_module_reply_with_simple_string(ctx_, o);
 		// sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
 		sis_sdsfree(o);
 		return SIS_MODULE_OK;

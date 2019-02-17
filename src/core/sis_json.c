@@ -1262,7 +1262,7 @@ void sis_json_show(s_sis_json_node *node_, int *i)
 			node_->father,node_->child, node_->prev, node_->next,
 			node_->key, node_->value);
 }
-#if 1
+#if 0
 
 int main1()
 {

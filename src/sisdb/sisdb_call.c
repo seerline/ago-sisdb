@@ -376,11 +376,12 @@ void *sisdb_call_get_close_sds(void *db_, void *com_)
 					continue;
 				}
 				*close = _sis_from_now_get_price(db, code);
-				// printf("===2==%d====\n",close);
+				// printf("===2==%d====\n",*close);
 				if (*close == 0)
 				{
 					*close = (uint32)sisdb_field_get_uint_from_key(collect->db, "before", info);
 				}
+				// printf("===2==%d====\n",*close);
 				sis_sdsfree(info);
 			}	
 			goto error;

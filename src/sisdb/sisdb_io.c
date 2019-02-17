@@ -238,7 +238,6 @@ char *sisdb_open(const char *conf_)
         }
         sis_json_close(sdb_json);
     }
-
     // 这里加载数据
     // 应该需要判断数据的版本号，如果不同，应该对磁盘上的数据进行数据字段重新匹配
     // 把老库中有的字段加载到新的库中，再存盘
