@@ -323,8 +323,8 @@ bool _sisdb_file_load_aof(s_sisdb_server *server_)
         size_t bytes = sis_memory_readfile(buffer, fp, SIS_DB_MEMORY_SIZE);
         // 结构化文件这样读没问题，
         if (bytes <= 0)
-            break;
-        // printf("read %d\n",bytes);
+        {    break;}
+        // printf("read %d\n",(int)bytes);
         while (sis_memory_get_size(buffer) >= sizeof(s_sis_aof_head))
         {
             if (!hashead)
@@ -338,11 +338,10 @@ bool _sisdb_file_load_aof(s_sisdb_server *server_)
                 break;
             }
             // 不拷贝内存，只是移动指针，但移动后求出的sis_memory_get_size需要减少
-            // printf("head.type %d\n",head.type);
+            // printf("%s type :%d size: %d\n",head.key, head.type, head.size);
             switch (head.type)
             {
                 case SIS_AOF_TYPE_DEL:
-                    // printf("del %s\n",head.key);
                     sisdb_delete(head.key, sis_memory(buffer), head.size);
                     break;
                 case SIS_AOF_TYPE_JSET:

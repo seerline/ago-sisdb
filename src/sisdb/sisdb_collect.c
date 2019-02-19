@@ -72,6 +72,8 @@ int _stepindex_goto(s_sis_step_index *si_, uint64 curr_)
 ///////////////////////////////////////////////////////////////////////////
 s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 {
+	// printf("create collect = %s\n",key_);
+
 	char code[SIS_MAXLEN_CODE];
 	char dbname[SIS_MAXLEN_TABLE];
 	sis_str_substr(code, SIS_MAXLEN_CODE, key_, '.', 0);
@@ -888,20 +890,57 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 		o = sisdb_collect_get_of_range_sds(collect, 0, -1);
 		return o;
 	}
-	bool by_time = sis_json_cmp_child_node(search, "min") != NULL;
-	bool by_region = sis_json_cmp_child_node(search, "start") != NULL;
-	if (by_time)
+	int style = 0;
+	if (sis_json_cmp_child_node(search, "min"))
 	{
-		min = sis_json_get_int(search, "min", 0);
+		style = SIS_SEARCH_MIN;
+	} 
+	else
+	{
+		if (sis_json_cmp_child_node(search, "max"))
+		{
+			style = SIS_SEARCH_MAX;
+		} 
+		else
+		{
+			if (sis_json_cmp_child_node(search, "start"))
+			{
+				style = SIS_SEARCH_START;
+			}
+		}	
+	}
+	
+	if (style == SIS_SEARCH_MIN || style == SIS_SEARCH_MAX)
+	{
+		if (style == SIS_SEARCH_MIN)
+		{
+			min = sis_json_get_int(search, "min", 0);
+		} 
+		else
+		{
+			min = sis_json_get_int(search, "max", 0);
+		}
 		offset = sis_json_get_int(search, "offset", 0);
-		// if (sis_json_cmp_child_node(search, "offset"))
-		// {
-		// 	offset = sis_json_get_int(search, "offset", 0);
-		// }
+
 		if (sis_json_cmp_child_node(search, "count"))
 		{
 			count = sis_json_get_int(search, "count", 1);
-			start = sisdb_collect_search_right(collect, min, &minX);
+			if (style == SIS_SEARCH_MIN)
+			{
+				start = sisdb_collect_search_right(collect, min, &minX);	
+			} 
+			else
+			{
+				start = sisdb_collect_search_left(collect, min, &minX);
+				if (minX!=SIS_SEARCH_OK)
+				{
+					if (offset < 0)
+					{
+						offset++;
+						count++;
+					}
+				}
+			}
 			if (start >= 0)
 			{
 				start += offset;
@@ -910,7 +949,6 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 				{
 					count -= offset;
 				}
-				// printf("---- %d %d  %d %d %d\n",start, collect->value->count, offset, min, minX);
 				o = sisdb_collect_get_of_count_sds(collect, start, count);
 			}
 		}
@@ -926,10 +964,6 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 				{
 					start += offset;
 					start = sis_max(0, start);
-					// if (offset < 0)
-					// {
-					// 	count -= offset;
-					// }
 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
 			}
@@ -944,22 +978,11 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 					start = sis_max(0, start);
 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
-				// start = sisdb_collect_search(collect, min);
-				// if (start >= 0)
-				// {
-				// 	start += offset;
-				// 	start = sis_max(0, start);
-				// 	if (offset < 0)
-				// 	{
-				// 		count -= offset;
-				// 	}
-				// 	o = sisdb_collect_get_of_count_sds(collect, start, 1);
-				// }
 			}
 		}
 		return o;
 	}
-	if (by_region)
+	if (style == SIS_SEARCH_START)
 	{
 		start = sis_json_get_int(search, "start", -1); // -1 为最新一条记录
 		if (sis_json_cmp_child_node(search, "count"))
@@ -982,6 +1005,109 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_ha
 	}
 	return o;
 }
+
+
+// s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_handle *handle)
+// {
+// 	// 检查取值范围，没有就全部取
+// 	s_sis_sds o = NULL;
+
+// 	int64 min, max;
+// 	int start, stop;
+// 	int count = 0;
+// 	int maxX, minX;
+// 	int offset = 0;
+
+// 	s_sis_json_node *search = sis_json_cmp_child_node(handle->node, "search");
+// 	if (!search)
+// 	{
+// 		o = sisdb_collect_get_of_range_sds(collect, 0, -1);
+// 		return o;
+// 	}
+// 	bool by_time = sis_json_cmp_child_node(search, "min") != NULL;
+// 	bool by_region = sis_json_cmp_child_node(search, "start") != NULL;
+// 	if (by_time)
+// 	{
+// 		min = sis_json_get_int(search, "min", 0);
+// 		offset = sis_json_get_int(search, "offset", 0);
+// 		// if (sis_json_cmp_child_node(search, "offset"))
+// 		// {
+// 		// 	offset = sis_json_get_int(search, "offset", 0);
+// 		// }
+// 		if (sis_json_cmp_child_node(search, "count"))
+// 		{
+// 			count = sis_json_get_int(search, "count", 1);
+// 			// start = sisdb_collect_search_right(collect, min, &minX);
+// 			start = sisdb_collect_search_left(collect, min, &minX);
+// 			if (start >= 0)
+// 			{
+// 				start += offset;
+// 				start = sis_max(0, start);
+// 				if (offset < 0)
+// 				{
+// 					count -= offset;
+// 				}
+// 				// printf("---- %d %d  %d %d %d\n",start, collect->value->count, offset, min, minX);
+// 				o = sisdb_collect_get_of_count_sds(collect, start, count);
+// 			}
+// 		}
+// 		else
+// 		{
+// 			if (sis_json_cmp_child_node(search, "max"))
+// 			{
+// 				max = sis_json_get_int(search, "max", 0);
+// 				start = sisdb_collect_search_right(collect, min, &minX);
+// 				stop = sisdb_collect_search_left(collect, max, &maxX);
+// 				// printf("%d---%d\n", start, stop);
+// 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
+// 				{
+// 					start += offset;
+// 					start = sis_max(0, start);
+// 					// if (offset < 0)
+// 					// {
+// 					// 	count -= offset;
+// 					// }
+// 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
+// 				}
+// 			}
+// 			else
+// 			{
+// 				start = sisdb_collect_search_right(collect, min, &minX);
+// 				stop = sisdb_collect_search_left(collect, min, &maxX);
+// 				// printf("%d---%d\n", start, stop);
+// 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
+// 				{
+// 					start += offset;
+// 					start = sis_max(0, start);
+// 					o = sisdb_collect_get_of_range_sds(collect, start, stop);
+// 				}
+// 			}
+// 		}
+// 		return o;
+// 	}
+// 	if (by_region)
+// 	{
+// 		start = sis_json_get_int(search, "start", -1); // -1 为最新一条记录
+// 		if (sis_json_cmp_child_node(search, "count"))
+// 		{
+// 			count = sis_json_get_int(search, "count", 1);
+// 			o = sisdb_collect_get_of_count_sds(collect, start, count);
+// 		}
+// 		else
+// 		{
+// 			if (sis_json_cmp_child_node(search, "stop"))
+// 			{
+// 				stop = sis_json_get_int(search, "stop", -1); // -1 为最新一条记录
+// 				o = sisdb_collect_get_of_range_sds(collect, start, stop);
+// 			}
+// 			else
+// 			{
+// 				o = sisdb_collect_get_of_count_sds(collect, start, 1);
+// 			}
+// 		}
+// 	}
+// 	return o;
+// }
 // 为保证最快速度，尽量不加参数
 s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_, const char *key_)
 {
@@ -1770,6 +1896,7 @@ void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool ispub_)
 {
 	s_sisdb_table *tb = unit_->db;
+	printf("tb = %p\n", tb);
 	tb->control.ispubs = (ispub_ & tb->control.issubs);
 	if (tb->control.isinit || tb->control.ispubs)
 	{
@@ -2148,7 +2275,7 @@ int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_, bool ispub_)
 		sis_out_log(3)("source format error [%d*%d!=%u]\n", count, unit_->value->len, ilen);
 		return 0;
 	}
-	// printf("-----count =%d len=%d:%d\n", count, ilen, unit_->value->len);
+	printf("-----count =%d len=%d:%d\n", count, ilen, unit_->value->len);
 	const char *ptr = in_;
 	for (int i = 0; i < count; i++)
 	{

@@ -516,9 +516,14 @@ int sisdb_delete(const char *key_, const char *com_, size_t len_)
         if (collect)
         {
             sisdb_collect_destroy(collect);
-            sis_dict_delete(server.db->collects, key_);
+            s_sis_sds key = sis_sdsnew(key_);
+            sis_dict_delete(server.db->collects, key);
+            sds_free(key);  
             o = 1;
-        }        
+        }   
+        // sis_dict_unlink_free(server.db->collects, key_);
+        // s_sisdb_collect *ddd = sisdb_get_collect(server.db, key_);   
+        // printf("del %s %p\n",key_, ddd);  
     }
 
     return o;

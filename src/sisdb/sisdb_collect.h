@@ -35,6 +35,12 @@
 #define SIS_JSON_KEY_FIELDS ("fields")  // 字段定义
 #define SIS_JSON_KEY_COLLECTS ("collects") // 获取一个db的所有股票代码
 
+// #define SIS_SEARCH_NONE    0
+#define SIS_SEARCH_MIN     0x01
+#define SIS_SEARCH_MAX     0x02
+#define SIS_SEARCH_START   0x04
+#define SIS_SEARCH_COUNT   0x08
+#define SIS_SEARCH_OFFSET  0x10
 // #define SIS_UPDATE_MODE_NO     0   // 放弃数据
 // #define SIS_UPDATE_MODE_UPDATE   1   // 修改某条记录
 // #define SIS_UPDATE_MODE_INSERT   2   // 插入在某条记录之前

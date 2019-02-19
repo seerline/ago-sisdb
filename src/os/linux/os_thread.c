@@ -62,22 +62,17 @@ int sis_mutex_create(s_sis_mutex_t *mutex_)
 /////////////////////////////////////
 //
 //////////////////////////////////////////
-#ifndef __RELEASE__1
-#define __SIGNEXIT__
-#endif
+
+#ifdef __RELEASE__
 void sis_thread_wait_start(s_sis_wait *wait_)
 {
-#ifdef __SIGNEXIT__
 	sis_mutex_lock(&wait_->mutex);
-#endif
 }
 void sis_thread_wait_stop(s_sis_wait *wait_)
 {
-#ifdef __SIGNEXIT__
 	sis_mutex_unlock(&wait_->mutex);
-#endif
 }
-#ifdef __SIGNEXIT__
+
 // 要测试，暂时先这样，后期要检查问题
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
@@ -91,6 +86,12 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 	// 返回 SIS_ETIMEDOUT 就正常处理
 }
 #else
+void sis_thread_wait_start(s_sis_wait *wait_)
+{
+}
+void sis_thread_wait_stop(s_sis_wait *wait_)
+{
+}
 // #include <stdio.h>
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
