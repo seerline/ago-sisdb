@@ -107,16 +107,20 @@ void *sis_map_buffer_get(s_sis_map_buffer *map_, const char *key_)
 };
 int sis_map_buffer_set(s_sis_map_buffer *map_, const char *key_, void *val_)
 {
-	s_sis_dict_entry *he;
 	s_sis_sds key = sis_sdsnew(key_);
-	he = sis_dict_find(map_, key);
-	if (!he)
+	if(!sis_dict_replace(map_, key, val_))
 	{
-		sis_dict_add(map_, key, val_);
-		return 0;
+		sis_sdsfree(key);
 	}
-	sis_dict_replace(map_, key, val_);
-	sis_sdsfree(key);	
+	// s_sis_dict_entry *he;
+	// he = sis_dict_find(map_, key);
+	// if (!he)
+	// {
+	// 	sis_dict_add(map_, key, val_);
+	// 	return 0;
+	// }
+	// sis_dict_replace(map_, key, val_);
+	// sis_sdsfree(key);	
 	return 0;
 }
 
@@ -180,16 +184,20 @@ s_sis_map_sds *sis_map_sds_create()
 };
 int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
 {
-	s_sis_dict_entry *he;
 	s_sis_sds key = sis_sdsnew(key_);
-	he = sis_dict_find(map_, key);
-	if (!he)
+	if(!sis_dict_replace(map_, key, val_))
 	{
-		sis_dict_add(map_, key, val_);
-		return 0;
+		sis_sdsfree(key);
 	}
-	sis_dict_replace(map_, key, val_);
-	sis_sdsfree(key);	
+	// s_sis_dict_entry *he;
+	// he = sis_dict_find(map_, key);
+	// if (!he)
+	// {
+	// 	sis_dict_add(map_, key, val_);
+	// 	return 0;
+	// }
+	// sis_dict_replace(map_, key, val_);
+	// sis_sdsfree(key);	
 	return 0;
 }
 #if 0

@@ -1896,7 +1896,7 @@ void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool ispub_)
 {
 	s_sisdb_table *tb = unit_->db;
-	printf("tb = %p\n", tb);
+	// printf("tb = %p\n", tb);
 	tb->control.ispubs = (ispub_ & tb->control.issubs);
 	if (tb->control.isinit || tb->control.ispubs)
 	{
@@ -2275,7 +2275,7 @@ int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_, bool ispub_)
 		sis_out_log(3)("source format error [%d*%d!=%u]\n", count, unit_->value->len, ilen);
 		return 0;
 	}
-	printf("-----count =%d len=%d:%d\n", count, ilen, unit_->value->len);
+	// printf("-----count =%d len=%d:%d\n", count, ilen, unit_->value->len);
 	const char *ptr = in_;
 	for (int i = 0; i < count; i++)
 	{

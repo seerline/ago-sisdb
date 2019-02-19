@@ -174,7 +174,10 @@ int load_sisdb_set(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
 	const char *val = sis_module_string_get(argv_[2], &len);
-
+	if (!val||len < 1)
+	{
+		return sis_module_reply_with_null(ctx_);
+	}
 	int o = sisdb_set_json(key, val, len);
 
 	if (!o)
@@ -196,7 +199,10 @@ int load_sisdb_sset(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
 	const char *val = sis_module_string_get(argv_[2], &len);
-
+	if (!val||len < 1)
+	{
+		return sis_module_reply_with_null(ctx_);
+	}
 	int o = sisdb_set_struct(key, val, len);
 
 	if (!o)
@@ -229,10 +235,13 @@ int load_sisdb_new(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 
 	size_t len;
 	const char *table = sis_module_string_get(argv_[1], NULL);
-	const char *attrs = sis_module_string_get(argv_[2], &len);
+	const char *val = sis_module_string_get(argv_[2], &len);
 
-	int o = sisdb_new(table, attrs, len);
-
+	if (!val||len < 1)
+	{
+		return sis_module_reply_with_null(ctx_);
+	}
+	int o = sisdb_new(table, val, len);
 	if (!o)
 	{
 		return sis_module_reply_with_simple_string(ctx_, "OK");
@@ -252,7 +261,10 @@ int load_sisdb_update(s_sis_module_context *ctx_, s_sis_module_string **argv_, i
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
 	const char *val = sis_module_string_get(argv_[2], &len);
-
+	if (!val||len < 1)
+	{
+		return sis_module_reply_with_null(ctx_);
+	}
 	int o = sisdb_update(key, val, len);
 
 	if (!o)
