@@ -52,6 +52,9 @@ void sis_plan_task_destroy(s_sis_plan_task *task_);
 
 bool sis_plan_task_start(s_sis_plan_task *task_,SIS_THREAD_START_ROUTINE func_, void* val_);
 
+void sis_plan_task_wait_start(s_sis_plan_task *task_);
+void sis_plan_task_wait_stop(s_sis_plan_task *task_);
+
 bool sis_plan_task_working(s_sis_plan_task *task_);
 bool sis_plan_task_execute(s_sis_plan_task *task_);  // 检查时间是否到了，可以执行就返回真
 

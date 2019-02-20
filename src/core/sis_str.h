@@ -7,6 +7,36 @@
 #include <os_time.h>
 #include <sis_malloc.h>
 
+#pragma pack(push,1)
+// typedef struct sis {
+//     unsigned int len;
+//     char val[0];
+// } sis;
+#pragma pack(pop)
+// #define SIS_LEN  (sizeof(unsigned int))
+
+// inline sis_str sis_str_new(const char *str_, unsigned int len_)
+// {
+//     sis_str str = sis_malloc(len_ + SIS_LEN + 1);
+//     memmove(str, &len_, SIS_LEN);
+//     str += SIS_LEN;
+//     memmove(str,str_,len_);
+//     str[len_] = 0;
+//     return str;
+// }
+// inline void sis_str_free(sis_str str_)
+// {
+//     if(str_)
+//     {
+//         sis_free(str_ - SIS_LEN);
+//     }
+// }
+// inline unsigned int sis_str_len(sis_str str_)
+// {
+//     const char *str = str_ - SIS_LEN;
+//     unsigned int *o = (unsigned int *)str;
+//     return *o;
+// }
 // 以第一个字符串为长度，从头开始进行比较
 int sis_strcase_match(const char *son_, const char *source_);
 
@@ -48,5 +78,7 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 bool sis_str_get_id(char *out_, size_t olen_);
 // olen < 16 返回
 // bool sis_str_get_id_long(char *out_, size_t olen_);
+
+
 
 #endif //_SIS_STR_H

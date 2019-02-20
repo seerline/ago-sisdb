@@ -67,8 +67,8 @@ typedef struct s_sisdb_collect
 
 	////////////////////////////////////////////////////////////
 	//   以下两个结构仅仅在专用数据库时使用
-	s_sisdb_sys_exch  *spec_exch; // 市场的信息
-	s_sisdb_sys_info  *spec_info; // 股票的信息
+	s_sisdb_sys_exch  *spec_exch; // 市场的信息 指针，不用释放
+	s_sisdb_sys_info  *spec_info; // 股票的信息 指针，不用释放
 	////////////////////////////////////////////////////////////
 	s_sis_step_index  *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sis_struct_list *value;    // 结构化数据

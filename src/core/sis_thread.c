@@ -133,9 +133,15 @@ s_sis_plan_task *sis_plan_task_create()
 
 	sis_mutex_create(&task->mutex);
 
-	sis_thread_wait_start(&task->wait);
-
 	return task;
+}
+void sis_plan_task_wait_start(s_sis_plan_task *task_)
+{
+	sis_thread_wait_start(&task_->wait);
+}
+void sis_plan_task_wait_stop(s_sis_plan_task *task_)
+{
+	sis_thread_wait_stop(&task_->wait);
 }
 bool sis_plan_task_start(s_sis_plan_task *task_, SIS_THREAD_START_ROUTINE func_, void *val_)
 {
@@ -154,14 +160,12 @@ void sis_plan_task_destroy(s_sis_plan_task *task_)
 		task_->working = false;
 		
 		sis_thread_wait_kill(&task_->wait);
-		sis_sleep(30); 
 		if (task_->work_pid)
 		{
 			sis_thread_join(task_->work_pid);
 		}
-		sis_thread_wait_stop(&task_->wait);
-		sis_mutex_destroy(&task_->mutex);
 		sis_thread_wait_destroy(&task_->wait);
+		sis_mutex_destroy(&task_->mutex);
 	}
 
 	sis_struct_list_destroy(task_->work_plans);

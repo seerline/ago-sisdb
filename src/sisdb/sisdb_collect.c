@@ -82,7 +82,7 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 	s_sisdb_table *tb = sisdb_get_table(db_, dbname);
 	if (!tb)
 	{
-		sis_out_log(3)("table define no find.\n");
+		sis_out_log(3)("table [%s--%s] no find.\n", key_ , dbname);
 		return NULL;
 	}
 
@@ -123,7 +123,12 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 void sisdb_collect_destroy(s_sisdb_collect *unit_)
 {
 	// printf("delete in_collect = %p\n",unit_);
-	if (unit_->value)
+	// if (unit_->db->control.issys)
+	// {
+	// 	// 如何从collect_list中删除数据
+	// 	sis_string_list_find_and_delete(unit_->db->collect_list, code);
+	// }	
+	// if (unit_->value)
 	{
 		sis_struct_list_destroy(unit_->value);
 	}
@@ -166,9 +171,10 @@ s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_)
 	s_sisdb_collect *val = NULL;
 	if (db_->collects)
 	{
-		s_sis_sds key = sis_sdsnew(key_);
-		val = (s_sisdb_collect *)sis_dict_fetch_value(db_->collects, key);
-		sis_sdsfree(key);
+		val = sis_map_buffer_get(db_->collects, key_);
+		// s_sis_sds key = sis_sdsnew(key_);
+		// val = (s_sisdb_collect *)sis_dict_fetch_value(db_->collects, key);
+		// sis_sdsfree(key);
 	}
 	return val;
 }
@@ -1119,7 +1125,7 @@ s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_, const char *key_)
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
-		sis_out_log(3)("no find %s key.\n", key_);
+		sis_out_log(3)("no find key %s.\n", key_);
 		return NULL;
 	}
 	int start = 0;
@@ -2071,7 +2077,7 @@ int _sisdb_collect_update_alone(s_sisdb_collect *unit_, const char *in_, bool is
 			int index = sisdb_collect_search_last(unit_, in_time, &set);
 			if (set == SIS_SEARCH_OK)
 			{
-				printf("index =%d write_style= %d \n", index, (tb->write_style & SIS_WRITE_SOLE_TIME));
+				// printf("index =%d write_style= %d \n", index, (tb->write_style & SIS_WRITE_SOLE_TIME));
 				if (tb->write_style & SIS_WRITE_SOLE_TIME)
 				{
 					sis_struct_list_update(unit_->value, index, (void *)in_);

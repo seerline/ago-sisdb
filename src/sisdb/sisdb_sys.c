@@ -73,7 +73,7 @@ bool _sisdb_collect_load_info(s_sisdb_collect *collect_, s_sisdb_sys_info *info_
 
 s_sisdb_sys_exch *sisdb_sys_create_exch(s_sis_db *db_, const char *code_)
 {
-	if (!db_->special) return NULL;
+	if (!db_->special) {return NULL;}
 
 	char market[3];
 	sis_strncpy(market, 3, code_, 2);
@@ -107,7 +107,7 @@ s_sisdb_sys_exch *sisdb_sys_create_exch(s_sis_db *db_, const char *code_)
 }
 s_sisdb_sys_info *sisdb_sys_create_info(s_sis_db *db_, const char *code_)
 {
-	if (!db_->special) return NULL;
+	if (!db_->special) {return NULL;}
 
 	s_sisdb_sys_info *info = (s_sisdb_sys_info *)sis_malloc(sizeof(s_sisdb_sys_info));
 	memset(info, 0, sizeof(s_sisdb_sys_info));
@@ -413,7 +413,7 @@ void sisdb_market_work_init(s_sis_db *db_)
 					{
 						sisdb_call_market_init(db_, (void *)market);
 						// 初始化后应该存一次盘，或者清理掉所有该表的写入
-						printf("init 2 %s\n", market);
+						sis_out_log(5)("init 2 ok %s\n", market);
 						_sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
 					}
 				}
@@ -424,7 +424,10 @@ void sisdb_market_work_init(s_sis_db *db_)
 			if ((exch.work_time.first < exch.work_time.second && min > exch.work_time.first && min < exch.work_time.second) ||
 				(exch.work_time.first > exch.work_time.second && (min > exch.work_time.first || min < exch.work_time.second)))
 			{
-				printf("start work: status %d [%s]\n", status, market);
+				if (status != SIS_MARKET_STATUS_INITING)
+				{
+					printf("start work: status %d [%s]\n", status, market);
+				}
 				if (status == SIS_MARKET_STATUS_NOINIT || status == SIS_MARKET_STATUS_CLOSE)
 				{
 					_sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITING);
@@ -436,7 +439,7 @@ void sisdb_market_work_init(s_sis_db *db_)
 					{
 						sisdb_call_market_init(db_, (void *)market);
 						// 初始化后应该存一次盘，或者清理掉所有该表的写入
-						printf("init 1 %s\n", market);
+						sis_out_log(5)("init 1 ok %s\n", market);
 						_sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
 					}
 				}

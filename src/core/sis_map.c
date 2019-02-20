@@ -200,31 +200,42 @@ int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
 	// sis_sdsfree(key);	
 	return 0;
 }
-#if 0
+#if 1
 
 int main()
 {
 	safe_memory_start();
 	s_sis_map_buffer *map = sis_map_buffer_create();
-	
-	char *str = sis_malloc(100);
-	sis_map_buffer_set(map, "key1", str);
+	char key[128];
+	sis_sprintf(key, 128, "ask.%s", "dingzhengdong");
+
+	char *str = sis_malloc(200);
+	sis_map_buffer_set(map, key, str);
 	printf("in %p %p\n",map, str);
-	char *sss = sis_map_buffer_get(map, "key1");
+	char *sss = sis_map_buffer_get(map, key);
 	printf("out %p %p\n",map, sss);
 
 	str = sis_malloc(100);
-	sis_map_buffer_set(map, "key1", str);
+	sis_map_buffer_set(map, key, str);
 	printf("in %p %p\n",map, str);
-	sss = sis_map_buffer_get(map, "key1");
+	sss = sis_map_buffer_get(map, key);
 	printf("out %p %p\n",map, sss);
 
 	str = sis_malloc(100);
-	sis_map_buffer_set(map, "key1", str);
+	sis_map_buffer_set(map, key, str);
 	printf("in %p %p\n",map, str);
-	sss = sis_map_buffer_get(map, "key1");
+	sss = sis_map_buffer_get(map, key);
 	printf("out %p %p\n",map, sss);
 
+	for(size_t i = 0; i < 1000000; i++)
+	{
+		str = sis_malloc(rand() % 200);		
+		sis_map_buffer_set(map, key, str);	
+		printf("rand %d %p\n",(int)i, str);	
+		sss = sis_map_buffer_get(map, key);
+		printf("out %p %p\n",map, sss);
+	}
+	// str = sis_malloc(rand() % 100);	
 	sis_map_buffer_destroy(map);
 	safe_memory_stop();
 }

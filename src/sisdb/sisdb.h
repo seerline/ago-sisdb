@@ -14,12 +14,13 @@
 #include "sis_json.h"
 #include "sis_thread.h"
 
-#define SIS_MAXLEN_CODE  9
-#define SIS_MAXLEN_NAME  32
+#define SIS_MAXLEN_CODE  16
 #define SIS_MAXLEN_TABLE 32
 #define SIS_MAXLEN_KEY   (SIS_MAXLEN_CODE + SIS_MAXLEN_TABLE)
 
-#define SIS_MAXLEN_COMMAND  64
+#define SIS_MAXLEN_NAME  64
+
+#define SIS_MAXLEN_COMMAND 128
 #define SIS_MAXLEN_STRING  128
 
 // 默认返回最后不超过32K的数据，二进制数据

@@ -350,6 +350,20 @@ void _sis_method_class_clear(s_sis_method_class *class_)
 	}
 }
 
+void *sis_method_class_loop(s_sis_method_class *class_)
+{
+	s_sis_method_node *node = class_->node;
+	while(node)
+	{
+		if (node->method->proc)
+		{
+			node->method->proc(class_->obj, node->argv);
+		}		
+		node = node->next;
+	}
+	return NULL;	
+}
+
 void *sis_method_class_execute(s_sis_method_class *class_)
 {
 	if (class_->style == SIS_METHOD_CLASS_MARKING)

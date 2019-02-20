@@ -88,9 +88,13 @@ s_sis_method_class *sis_method_class_create(
 	const char *style_, 
 	s_sis_json_node *node_);
 
+// 下面的算法可能有破坏内存的嫌疑
 void *sis_method_class_execute(s_sis_method_class *class_);
 
-// 0 -  全部清理  1 - 只清理输出的数据 针对SIS_METHOD_CLASS_FILTER类型
+// 顺序执行第一层所有函数，参数层层传递即可
+void *sis_method_class_loop(s_sis_method_class *class_);
+
+// 0 -  全部清理  1 - 只清理输出的数据 针对 SIS_METHOD_CLASS_FILTER 类型
 void sis_method_class_clear(s_sis_method_class *,int);
 
 void sis_method_class_destroy(s_sis_method_class *class_);

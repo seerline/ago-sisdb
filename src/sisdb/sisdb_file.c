@@ -42,14 +42,16 @@ bool _sisdb_file_save_collect_struct(s_sis_sds key_,
                                      sis_file_handle zerofp_)
 {
     s_sis_sdb_head head;
-    sis_strcpy((char *)&head.key, SIS_MAXLEN_KEY, key_);
+    memset(&head, 0, sizeof(s_sis_sdb_head));
+    sis_strncpy(head.key, SIS_MAXLEN_KEY, key_, sis_sdslen(key_));
+
     head.format = SIS_DATA_TYPE_STRUCT;
     head.size = unit_->value->count * unit_->value->len;
-    // if(head.size <1)
-    // {
-    //     return true;
-    //     // 没有内容
-    // }
+    // 没有内容就不写盘
+    if(head.size <1)
+    {
+        return true; // 没有内容
+    }
     sis_file_write(sdbfp_, (const char *)&head, 1, sizeof(s_sis_sdb_head));
     void *val = sis_struct_list_first(unit_->value);
     if(val)
@@ -287,8 +289,9 @@ bool sisdb_file_save_aof(s_sisdb_server *server_,
     sis_file_seek(fp, 0, SEEK_END);
 
     s_sis_aof_head head;
-    sis_strncpy((char *)&head.key, SIS_MAXLEN_KEY,
-                key_, SIS_MAXLEN_KEY);
+    memset(&head, 0, sizeof(s_sis_aof_head));
+    sis_strncpy(head.key, SIS_MAXLEN_KEY, key_, strlen(key_));
+    // sis_strncpy(head.key, SIS_MAXLEN_KEY, key_, SIS_MAXLEN_KEY);
     head.type = type_;
     head.size = len_;
 
@@ -317,6 +320,7 @@ bool _sisdb_file_load_aof(s_sisdb_server *server_)
 
     bool hashead = false;
     s_sis_aof_head head;
+    // memset(&head, 0, sizeof(s_sis_aof_head));
     s_sis_memory *buffer = sis_memory_create();
     while (1)
     {
@@ -374,9 +378,11 @@ int _sisdb_file_load_collect_alone(s_sis_db *db_, const char *key_, const char *
     s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
     if (!collect)
     {
+        
         collect = sisdb_collect_create(db_, key_);
         if (!collect)
         {
+            printf("--1--\n");
             return o;
         }
         // 进行其他的处理
@@ -392,6 +398,7 @@ bool _sisdb_file_load_collects(s_sis_db *db_, sis_file_handle fp_)
 {
     bool hashead = false;
     s_sis_sdb_head head;
+    // memset(&head, 0, sizeof(s_sis_sdb_head));
     s_sis_memory *buffer = sis_memory_create();
     while (1)
     {

@@ -472,15 +472,15 @@ void * sisdb_call_get_right_sds(void *db_, void *com_)
 
 // 	int start = sis_json_get_int(handle->node, "start", sis_time_get_idate(0));  // curr-date
 // 	int stop = sis_json_get_int(handle->node, "stop", sis_time_get_idate(0)); // fixed-date
-// 	char query[SIS_MAXLEN_QUERY];
+// 	char query[DIG_MAXLEN_QUERY];
 // 	if(start > stop) {
-// 		sis_sprintf(query,SIS_MAXLEN_QUERY, SIS_QUERY_COM_SEARCH, stop, start);
+// 		sis_sprintf(query,DIG_MAXLEN_QUERY, SIS_QUERY_COM_SEARCH, stop, start);
 // 	} else {
-// 		sis_sprintf(query,SIS_MAXLEN_QUERY, SIS_QUERY_COM_SEARCH, start, stop);
+// 		sis_sprintf(query,DIG_MAXLEN_QUERY, SIS_QUERY_COM_SEARCH, start, stop);
 // 	}
 
-// 	char key[SIS_MAXLEN_COMMAND];
-//     sis_sprintf(key, SIS_MAXLEN_COMMAND, "%s.%s", code, "right");
+// 	char key[DIG_MAXLEN_COMMAND];
+//     sis_sprintf(key, DIG_MAXLEN_COMMAND, "%s.%s", code, "right");
 // 	s_sis_sds right = digger_get_local_sds(DIGGER_DB_IN, "get", key, query);
 // 	if (!right) {
 // 		o = sdsnewlen(com,strlen(com));
@@ -491,7 +491,7 @@ void * sisdb_call_get_right_sds(void *db_, void *com_)
 
 // 	int dot = 2;
 // 	s_stock_info *info_ps;
-//     sis_sprintf(key, SIS_MAXLEN_COMMAND, "%s.%s", code, "_info");
+//     sis_sprintf(key, DIG_MAXLEN_COMMAND, "%s.%s", code, "_info");
 // 	s_sis_sds info = digger_get_local_sds(DIGGER_DB_IN, "get", key, SIS_QUERY_COM_NORMAL);
 // 	if (!info) {
 // 		goto error;

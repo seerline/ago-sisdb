@@ -88,9 +88,11 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // √Î
 #else
 void sis_thread_wait_start(s_sis_wait *wait_)
 {
+	sis_mutex_lock(&wait_->mutex);
 }
 void sis_thread_wait_stop(s_sis_wait *wait_)
 {
+	sis_mutex_unlock(&wait_->mutex);
 }
 // #include <stdio.h>
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // √Î
@@ -158,7 +160,7 @@ void *__task_tb(void *argv_)
     sis_thread_wait_start(&__thread_wait);
     while (!__kill)
     {
-        if(sis_thread_wait_sleep(&__thread_wait, 1) == SIS_ETIMEDOUT)
+        if(sis_thread_wait_sleep(&__thread_wait, 6) == SIS_ETIMEDOUT)
         {
 			// sis_sleep(3000);
             printf("timeout ..b.. %d \n",__kill);
@@ -178,6 +180,7 @@ void exithandle(int sig)
 
 	printf("kill . \n");
     sis_thread_wait_kill(&__thread_wait);
+	
 	printf("free . \n");
     sis_thread_wait_destroy(&__thread_wait);
 	printf("ok . \n");

@@ -20,8 +20,10 @@ static s_sisdb_server server = {
 
 void *_thread_save_plan_task(void *argv_)
 {
+
     s_sis_db *db = (s_sis_db *)argv_;
     s_sis_plan_task *task = db->save_task;
+    sis_plan_task_wait_start(task);
 
     while (sis_plan_task_working(task))
     {
@@ -33,6 +35,8 @@ void *_thread_save_plan_task(void *argv_)
             sis_mutex_unlock(&task->mutex);
         }
     }
+    sis_plan_task_wait_stop(task);
+
     return NULL;
 }
 
@@ -40,7 +44,7 @@ void *_thread_init_plan_task(void *argv_)
 {
     s_sis_db *db = (s_sis_db *)argv_;
     s_sis_plan_task *task = db->init_task;
-
+    sis_plan_task_wait_start(task);
     while (sis_plan_task_working(task))
     {
         if (sis_plan_task_execute(task))
@@ -49,6 +53,7 @@ void *_thread_init_plan_task(void *argv_)
             // 需要检查所有市场的状态和初始化信息等信息
         }
     }
+    sis_plan_task_wait_stop(task);
     return NULL;
 }
 
@@ -468,9 +473,9 @@ int sisdb_delete_collect_of_table(const char *dbname_, const char *com_, size_t 
         s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
         if (collect&&!sis_strcasecmp(collect->db->name, dbname_))
         {
-            sisdb_collect_destroy(collect);
             sis_dict_delete(server.db->collects, sis_dict_getkey(de));
-            o ++;
+            sisdb_collect_destroy(collect);
+            o++;
         }
     }
     sis_dict_iter_free(di);
@@ -484,13 +489,13 @@ int sisdb_delete_collect_of_code(const char *code_, const char *com_, size_t len
     s_sis_dict_iter *di = sis_dict_get_iter(server.db->collects);
     while ((de = sis_dict_next(di)) != NULL)
     {
-        char code[SIS_MAXLEN_TABLE];
-        sis_str_substr(code, SIS_MAXLEN_TABLE, sis_dict_getkey(de), '.', 0);
+        char code[SIS_MAXLEN_CODE];
+        sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
         if (!sis_strcasecmp(code_, code))
         {
             s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            sisdb_collect_destroy(collect);
             sis_dict_delete(server.db->collects, sis_dict_getkey(de));
+            sisdb_collect_destroy(collect);
             o++;
         }
     }
@@ -515,10 +520,10 @@ int sisdb_delete(const char *key_, const char *com_, size_t len_)
         s_sisdb_collect *collect = sisdb_get_collect(server.db, key_);
         if (collect)
         {
-            sisdb_collect_destroy(collect);
             s_sis_sds key = sis_sdsnew(key_);
             sis_dict_delete(server.db->collects, key);
-            sds_free(key);  
+            sis_sdsfree(key);  
+            sisdb_collect_destroy(collect);
             o = 1;
         }   
         // sis_dict_unlink_free(server.db->collects, key_);
@@ -546,6 +551,7 @@ int sisdb_del(const char *key_, const char *com_, size_t len_)
 // 直接拷贝
 int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 {
+    printf("sisdb_set = %s\n", key_);
     // 如果表不存在就新建一个表格，仅仅对json格式，表格字段按第一次发送的结构
     if (fmt_ == SIS_DATA_TYPE_JSON)
     {       
