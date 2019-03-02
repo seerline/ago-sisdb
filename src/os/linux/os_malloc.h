@@ -93,8 +93,8 @@ inline void safe_memory_freenode(void *__p__)
         __p = malloc(__size__ + MEMORY_NODE_SIZE); \
     } else { \
         s_memory_node *__s = (s_memory_node *)((char *)__m__ - MEMORY_NODE_SIZE); \
-        safe_memory_freenode(__s); \
-        __p = realloc(__s, __size__ + MEMORY_NODE_SIZE); \
+        safe_memory_freenode((void *)__s); \
+        __p = realloc((void *)__s, __size__ + MEMORY_NODE_SIZE); \
     } \
     safe_memory_newnode(__p, __size__, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \

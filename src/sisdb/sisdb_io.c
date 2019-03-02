@@ -423,7 +423,7 @@ s_sis_sds sisdb_call_sds(const char *key_, const char *com_)
     }
     else 
     {
-        sis_out_log(3)("no find %s proc.\n", key_);
+        sis_out_log(3)("no find proc %s.\n", key_);
         return NULL;       
     }
     return NULL;
@@ -431,6 +431,7 @@ s_sis_sds sisdb_call_sds(const char *key_, const char *com_)
 
 s_sis_sds sisdb_fast_get_sds(const char *key_)
 {
+    printf("-----get %s \n", key_);
     return sisdb_collect_fastget_sds(server.db, key_);
 }
 // 为保证最快速度，尽量不加参数
@@ -438,6 +439,7 @@ s_sis_sds sisdb_fast_get_sds(const char *key_)
 // com 中携带的为返回格式和search针对时间定位的查询语句，需要解析
 s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
 {
+    printf("-----get %s \n", key_);
     if (key_[0] == '*'&&key_[1] == '.') // ??? 要改成从com中方法调用
     {
         char db[SIS_MAXLEN_TABLE];
@@ -551,7 +553,7 @@ int sisdb_del(const char *key_, const char *com_, size_t len_)
 // 直接拷贝
 int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
 {
-    printf("sisdb_set = %s\n", key_);
+    printf("-----set %s\n", key_);
     // 如果表不存在就新建一个表格，仅仅对json格式，表格字段按第一次发送的结构
     if (fmt_ == SIS_DATA_TYPE_JSON)
     {       
@@ -609,6 +611,7 @@ int sisdb_set(int fmt_, const char *key_, const char *val_, size_t len_)
     sisdb_sys_flush_work_time(collect);
     sisdb_sys_check_write(server.db, key_, collect);
 
+    // 如果是aof加载就需要广播
     if (!server.db->loading)
     {
         // 如果属于磁盘加载就不publish
@@ -783,9 +786,11 @@ int sisdb_write_begin(int type_, const char *key_, const char *val_, size_t len_
         sis_out_log(3)("saveing... set fail.[%s]\n", key_);
         return SIS_SERVER_REPLY_ERR;
     };
+    // sis_out_log(8)("..... lock [%d : %s].\n", type_, key_);
     return SIS_SERVER_REPLY_OK;
 }
 void sisdb_write_end()
 {
+    // sis_out_log(8)("..... unlock.\n");
     sis_mutex_unlock(&server.db->save_task->mutex);
 }

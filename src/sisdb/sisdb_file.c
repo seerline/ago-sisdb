@@ -216,7 +216,7 @@ bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_)
 	s_sisdb_collect *collect = sisdb_get_collect(server->db, key_);
 	if (!collect)
 	{
-		sis_out_log(3)("no find %s key.\n", key_);
+		sis_out_log(3)("no find key [disk] %s.\n", key_);
 		return false;
 	}
 	char code[SIS_MAXLEN_CODE];
@@ -382,7 +382,7 @@ int _sisdb_file_load_collect_alone(s_sis_db *db_, const char *key_, const char *
         collect = sisdb_collect_create(db_, key_);
         if (!collect)
         {
-            printf("--1--\n");
+            // printf("--1--\n");
             return o;
         }
         // 进行其他的处理
@@ -452,11 +452,12 @@ bool sisdb_file_load(s_sisdb_server *server_)
     }
     // 加载完毕再加载aof文件
     // 如果有aof文件表示非正常退出，需要执行存盘操作，
+    server_->db->loading = false;
     if (_sisdb_file_load_aof(server_))
     {
         sisdb_file_save(server_);
     }
-    server_->db->loading = false;
+
     return true;
 }
 

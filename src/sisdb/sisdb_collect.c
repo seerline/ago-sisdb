@@ -1125,7 +1125,7 @@ s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_, const char *key_)
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
-		sis_out_log(3)("no find key %s.\n", key_);
+		sis_out_log(5)("no find key %s.\n", key_);
 		return NULL;
 	}
 	int start = 0;
@@ -1160,7 +1160,7 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
-		sis_out_log(3)("no find %s key.\n", key_);
+		sis_out_log(5)("no find key %s.\n", key_);
 		return NULL;
 	}
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
@@ -1461,7 +1461,7 @@ int sisdb_collect_delete(s_sis_db *db_, const char *key_, const char *com_)
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
-		sis_out_log(3)("no find %s key.\n", key_);
+		sis_out_log(5)("no find key [del] %s.\n", key_);
 		return 0;
 	}
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));

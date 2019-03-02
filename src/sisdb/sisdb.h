@@ -31,11 +31,6 @@
 // get时，默认只取内存中数据，除非带参数 source:disk 那么才会去检索磁盘中的数据，速度受磁盘访问速度限制
 #define SISDB_MAXLEN_DISK_BUFFER (1024*1024)
 
-#define SIS_MARKET_STATUS_NOINIT    0
-#define SIS_MARKET_STATUS_INITED    1  // 正常工作状态
-#define SIS_MARKET_STATUS_INITING   2  // 开始初始化
-#define SIS_MARKET_STATUS_CLOSE     3  // 已收盘,0&3 此状态下可以初始化
-
 #pragma pack(push, 1)
 
 typedef struct s_sis_db {

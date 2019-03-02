@@ -301,7 +301,7 @@ void sisdb_field_set_float(s_sisdb_field *unit_, char *val_, double f64_)
 		break;
 	case 8:
 	default:
-		f64 = (float32)f64_;
+		f64 = (float64)f64_;
 		memmove(val_ + unit_->offset, &f64, unit_->flags.len);
 		break;
 	}

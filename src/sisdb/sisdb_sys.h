@@ -38,6 +38,11 @@
 // 这里为了避免冗余数据过多，采用配置列表来处理info问题，新创建的info必须是不同的，否则返回指针
 // ------------------------------------------------------ //
 
+#define SIS_MARKET_STATUS_NOINIT    0
+#define SIS_MARKET_STATUS_INITED    1  // 正常工作状态
+#define SIS_MARKET_STATUS_INITING   2  // 开始初始化
+#define SIS_MARKET_STATUS_CLOSE     3  // 已收盘,0&3 此状态下可以初始化
+
 #pragma pack(push, 1)
 typedef struct s_sisdb_sys_info {
 	uint8   dot;       // 仅对price起作用

@@ -200,7 +200,7 @@ int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
 	// sis_sdsfree(key);	
 	return 0;
 }
-#if 1
+#if 0
 
 int main()
 {

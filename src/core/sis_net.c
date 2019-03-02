@@ -99,5 +99,5 @@ s_sis_message_node *sis_socket_query_message(s_sis_socket *sock_, s_sis_message_
 	{
 		return sock_->socket_query_message(sock_, mess_);
 	}
-	return false;
+	return NULL;
 }

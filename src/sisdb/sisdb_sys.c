@@ -448,6 +448,7 @@ void sisdb_market_work_init(s_sis_db *db_)
 			{
 				if (status == SIS_MARKET_STATUS_INITED)
 				{
+					sis_out_log(5)("close ok %s\n", market);
 					_sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
 				}
 			}
