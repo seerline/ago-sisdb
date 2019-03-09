@@ -47,21 +47,24 @@
 //     只要client收到信息，解析成功后，就直接返回一个 数据集合名 数据区；做好安全检查后，就可以映射到一个数据结构，
 
 
+
 #define SIS_DYNAMIC_FIELD_LEN   32
 
 #define SIS_DYNAMIC_OK      0
-#define SIS_DYNAMIC_ERR     1
-#define SIS_DYNAMIC_NOKEY   2
-#define SIS_DYNAMIC_NEW     3
-#define SIS_DYNAMIC_SIZE    4
+#define SIS_DYNAMIC_ERR     1  // 初始化错误
+#define SIS_DYNAMIC_NOKEY   2  // 找不到对应名称结构体
+#define SIS_DYNAMIC_NOOPPO  3  // 源头数据没有对应同名结构体
+#define SIS_DYNAMIC_SIZE    4  // 数据和字段长度不匹配
+#define SIS_DYNAMIC_LEN     5  // 等待转换的数据长度不匹配
 
 #define SIS_DYNAMIC_DICT_LOCAL    0
 #define SIS_DYNAMIC_DICT_REMOTE   1
 
+#define SIS_DYNAMIC_FIELD_LIMIT   0xFFFF
 
-#define SIS_DYNAMIC_METHOD_NONE   0  // 没有关联性
-#define SIS_DYNAMIC_METHOD_COPY   1
-#define SIS_DYNAMIC_METHOD_OWNER  2  // 根据字段各自定义
+// #define SIS_DYNAMIC_METHOD_NONE   0  // 没有关联性
+// #define SIS_DYNAMIC_METHOD_COPY   1
+// #define SIS_DYNAMIC_METHOD_OWNER  2  // 根据字段各自定义
 
 #define SIS_DYNAMIC_SHIFT_NONE      0  // 类型不同，且双发有一方不是整数类，直接赋值为空或0
 #define SIS_DYNAMIC_SHIFT_TYPE    0x1  // 类型相同 
@@ -70,10 +73,13 @@
 #define SIS_DYNAMIC_SHIFT_NUMS    0x8  // 数量相同
 
 #define SIS_DYNAMIC_TYPE_NONE   0
-#define SIS_DYNAMIC_TYPE_INT    1
-#define SIS_DYNAMIC_TYPE_UINT   2
-#define SIS_DYNAMIC_TYPE_CHAR   3
-#define SIS_DYNAMIC_TYPE_FLOAT  4
+#define SIS_DYNAMIC_TYPE_INT    'I'
+#define SIS_DYNAMIC_TYPE_UINT   'U'
+#define SIS_DYNAMIC_TYPE_CHAR   'C'
+#define SIS_DYNAMIC_TYPE_FLOAT  'F'
+
+#define SIS_DYNAMIC_DIR_RTOL     0
+#define SIS_DYNAMIC_DIR_LTOR     1
 
 #pragma pack(push,1)
 
@@ -81,12 +87,12 @@ typedef struct s_sis_dynamic_unit {
     char  name[SIS_DYNAMIC_FIELD_LEN];  // 字段名
                                         // 以字段名为唯一检索标记，如果用户对字段名
     unsigned char  style;      // 数据类型
-    unsigned char  len;        // 数据长度
+    unsigned short len;        // 数据长度
     // unsigned char  dot;     // 小数点
-    unsigned char  count;   // 该字段重复多少次
+    unsigned short count;      // 该字段重复多少次
 	unsigned short offset;     // 在该结构的偏移位置
-	void       *map_unit;           // 对应的字段，s_sis_dynamic_unit 为空表示不做转换
-	void(*shift)(void *, void *, void *);      // 转移方法
+	struct s_sis_dynamic_unit *map_unit;      // 对应的字段指针，s_sis_dynamic_unit 为空表示不做转换
+	void(*shift)(void *, void *, void *);      // 转移方法 == NULL 什么都不做
 } s_sis_dynamic_unit;
 
 //***********************注意***********************//
@@ -100,13 +106,16 @@ typedef struct s_sis_dynamic_unit {
 typedef struct s_sis_dynamic_db {
 	// char   *key;     // 描述结构体的标志符号
     //                  // 类别 . 名称 . 版本 
-	s_sis_struct_list *fields;     // 用顺序结构体来保存字段信息 s_sis_dynamic_unit
-    unsigned short     size;       // 结构总长度
-    unsigned char      method;     // 转移方法  0 - 没有关联 1 - 直接拷贝 2 - 根据字段定义的方法取值
-	void              *map_db;     // 对应的，s_sis_dynamic 为空表示不做转换
+	s_sis_struct_list        *fields;     // 用顺序结构体来保存字段信息 s_sis_dynamic_unit
+    unsigned short            size;       // 结构总长度
+    // unsigned char             method;     // 转移方法  0 - 没有关联 1 - 直接拷贝 2 - 根据字段定义的方法取值
+	struct s_sis_dynamic_db  *map_db;     // 对应的 s_sis_dynamic_db 为空表示不做转换
+    void(*method)(void *, void *, size_t, void *,size_t); 
 } s_sis_dynamic_db;
 
 typedef struct s_sis_dynamic_class {
+    // int dot;                   // 转字符串时，float保留的小数位
+    int error;                 // 描述错误编号
     s_sis_map_pointer *local;  // 本地的结构字典 s_sis_dynamic_db 以结构名为key
     s_sis_map_pointer *remote;   // 从网络接收的结构字典 s_sis_dynamic_db 以结构名为key
 } s_sis_dynamic_class;
@@ -115,15 +124,49 @@ typedef struct s_sis_dynamic_class {
 
 // 参数为json结构的数据表定义,必须两个数据定义全部传入才创建成功
 // 同名的自动生成link信息，不同名的没有link信息
-// 同一个来源其中的 数据集合名称 不能重复  in_ 表示对方配置  out_ 表示本地配置
-s_sis_dynamic_class *sis_dynamic_class_create(const char *in_, const char *out_);
+// 同一个来源其中的 数据集合名称 不能重复  remote_ 表示对方配置  local_ 表示本地配置
+s_sis_dynamic_class *sis_dynamic_class_create(
+    const char *remote_,size_t rlen_,
+    const char *local_,size_t llen_);
+
 void sis_dynamic_class_destroy(s_sis_dynamic_class *);
 
 // 返回0表示数据处理正常，解析数据要记得释放内存
-int sis_dynamic_analysis(
+// 可以对远端和本地的数据结构相互转换，对于没有对应关系的结构体，求长度时返回的是 0 
+// 仅仅只处理服务端下发的结构集合，对于服务端已经不支持的结构，客户端应该强制升级处理
+// 对于服务端有,客户端没有的结构体，客户端应该收到后直接抛弃
+
+// 本地数据转远程结构
+size_t sis_dynamic_analysis_ltor_length(
+		s_sis_dynamic_class *cls_, 
+        const char *key_,
+        const char *in_, size_t ilen_);
+
+int sis_dynamic_analysis_ltor(
 		s_sis_dynamic_class *cls_, 
         const char *key_,
         const char *in_, size_t ilen_,
-        char *out_, size_t *olen_);
+        char *out_, size_t olen_);
 
+// 远程结构转本地结构
+size_t sis_dynamic_analysis_rtol_length(
+		s_sis_dynamic_class *cls_, 
+        const char *key_,
+        const char *in_, size_t ilen_);
+
+int sis_dynamic_analysis_rtol(
+		s_sis_dynamic_class *cls_, 
+        const char *key_,
+        const char *in_, size_t ilen_,
+        char *out_, size_t olen_);
+
+s_sis_sds sis_dynamic_struct_to_json(
+		s_sis_dynamic_class *cls_, 
+        const char *key_, int dir_,
+        const char *in_, size_t ilen_);
+        
 #endif //_SIS_DYNAMIC_H
+
+
+// ###### 动态结构 + 持久化文件处理流程和格式 ######
+// 每个子包数据块大小不超过

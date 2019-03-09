@@ -47,6 +47,8 @@ s_sis_thread_id_t sis_thread_self();
 #define  SIS_PTHREAD_MUTEX_ERRORCHECK PTHREAD_MUTEX_ERRORCHECK // ¾À´íËø
 #endif
 
+
+
 int  sis_mutex_create(s_sis_mutex_t *mutex_);
 #define sis_mutex_destroy 	pthread_mutex_destroy
 #define sis_mutex_lock    	pthread_mutex_lock

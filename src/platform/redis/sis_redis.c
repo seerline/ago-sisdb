@@ -239,40 +239,7 @@ s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_n
 
 #if 0
 
-void _test_set_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
-{
-	s_sis_message_node *node=sis_message_node_create();
-	
-	node->command = sdsempty();
-	node->command = sdscatfmt(node->command, "%s.set", socket->url.dbname);
-	node->argv = sis_sdsnew("json");
-	node->key = sdsempty();
-	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
-	node->nodes = sis_sdsnode_create(in_, len_);
 
-	sis_redis_send_message(socket, node);
-	
-	sis_message_node_destroy(node);
-}
-
-void _test_get_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
-{
-	s_sis_message_node *node=sis_message_node_create();
-	
-	node->command = sdsempty();
-	node->command = sdscatfmt(node->command, "%s.get", socket->url.dbname);
-	// node->argv = sis_sdsnew("json");
-	node->key = sdsempty();
-	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
-	node->argv = sdsnewlen(in_, len_);
-
-	s_sis_message_node *reply = sis_socket_query_message(socket, node);
-	if (reply)
-	{
-		printf("reply : %s\n",(char *)reply->nodes->value);
-	}	
-	sis_message_node_destroy(node);
-}
 int main()
 {
 	s_sis_url url = {
@@ -296,4 +263,232 @@ int main()
 }
 
 
+#endif
+
+#if 0
+#include "sis_node.h"
+
+#define  STREAM_SEND_COUNT  1000*1000
+// #define  STREAM_SEND_SIZE   100*1000
+#define  STREAM_SEND_SIZE   100
+
+void _test_set_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
+{
+	s_sis_message_node *node=sis_message_node_create();
+	
+	node->command = sdsempty();
+	// node->command = sdscatfmt(node->command, "%s.set", socket->url.dbname);
+	node->command = sdscatfmt(node->command, "set");
+	node->argv = sdsempty();
+	node->key = sdsempty();
+	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
+	node->nodes = sis_sdsnode_create(in_, len_);
+
+	sis_redis_send_message(socket, node);
+	
+	sis_message_node_destroy(node);
+}
+
+void _test_get_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
+{
+	s_sis_message_node *node=sis_message_node_create();
+	
+	node->command = sdsempty();
+	// node->command = sdscatfmt(node->command, "%s.get", socket->url.dbname);
+	// node->argv = sis_sdsnew("json");
+	node->command = sdscatfmt(node->command, "get");
+	node->key = sdsempty();
+	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
+	node->argv = sdsnewlen(in_, len_);
+
+	s_sis_message_node *reply = sis_socket_query_message(socket, node);
+	if (reply)
+	{
+		printf("reply : %s\n",(char *)reply->nodes->value);
+	}	
+	sis_message_node_destroy(node);
+}
+s_sis_message_node *sis_redis_query_message_stream(s_sis_socket *sock_, s_sis_message_node *mess_)
+{
+	printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
+	if (!_sis_redis_check_connect(sock_)){
+		printf("redis check connect fail.\n");
+		return NULL;
+	}
+
+	int argc = _sis_redis_get_cmds(mess_);
+	char **argvstr = (char **)sis_malloc(sizeof(char *)* argc);
+	size_t *argvlen = (size_t *)sis_malloc(sizeof(size_t)* argc);
+	memset(argvstr, 0, sizeof(char *)* argc);
+	memset(argvlen, 0, sizeof(size_t)* argc);
+
+	int index = 0;
+	if (mess_->command)
+	{
+		argvlen[index] = sis_sdslen(mess_->command);
+		argvstr[index] = mess_->command;
+		index++;
+	}
+
+	if (mess_->key)
+	{
+		argvlen[index] = sis_sdslen(mess_->key);
+		argvstr[index] = mess_->key;
+		index++;
+	}
+
+	if (mess_->argv)
+	{
+		argvlen[index] = sis_sdslen(mess_->argv);
+		argvstr[index] = mess_->argv;
+		index++;
+	}
+
+	s_sis_list_node *node = mess_->nodes;
+	while(node) 
+	{
+		// printf("node len=%d. \n", sis_sdslen(node->value));	
+		argvlen[index] = sis_sdslen(node->value);
+		argvstr[index] = node->value;
+		index++;
+		node = node->next;
+	}
+
+	s_sis_message_node *out = NULL;
+
+	redisReply *reply;
+
+	reply = (redisReply *)redisCommandArgv((redisContext *)sock_->handle_read, index, (const char **)&(argvstr[0]), &(argvlen[0]));
+	if (reply)
+	{
+		out = mess_;
+		if(reply->type == REDIS_REPLY_STRING) 
+		{
+			out->nodes = sis_sdsnode_create(reply->str, reply->len);
+		} else {
+
+		}
+		printf("query data type %s (%s) [%d:%s] \n", mess_->argv, mess_->key, (int)reply->len, reply->str);		
+		freeReplyObject(reply);
+	} else 
+	{
+		printf("connect break. \n");	
+		sock_->status = SIS_NET_WAITCONNECT;
+	}
+	sis_free((void *)argvstr);
+	sis_free((void *)argvlen);
+	return out;
+}
+
+
+void _test_send_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
+{
+	s_sis_message_node *node=sis_message_node_create();
+	
+	node->command = sdsnew("xadd");
+	node->key = sdsnew(db_);
+	node->argv = sdsnew("*");
+	node->nodes = sis_sdsnode_create(code_, strlen(code_));
+	node->nodes = sis_sdsnode_push_node(node->nodes,in_,len_);
+
+	s_sis_message_node *reply = sis_socket_query_message(socket, node);
+	if (reply)
+	{
+		// printf("reply : %s\n",(char *)reply->nodes->value);
+	}	
+	sis_message_node_destroy(node);
+}
+int _test_recv_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
+{
+	int o =0;
+	s_sis_message_node *node=sis_message_node_create();
+	
+	node->command = sdsnew("xread");
+	node->key = sdsnew("block");
+	node->argv = sdsnew("0");
+	node->nodes = sis_sdsnode_create("streams", strlen("streams"));
+	node->nodes = sis_sdsnode_push_node(node->nodes,db_,strlen(db_));
+	node->nodes = sis_sdsnode_push_node(node->nodes,"$",1);
+
+	s_sis_message_node *reply = sis_socket_query_message(socket, node);
+	if (reply)
+	{
+		printf("reply : %s\n",(char *)reply->nodes->value);
+		o = sis_sdslen((s_sis_sds)reply->nodes->value);
+	}	
+	sis_message_node_destroy(node);
+	return o;
+}
+#include "sis_time.h"
+int main(int argc, char *argv[])
+{
+	s_sis_url url = {
+		.protocol = "redis",
+		// .ip = "127.0.0.1",
+		.ip = "192.168.3.118",
+		.port = 6379,
+		.dbname = "sisdb",
+		.auth = true,
+		.username = "",
+		.password = "clxx1110"
+	};
+
+	s_sis_socket *socket = sis_socket_create(&url,SIS_NET_ROLE_REQ);
+    if(socket) 
+    {
+        socket->open = sis_redis_open;
+        socket->close = sis_redis_close;
+        socket->socket_send_message = NULL;
+        socket->socket_query_message = sis_redis_query_message_stream;        
+        sis_socket_open(socket);   
+    }
+	
+
+	// char info[] = "{\"name\"=\"123456\"}";
+	// _test_set_socket(socket, "sh900600", "info", info, strlen(info));
+	char buffer[STREAM_SEND_SIZE];
+	memset(buffer, 1, STREAM_SEND_SIZE);
+
+	if (argc > 1)
+	{
+		size_t bytes = 0;
+		int count =0;
+		size_t step = (int)(STREAM_SEND_COUNT/10);
+		if (step==0) step =1;
+		// 接收数据
+		time_t start = sis_time_get_now();
+		while(1)
+		{
+			int size = _test_recv_socket(socket, "sh", "market123", NULL, 0); 
+			if (size>0)
+			{
+				count++;
+				bytes +=size;
+				if (count%step==0)
+				{
+					printf("[%10d] recv size=%d\n", count, (int)bytes);		
+					printf("-----recv : %d = %d \n", (int)bytes, (int)(sis_time_get_now() - start));		
+				}
+			}
+		}		
+	}
+	else
+	{
+		// 发送数据
+		size_t step = STREAM_SEND_COUNT/10;
+		if (step==0) step =1;
+		time_t start = sis_time_get_now();
+		for(int i = 0; i < STREAM_SEND_COUNT; i++)
+		{
+			// _test_set_socket(socket, "sh", "market", buffer, STREAM_SEND_SIZE);
+			_test_send_socket(socket, "sh", "market1", buffer, STREAM_SEND_SIZE); 
+			if (i%step==0)
+			printf("[%10d] send size=%d\n", (int)i, i*STREAM_SEND_SIZE);
+		}
+		printf("-----send end. [%d] = %d \n", STREAM_SEND_COUNT, (int)(sis_time_get_now() - start));		
+	}
+	
+
+	sis_redis_close(socket);
+}
 #endif

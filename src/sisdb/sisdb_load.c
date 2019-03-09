@@ -129,9 +129,17 @@ int load_sisdb_call(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 		// 这里要判断返回的数据是否为字符串
 		// sis_out_binary("call out", o, 30);
 		// printf("call out ...%lu\n", sis_sdslen(o));
-		sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
-		// sis_module_reply_with_simple_string(ctx_, o);
+		if (!strcasecmp(key,"list"))
+		{
+			sis_module_reply_with_simple_string(ctx_, o);
+		}
+		else
+		{
+			sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
+		}
+		
 		// sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
+		// sis_module_reply_with_simple_string(ctx_, o);
 		sis_sdsfree(o);
 		return SIS_MODULE_OK;
 	}

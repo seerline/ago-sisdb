@@ -16,7 +16,7 @@ s_sis_list_node *sis_sdsnode_offset_node(s_sis_list_node *node_, int offset);
 s_sis_list_node *sis_sdsnode_last_node(s_sis_list_node *node_);
 s_sis_list_node *sis_sdsnode_first_node(s_sis_list_node *node_);
 s_sis_list_node *sis_sdsnode_next_node(s_sis_list_node *node_);
-s_sis_list_node *sis_sdsnode_push(s_sis_list_node *node_, const void *in, size_t inlen);
+s_sis_list_node *sis_sdsnode_push_node(s_sis_list_node *node_, const void *in, size_t inlen);
 s_sis_list_node *sis_sdsnode_update(s_sis_list_node *node_, const void *in, size_t inlen);
 s_sis_list_node *sis_sdsnode_clone(s_sis_list_node *node_);
 int sis_sdsnode_get_size(s_sis_list_node *node_);

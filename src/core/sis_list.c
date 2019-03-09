@@ -707,7 +707,7 @@ int char_to_int(void *str1, void *str2)
 	printf("str1=%s %p %c\n", (char *)str1, (char *)str1, *(char *)(str1 + 1));
 	printf("str2=%s %p %c\n", (char *)str2, (char *)str2, *(char *)(str2 + 1));
 	return 0;
-	char buff[100];// = (char *)malloc(100);
+	char buff[100];// = (char *)sis_malloc(100);
 	char **ptr = (char **)buff;
 	printf("buff = %p, ptr=%p %p %p\n", buff, ptr, &ptr[0], &ptr[1]);
 	//ptr[0]=(char *)str1;

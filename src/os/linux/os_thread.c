@@ -55,7 +55,10 @@ int sis_mutex_create(s_sis_mutex_t *mutex_)
 {
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
+	
+	// pthread_mutexattr_settype(&attr, SIS_PTHREAD_MUTEX_ERRORCHECK);
 	// 设置允许递归加锁(默认不支持)
+	// 下面的锁有时候会返回忙状态
 	pthread_mutexattr_settype(&attr, SIS_PTHREAD_MUTEX_RECURSIVE);
 	return pthread_mutex_init(mutex_, &attr);
 }

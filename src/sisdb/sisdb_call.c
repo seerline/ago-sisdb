@@ -132,10 +132,14 @@ void * sisdb_call_get_code_sds(void *db_, void *com_)
 	sis_str_to_upper((char *)match);
 	char *ptr = buffer;
 	size_t len;
+	
 	for (int i = 0; i < count; i++)
 	{
 		const char *search = sisdb_field_get_char_from_key(tb, "search", ptr + SIS_MAXLEN_CODE, &len);
+	// sis_strncpy(exch_->market, 3, str, len);
+
 		set = sis_str_match(match, search, ',');
+		// printf("count=[%d:%d] set = %d  %s||%s\n", count,i , set, ptr, search);
 		if (set == 0)
 		{
 			sis_pointer_list_insert(list, 0, ptr);

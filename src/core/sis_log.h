@@ -19,19 +19,7 @@
 #define sis_out_log(a) if(a>1) printf
 // sis_out_log 需要判断如果有回车就自动中断 使用("%.*s", 10, "xxxx") 方式
 
-inline void sis_out_binary(const char *key_, const char *val_, int len_)
-{
-    printf("%s : ", key_);
-    char *p = (char *)val_;
-    len_ = len_ >30 ? 30 : len_;
-    for (int i = 0; i < len_; i++)
-    {
-        // if (!*p){ break;}
-        printf("%02x ", (unsigned char)*p);
-        p++;
-    }
-    printf("\n");
-}
+void sis_out_binary(const char *key_, const char *val_, size_t len_);
 
 void sis_log_close();
 bool sis_log_open(const char *log_, int level_, int limit_);

@@ -21,6 +21,55 @@ char *sis_log(int level_, const char *fmt_, ...)
 	return NULL;
 }
 
+void sis_out_binary(const char *key_, const char *val_, size_t len_) 
+{
+    printf("%s : %d ==> \n", key_, (int)len_);
+	size_t i = 0;
+    size_t j;
+	while(i < len_)
+	{
+		uint8_t val = val_[i] & 0xff;
+		if(i%8==0 && i > 0) {
+			printf(" ");
+		}
+		if(i%16==0) {
+			if(i>0) {
+				printf(" ");
+				for(j=i-16;j<i;j++) {
+					int vv = val_[j];
+					if(vv > 0x20 && vv < 0x7e) {
+						printf("%c", vv);
+					}
+					else {
+						printf(".");
+					}
+				}
+				printf("\n");
+			}
+			printf("%.8lu: ", i);
+		}
+		printf("%.2x ", val);
+		i++;
+	}
+	if(len_%16!=0) {
+		for(j=0; j<(16-(len_%16)); j++) {
+			printf("   ");
+		}
+		printf("  ");
+		if(len_%16<=8) printf(" ");
+		for(j=i-(len_%16);j<i;j++) {
+			int vv = val_[j];
+			if(vv > 0x20 && vv < 0x7e) {
+				printf("%c", vv);
+			}
+			else {
+				printf(".");
+			}
+		}
+	}
+	printf("\n");
+}
+
 #if 0
 
 // inline void why_me()
