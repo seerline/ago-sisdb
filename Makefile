@@ -10,6 +10,12 @@ else
 	cd ./src/sisdb/ && mkdir out && cd out && cmake ../ && $(MAKE)  $@ 
 endif
 
+ifeq (./src/siscs/out, $(wildcard ./src/siscs/out))
+	cd ./src/siscs/out && cmake ../ && $(MAKE)
+else
+	cd ./src/siscs/ && mkdir out && cd out && cmake ../ && $(MAKE)
+endif
+
 sisdb:
 
 ifeq (./src/sisdb/out, $(wildcard ./src/sisdb/out))
@@ -19,6 +25,14 @@ else
 endif
 	cp ./bin/libsisdb.* ../bin
 	
+siscs:
+
+ifeq (./src/siscs/out, $(wildcard ./src/siscs/out))
+	cd ./src/siscs/out && cmake ../ && $(MAKE)
+else
+	cd ./src/siscs/ && mkdir out && cd out && cmake ../ && $(MAKE)
+endif
+
 test:
 
 ifeq (./test/out, $(wildcard ./test/out))

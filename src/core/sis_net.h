@@ -6,7 +6,7 @@
 #include <sis_thread.h>
 #include <sis_malloc.h>
 #include <sis_str.h>
-#include <sis_node.h>
+#include <sis_net.node.h>
 
 #define SIS_NET_INIT			1  //初始化后的状态
 #define SIS_NET_ERROR			2  //初始化没有的协议

@@ -1,5 +1,5 @@
-﻿#ifndef _SIS_NODE_H
-#define _SIS_NODE_H
+﻿#ifndef _SIS_NET_NODE_H
+#define _SIS_NET_NODE_H
 
 #include "sis_core.h"
 #include "sis_malloc.h"

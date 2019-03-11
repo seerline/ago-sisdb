@@ -502,7 +502,7 @@ void sis_json_object_set_uint(s_sis_json_node *node_, const char *key_, unsigned
 		c->value = sis_str_sprintf(21, "%lu", value_);
 	}
 }
-void sis_json_object_add_double(s_sis_json_node *node_, const char *key_, double value_, int demical)
+void sis_json_object_add_double(s_sis_json_node *node_, const char *key_, double value_, int dot_)
 {
 	// _sis_json_check_write(h_);
 	s_sis_json_node *c = sis_json_create_node();
@@ -510,22 +510,22 @@ void sis_json_object_add_double(s_sis_json_node *node_, const char *key_, double
 	{
 		c->type = SIS_JSON_DOUBLE;
 		c->key = sis_strdup(key_, 0);
-		c->value = sis_str_sprintf(64, "%.*f", demical, value_);
+		c->value = sis_str_sprintf(64, "%.*f", dot_, value_);
 		sis_json_array_add_node(node_, c);
 	}
 }
-void sis_json_object_set_double(s_sis_json_node *node_, const char *key_, double value_, int demical)
+void sis_json_object_set_double(s_sis_json_node *node_, const char *key_, double value_, int dot_)
 {
 	// _sis_json_check_write(h_);
 	s_sis_json_node *c = sis_json_cmp_child_node(node_, key_);
 	if (!c)
 	{
-		sis_json_object_add_double(node_, key_, value_, demical);
+		sis_json_object_add_double(node_, key_, value_, dot_);
 	}
 	else
 	{
 		sis_free(c->value);
-		c->value = sis_str_sprintf(64, "%.*f", demical, value_);
+		c->value = sis_str_sprintf(64, "%.*f", dot_, value_);
 	}
 }
 void sis_json_object_add_string(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_)
@@ -579,17 +579,17 @@ void sis_json_array_set_uint(s_sis_json_node *node_, int index_, unsigned long v
 	sis_sprintf(key, 10, "%d", index_);
 	sis_json_object_set_uint(node_, key, value_);
 }
-void sis_json_array_add_double(s_sis_json_node *node_, double value_, int demical_)
+void sis_json_array_add_double(s_sis_json_node *node_, double value_, int dot_)
 {
 	char key[16];
 	sis_sprintf(key, 10, "%d", sis_json_get_size(node_));
-	sis_json_object_add_double(node_, key, value_, demical_);
+	sis_json_object_add_double(node_, key, value_, dot_);
 }
-void sis_json_array_set_double(s_sis_json_node *node_, int index_, double value_, int demical_)
+void sis_json_array_set_double(s_sis_json_node *node_, int index_, double value_, int dot_)
 {
 	char key[16];
 	sis_sprintf(key, 10, "%d", index_);
-	sis_json_object_set_double(node_, key, value_, demical_);
+	sis_json_object_set_double(node_, key, value_, dot_);
 }
 void sis_json_array_add_string(s_sis_json_node *node_, const char *value_, size_t len_)
 {

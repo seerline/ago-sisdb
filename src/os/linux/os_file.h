@@ -20,6 +20,7 @@
 #define SIS_FILE_IO_WRITE   0x2
 #define SIS_FILE_IO_CREATE  0x4
 #define SIS_FILE_IO_TRUCT   0x8
+#define SIS_FILE_IO_BINARY  0x10
 
 #define SIS_FILE_ACCESS_EXISTS 0x0
 #define SIS_FILE_ACCESS_EXE    0x1

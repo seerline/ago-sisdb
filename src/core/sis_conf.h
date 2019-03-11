@@ -17,8 +17,10 @@
 
 typedef struct s_sis_conf_handle
 {
-	const char * error;     // 指向错误的地址 错误地址为空表示正常处理完毕
-	char   path[SIS_PATH_LEN];  //保存主conf的路径
+	int  err_no;           // 0 无错 
+	int  err_lines;        // 出错的行数
+	char err_msg[255];     // 打印错误附近的信息
+	char path[SIS_PATH_LEN];  //保存主conf的路径
 	struct s_sis_json_node *node;
 } s_sis_conf_handle;         //专门提供给读json的快速结构体
 

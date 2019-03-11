@@ -1,7 +1,7 @@
 ﻿
 #include "sis_dynamic.h"
 #include <sis_sds.h>
-#include <sis_json.h>
+#include <sis_conf.h>
 #include <sis_math.h>
 
 uint64 _sis_field_get_uint(s_sis_dynamic_unit *unit_, const char *val_, int index_)
@@ -84,7 +84,6 @@ double _sis_field_get_float(s_sis_dynamic_unit *unit_, const char *val_, int ind
 	default:
 		break;
 	}
-	// printf("---[%s]=%f\n",fu_->name, out);
 	return o;
 }
 void _sis_field_set_uint(s_sis_dynamic_unit *unit_, char *val_, uint64 v64_, int index_)
@@ -233,11 +232,13 @@ s_sis_dynamic_db *_sis_dynamic_create(s_sis_json_node *node_)
 			node = sis_json_next_node(node);
 			continue;				
 		}
+		int dot = sis_json_get_int(node, "3", 0);
 		// 到此认为数据合法	
 		memset(&unit, 0, sizeof(s_sis_dynamic_unit));
 		sis_strcpy(unit.name,SIS_DYNAMIC_FIELD_LEN,name);
 		unit.style = style;
 		unit.len = len;
+		unit.dot = dot;
 		unit.count = count;
 		unit.offset = offset;
 
@@ -494,6 +495,7 @@ s_sis_dynamic_class *sis_dynamic_class_create(
 	s_sis_dynamic_class *class = NULL;
 	s_sis_json_handle *injson = sis_json_load(remote_, rlen_);
 	s_sis_json_handle *outjson = sis_json_load(local_, llen_);
+
 	if (!injson||!outjson)
 	{
 		sis_json_close(injson);
@@ -780,7 +782,8 @@ static s_sis_json_node *_sis_dynamic_struct_to_array(s_sis_dynamic_db *indb_, co
 				// }
 				// else
 				{
-					sis_json_array_add_double(o, _sis_field_get_float(inunit, ptr, index), 2);
+					LOG(0)("dot:%d\n", inunit->dot);
+					sis_json_array_add_double(o, _sis_field_get_float(inunit, ptr, index), inunit->dot);
 				}
 				break;
 			case SIS_DYNAMIC_TYPE_CHAR:
@@ -839,6 +842,7 @@ s_sis_sds sis_dynamic_struct_to_json(
 		sis_json_array_add_string(jfield, sign, 1);
 		sis_json_array_add_uint(jfield, inunit->len);
 		sis_json_array_add_uint(jfield, inunit->count);
+		sis_json_array_add_uint(jfield, inunit->dot);
 		sis_json_object_add_node(jfields, inunit->name, jfield);
 	}
 	sis_json_object_add_node(jone, "fields", jfields);
@@ -870,7 +874,7 @@ error:
 
 }
 
-#if 1
+#if 0
 #pragma pack(push, 1)
 typedef struct _local_info {
 	int open;
@@ -890,8 +894,10 @@ typedef struct _remote_info {
 int main()
 {
 	// const char *local = "{\"info\":{\"open\":[0,\"I\",4]}}";
-	const char *local = "{\"info\":{\"open\":[\"I\",4],\"close\":[\"F\",8],\"ask\":[\"I\",4,5],\"name\":[\"C\",4]}}";
-	const char *remote = "{\"info\":{\"open\":[\"U\",4],\"close\":[\"F\",4],\"ask\":[\"I\",4,10],\"name\":[\"C\",8]}}";
+	const char *local = "{\"info\":{\"open\":[\"I\",4],\"close\":[\"F\",8,1,2],\"ask\":[\"I\",4,5],\"name\":[\"C\",4]}}";
+	const char *remote = "{\"info\":{\"open\":[\"U\",4],\"close\":[\"F\",4,1,3],\"ask\":[\"I\",4,10],\"name\":[\"C\",8]}}";
+	// const char *local = "{info:{open:[I,4],close:[F,8,1,2],ask:[I,4,5],name:[C,4]}}";
+	// const char *remote = "{info:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}";
 	
 	s_sis_dynamic_class *class = sis_dynamic_class_create(remote,strlen(remote),local,strlen(local));
 	// 测试 remote 到 local 转换

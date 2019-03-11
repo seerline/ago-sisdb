@@ -1,5 +1,5 @@
-#ifndef _SIS_OBJECT_H
-#define _SIS_OBJECT_H
+#ifndef _SIS_NET_OBJ_H
+#define _SIS_NET_OBJ_H
 
 #define SIS_OBJECT_MAX_REFS MAX_INT
 
@@ -19,3 +19,4 @@ typedef struct s_sis_object {
 #pragma pack(pop)
 
 #endif
+// _SIS_NET_OBJ_H

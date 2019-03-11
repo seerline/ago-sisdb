@@ -88,8 +88,8 @@ typedef struct s_sis_dynamic_unit {
                                         // 以字段名为唯一检索标记，如果用户对字段名
     unsigned char  style;      // 数据类型
     unsigned short len;        // 数据长度
-    // unsigned char  dot;     // 小数点
     unsigned short count;      // 该字段重复多少次
+    unsigned char  dot;        // 输出为字符串时保留的小数点
 	unsigned short offset;     // 在该结构的偏移位置
 	struct s_sis_dynamic_unit *map_unit;      // 对应的字段指针，s_sis_dynamic_unit 为空表示不做转换
 	void(*shift)(void *, void *, void *);      // 转移方法 == NULL 什么都不做

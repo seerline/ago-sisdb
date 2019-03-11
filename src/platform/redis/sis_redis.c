@@ -266,7 +266,7 @@ int main()
 #endif
 
 #if 0
-#include "sis_node.h"
+#include "sis_net.node.h"
 
 #define  STREAM_SEND_COUNT  1000*1000
 // #define  STREAM_SEND_SIZE   100*1000

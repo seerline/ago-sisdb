@@ -5,10 +5,15 @@
 //   inside parse function define
 ///////////////////////////////////////////////
 
-static const char *skip(const char *in)
+static const char *_sis_conf_skip(s_sis_conf_handle *handle_, const char *in)
 {
+
 	while (in && *in && (unsigned char)*in <= 0x20)
 	{
+		if ((unsigned char)*in == '\n')
+		{
+			handle_->err_lines++;
+		}
 		in++;
 	}
 	if (in && *in && (unsigned char)*in == SIS_CONF_NOTE_SIGN)
@@ -17,7 +22,7 @@ static const char *skip(const char *in)
 		{
 			in++;
 		}
-		in = skip(in);
+		in = _sis_conf_skip(handle_,in);
 	}
 	return in;
 }
@@ -67,7 +72,8 @@ static const char *_sis_parse_string(s_sis_conf_handle *handle_, s_sis_json_node
 	}
 	if (len <= 0)
 	{
-		printf("a string is null , [%.12s] %p type[%d]\n", ptr, node_, node_->type);
+		sis_strcpy(handle_->err_msg, 255, "incomplete value.\n");
+		handle_->err_no = 5;
 		return 0;
 	}
 
@@ -111,11 +117,12 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 {
 	if (node_->key == NULL)
 	{
-		handle_->error = value_;
+		handle_->err_no = 1;
+		sis_strcpy(handle_->err_msg, 255, "no key.\n");
 		return 0;
 	}
 	node_->type = SIS_JSON_ARRAY;
-	value_ = skip(value_ + 1);
+	value_ = _sis_conf_skip(handle_, value_ + 1);
 	if (*value_ == ']')
 	{
 		return value_ + 1;
@@ -126,22 +133,30 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 	int index = 0;
 	while (value_ && *value_)
 	{
-		value_ = skip(value_);
+		value_ = _sis_conf_skip(handle_,value_);
 		if (!sis_strcase_match(SIS_CONF_INCLUDE, value_))
 		{
-			printf("array cannot include!\n");
-			handle_->error = value_;
+			sis_strcpy(handle_->err_msg, 255, "array cannot contain 'include'.\n");
+			handle_->err_no = 2;
 			return 0;
-			//value_ = skip(_sis_parse_include(handle_, child, value_));
-			//while(child->next) child = child->next;
 		}
 		else
 		{
 			child->key = sis_str_sprintf(16, "%d", index++);
-			value_ = skip(_sis_parse_value(handle_, child, value_)); /* skip any spacing, get the value_. */
+			value_ = _sis_conf_skip(handle_,_sis_parse_value(handle_, child, value_)); /* skip any spacing, get the value_. */
 		}
 		if (!value_ || !*value_)
 		{
+			if (value_ && *value_ == '\n')
+			{
+				sis_sprintf(handle_->err_msg, 255, "value is empty.\n");
+				handle_->err_lines--;
+			}
+			else
+			{
+				sis_sprintf(handle_->err_msg, 255, "incomplete, check ','.\n");
+			}
+			handle_->err_no = 2;
 			return 0;
 		}
 		// printf("::::%p, %s| %s | %c\n", child, child->key, child->value, *value_);
@@ -162,13 +177,9 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 }
 static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node *node_, const char *value_)
 {
-	// if (node_->key == NULL)
-	// {
-	// 	handle_->error = value_;
-	// 	return 0;
-	// }
+
 	node_->type = SIS_JSON_OBJECT;
-	value_ = skip(value_ + 1);
+	value_ = _sis_conf_skip(handle_,value_ + 1);
 	if (*value_ == '}')
 	{
 		return value_ + 1;
@@ -178,20 +189,32 @@ static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node
 
 	while (value_ && *value_)
 	{
-		value_ = skip(value_);
+		value_ = _sis_conf_skip(handle_,value_);
 		if (!sis_strcase_match(SIS_CONF_INCLUDE, value_))
 		{
-			value_ = skip(_sis_parse_include(handle_, child, value_));
+			value_ = _sis_conf_skip(handle_,_sis_parse_include(handle_, child, value_));
 			while (child->next)
 			{	child = child->next;}
 		}
 		else
 		{
-			value_ = skip(_sis_parse_key(handle_, child, value_));
-			value_ = skip(_sis_parse_value(handle_, child, value_));
+			value_ = _sis_conf_skip(handle_,_sis_parse_key(handle_, child, value_));
+			value_ = _sis_conf_skip(handle_,_sis_parse_value(handle_, child, value_));
 		}
 		if (!value_ || !*value_)
 		{
+			if (value_ && *value_ == '\n')
+			{
+				sis_sprintf(handle_->err_msg, 255, "value is empty.\n");
+				handle_->err_lines--;
+			}
+			else
+			{
+				sis_sprintf(handle_->err_msg, 255, "incomplete, check ','.\n");
+			}
+			// sis_strcpy(handle_->err_msg, 255, "value is empty.\n");
+			// handle_->err_lines--;
+			handle_->err_no = 2;
 			return 0;
 		}
 		// printf("::::%p, %s| %s | %.10s\n", child, child->key, child->value, value_);
@@ -238,8 +261,7 @@ static const char *_sis_parse_value(s_sis_conf_handle *handle_, s_sis_json_node 
 
 static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_node *node_, const char *value_)
 {
-	// ������Ĭ��Ŀ¼������򲻿���
-	value_ = skip(value_ + strlen(SIS_CONF_INCLUDE));
+	value_ = _sis_conf_skip(handle_,value_ + strlen(SIS_CONF_INCLUDE));
 	const char *ptr = value_;
 	// printf("read include is  %.10s \n", ptr);
 	int len = 0;
@@ -262,25 +284,28 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 	s_sis_sds buffer = sis_file_read_to_sds(fn);
 	if (!buffer)
 	{
-		handle_->error = value_;
+		sis_sprintf(handle_->err_msg, 255, "open include %s fail.\n", fn);
+		handle_->err_no = 10;
 		return 0; // fail
 	}
-
+	int old_lines = handle_->err_lines;
+	handle_->err_lines = 1;
+	
 	struct s_sis_json_node *child = node_, *next = NULL;
-	const char *sonptr = skip(buffer);
+	const char *sonptr = _sis_conf_skip(handle_, buffer);
 
 	while (sonptr && *sonptr)
 	{
-		sonptr = skip(sonptr);
+		sonptr = _sis_conf_skip(handle_,sonptr);
 		if (!sis_strcase_match(SIS_CONF_INCLUDE, sonptr))
 		{
-			sonptr = skip(_sis_parse_include(handle_, child, sonptr));
+			sonptr = _sis_conf_skip(handle_,_sis_parse_include(handle_, child, sonptr));
 			// printf("a include is %.10s \n", sonptr);
 		}
 		else
 		{
-			sonptr = skip(_sis_parse_key(handle_, child, sonptr));
-			sonptr = skip(_sis_parse_value(handle_, child, sonptr));
+			sonptr = _sis_conf_skip(handle_,_sis_parse_key(handle_, child, sonptr));
+			sonptr = _sis_conf_skip(handle_,_sis_parse_value(handle_, child, sonptr));
 		}
 		// printf("in::::%p, %s| %s | %.10s\n", child, child->key, child->value, sonptr);
 		if (sonptr && *sonptr)
@@ -291,15 +316,18 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 			child = next;
 		}
 	}
-	if (handle_->error) // ��Ҫ����Ϊ0������error��ֵ
+	if (handle_->err_no) 
 	{
-		int len = 0;
-		handle_->error = sis_str_getline(handle_->error, &len, buffer, sis_sdslen(buffer));
-		sis_out_log(3)("parse conf [%s] fail : \n %.*s \n", fn, len, handle_->error);
-		handle_->error = value_;
+		LOG(3)("[%3d]  include %s\n", old_lines, fn);
+		handle_->err_no = 11;
 		sis_sdsfree(buffer);
 		return 0;
 	}
+	else
+	{
+		handle_->err_lines = old_lines;
+	}
+	
 
 	sis_sdsfree(buffer);
 
@@ -315,26 +343,35 @@ static const char *_sis_parse_key(s_sis_conf_handle *handle_, s_sis_json_node *n
 	int len = 0;
 	const char *ptr = key_;
 
-	while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != ':') // �ո�Ϳ����ַ���ð������
+	while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != ':') 
 	{
 		ptr++;
 		len++;
 	}
 	if (len <= 0)
 	{
-		// printf("a key is null , [%.10s] type[%d]\n", ptr, node_->type);
-		handle_->error = ptr;
+		sis_strcpy(handle_->err_msg, 255, "key is empty.\n");
+		handle_->err_no = 1;
 		return 0;
 	}
 	node_->key = sis_strdup(key_, len);
-	while (*ptr && (unsigned char)*ptr >= 0x20 && *ptr != ':') // �����ո�ð��
+	while (*ptr && (unsigned char)*ptr >= 0x20 && *ptr != ':') 
 	{
 		ptr++;
 	}
 	if (*ptr && *ptr != ':')
 	{
-		// printf("a line no find ':' [%x] %.10s\n", *ptr, key_);
-		handle_->error = key_;
+		if (*ptr == '\n')
+		{
+			sis_sprintf(handle_->err_msg, 255, "value is empty.\n");
+			handle_->err_lines--;
+		}
+		else
+		{
+			sis_sprintf(handle_->err_msg, 255, "key no ':'.\n");
+		}
+		
+		handle_->err_no = 2;
 		return 0;
 	}
 	ptr++;
@@ -348,14 +385,14 @@ bool _sis_conf_parse(s_sis_conf_handle *handle_, const char *content_)
 	{
 		return false;
 	}
-	handle_->error = 0;
+	handle_->err_no = 0;
 
 	s_sis_json_node *node = sis_json_create_node();
 	handle_->node = node;
 	handle_->node->type = SIS_JSON_ROOT;
 
 	struct s_sis_json_node *child = NULL, *next = NULL;
-	const char *value = skip(content_);
+	const char *value = _sis_conf_skip(handle_,content_);
 
 	while (value && *value)
 	{
@@ -370,28 +407,26 @@ bool _sis_conf_parse(s_sis_conf_handle *handle_, const char *content_)
 			next->prev = child;
 			child = next;
 		}
-		value = skip(value);
+		value = _sis_conf_skip(handle_,value);
 		if (!sis_strcase_match(SIS_CONF_INCLUDE, value))
 		{
-			value = skip(_sis_parse_include(handle_, child, value));
+			value = _sis_conf_skip(handle_,_sis_parse_include(handle_, child, value));
 			while (child->next)
-				child = child->next;
+			{	child = child->next;}
 			printf("a include is %.10s \n", value);
 		}
 		else
 		{
-			value = skip(_sis_parse_key(handle_, child, value));
-			value = skip(_sis_parse_value(handle_, child, value));
+			value = _sis_conf_skip(handle_,_sis_parse_key(handle_, child, value));
+			value = _sis_conf_skip(handle_,_sis_parse_value(handle_, child, value));
 		}
 		// while(child->next){
 		// 	child = child->next;
 		// }
 	}
 
-	if (handle_->error) // error��ֵ,����ʧ��
+	if (handle_->err_no) 
 	{
-		// sis_conf_delete_node(handle_->node);
-		// handle_->node = NULL;
 		return false;
 	}
 	return true;
@@ -419,11 +454,11 @@ s_sis_conf_handle *sis_conf_open(const char *fn_)
 	memset(handle, 0, sizeof(s_sis_conf_handle));
 	sis_file_getpath(fn_, handle->path, 255);
 
+	handle->err_lines = 1;
 	if (!_sis_conf_parse(handle, buffer))
 	{
-		int len = 0;
-		handle->error = sis_str_getline(handle->error, &len, buffer, sis_sdslen(buffer));
-		sis_out_log(3)("parse conf [%s] fail : \n %.*s \n", fn_, len, handle->error);
+
+		LOG(1)("[%3d]  %s \n", handle->err_lines, handle->err_msg);
 		sis_conf_close(handle);
 		handle = NULL;
 	};
@@ -434,7 +469,6 @@ fail:
 	}
 	return handle;
 }
-// �������ֻ��ɾ�����е��ӽڵ㣬����ɾ���Լ���ԭ���ǽṹ��û��father�����ɾ���Լ������ܶ�father->child����Ӱ��
 void _sis_conf_delete_node(s_sis_json_node *node_)
 {
 	if (!node_)
@@ -487,14 +521,14 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 {
 	s_sis_conf_handle *handle = NULL;
 	printf("sis_conf_load : %s\n", content_);
-	const char *value = skip(content_);
+	const char *value = _sis_conf_skip(handle,content_);
 	if (value && *value && *value == '{')
 	{
 		handle = (s_sis_conf_handle *)sis_malloc(sizeof(s_sis_conf_handle));
 		memset(handle, 0, sizeof(s_sis_conf_handle));
 		s_sis_json_node *node = sis_json_create_node();
 		handle->node = node;
-		value = skip(_sis_parse_value(handle, node, value));
+		value = _sis_conf_skip(handle,_sis_parse_value(handle, node, value));
 	}
 	size_t i;
 	printf("sis_conf_load : %s \n", sis_conf_to_json_zip(handle->node, &i));

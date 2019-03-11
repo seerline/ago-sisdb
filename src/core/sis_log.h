@@ -5,6 +5,27 @@
 #include <sis_os.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+
+// char *__ascii_logo =
+// "                _._                                                  \n"
+// "           _.-``__ ''-._                                             \n"
+// "      _.-``    `.  `_.  ''-._           sisdb %s (%s/%d) %s bit\n"
+// "  .-`` .-```.  ```\\/    _.,_ ''-._                                  \n"
+// " (    '|||   ,       .-`  | `,    )     Running in %s mode\n"
+// " |`-._`|||..-` __...-.``-._|'` _.-'|     Port: %d\n"
+// " |    `|||_   `._    /     _.-'    |     PID: %ld\n"
+// "  `-._ ||| `-._  `-./  _.-'    _.-'                                   \n"
+// " |`-._`|||_    `-.__.-'    _.-'_.-'|                                  \n"
+// " |    `|||_`-._        _.-'_.-'    |           www.sisdb.com          \n"
+// "  `-._ ||| `-._`-.__.-'_.-'    _.-'                                   \n"
+// " |`-._`|||_    `-.__.-'    _.-'_.-'|                                  \n"
+// " |    `|||_`-._        _.-'_.-'    |                                  \n"
+// "  `-._ ||| `-._`-.__.-'_.-'    _.-'                                   \n"
+// "      `|||_    `-.__.-'    _.-'                                       \n"
+// "  +-------------------     ||   `-. _.-'                                           \n"
+// "  +--------------------                                               \n\n";
+
 
 // LOG(0) -- 输出内存无法申请的错误，写log后直接退出程序
 // LOG(1) -- 程序初始化发生的错误，写log后正常退出程序
@@ -16,13 +37,69 @@
 // printf( "This is line %d.\n", __LINE__ );
 // printf( "This function is %s.\n", __func__ );
 
-#define sis_out_log(a) if(a>1) printf
-// sis_out_log 需要判断如果有回车就自动中断 使用("%.*s", 10, "xxxx") 方式
 
+typedef struct s_sis_log {
+	int  level;   //  其他小于该值的就输出
+    bool outscreen; 
+    // int  line;    // 当前打印的函数行
+    char funcname[255];   // 当时函数名
+    s_sis_thread_id_t id; // 当时的线程号
+
+    s_sis_mutex_t mutex;  // 多线程写入时需要加锁，不然报错
+
+    sis_file_handle logfp; // 文件句柄
+    char   filename[255];    // 文件名为“control”是输出到屏幕
+    size_t maxsize;        // 以M为单位
+
+    int    warning;        // 警报级别 0 -红色 1 为黄色
+    char   showtime[128];
+    char   buffer[1024];     // 打印缓存， 不超过1024个字符，过多字符通过其他方式输出检查
+}s_sis_log;
+
+void sis_log_start();   // 传递 线程号 函数名 和行号
+void sis_log_stop();
+
+void sis_log_open(const char *log_, int level_, int limit_);
+void sis_log_close();
+bool sis_log_input(int, int, const char *);  // 传递 线程号 函数名
+
+void sis_log(const char *fmt_, ...);
+
+#define sis_out_log(a) if(a>1) printf
+
+#define LOG(level) 	if (sis_log_input(level, sis_thread_self(),__func__)) sis_log
+
+
+//////////////////////////////////////////
+//
+//////////////////////////////////////////
+
+#define CLR_RED "\033[0;32;31m"
+#define CLR_GREEN "\033[0;32;32m"
+#define CLR_BLUE "\033[0;32;36m"
+#define CLR_GOLD "\033[0;32;33m"
+
+#define CLR_LRED "\033[1;31m"
+#define CLR_LGREEN "\033[1;32m"
+#define CLR_LBLUE "\033[1;36m"
+#define CLR_LHOT "\033[1;35m"
+#define CLR_YELLOW "\033[1;33m"
+#define RESET "\033[0m"
+
+#define LOGSCR1(color, format)  color format RESET
+#define LOGSCR(color, format, args)  printf( color format RESET, args) //打印到屏幕上
+
+#define MOVERIGHT(y) printf("\033[%dC", (y))
+#define MOVELEFT(y) printf("\033[%dD", (y)) 
+#define CLRTOTAIL "\033[K"
+//////////////////////////////////////////
+
+void sis_out_percent_start(const char *info_);
+void sis_out_percent(int step_, int count_);
+void sis_out_percent_stop();
+
+size_t sis_writefile(char *name, void *value, size_t len);
 void sis_out_binary(const char *key_, const char *val_, size_t len_);
 
-void sis_log_close();
-bool sis_log_open(const char *log_, int level_, int limit_);
-char *sis_log(int level_, const char *fmt_, ...);
 
 #endif //_SIS_LOG_H

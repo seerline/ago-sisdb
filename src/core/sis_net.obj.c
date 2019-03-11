@@ -1,5 +1,5 @@
 
-#include "sis_object.h"
+#include "sis_net.obj.h"
 
 // #ifdef __CYGWIN__
 // #define strtold(a,b) ((long double)strtod((a),(b)))

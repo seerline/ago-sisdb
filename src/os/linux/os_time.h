@@ -18,4 +18,5 @@ void sis_time_check(time_t tt_, struct tm *ptm_);
 //ÀØ√ﬂµ•Œª∫¡√Î
 void sis_sleep(int msec);
 
+void sis_time_format_now(char *out_, size_t olen);
 #endif //_OS_TIME_H
