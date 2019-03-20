@@ -37,11 +37,12 @@ typedef struct s_sis_file {
 s_sis_file *sis_file_create();
 void sis_file_destroy(s_sis_file *);
 
-
 s_sis_sds sis_file_read_to_sds(const char *fn_);
 
 bool sis_file_sds_write(const char *fn_, s_sis_sds buffer_);
 
 void sis_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_);
+
+void sis_check_path(const char *fn_);
 
 #endif //_SIS_FILE_H

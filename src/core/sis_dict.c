@@ -332,6 +332,18 @@ int dictReplace(dict *d, void *key, void *val)
     return 0;
 }
 
+int sis_dict_set_uint(dict *d, void *key, uint64_t val)
+{
+    dictEntry *entry, *existing;
+
+    entry = dictAddRaw(d,key,&existing);
+    if (entry) {
+        dictSetUnsignedIntegerVal(entry, val);
+        return 1;
+    }    
+    dictSetUnsignedIntegerVal(existing, val);
+    return 0;
+}
 /* Add or Find:
  * dictAddOrFind() is simply a version of dictAddRaw() that always
  * returns the hash entry of the specified key, even if the key already

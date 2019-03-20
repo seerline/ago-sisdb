@@ -106,7 +106,12 @@ bool sis_plan_task_execute(s_sis_plan_task *task_)
 	}
 	else
 	{
-		if (sis_thread_wait_sleep(&task_->wait, 30) == SIS_ETIMEDOUT) 
+		if (!task_->isfirst)
+		{
+			task_->isfirst = true;
+			return true;
+		}		
+		else if (sis_thread_wait_sleep(&task_->wait, 30) == SIS_ETIMEDOUT) 
 		{
 			int min = sis_time_get_iminute(0);
 			// printf("save plan ... -- -- -- %d \n", min);

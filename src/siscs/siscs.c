@@ -10,13 +10,11 @@ void *_thread_proc_service(void *argv_)
 		return NULL;
 	}
 	// sis_thread_wait_create(&worker->wait);
-
-  loop = uv_default_loop();
-  if (server_start(service->port)) 
+  if (sis_ws_server_start(service->port)) 
   {
     return NULL;
   }
-  uv_run(loop);
+
 
 	// sis_thread_wait_stop(&worker->wait);
 	LOG(5)("[%s:%d] service end. \n", service->protocol, service->port);

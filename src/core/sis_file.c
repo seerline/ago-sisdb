@@ -79,3 +79,15 @@ void sis_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int
     }
     sis_out_log(5)("outpath_:%s\n",outpath_);
 }
+
+void sis_check_path(const char *fn_)
+{
+	char outpath[SIS_PATH_LEN];
+	sis_file_getpath(fn_, outpath, SIS_PATH_LEN);
+    sis_path_complete(outpath, SIS_PATH_LEN);
+    if(!sis_path_mkdir(outpath))
+    {
+		LOG(3)("cann't create dir [%s].\n", outpath);   
+    }
+    LOG(5)("outpath_:%s\n",outpath);
+}

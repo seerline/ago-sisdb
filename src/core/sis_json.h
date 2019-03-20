@@ -34,6 +34,10 @@ typedef struct s_sis_json_handle
 	struct s_sis_json_node *node;
 } s_sis_json_handle; //专门提供给读json的快速结构体
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////////////////////////////////////
 //   output main function define
 ///////////////////////////////////////////////
@@ -124,4 +128,7 @@ s_sis_json_node *sis_json_find_node(s_sis_json_node *node_, const char *path_);
 
 void sis_json_show(s_sis_json_node *node_, int *i);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

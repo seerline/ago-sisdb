@@ -4,7 +4,7 @@
 #include <sis_core.h>
 #include <sis_map.h>
 #include <sis_list.h>
-
+#include <sis_conf.h>
 // 为什么要定义动态结构：
 // 每次增加功能都需要同步更新server和client，实际应用中不能保证同步更新，
 // 要求是server可以随时升级，client即使不升级也不会导致出错。
@@ -106,6 +106,7 @@ typedef struct s_sis_dynamic_unit {
 typedef struct s_sis_dynamic_db {
 	// char   *key;     // 描述结构体的标志符号
     //                  // 类别 . 名称 . 版本 
+    int                       index;      // 序列号，方便快速检索
 	s_sis_struct_list        *fields;     // 用顺序结构体来保存字段信息 s_sis_dynamic_unit
     unsigned short            size;       // 结构总长度
     // unsigned char             method;     // 转移方法  0 - 没有关联 1 - 直接拷贝 2 - 根据字段定义的方法取值
@@ -122,12 +123,24 @@ typedef struct s_sis_dynamic_class {
 
 #pragma pack(pop)
 
+s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
+void sis_dynamic_db_destroy(s_sis_dynamic_db *dyna_);
+
 // 参数为json结构的数据表定义,必须两个数据定义全部传入才创建成功
 // 同名的自动生成link信息，不同名的没有link信息
 // 同一个来源其中的 数据集合名称 不能重复  remote_ 表示对方配置  local_ 表示本地配置
-s_sis_dynamic_class *sis_dynamic_class_create(
+s_sis_dynamic_class *sis_dynamic_class_create_of_json(
     const char *remote_,size_t rlen_,
     const char *local_,size_t llen_);
+s_sis_dynamic_class *sis_dynamic_class_create_of_conf(
+    const char *remote_,size_t rlen_,
+    const char *local_,size_t llen_);
+
+// 参数为conf结构的配置文件,必须两个数据定义全部传入才创建成功
+s_sis_dynamic_class *sis_dynamic_class_create_of_conf_file(
+    const char *rfile_,const char *lfile_);
+s_sis_dynamic_class *sis_dynamic_class_create_of_json_file(
+    const char *rfile_,const char *lfile_);
 
 void sis_dynamic_class_destroy(s_sis_dynamic_class *);
 

@@ -351,7 +351,20 @@ void *sis_pointer_list_first(s_sis_pointer_list *list_)
 {
 	return sis_pointer_list_get(list_, 0);
 }
-
+// void *sis_pointer_list_next(s_sis_pointer_list *list_, void *current_)
+// {
+// 	int offset = 1;
+// 	char *o = (char *)current_ + offset * list_->len;
+// 	if (o >= (char *)list_->buffer + list_->start * list_->len &&
+// 		o <= (char *)list_->buffer + (list_->start + list_->count - 1) * list_->len)
+// 	{
+// 		return o;
+// 	}
+// 	else
+// 	{
+// 		return NULL;
+// 	}
+// }
 int sis_pointer_list_delete(s_sis_pointer_list *list_, int start_, int count_)
 {
 	if (start_ < 0 || count_ < 1 || start_ + count_ > list_->count)

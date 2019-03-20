@@ -31,6 +31,9 @@
 
 #define sis_file_handle FILE *
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 int sis_open(const char *fn_, int mode_);
 
 sis_file_handle sis_file_open(const char *fn_, int mode_, int access_);
@@ -55,5 +58,7 @@ void sis_file_delete(const char *fn_);
 char sis_path_separator();
 void sis_path_complete(char *path_,int maxlen_);
 bool sis_path_mkdir(const char *path_);
-
+#ifdef __cplusplus
+}
+#endif
 #endif //_SIS_FILE_H

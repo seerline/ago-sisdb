@@ -192,9 +192,6 @@ extern "C" {
 	extern dictType dictTypeHeapStrings;
 	extern dictType dictTypeHeapStringCopyKeyValue;
 
-#ifdef __cplusplus
-}
-#endif
 
 #define s_sis_dict dict
 #define s_sis_dict_type dictType
@@ -222,8 +219,14 @@ extern "C" {
 #define sis_dict_create dictCreate
 #define sis_dict_destroy dictRelease
 #define sis_dict_get_uint dictGetUnsignedIntegerVal
-#define sis_dict_set_uint dictSetUnsignedIntegerVal
+
+int sis_dict_set_uint(dict *d, void *key, uint64_t val);
+
 #define sis_dict_hash_func dictGenHashFunction
 #define sis_dict_casehash_func dictGenCaseHashFunction
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SIS_DICT_H */

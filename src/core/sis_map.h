@@ -29,6 +29,9 @@ typedef struct s_sis_kv_pair{
 #define s_sis_map_int dict
 #define s_sis_map_sds dict
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 s_sis_map_buffer *sis_map_buffer_create();
 void sis_map_buffer_destroy(s_sis_map_buffer *);
 void sis_map_buffer_clear(s_sis_map_buffer *);
@@ -44,12 +47,14 @@ s_sis_map_pointer *sis_map_pointer_create();
 #define sis_map_pointer_clear sis_map_buffer_clear
 #define sis_map_pointer_get sis_map_buffer_get
 #define sis_map_pointer_set sis_map_buffer_set
+#define sis_map_pointer_getsize dictSize
 
-// s_sis_map_int *sis_map_int_create();
-// #define sis_map_int_destroy sis_map_buffer_destroy
-// #define sis_map_int_clear sis_map_buffer_clear
-// uint64_t sis_map_int_get(s_sis_map_int *, const char *key_);
-// int sis_map_int_set(s_sis_map_int *, const char *key_, uint64_t value_);
+s_sis_map_int *sis_map_int_create();
+#define sis_map_int_destroy sis_map_buffer_destroy
+#define sis_map_int_clear sis_map_buffer_clear
+uint64_t sis_map_int_get(s_sis_map_int *, const char *key_);
+int sis_map_int_set(s_sis_map_int *, const char *key_, uint64_t value_);
+#define sis_map_int_getsize dictSize
 
 s_sis_map_sds *sis_map_sds_create();
 #define sis_map_sds_destroy sis_map_buffer_destroy
@@ -64,4 +69,9 @@ void _sis_dict_buffer_free(void *privdata, void *val);
 void *_sis_dict_sds_dup(void *privdata, const void *val);
 void _sis_dict_sds_free(void *privdata, void *val);
 void _sis_dict_list_free(void *privdata, void *val);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

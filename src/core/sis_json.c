@@ -1302,8 +1302,14 @@ int main()
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *fn = "../conf/sis.conf";
-	const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1},\"val\":{\"time\":[[930,1130],[1300,1500]]}}";
+	// const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1},\"val\":{\"time\":[[930,1130],[1300,1500]]}}";
 	// const char *command = "{\"format\":\"array\",\"null-json\":{},\"null-array\":[],\"range\":100}";
+	const char *command = "{ \
+	\"source\":	\"qEmbXnkAtObvLdeoiqfK\", \
+	\"command\":	\"sisdb.get\", \
+	\"key\":	\"sh600600._info\", \
+	\"argv\":	{} \
+	}"; \
 	// s_sis_json_handle *handel = sis_json_load(command, 64);
 	// int index = 0;
 	// if (handel)
@@ -1349,6 +1355,9 @@ int main()
 	printf("%p [%ld]\n", h->node, len);
 	printf("|%s|\n",str);
 	sis_free(str);
+
+	str = sis_json_get_str(h->node, "argv");
+	printf("argv : %s \n",str);
 
 	str = sis_json_output_zip(h->node, &len);
 	printf("|%s|\n",str);	

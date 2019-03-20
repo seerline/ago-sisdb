@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 #ifndef BOOL 
-typedef bool BOOL;
+typedef int BOOL;
 #endif
 #ifndef TRUE
 #define TRUE  true

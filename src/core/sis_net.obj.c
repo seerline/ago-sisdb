@@ -1,5 +1,204 @@
-
+﻿
 #include "sis_net.obj.h"
+
+s_sis_object *sis_object_create(int style_, void *ptr)
+{
+    s_sis_object *o = sis_malloc(sizeof(*o));
+    o->style = style_;
+    o->ptr = ptr;
+    o->refs = 1;
+    return o;
+}
+//  再活一次
+void sis_object_incr(s_sis_object *obj_) 
+{
+    if (obj_->refs != SIS_OBJECT_MAX_REFS) obj_->refs++;
+}
+void sis_object_set(s_sis_object *obj_, int style_, void *ptr) 
+{
+    switch(obj_->style) 
+    {
+        case SIS_OBJECT_SDS: sis_sdsfree(obj_->ptr); break;
+        // case OBJ_LIST: freeListObject(o); break;
+        // case OBJ_SET: freeSetObject(o); break;
+        // case OBJ_ZSET: freeZsetObject(o); break;
+        // case OBJ_HASH: freeHashObject(o); break;
+        // case OBJ_MODULE: freeModuleObject(o); break;
+        // case OBJ_STREAM: freeStreamObject(o); break;
+        default: LOG(5)("unknown object type"); break;
+    }
+    obj_->style = style_;
+    obj_->ptr = ptr;
+}
+
+void sis_object_decr(s_sis_object *obj_) 
+{
+    if (!obj_)
+    {
+        return ;
+    }
+    if (obj_->refs == 1) 
+    {
+        switch(obj_->style) 
+        {
+            case SIS_OBJECT_SDS: sis_sdsfree(obj_->ptr); break;
+            // case OBJ_LIST: freeListObject(o); break;
+            // case OBJ_SET: freeSetObject(o); break;
+            // case OBJ_ZSET: freeZsetObject(o); break;
+            // case OBJ_HASH: freeHashObject(o); break;
+            // case OBJ_MODULE: freeModuleObject(o); break;
+            // case OBJ_STREAM: freeStreamObject(o); break;
+            default: LOG(5)("unknown object type"); break;
+        }
+        sis_free(obj_);
+    } 
+    else 
+    {
+        if (obj_->refs <= 0)
+        {
+            LOG(1)("refs <= 0\n");
+        }
+        else
+        if (obj_->refs != SIS_OBJECT_MAX_REFS)
+        {
+            obj_->refs--;
+        }
+    }
+}
+
+/* ======================================== */
+
+s_sis_share_list *sis_share_list_create(const char *key_, int limit_)
+{
+    s_sis_share_list *obj = (s_sis_share_list *)sis_malloc(sizeof(s_sis_share_list));
+    memset(obj, 0, sizeof(s_sis_share_list));
+    sis_mutex_rw_create(&obj->mutex);
+    obj->limit_ = sis_max(limit_, 10);
+    obj->count = 0;
+    obj->key = sis_sdsnew(key_);
+    obj->head = NULL;
+    obj->tail = NULL;
+    return obj;
+}
+void sis_share_list_destroy(s_sis_share_list *obj_)
+{
+    sis_sdsfree(obj_->key);
+    sis_share_list_clear(obj_);
+    sis_mutex_rw_destroy(&obj_->mutex);
+    sis_free(obj_);
+}
+void _sis_share_node_delete(s_sis_share_node *node_) 
+{
+    if(node_->free)
+    {
+        node_->free(node_->value);
+    }
+    sis_free(node_);
+}
+
+void _sdsfree(void *p)
+{
+    sis_sdsfree((s_sis_sds)p);
+} 
+// 会发生一次拷贝，push后用户可以释放内存
+int sis_share_list_push(s_sis_share_list *obj_, void *in_, size_t ilen_) // 写权限
+{
+    sis_mutex_rw_lock_w(&obj_->mutex);
+    if (in_&&ilen_>0)
+    {
+        if (obj_->count > obj_->limit_)
+        {
+            // 删除第一个
+            s_sis_share_node *node = obj_->head;
+            obj_->head = obj_->head->next;
+            _sis_share_node_delete(node);
+        }
+        s_sis_share_node *node = (s_sis_share_node *)sis_malloc(sizeof(s_sis_share_node));
+        memset(node, 0, sizeof(s_sis_share_node));
+        node->free = _sdsfree;
+        node->value = sis_sdsnewlen(in_, ilen_);
+        if (!obj_->head&&!obj_->tail)
+        {
+            node->prev = NULL;
+            node->next = NULL;
+            obj_->head =  node;  
+            obj_->tail =  node;               
+        }
+        else
+        {
+            obj_->tail->next = node;
+            node->prev = obj_->tail;
+            node->next = NULL;
+            obj_->tail = node;            
+        }
+        obj_->count++;
+    }
+    sis_mutex_rw_unlock_w(&obj_->mutex);
+    return obj_->count;
+}
+// 不发生拷贝，但需要指定传入的数据的释放函数
+int sis_share_list_push_void(s_sis_share_list *obj_, void *in_,_cb_free *free_)
+{
+    sis_mutex_rw_lock_w(&obj_->mutex);
+    if (in_)
+    {
+        if (obj_->count > obj_->limit_)
+        {
+            s_sis_share_node *node = obj_->head;
+            obj_->head = obj_->head->next;
+            _sis_share_node_delete(node);
+        }
+        s_sis_share_node *node = (s_sis_share_node *)sis_malloc(sizeof(s_sis_share_node));
+        memset(node, 0, sizeof(s_sis_share_node));
+        node->free = free_;
+        node->value = in_;
+        if (!obj_->head&&!obj_->tail)
+        {
+            node->prev = NULL;
+            node->next = NULL;
+            obj_->head =  node;  
+            obj_->tail =  node;               
+        }
+        else
+        {
+            obj_->tail->next = node;
+            node->prev = obj_->tail;
+            node->next = NULL;
+            obj_->tail = node;            
+        }
+        obj_->count++;
+    }
+    sis_mutex_rw_unlock_w(&obj_->mutex);
+    return obj_->count;
+}
+s_sis_share_node *sis_share_list_get(s_sis_share_list *obj_, int *count_)
+{
+    sis_mutex_rw_lock_w(&obj_->mutex);
+    s_sis_share_node *node = obj_->head;
+    obj_->head = NULL;
+    obj_->tail = NULL;
+    *count_=obj_->count;
+    obj_->count = 0;
+    sis_mutex_rw_unlock_w(&obj_->mutex);
+    return node;
+}
+
+void sis_share_list_clear(s_sis_share_list *obj_)
+{
+    sis_mutex_rw_lock_w(&obj_->mutex);
+    s_sis_share_node *node = obj_->head;
+    while(node)
+    {
+        s_sis_share_node *next = node->next;
+        _sis_share_node_delete(node);
+        node = next;
+    }        
+    obj_->head = NULL;
+    obj_->tail = NULL;
+    obj_->count = 0;
+    sis_mutex_rw_unlock_w(&obj_->mutex);
+}
+
 
 // #ifdef __CYGWIN__
 // #define strtold(a,b) ((long double)strtod((a),(b)))

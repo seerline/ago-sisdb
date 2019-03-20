@@ -34,7 +34,7 @@
 #define _SIS_SDS_H
 
 #define SDS_MAX_PREALLOC (1024*1024)
-const char *SDS_NOINIT;
+// const char *SDS_NOINIT;
 
 #include <sis_os.h>
 
@@ -284,6 +284,15 @@ void sds_free(void *ptr);
 #define sis_sdsnew sdsnew
 #define sis_sdsnewlong sdsfromlonglong
 #define sis_sdsnewlen sdsnewlen
+#define sis_sdssetlen sdssetlen
+inline s_sis_sds sis_sdscpy(s_sis_sds s, const char *t)
+{
+    if (!s)
+    {
+        s = sdsempty();
+    }
+    return sdscpylen(s, t, strlen(t));
+} 
 #define sis_sdscpylen sdscpylen
 #define sis_sdslen sdslen
 #define sis_sdsdup sdsdup

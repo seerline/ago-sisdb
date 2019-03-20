@@ -22,7 +22,9 @@ typedef pthread_cond_t s_sis_cond_t;
 typedef pthread_t s_sis_thread_id_t;
 
 // 线程函数定义
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread_id_t *thread_);
 // 等待线程结束
 void sis_thread_join(s_sis_thread_id_t thread); 
@@ -31,6 +33,9 @@ void sis_thread_clear(s_sis_thread_id_t thread);
 //获取线程ID
 s_sis_thread_id_t sis_thread_self(); 
 // 杀死
+#ifdef __cplusplus
+}
+#endif
 #define sis_thread_kill kill
 
 // 互斥锁定义

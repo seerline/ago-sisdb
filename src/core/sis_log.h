@@ -56,6 +56,9 @@ typedef struct s_sis_log {
     char   buffer[1024];     // 打印缓存， 不超过1024个字符，过多字符通过其他方式输出检查
 }s_sis_log;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void sis_log_start();   // 传递 线程号 函数名 和行号
 void sis_log_stop();
 
@@ -64,6 +67,10 @@ void sis_log_close();
 bool sis_log_input(int, int, const char *);  // 传递 线程号 函数名
 
 void sis_log(const char *fmt_, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define sis_out_log(a) if(a>1) printf
 

@@ -462,6 +462,9 @@ s_sis_conf_handle *sis_conf_open(const char *fn_)
 		sis_conf_close(handle);
 		handle = NULL;
 	};
+	// size_t i;
+	// printf("sis_conf_load : %s \n", sis_conf_to_json_zip(handle->node, &i));
+
 fail:
 	if (buffer)
 	{
@@ -520,7 +523,7 @@ void sis_conf_close(s_sis_conf_handle *handle_)
 s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 {
 	s_sis_conf_handle *handle = NULL;
-	printf("sis_conf_load : %s\n", content_);
+	// printf("sis_conf_load : %s\n", content_);
 	const char *value = _sis_conf_skip(handle,content_);
 	if (value && *value && *value == '{')
 	{
@@ -530,8 +533,8 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 		handle->node = node;
 		value = _sis_conf_skip(handle,_sis_parse_value(handle, node, value));
 	}
-	size_t i;
-	printf("sis_conf_load : %s \n", sis_conf_to_json_zip(handle->node, &i));
+	// size_t i;
+	// printf("sis_conf_load : %s \n", sis_conf_to_json_zip(handle->node, &i));
 
 	return handle;
 }

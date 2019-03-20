@@ -296,7 +296,7 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	char *service_name;
 	if (argc_ == 1)
 	{
-		service_name = load_sisdb_open(((s_sis_object *)argv_[0])->ptr);
+		service_name = load_sisdb_open(((s_sis_object_r *)argv_[0])->ptr);
 	}
 	else
 	{

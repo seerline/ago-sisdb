@@ -13,7 +13,7 @@
 #include "os_file.h"
 #include "sis_memory.h"
 
-#define SIS_DISK_VERSION   1    // 数据结构版本
+// #define SIS_DISK_VERSION   1    // 数据结构版本
 ////////////////////////////////////////////////////
 // 这是一个高效写入的模块，需要满足以下特性
 // 无论何时，保证新传入尽快落盘 aof，落盘结束，返回真
@@ -35,6 +35,60 @@
 // ------------ //
 // 安全起见，对生成的序列化数据，按接收顺序每5分钟保存一个块，方便数据回放
 
+
+
+
+//  最后决定采用 key+value的方式发送数据
+// # 1、流式数据文件 -- 按时间顺序存储 
+// # 特性 :  毫秒，维度最高，仅仅实盘演练回测使用
+
+// # 按日期一天一个文件，各种数据结构混合存入
+// # 20190301.aof -- 流式数据文件
+// #     所有的块大小都是64K，文件的第一块为索引头
+// #     头部为 start(4) stop(4) 没有日期的毫秒数 
+// #     start=stop=0 表示为文件描述头的块，可多个；
+// #     S表示后面为结构体定义和编号，0为结束符, 
+// #     C表示后面为代码表和编号，0为分隔符
+// #     start||stop>0 表示后面为数据块，大小固定为64K，
+// #     数据块 以 2B(代码)+1B(数据表)+1条记录的压缩数据 +...+下一条代码
+// #     ... 如果大于64K，一个结构没写完，就直接生成新的数据包，方便传输读取时
+
+// #     读取数据时根据头的最大最小值决定每个块大致的时间节点，然后根据请求的时间直接跳到对应块进行读取，
+// #     如果时间不匹配，就往前或后偏移，直到时间卡到对应位置；
+
+// # 20190302.aof -- 流式数据 
+
+// # idx 20190302.idx
+// # 1B 类型 4字节(数据文件序号) start(4) stop(4) + 4字节(偏移位置) [size]
+// H = 头描述
+// # ...
+// # 一个索引记录24个字节 
+// # 一年的idx大小为 24*3000*250 = 18M
+
+// # 2、历史数据文件 -- 按品种和结构存储
+// # 两个时间纬度  分钟 和 日线
+// # # min.sdb 
+// # # min.idx  -- 索引可以从sdb中重建
+
+// # # info.sdb
+// # # info.idx
+
+// # # day.sdb
+// # # day.idx -- 索引可以从sdb中重建
+
+// # idx 最大4G*4G的数据集合
+// # [*] sh600600.info 1-255 4字节(数据文件序号) 4字节(偏移位置) [size] + start(4)-stop(4) 单位秒
+// # ...
+// # 一个索引记录24个字节 
+// # 一年的idx大小为 24*3000*250 = 18M
+
+// # sdb 头部是数据结构描述和结构编号, 2B 结构描述长度 + 结构描述与编号 + 
+// # 不确定大小的数据块集合，要求每个块可以独立解析,
+// # 然后就开始数据区 : 
+// # sh600600 + 0 + 1B 数据表 + start(4)-stop(4) 
+// #       1bit 是否压缩 250条记录 或 251 + 64K条记录  
+// # ***** 若结构不同，重新开始一个新文件 *****
+
 // #define SIS_DB_FILE_CONF "%s/%s.json"    // 数据结构定义
 // #define SIS_DB_FILE_MAIN "%s/%s.sdb"   // 主数据库
 // #define SIS_DB_FILE_ZERO "%s/%s.sdb.0" // 不完备的数据块
@@ -51,13 +105,65 @@
 // #define SIS_DB_FILE_OUT_ARRAY   "%s/%s/%s.%s.arr"   // 主数据库 db/sisdb/sh600600.day.json
 // #define SIS_DB_FILE_OUT_STRUCT  "%s/%s/%s.%s.bin"    // 主数据库 db/sisdb/sh600600.day.bin
 // #define SIS_DB_FILE_OUT_ZIP  	"%s/%s/%s.%s.zip"    // 主数据库 db/sisdb/sh600600.day.zip
+
+// #define  SIS_DISK_MAXLEN_FILE      0xFFFFFFFF  // 4G
+
+// #define  SIS_DISK_MAXLEN_PACKAGE   0x00FFFFFF  // 16M 实时流文件专用
+
+// #define  SIS_DISK_MAXLEN_BLOCK     0xFFFF      // 64K 历史数据专用
+
 // #pragma pack(push,1)
-// typedef struct s_sis_sdb_head{
-// 	uint32	size;    // 数据大小
-// 	char    key[SIS_MAXLEN_KEY];
-// 	uint8	format;  // 数据格式 json array struct zip 
-//                      // 还有一个数据结构是 refer 存储 catch 和 zip 三条记录
-// }s_sis_sdb_head;
+// // 流式文件索引结构体，只允许顺序增加数据
+// typedef struct s_sis_avi_head {
+//     uint8    version;       // 版本号
+//     uint8    scale;         // 时间尺度 毫秒 秒 日期等
+//     uint8    ziper;         // 压缩算法
+//     uint16   tsize;         // 结构体大小 
+//     uint32   csize;         // 代码表的大小 code1+0+code2+0
+//     // uint8     table[0];   // 结构体描述
+//     // uint8     code[0];   // 结构体描述
+// }s_sis_avi_head;
+
+// typedef struct s_sis_avi_body {
+// 	uint8   type;    // 类型 D:del S:set A:add
+//     uint16  cid;     // 去头描述中找对应代码
+//     uint8   tid;     // 去头描述中找对应表
+// 	uint16	size;    // 数据大小 最大写入数据不超过64K
+//     // uint8   data[0]; // 数据区
+// }s_sis_avi_body;
+
+// ////////////////////////////////////////////////
+// // disk 仅仅存储历史数据，按单个股票为基本元素进行存储；
+// typedef struct s_sis_disk_idx {
+//     char    key[32];    // 最大key不超过32的字符
+//     uint32  index;      // 在哪个文件中 文件序号 4G*4G = 16P数据
+//     uint32  start;      // 开始时间 快速检索
+//     uint32  stop;       // 结束时间 快速检索
+//     uint32  offset;     // 偏移位置 快速定位
+//     uint16  size;       // 数据大小 如果新数据+size < 64K 就在原块上修改，否则生成新的块
+// }s_sis_disk_idx;
+// // 一共52个字节一条记录
+
+// // 每个文件的头部有一个结构体字典说明，如果结构体不同就需要新生成文件，留待合适时间转换数据格式
+// typedef struct s_sis_disk_head {
+//     uint8    version;       // 版本号
+//     uint8    scale;         // 时间尺度 毫秒 秒 日期等
+//     uint8    ziper;         // 压缩算法
+//     uint16   size;          // 结构体大小 
+//     // uint8     table[0];   // 结构体描述
+// }s_sis_disk_head;
+
+// // 流式文件索引结构体，大小限定为64K  SIS_DISK_MAXLEN_BLOCK
+// typedef struct s_sis_disk_body {
+//     uint8   type;         // B 块标记 当数据紊乱时，通过该标记恢复尚未被破坏的数据
+//     char    key[32];      // 最大key不超过32的字符
+//     uint32  start;        // 开始时间
+//     uint32  stop;         // 结束时间 
+//     uint32  count;        // 数据个数
+//     uint16  size;         // 数据实际大小，如果新数据+size < 64K 就在原块上修改，否则生成新的块
+//     // uint8   data[0];      // 跟数据字节流
+// }s_sis_disk_body;
+
 
 // #define SIS_AOF_TYPE_DEL   1   // 删除
 // #define SIS_AOF_TYPE_JSET  2   // json写

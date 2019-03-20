@@ -10,7 +10,7 @@
 #include <os_thread.h>
 #include <sis_comm.h>
 #include <sis_str.h>
-
-s_sis_sds siscs_send_local_sds(const char *command_, const char *key_, 
+#include <sis_net.obj.h>
+s_sis_object *siscs_send_local_obj(const char *command_, const char *key_, 
 					     	   const char *val_, size_t ilen_);
 #endif  /* _SISCS_LOAD_H */

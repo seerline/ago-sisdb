@@ -168,6 +168,21 @@ void sis_str_to_lower(char *in_)
 		}
 	}
 }
+int sis_str_pos(const char *in_, size_t ilen_, char c)
+{
+	for(size_t i = 0; i < ilen_; i++, in_++)
+	{
+		if(strchr("{}[]", *in_))
+		{
+			break;
+		}
+		if(*in_ == c)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 {
 	int count = 0;

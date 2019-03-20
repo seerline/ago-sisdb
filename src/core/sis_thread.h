@@ -35,6 +35,7 @@ void sis_mutex_rw_unlock_w(s_sis_mutex_rw *mutex_);
 
 typedef struct s_sis_plan_task {
 	int  		 		work_mode; 
+	bool                isfirst;
 	bool         		working;          // 退出时设置为false 
 	s_sis_struct_list  *work_plans;       // plans-work 定时任务 uint16 的数组
 	s_sis_time_gap      work_gap; 		  // always-work 循环运行的配置

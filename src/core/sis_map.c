@@ -142,38 +142,34 @@ s_sis_map_pointer *sis_map_pointer_create()
 //////////////////////////////////////////
 //  s_sis_map_int 基础定义
 //////////////////////////////////////////
-// s_sis_map_int *sis_map_int_create()
-// {
-// 	s_sis_map_int *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);
-// 	return map;
-// };
-// uint64_t sis_map_int_get(s_sis_map_int *map_, const char *key_)
-// {
-// 	s_sis_dict_entry *he;
-// 	s_sis_sds key = sis_sdsnew(key_);
-// 	he = sis_dict_find(map_, key);
-// 	sis_sdsfree(key);	
-// 	if (!he)
-// 	{
-// 		return 0;
-// 	}
-// 	return sis_dict_get_uint(he);
-// };
-// int sis_map_int_set(s_sis_map_int *map_, const char *key_, uint64_t value_)
-// {
-// 	s_sis_dict_entry *he;
-// 	s_sis_sds key = sis_sdsnew(key_);
-// 	he = sis_dict_find(map_, key);
-// 	if (!he)
-// 	{
-// 		sis_dict_add(map_, key, NULL);
-
-// 		return 0;
-// 	}
-// 	sis_dict_set_uint(he, value_);
-// 	sis_sdsfree(key);	
-// 	return 0;
-// }
+s_sis_map_int *sis_map_int_create()
+{
+	s_sis_map_int *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);
+	return map;
+};
+uint64_t sis_map_int_get(s_sis_map_int *map_, const char *key_)
+{
+	s_sis_dict_entry *he;
+	s_sis_sds key = sis_sdsnew(key_);
+	he = sis_dict_find(map_, key);
+	sis_sdsfree(key);	
+	if (!he)
+	{
+		return 0;
+	}
+	return sis_dict_get_uint(he);
+};
+int sis_map_int_set(s_sis_map_int *map_, const char *key_, uint64_t value_)
+{
+	s_sis_sds key = sis_sdsnew(key_);
+	int isnew = sis_dict_set_uint(map_, key, value_);
+	if (!isnew)
+	{
+		sis_sdsfree(key);
+		return 0;
+	}	
+	return 0;
+}
 //////////////////////////////////////////
 //  s_sis_map_sds 基础定义
 //////////////////////////////////////////

@@ -1,7 +1,6 @@
 ﻿
 #include "sis_dynamic.h"
 #include <sis_sds.h>
-#include <sis_conf.h>
 #include <sis_math.h>
 
 uint64 _sis_field_get_uint(s_sis_dynamic_unit *unit_, const char *val_, int index_)
@@ -190,7 +189,7 @@ int _sis_dynamic_get_style(const char *str_)
 	return SIS_DYNAMIC_TYPE_NONE;
 }
 
-s_sis_dynamic_db *_sis_dynamic_create(s_sis_json_node *node_)
+s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 {
 	s_sis_dynamic_db *dyna = (s_sis_dynamic_db *)sis_malloc(sizeof(s_sis_dynamic_db));
 	memset(dyna, 0, sizeof(s_sis_dynamic_db));
@@ -260,7 +259,7 @@ s_sis_dynamic_db *_sis_dynamic_create(s_sis_json_node *node_)
 	return dyna;
 }
 
-void _sis_dynamic_destroy(s_sis_dynamic_db *dyna_)
+void sis_dynamic_db_destroy(s_sis_dynamic_db *dyna_)
 {
 	sis_struct_list_destroy(dyna_->fields);
 	sis_free(dyna_);
@@ -487,30 +486,16 @@ void _sis_dynamic_match(s_sis_dynamic_db *remote_, s_sis_dynamic_db *local_)
 
 	}
 }
-// 收到server的结构体说明后，初始化一次，后面就不用再匹配了
-s_sis_dynamic_class *sis_dynamic_class_create(
-    const char *remote_,size_t rlen_,
-    const char *local_,size_t llen_)
+s_sis_dynamic_class *_sis_dynamic_class_create(s_sis_json_node *innode_,s_sis_json_node *outnode_)
 {
-	s_sis_dynamic_class *class = NULL;
-	s_sis_json_handle *injson = sis_json_load(remote_, rlen_);
-	s_sis_json_handle *outjson = sis_json_load(local_, llen_);
-
-	if (!injson||!outjson)
-	{
-		sis_json_close(injson);
-		sis_json_close(outjson);
-		return NULL;
-	}
-
-	class = (s_sis_dynamic_class *)sis_malloc(sizeof(s_sis_dynamic_class));
+	s_sis_dynamic_class *class = (s_sis_dynamic_class *)sis_malloc(sizeof(s_sis_dynamic_class));
 	memset(class, 0, sizeof(s_sis_dynamic_class));
 
 	class->remote = sis_map_pointer_create(); 
-	s_sis_json_node *innode = sis_json_first_node(injson->node);
+	s_sis_json_node *innode = sis_json_first_node(innode_);
 	while (innode)
 	{
-		s_sis_dynamic_db *dynamic = _sis_dynamic_create(innode);
+		s_sis_dynamic_db *dynamic = sis_dynamic_db_create(innode);
 		if (!dynamic)
 		{
 			continue;
@@ -518,13 +503,12 @@ s_sis_dynamic_class *sis_dynamic_class_create(
 		sis_map_pointer_set(class->remote, innode->key, dynamic);
 		innode = sis_json_next_node(innode);
 	}
-	sis_json_close(injson);
 	
 	class->local = sis_map_pointer_create();
-	s_sis_json_node *outnode = sis_json_first_node(outjson->node);
+	s_sis_json_node *outnode = sis_json_first_node(outnode_);
 	while (outnode)
 	{
-		s_sis_dynamic_db *dynamic = _sis_dynamic_create(outnode);
+		s_sis_dynamic_db *dynamic = sis_dynamic_db_create(outnode);
 		if (!dynamic)
 		{
 			continue;
@@ -532,7 +516,6 @@ s_sis_dynamic_class *sis_dynamic_class_create(
 		sis_map_pointer_set(class->local, outnode->key, dynamic);
 		outnode = sis_json_next_node(outnode);
 	}
-	sis_json_close(outjson);
 
 	////  下面开始处理关联性的信息  //////
 	{
@@ -559,9 +542,90 @@ s_sis_dynamic_class *sis_dynamic_class_create(
 	}
 	//////////////////////////////////
 
-    return class;
+    return class;	
 }
 
+s_sis_dynamic_class *sis_dynamic_class_create_of_conf(
+    const char *remote_,size_t rlen_,
+    const char *local_,size_t llen_)
+{
+	s_sis_conf_handle *injson = sis_conf_load(remote_, rlen_);
+	s_sis_conf_handle *outjson = sis_conf_load(local_, llen_);
+
+	if (!injson||!outjson)
+	{
+		sis_conf_close(injson);
+		sis_conf_close(outjson);
+		return NULL;
+	}
+	s_sis_dynamic_class *class = _sis_dynamic_class_create(injson->node, outjson->node);
+
+	sis_conf_close(injson);
+	sis_conf_close(outjson);
+
+	return class;
+}
+s_sis_dynamic_class *sis_dynamic_class_create_of_conf_file(
+    const char *rfile_,const char *lfile_)
+{
+	s_sis_conf_handle *injson = sis_conf_open(rfile_);
+	s_sis_conf_handle *outjson = sis_conf_open(lfile_);
+
+	if (!injson||!outjson)
+	{
+		sis_conf_close(injson);
+		sis_conf_close(outjson);
+		return NULL;
+	}
+	s_sis_dynamic_class *class = _sis_dynamic_class_create(injson->node, outjson->node);
+
+	sis_conf_close(injson);
+	sis_conf_close(outjson);
+
+	return class;	
+}
+
+// 收到server的结构体说明后，初始化一次，后面就不用再匹配了
+s_sis_dynamic_class *sis_dynamic_class_create_of_json(
+    const char *remote_,size_t rlen_,
+    const char *local_,size_t llen_)
+{
+	s_sis_json_handle *injson = sis_json_load(remote_, rlen_);
+	s_sis_json_handle *outjson = sis_json_load(local_, llen_);
+
+	if (!injson||!outjson)
+	{
+		sis_json_close(injson);
+		sis_json_close(outjson);
+		return NULL;
+	}
+
+	s_sis_dynamic_class *class = _sis_dynamic_class_create(injson->node, outjson->node);
+
+	sis_json_close(injson);
+	sis_json_close(outjson);
+
+	return class;
+}
+s_sis_dynamic_class *sis_dynamic_class_create_of_json_file(
+    const char *rfile_,const char *lfile_)
+{
+	s_sis_json_handle *injson = sis_json_open(rfile_);
+	s_sis_json_handle *outjson = sis_json_open(lfile_);
+
+	if (!injson||!outjson)
+	{
+		sis_json_close(injson);
+		sis_json_close(outjson);
+		return NULL;
+	}
+	s_sis_dynamic_class *class = _sis_dynamic_class_create(injson->node, outjson->node);
+
+	sis_json_close(injson);
+	sis_json_close(outjson);
+
+	return class;	
+}
 void sis_dynamic_class_destroy(s_sis_dynamic_class *cls_)
 {
 	if (!cls_)
@@ -574,7 +638,7 @@ void sis_dynamic_class_destroy(s_sis_dynamic_class *cls_)
 		while ((de = sis_dict_next(di)) != NULL)
 		{
 			s_sis_dynamic_db *val = (s_sis_dynamic_db *)sis_dict_getval(de);
-			_sis_dynamic_destroy(val);
+			sis_dynamic_db_destroy(val);
 		}
 		sis_dict_iter_free(di);
 	}
@@ -585,7 +649,7 @@ void sis_dynamic_class_destroy(s_sis_dynamic_class *cls_)
 		while ((de = sis_dict_next(di)) != NULL)
 		{
 			s_sis_dynamic_db *val = (s_sis_dynamic_db *)sis_dict_getval(de);
-			_sis_dynamic_destroy(val);
+			sis_dynamic_db_destroy(val);
 		}
 		sis_dict_iter_free(di);
 	}
@@ -874,7 +938,7 @@ error:
 
 }
 
-#if 0
+#if 1
 #pragma pack(push, 1)
 typedef struct _local_info {
 	int open;
@@ -894,12 +958,14 @@ typedef struct _remote_info {
 int main()
 {
 	// const char *local = "{\"info\":{\"open\":[0,\"I\",4]}}";
-	const char *local = "{\"info\":{\"open\":[\"I\",4],\"close\":[\"F\",8,1,2],\"ask\":[\"I\",4,5],\"name\":[\"C\",4]}}";
-	const char *remote = "{\"info\":{\"open\":[\"U\",4],\"close\":[\"F\",4,1,3],\"ask\":[\"I\",4,10],\"name\":[\"C\",8]}}";
+	// const char *local = "{\"info\":{\"open\":[\"I\",4],\"close\":[\"F\",8,1,2],\"ask\":[\"I\",4,5],\"name\":[\"C\",4]}}";
+	// const char *remote = "{\"info\":{\"open\":[\"U\",4],\"close\":[\"F\",4,1,3],\"ask\":[\"I\",4,10],\"name\":[\"C\",8]}}";
 	// const char *local = "{info:{open:[I,4],close:[F,8,1,2],ask:[I,4,5],name:[C,4]}}";
 	// const char *remote = "{info:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}";
 	
-	s_sis_dynamic_class *class = sis_dynamic_class_create(remote,strlen(remote),local,strlen(local));
+	s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf_file("remote.conf","local.conf");
+	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf(remote,strlen(remote),local,strlen(local));
+	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_json(remote,strlen(remote),local,strlen(local));
 	// 测试 remote 到 local 转换
 	{
 		int count = 2;

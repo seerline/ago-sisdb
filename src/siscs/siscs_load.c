@@ -1,7 +1,8 @@
 
 #include <siscs_load.h>
 
-s_sis_sds siscs_send_local_sds(const char *command_, const char *key_, 
+
+s_sis_object *siscs_send_local_obj(const char *command_, const char *key_, 
 					     	   const char *val_, size_t ilen_)
 {
 	s_sis_module_context *ctx = sis_module_get_safe_context(NULL);
@@ -19,7 +20,7 @@ s_sis_sds siscs_send_local_sds(const char *command_, const char *key_,
 		reply = sis_module_call(ctx, command_, "cb!", key_, val_, ilen_);
 	}
 
-	s_sis_sds o = NULL;
+	s_sis_object *o = NULL;
 	if (reply)
 	{
 		int style = sis_module_call_reply_type(reply);
@@ -30,7 +31,9 @@ s_sis_sds siscs_send_local_sds(const char *command_, const char *key_,
 					size_t len;
 					const char *str = sis_module_call_reply_with_string(reply, &len);
 					// printf("len=%lu\n", len);
-					o = sis_sdsnewlen(str, len);
+					s_sis_sds val = sis_sdsnewlen(str, len);
+					o = sis_object_create(SIS_OBJECT_SDS, val);
+					sis_object_incr(o);
 				}
 				break;
 			default:
@@ -39,6 +42,7 @@ s_sis_sds siscs_send_local_sds(const char *command_, const char *key_,
 		sis_module_call_reply_free(reply);
 	}
 	sis_module_free_safe_context(ctx);
+	sis_object_decr(o);
 	return o;
 }
 ////////////////////////////
@@ -70,7 +74,7 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	int cs = 0;
 	if (argc_ == 1)
 	{
-		cs = call_siscs_open(((s_sis_object *)argv_[0])->ptr);
+		cs = call_siscs_open(((s_sis_object_r *)argv_[0])->ptr);
 	}
 	else
 	{

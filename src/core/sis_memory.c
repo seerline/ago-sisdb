@@ -51,7 +51,17 @@ void sis_memory_pack(s_sis_memory *m_)
 		m_->offset = 0;
 	}
 }
-
+void sis_memory_jumpto(s_sis_memory *m_, size_t off_)
+{
+	if (off_ < m_->size)
+	{
+		m_->offset = off_;
+	}
+}
+size_t sis_memory_get_address(s_sis_memory *m_)
+{
+	return m_->offset;
+}
 char *sis_memory(s_sis_memory *m_)
 {
 	if (!m_->buffer)

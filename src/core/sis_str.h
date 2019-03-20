@@ -37,6 +37,9 @@
 //     unsigned int *o = (unsigned int *)str;
 //     return *o;
 // }
+#ifdef __cplusplus
+extern "C" {
+#endif
 // 以第一个字符串为长度，从头开始进行比较
 int sis_strcase_match(const char *son_, const char *source_);
 
@@ -52,6 +55,7 @@ char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...); SIS_MALLOC
 
 const char *sis_str_split(const char *s, size_t *len_, char c);
 
+int sis_str_pos(const char *in_, size_t ilen_, char c);
 int sis_str_substr_nums(const char *s, char c);
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);
 int sis_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
@@ -79,6 +83,8 @@ bool sis_str_get_id(char *out_, size_t olen_);
 // olen < 16 返回
 // bool sis_str_get_id_long(char *out_, size_t olen_);
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif //_SIS_STR_H

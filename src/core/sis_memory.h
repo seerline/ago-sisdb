@@ -29,4 +29,7 @@ size_t sis_memory_get_line_sign(s_sis_memory *);
 void sis_memory_move(s_sis_memory *, size_t);
 char *sis_memory(s_sis_memory *);
 
+void sis_memory_jumpto(s_sis_memory *, size_t);
+size_t sis_memory_get_address(s_sis_memory *);
+
 #endif //_SIS_FILE_H
