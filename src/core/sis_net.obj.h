@@ -58,7 +58,7 @@ typedef struct s_sis_share_list {
 #ifdef __cplusplus
 extern "C" {
 #endif
-s_sis_share_list *sis_share_list_create(const char *, int limit_);
+s_sis_share_list *sis_share_list_create(const char *, int64 limit_);
 void sis_share_list_destroy(s_sis_share_list *); 
 
 // 会发生一次拷贝，push后用户可以释放内存

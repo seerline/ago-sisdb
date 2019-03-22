@@ -68,7 +68,7 @@ void sis_object_decr(s_sis_object *obj_)
 
 /* ======================================== */
 
-s_sis_share_list *sis_share_list_create(const char *key_, int limit_)
+s_sis_share_list *sis_share_list_create(const char *key_, int64 limit_)
 {
     s_sis_share_list *obj = (s_sis_share_list *)sis_malloc(sizeof(s_sis_share_list));
     memset(obj, 0, sizeof(s_sis_share_list));

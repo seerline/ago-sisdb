@@ -304,7 +304,7 @@ bool sisdb_file_save_aof(s_sisdb_server *server_,
     sis_file_close(fp);
     return true;
 }
-//结构体存盘必须写结构长度，方便校验
+// 结构体存盘必须写结构长度，方便校验
 // ------------------- load file -------------------------- //
 bool _sisdb_file_load_aof(s_sisdb_server *server_)
 {

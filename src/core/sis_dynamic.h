@@ -48,7 +48,7 @@
 
 
 
-#define SIS_DYNAMIC_FIELD_LEN   32
+#define SIS_DYNAMIC_CHR_LEN   32
 
 #define SIS_DYNAMIC_OK      0
 #define SIS_DYNAMIC_ERR     1  // 初始化错误
@@ -84,7 +84,7 @@
 #pragma pack(push,1)
 
 typedef struct s_sis_dynamic_unit {    
-    char  name[SIS_DYNAMIC_FIELD_LEN];  // 字段名
+    char  name[SIS_DYNAMIC_CHR_LEN];  // 字段名
                                         // 以字段名为唯一检索标记，如果用户对字段名
     unsigned char  style;      // 数据类型
     unsigned short len;        // 数据长度
@@ -104,14 +104,15 @@ typedef struct s_sis_dynamic_unit {
 //       例如：short 转为 long long 和 float 转为 double
 ////////////////////////////////////////////////////
 typedef struct s_sis_dynamic_db {
-	// char   *key;     // 描述结构体的标志符号
+	char   name[SIS_DYNAMIC_CHR_LEN];    // 描述结构体的标志符号
     //                  // 类别 . 名称 . 版本 
-    int                       index;      // 序列号，方便快速检索
 	s_sis_struct_list        *fields;     // 用顺序结构体来保存字段信息 s_sis_dynamic_unit
     unsigned short            size;       // 结构总长度
     // unsigned char             method;     // 转移方法  0 - 没有关联 1 - 直接拷贝 2 - 根据字段定义的方法取值
 	struct s_sis_dynamic_db  *map_db;     // 对应的 s_sis_dynamic_db 为空表示不做转换
     void(*method)(void *, void *, size_t, void *,size_t); 
+    int(*compress)(void *, void *, size_t, void *); 
+    int(*uncompress)(void *, void *, size_t, void *); 
 } s_sis_dynamic_db;
 
 typedef struct s_sis_dynamic_class {
@@ -124,7 +125,9 @@ typedef struct s_sis_dynamic_class {
 #pragma pack(pop)
 
 s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
-void sis_dynamic_db_destroy(s_sis_dynamic_db *dyna_);
+void sis_dynamic_db_destroy(s_sis_dynamic_db *db_);
+
+s_sis_sds sis_dynamic_db_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
 
 // 参数为json结构的数据表定义,必须两个数据定义全部传入才创建成功
 // 同名的自动生成link信息，不同名的没有link信息

@@ -15,6 +15,9 @@ typedef struct s_sis_memory {
     char   *buffer; 
 } s_sis_memory;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 s_sis_memory *sis_memory_create();   
 void sis_memory_destroy(s_sis_memory *);
 
@@ -25,6 +28,10 @@ size_t sis_memory_cat(s_sis_memory *, char *, size_t);  // memory tail cat, and 
 size_t sis_memory_readfile(s_sis_memory *, sis_file_handle, size_t);
 size_t sis_memory_get_size(s_sis_memory *);
 
+void sis_memory_set_size(s_sis_memory *m_, size_t len_);
+size_t sis_memory_get_maxsize(s_sis_memory *m_);
+size_t sis_memory_set_maxsize(s_sis_memory *, size_t);
+
 size_t sis_memory_get_line_sign(s_sis_memory *);
 void sis_memory_move(s_sis_memory *, size_t);
 char *sis_memory(s_sis_memory *);
@@ -32,4 +39,7 @@ char *sis_memory(s_sis_memory *);
 void sis_memory_jumpto(s_sis_memory *, size_t);
 size_t sis_memory_get_address(s_sis_memory *);
 
+#ifdef __cplusplus
+}
+#endif
 #endif //_SIS_FILE_H

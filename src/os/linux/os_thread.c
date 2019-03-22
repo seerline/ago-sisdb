@@ -2,7 +2,7 @@
 #include <os_thread.h>
 #include <os_malloc.h>
 
-bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void *val_, s_sis_thread_id_t *thread_)
+bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread *thread_)
 {
 	s_sis_thread_id_t result = 0;
 	pthread_attr_t attr;
@@ -18,6 +18,8 @@ bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void *val_, s_sis_thread_
 		return false;
 	}
 	irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	// 如果不用此方式，会造成条件变量广播丢失问题
+	// irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE); // join 阻塞等
 	if (irc)
 	{
 		return false;
@@ -28,19 +30,35 @@ bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void *val_, s_sis_thread_
 		return false;
 	}
 	pthread_attr_destroy(&attr);
-	*thread_ = result;
-	return true;
+	thread_->thread_id = result;
+	thread_->working = true;
+	return true;	
+}
+void sis_thread_finish(s_sis_thread *thread_)
+{
+	thread_->working = false;
 }
 
-void sis_thread_join(s_sis_thread_id_t thread_)
+// 等待线程结束
+void sis_thread_join(s_sis_thread *thread_)
 {
-	pthread_join((s_sis_thread_id_t)thread_, 0);
+	int msec = thread_->timeout < 500 ? 500 : thread_->timeout;
+	while(thread_->working)
+	{
+		sis_sleep(10);
+		msec-=10;
+		if (msec < 0)
+		{
+			// 防止用户使用不当时延时退出
+			break;
+		}
+	}
+	pthread_join(thread_->thread_id, 0);
 }
 
-void sis_thread_clear(s_sis_thread_id_t thread_)
+void sis_thread_clear(s_sis_thread *thread_)
 {
-	s_sis_thread_id_t t = (s_sis_thread_id_t)thread_;
-	pthread_detach(t);
+	pthread_detach(thread_->thread_id);
 }
 
 s_sis_thread_id_t sis_thread_self()
@@ -65,8 +83,6 @@ int sis_mutex_create(s_sis_mutex_t *mutex_)
 /////////////////////////////////////
 //
 //////////////////////////////////////////
-
-#ifdef __RELEASE__
 void sis_thread_wait_start(s_sis_wait *wait_)
 {
 	sis_mutex_lock(&wait_->mutex);
@@ -75,7 +91,7 @@ void sis_thread_wait_stop(s_sis_wait *wait_)
 {
 	sis_mutex_unlock(&wait_->mutex);
 }
-
+#ifndef __XRELEASE__
 // 要测试，暂时先这样，后期要检查问题
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
@@ -84,20 +100,31 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 	sis_time_get_day(&tv, NULL);
 	ts.tv_sec = tv.tv_sec + delay_;
 	ts.tv_nsec = tv.tv_usec * 1000;
-
+	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
+	// 返回 SIS_ETIMEDOUT 就正常处理
+}
+int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // 毫秒
+{
+	struct timeval tv;   // 微秒
+	struct timespec ts;  // 纳秒
+	sis_time_get_day(&tv, NULL);
+	ts.tv_sec = tv.tv_sec + (int)(msec_ / 1000);
+	int msec = tv.tv_usec + (msec_ % 1000) * 1000;
+	if (msec >= 1000000)
+	{
+		ts.tv_sec ++ ;
+		ts.tv_nsec = (msec - 1000000) * 1000;
+	}
+	else
+	{
+		ts.tv_nsec = msec * 1000;
+	}
+	// printf("offset %ld=%ld %ld=%ld\n",ts.tv_sec,tv.tv_sec, ts.tv_nsec, tv.tv_usec);
 	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
 	// 返回 SIS_ETIMEDOUT 就正常处理
 }
 #else
-void sis_thread_wait_start(s_sis_wait *wait_)
-{
-	sis_mutex_lock(&wait_->mutex);
-}
-void sis_thread_wait_stop(s_sis_wait *wait_)
-{
-	sis_mutex_unlock(&wait_->mutex);
-}
-// #include <stdio.h>
+
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
 	delay_ = 3;
@@ -109,12 +136,34 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 	}
 	return SIS_ETIMEDOUT;
 }
+int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // 毫秒
+{
+	msec_ = 10;
+	while (msec_)
+	{
+		// printf("%d\n",msec_);
+		sis_sleep(1);
+		msec_--;
+	}
+	return SIS_ETIMEDOUT;
+}
 #endif
 
 void sis_thread_wait_create(s_sis_wait *wait_)
 {
 	pthread_cond_init(&wait_->cond, NULL);
 	pthread_mutex_init(&wait_->mutex, NULL);
+	// pthread_mutexattr_t attr;
+	// pthread_mutexattr_init(&attr);
+	// pthread_mutexattr_settype(&attr, SIS_PTHREAD_MUTEX_TIMED_NP);
+	// pthread_mutex_init(&wait_->mutex, &attr);
+}
+void sis_thread_wait_notice(s_sis_wait *wait_)
+{
+	pthread_mutex_lock(&wait_->mutex);
+	// pthread_cond_signal(&wait_.cond);
+	pthread_cond_broadcast(&wait_->cond);
+	pthread_mutex_unlock(&wait_->mutex);
 }
 void sis_thread_wait_kill(s_sis_wait *wait_)
 {
@@ -139,12 +188,14 @@ int __kill = 0;
 s_sis_wait __thread_wait; //线程内部延时处理
 s_sis_wait __thread_wait_b; //线程内部延时处理
 
+s_sis_thread ta ;
+s_sis_thread tb ;
 void *__task_ta(void *argv_)
 {
-
     sis_thread_wait_start(&__thread_wait);
     while (!__kill)
     {
+		printf(" test ..a.. \n");
         if(sis_thread_wait_sleep(&__thread_wait, 3) == SIS_ETIMEDOUT)
         {
             printf("timeout ..a.. %d \n",__kill);
@@ -153,8 +204,13 @@ void *__task_ta(void *argv_)
             printf("no timeout ..a.. %d \n",__kill);
 		}
     }
-    sis_thread_wait_stop(&__thread_wait);
+	sis_thread_wait_stop(&__thread_wait);
+	printf("a ok . \n");
+	sis_sleep(5*1000);
+	printf("a ok ...\n");
+    ta.working = false;
 	// pthread_detach(pthread_self());
+
     return NULL;
 }
 void *__task_tb(void *argv_)
@@ -163,6 +219,7 @@ void *__task_tb(void *argv_)
     sis_thread_wait_start(&__thread_wait);
     while (!__kill)
     {
+		printf(" test ..b.. \n");
         if(sis_thread_wait_sleep(&__thread_wait, 6) == SIS_ETIMEDOUT)
         {
 			// sis_sleep(3000);
@@ -174,6 +231,10 @@ void *__task_tb(void *argv_)
     }
     sis_thread_wait_stop(&__thread_wait);
 	// pthread_detach(pthread_self());
+	printf("b ok . \n");
+	sis_sleep(8*1000);
+	printf("b ok ... \n");
+	tb.working = false;
     return NULL;
 }
 void exithandle(int sig)
@@ -184,9 +245,15 @@ void exithandle(int sig)
 	printf("kill . \n");
     sis_thread_wait_kill(&__thread_wait);
 	
+	sis_thread_join(&ta);
+	printf("a ok .... \n");
+	sis_thread_join(&tb);
+	printf("b ok .... \n");
+
 	printf("free . \n");
     sis_thread_wait_destroy(&__thread_wait);
 	printf("ok . \n");
+
 
 	// printf("kill b . \n");
     // sis_thread_wait_kill(&__thread_wait_b);
@@ -202,11 +269,11 @@ int main()
 	sis_thread_wait_create(&__thread_wait);
 	sis_thread_wait_create(&__thread_wait_b);
 
-	s_sis_thread_id_t ta ;
+	
 	sis_thread_create(__task_ta, NULL, &ta);
 	printf("thread a ok!\n");
 
-	s_sis_thread_id_t tb ;
+	// s_sis_thread_id_t tb ;
 	sis_thread_create(__task_tb, NULL, &tb);
 	printf("thread b ok!\n");
 

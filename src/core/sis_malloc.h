@@ -9,7 +9,7 @@
 #include <sis_nodelist.h>
 #include <sis_dict.h>
 
-#define SIS_MALLOC
+#define SIS_NEW
 #define SIS_NOTUSED(V) ((void) V)
 
 #endif //_SIS_OS_H

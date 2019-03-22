@@ -24,7 +24,7 @@ void *_thread_proc_service(void *argv_)
 
 int siscs_service_start(s_siscs_service *service_)
 {
-  if (!sis_thread_create(_thread_proc_service, service_, &service_->thread_id))
+  if (!sis_thread_create(_thread_proc_service, service_, &service_->work_thread))
   {
     LOG(1)("can't start service.[%s:%d]\n", service_->protocol, service_->port);
     siscs_service_stop(service_);

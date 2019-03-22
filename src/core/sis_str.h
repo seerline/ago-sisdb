@@ -49,9 +49,9 @@ int sis_strncasecmp(const char *s1_, const char *s2_, size_t len_);
 int sis_strncmp(const char *s1_, const char *s2_, size_t len_);
 
 
-char *sis_strdup(const char *str_, size_t len_);  SIS_MALLOC
+char *sis_strdup(const char *str_, size_t len_);  SIS_NEW
 
-char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...); SIS_MALLOC
+char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...); SIS_NEW
 
 const char *sis_str_split(const char *s, size_t *len_, char c);
 

@@ -3,8 +3,8 @@
 // Copyright (C) 2018, Coollyer <seerlinecoin@gmail.com>
 //*******************************************************
 
-#ifndef _SIS_DISK_H
-#define _SIS_DISK_H
+#ifndef _SIS_SAVE_H
+#define _SIS_SAVE_H
 
 #include "sis_core.h"
 #include "sis_conf.h"
@@ -13,7 +13,7 @@
 #include "os_file.h"
 #include "sis_memory.h"
 
-// #define SIS_DISK_VERSION   1    // 数据结构版本
+// #define SIS_SAVE_VERSION   1    // 数据结构版本
 ////////////////////////////////////////////////////
 // 这是一个高效写入的模块，需要满足以下特性
 // 无论何时，保证新传入尽快落盘 aof，落盘结束，返回真
@@ -106,11 +106,11 @@
 // #define SIS_DB_FILE_OUT_STRUCT  "%s/%s/%s.%s.bin"    // 主数据库 db/sisdb/sh600600.day.bin
 // #define SIS_DB_FILE_OUT_ZIP  	"%s/%s/%s.%s.zip"    // 主数据库 db/sisdb/sh600600.day.zip
 
-// #define  SIS_DISK_MAXLEN_FILE      0xFFFFFFFF  // 4G
+// #define  SIS_SAVE_MAXLEN_FILE      0xFFFFFFFF  // 4G
 
-// #define  SIS_DISK_MAXLEN_PACKAGE   0x00FFFFFF  // 16M 实时流文件专用
+// #define  SIS_SAVE_MAXLEN_PACKAGE   0x00FFFFFF  // 16M 实时流文件专用
 
-// #define  SIS_DISK_MAXLEN_BLOCK     0xFFFF      // 64K 历史数据专用
+// #define  SIS_SAVE_MAXLEN_BLOCK     0xFFFF      // 64K 历史数据专用
 
 // #pragma pack(push,1)
 // // 流式文件索引结构体，只允许顺序增加数据
@@ -153,7 +153,7 @@
 //     // uint8     table[0];   // 结构体描述
 // }s_sis_disk_head;
 
-// // 流式文件索引结构体，大小限定为64K  SIS_DISK_MAXLEN_BLOCK
+// // 流式文件索引结构体，大小限定为64K  SIS_SAVE_MAXLEN_BLOCK
 // typedef struct s_sis_disk_body {
 //     uint8   type;         // B 块标记 当数据紊乱时，通过该标记恢复尚未被破坏的数据
 //     char    key[32];      // 最大key不超过32的字符

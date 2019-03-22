@@ -1,6 +1,47 @@
 ﻿
 #include "sis_thread.h"
 
+#define SIS_MAX_WAIT  1024
+static bool __sys_wait_init = false; 
+static s_sis_wait __sys_wait_pool[SIS_MAX_WAIT];
+// 定义一组静态信号
+s_sis_wait_handle sis_wait_malloc()
+{
+	if (!__sys_wait_init)
+	{
+		for(int i = 0; i < SIS_MAX_WAIT; i++)
+		{
+			__sys_wait_pool[i].used = false;
+			sis_pthread_cond_init(&__sys_wait_pool[i].cond, NULL);
+			sis_pthread_mutex_init(&__sys_wait_pool[i].mutex, NULL);
+		}		
+		__sys_wait_init = true;
+	}
+	for(int i = 0; i < SIS_MAX_WAIT; i++)
+	{
+		if (!__sys_wait_pool[i].used)
+		{
+			return i;
+		}
+	}	
+	return -1;
+}
+s_sis_wait *sis_wait_get(s_sis_wait_handle id_)
+{
+	if (id_>=0&&id_<SIS_MAX_WAIT)
+	{
+		return &__sys_wait_pool[id_];
+	}
+	return NULL;
+}
+void sis_wait_free(s_sis_wait_handle id_)
+{
+	if (id_>=0&&id_<SIS_MAX_WAIT)
+	{
+		__sys_wait_pool[id_].used = false;
+	}
+}
+
 ////////////////////////
 // 多读一写锁定义
 ////////////////////////
@@ -81,14 +122,17 @@ bool sis_plan_task_working(s_sis_plan_task *task_)
 
 bool sis_plan_task_execute(s_sis_plan_task *task_)
 {
+	s_sis_wait *wait = sis_wait_get(task_->wait_handle);
 	if (task_->work_mode == SIS_WORK_MODE_ONCE)
 	{
 		return true;
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
 	{
-		if (sis_thread_wait_sleep(&task_->wait, task_->work_gap.delay) == SIS_ETIMEDOUT)
+		// printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
+		if (sis_thread_wait_sleep(wait, task_->work_gap.delay) == SIS_ETIMEDOUT)
 		{
+			// printf("delay 1 = %d\n", task_->work_gap.delay);
 			if (task_->work_gap.start == task_->work_gap.stop)
 			{
 				return true;
@@ -102,6 +146,7 @@ bool sis_plan_task_execute(s_sis_plan_task *task_)
 					return true;
 				}
 			}
+			// printf("delay = %d\n", task_->work_gap.delay);
 		}
 	}
 	else
@@ -111,7 +156,7 @@ bool sis_plan_task_execute(s_sis_plan_task *task_)
 			task_->isfirst = true;
 			return true;
 		}		
-		else if (sis_thread_wait_sleep(&task_->wait, 30) == SIS_ETIMEDOUT) 
+		else if (sis_thread_wait_sleep(wait, 30) == SIS_ETIMEDOUT) 
 		{
 			int min = sis_time_get_iminute(0);
 			// printf("save plan ... -- -- -- %d \n", min);
@@ -134,7 +179,7 @@ s_sis_plan_task *sis_plan_task_create()
 
 	task->work_plans = sis_struct_list_create(sizeof(uint16), NULL, 0);
 
-	sis_thread_wait_create(&task->wait);
+	task->wait_handle = sis_wait_malloc();
 
 	sis_mutex_create(&task->mutex);
 
@@ -142,15 +187,18 @@ s_sis_plan_task *sis_plan_task_create()
 }
 void sis_plan_task_wait_start(s_sis_plan_task *task_)
 {
-	sis_thread_wait_start(&task_->wait);
+	s_sis_wait *wait = sis_wait_get(task_->wait_handle);
+	sis_thread_wait_start(wait);
 }
 void sis_plan_task_wait_stop(s_sis_plan_task *task_)
 {
-	sis_thread_wait_stop(&task_->wait);
+	s_sis_wait *wait = sis_wait_get(task_->wait_handle);
+	sis_thread_wait_stop(wait);
+	sis_thread_finish(&task_->work_thread);
 }
 bool sis_plan_task_start(s_sis_plan_task *task_, SIS_THREAD_START_ROUTINE func_, void *val_)
 {
-	if (!sis_thread_create(func_, val_, &task_->work_pid))
+	if (!sis_thread_create(func_, val_, &task_->work_thread))
 	{
 		// sis_out_log(1)("can't link task thread.\n");
 		return false;
@@ -164,12 +212,15 @@ void sis_plan_task_destroy(s_sis_plan_task *task_)
 	{
 		task_->working = false;
 		
-		sis_thread_wait_kill(&task_->wait);
-		if (task_->work_pid)
+		s_sis_wait *wait = sis_wait_get(task_->wait_handle);
+
+		sis_thread_wait_kill(wait);
+		if (task_->work_thread.thread_id)
 		{
-			sis_thread_join(task_->work_pid);
+			sis_thread_join(&task_->work_thread);
 		}
-		sis_thread_wait_destroy(&task_->wait);
+		sis_thread_wait_destroy(wait);
+		sis_wait_free(task_->wait_handle);
 		sis_mutex_destroy(&task_->mutex);
 	}
 
@@ -183,19 +234,68 @@ void sis_plan_task_destroy(s_sis_plan_task *task_)
 #include <signal.h>
 #include <stdio.h>
 
+s_sis_wait __thread_wait__; 
+s_sis_wait_handle __wait;
+int __count = 0;
+
+int sis_thread_wait_sleep1(s_sis_wait *wait_, int delay_) // 秒
+{
+	struct timeval tv;
+	struct timespec ts;
+	sis_time_get_day(&tv, NULL);
+	ts.tv_sec = tv.tv_sec + delay_;
+	ts.tv_nsec = tv.tv_usec * 1000;
+	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
+	// 返回 SIS_ETIMEDOUT 就正常处理
+}
+
 void *_plan_task_example(void *argv_)
 {
 	s_sis_plan_task *task = (s_sis_plan_task *)argv_;
 
+	// sis_plan_task_wait_start(task);
+	// sis_thread_wait_create(&task->wait);
+	// sis_thread_wait_start(&task->wait);
+	sis_thread_wait_create(&__thread_wait__);
+	sis_thread_wait_start(&__thread_wait__);
+	sis_out_binary("alone: ",(const char *)&__thread_wait__,sizeof(s_sis_wait));
+
+	// sis_thread_wait_create(&test_wait->wait);
+	// sis_thread_wait_start(&test_wait->wait);
+	// sis_out_binary("new: ",&test_wait->wait,sizeof(s_sis_wait));
+
+	s_sis_wait *wait = sis_wait_get(__wait);
+	sis_mutex_lock(&wait->mutex);
+
 	while (sis_plan_task_working(task))
 	{
-		if (sis_plan_task_execute(task))
+		printf(" test ..1.. %p \n", task);
+		sis_sleep(1000);
+		// if(sis_thread_wait_sleep(&task->wait, 3) == SIS_ETIMEDOUT)
+		// if(sis_thread_wait_sleep(&task->wait, 3) == SIS_ETIMEDOUT)
+		// if(sis_thread_wait_sleep_msec(&task->wait, 1000) == SIS_ETIMEDOUT)
+		// if(sis_thread_wait_sleep_msec(&__thread_wait__, 1300) == SIS_ETIMEDOUT)
+		if(sis_thread_wait_sleep1(wait, 1) == SIS_ETIMEDOUT)
 		{
-			printf(" run ... \n");
+			__count++;
+			printf(" test ... [%d]\n", __count);
+		}
+		else
+		{
+			printf(" no timeout ... \n");
+		}
+		
+		// if (sis_plan_task_execute(task))
+		{
+			// printf(" run ... \n");
 		}
 	}
 	printf("end . \n");
-
+	// sis_plan_task_wait_stop(task);
+	// sis_thread_wait_stop(&task->wait);
+	// sis_thread_wait_stop(&__thread_wait__);
+	// sis_thread_wait_stop(&test_wait->wait);
+	sis_mutex_unlock(&wait->mutex);
 	return NULL;
 }
 
@@ -212,6 +312,7 @@ void exithandle(int sig)
 
 int main()
 {
+	__wait = sis_wait_malloc();
 
 	__plan_task = sis_plan_task_create();
 	__plan_task->work_mode = SIS_WORK_MODE_GAPS;
@@ -219,6 +320,7 @@ int main()
 	__plan_task->work_gap.stop = 2359;
 	__plan_task->work_gap.delay = 5;
 
+	printf(" test ..0.. %p wait = %ld\n", __plan_task, sizeof(__plan_task->wait));
 	sis_plan_task_start(__plan_task, _plan_task_example, __plan_task);
 
 	signal(SIGINT, exithandle);
@@ -230,3 +332,5 @@ int main()
 	}
 }
 #endif
+
+

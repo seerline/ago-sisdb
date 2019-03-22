@@ -23,7 +23,7 @@ typedef struct s_sis_bit_code{
 	uint8	m_len_by;		//编码长度
 	uint8	m_data_len_by;	//编码后跟随的数据长度,单位Bit，最大32Bit
 	char	m_method_c;		//编码方法
-	uint32	m_data_dw;	         /*编码数据*/
+	uint32	m_data_dw;	         //编码数据
 	uint32	m_data_offset_dw;	//编码数据偏移量
 }s_sis_bit_code;
 
@@ -40,6 +40,9 @@ typedef struct s_sis_bit_stream{
 
 #pragma pack(pop)
 
+#define SETBITCODE(_s_,_b_) { ((s_sis_bit_stream *)_s_)->m_nowcode_p = &_b_[0]; ((s_sis_bit_stream *)_s_)->m_nowcode_count = sizeof(_b_)/sizeof(_b_[0]); }
+
+// #define SETBITCODE(_s_,_b_) {  }
 
 s_sis_bit_stream *sis_bitstream_create(uint8 *in_, size_t inLen_, uint32 initPos_);
 void sis_bitstream_destroy(s_sis_bit_stream *);

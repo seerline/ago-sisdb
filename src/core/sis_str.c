@@ -89,7 +89,7 @@ int sis_strncmp(const char *s1_, const char *s2_, size_t len_)
 	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
 }
 
-char *sis_strdup(const char *str_, size_t len_) SIS_MALLOC
+char *sis_strdup(const char *str_, size_t len_) SIS_NEW
 {
 	if (!str_)
 	{
@@ -106,7 +106,7 @@ char *sis_strdup(const char *str_, size_t len_) SIS_MALLOC
 	return buffer;
 }
 
-char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...) SIS_MALLOC
+char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...) SIS_NEW
 {
 	char *str = (char *)sis_malloc(mlen_ + 1);
 	va_list args;

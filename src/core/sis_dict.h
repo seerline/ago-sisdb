@@ -218,8 +218,11 @@ extern "C" {
 
 #define sis_dict_create dictCreate
 #define sis_dict_destroy dictRelease
+
+#define sis_dict_get_int dictGetSignedIntegerVal
 #define sis_dict_get_uint dictGetUnsignedIntegerVal
 
+int sis_dict_set_int(dict *d, void *key, int64_t val);
 int sis_dict_set_uint(dict *d, void *key, uint64_t val);
 
 #define sis_dict_hash_func dictGenHashFunction

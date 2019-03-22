@@ -26,7 +26,7 @@ typedef struct s_siscs_service {
 	int   port;    
     char  protocol[128];
     void *service;   // 启动的通讯服务线程句柄
-    s_sis_thread_id_t thread_id; 
+    s_sis_thread work_thread; 
 }s_siscs_service;
 
 #pragma pack(pop)

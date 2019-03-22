@@ -20,7 +20,6 @@ static s_sisdb_server server = {
 
 void *_thread_save_plan_task(void *argv_)
 {
-
     s_sis_db *db = (s_sis_db *)argv_;
     s_sis_plan_task *task = db->save_task;
     sis_plan_task_wait_start(task);

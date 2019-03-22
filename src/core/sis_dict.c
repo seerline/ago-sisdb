@@ -331,7 +331,18 @@ int dictReplace(dict *d, void *key, void *val)
     dictFreeVal(d, &auxentry);
     return 0;
 }
+int sis_dict_set_int(dict *d, void *key, int64_t val)
+{
+    dictEntry *entry, *existing;
 
+    entry = dictAddRaw(d,key,&existing);
+    if (entry) {
+        dictSetSignedIntegerVal(entry, val);
+        return 1;
+    }    
+    dictSetSignedIntegerVal(existing, val);
+    return 0;
+}
 int sis_dict_set_uint(dict *d, void *key, uint64_t val)
 {
     dictEntry *entry, *existing;

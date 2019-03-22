@@ -7,6 +7,7 @@ int sis_time_get_iyear(time_t ttime) //2015
 	sis_time_check(ttime, &ptm);
 	return (ptm.tm_year + 1900);
 }
+
 int sis_time_get_imonth(time_t ttime) //201510
 {
 	struct tm ptm = {0};

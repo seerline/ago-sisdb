@@ -111,7 +111,24 @@ size_t sis_memory_get_size(s_sis_memory *m_)
 {
 	return (m_->size - m_->offset);
 }
-
+void sis_memory_set_size(s_sis_memory *m_, size_t len_)
+{
+	sis_memory_set_maxsize(m_, len_ + m_->offset);
+	m_->size = len_ + m_->offset;
+}
+size_t sis_memory_get_maxsize(s_sis_memory *m_)
+{
+	return m_->maxsize;
+}
+size_t sis_memory_set_maxsize(s_sis_memory *m_, size_t len_)
+{
+	if (len_ > m_->maxsize)
+	{
+		m_->maxsize = len_ + 256;
+		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+	}
+	return m_->maxsize;
+}
 size_t sis_memory_get_line_sign(s_sis_memory *m_)
 {
 	if (!m_)

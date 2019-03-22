@@ -7,6 +7,12 @@
 #include <sis_list.h>
 #include <os_thread.h>
 
+typedef int s_sis_wait_handle;
+
+s_sis_wait_handle sis_wait_malloc();
+s_sis_wait *sis_wait_get(s_sis_wait_handle id_);
+void sis_wait_free(s_sis_wait_handle id_);
+
 // 多读一写锁定义
 typedef struct s_sis_mutex_rw {
 	s_sis_mutex_t mutex_s;
@@ -41,9 +47,9 @@ typedef struct s_sis_plan_task {
 	s_sis_time_gap      work_gap; 		  // always-work 循环运行的配置
 
 	s_sis_mutex_t 		mutex;  // 锁
-	s_sis_thread_id_t   work_pid;
+	s_sis_thread        work_thread;   // 其中working 是线程完全执行完毕
 
-	s_sis_wait 			wait;   //   线程内部延时处理
+	s_sis_wait_handle 	wait_handle;   //   线程内部延时处理
 	void(*call)(void *);        // ==NULL 不释放对应内存
 } s_sis_plan_task;
 

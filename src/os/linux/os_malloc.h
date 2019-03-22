@@ -74,12 +74,14 @@ inline void safe_memory_freenode(void *__p__)
     } 
 }
 
-
 #define sis_malloc(__size__) ({   \
     void *__p = malloc(__size__ + MEMORY_NODE_SIZE); \
     safe_memory_newnode(__p, __size__, __LINE__,__func__); \
     (void *)((char *)__p + MEMORY_NODE_SIZE); \
 }) \
+
+#define SIS_MALLOC(__type__,__val__) (__type__ *)sis_malloc(sizeof(__type__)); \
+    memset(__val__, 0, sizeof(__type__));
 
 #define sis_calloc(__size__)  ({   \
     void *__p = calloc(1, __size__ + MEMORY_NODE_SIZE); \

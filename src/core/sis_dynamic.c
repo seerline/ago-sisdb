@@ -234,7 +234,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		int dot = sis_json_get_int(node, "3", 0);
 		// 到此认为数据合法	
 		memset(&unit, 0, sizeof(s_sis_dynamic_unit));
-		sis_strcpy(unit.name,SIS_DYNAMIC_FIELD_LEN,name);
+		sis_strcpy(unit.name,SIS_DYNAMIC_CHR_LEN,name);
 		unit.style = style;
 		unit.len = len;
 		unit.dot = dot;
@@ -259,10 +259,39 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	return dyna;
 }
 
-void sis_dynamic_db_destroy(s_sis_dynamic_db *dyna_)
+void sis_dynamic_db_destroy(s_sis_dynamic_db *db_)
 {
-	sis_struct_list_destroy(dyna_->fields);
-	sis_free(dyna_);
+	sis_struct_list_destroy(db_->fields);
+	sis_free(db_);
+}
+
+s_sis_sds sis_dynamic_db_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
+{
+	in_ = sis_sdscat(in_, "{");
+	char sign[2];
+	for(int i = 0; i < db_->fields->count; i++)
+	{
+		if (i > 0)
+		{
+			in_ = sis_sdscat(in_, ",");
+		}
+		s_sis_dynamic_unit *unit= sis_struct_list_get(db_->fields, i);
+		in_ = sis_sdscatfmt(in_, "%s:[", unit->name);
+		sign[0] = unit->style; sign[1] = 0;
+		in_ = sis_sdscatfmt(in_, "%s", sign);
+		in_ = sis_sdscatfmt(in_, ",%u", unit->len);
+		if(unit->count > 1||unit->dot > 0)
+		{
+			in_ = sis_sdscatfmt(in_, ",%u", unit->count);
+		}
+		if(unit->dot > 0)
+		{
+			in_ = sis_sdscatfmt(in_, ",%u", unit->dot);
+		}
+		in_ = sis_sdscat(in_, "]");
+	}
+	in_ = sis_sdscat(in_, "}");
+	return in_;
 }
 s_sis_dynamic_unit *_sis_dynamic_get_field(s_sis_dynamic_db *db_,const char *name_)
 {
@@ -901,7 +930,7 @@ s_sis_sds sis_dynamic_struct_to_json(
 	{
 		s_sis_dynamic_unit *inunit = (s_sis_dynamic_unit *)sis_struct_list_get(indb->fields, i);
 		s_sis_json_node *jfield = sis_json_create_array();
-		sis_json_array_add_uint(jfield, i);
+		// sis_json_array_add_uint(jfield, i);
 		sign[0] = inunit->style; sign[1] = 0;
 		sis_json_array_add_string(jfield, sign, 1);
 		sis_json_array_add_uint(jfield, inunit->len);
@@ -938,7 +967,7 @@ error:
 
 }
 
-#if 1
+#if 0
 #pragma pack(push, 1)
 typedef struct _local_info {
 	int open;
@@ -960,13 +989,20 @@ int main()
 	// const char *local = "{\"info\":{\"open\":[0,\"I\",4]}}";
 	// const char *local = "{\"info\":{\"open\":[\"I\",4],\"close\":[\"F\",8,1,2],\"ask\":[\"I\",4,5],\"name\":[\"C\",4]}}";
 	// const char *remote = "{\"info\":{\"open\":[\"U\",4],\"close\":[\"F\",4,1,3],\"ask\":[\"I\",4,10],\"name\":[\"C\",8]}}";
-	// const char *local = "{info:{open:[I,4],close:[F,8,1,2],ask:[I,4,5],name:[C,4]}}";
-	// const char *remote = "{info:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}";
+	const char *local = "{stock:{open:[I,4]},info:{open:[I,4],close:[F,8,1,2],ask:[I,4,5],name:[C,4]}}";
+	const char *remote = "{info:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}";
 	
-	s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf_file("remote.conf","local.conf");
-	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf(remote,strlen(remote),local,strlen(local));
+	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf_file("remote.conf","local.conf");
+	s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf(remote,strlen(remote),local,strlen(local));
 	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_json(remote,strlen(remote),local,strlen(local));
 	// 测试 remote 到 local 转换
+	{
+		s_sis_sds out = sis_sdsempty();
+		s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_pointer_get(class->local, "info");
+		out = sis_dynamic_db_to_conf(db, out);
+		printf("out =  %s\n", out);
+		sis_sdsfree(out);
+	}
 	{
 		int count = 2;
 		_remote_info in_info[count];
@@ -1052,6 +1088,7 @@ int main()
 typedef void _method_define();
 
 typedef struct s_method {
+	int id;
 	void(*command)();
 }s_method;
 
@@ -1072,6 +1109,10 @@ void json_demo2()
 int main()
 {
 	s_method *method = sis_malloc(sizeof(s_method));
+	memset(method, 0, sizeof(s_method));
+	method->id = 100;
+
+	void *ptr = method;
 	// method->command = json_ ## name;
 	REGISTER_API(method,demo1);
 	method->command();
@@ -1085,7 +1126,11 @@ int main()
 	// REGISTER_API_CHR(method,"demo2");
 	// method->command();
 
+	printf(" 1 method = %p, ptr= %p\n", method, ptr);
 	sis_free(method);
+	printf(" 2 method = %p, ptr= %p\n", method, ptr);
+	&method = (s_method *)NULL;
+	printf(" 3 method = %p, ptr= %p\n", method, ptr);
 	return 0;
 }
 #endif

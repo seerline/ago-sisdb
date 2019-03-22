@@ -147,7 +147,7 @@ s_sis_map_int *sis_map_int_create()
 	s_sis_map_int *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);
 	return map;
 };
-uint64_t sis_map_int_get(s_sis_map_int *map_, const char *key_)
+int64_t sis_map_int_get(s_sis_map_int *map_, const char *key_)
 {
 	s_sis_dict_entry *he;
 	s_sis_sds key = sis_sdsnew(key_);
@@ -155,14 +155,14 @@ uint64_t sis_map_int_get(s_sis_map_int *map_, const char *key_)
 	sis_sdsfree(key);	
 	if (!he)
 	{
-		return 0;
+		return -1;
 	}
-	return sis_dict_get_uint(he);
+	return sis_dict_get_int(he);
 };
-int sis_map_int_set(s_sis_map_int *map_, const char *key_, uint64_t value_)
+int sis_map_int_set(s_sis_map_int *map_, const char *key_, int64_t value_)
 {
 	s_sis_sds key = sis_sdsnew(key_);
-	int isnew = sis_dict_set_uint(map_, key, value_);
+	int isnew = sis_dict_set_int(map_, key, value_);
 	if (!isnew)
 	{
 		sis_sdsfree(key);
