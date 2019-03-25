@@ -4,6 +4,12 @@
 #include "sis_core.h"
 
 #include "sis_malloc.h"
+#include "sis_list.h"
+
+#define s_sis_map_buffer dict
+#define s_sis_map_pointer dict
+#define s_sis_map_int dict
+#define s_sis_map_sds dict
 
 // 定义一个指针类型的字典  string -- void*
 // 定义一个整数类型的字典  string -- int
@@ -18,27 +24,44 @@ typedef struct s_sis_kv_pair{
 	const char *val;
 }s_sis_kv_pair;
 
+// typedef struct s_sis_map_list{
+// 	s_sis_map_pointer  *map;   // 不保存实际数据，仅仅有key
+// 	s_sis_pointer_list *list;  // 实际数据存在这里
+// }s_sis_map_list;
+
+// typedef struct s_sis_pointer_list {
+// 	int		     maxcount; // 总数
+// 	int		     count;    // 当前个数
+// 	int          len;      // 每条记录的长度
+// 	void        *buffer;   // 必须是mallco申请的char*类型
+// 	void(*free)(void *);   // == NULL 不释放对应内存
+// } s_sis_pointer_list;
+
 #pragma pack(pop)
 
 //////////////////////////////////////////
 //  s_sis_map_buffer 基础定义
 ///////////////////////////////////////////////
 
-#define s_sis_map_buffer dict
-#define s_sis_map_pointer dict
-#define s_sis_map_int dict
-#define s_sis_map_sds dict
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+//设置key对应的数据引用，必须为一个指针，并不提供实体，
 s_sis_map_buffer *sis_map_buffer_create();
 void sis_map_buffer_destroy(s_sis_map_buffer *);
 void sis_map_buffer_clear(s_sis_map_buffer *);
 void *sis_map_buffer_get(s_sis_map_buffer *, const char *key_);
 int  sis_map_buffer_set(s_sis_map_buffer *, const char *key_, void *value_); 
 #define sis_map_buffer_getsize dictSize
-//设置key对应的数据引用，必须为一个指针，并不提供实体，
+
+// 一种带顺序检索的字典,如果有free就释放，如果没有就由用户自己释放
+// s_sis_map_list *sis_map_list_create();
+// void sis_map_list_destroy(s_sis_map_list *);
+// void sis_map_list_clear(s_sis_map_list *);
+// void *sis_map_list_get(s_sis_map_list *, const char *key_);
+// int sis_map_list_set(s_sis_map_list *, const char *key_, void *value_); 
+// int sis_map_list_getsize(s_sis_map_list *);
+
 
 s_sis_map_pointer *sis_map_custom_create(s_sis_dict_type *);
 

@@ -37,6 +37,10 @@ void sis_time_check(time_t tt, struct tm *ptm)
 
 void sis_sleep(int msec)
 {
+	if (!msec)
+	{
+		return ;
+	}
 	usleep(msec * 1000);
 }
 

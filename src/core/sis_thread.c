@@ -21,6 +21,7 @@ s_sis_wait_handle sis_wait_malloc()
 	{
 		if (!__sys_wait_pool[i].used)
 		{
+			__sys_wait_pool[i].used = true;
 			return i;
 		}
 	}	
@@ -36,7 +37,7 @@ s_sis_wait *sis_wait_get(s_sis_wait_handle id_)
 }
 void sis_wait_free(s_sis_wait_handle id_)
 {
-	if (id_>=0&&id_<SIS_MAX_WAIT)
+	if (id_ >= 0 && id_ < SIS_MAX_WAIT)
 	{
 		__sys_wait_pool[id_].used = false;
 	}
@@ -219,10 +220,9 @@ void sis_plan_task_destroy(s_sis_plan_task *task_)
 		{
 			sis_thread_join(&task_->work_thread);
 		}
-		sis_thread_wait_destroy(wait);
-		sis_wait_free(task_->wait_handle);
-		sis_mutex_destroy(&task_->mutex);
 	}
+	sis_wait_free(task_->wait_handle);
+	sis_mutex_destroy(&task_->mutex);
 
 	sis_struct_list_destroy(task_->work_plans);
 

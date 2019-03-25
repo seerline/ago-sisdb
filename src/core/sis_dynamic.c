@@ -198,7 +198,9 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 
 	int offset = 0;
 	s_sis_dynamic_unit unit;
-	s_sis_json_node *node = sis_json_first_node(node_);
+	// s_sis_json_node *node = sis_json_first_node(node_);
+	s_sis_json_node *fields = sis_json_cmp_child_node(node_, "fields");
+	s_sis_json_node *node = sis_json_first_node(fields);
 	while (node)
 	{
 		const char *name  = node->key;
@@ -248,6 +250,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		node = sis_json_next_node(node);
 	}
 
+	// printf("offset --- %d\n",offset);
 	if (offset == 0)
 	{
 		sis_struct_list_destroy(dyna->fields);
@@ -255,7 +258,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		return NULL;
 	} 
 	dyna->size = offset; 
-	printf("--- %d\n",dyna->size);
+	printf("dyna->size --- %d\n",dyna->size);
 	return dyna;
 }
 
@@ -267,7 +270,7 @@ void sis_dynamic_db_destroy(s_sis_dynamic_db *db_)
 
 s_sis_sds sis_dynamic_db_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
 {
-	in_ = sis_sdscat(in_, "{");
+	in_ = sis_sdscat(in_, "{fields:{");
 	char sign[2];
 	for(int i = 0; i < db_->fields->count; i++)
 	{
@@ -290,7 +293,7 @@ s_sis_sds sis_dynamic_db_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
 		}
 		in_ = sis_sdscat(in_, "]");
 	}
-	in_ = sis_sdscat(in_, "}");
+	in_ = sis_sdscat(in_, "}}");
 	return in_;
 }
 s_sis_dynamic_unit *_sis_dynamic_get_field(s_sis_dynamic_db *db_,const char *name_)
@@ -989,8 +992,8 @@ int main()
 	// const char *local = "{\"info\":{\"open\":[0,\"I\",4]}}";
 	// const char *local = "{\"info\":{\"open\":[\"I\",4],\"close\":[\"F\",8,1,2],\"ask\":[\"I\",4,5],\"name\":[\"C\",4]}}";
 	// const char *remote = "{\"info\":{\"open\":[\"U\",4],\"close\":[\"F\",4,1,3],\"ask\":[\"I\",4,10],\"name\":[\"C\",8]}}";
-	const char *local = "{stock:{open:[I,4]},info:{open:[I,4],close:[F,8,1,2],ask:[I,4,5],name:[C,4]}}";
-	const char *remote = "{info:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}";
+	const char *local = "{stock:{fields:{open:[I,4]}},info:{fields:{open:[I,4],close:[F,8,1,2],ask:[I,4,5],name:[C,4]}}}";
+	const char *remote = "{info:{fields:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}}";
 	
 	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf_file("remote.conf","local.conf");
 	s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf(remote,strlen(remote),local,strlen(local));

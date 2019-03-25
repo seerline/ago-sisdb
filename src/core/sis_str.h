@@ -83,6 +83,8 @@ bool sis_str_get_id(char *out_, size_t olen_);
 // olen < 16 返回
 // bool sis_str_get_id_long(char *out_, size_t olen_);
 
+bool sis_str_get_time_id(char *out_, size_t olen_);
+
 #ifdef __cplusplus
 }
 #endif

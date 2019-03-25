@@ -447,6 +447,28 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 // 		} while (sc != 0);
 // 	}
 // }
+// 年月日时分秒 YYNNDDHHMMSS
+bool sis_str_get_time_id(char *out_, size_t olen_)
+{
+	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	if (olen_ < 13)
+	{
+		return false;
+	}
+	struct tm ptm = {0};
+	sis_time_check(0, &ptm);
+	int len = (int)strlen(sign);
+	sis_sprintf(out_, olen_, "%02d%02d%02d%02d%02d%02d", 
+				(ptm.tm_year - 100) , (ptm.tm_mon + 1), ptm.tm_mday,
+				 ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
+	for(int i = 12; i < olen_ - 1; i++)
+	{
+		// out_[i] = 0x30 + (rand() % 10);
+		out_[i] = sign[rand() % len];
+	}
+	out_[olen_ - 1] = 0;
+	return true;
+}
 
 bool sis_str_get_id(char *out_, size_t olen_)
 {

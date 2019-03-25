@@ -119,7 +119,7 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 	{
 		handle_->err_no = 1;
 		sis_strcpy(handle_->err_msg, 255, "no key.\n");
-		return 0;
+		return NULL;
 	}
 	node_->type = SIS_JSON_ARRAY;
 	value_ = _sis_conf_skip(handle_, value_ + 1);
@@ -154,13 +154,13 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 			}
 			else
 			{
-				sis_sprintf(handle_->err_msg, 255, "incomplete, check ','.\n");
+				sis_sprintf(handle_->err_msg, 255, "array incomplete, check ','.\n");
 			}
 			handle_->err_no = 2;
-			return 0;
+			return NULL;
 		}
 		// printf("::::%p, %s| %s | %c\n", child, child->key, child->value, *value_);
-		if (*value_ == ']') // ֻ����������˳�
+		if (*value_ == ']') 
 		{
 			return value_ + 1;
 		}
@@ -173,7 +173,7 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 			child = new_node;
 		}
 	}
-	return 0; /* malformed. */
+	return NULL; 
 }
 static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node *node_, const char *value_)
 {
@@ -210,15 +210,15 @@ static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node
 			}
 			else
 			{
-				sis_sprintf(handle_->err_msg, 255, "incomplete, check ','.\n");
+				sis_sprintf(handle_->err_msg, 255, "object incomplete, check ','.\n");
 			}
 			// sis_strcpy(handle_->err_msg, 255, "value is empty.\n");
 			// handle_->err_lines--;
 			handle_->err_no = 2;
-			return 0;
+			return NULL;
 		}
 		// printf("::::%p, %s| %s | %.10s\n", child, child->key, child->value, value_);
-		if (*value_ == '}') // ֻ����������˳�
+		if (*value_ == '}') 
 		{
 			return value_ + 1;
 		}
@@ -231,13 +231,13 @@ static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node
 			child = new_node;
 		}
 	}
-	return 0; /* malformed. */
+	return NULL; /* malformed. */
 }
 static const char *_sis_parse_value(s_sis_conf_handle *handle_, s_sis_json_node *node_, const char *value_)
 {
 	if (!value_)
 	{
-		return 0;
+		return NULL;
 	}
 	if (*value_ == '-' || ((unsigned char)*value_ >= '0' && (unsigned char)*value_ <= '9'))
 	{
@@ -314,7 +314,7 @@ static const char *_sis_parse_include(s_sis_conf_handle *handle_, s_sis_json_nod
 			child->next = next;
 			next->prev = child;
 			child = next;
-		}
+		}		
 	}
 	if (handle_->err_no) 
 	{
@@ -424,7 +424,7 @@ bool _sis_conf_parse(s_sis_conf_handle *handle_, const char *content_)
 		// 	child = child->next;
 		// }
 	}
-
+	// printf("handle_->err_no is %d \n", handle_->err_no);
 	if (handle_->err_no) 
 	{
 		return false;
