@@ -16,6 +16,12 @@ else
 	cd ./src/siscs/ && mkdir out && cd out && cmake ../ && $(MAKE)
 endif
 
+ifeq (./src/relying/out, $(wildcard ./src/relying/out))
+	cd ./src/relying/out && cmake ../ && $(MAKE)
+else
+	cd ./src/relying/ && mkdir out && cd out && cmake ../ && $(MAKE)
+endif
+
 sisdb:
 
 ifeq (./src/sisdb/out, $(wildcard ./src/sisdb/out))
@@ -32,6 +38,15 @@ ifeq (./src/siscs/out, $(wildcard ./src/siscs/out))
 else
 	cd ./src/siscs/ && mkdir out && cd out && cmake ../ && $(MAKE)
 endif
+
+redis:
+
+ifeq (./src/relying/out, $(wildcard ./src/relying/out))
+	cd ./src/relying/out && cmake ../ && $(MAKE)
+else
+	cd ./src/relying/ && mkdir out && cd out && cmake ../ && $(MAKE)
+endif
+	cp ./src/relying/server/redis.conf ./bin
 
 test:
 

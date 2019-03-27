@@ -36,18 +36,16 @@ INCLUDE_DIRECTORIES(
     ./libuv/include
     ${SISCS_PATH}core
     ${SISCS_PATH}os/linux
-	${SISCS_PATH}platform/redis)
+	${SISCS_PATH}relying/client)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(${SISCS_PATH}core DIR_CORE)
 AUX_SOURCE_DIRECTORY(${SISCS_PATH}os/linux DIR_SYSTEM)
-AUX_SOURCE_DIRECTORY(${SISCS_PATH}platform/redis DIR_PLATFORM)
+AUX_SOURCE_DIRECTORY(${SISCS_PATH}relying/client DIR_PLATFORM)
 
 # 把源文件目录设置到环境变量
 SET(SRC_LIST ${DIR_SRCS}
-             ${DIR_BASIC}
-             ${DIR_BASIC_LINUX}
 	         ${DIR_CORE}
              ${DIR_SYSTEM}
              ${DIR_PLATFORM})
