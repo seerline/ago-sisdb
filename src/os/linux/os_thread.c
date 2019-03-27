@@ -30,13 +30,19 @@ bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread 
 		return false;
 	}
 	pthread_attr_destroy(&attr);
-	thread_->thread_id = result;
-	thread_->working = true;
+	if (thread_)
+	{
+		thread_->thread_id = result;
+		thread_->working = true;
+	}
 	return true;	
 }
 void sis_thread_finish(s_sis_thread *thread_)
 {
-	thread_->working = false;
+	if (thread_)
+	{
+		thread_->working = false;
+	}
 }
 
 // 等待线程结束

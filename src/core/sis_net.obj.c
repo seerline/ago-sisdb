@@ -1,5 +1,11 @@
 ﻿
 #include "sis_net.obj.h"
+#include "os_thread.h"
+
+void _sdsfree(void *p)
+{
+    sis_sdsfree((s_sis_sds)p);
+} 
 
 s_sis_object *sis_object_create(int style_, void *ptr)
 {
@@ -67,7 +73,6 @@ void sis_object_decr(s_sis_object *obj_)
 }
 
 /* ======================================== */
-
 s_sis_share_list *sis_share_list_create(const char *key_, int64 limit_)
 {
     s_sis_share_list *obj = (s_sis_share_list *)sis_malloc(sizeof(s_sis_share_list));
@@ -85,22 +90,49 @@ void sis_share_list_destroy(s_sis_share_list *obj_)
 {
     sis_sdsfree(obj_->key);
     sis_share_list_clear(obj_);
+    // printf("===__news == %d\n",__news);
     sis_mutex_rw_destroy(&obj_->mutex);
     sis_free(obj_);
 }
-s_sis_share_node *sis_share_node_create(int64 no_)
+// uint64 __news = 0;
+// uint64 __frees = -1;
+s_sis_share_node *sis_share_node_create(uint64 no_)
 {
     s_sis_share_node *node = (s_sis_share_node *)sis_malloc(sizeof(s_sis_share_node));
     memset(node, 0, sizeof(s_sis_share_node));
     node->cites = 1;
     node->serial = no_;//(unsigned int)sis_time_get_now();
+    // __news++;
+    return node;
+}
+s_sis_share_node *sis_share_node_clone(s_sis_share_node *src_)
+{
+    s_sis_share_node *node = (s_sis_share_node *)sis_malloc(sizeof(s_sis_share_node));
+    // memset(node, 0, sizeof(s_sis_share_node));
+    // memmove(node, src_, sizeof(s_sis_share_node));
+    node->cites = src_->cites;
+    node->serial = src_->serial;//(unsigned int)sis_time_get_now();
+    node->size = src_->size;
+    node->key = sis_sdsdup(src_->key);
+    node->vfree = _sdsfree;
+    node->value = sis_sdsnewlen(src_->value, src_->size - sis_sdslen(node->key));
+    node->prev = NULL;
+    node->next = NULL;
+
     return node;
 }
 void _sis_share_node_delete(s_sis_share_node *node_) 
 {
-    node_->kfree(node_->key);
+    // if (node_->serial - __frees != 1)
+    // {
+    //     printf("===free == %llu %llu\n",node_->serial, __frees);
+    // }
+    // // printf("===kfree == %p \n", node_);
+    // __frees = node_->serial;
+    sis_sdsfree(node_->key);
     node_->vfree(node_->value);
     sis_free(node_);
+    // __news--;
 }
 void sis_share_node_destroy(s_sis_share_node *node_)
 {
@@ -118,51 +150,62 @@ void sis_share_node_destroy(s_sis_share_node *node_)
     }
     
 }
-void _sdsfree(void *p)
-{
-    sis_sdsfree((s_sis_sds)p);
-} 
+
+// void *__clear_share_nodes(void *argv_)
+// {
+//     s_sis_share_node *node = (s_sis_share_node *)argv_;
+//     while(node)
+//     {
+//         s_sis_share_node *next = node->next;
+//         sis_share_node_destroy(node); 
+//         node = next;
+//     }        
+//     return NULL;
+// }
+
 // 这里的策略是，如果截断count的38.2%,以避免频繁
 void _sis_share_list_limit(s_sis_share_list *obj_)
 {
+    printf("limit = %d  %lld\n", (int)obj_->size, obj_->serial);
     size_t sub = obj_->size * 0.618;
     // 如果临界点 serial 一样，就删到下一个为止
     s_sis_share_node *node = NULL;
-    unsigned int lastsign = 0;
+    // unsigned int lastsign = 0;
+    // 先定位，然后直接截断就返回，开一个线程去清理
     while(1)
     {
         node = obj_->head;
-        if (lastsign > 0)
-        {
-            break;
-            // if (node->serial > lastsign)
-            // {
-            //     // 保证剔除相同时间
-            //     break;
-            // }
-        }
         obj_->head = node->next;
         obj_->head->prev = NULL;
         node->next = NULL;
         obj_->size -= node->size;
         obj_->count--;
-        if (obj_->size <= sub && lastsign == 0)
-        {
-            lastsign = node->serial;
-        }
         sis_share_node_destroy(node); 
+        if (obj_->size <= sub)
+        {
+            break;
+        }
     }
-    // 删除第一个, 也许会要求删除某个时间点
-    // s_sis_share_node *node = obj_->head;
-    // obj_->head = node->next;
-    // obj_->head->prev = NULL;
-    // node->next = NULL;
-    // obj_->size -= node->size;
-    // sis_share_node_destroy(node);
+    // s_sis_share_node *first = obj_->head;
+    // while(1)
+    // {
+    //     node = obj_->head;
+    //     obj_->head = node->next;
+    //     obj_->size -= node->size;
+    //     obj_->count--;
+    //     if (obj_->size <= sub)
+    //     {
+    //         node->next = NULL;
+    //         obj_->head->prev = NULL;
+    //         break;
+    //     }
+    // }
+    // printf("limit = %d  %d\n", (int)obj_->size, __news);
+    // sis_thread_create(__clear_share_nodes, first, NULL);
 }
 
 int sis_share_list_push(s_sis_share_list *obj_, 
-    void *key_, size_t klen_, _share_free *kfree_,  // kfree_ == NULL 表示要申请内存
+    void *key_, size_t klen_,  // kfree_ == NULL 表示要申请内存
     void *val_, size_t vlen_, _share_free *vfree_)  // kfree_ 不发生拷贝，但需要指定传入的数据的释放函数
 {
     sis_mutex_rw_lock_w(&obj_->mutex);
@@ -179,16 +222,9 @@ int sis_share_list_push(s_sis_share_list *obj_,
             // 一次删除足够数量的数据，避免频繁删除
         }
         obj_->size += node->size;
-        if (kfree_)
-        {
-            node->key = key_;
-            node->kfree = kfree_;
-        }
-        else
-        {
-            node->kfree = _sdsfree;
-            node->key = sis_sdsnewlen(key_, klen_);
-        }
+
+        node->key = sis_sdsnewlen(key_, klen_);
+
         if (vfree_)
         {
             node->value = val_;
@@ -196,6 +232,7 @@ int sis_share_list_push(s_sis_share_list *obj_,
         }
         else
         {
+            // printf("new share key\n");
             node->vfree = _sdsfree;
             node->value = sis_sdsnewlen(val_, vlen_);
         }
@@ -221,41 +258,43 @@ int sis_share_list_push(s_sis_share_list *obj_,
 
 s_sis_share_node *sis_share_list_next(s_sis_share_list *obj_, s_sis_share_node *node_)
 {
-    sis_mutex_rw_lock_r(&obj_->mutex);
+    sis_mutex_rw_lock_w(&obj_->mutex);
 
     // ... 这里要重新定位node_的位置，根据sign判断节点是否已经丢失，然后找最近的sign
-    s_sis_share_node *node = NULL;
+    s_sis_share_node *next = NULL;
     if (node_)
     {
         if (node_->serial < obj_->head->serial)
         {
             // 表示数据已经不存在，从现在的头开始取数据
-            node = obj_->head;
+            next = obj_->head;
         }
         else
         {
-            node = node_->next;
+            next = node_->next;
+            // 有可能为 NULL
         }
-        // printf("node_ %p node %p\n",node_, node);
-        sis_share_node_destroy(node_);
+        sis_share_node_destroy(node_); 
+        // printf("node_ %p next %p\n",node_, next);
     }
     else
     {
-        node = obj_->tail;
+        next = obj_->tail;
+        // 有可能为 NULL
     }
-    if(node)
+    if(next)
     {
-        node->cites++;
+        next->cites++;
     }
     else
     {
         if (node_)
         {
             node_->cites++;
-        }
-    }  
-    sis_mutex_rw_unlock_r(&obj_->mutex);
-    return node;
+        }   
+    }
+    sis_mutex_rw_unlock_w(&obj_->mutex);
+    return next;
 }
 s_sis_share_node *sis_share_list_first(s_sis_share_list *obj_)
 {

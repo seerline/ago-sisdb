@@ -43,10 +43,10 @@ typedef struct s_sis_share_node {
     struct s_sis_share_node *next;
     uint16 cites;  // 引用数，避免反复拷贝
     uint64 serial;   // 精确到秒 删除同一秒所有数据
-    uint32 size;   // 
+    uint32 size;   //  key + value 的总长度
     void *key;   // 头描述
     void *value; // 数据区
-    void (*kfree)(void *ptr);  // key释放
+    // void (*kfree)(void *ptr);  // key释放
     void (*vfree)(void *ptr);  // value释放
 } s_sis_share_node;
 
@@ -64,17 +64,18 @@ typedef struct s_sis_share_list {
 #ifdef __cplusplus
 extern "C" {
 #endif
-s_sis_share_node *sis_share_node_create();
+// s_sis_share_node *sis_share_node_create();
 void sis_share_node_destroy(s_sis_share_node *); 
 
 
 s_sis_share_list *sis_share_list_create(const char *, int64 limit_);
 void sis_share_list_destroy(s_sis_share_list *); 
+s_sis_share_node *sis_share_node_clone(s_sis_share_node *src_);
 
 // 会发生一次拷贝，push后用户可以释放内存 写权限
 int sis_share_list_push(s_sis_share_list *obj_, 
-    void *key_, size_t klen_, _share_free *kfree_,  // kfree_ == NULL 表示要申请内存
-    void *val_, size_t vlen_, _share_free *vfree_); // kfree_ 不发生拷贝，但需要指定传入的数据的释放函数
+    void *key_, size_t klen_,                       // vfree_ == NULL 表示要申请内存
+    void *val_, size_t vlen_, _share_free *vfree_); // vfree_ 不发生拷贝，但需要指定传入的数据的释放函数
 
 // 以下三个函数如果返回不为空 不用的时候需要执行 sis_share_node_destroy
 s_sis_share_node *sis_share_list_first(s_sis_share_list *obj_);
