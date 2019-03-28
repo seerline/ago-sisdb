@@ -2,19 +2,42 @@
 #include <sis_comm.h>
 #include <sisdb_io.h>
 
-#define CHECK_SERVER_STATUS  { if (sisdb_get_server_status()!= SIS_SERVER_STATUS_INITED)  \
-								return sis_module_reply_with_error(ctx_, "server starting..."); }
+#define CHECK_SERVER_STATUS                                                 \
+	{                                                                       \
+		if (sisdb_get_server_status() != SIS_SERVER_STATUS_INITED)          \
+			return sis_module_reply_with_error(ctx_, "server starting..."); \
+	}
 
 // 入口初始化，根据配置文件获取初始化所有信息，并返回s_sisdb_server指针，
 // 一个实例只有一个server，但是可以有多个
-char *load_sisdb_open(const char *conf_)
-{		
+s_sis_pointer_list *load_sisdb_open(const char *conf_)
+{
 	if (!sis_file_exists(conf_))
 	{
 		sis_out_log(3)("conf file %s no finded.\n", conf_);
 		return NULL;
 	}
 	return sisdb_open(conf_);
+}
+
+// 设置系统级别的一些默认操作，通过用于一些危险操作的授权，例如：
+// output   查询结果写入磁盘，
+// super  允许删除表格，系统的del只能清除表格内容，不能删除表结构
+int load_sisdb_switch(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
+{
+	CHECK_SERVER_STATUS;
+	if (argc_ < 2)
+	{
+		return sis_module_wrong_arity(ctx_);
+	}
+
+	int o = sisdb_set_switch(sis_module_string_get(argv_[1], NULL));
+
+	if (o >= 0)
+	{
+		return sis_module_reply_with_int64(ctx_, o);
+	}
+	return sis_module_reply_with_null(ctx_);
 }
 
 int load_sisdb_close(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
@@ -24,6 +47,7 @@ int load_sisdb_close(s_sis_module_context *ctx_, s_sis_module_string **argv_, in
 	sisdb_close();
 	return sis_module_reply_with_simple_string(ctx_, "OK");
 }
+
 
 // 获取数据可以根据 command中的 format来确定是json或者是struct
 // 可以单独取数据头定义，比如fields等的定义
@@ -36,6 +60,7 @@ int load_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	{
 		return sis_module_wrong_arity(ctx_);
 	}
+	s_sis_db *db = (s_sis_db *)sis_module_get_userdata(ctx_);
 
 	s_sis_sds o;
 	const char *key = sis_module_string_get(argv_[1], NULL);
@@ -57,31 +82,14 @@ int load_sisdb_get(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	}
 	return sis_module_reply_with_null(ctx_);
 }
-// 设置系统级别的一些默认操作，通过用于一些危险操作的授权，例如：
-	// output   查询结果写入磁盘，
-    // super  允许删除表格，系统的del只能清除表格内容，不能删除表结构
-int load_sisdb_cfg(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
-{
-	CHECK_SERVER_STATUS;
 
-	if (argc_ < 2)
-	{
-		return sis_module_wrong_arity(ctx_);
-	}
-
-	int o = sisdb_cfg_option(sis_module_string_get(argv_[1], NULL));
-	
-	if (o >=0 )
-	{
-		return sis_module_reply_with_int64(ctx_, o);
-	} 
-	return sis_module_reply_with_null(ctx_);
-
-}
 
 // 显示表信息和其他系统级别的信息
 int load_sisdb_show(s_sis_module_context *ctx_, s_sis_module_string **argv_, int argc_)
 {
+
+	int *in = (int *)sis_module_get_userdata(ctx_);
+	printf("id=%p %d\n", in, in ? *in : 0);
 	CHECK_SERVER_STATUS;
 
 	const char *key = NULL;
@@ -90,7 +98,8 @@ int load_sisdb_show(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	if (argc_ >= 2)
 	{
 		key = sis_module_string_get(argv_[1], NULL);
-		if (argc_ >= 3) com = sis_module_string_get(argv_[2], NULL);
+		if (argc_ >= 3)
+			com = sis_module_string_get(argv_[2], NULL);
 	}
 
 	s_sis_sds o = sisdb_show_sds(key, com);
@@ -129,7 +138,7 @@ int load_sisdb_call(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 		// 这里要判断返回的数据是否为字符串
 		// sis_out_binary("call out", o, 30);
 		// printf("call out ...%lu\n", sis_sdslen(o));
-		if (!strcasecmp(key,"list"))
+		if (!strcasecmp(key, "list"))
 		{
 			sis_module_reply_with_simple_string(ctx_, o);
 		}
@@ -137,7 +146,7 @@ int load_sisdb_call(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 		{
 			sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
 		}
-		
+
 		// sis_module_reply_with_buffer(ctx_, o, sis_sdslen(o));
 		// sis_module_reply_with_simple_string(ctx_, o);
 		sis_sdsfree(o);
@@ -182,7 +191,7 @@ int load_sisdb_set(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
 	const char *val = sis_module_string_get(argv_[2], &len);
-	if (!val||len < 1)
+	if (!val || len < 1)
 	{
 		return sis_module_reply_with_null(ctx_);
 	}
@@ -207,7 +216,7 @@ int load_sisdb_sset(s_sis_module_context *ctx_, s_sis_module_string **argv_, int
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
 	const char *val = sis_module_string_get(argv_[2], &len);
-	if (!val||len < 1)
+	if (!val || len < 1)
 	{
 		return sis_module_reply_with_null(ctx_);
 	}
@@ -245,7 +254,7 @@ int load_sisdb_new(s_sis_module_context *ctx_, s_sis_module_string **argv_, int 
 	const char *table = sis_module_string_get(argv_[1], NULL);
 	const char *val = sis_module_string_get(argv_[2], &len);
 
-	if (!val||len < 1)
+	if (!val || len < 1)
 	{
 		return sis_module_reply_with_null(ctx_);
 	}
@@ -269,7 +278,7 @@ int load_sisdb_update(s_sis_module_context *ctx_, s_sis_module_string **argv_, i
 	size_t len;
 	const char *key = sis_module_string_get(argv_[1], NULL);
 	const char *val = sis_module_string_get(argv_[2], &len);
-	if (!val||len < 1)
+	if (!val || len < 1)
 	{
 		return sis_module_reply_with_null(ctx_);
 	}
@@ -293,22 +302,24 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 {
 	safe_memory_start();
 	// 先取得服务名
-	char *service_name;
+	s_sis_pointer_list *sisdbs;
 	if (argc_ == 1)
 	{
-		service_name = load_sisdb_open(((s_sis_object_r *)argv_[0])->ptr);
+		sisdbs = load_sisdb_open(((s_sis_object_r *)argv_[0])->ptr);
 	}
 	else
 	{
-		service_name = load_sisdb_open("../sisdb/bin/sisdb.conf");
+		sisdbs = load_sisdb_open("../sisdb/bin/sisdb.conf");
 	}
-	if (!service_name || !*service_name)
+	if (!sisdbs || sisdbs->count < 1)
 	{
 		sis_out_log(3)("init sisdb error.\n");
 		return SIS_MODULE_ERROR;
 	}
-	if (sis_module_init(ctx_, service_name, 1, SIS_MODULE_VER) == SIS_MODULE_ERROR)
+	if (sis_module_init(ctx_, "sisdb", 1, SIS_MODULE_VER) == SIS_MODULE_ERROR)
+	{
 		return SIS_MODULE_ERROR;
+	}
 
 	/* Log the list of parameters passing loading the module. */
 	// for (int k = 0; k < argc_; k++)
@@ -316,93 +327,97 @@ int sis_module_on_load(s_sis_module_context *ctx_, s_sis_module_string **argv_, 
 	// 	const char *s = sis_module_string_get(argv_[k], NULL);
 	// 	printf("module loaded with argv_[%d] = %s\n", k, s);
 	// }
-	// printf("====1.2===\n");
 
 	char command[SIS_MAXLEN_COMMAND];
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.close", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_close,
-								  "readonly",
-								  0, 0, 0) == SIS_MODULE_ERROR)
+	for(int i = 0; i < sisdbs->count; i++)
+	{		
+		s_sis_db *db = (s_sis_db *)sis_pointer_list_get(sisdbs, i);
+		sis_module_set_userdata(ctx_, db);
+
+		sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.get", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_get,
+									"readonly",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+		sis_module_set_userdata(ctx_, id1);
+		sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.show", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_show,
+									"readonly",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+		sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.call", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_call,
+									"write deny-oom",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+		sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.del", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_del,
+									"write deny-oom",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+		sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.set", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_set,
+									"write deny-oom",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+		sis_sprintf(command, SIS_MAXLEN_KEY, "%s.sset", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_sset,
+									"write deny-oom",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+		sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.save", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_save,
+									"write deny-oom",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+		// 创建数据表，后面跟各种属性和字段定义
+		sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.new", db->name);
+		if (sis_module_create_command(ctx_, command, load_sisdb_new,
+									"write deny-oom",
+									0, 0, 0) == SIS_MODULE_ERROR)
+		{
+			return SIS_MODULE_ERROR;
+		}
+	}
+	// 权限管理，不影响实际数据库数据
+	if (sis_module_create_command(ctx_, "sisdb.switch", load_sisdb_switch,
+								"readonly",
+								0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.get", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_get,
-								  "readonly",
-								  0, 0, 0) == SIS_MODULE_ERROR)
+	if (sis_module_create_command(ctx_, "sisdb.close", load_sisdb_close,
+								"readonly",
+								0, 0, 0) == SIS_MODULE_ERROR)
 	{
 		return SIS_MODULE_ERROR;
 	}
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.cfg", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_cfg,
-								  "readonly",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.show", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_show,
-								  "readonly",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	// 去掉call，直接在get中实现，$+方法名
-	// sisdb.get $xxxxx {"argv":{....}}  当key值为$开头就是方法调用
-	// show 方法也注入到这种方式中，简化访问接口，一个get全部搞定
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.call", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_call,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.del", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_del,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.set", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_set,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(command, SIS_MAXLEN_KEY, "%s.sset", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_sset,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.save", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_save,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
-	// 创建数据表，后面跟各种属性和字段定义
-	sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.new", service_name);
-	if (sis_module_create_command(ctx_, command, load_sisdb_new,
-								  "write deny-oom",
-								  0, 0, 0) == SIS_MODULE_ERROR)
-	{
-		return SIS_MODULE_ERROR;
-	}
+	
+
 	// 修改数据表，可以是字段，可以是其他属性，只在设置字段时会锁住进程，处理完后再恢复访问
 	// 情况太复杂，牵涉到scale修改导致的time字段修改和数据是否合并等功能
 	// 可能只支持字段增加和删除，不能支持字段修改，
-	// sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.update", service_name);
+	// sis_sprintf(command, SIS_MAXLEN_COMMAND, "%s.update", db->name);
 	// if (sis_module_create_command(ctx_, command, load_sisdb_update,
 	// 							  "write deny-oom",
 	// 							  0, 0, 0) == SIS_MODULE_ERROR)
 	// {
 	// 	return SIS_MODULE_ERROR;
-	// }	
-	
+	// }
+
 	return SIS_MODULE_OK;
 }

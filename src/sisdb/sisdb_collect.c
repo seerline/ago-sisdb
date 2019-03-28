@@ -1204,7 +1204,7 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 	// 判断是否写盘
 	if (sisdb_get_server()->switch_output)
 	{
-		sisdb_file_get_outdisk(key_, iformat, out);
+		sisdb_file_get_outdisk(db_, key_, iformat, out);
 	}
 
 	s_sis_sds other = NULL;

@@ -281,14 +281,19 @@ char *sisdb_open(const char *conf_)
     server.status = SIS_SERVER_STATUS_INITED;
     sis_conf_close(config);
 
-    return server.service_name;
+    return server.sisdbs;
 
 error:
     if (sdb_json)
     {
         sis_json_close(sdb_json);
     }
-    sisdb_destroy(server.db);
+    // 只要有一个库不对就全部清除
+    for(int i = 0; i < server.sisdbs->count; i++)
+    {
+        s_sis_db *db = (s_sis_db *)sis_pointer_list_get(server.sisdbs, i);
+        sisdb_destroy(db);
+    }
     sis_conf_close(config);
     return NULL;
 }
@@ -300,11 +305,27 @@ void sisdb_close()
         return;
     }
     server.status = SIS_SERVER_STATUS_CLOSE;
-
-    sisdb_destroy(server.db);
-
+    for(int i = 0; i < server.sisdbs->count; i++)
+    {
+        s_sis_db *db = (s_sis_db *)sis_pointer_list_get(server.sisdbs, i);
+        sisdb_destroy(db);
+    }
     server.status = SIS_SERVER_STATUS_NOINIT;
-    server.db = NULL;
+}
+
+// 所有系统级别的开关设置都在这里
+int sisdb_set_switch(const char *key_)
+{
+    if (!sis_strcasecmp(key_,"output"))
+    {
+        server.switch_output = !server.switch_output;
+        return server.switch_output;
+    } else  if (!sis_strcasecmp(key_, "super"))
+    {
+        server.switch_super = !server.switch_super;
+        return server.switch_super;
+    }
+    return -1;
 }
 
 s_sisdb_server *sisdb_get_server()
@@ -449,20 +470,7 @@ s_sis_sds sisdb_get_sds(const char *key_, const char *com_)
     }
     return sisdb_collect_get_sds(server.db, key_, com_);
 }
-// 所有系统级别的开关设置都在这里
-int sisdb_cfg_option(const char *key_)
-{
-    if (!sis_strcasecmp(key_,"output"))
-    {
-        server.switch_output = !server.switch_output;
-        return server.switch_output;
-    } else  if (!sis_strcasecmp(key_, "super"))
-    {
-        server.switch_super = !server.switch_super;
-        return server.switch_super;
-    }
-    return -1;
-}
+
 
 int sisdb_delete_collect_of_table(const char *dbname_, const char *com_, size_t len_)
 {

@@ -177,6 +177,8 @@ void REDISMODULE_API_FUNC(RedisModule_Free)(void *ptr);
 void *REDISMODULE_API_FUNC(RedisModule_Calloc)(size_t nmemb, size_t size);
 char *REDISMODULE_API_FUNC(RedisModule_Strdup)(const char *str);
 int REDISMODULE_API_FUNC(RedisModule_GetApi)(const char *, void *);
+void * REDISMODULE_API_FUNC(RedisModule_GetUserData)(RedisModuleCtx *ctx);
+void REDISMODULE_API_FUNC(RedisModule_SetUserData)(RedisModuleCtx *ctx);
 int REDISMODULE_API_FUNC(RedisModule_CreateCommand)(RedisModuleCtx *ctx, const char *name, RedisModuleCmdFunc cmdfunc, const char *strflags, int firstkey, int lastkey, int keystep);
 void REDISMODULE_API_FUNC(RedisModule_SetModuleAttribs)(RedisModuleCtx *ctx, const char *name, int ver, int apiver);
 int REDISMODULE_API_FUNC(RedisModule_IsModuleNameBusy)(const char *name);

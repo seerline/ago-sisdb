@@ -33,14 +33,14 @@ ENDIF ()
 INCLUDE_DIRECTORIES(. ../src/os/linux 
     ../src/siscs 
     ../src/siscs/libuv/include 
-    ../src/platform/redis 
+    ../src/relying/client 
     ../src/core ../src/stsdb)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(../src/os/linux DIR_OS)
 AUX_SOURCE_DIRECTORY(../src/siscs DIR_SISCS)
-AUX_SOURCE_DIRECTORY(../src/platform/redis DIR_PLATFORM)
+AUX_SOURCE_DIRECTORY(../src/relying/client DIR_PLATFORM)
 AUX_SOURCE_DIRECTORY(../src/core DIR_CORE)
 AUX_SOURCE_DIRECTORY(../src/stsdb DIR_STSDB)
 

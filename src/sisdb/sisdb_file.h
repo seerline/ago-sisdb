@@ -70,7 +70,7 @@ typedef struct s_sis_aof_head{
 // 到时间保存
 bool sisdb_file_save(s_sisdb_server *server_);
 // 对用户的get请求同时输出到磁盘中，方便检查数据
-bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_);
+bool sisdb_file_get_outdisk(s_sis_db *db_, const char * key_,  int fmt_, s_sis_sds in_);
 
 bool sisdb_file_save_aof(s_sisdb_server *server_, 
             int fmt_, const char *key_, 

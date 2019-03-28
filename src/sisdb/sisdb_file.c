@@ -209,11 +209,11 @@ bool sisdb_file_save(s_sisdb_server *server_)
 
     return true;
 }
-bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_)
+bool sisdb_file_get_outdisk(s_sis_db *db_, const char * key_,  int fmt_, s_sis_sds in_)
 {   
     s_sisdb_server *server = sisdb_get_server();
 
-	s_sisdb_collect *collect = sisdb_get_collect(server->db, key_);
+	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
 		sis_out_log(3)("no find key [disk] %s.\n", key_);
@@ -232,14 +232,14 @@ bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_)
     // case SIS_DATA_TYPE_ZIP:
     //     break;    
 	case SIS_DATA_TYPE_STRUCT:
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_STRUCT, server->db_path, server->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_STRUCT, server->db_path, db_->name,
                     code, dbname);
         // 直接写文件
         sis_file_sds_write(sdb, in_);
 		break;
 	case SIS_DATA_TYPE_JSON:
 		other = sisdb_collect_struct_to_json_sds(collect, in_, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server->db_path, server->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_JSON, server->db_path, db_->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -247,7 +247,7 @@ bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_)
 		break;
 	case SIS_DATA_TYPE_ARRAY:
 		other = sisdb_collect_struct_to_array_sds(collect, in_, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server->db_path, server->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_ARRAY, server->db_path, db_->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);
@@ -257,7 +257,7 @@ bool sisdb_file_get_outdisk(const char * key_,  int fmt_, s_sis_sds in_)
     //     break;    
     case SIS_DATA_TYPE_CSV:
 		other = sisdb_collect_struct_to_csv_sds(collect, in_, collect->db->field_name, false);
-        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server->db_path, server->db->name,
+        sis_sprintf(sdb, SIS_PATH_LEN, SIS_DB_FILE_OUT_CSV, server->db_path, db_->name,
                     code, dbname);
 		// 带other去写文件
         sis_file_sds_write(sdb, other);

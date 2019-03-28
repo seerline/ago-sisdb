@@ -110,7 +110,7 @@ s_sis_share_node *sis_share_node_clone(s_sis_share_node *src_)
     s_sis_share_node *node = (s_sis_share_node *)sis_malloc(sizeof(s_sis_share_node));
     // memset(node, 0, sizeof(s_sis_share_node));
     // memmove(node, src_, sizeof(s_sis_share_node));
-    node->cites = src_->cites;
+    node->cites = 1;
     node->serial = src_->serial;//(unsigned int)sis_time_get_now();
     node->size = src_->size;
     node->key = sis_sdsdup(src_->key);
@@ -139,6 +139,10 @@ void sis_share_node_destroy(s_sis_share_node *node_)
     if(!node_)
     {
         return ;
+    }
+    if (node_->cites != 1)
+    {
+        printf("cites = %d \n", node_->cites);
     }
     if (node_->cites > 1)
     {
@@ -274,6 +278,7 @@ s_sis_share_node *sis_share_list_next(s_sis_share_list *obj_, s_sis_share_node *
             next = node_->next;
             // 有可能为 NULL
         }
+        // node_->cites--;
         sis_share_node_destroy(node_); 
         // printf("node_ %p next %p\n",node_, next);
     }
@@ -298,24 +303,24 @@ s_sis_share_node *sis_share_list_next(s_sis_share_list *obj_, s_sis_share_node *
 }
 s_sis_share_node *sis_share_list_first(s_sis_share_list *obj_)
 {
-    sis_mutex_rw_lock_r(&obj_->mutex);
+    sis_mutex_rw_lock_w(&obj_->mutex);
     s_sis_share_node *node = obj_->head;
     if(node)
     {
         node->cites++;
     }
-    sis_mutex_rw_unlock_r(&obj_->mutex);
+    sis_mutex_rw_unlock_w(&obj_->mutex);
     return node;    
 }
 s_sis_share_node *sis_share_list_last(s_sis_share_list *obj_)
 {
-    sis_mutex_rw_lock_r(&obj_->mutex);
+    sis_mutex_rw_lock_w(&obj_->mutex);
     s_sis_share_node *node = obj_->tail;
     if(node)
     {
         node->cites++;
     }
-    sis_mutex_rw_unlock_r(&obj_->mutex);
+    sis_mutex_rw_unlock_w(&obj_->mutex);
     return node;    
 }
 // s_sis_share_node *sis_share_list_cut(s_sis_share_list *obj_, int *count_)

@@ -61,6 +61,9 @@ typedef struct s_sis_object_r {
 #define sis_module_init RedisModule_Init
 #define sis_module_create_command RedisModule_CreateCommand
 // -------------------- //
+#define sis_module_set_userdata RedisModule_SetUserData
+#define sis_module_get_userdata RedisModule_GetUserData
+
 #define sis_module_memory_init RedisModule_AutoMemory
 #define sis_module_wrong_arity RedisModule_WrongArity
 

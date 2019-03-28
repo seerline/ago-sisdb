@@ -105,6 +105,7 @@ struct RedisModuleCtx {
     struct RedisModuleBlockedClient *blocked_client; /* Blocked client for
                                                         thread safe context. */
     struct AutoMemEntry *amqueue;   /* Auto memory queue of objects to free. */
+    void  *data;   // 每个函数需要原样返回的私人数据指针
     int amqueue_len;                /* Number of slots in amqueue. */
     int amqueue_used;               /* Number of used slots in amqueue. */
     int flags;                      /* REDISMODULE_CTX_... flags. */
@@ -120,7 +121,13 @@ struct RedisModuleCtx {
 };
 typedef struct RedisModuleCtx RedisModuleCtx;
 
-#define REDISMODULE_CTX_INIT {(void*)(unsigned long)&RM_GetApi, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, 0, NULL, NULL, 0, NULL}
+void *RM_GetUserData(RedisModuleCtx *ctx) {
+    return ctx->data;
+}
+void RM_SetUserData(RedisModuleCtx *ctx, void * data) {
+    ctx->data = data;
+}
+#define REDISMODULE_CTX_INIT {(void*)(unsigned long)&RM_GetApi, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, 0, NULL, NULL, 0, NULL}
 #define REDISMODULE_CTX_MULTI_EMITTED (1<<0)
 #define REDISMODULE_CTX_AUTO_MEMORY (1<<1)
 #define REDISMODULE_CTX_KEYS_POS_REQUEST (1<<2)
@@ -167,6 +174,7 @@ struct RedisModuleCommandProxy {
     struct RedisModule *module;
     RedisModuleCmdFunc func;
     struct redisCommand *rediscmd;
+    void *data;
 };
 typedef struct RedisModuleCommandProxy RedisModuleCommandProxy;
 
@@ -492,6 +500,7 @@ void RedisModuleCommandDispatcher(client *c) {
 
     ctx.module = cp->module;
     ctx.client = c;
+    ctx.data = cp->data;
     cp->func(&ctx,(void**)c->argv,c->argc);
     moduleHandlePropagationAfterCommandCallback(&ctx);
     moduleFreeContext(&ctx);
@@ -657,6 +666,7 @@ int RM_CreateCommand(RedisModuleCtx *ctx, const char *name, RedisModuleCmdFunc c
     cp = zmalloc(sizeof(*cp));
     cp->module = ctx->module;
     cp->func = cmdfunc;
+    cp->data = ctx->data;
     cp->rediscmd = zmalloc(sizeof(*rediscmd));
     cp->rediscmd->name = cmdname;
     cp->rediscmd->proc = RedisModuleCommandDispatcher;
@@ -4568,6 +4578,8 @@ size_t moduleCount(void) {
  * file so that's easy to seek it to add new entries. */
 void moduleRegisterCoreAPI(void) {
     server.moduleapi = dictCreate(&moduleAPIDictType,NULL);
+    REGISTER_API(GetUserData);
+    REGISTER_API(SetUserData);
     REGISTER_API(Alloc);
     REGISTER_API(Calloc);
     REGISTER_API(Realloc);
