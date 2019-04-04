@@ -257,7 +257,7 @@ int main()
 
 	// char info[] = "{\"name\"=\"123456\"}";
 	// _test_set_socket(socket, "sh900600", "info", info, strlen(info));
-	_test_get_socket(socket, "sh", "_exch", "{\"format\":\"struct\"}", 20); 
+	_test_get_socket(socket, "sh", "exch", "{\"format\":\"struct\"}", 20); 
 
 	sis_redis_close(socket);
 }

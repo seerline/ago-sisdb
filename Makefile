@@ -10,12 +10,6 @@ else
 	cd ./src/sisdb/ && mkdir out && cd out && cmake ../ && $(MAKE)  $@ 
 endif
 
-ifeq (./src/siscs/out, $(wildcard ./src/siscs/out))
-	cd ./src/siscs/out && cmake ../ && $(MAKE)
-else
-	cd ./src/siscs/ && mkdir out && cd out && cmake ../ && $(MAKE)
-endif
-
 ifeq (./src/relying/out, $(wildcard ./src/relying/out))
 	cd ./src/relying/out && cmake ../ && $(MAKE)
 else
@@ -28,15 +22,6 @@ ifeq (./src/sisdb/out, $(wildcard ./src/sisdb/out))
 	cd ./src/sisdb/out && cmake ../ && $(MAKE)
 else
 	cd ./src/sisdb/ && mkdir out && cd out && cmake ../ && $(MAKE)
-endif
-	cp ./bin/libsisdb.* ../bin
-	
-siscs:
-
-ifeq (./src/siscs/out, $(wildcard ./src/siscs/out))
-	cd ./src/siscs/out && cmake ../ && $(MAKE)
-else
-	cd ./src/siscs/ && mkdir out && cd out && cmake ../ && $(MAKE)
 endif
 
 redis:

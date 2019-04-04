@@ -17,8 +17,8 @@ void sis_wait_free(s_sis_wait_handle id_);
 typedef struct s_sis_mutex_rw {
 	s_sis_mutex_t mutex_s;
 	volatile bool try_write_b;
-	volatile int reads_i;
-	volatile int writes_i;
+	volatile int  reads_i;
+	volatile int  writes_i;
 } s_sis_mutex_rw;
 
 int  sis_mutex_rw_create(s_sis_mutex_rw *mutex_);

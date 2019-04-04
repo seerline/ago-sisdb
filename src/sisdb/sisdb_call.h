@@ -21,7 +21,7 @@
 #include "sisdb_collect.h" 
 
 #define SIS_QUERY_COM_NORMAL  "{\"format\":\"struct\"}"
-#define SIS_QUERY_COM_INFO    "{\"format\":\"struct\",\"fields\":\"dot,prc-unit,vol-unit\"}"
+#define SIS_QUERY_COM_INFO    "{\"format\":\"struct\",\"fields\":\"dot,pzoom,vunit\"}"
 #define SIS_QUERY_COM_SEARCH  "{\"format\":\"struct\",\"search\":{\"min\":%d,\"max\":%d}}"
 
 #pragma pack(push,1)

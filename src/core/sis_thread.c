@@ -126,6 +126,7 @@ bool sis_plan_task_execute(s_sis_plan_task *task_)
 	s_sis_wait *wait = sis_wait_get(task_->wait_handle);
 	if (task_->work_mode == SIS_WORK_MODE_ONCE)
 	{
+		task_->working = false;
 		return true;
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
@@ -332,5 +333,99 @@ int main()
 	}
 }
 #endif
+
+// test mutex
+#if 0
+
+#include <signal.h>
+#include <stdio.h>
+
+int __exit = 0;
+int __kill = 0;
+
+s_sis_thread ta ;
+s_sis_thread tb ;
+
+s_sis_mutex_rw mutex;
+
+void *__task_ta(void *argv_)
+{
+    while (!__kill)
+    {
+		sis_mutex_rw_lock_r(&mutex);
+		printf(" in ..a.. \n");
+		sis_sleep(1*1000);
+		printf(" out ..a.. \n");
+		sis_mutex_rw_unlock_r(&mutex);
+		sis_sleep(100);
+    }
+	printf("a ok . \n");
+    return NULL;
+}
+void *__task_tb(void *argv_)
+{
+    while (!__kill)
+    {
+		sis_mutex_rw_lock_w(&mutex);
+		printf(" in ..b.. \n");
+		sis_sleep(5*1000);
+		printf(" out ..b.. \n");
+		sis_mutex_rw_unlock_w(&mutex);
+		sis_sleep(100);
+    }
+	printf("b ok . \n");
+    return NULL;
+}
+void exithandle(int sig)
+{
+	__kill = 1;
+    printf("sighup received kill=%d \n",__kill);
+
+	sis_thread_join(&ta);
+	printf("a ok .... \n");
+	sis_thread_join(&tb);
+	printf("b ok .... \n");
+
+	printf("ok . \n");
+
+
+	// printf("kill b . \n");
+    // sis_thread_wait_kill(&__thread_wait_b);
+	// printf("free b . \n");
+    // sis_thread_wait_destroy(&__thread_wait_b);
+	// printf("ok b . \n");
+
+
+	__exit = 1;
+}
+
+int main()
+{
+
+	sis_mutex_rw_create(&mutex);
+
+	sis_thread_create(__task_ta, NULL, &ta);
+	printf("thread a ok!\n");
+	sis_thread_create(__task_ta, NULL, &ta);
+	printf("thread a ok!\n");
+
+	// s_sis_thread_id_t tb ;
+	sis_thread_create(__task_tb, NULL, &tb);
+	printf("thread b ok!\n");
+
+	signal(SIGINT,exithandle);
+
+	while(!__exit)
+	{
+		sis_sleep(300);
+	}
+
+	sis_mutex_rw_destroy(&mutex);
+
+	printf("end . \n");
+	return 1;
+}
+#endif
+
 
 

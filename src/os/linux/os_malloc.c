@@ -8,11 +8,14 @@
 #ifndef __RELEASE__
 
 s_memory_node *__memory_first, *__memory_last;
+s_sis_mutex_t  __memory_mutex;
 
 void safe_memory_start()
 {
+    sis_mutex_create(&__memory_mutex);
     __memory_first = NULL;
     __memory_last = __memory_first;
+    printf("safe memory begin.\n");
 }
 
 int safe_memory_cmp(const char *s1_, const char *s2_)
@@ -52,6 +55,8 @@ void safe_memory_stop()
         printf("\n");
         node = node->next;
     }
+    sis_mutex_destroy(&__memory_mutex);
+    printf("safe memory end.\n");
 }
 #endif
 // void check_memory_newnode(void *__p__,int line_,const char *func_)

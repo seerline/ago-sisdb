@@ -33,6 +33,9 @@
 #ifndef _SIS_SDS_H
 #define _SIS_SDS_H
 
+// #define WARN_NOUSE_REALLOC 
+// 尽量不要去用realloc，会发生未知的错误
+
 #define SDS_MAX_PREALLOC (1024*1024)
 // const char *SDS_NOINIT;
 
@@ -247,13 +250,15 @@ void sdsrange(sds s, ssize_t start, ssize_t end);
 void sdsupdatelen(sds s);
 void sdsclear(sds s);
 int sdscmp(const sds s1, const sds s2);
+#ifndef WARN_NOUSE_REALLOC
 sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count);
 void sdsfreesplitres(sds *tokens, int count);
+sds *sdssplitargs(const char *line, int *argc);
+#endif
 void sdstolower(sds s);
 void sdstoupper(sds s);
 sds sdsfromlonglong(long long value);
 sds sdscatrepr(sds s, const char *p, size_t len);
-sds *sdssplitargs(const char *line, int *argc);
 sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen);
 sds sdsjoin(char **argv, int argc, char *sep);
 sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
@@ -269,10 +274,11 @@ void *sdsAllocPtr(sds s);
  * Sometimes the program SDS is linked to, may use a different set of
  * allocators, but may want to allocate or free things that SDS will
  * respectively free or allocate. */
+#ifndef WARN_NOUSE_REALLOC
 void *sds_malloc(size_t size);
 void *sds_realloc(void *ptr, size_t size);
 void sds_free(void *ptr);
-
+#endif
 #ifdef __cplusplus
 }
 #endif

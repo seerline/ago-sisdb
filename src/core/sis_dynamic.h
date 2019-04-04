@@ -112,7 +112,7 @@ typedef struct s_sis_dynamic_db {
 	struct s_sis_dynamic_db  *map_db;     // 对应的 s_sis_dynamic_db 为空表示不做转换
     void(*method)(void *, void *, size_t, void *,size_t); 
     int(*compress)(void *, void *, size_t, void *); 
-    int(*uncompress)(void *, void *, size_t, void *); 
+    int(*uncompress)(void *, size_t, void *);  // 没有info信息
 } s_sis_dynamic_db;
 
 typedef struct s_sis_dynamic_class {

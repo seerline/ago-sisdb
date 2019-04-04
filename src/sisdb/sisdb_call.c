@@ -5,15 +5,16 @@
 #include "sisdb_io.h"
 #include "sisdb_method.h"
 
-void *sisdb_call_list_sds(void *db_, void *com_)
+void *sisdb_call_list_sds(void *server_, void *com_)
 {
-	s_sis_db *db = (s_sis_db *)db_;
+	s_sisdb_server *server = (s_sisdb_server *)server_;
+	// 以下都要改
 	const char *com = (const char *)com_;
 
     s_sis_sds list = NULL;
 
 	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(db->methods);
+	s_sis_dict_iter *di = sis_dict_get_iter(server->methods);
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sis_method *method = (s_sis_method *)sis_dict_getval(de);
@@ -49,37 +50,45 @@ void *sisdb_call_list_sds(void *db_, void *com_)
 //   collects:[sh600600,sh600601]
 //////////////////////////////////////////////////////////////////////
 
-void *sisdb_call_market_init(void *db_, void *com_)
+void *sisdb_call_market_init(void *server_, void *com_)
 {
-	s_sis_db *db = (s_sis_db *)db_;
-	const char *market = (const char *)com_;
+	s_sisdb_server *server = (s_sisdb_server *)server_;
 
+	const char *market = (const char *)com_;
 	if (!market) return NULL;
+
 	int o = 0;
-	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(db->collects);
-	while ((de = sis_dict_next(di)) != NULL)
+	for(int i = 0; i < server->sisdbs->count; i++)
 	{
-		s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-		if (val->db->control.isinit && !val->db->control.issys &&
-			!sis_strncasecmp(sis_dict_getkey(de), market, strlen(market)))
+		s_sis_db *db = (s_sis_db *)sis_pointer_list_get(server->sisdbs, i);
+		s_sis_dict_entry *de;
+		s_sis_dict_iter *di = sis_dict_get_iter(db->collects);
+		while ((de = sis_dict_next(di)) != NULL)
 		{
-			// 只是设置记录数为0
-			sisdb_collect_clear(val);
-			o++;
+			s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
+			if (val->db->control.isinit && !val->db->control.issys &&
+				!sis_strncasecmp(sis_dict_getkey(de), market, strlen(market)))
+			{
+				// 只是设置记录数为0
+				sisdb_collect_clear(val);
+				o++;
+			}
 		}
+		sis_dict_iter_free(di);
 	}
-	sis_dict_iter_free(di);
+	
 	
 	// 该函数执行完毕需要写盘，这样就不需要处理aof文件了
-	sisdb_save();
+	sisdb_save(NULL);
 	
 	return sis_sdsnewlong(o);
 }
 
-void * sisdb_call_get_code_sds(void *db_, void *com_)
+void * sisdb_call_get_code_sds(void *server_, void *com_)
 {
-	s_sis_db *db = (s_sis_db *)db_;
+	s_sisdb_server *server = (s_sisdb_server *)server_;
+	s_sis_db *db = server->sysdb;
+
 	const char *com = (const char *)com_;
 
 	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
@@ -188,9 +197,10 @@ error:
 }
 
 // 获得某个数据表所有的key键 com_ 即表名
-void *sisdb_call_get_collects_sds(void *db_, void *com_)
+void *sisdb_call_get_collects_sds(void *server_, void *com_)
 {
-	s_sis_db *db = (s_sis_db *)db_;
+	s_sisdb_server *server = (s_sisdb_server *)server_;
+
 	const char *com = (const char *)com_;
 
 	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
@@ -198,10 +208,28 @@ void *sisdb_call_get_collects_sds(void *db_, void *com_)
 	{
 		return NULL;
 	}
-	const char *dbname = sis_json_get_str(handle->node, "table");
-	if (!dbname) 
+	s_sis_db *db = NULL;
+	const char *dbname = sis_json_get_str(handle->node, "db");
+	if (dbname) 
 	{
-		dbname = SIS_TABLE_INFO;
+		db = sisdb_get_db(dbname);
+	}
+	const char *tbname = sis_json_get_str(handle->node, "table");
+	if (!tbname) 
+	{
+		db = server->sysdb;
+		tbname = SIS_TABLE_INFO;
+	}
+	else
+	{
+		if (!db)
+		{
+			db = sisdb_get_db_from_table(tbname);
+		}
+	}
+	if (!db)
+	{
+		return NULL;
 	}
 
 	int count = 0;
@@ -214,7 +242,7 @@ void *sisdb_call_get_collects_sds(void *db_, void *com_)
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-		if (!sis_strcasecmp(collect->db->name, dbname))
+		if (!sis_strcasecmp(collect->db->name, tbname))
 		{
 			sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
 			if (!out)
@@ -234,7 +262,7 @@ void *sisdb_call_get_collects_sds(void *db_, void *com_)
 	{
 		goto error;
 	}
-	int iformat = sis_from_node_get_format(db, handle->node);
+	int iformat = sis_from_node_get_format(handle->node, SIS_DATA_TYPE_JSON);
 
 	printf("iformat = %c\n", iformat);
 	// 取出字段定义,没有就默认全部字段
@@ -326,9 +354,11 @@ success:
 //            "sh600048":{"close":10.32},
 //			  "sh600601":{"close":3.72}}
 ////////////////////////////////////////////////////////////////
-void *sisdb_call_get_close_sds(void *db_, void *com_)
+void *sisdb_call_get_close_sds(void *server_, void *com_)
 {
-	s_sis_db *db = (s_sis_db *)db_;
+	// s_sisdb_server *server = (s_sisdb_server *)server_;
+	s_sis_db *db = sisdb_get_db("stkdb"); 
+
 	const char *com = (const char *)com_;
 
 	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
@@ -454,7 +484,7 @@ error:
 // 默认vol为股，其他都是带小数点的，需要根据info的价格单位处理后再传入
 /////////////////////////////////////////
 
-void * sisdb_call_get_right_sds(void *db_, void *com_)
+void * sisdb_call_get_right_sds(void *server_, void *com_)
 {
 	// s_sis_db *db = (s_sis_db *)db_;
 	const char *com = (const char *)com_;
@@ -495,13 +525,13 @@ void * sisdb_call_get_right_sds(void *db_, void *com_)
 
 // 	int dot = 2;
 // 	s_stock_info *info_ps;
-//     sis_sprintf(key, DIG_MAXLEN_COMMAND, "%s.%s", code, "_info");
+//     sis_sprintf(key, DIG_MAXLEN_COMMAND, "%s.%s", code, "info");
 // 	s_sis_sds info = digger_get_local_sds(DIGGER_DB_IN, "get", key, SIS_QUERY_COM_NORMAL);
 // 	if (!info) {
 // 		goto error;
 // 	}
 // 	info_ps = (s_stock_info *)info;
-// 	dot = info_ps->prc_unit;
+// 	dot = info_ps->pzoom;
 // 	sis_sdsfree(info);
 
 // 	uint32 ui = sis_json_get_int(handle->node, "vol", 0);

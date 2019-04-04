@@ -3,6 +3,7 @@
 //*******************************************************
 
 #include "sisdb_map.h"
+#include "sisdb_io.h"
 
 // 所有需要快速检索的字符串都放这里，避免重复定义，需要设置不同的类型
 
@@ -18,6 +19,16 @@ static struct s_sis_map_define _sis_map_defines[] = {
 	// {"DATE", SIS_MAP_DEFINE_TIME_FORMAT, SIS_TIME_FORMAT_DATE, 0},
 	/////////////字段类型定义/////////////
 	{"NONE", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_NONE, 4},
+	{"I", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_INT, 4},
+	{"U", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_UINT, 4},
+	{"F", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_FLOAT, 4},
+	{"C", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_CHAR, 16},
+	{"P", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_PRICE, 4},  
+	{"Z", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_ZINT, 4},
+	{"M", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_MSEC, 8},   // 毫秒
+	{"S", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_SECOND, 4}, // 秒
+	{"D", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_DATE, 4},   // 日期
+
 	{"INT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_INT, 4},
 	{"UINT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_UINT, 4},
 	{"FLOAT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_FLOAT, 4},
@@ -25,8 +36,7 @@ static struct s_sis_map_define _sis_map_defines[] = {
 	{"STRING", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_STRING, 0},  // 不定长，json 数据表专用
 	{"JSON", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_JSON, 0},      // 不定长，json 数据表专用
 	{"PRICE", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_PRICE, 4},  
-	{"VOLUME", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_VOLUME, 4},
-	{"AMOUNT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_AMOUNT, 4},
+	{"ZINT", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_ZINT, 4},
 	{"MSEC", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_MSEC, 8},
 	{"SECOND", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_SECOND, 4},
 	{"DATE", SIS_MAP_DEFINE_FIELD_TYPE, SIS_FIELD_TYPE_DATE, 4},
@@ -117,4 +127,20 @@ int sisdb_find_map_uid(s_sis_map_pointer *map_, const char *name_, uint8 style_)
 		return 0;
 	}
 	return val->uid;
+}
+
+
+int sis_from_node_get_format(s_sis_json_node *node_,int default_)
+{
+	int o = default_;
+	s_sis_json_node *format = sis_json_cmp_child_node(node_, "format");
+	if (format)
+	{
+		s_sis_map_define *smd = sisdb_find_map_define(sisdb_get_server()->maps, format->value, SIS_MAP_DEFINE_DATA_TYPE);
+		if (smd)
+		{
+			o = smd->uid;
+		}
+	}
+	return o;
 }

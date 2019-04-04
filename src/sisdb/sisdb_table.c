@@ -49,7 +49,8 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	{
 		tb->control.scale = SIS_TIME_SCALE_NONE;
 	} else {
-		s_sis_map_define *mm = sisdb_find_map_define(db_->map, strval, SIS_MAP_DEFINE_TIME_SCALE);
+		s_sisdb_server *server = sisdb_get_server();
+		s_sis_map_define *mm = sisdb_find_map_define(server->maps, strval, SIS_MAP_DEFINE_TIME_SCALE);
 		if (mm)
 		{
 			tb->control.scale = mm->uid;
@@ -76,6 +77,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	// {
 	// 	printf("---111  %s\n",sis_string_list_get(tb->field_name, i));
 	// }
+	s_sisdb_server *server = sisdb_get_server();
 
 	s_sis_json_node *writes = sis_json_cmp_child_node(com_, "write-method");
 	if (writes)
@@ -140,7 +142,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 		s_sis_json_node *methods = sis_json_cmp_child_node(writes, "checked");
 		if (methods)
 		{
-			tb->write_method = sis_method_class_create(db_->methods, SISDB_METHOD_STYLE_WRITE, methods);
+			tb->write_method = sis_method_class_create(server->methods, SISDB_METHOD_STYLE_WRITE, methods);
 			tb->write_method->style = SIS_METHOD_CLASS_JUDGE;
 		}
 	} 
@@ -155,7 +157,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 			s_sisdb_field *fu = sisdb_field_get_from_key(tb, child->key);
 			if (fu)
 			{
-				fu->subscribe_method = sis_method_class_create(db_->methods, SISDB_METHOD_STYLE_SUBSCRIBE, child);
+				fu->subscribe_method = sis_method_class_create(server->methods, SISDB_METHOD_STYLE_SUBSCRIBE, child);
 			}
 			// printf("[%s] %s=====%p\n", tb->name, child->key, fu);
 			child = child->next;
@@ -199,15 +201,16 @@ void sisdb_table_destroy(s_sisdb_table *tb_)
 	sis_free(tb_);
 }
 
-s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *dbname_)
+s_sisdb_table *sisdb_get_table(s_sis_db *db_, const char *tbname_)
 {
-	s_sisdb_table *val = NULL;
-	if (db_->dbs)
-	{
-		s_sis_sds key = sis_sdsnew(dbname_);
-		val = (s_sisdb_table *)sis_dict_fetch_value(db_->dbs, key);
-		sis_sdsfree(key);
-	}
+	s_sisdb_table *val = (s_sisdb_table *)sis_map_pointer_get(db_->dbs, tbname_);
+	// s_sisdb_table *val = NULL;
+	// if (db_->dbs)
+	// {
+	// 	s_sis_sds key = sis_sdsnew(tbname_);
+	// 	val = (s_sisdb_table *)sis_dict_fetch_value(db_->dbs, key);
+	// 	sis_sdsfree(key);
+	// }
 	return val;
 }
 s_sisdb_table *sisdb_get_table_from_key(s_sis_db *db_, const char *key_)
@@ -232,68 +235,40 @@ int sisdb_table_set_fields(s_sis_db *db_,s_sisdb_table *tb_, s_sis_json_node *fi
 	sis_map_pointer_clear(tb_->field_map);
 	sis_string_list_clear(tb_->field_name);
 
-	s_sis_json_node *node = sis_json_first_node(fields_);
-
 	s_sisdb_field_flags flags;
 	s_sis_map_define *map = NULL;
 	int index = 0;
 	int offset = 0;
+
+	s_sisdb_server *server = sisdb_get_server();
+
+	s_sis_json_node *node = sis_json_first_node(fields_);
 	while (node)
 	{
 		// size_t ss;
 		// printf("node=%s\n", sis_json_output(node, &ss));
-		const char *name = sis_json_get_str(node, "0");
+		const char *name = node->key;
 		if (!name) 
 		{
 			node = sis_json_next_node(node);
 			continue;
 		}
 		flags.type = SIS_FIELD_TYPE_INT;
-		const char *val = sis_json_get_str(node, "1");
-		map = sisdb_find_map_define(db_->map, val, SIS_MAP_DEFINE_FIELD_TYPE);
+		const char *val = sis_json_get_str(node, "0");
+		map = sisdb_find_map_define(server->maps, val, SIS_MAP_DEFINE_FIELD_TYPE);
 		if (map)
 		{
 			flags.type = map->uid;
 		}
-		int len = sis_json_get_int(node, "2", 4);
+		int len = sis_json_get_int(node, "1", 4);
 		// 合法性检查以后用统一出口检查，包括整型检查等
-		// if (len > 255) 
-		// {
-		// 	sis_out_log(5)("field [%s] len(%d) > 255. error!", name, len);
-		// }
 		flags.len = len;
 		if(flags.type==SIS_FIELD_TYPE_STRING||flags.type==SIS_FIELD_TYPE_JSON)
 		{
 			flags.len = sizeof(void *);
 		}
-		int count = 1;
-		if (flags.type == SIS_FIELD_TYPE_FLOAT)
-		{
-			flags.dot = sis_json_get_int(node, "3", 0);
-			count = sis_json_get_int(node, "4", 1);
-		} else 
-		{
-			flags.dot = sis_json_get_int(node, "3", 0);
-			count = sis_json_get_int(node, "4", 1);
-		}
-		
-		if(!db_->special) 
-		{
-			// ??? 修改为所有key都指向市场信息和key信息后，就不需要此判断了，
-			// ??? 因为所有的key都有默认的price的小数点配置
-			// ??? info和exch不再作为表格存在，而是系统信息存在
-			// ??? 每个键的私有信息，包括市场和个体信息，也包括一个table的结构信息，这些信息都是映射表
-			// 非专用数据表不支持某些字段类型
-			// if (flags.type == SIS_FIELD_TYPE_PRICE)
-			// {
-			// 	flags.type = SIS_FIELD_TYPE_FLOAT;
-			// 	flags.dot = flags.dot == 0 ? 2 : flags.dot;
-			// }
-			if (flags.type == SIS_FIELD_TYPE_VOLUME||flags.type == SIS_FIELD_TYPE_AMOUNT)
-			{
-				flags.type = SIS_FIELD_TYPE_UINT;
-			}
-		}
+		int count = sis_json_get_int(node, "2", 1);
+		flags.dot = sis_json_get_int(node, "3", 0);
 		if (count > 1)
 		{
 			char field_name[32];
@@ -382,9 +357,10 @@ s_sis_json_node *sisdb_table_new_config(const char *source_ ,size_t len_)
 					{
 						sis_json_array_set_string(one, 1, "float", strlen("float"));
 						sis_json_array_set_int(one, 2, 4);
+						sis_json_array_set_int(one, 3, 1);
 						char tail[16];
         				sis_str_substr(tail, 16, next->value, '.', 1);
-						sis_json_array_set_int(one, 3, strlen(tail));
+						sis_json_array_set_int(one, 4, strlen(tail));
 					}
 					break;
 				case SIS_JSON_INT:

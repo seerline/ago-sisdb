@@ -11,11 +11,9 @@
 
 #define SIS_DEFAULT_EXCH  "00"   // 默认的市场编号存储缺省配置
 
-#define SIS_TABLE_EXCH   "_exch"   // 默认的市场数据表名称
-#define SIS_TABLE_INFO   "_info"   // 默认的股票数据表名称
-#define SIS_TABLE_USER   "_user"   // 默认的用户数据表名称
-
-#define SIS_TABLE_RIGHT   "right"   // 非必要的表，有就支持除权，没有不支持s s s
+#define SIS_TABLE_EXCH   "exch"   // 默认的市场数据表名称
+#define SIS_TABLE_INFO   "info"   // 默认的股票数据表名称
+#define SIS_TABLE_USER   "user"   // 默认的用户数据表名称
 
 // 以上两个表为必要表，如果不存在就报错
 #define SIS_TRADETIME_MAX_NUM  4   //
@@ -46,8 +44,8 @@
 #pragma pack(push, 1)
 typedef struct s_sisdb_sys_info {
 	uint8   dot;       // 仅对price起作用
-	uint32  prc_unit;  // 仅对price起作用
-	uint32  vol_unit;  // 仅对volume起作用	
+	uint32  pzoom;     // 仅对price起作用
+	uint32  vunit;     // 仅对volume起作用	
 }s_sisdb_sys_info;
 
 typedef struct s_sisdb_sys_exch {
@@ -72,13 +70,16 @@ void sisdb_sys_load_default(s_sis_db *db_, s_sis_json_node *table_);
 
 void sisdb_sys_check_write(s_sis_db *db_, const char *key_, void *src_);
 
-void sisdb_market_work_init(s_sis_db *db_);
-
-
 uint16 sisdb_ttime_to_trade_index(uint64 ttime_, s_sisdb_sys_exch *cfg_);
 uint64 sisdb_trade_index_to_ttime(int date_, int idx_, s_sisdb_sys_exch *cfg_);
 
 ///////////--------------------------///
+///////////////////////////
+//  init worker define   //
+///////////////////////////
+bool worker_init_open(s_sisdb_worker *worker_, s_sis_json_node *node_);
+void worker_init_close(s_sisdb_worker *worker_);
+void worker_init_working(s_sisdb_worker *worker_);
 
 #endif
 //_SIS_STOCK_H

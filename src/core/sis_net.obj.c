@@ -102,21 +102,18 @@ s_sis_share_node *sis_share_node_create(uint64 no_)
     memset(node, 0, sizeof(s_sis_share_node));
     node->cites = 1;
     node->serial = no_;//(unsigned int)sis_time_get_now();
-    // __news++;
+    node->next = NULL;
     return node;
 }
 s_sis_share_node *sis_share_node_clone(s_sis_share_node *src_)
 {
     s_sis_share_node *node = (s_sis_share_node *)sis_malloc(sizeof(s_sis_share_node));
-    // memset(node, 0, sizeof(s_sis_share_node));
-    // memmove(node, src_, sizeof(s_sis_share_node));
     node->cites = 1;
-    node->serial = src_->serial;//(unsigned int)sis_time_get_now();
+    node->serial = src_->serial;
     node->size = src_->size;
     node->key = sis_sdsdup(src_->key);
     node->vfree = _sdsfree;
-    node->value = sis_sdsnewlen(src_->value, src_->size - sis_sdslen(node->key));
-    node->prev = NULL;
+    node->value = sis_sdsnewlen(src_->value, src_->size - sis_sdslen(src_->key));
     node->next = NULL;
 
     return node;
@@ -140,10 +137,10 @@ void sis_share_node_destroy(s_sis_share_node *node_)
     {
         return ;
     }
-    if (node_->cites != 1)
-    {
-        printf("cites = %d \n", node_->cites);
-    }
+    // if (node_->cites != 1)
+    // {
+    //     printf("cites = %d \n", node_->cites);
+    // }
     if (node_->cites > 1)
     {
         node_->cites--;
@@ -170,7 +167,7 @@ void sis_share_node_destroy(s_sis_share_node *node_)
 // 这里的策略是，如果截断count的38.2%,以避免频繁
 void _sis_share_list_limit(s_sis_share_list *obj_)
 {
-    printf("limit = %d  %lld\n", (int)obj_->size, obj_->serial);
+    printf("limit = %d  %lld ", (int)obj_->size, obj_->serial);
     size_t sub = obj_->size * 0.618;
     // 如果临界点 serial 一样，就删到下一个为止
     s_sis_share_node *node = NULL;
@@ -179,8 +176,9 @@ void _sis_share_list_limit(s_sis_share_list *obj_)
     while(1)
     {
         node = obj_->head;
+        // printf("delete, %p  | %p - %p\n", node->next, obj_->head, obj_->tail);
         obj_->head = node->next;
-        obj_->head->prev = NULL;
+        // obj_->head->prev = NULL;
         node->next = NULL;
         obj_->size -= node->size;
         obj_->count--;
@@ -190,97 +188,102 @@ void _sis_share_list_limit(s_sis_share_list *obj_)
             break;
         }
     }
-    // s_sis_share_node *first = obj_->head;
-    // while(1)
+    printf(" --> %lld\n", (int)obj_->size);
+    // size_t count = obj_->count * 0.618;
+    // // 如果临界点 serial 一样，就删到下一个为止
+    // s_sis_share_node *node = NULL;
+    // // unsigned int lastsign = 0;
+    // // 先定位，然后直接截断就返回，开一个线程去清理
+    // while(count > 100)
     // {
     //     node = obj_->head;
     //     obj_->head = node->next;
+    //     obj_->head->prev = NULL;
+    //     // node->next = NULL;
     //     obj_->size -= node->size;
     //     obj_->count--;
-    //     if (obj_->size <= sub)
+    //     sis_share_node_destroy(node); 
+    //     if (obj_->count <= count)
     //     {
-    //         node->next = NULL;
-    //         obj_->head->prev = NULL;
     //         break;
     //     }
     // }
-    // printf("limit = %d  %d\n", (int)obj_->size, __news);
-    // sis_thread_create(__clear_share_nodes, first, NULL);
 }
 
 int sis_share_list_push(s_sis_share_list *obj_, 
-    void *key_, size_t klen_,  // kfree_ == NULL 表示要申请内存
-    void *val_, size_t vlen_, _share_free *vfree_)  // kfree_ 不发生拷贝，但需要指定传入的数据的释放函数
+    void *key_, size_t klen_,  // vfree_ == NULL 表示要申请内存
+    void *val_, size_t vlen_, _share_free *vfree_)  // vfree_ 不发生拷贝，但需要指定传入的数据的释放函数
 {
-    sis_mutex_rw_lock_w(&obj_->mutex);
-    if (val_ && vlen_>0)
+    if (!val_ && vlen_<1)
     {
-        s_sis_share_node *node = sis_share_node_create(obj_->serial);
-        obj_->serial++;
-        // printf("new share ... %d %d size=[%d] limit=%d\n",obj_->serial, 
-        //     obj_->count, (int)obj_->size, (int)obj_->limit);
-        node->size = klen_ + vlen_;
-        if ((obj_->size + node->size) > obj_->limit)
-        {
-            _sis_share_list_limit(obj_);
-            // 一次删除足够数量的数据，避免频繁删除
-        }
-        obj_->size += node->size;
-
-        node->key = sis_sdsnewlen(key_, klen_);
-
-        if (vfree_)
-        {
-            node->value = val_;
-            node->vfree = vfree_;
-        }
-        else
-        {
-            // printf("new share key\n");
-            node->vfree = _sdsfree;
-            node->value = sis_sdsnewlen(val_, vlen_);
-        }
-        if (!obj_->head&&!obj_->tail)
-        {
-            node->prev = NULL;
-            node->next = NULL;
-            obj_->head =  node;  
-            obj_->tail =  node;               
-        }
-        else
-        {
-            obj_->tail->next = node;
-            node->prev = obj_->tail;
-            node->next = NULL;
-            obj_->tail = node;            
-        }
-        obj_->count++;
+        return 0;
     }
+    // 保证只有一个写入的情况下 先生成node
+    s_sis_share_node *node = sis_share_node_create(obj_->serial);
+    node->size = klen_ + vlen_;
+    node->key = sis_sdsnewlen(key_, klen_);
+
+    if (vfree_)
+    {
+        node->vfree = vfree_;
+        node->value = val_;
+    }
+    else
+    {
+        // printf("new share key\n");
+        node->vfree = _sdsfree;
+        node->value = sis_sdsnewlen(val_, vlen_);
+    }
+    // 再修改obj的信息
+    sis_mutex_rw_lock_w(&obj_->mutex);
+    obj_->serial++;
+    // printf("new share ... %d %d size=[%d] limit=%d\n",obj_->serial, 
+    //     obj_->count, (int)obj_->size, (int)obj_->limit);
+    if ((obj_->size + node->size) > obj_->limit)
+    {
+        _sis_share_list_limit(obj_);
+        // 一次删除足够数量的数据，避免频繁删除
+    }
+    obj_->size += node->size;
+
+    if (!obj_->head&&!obj_->tail)
+    {
+        obj_->head =  node;  
+        obj_->tail =  node;               
+    }
+    else
+    {
+        obj_->tail->next = node;
+        obj_->tail = node;            
+    }
+    obj_->count++;
     sis_mutex_rw_unlock_w(&obj_->mutex);
     return obj_->count;
 }
 
-s_sis_share_node *sis_share_list_next(s_sis_share_list *obj_, s_sis_share_node *node_)
+s_sis_share_node *sis_share_list_next(s_sis_share_list *obj_, s_sis_share_node *cursor_)
 {
-    sis_mutex_rw_lock_w(&obj_->mutex);
+    sis_mutex_rw_lock_r(&obj_->mutex);
 
     // ... 这里要重新定位node_的位置，根据sign判断节点是否已经丢失，然后找最近的sign
     s_sis_share_node *next = NULL;
-    if (node_)
+    if (cursor_)
     {
-        if (node_->serial < obj_->head->serial)
+        if (cursor_->serial < obj_->head->serial)
         {
+            // sis_share_node_destroy(cursor_); 
             // 表示数据已经不存在，从现在的头开始取数据
             next = obj_->head;
         }
         else
         {
-            next = node_->next;
+            next = cursor_->next;
+            // cursor_->cites--;
             // 有可能为 NULL
         }
-        // node_->cites--;
-        sis_share_node_destroy(node_); 
-        // printf("node_ %p next %p\n",node_, next);
+        // cursor_->cites--;
+        sis_share_node_destroy(cursor_); 
+        // printf("cursor_ %p next %p\n",cursor_, next);
     }
     else
     {
@@ -293,34 +296,35 @@ s_sis_share_node *sis_share_list_next(s_sis_share_list *obj_, s_sis_share_node *
     }
     else
     {
-        if (node_)
+        // cursor_ == tail
+        if (cursor_)
         {
-            node_->cites++;
+            cursor_->cites++;
         }   
     }
-    sis_mutex_rw_unlock_w(&obj_->mutex);
+    sis_mutex_rw_unlock_r(&obj_->mutex);
     return next;
 }
 s_sis_share_node *sis_share_list_first(s_sis_share_list *obj_)
 {
-    sis_mutex_rw_lock_w(&obj_->mutex);
+    sis_mutex_rw_lock_r(&obj_->mutex);
     s_sis_share_node *node = obj_->head;
     if(node)
     {
         node->cites++;
     }
-    sis_mutex_rw_unlock_w(&obj_->mutex);
+    sis_mutex_rw_unlock_r(&obj_->mutex);
     return node;    
 }
 s_sis_share_node *sis_share_list_last(s_sis_share_list *obj_)
 {
-    sis_mutex_rw_lock_w(&obj_->mutex);
+    sis_mutex_rw_lock_r(&obj_->mutex);
     s_sis_share_node *node = obj_->tail;
     if(node)
     {
         node->cites++;
     }
-    sis_mutex_rw_unlock_w(&obj_->mutex);
+    sis_mutex_rw_unlock_r(&obj_->mutex);
     return node;    
 }
 // s_sis_share_node *sis_share_list_cut(s_sis_share_list *obj_, int *count_)
@@ -352,7 +356,169 @@ void sis_share_list_clear(s_sis_share_list *obj_)
     sis_mutex_rw_unlock_w(&obj_->mutex);
 }
 
+#if 0
+// 测试读写锁
+#include <signal.h>
+#include <stdio.h>
 
+int __exit = 0;
+int __kill = 0;
+s_sis_wait __thread_wait_a; //线程内部延时处理
+s_sis_wait __thread_wait_b; //线程内部延时处理
+
+
+s_sis_thread ta ;
+s_sis_thread tb ;
+
+s_sis_share_list *__list;
+s_sis_share_node *__node = NULL;
+s_sis_share_node *__node_b = NULL;
+void *__task_ta(void *argv_)
+{
+    sis_thread_wait_start(&__thread_wait_a);
+    int count =0;
+    while (!__kill)
+    {
+		// printf(" test ..a.. \n");
+        if(sis_thread_wait_sleep_msec(&__thread_wait_a, 300) == SIS_ETIMEDOUT)
+        {
+            // printf("timeout ..a.. %d \n",__kill);
+        } else 
+		{
+            // printf("no timeout ..a.. %d \n",__kill);
+		}
+        if (!__node)
+        {
+            __node = sis_share_list_first(__list);
+            count++;
+        }
+        else
+        {
+            s_sis_share_node *node = sis_share_list_next(__list, __node);
+            while (node)
+            {
+                count++;
+                // printf("get a ok! %lld  %lld -- \n", node->serial, __list->count);
+                __node = node;
+                node = sis_share_list_next(__list, __node);
+            }
+        }      
+        printf("get a ok!  %d  %lld -- \n",  count, __list->count);  
+        // sis_sleep(1000);
+
+    }
+    if (__node)
+    {
+        sis_share_node_destroy(__node);
+    }
+	sis_thread_wait_stop(&__thread_wait_a);
+	printf("a ok . \n");
+    ta.working = false;
+	// pthread_detach(pthread_self());
+
+    return NULL;
+}
+void *__task_tb(void *argv_)
+{
+    int count =0;
+    sis_thread_wait_start(&__thread_wait_a);
+    while (!__kill)
+    {
+		// printf(" test ..b.. \n");
+        if(sis_thread_wait_sleep_msec(&__thread_wait_a, 300) == SIS_ETIMEDOUT)
+        {
+            // printf("timeout ..a.. %d \n",__kill);
+        } else 
+		{
+            // printf("no timeout ..a.. %d \n",__kill);
+		}
+        if (!__node_b)
+        {
+            count++;
+            __node_b = sis_share_list_first(__list);
+        }
+        else
+        {
+            s_sis_share_node *node = sis_share_list_next(__list, __node_b);
+            while (node)
+            {
+                count++;
+                // printf("get b ok! %lld  %lld -- \n", node->serial, __list->count);
+                __node_b = node;
+                node = sis_share_list_next(__list, __node_b);
+            }
+        }
+        printf("get b ok!  %d  %lld -- \n",  count, __list->count);  
+         // sis_sleep(1000);
+    }
+    if (__node_b)
+    {
+        sis_share_node_destroy(__node_b);
+    }
+    sis_thread_wait_stop(&__thread_wait_a);
+	printf("b ok . \n");
+	tb.working = false;
+    return NULL;
+}
+void exithandle(int sig)
+{
+	__kill = 1;
+    printf("sighup received kill=%d \n",__kill);
+
+	printf("kill . \n");
+    sis_thread_wait_kill(&__thread_wait_a);
+	
+	sis_thread_join(&ta);
+	printf("a ok .... \n");
+	sis_thread_join(&tb);
+	printf("b ok .... \n");
+
+	printf("free . \n");
+    sis_thread_wait_destroy(&__thread_wait_a);
+	printf("ok . \n");
+
+	__exit = 1;
+}
+
+int main()
+{
+    safe_memory_start();
+    __list = sis_share_list_create("test", 1);
+
+	sis_thread_wait_create(&__thread_wait_a);
+	sis_thread_wait_create(&__thread_wait_b);
+
+	sis_thread_create(__task_ta, NULL, &ta);
+	printf("thread a ok!\n");
+
+	// s_sis_thread_id_t tb ;
+	sis_thread_create(__task_tb, NULL, &tb);
+	printf("thread b ok!\n");
+
+	signal(SIGINT,exithandle);
+
+    int i = 0;
+    char buffer[1025];
+    size_t size =0;
+	while(!__exit)
+	{
+        i++;
+        memset(buffer, i%255, 1024);
+        sis_share_list_push(__list, "info", 4, buffer, 1024, NULL);
+        // printf("pusk ok! %lld %llu %llu - %p \n", __list->serial, __list->count,__list->size, __list->tail);
+		sis_sleep(1);
+        if (size > 1024*32)
+        {
+            sis_thread_wait_notice(&__thread_wait_a);
+            size = 0;
+        }
+	}
+	printf("end . \n");
+    sis_share_list_destroy(__list);
+    safe_memory_stop();
+	return 1;
+}
+#endif
 // #ifdef __CYGWIN__
 // #define strtold(a,b) ((long double)strtod((a),(b)))
 // #endif

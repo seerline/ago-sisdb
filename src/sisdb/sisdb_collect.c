@@ -98,8 +98,8 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 	// if (db_->special) // 专用表
 	{
 		// 返回的指针，实体存放在 sys_exchs 中，
-		unit->spec_info = sisdb_sys_create_info(db_, code);
-		unit->spec_exch = sisdb_sys_create_exch(db_, code);
+		unit->sys_info = sisdb_sys_create_info(db_, code);
+		unit->sys_exch = sisdb_sys_create_exch(db_, code);
 	}
 
 	unit->stepinfo = sisdb_stepindex_create();
@@ -171,7 +171,7 @@ s_sisdb_collect *sisdb_get_collect(s_sis_db *db_, const char *key_)
 	s_sisdb_collect *val = NULL;
 	if (db_->collects)
 	{
-		val = sis_map_buffer_get(db_->collects, key_);
+		val = sis_map_pointer_get(db_->collects, key_);
 		// s_sis_sds key = sis_sdsnew(key_);
 		// val = (s_sisdb_collect *)sis_dict_fetch_value(db_->collects, key);
 		// sis_sdsfree(key);
@@ -622,8 +622,7 @@ s_sis_json_node *_sis_struct_to_array(s_sisdb_collect *unit_, s_sis_sds val_, s_
 			sis_json_array_add_int(o, sisdb_field_get_int(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_UINT:
-		case SIS_FIELD_TYPE_VOLUME:
-		case SIS_FIELD_TYPE_AMOUNT:
+		case SIS_FIELD_TYPE_ZINT:
 		case SIS_FIELD_TYPE_MSEC:
 		case SIS_FIELD_TYPE_SECOND:
 		case SIS_FIELD_TYPE_DATE:
@@ -635,7 +634,7 @@ s_sis_json_node *_sis_struct_to_array(s_sisdb_collect *unit_, s_sis_sds val_, s_
 		case SIS_FIELD_TYPE_PRICE:
 			// 通用数据表没有该类型
 			{
-				int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+				int dot = sisdb_get_server()->sysdb ? unit_->sys_info->dot : fu->flags.dot;
 				// printf("dot: %d %d \n",unit_->db->father->special ,fu->flags.dot);
 				sis_json_array_add_double(o, sisdb_field_get_price(fu, ptr, dot), dot);
 			}
@@ -809,8 +808,7 @@ s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds v
 			sis_sprintf(val, SIS_MAXLEN_STRING, "%lld", sisdb_field_get_uint(fu, ptr));
 			break;
 		case SIS_FIELD_TYPE_UINT:
-		case SIS_FIELD_TYPE_VOLUME:
-		case SIS_FIELD_TYPE_AMOUNT:
+		case SIS_FIELD_TYPE_ZINT:
 		case SIS_FIELD_TYPE_SECOND:
 		case SIS_FIELD_TYPE_DATE:
 			sis_sprintf(val, SIS_MAXLEN_STRING, "%d", (uint32)sisdb_field_get_uint(fu, ptr));
@@ -820,7 +818,7 @@ s_sis_sds _sis_struct_to_csv(s_sis_sds str_, s_sisdb_collect *unit_, s_sis_sds v
 			break;
 		case SIS_FIELD_TYPE_PRICE:
 		{
-			int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+			int dot = sisdb_get_server()->sysdb ? unit_->sys_info->dot : fu->flags.dot;
 			sis_sprintf(val, SIS_MAXLEN_STRING, "%.*f", dot, sisdb_field_get_price(fu, ptr, dot));
 		}
 		break;
@@ -1178,7 +1176,7 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 	// 最后转数据格式
 	// 取出数据返回格式，没有就默认为二进制结构数据
 	// int iformat = SIS_DATA_TYPE_STRUCT;
-	int iformat = sis_from_node_get_format(db_, handle->node);
+	int iformat = sis_from_node_get_format(handle->node, SIS_DATA_TYPE_JSON);
 
 	// printf("iformat = %c\n", iformat);
 	// 取出字段定义，没有就默认全部字段
@@ -1282,9 +1280,9 @@ s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_)
 	return o;
 }
 
-s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const char *com_)
+s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *tbname_, const char *com_)
 {
-	s_sisdb_table *tb = sisdb_get_table(db_, dbname_);
+	s_sisdb_table *tb = sisdb_get_table(db_, tbname_);
 	if (!tb)
 	{
 		return NULL;
@@ -1313,7 +1311,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	// 	goto error;
 	// }
 
-	int iformat = sis_from_node_get_format(db_, handle->node);
+	int iformat = sis_from_node_get_format(handle->node, SIS_DATA_TYPE_JSON);
 
 	printf("iformat = %c\n", iformat);
 	// 取出字段定义，没有就默认全部字段
@@ -1345,7 +1343,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *dbname_, const 
 	while ((de = sis_dict_next(di)) != NULL)
 	{
 		s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-		if (sis_strcasecmp(collect->db->name, dbname_))
+		if (sis_strcasecmp(collect->db->name, tbname_))
 			continue;
 
 		sis_str_substr(code, SIS_MAXLEN_CODE, sis_dict_getkey(de), '.', 0);
@@ -1576,7 +1574,7 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *unit_, const char *i
 			continue;
 		}
 		// printf("key=%s i=%d offset=%d\n", key, k, fu->offset);
-		int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+		int dot = sisdb_get_server()->sysdb ? unit_->sys_info->dot : fu->flags.dot;
 		sisdb_field_json_to_struct(o, fu, (char *)key, handle->node, dot);
 	}
 
@@ -1637,7 +1635,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *unit_, const char *
 			}
 			char key[16];
 			sis_sprintf(key, 10, "%d", k);
-			int dot = unit_->db->father->special ? unit_->spec_info->dot : fu->flags.dot;
+			int dot = sisdb_get_server()->sysdb ? unit_->sys_info->dot : fu->flags.dot;
 			sisdb_field_json_to_struct(o + index * unit_->value->len, fu, key, jval, dot);
 		}
 		index++;
@@ -2348,19 +2346,19 @@ uint64 _sisdb_fields_trans_time(uint64 in_, s_sisdb_collect *inunit_, s_sisdb_co
 	case SIS_TIME_SCALE_SECOND:
 		return o;
 	case SIS_TIME_SCALE_INCR:
-		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->sys_exch);
 		break;
 	case SIS_TIME_SCALE_MIN1:
-		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
-		o = sisdb_trade_index_to_ttime(date, o, outunit_->spec_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->sys_exch);
+		o = sisdb_trade_index_to_ttime(date, o, outunit_->sys_exch);
 		break;
 	case SIS_TIME_SCALE_MIN5:
-		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
-		o = sisdb_trade_index_to_ttime(date, ((int)(o / 5) + 1) * 5 - 1, outunit_->spec_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->sys_exch);
+		o = sisdb_trade_index_to_ttime(date, ((int)(o / 5) + 1) * 5 - 1, outunit_->sys_exch);
 		break;
 	case SIS_TIME_SCALE_HOUR:
-		o = sisdb_ttime_to_trade_index(o, outunit_->spec_exch);
-		o = sisdb_trade_index_to_ttime(date, ((int)(o / 60) + 1) * 60 - 1, outunit_->spec_exch);
+		o = sisdb_ttime_to_trade_index(o, outunit_->sys_exch);
+		o = sisdb_trade_index_to_ttime(date, ((int)(o / 60) + 1) * 60 - 1, outunit_->sys_exch);
 		break;
 	case SIS_TIME_SCALE_DATE:
 	case SIS_TIME_SCALE_WEEK:
@@ -2388,8 +2386,7 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 		memmove(outs_ + outfu_->offset, ins_ + infu_->offset, outfu_->flags.len);
 		break;
 	case SIS_FIELD_TYPE_UINT:
-	case SIS_FIELD_TYPE_VOLUME:
-	case SIS_FIELD_TYPE_AMOUNT:
+	case SIS_FIELD_TYPE_ZINT:
 		i64 = sisdb_field_get_int(infu_, ins_);
 		sisdb_field_set_uint(outfu_, outs_, (uint64)i64);
 		break;
@@ -2410,8 +2407,8 @@ void _sisdb_collect_struct_trans_alone(s_sis_sds ins_, s_sisdb_field *infu_, s_s
 		break;
 	case SIS_FIELD_TYPE_PRICE:
 	{
-		int indot = inunit_->db->father->special ? inunit_->spec_info->dot : infu_->flags.dot;
-		int outdot = outunit_->db->father->special ? outunit_->spec_info->dot : outfu_->flags.dot;
+		int indot = sisdb_get_server()->sysdb ? inunit_->sys_info->dot : infu_->flags.dot;
+		int outdot = sisdb_get_server()->sysdb ? outunit_->sys_info->dot : outfu_->flags.dot;
 
 		f64 = sisdb_field_get_price(infu_, ins_, indot);
 		sisdb_field_set_price(outfu_, outs_, f64, outdot);

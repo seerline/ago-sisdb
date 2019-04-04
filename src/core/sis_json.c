@@ -1307,7 +1307,7 @@ int main()
 	const char *command = "{ \
 	\"source\":	\"qEmbXnkAtObvLdeoiqfK\", \
 	\"command\":	\"sisdb.get\", \
-	\"key\":	\"sh600600._info\", \
+	\"key\":	\"sh600600.info\", \
 	\"argv\":	{} \
 	}"; \
 	// s_sis_json_handle *handel = sis_json_load(command, 64);

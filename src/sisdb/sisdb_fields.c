@@ -70,8 +70,7 @@ bool sisdb_field_is_price(s_sisdb_field *unit_)
 }
 bool sisdb_field_is_volume(s_sisdb_field *unit_)
 {
-	return  unit_->flags.type == SIS_FIELD_TYPE_VOLUME||
-			unit_->flags.type == SIS_FIELD_TYPE_AMOUNT;
+	return  unit_->flags.type == SIS_FIELD_TYPE_ZINT;
 }
 bool sisdb_field_is_float(s_sisdb_field *unit_)
 {
@@ -81,8 +80,7 @@ bool sisdb_field_is_integer(s_sisdb_field *unit_)
 {
 	return  unit_->flags.type == SIS_FIELD_TYPE_INT||
 			unit_->flags.type == SIS_FIELD_TYPE_UINT||
-			unit_->flags.type == SIS_FIELD_TYPE_VOLUME||
-			unit_->flags.type == SIS_FIELD_TYPE_AMOUNT||
+			unit_->flags.type == SIS_FIELD_TYPE_ZINT||
 			unit_->flags.type == SIS_FIELD_TYPE_PRICE||
 			unit_->flags.type == SIS_FIELD_TYPE_MSEC||
 			unit_->flags.type == SIS_FIELD_TYPE_SECOND||
@@ -430,8 +428,7 @@ void sisdb_field_json_to_struct(s_sis_sds in_, s_sisdb_field *fu_,
 		// sis_out_binary("update 0 ", in_, 60);
 		break;
 	case SIS_FIELD_TYPE_UINT:
-	case SIS_FIELD_TYPE_VOLUME:
-	case SIS_FIELD_TYPE_AMOUNT:
+	case SIS_FIELD_TYPE_ZINT:
 	case SIS_FIELD_TYPE_MSEC:
 	case SIS_FIELD_TYPE_SECOND:
 	case SIS_FIELD_TYPE_DATE:

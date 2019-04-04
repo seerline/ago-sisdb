@@ -262,6 +262,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen)
     }
 
     hdrlen = sdsHdrSize(type);
+#ifndef WARN_NOUSE_REALLOC
     if (oldtype == type)
     {
         newsh = sis_realloc(sh, hdrlen + newlen + 1);
@@ -272,6 +273,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen)
         s = (char *)newsh + hdrlen;
     }
     else
+#endif
     {
         /* Since the header size changes, need to move the string forward,
          * and can't use realloc */
@@ -313,6 +315,7 @@ sds sdsRemoveFreeSpace(sds s)
      * required, we just realloc(), letting the allocator to do the copy
      * only if really needed. Otherwise if the change is huge, we manually
      * reallocate the string to use the different header type. */
+#ifndef WARN_NOUSE_REALLOC
     if (oldtype == type || type > SDS_TYPE_8)
     {
         newsh = sis_realloc(sh, oldhdrlen + len + 1);
@@ -323,6 +326,7 @@ sds sdsRemoveFreeSpace(sds s)
         s = (char *)newsh + oldhdrlen;
     }
     else
+#endif
     {
         newsh = sis_malloc(hdrlen + len + 1);
         if (newsh == NULL)
@@ -946,6 +950,7 @@ int sdscmp(const sds s1, const sds s2)
  * requires length arguments. sdssplit() is just the
  * same function but for zero-terminated strings.
  */
+#ifndef WARN_NOUSE_REALLOC
 sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count)
 {
     int elements = 0, slots = 5;
@@ -1016,7 +1021,7 @@ void sdsfreesplitres(sds *tokens, int count)
     {    sdsfree(tokens[count]);}
     sis_free(tokens);
 }
-
+#endif
 /* Append to the sds string "s" an escaped string representation where
  * all the non-printable characters (tested with isprint()) are turned into
  * escapes in the form "\n\r\a...." or "\x<hex-number>".
@@ -1137,6 +1142,7 @@ int hex_digit_to_int(char c)
  * quotes or closed quotes followed by non space characters
  * as in: "foo"bar or "foo'
  */
+#ifndef WARN_NOUSE_REALLOC
 sds *sdssplitargs(const char *line, int *argc)
 {
     const char *p = line;
@@ -1293,7 +1299,7 @@ err:
     *argc = 0;
     return NULL;
 }
-
+#endif
 /* Modify the string substituting all the occurrences of the set of
  * characters specified in the 'from' string to the corresponding character
  * in the 'to' array.
@@ -1357,9 +1363,11 @@ sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen)
  * the overhead of function calls. Here we define these wrappers only for
  * the programs SDS is linked to, if they want to touch the SDS internals
  * even if they use a different allocator. */
-void *sdsis_malloc(size_t size) { return sis_malloc(size); }
-void *sdsis_realloc(void *ptr, size_t size) { return sis_realloc(ptr, size); }
-void sdsis_free(void *ptr) { sis_free(ptr); }
+#ifndef WARN_NOUSE_REALLOC
+void *sds_malloc(size_t size) { return sis_malloc(size); }
+void *sds_realloc(void *ptr, size_t size) { return sis_realloc(ptr, size); }
+void sds_free(void *ptr) { sis_free(ptr); }
+#endif
 
 #ifdef SDS_TEST_MAIN
 #include <stdio.h>

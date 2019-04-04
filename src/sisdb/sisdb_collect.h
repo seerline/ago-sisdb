@@ -67,8 +67,8 @@ typedef struct s_sisdb_collect
 
 	////////////////////////////////////////////////////////////
 	//   以下两个结构仅仅在专用数据库时使用
-	s_sisdb_sys_exch  *spec_exch; // 市场的信息 指针，不用释放
-	s_sisdb_sys_info  *spec_info; // 股票的信息 指针，不用释放
+	s_sisdb_sys_exch  *sys_exch; // 市场的信息 指针，不用释放
+	s_sisdb_sys_info  *sys_info; // 股票的信息 指针，不用释放
 	////////////////////////////////////////////////////////////
 	s_sis_step_index  *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 	s_sis_struct_list *value;    // 结构化数据
@@ -171,7 +171,7 @@ void sisdb_collect_groups_json_push(s_sis_json_node *node_, char *code, s_sisdb_
 s_sis_sds sisdb_collect_groups_json_sds(s_sis_json_node *node_);
 //////////////////////
 // 得到多个股票的最后一条数据集合
-s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *, const char *com_);
+s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_,const char *tbname, const char *com_);
 
 ///////////////////////////
 //			delete     ////
