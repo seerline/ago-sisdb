@@ -188,7 +188,7 @@ void _sis_share_list_limit(s_sis_share_list *obj_)
             break;
         }
     }
-    printf(" --> %lld\n", (int)obj_->size);
+    printf(" --> %d\n", (int)obj_->size);
     // size_t count = obj_->count * 0.618;
     // // 如果临界点 serial 一样，就删到下一个为止
     // s_sis_share_node *node = NULL;
