@@ -2,6 +2,40 @@
 sidebar: auto
 ---
 
+一个新安装的linux系统如何安装sisdb
+
+以centos为例:
+
+1、若已经安装了网络和其他基础组件可以直接跳转第二步：
+   一般在安装时可以选择安装配置网络，那么1.1就不需要操作了.
+   ***虚拟机的Network配置要选择 Bridged Adapter.
+
+   1.1 安装网络 
+   ```shell
+   vi /etc/sysconfig/network-scripts/ifcfg-enoxxxx
+      把ONBOOT=no修改为
+      ONBOOT=yes
+      按esc : wq 回车
+   service network restart
+   yum -y install net-tools
+   ifconfig 
+   ```
+   1.2 下载程序和安装环境
+   此时可以利用其他终端远程过来
+
+   ```shell
+   ssh 192.168.1.xxx
+   yum install -y git cmake gcc gdb 
+   gcc-g++ jemalloc
+   cd /home
+   git clone  https://github.com/seerline/sisdb.git
+    cd sisdb
+    make
+   ```
+
+   可能需要的库 gcc jemalloc iconv 
+
+
 ## 什么是 sisdb ?
 
 sisdb是一个开源的使用ANSI C语言编写、支持网络、基于内存并可数据持久化，专业用于有价证券行情信息的时序数据库；
@@ -94,6 +128,8 @@ sisdb是一个开源的使用ANSI C语言编写、支持网络、基于内存并
     cd sisdb
     make
    ```
+
+   可能需要的库 gcc jemalloc iconv 
 
    程序安装完成；
 

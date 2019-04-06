@@ -16,7 +16,7 @@
 #define SIS_TABLE_USER   "user"   // 默认的用户数据表名称
 
 // 以上两个表为必要表，如果不存在就报错
-#define SIS_TRADETIME_MAX_NUM  4   //
+#define SIS_TRADETIME_MAX_NUM  5   //
 
 // 以代码为基本索引，每个代码最基础的信息必须包括
 // 价格小数点 默认为 2  统一从info表中dot获取

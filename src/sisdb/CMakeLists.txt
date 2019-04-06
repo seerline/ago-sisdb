@@ -40,7 +40,7 @@ INCLUDE_DIRECTORIES(
     .
     ${SISDB_PATH}core    
     ${SISDB_PATH}os/linux
-    ${SISDB_PATH}relying/libuv/include
+    ${SISDB_PATH}../deps/libuv/include
 	${SISDB_PATH}relying/client)
 
 #设置源文件目录
@@ -95,7 +95,7 @@ SET(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} ${SHOBJ_CFLAGS}")
 SET(LIBRARY_OUTPUT_PATH ../../../bin/)  
 
 #设置需要链接的库目录
-LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../relying/libuv)
+LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../deps/libuv)
 MESSAGE(STATUS "LIB: ${CMAKE_SOURCE_DIR}")
 
 #生成动态库目标
@@ -107,7 +107,7 @@ ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})
 
 #设置链接库的环境变量
 #SET(LIBRARIES pthread c m iconv charset)
-SET(LIBRARIES libuv_a.a pthread c m)
+SET(LIBRARIES libuv.a pthread c m)
 # 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
 
