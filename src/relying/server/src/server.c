@@ -3896,13 +3896,6 @@ int main(int argc, char **argv) {
             server.exec_argv[j] = zstrdup(server.configfile);
             j++;
         }
-        else
-        {
-            server.configfile = CONFIG_FILENAME;
-            server.exec_argv[j] = zstrdup(server.configfile);
-            j++;            
-        }
-
         /* All the other options are parsed and conceptually appended to the
          * configuration file. For instance --port 6380 will generate the
          * string "port 6380\n" to be parsed after the actual file name
@@ -3936,6 +3929,12 @@ int main(int argc, char **argv) {
         loadServerConfig(configfile,options);
         sdsfree(options);
     }
+    else
+    {
+        serverLog(LL_WARNING, "Configuration loaded, %s\n", CONFIG_FILENAME);
+        loadServerConfig(CONFIG_FILENAME, NULL);        
+    }
+    
 
     serverLog(LL_WARNING, "oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo");
     serverLog(LL_WARNING,
@@ -3946,11 +3945,11 @@ int main(int argc, char **argv) {
             strtol(redisGitDirty(),NULL,10) > 0,
             (int)getpid());
 
-    if (argc == 1) {
-        serverLog(LL_WARNING, "Warning: no config file specified, using the default config. In order to specify a config file use %s /path/to/%s.conf", argv[0], server.sentinel_mode ? "sentinel" : "redis");
-    } else {
-        serverLog(LL_WARNING, "Configuration loaded");
-    }
+    // if (argc == 1) {
+    //     serverLog(LL_WARNING, "Warning: no config file specified, using the default config. In order to specify a config file use %s /path/to/%s.conf", argv[0], server.sentinel_mode ? "sentinel" : "redis");
+    // } else {
+        // serverLog(LL_WARNING, "Configuration loaded");
+    // }
 
     server.supervised = redisIsSupervised(server.supervised_mode);
     int background = server.daemonize && !server.supervised;
