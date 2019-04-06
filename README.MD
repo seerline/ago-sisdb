@@ -42,7 +42,7 @@ sidebar: auto
    firewall-cmd --permanent --add-port=7328-7329/tcp
    firewall-cmd --reload
    cd bin
-   ./sisdb-server siserver.conf
+   ./sisdb-server
       *** 开启本机或其他的终端
    ./sisdb-cli -a clxx1110
    ./sisdb-cli -a clxx1110 -h 192.168.xxx.xxx
