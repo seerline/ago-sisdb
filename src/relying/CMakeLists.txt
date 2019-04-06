@@ -163,9 +163,9 @@ SET(SRC_BENCHMARK
             ./server/src/redis-benchmark.c
         )
 #设置所有需要链接的库名到 LIBRARIES 环境变量
-SET(LIBRARIESCLIENT pthread dl rt z m libjemalloc.a libhiredis.a)
+SET(LIBRARIESCLIENT pthread dl rt m libjemalloc.a libhiredis.a)
 
-SET(LIBRARIESSERVER pthread dl rt z m libjemalloc.a libhiredis.a liblua.a)
+SET(LIBRARIESSERVER pthread dl rt m libjemalloc.a libhiredis.a liblua.a)
 
 #生成可执行文件
 ADD_EXECUTABLE(${PROJECT_NAME}-cli ${SRC_CLIENT})
