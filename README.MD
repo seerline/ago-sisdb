@@ -10,16 +10,18 @@ sidebar: auto
    一般在安装时可以选择安装配置网络，那么1.1就不需要操作了.
    ***虚拟机的Network配置要选择 Bridged Adapter.
 
-   1.安装网络 
+   1.安装网络
+
    ```shell
    vi /etc/sysconfig/network-scripts/ifcfg-enoxxxx
-      把ONBOOT=no修改为
-      ONBOOT=yes
-      按esc : wq 回车
+      *** 把ONBOOT=no修改为
+      *** ONBOOT=yes
+      *** 按esc : wq 回车
    service network restart
    yum -y install net-tools
    ifconfig 
    ```
+
    2.下载程序和安装环境
    此时可以利用其他终端远程过来
 
@@ -35,6 +37,7 @@ sidebar: auto
    cd sisdb
    make all
    ```
+
    3.测试运行
    
    ```shell
@@ -46,7 +49,6 @@ sidebar: auto
       *** 开启本机或其他的终端
    ./sisdb-cli -a clxx1110
    ./sisdb-cli -a clxx1110 -h 192.168.xxx.xxx
-
    ```
 
 
