@@ -25,12 +25,15 @@ sidebar: auto
 
    ```shell
    ssh 192.168.1.xxx
-   yum install -y git cmake gcc gdb 
-   gcc-g++ jemalloc
+   yum install -y git cmake gcc gcc-c++ gdb
+   yum install -y nss curl libcurl
    cd /home
    git clone  https://github.com/seerline/sisdb.git
-    cd sisdb
-    make
+      *** 如果下载慢请修改 /etc/hosts 文件 增加两行
+      ***   192.30.253.113 github.com
+      ***   151.101.185.194 github.global.ssl.fastly.net
+   cd sisdb
+   make all
    ```
 
    可能需要的库 gcc jemalloc iconv 

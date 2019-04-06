@@ -24,14 +24,14 @@ else
 	cd ./src/sisdb/ && mkdir out && cd out && cmake ../ && $(MAKE)
 endif
 
-redis:
+server:
 
 ifeq (./src/relying/out, $(wildcard ./src/relying/out))
 	cd ./src/relying/out && cmake ../ && $(MAKE)
 else
 	cd ./src/relying/ && mkdir out && cd out && cmake ../ && $(MAKE)
 endif
-	cp ./src/relying/server/redis.conf ./bin
+	cp ./src/relying/server/siserver.conf ./bin
 
 test:
 

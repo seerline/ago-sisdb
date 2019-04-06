@@ -25,7 +25,7 @@ void worker_ws_working(s_sisdb_worker *worker_)
   s_sisdb_ws_config *self = (s_sisdb_ws_config *)worker_->other;
   if (sis_ws_server_start(self->port)) 
   {
-    LOG(1)("ws service no start.[%d]",self->port);
+    LOG(1)("ws service no start.[%d]\n",self->port);
   }
 }
 

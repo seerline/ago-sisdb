@@ -6603,7 +6603,7 @@ int main(int argc, char **argv) {
     int firstarg;
 
     config.hostip = sdsnew("127.0.0.1");
-    config.hostport = 6379;
+    config.hostport = 7328;
     config.hostsocket = NULL;
     config.repeat = 1;
     config.interval = 0;

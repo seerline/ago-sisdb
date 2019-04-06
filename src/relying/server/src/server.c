@@ -3896,6 +3896,12 @@ int main(int argc, char **argv) {
             server.exec_argv[j] = zstrdup(server.configfile);
             j++;
         }
+        else
+        {
+            server.configfile = CONFIG_FILENAME;
+            server.exec_argv[j] = zstrdup(server.configfile);
+            j++;            
+        }
 
         /* All the other options are parsed and conceptually appended to the
          * configuration file. For instance --port 6380 will generate the

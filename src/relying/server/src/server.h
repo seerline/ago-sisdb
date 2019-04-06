@@ -601,6 +601,7 @@ typedef struct redisObject {
     void *ptr;
 } robj;
 
+#define CONFIG_FILENAME "siserver.conf"
 /* Macro used to initialize a Redis object allocated on the stack.
  * Note that this macro is taken near the structure definition to make sure
  * we'll update it when the structure is changed, to avoid bugs like
