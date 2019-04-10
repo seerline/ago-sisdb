@@ -454,14 +454,14 @@ static void cb_read_after(uv_stream_t* handle,
                        ssize_t nread,
                        const uv_buf_t* buf)
 {
-  printf("----------%d----------%p\n", (int)nread, handle);
+  // printf("----------%d----------%p -- %p\n", (int)nread, handle, buf);
 
   uv_shutdown_t* sreq;
   if (nread < 0)
   {
     ASSERT(nread == UV_EOF);
-    free(buf->base);
-    sreq = sis_malloc(sizeof(* sreq));
+    sis_free(buf->base);
+    sreq = sis_malloc(sizeof(uv_shutdown_t));
     ASSERT(0 == uv_shutdown(sreq, handle, after_shutdown));
     return;
   }
@@ -476,7 +476,7 @@ static void cb_read_after(uv_stream_t* handle,
   {
     size_t bytes = sis_http_parser_execute(client->parser, &__http_settings, buf->base, nread);
     
-    sis_out_binary("hand", buf->base, nread);
+    // sis_out_binary("hand", buf->base, nread);
 
     sis_free(buf->base);
     if (bytes != nread)
@@ -489,15 +489,15 @@ static void cb_read_after(uv_stream_t* handle,
   else
   {
 
-    sis_out_binary("source: ", buf->base, nread);
+    // sis_out_binary("source: ", buf->base, nread);
 
     sis_ws_messages_input(client->messages, handle, buf->base, nread);
 
     for (int i = 0; i < client->messages->lists->count;)
     {
       s_sis_ws_mess *message = (s_sis_ws_mess *)sis_pointer_list_get(client->messages->lists, i);
-      printf("client->messages: count = %d: %d %s\n", client->messages->lists->count, i,
-             message->in->source);
+      // printf("client->messages: count = %d: %d %s\n", client->messages->lists->count, i,
+      //        message->in->source);
       sis_ws_mess_send(message);
       if (message->reply)
       {
@@ -506,7 +506,7 @@ static void cb_read_after(uv_stream_t* handle,
         message->write_buffer = uv_buf_init(reply, sis_sdslen(reply));
         uv_write_t *write = sis_malloc(sizeof(uv_write_t));
         write->data = message;
-        printf("write ..... %p \n", write->data);
+        // printf("write ..... %p \n", write->data);
         if (uv_write(write, message->source, &message->write_buffer, 1, cb_write_after_body))
         {
           exit(1);
