@@ -58,10 +58,12 @@ const char *sis_str_split(const char *s, size_t *len_, char c);
 int sis_str_pos(const char *in_, size_t ilen_, char c);
 int sis_str_substr_nums(const char *s, char c);
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);
+// 下面的函数，在比较时，如果s串前导字符和sub匹配就会返回真
 int sis_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
-int sis_str_subcmp_head(const char *sub, const char *s, char c);  //-1没有匹配的,比较头部几个字符是否相同
+// 严格匹配
+int sis_str_subcmp_strict(const char *sub, const char *s, char c);  
 
-int sis_str_subcmp_match(const char *sub, const char *s, char c);  //-1没有匹配的,比较头部几个字符是否相同
+int sis_str_subcmp_match(const char *sub, const char *s, char c);  
 
 const char *sis_str_replace(const char *in, char ic_,char oc_); // 把in中的ic替换为oc
 void sis_str_to_lower(char *in_);

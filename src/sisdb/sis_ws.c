@@ -229,9 +229,9 @@ int sis_ws_messages_input(s_sis_ws_messages *ws_, void *source_, const char *in_
     sis_pointer_list_push(ws_->lists, mess);
 
     offset = sis_memory_get_address(ws_->buffer);
-    // printf("==2==  %d - %d -- stream : %d\n", offset, sis_memory_get_size(ws_->buffer),
-    //         sis_bitstream_getbytelen(stream));
-    // sis_out_binary("--2--", sis_memory(ws_->buffer), sis_memory_get_size(ws_->buffer));
+    printf("==2==  %d - %d -- stream : %d\n", offset, sis_memory_get_size(ws_->buffer),
+            sis_bitstream_getbytelen(stream));
+    sis_out_binary("--2--", sis_memory(ws_->buffer), sis_memory_get_size(ws_->buffer));
     if (sis_memory_get_size(ws_->buffer) < 1)
     {
       isbreak = false;
@@ -262,7 +262,19 @@ s_sis_sds sis_json_node_get_sds(s_sis_sds s_, s_sis_json_node *node_, const char
   {
     s_ = sis_sdscpy(s_, n->value);
   }
-  else if (n->type == SIS_JSON_ARRAY || n->type == SIS_JSON_OBJECT)
+  else if (n->type == SIS_JSON_ARRAY)
+  {
+    // 暂时只取第一个参数，其余以后在说
+    s_sis_json_node *node = sis_json_cmp_child_node(n, "0");
+    if(node)
+    {
+      size_t len = 0;
+      char *str = sis_json_output_zip(node, &len);
+      s_ = sis_sdscpy(s_, str);
+      sis_free(str);
+    }
+  } else
+  // else if( n->type == SIS_JSON_OBJECT)
   {
     size_t len = 0;
     char *str = sis_json_output_zip(n, &len);
@@ -313,7 +325,7 @@ s_sis_ws_mess *sis_ws_mess_create(const char *in_, size_t ilen_)
   // printf("|%s|\n",str);
   // sis_free(str);
 
-  mess->in->command = sis_json_node_get_sds(mess->in->command, handle->node, "com");
+  mess->in->command = sis_json_node_get_sds(mess->in->command, handle->node, "cmd");
   mess->in->key = sis_json_node_get_sds(mess->in->key, handle->node, "key");
   mess->in->argv = sis_json_node_get_sds(mess->in->argv, handle->node, "argv");
 
@@ -496,17 +508,17 @@ static void cb_read_after(uv_stream_t* handle,
     for (int i = 0; i < client->messages->lists->count;)
     {
       s_sis_ws_mess *message = (s_sis_ws_mess *)sis_pointer_list_get(client->messages->lists, i);
-      // printf("client->messages: count = %d: %d %s\n", client->messages->lists->count, i,
-      //        message->in->source);
+      printf("client->messages: count = %d: %d %s\n", client->messages->lists->count, i,
+             message->in->source);
       sis_ws_mess_send(message);
       if (message->reply)
       {
         s_sis_sds reply = sis_ws_mess_serialize_sds(message);
-        // sis_out_binary("reply: ", reply, sis_sdslen(reply));
+        sis_out_binary("reply: ", reply, sis_sdslen(reply));
         message->write_buffer = uv_buf_init(reply, sis_sdslen(reply));
         uv_write_t *write = sis_malloc(sizeof(uv_write_t));
         write->data = message;
-        // printf("write ..... %p \n", write->data);
+        printf("write ..... %p \n", write->data);
         if (uv_write(write, message->source, &message->write_buffer, 1, cb_write_after_body))
         {
           exit(1);

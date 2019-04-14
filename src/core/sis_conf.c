@@ -149,7 +149,7 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 		{
 			if (value_ && *value_ == '\n')
 			{
-				sis_sprintf(handle_->err_msg, 255, "value is empty.\n");
+				sis_sprintf(handle_->err_msg, 255, "array value is empty.\n");
 				handle_->err_lines--;
 			}
 			else
@@ -205,7 +205,7 @@ static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node
 		{
 			if (value_ && *value_ == '\n')
 			{
-				sis_sprintf(handle_->err_msg, 255, "value is empty.\n");
+				sis_sprintf(handle_->err_msg, 255, "object value is empty.\n");
 				handle_->err_lines--;
 			}
 			else
@@ -363,7 +363,7 @@ static const char *_sis_parse_key(s_sis_conf_handle *handle_, s_sis_json_node *n
 	{
 		if (*ptr == '\n')
 		{
-			sis_sprintf(handle_->err_msg, 255, "value is empty.\n");
+			sis_strcpy(handle_->err_msg, 255, "value is empty.\n");
 			handle_->err_lines--;
 		}
 		else

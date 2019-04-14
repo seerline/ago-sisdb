@@ -352,10 +352,52 @@ int sis_time_get_itime_from_str(char *time) //"12:30:38" => 123038
 	return out;
 }
 
-int sis_time_get_idate_from_str(const char *time) //"20150212" = > 20150212
+//"xxx-20150212.xxx" => 20150212
+int sis_time_get_idate_from_str(const char *in_, char bc_)
 {
-	int o = atoi(time);
-	return o;
+	int len = strlen(in_);
+
+	int start = 0;
+	
+	while(bc_ && start < len && in_[start] != bc_)
+	{
+		start++;
+	}
+	if(start + 8 > len)
+	{
+		return 0;
+	}
+
+	for (int i = start; i < 8; i++)
+	{
+		if (!isdigit(in_[i]))
+		{
+			return 0;
+		}
+	}
+
+	int year, mon, mday; 
+
+	int i = start;
+
+	year = in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+
+	mon = in_[i++] - '0';
+	mon = 10 * mon + in_[i++] - '0';
+	if (mon < 1 || 12 < mon)
+	{
+		return 0;
+	}
+	mday = in_[i++] - '0';
+	mday = 10 * mday + in_[i++] - '0';
+	if (mday < 1 || 31 < mday)
+	{
+		return 0;
+	}
+	return year * 10000 + mon * 100 + mday;
 }
 int sis_time_get_idate_from_shstr(const char *in_) //"2015-10-20" => 20151020
 {

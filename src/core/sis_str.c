@@ -267,20 +267,21 @@ int sis_str_subcmp(const char *sub, const char *s, char c) //-1没有匹配的
 	}
 	return -1;
 }
-int sis_str_subcmp_head(const char *sub, const char *s, char c) //-1没有匹配的
+int sis_str_subcmp_strict(const char *sub, const char *s, char c) 
 {
 	if (!sub || !s)
 	{
 		return -1;
 	}
 	int i, pos, len, count;
+	int sublen = (int)strlen(sub);
 	len = (int)strlen(s);
 	pos = 0;
 	for (i = 0, count = 0; i < len; i++)
 	{
 		if (s[i] == c)
 		{
-			if (!sis_strncasecmp(sub, &s[pos], i - pos))
+			if (!sis_strncasecmp(sub, &s[pos], i - pos)&&sublen==i - pos)
 			{
 				return count;
 			}
@@ -290,7 +291,7 @@ int sis_str_subcmp_head(const char *sub, const char *s, char c) //-1没有匹配
 	}
 	if (i > pos)
 	{ //strncmp
-		if (!sis_strncasecmp(sub, &s[pos], i - pos))
+		if (!sis_strncasecmp(sub, &s[pos], i - pos)&&sublen==i - pos)
 		{
 			return count;
 		}

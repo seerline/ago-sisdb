@@ -113,6 +113,8 @@ typedef struct s_sis_dynamic_db {
     void(*method)(void *, void *, size_t, void *,size_t); 
     int(*compress)(void *, void *, size_t, void *); 
     int(*uncompress)(void *, size_t, void *);  // 没有info信息
+    int(*refer_compress)(void *, void *,void *, size_t, void *); 
+    int(*refer_uncompress)(void *,void *, size_t, void *);  // 没有info信息
 } s_sis_dynamic_db;
 
 typedef struct s_sis_dynamic_class {
