@@ -99,6 +99,7 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 	{
 		// 返回的指针，实体存放在 sys_exchs 中，
 		unit->sys_info = sisdb_sys_create_info(db_, code);
+		// printf("sys_info:%d %d\n", unit->sys_info->pzoom, unit->sys_info->dot);
 		unit->sys_exch = sisdb_sys_create_exch(db_, code);
 	}
 
@@ -162,7 +163,7 @@ void sisdb_collect_clear(s_sisdb_collect *unit_)
 	sisdb_collect_clear_subs(unit_);
 	if (unit_->db->control.iszip)
 	{
-		memset(unit_->lasted, 0, sis_sdslen(unit_->lasted));
+		// memset(unit_->lasted, 0, sis_sdslen(unit_->lasted));
 	}
 }
 //获取股票的数据集合，
@@ -561,6 +562,10 @@ s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *unit_, int start_, int
 }
 s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *unit_)
 {
+	if (!unit_->value||unit_->value->count < 1)
+	{
+		return NULL;
+	}
 	return sis_sdsnewlen(sis_struct_list_get(unit_->value, unit_->value->count - 1), unit_->value->len);
 }
 
@@ -1856,6 +1861,7 @@ int _sisdb_collect_check_lasttime(s_sisdb_collect *unit_, uint64 finder_)
 		return SIS_CHECK_LASTTIME_OLD;
 	}
 }
+
 void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 {
 	s_sisdb_table *tb = unit_->db;
@@ -1868,7 +1874,8 @@ void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 	uint64 last_time = sisdb_field_get_uint(field, last); // 得到时间序列值
 
 	if (field->flags.type == SIS_FIELD_TYPE_SECOND &&
-		sis_time_get_idate(finder_) != sis_time_get_idate(last_time))
+		(sis_time_get_idate(finder_) != sis_time_get_idate(last_time)||
+		finder_ < last_time))
 	{
 		if (tb->control.isinit)
 		{
@@ -1877,6 +1884,21 @@ void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 		else if (tb->control.ispubs)
 		{
 			sisdb_collect_clear_subs(unit_);
+			// 还应该删除一些记录
+			int mode;
+			int start = sisdb_collect_search_right(unit_, finder_, &mode);
+			time_t stoptime = sis_time_make_time(sis_time_get_idate(finder_), 235959);
+			int stop = sisdb_collect_search_left(unit_, stoptime, &mode);
+			// printf("start=%d, stop=%d count = %d\n", start, stop, unit_->value->count);
+			if (start >=0 && stop >=0)
+			{
+				// 这里应该判断只删除一天的数据
+				sisdb_collect_delete_of_range(unit_, start, stop);
+			}
+			else
+			{
+				sisdb_collect_clear(unit_);
+			}
 		}
 		// printf(">>> %s : [%d] %d %d %d %d\n", tb->name, unit_->value->count,
 		// field->flags.type, tb->control.isinit, sis_time_get_idate(finder_),
@@ -1893,6 +1915,7 @@ void _sisdb_collect_check_lastdate(s_sisdb_collect *unit_, const char *in_)
 		{
 			sisdb_collect_clear_subs(unit_);
 		}
+
 		// printf(">>>>> %s : [%d] %d %d %d %d\n", tb->name, unit_->value->count,
 		// field->flags.type, tb->control.isinit, finder_, last_time);
 	}

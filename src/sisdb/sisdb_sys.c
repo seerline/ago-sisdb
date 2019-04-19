@@ -59,7 +59,8 @@ bool _sisdb_collect_load_exch(s_sisdb_collect *collect_, s_sisdb_sys_exch *exch_
 
 bool _sisdb_collect_load_info(s_sisdb_collect *collect_, s_sisdb_sys_info *info_)
 {
-	s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, 0, sisdb_collect_recs(collect_));
+	// s_sis_sds buffer = sisdb_collect_get_of_count_sds(collect_, 0, sisdb_collect_recs(collect_));
+	s_sis_sds buffer = sisdb_collect_get_last_sds(collect_);
 	if (!buffer)
 	{
 		return false;
@@ -68,6 +69,9 @@ bool _sisdb_collect_load_info(s_sisdb_collect *collect_, s_sisdb_sys_info *info_
 	info_->vunit = sisdb_field_get_uint_from_key(collect_->db, "vunit", buffer);
 	info_->pzoom = sisdb_field_get_uint_from_key(collect_->db, "pzoom", buffer);
 	sis_sdsfree(buffer);
+	// sis_out_binary("buffer:", buffer, sis_sdslen(buffer));
+	// printf(">pzoom= %d\n", info_->pzoom);
+
 	return true;
 }
 
@@ -113,6 +117,7 @@ s_sisdb_sys_info *sisdb_sys_create_info(s_sis_db *db_, const char *code_)
 	memset(info, 0, sizeof(s_sisdb_sys_info));
 
 	// 取出默认值，当系统最初加载的时候就已经生成最少一条默认的值了
+	// printf("server->sys_infos= %d\n", server->sys_infos->count);
 	s_sisdb_sys_info *first = sis_pointer_list_first(server->sys_infos);
 	if (first)
 	{
@@ -126,18 +131,24 @@ s_sisdb_sys_info *sisdb_sys_create_info(s_sis_db *db_, const char *code_)
 	if (collect)
 	{
 		_sisdb_collect_load_info(collect, info);
+		
 	}
+	// printf(" %s ->pzoom= %d\n", key, info->pzoom);
+
 	// 第一条为默认配置,在列表中寻找有没有一样的，有就直接添加索引，没有需要在列表中增加一条
 	// 最后再把信息注册到db中，方便后续查询
 	for (int i = 1; i < server->sys_infos->count; i++)
 	{
 		s_sisdb_sys_info *val = sis_pointer_list_get(server->sys_infos, i);
+		// printf(" ------ ->pzoom= %d -- %d\n", i, val->pzoom);
+
 		if (!memcmp(val, info, sizeof(s_sisdb_sys_info)))
 		{
 			sis_free(info);
 			return val;
 		}
 	}
+	// printf(" 2 ->pzoom= %d\n", info->pzoom);
 	sis_pointer_list_push(server->sys_infos, info);
 	return info;
 }
@@ -165,8 +176,14 @@ void sisdb_sys_flush_work_time(void *collect)
 	{
 		return;
 	}
-	exch->init_time = sisdb_field_get_uint_from_key(collect_->db, "time", buffer);
-	// printf("work [%s]-- %d\n", exch->market, (int)exch->init_time);
+	time_t new_time = sisdb_field_get_uint_from_key(collect_->db, "time", buffer);
+	// if (new_time < exch->init_time)
+	// {
+	// 	sisdb_call_market_init(sisdb_get_server()->sysdb, (void *)exch->market);
+	// } 	
+	printf("work [%s]-- %d %d\n", exch->market, (int)new_time, (int)exch->init_time);
+	exch->init_time = new_time;
+
 	sis_sdsfree(buffer);
 }
   

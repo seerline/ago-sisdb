@@ -60,7 +60,7 @@ typedef struct s_sis_db {
 	// s_sis_plan_task    *init_task;    // 初始化任务
 
 	// s_sis_plan_task    *save_task;
-
+	sis_file_handle    aof_fp;
 }s_sis_db;
 
 

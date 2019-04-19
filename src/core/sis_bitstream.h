@@ -54,7 +54,6 @@ int    sis_bitstream_get_nomove(s_sis_bit_stream *s_, int nBit, uint32 *out);
 uint32 sis_bitstream_get(s_sis_bit_stream *s_, int nBit);
 void   sis_bitstream_move(s_sis_bit_stream *s_, int byte);
 int    sis_bitstream_get_string(s_sis_bit_stream *s_, char* out_, int outLen_);
-int    sis_bitstream_get_buffer(s_sis_bit_stream *s_, char* out_, int outLen_);
 int    sis_bitstream_moveto(s_sis_bit_stream *s_, int nPos);
 
 int sis_bitstream_put(s_sis_bit_stream *s_, uint32 dw, int nBit);

@@ -164,16 +164,28 @@ void sis_log(const char *fmt_, ...)
 
 void sis_out_percent_start(const char *info_)
 {
+	if (!_sis_log.outscreen)
+	{
+		return ;
+	}
 	printf("%s     ", info_);
 }
 
-void sis_out_percent(int step_, int count_)
+void sis_out_percent(size_t step_, size_t count_)
 {
+	if (!_sis_log.outscreen)
+	{
+		return ;
+	}
 	printf("\b\b\b\b%3.0f%%", 100 * (float)step_ / (float)count_);
 	fflush(stdout);
 }
 void sis_out_percent_stop()
 {
+	if (!_sis_log.outscreen)
+	{
+		return ;
+	}
 	printf("\b\b\b\b100%%\n");
 }
 

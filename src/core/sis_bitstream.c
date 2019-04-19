@@ -91,31 +91,22 @@ int sis_bitstream_get_string(s_sis_bit_stream *s_, char* out_, int outLen_)
 {
 	uint32 dw = 0;
 	int i;
-	for (i = 0; i<outLen_ - 1; i++)
+	for (i = 0; i<outLen_; i++)
 	{
 		dw = sis_bitstream_get(s_, 8);
 		if (!dw){	break;	}
 		out_[i] = (char)dw;
 	}
-	out_[i] = '\0';
+	for (; i < outLen_; i++)
+	{
+		out_[i] = '\0';
+	}
 	return i;
 }
-int sis_bitstream_get_buffer(s_sis_bit_stream *s_, char* out_, int outLen_)
-{
-	memmove(out_, s_, outLen_);
-	return outLen_;
-	// uint32 dw = 0;
-	// int i;
-	// for (i = 0; i < outLen_; i++)
-	// {
-	// 	dw = sis_bitstream_get(s_, 8);
-	// 	out_[i] = dw;
-	// }
-	// return i;
-}
+
 int sis_bitstream_moveto(s_sis_bit_stream *s_, int nPos)
 {
-	s_->m_nowpos_i = nPos;
+	s_->m_nowpos_i += nPos;
 	if (s_->m_nowpos_i<0)
 	{
 		s_->m_nowpos_i = 0;

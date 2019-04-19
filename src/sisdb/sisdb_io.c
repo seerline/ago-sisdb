@@ -367,11 +367,12 @@ int sisdb_write_lock(s_sis_db *db_)
     int o = 0;
     if(db_)
     {
-        o = sis_mutex_lock(&db_->write_mutex);
+        // sis_mutex_trylock(&db_->write_mutex);
+        // o = sis_mutex_lock(&db_->write_mutex);
     }
     else
     {
-        o = sis_mutex_lock(&server.write_mutex);
+        // o = sis_mutex_lock(&server.write_mutex);
     }
     return o;
 }
@@ -379,11 +380,11 @@ void sisdb_write_unlock(s_sis_db *db_)
 {
     if(db_)
     {
-        sis_mutex_unlock(&db_->write_mutex);
+        // sis_mutex_unlock(&db_->write_mutex);
     }
     else
     {
-        sis_mutex_unlock(&server.write_mutex);
+        // sis_mutex_unlock(&server.write_mutex);
     }    
 }
 //////////-----------/////////////////
@@ -929,7 +930,7 @@ int sisdb_write_begin(s_sis_db *db_, int type_, const char *key_, const char *va
     }
     // int o = sisdb_write_lock(NULL);
     // db的锁有问题
-    printf("lock : %p\n",db_);
+    // printf("lock : %p\n",db_);
     int o = sisdb_write_lock(db_);
 
     // int o = sis_mutex_trylock(&db_->write_mutex);
@@ -950,7 +951,7 @@ void sisdb_write_end(s_sis_db *db_)
 {
     // LOG(8)("..... unlock.\n");
     // sis_mutex_unlock(&db_->write_mutex);
-    printf("unlock : %p\n",db_);
+    // printf("unlock : %p\n",db_);
     sisdb_write_unlock(db_);
     // sisdb_write_unlock(NULL);
     // ddd--;

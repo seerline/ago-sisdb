@@ -1069,6 +1069,7 @@ char *_sis_json_to_value(s_sis_json_node *node_, int depth_, int fmt_)
 char *sis_json_output(s_sis_json_node *node_, size_t *len_)
 {
 	// printf("node= %p\n",node_);
+	*len_ = 0;
 	char *ptr = _sis_json_to_value(node_, JSON_DEPTH, 1);
 	if (ptr)
 	{

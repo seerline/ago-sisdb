@@ -31,25 +31,20 @@ ENDIF ()
 
 #设置头文件目录
 INCLUDE_DIRECTORIES(. ../src/os/linux 
-    ../src/siscs 
-    ../src/siscs/libuv/include 
+    ../deps/libuv/include 
     ../src/relying/client 
-    ../src/core ../src/stsdb)
+    ../src/core)
 
 #设置源文件目录
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 AUX_SOURCE_DIRECTORY(../src/os/linux DIR_OS)
-AUX_SOURCE_DIRECTORY(../src/siscs DIR_SISCS)
 AUX_SOURCE_DIRECTORY(../src/relying/client DIR_PLATFORM)
 AUX_SOURCE_DIRECTORY(../src/core DIR_CORE)
-AUX_SOURCE_DIRECTORY(../src/stsdb DIR_STSDB)
 
 #把源文件目录设置到环境变量
 SET(SRC_LIST ${DIR_SRCS}
              ${DIR_OS}
-             ${DIR_SISCS}
              ${DIR_PLATFORM}
-             ${DIR_STSDB}
 	         ${DIR_CORE})
 
 # 设置输出文件目录
@@ -73,11 +68,11 @@ SET(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} ${SHOBJ_CFLAGS}")
 ######################生成可执行文件##########################
 
 #设置需要链接的库目录
-LINK_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../src/siscs/libuv)
+LINK_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv)
 
 #设置所有需要链接的库名到 LIBRARIES 环境变量
 #SET(LIBRARIES libbson-1.0.so libmongoc-1.0.so pthread z m iconv charset)
-SET(LIBRARIES pthread z m uv.a)
+SET(LIBRARIES pthread z m uv)
 
 #生成可执行文件
 ADD_EXECUTABLE(${PROJECT_NAME} ${SRC_LIST})

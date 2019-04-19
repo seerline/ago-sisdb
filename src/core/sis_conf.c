@@ -524,7 +524,10 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 {
 	s_sis_conf_handle *handle = NULL;
 	// printf("sis_conf_load : %s\n", content_);
-	const char *value = _sis_conf_skip(handle,content_);
+	char *content = (char *)sis_malloc(len_ + 1);
+	memmove(content, content_, len_);
+	content[len_] = 0;
+	const char *value = _sis_conf_skip(handle, content);
 	if (value && *value && *value == '{')
 	{
 		handle = (s_sis_conf_handle *)sis_malloc(sizeof(s_sis_conf_handle));
@@ -533,6 +536,7 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 		handle->node = node;
 		value = _sis_conf_skip(handle,_sis_parse_value(handle, node, value));
 	}
+	sis_free(content);
 	// size_t i;
 	// printf("sis_conf_load : %s \n", sis_conf_to_json_zip(handle->node, &i));
 

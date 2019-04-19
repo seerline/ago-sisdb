@@ -33,7 +33,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 
 	tb->version = (uint32)sis_time_get_now();
 	tb->name = sis_sdsnew(name_);
-	printf(">>>>>> %s :\n", tb->name);
+	printf("loaded %s.\n", tb->name);
 	tb->father = db_;
 
 	tb->write_style = SIS_WRITE_ALWAYS;
@@ -169,6 +169,9 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	{
 		tb->control.iszip = 1;
 	}
+
+	sisdb_sys_load_default(db_, com_);
+	// 加载默认值
 	return tb;
 }
 

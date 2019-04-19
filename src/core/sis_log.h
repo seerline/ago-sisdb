@@ -102,7 +102,7 @@ void sis_log(const char *fmt_, ...);
 //////////////////////////////////////////
 
 void sis_out_percent_start(const char *info_);
-void sis_out_percent(int step_, int count_);
+void sis_out_percent(size_t step_, size_t count_);
 void sis_out_percent_stop();
 
 size_t sis_writefile(char *name, void *value, size_t len);

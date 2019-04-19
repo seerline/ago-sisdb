@@ -66,12 +66,20 @@ void *sisdb_call_market_init(void *server_, void *com_)
 		while ((de = sis_dict_next(di)) != NULL)
 		{
 			s_sisdb_collect *val = (s_sisdb_collect *)sis_dict_getval(de);
-			if (val->db->control.isinit && !val->db->control.issys &&
-				!sis_strncasecmp(sis_dict_getkey(de), market, strlen(market)))
+			if (!sis_strncasecmp(sis_dict_getkey(de), market, strlen(market)))
 			{
-				// 只是设置记录数为0
-				sisdb_collect_clear(val);
-				o++;
+				if(val->db->control.isinit && !val->db->control.issys)
+				{
+					// 只是设置记录数为0
+					sisdb_collect_clear(val);
+					o++;
+				}
+				// 其他有订阅的也要清理缓存了
+				if (val->db->control.issubs)
+				{
+					memset(val->front, 0, sis_sdslen(val->front));
+					memset(val->lasted, 0, sis_sdslen(val->lasted));
+				}
 			}
 		}
 		sis_dict_iter_free(di);
@@ -81,7 +89,8 @@ void *sisdb_call_market_init(void *server_, void *com_)
 	// 该函数执行完毕需要写盘，这样就不需要处理aof文件了
 	sisdb_save(NULL);
 	
-	return sis_sdsnewlong(o);
+	return NULL;
+	// return sis_sdsnewlong(o);
 }
 
 void * sisdb_call_get_code_sds(void *server_, void *com_)

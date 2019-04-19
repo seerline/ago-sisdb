@@ -229,9 +229,9 @@ int sis_ws_messages_input(s_sis_ws_messages *ws_, void *source_, const char *in_
     sis_pointer_list_push(ws_->lists, mess);
 
     offset = sis_memory_get_address(ws_->buffer);
-    printf("==2==  %d - %d -- stream : %d\n", offset, sis_memory_get_size(ws_->buffer),
+    printf("==2==  %d - %zu -- stream : %d\n", offset, sis_memory_get_size(ws_->buffer),
             sis_bitstream_getbytelen(stream));
-    sis_out_binary("--2--", sis_memory(ws_->buffer), sis_memory_get_size(ws_->buffer));
+    // sis_out_binary("--2--", sis_memory(ws_->buffer), sis_memory_get_size(ws_->buffer));
     if (sis_memory_get_size(ws_->buffer) < 1)
     {
       isbreak = false;

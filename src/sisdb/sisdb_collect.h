@@ -130,7 +130,7 @@ int sisdb_collect_search_last(s_sisdb_collect *unit_, uint64 finder_, int *mode_
 
 s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *, int start_, int stop_);
 s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *, int start_, int count_);
-
+s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *);
 ///////////////////////////
 //			get     ///////
 ///////////////////////////

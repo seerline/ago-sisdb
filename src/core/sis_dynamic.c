@@ -190,7 +190,13 @@ int _sis_dynamic_get_style(const char *str_)
 }
 
 s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
-{
+{	
+	s_sis_json_node *fields = sis_json_cmp_child_node(node_, "fields");
+	if (!fields)
+	{
+		return NULL;	
+	}
+
 	s_sis_dynamic_db *dyna = (s_sis_dynamic_db *)sis_malloc(sizeof(s_sis_dynamic_db));
 	memset(dyna, 0, sizeof(s_sis_dynamic_db));
 
@@ -199,7 +205,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	int offset = 0;
 	s_sis_dynamic_unit unit;
 	// s_sis_json_node *node = sis_json_first_node(node_);
-	s_sis_json_node *fields = sis_json_cmp_child_node(node_, "fields");
+
 	s_sis_json_node *node = sis_json_first_node(fields);
 	while (node)
 	{
@@ -787,7 +793,7 @@ size_t sis_dynamic_analysis_length(
 	}
 	
 	int count = ilen_/indb->size;
-	printf("%d * %d = %d  --> %d\n", count , indb->size, (int)ilen_, indb->map_db->size);
+	// printf("%d * %d = %d  --> %d\n", count , indb->size, (int)ilen_, indb->map_db->size);
 
 	if (count*indb->size != ilen_)
 	{
@@ -945,7 +951,7 @@ s_sis_sds sis_dynamic_struct_to_json(
 
 	int count = (int)(ilen_ / indb->size);
 
-	printf("%d * %d = %d\n", count , indb->size, (int)ilen_);
+	// printf("%d * %d = %d\n", count , indb->size, (int)ilen_);
 
 	const char *val = in_;
 	for (int k = 0; k < count; k++)
@@ -967,6 +973,53 @@ s_sis_sds sis_dynamic_struct_to_json(
 	sis_json_delete_node(jone);
 error:
 	return o;
+
+}
+s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_)
+{
+	s_sis_dynamic_db *indb = db_;
+
+	s_sis_json_node *jone = sis_json_create_object();
+	s_sis_json_node *jtwo = sis_json_create_array();
+
+	int count = (int)(ilen_ / indb->size);
+
+	// printf("%d * %d = %d\n", count , indb->size, (int)ilen_);
+
+	const char *val = (const char *)in_;
+	for (int k = 0; k < count; k++)
+	{
+		s_sis_json_node *jval = _sis_dynamic_struct_to_array(indb, val);
+		sis_json_array_add_node(jtwo, jval);
+		val += indb->size;
+	}
+	sis_json_object_add_node(jone, "values", jtwo);
+	s_sis_sds o = NULL;
+	char *str;
+	size_t olen;
+	str = sis_json_output(jone, &olen);
+	o = sis_sdsnewlen(str, olen);
+	sis_free(str);
+	sis_json_delete_node(jone);	
+	return o;
+}
+s_sis_sds sis_dynamic_conf_to_array_sds(const char *dbstr_, void *in_, size_t ilen_)
+{
+	s_sis_conf_handle *injson = sis_conf_load(dbstr_, strlen(dbstr_));
+	if (!injson)
+	{
+		return NULL;
+	}
+	s_sis_dynamic_db *indb = sis_dynamic_db_create(injson->node);
+	if (!indb)
+	{
+		LOG(1)("init db error.\n");
+		sis_conf_close(injson);
+		return NULL;
+	}
+	sis_conf_close(injson);
+
+	return sis_dynamic_db_to_array_sds(indb, in_, ilen_);
 
 }
 
@@ -994,8 +1047,24 @@ int main()
 	// const char *remote = "{\"info\":{\"open\":[\"U\",4],\"close\":[\"F\",4,1,3],\"ask\":[\"I\",4,10],\"name\":[\"C\",8]}}";
 	const char *local = "{stock:{fields:{open:[I,4]}},info:{fields:{open:[I,4],close:[F,8,1,2],ask:[I,4,5],name:[C,4]}}}";
 	const char *remote = "{info:{fields:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}}";
-	
+	const char *alone = "{fields:{open:[U,4],close:[F,4,1,3],ask:[I,4,10],name:[C,8]}}";
 	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf_file("remote.conf","local.conf");
+
+	{
+		int count = 2;
+		_remote_info in_info[count];
+		memset(&in_info, 0,sizeof(_remote_info)*count);
+		in_info[0].open = 1800;
+		in_info[1].open = 2000;
+		in_info[0].close = 1500;
+		in_info[1].close = 2100;
+
+		s_sis_sds out = sis_dynamic_conf_to_array_sds(alone, &in_info, sizeof(_remote_info)*count);
+		printf("alone = \n%s\n",out);
+		sis_sdsfree(out);
+	}	
+	return 0;
+
 	s_sis_dynamic_class *class = sis_dynamic_class_create_of_conf(remote,strlen(remote),local,strlen(local));
 	// s_sis_dynamic_class *class = sis_dynamic_class_create_of_json(remote,strlen(remote),local,strlen(local));
 	// 测试 remote 到 local 转换
@@ -1013,6 +1082,7 @@ int main()
 		in_info[1].open = 2000;
 		in_info[0].close = 1500;
 		in_info[1].close = 0xFFFFFFFF;
+
 		for(size_t i = 0; i < 10; i++)
 		{
 			in_info[0].ask[i] = 100 + i;

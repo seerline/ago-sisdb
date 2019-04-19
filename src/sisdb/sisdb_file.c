@@ -282,16 +282,22 @@ bool sisdb_file_save_aof(s_sis_db *db_,
 {
     s_sisdb_server *server = sisdb_get_server();
     // 打开sdb并移到文件尾，准备追加数据
-    char aof[SIS_PATH_LEN];
-    sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server->db_path, db_->name);
-
-    sis_file_handle fp = sis_file_open(aof, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE, 0);
-    if (!fp)
+    // 每次写aof如果都去打开文件，速度会奇慢无比，切记，
+    // 建立一个流失文件类，专门用来进行数据的吞吐
+    if (!db_->aof_fp)
     {
-        printf("open %s error\n", aof);
-        return false;
+        char aof[SIS_PATH_LEN];
+        sis_sprintf(aof, SIS_PATH_LEN, SIS_DB_FILE_AOF, server->db_path, db_->name);
+
+        db_->aof_fp = sis_file_open(aof, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE, 0);
+        if (!db_->aof_fp)
+        {
+            printf("open %s error\n", aof);
+            return false;
+        }
+        sis_file_seek(db_->aof_fp, 0, SEEK_END);
+
     }
-    sis_file_seek(fp, 0, SEEK_END);
 
     s_sis_aof_head head;
     memset(&head, 0, sizeof(s_sis_aof_head));
@@ -300,13 +306,17 @@ bool sisdb_file_save_aof(s_sis_db *db_,
     head.type = type_;
     head.size = len_;
 
-    sis_file_write(fp, (const char *)&head, 1, sizeof(s_sis_aof_head));
+    sis_file_write(db_->aof_fp, (const char *)&head, 1, sizeof(s_sis_aof_head));
     if (head.size>0)
     {
-        sis_file_write(fp, val_, 1, head.size);
+        sis_file_write(db_->aof_fp, val_, 1, head.size);
     }
 
-    sis_file_close(fp);
+    // if (db_->aof_fp)
+    // {
+    //     sis_file_close(db_->aof_fp);
+    // }
+    // sis_file_close(fp);
     return true;
 }
 // 结构体存盘必须写结构长度，方便校验

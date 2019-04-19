@@ -104,7 +104,9 @@ size_t sis_memory_readfile(s_sis_memory *m_, sis_file_handle fp_, size_t len_)
 
 	sis_free(mem);
 
-	return sis_memory_get_size(m_);
+	// return sis_memory_get_size(m_);
+	// 这里应该返回实际读的字符，
+	return bytes;
 }
 
 size_t sis_memory_get_size(s_sis_memory *m_)

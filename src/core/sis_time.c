@@ -367,7 +367,6 @@ int sis_time_get_idate_from_str(const char *in_, char bc_)
 	{
 		return 0;
 	}
-
 	for (int i = start; i < 8; i++)
 	{
 		if (!isdigit(in_[i]))
@@ -375,7 +374,6 @@ int sis_time_get_idate_from_str(const char *in_, char bc_)
 			return 0;
 		}
 	}
-
 	int year, mon, mday; 
 
 	int i = start;
