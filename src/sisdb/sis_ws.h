@@ -15,7 +15,7 @@
 #include "sis_sha1.h"
 #include "sis_memory.h"
 
-#define SIS_MAXLEN_WS_HEAD 20
+#define SIS_MAXLEN_WS_HEAD 255
 #define SIS_MAXLEN_ELEMENT 500
 #define SIS_MAXLEN_URL     255
 
@@ -47,7 +47,7 @@ s_sis_ws_mess * sis_ws_mess_create(const char *in_, size_t ilen_);
 void sis_ws_mess_destroy(s_sis_ws_mess *mess_);
 // int sis_ws_mess_input(s_sis_ws_mess *mess_, const char *in_, size_t ilen_);
 s_sis_object *sis_ws_mess_send(s_sis_ws_mess *mess_);
-s_sis_sds sis_ws_mess_serialize_sds(s_sis_ws_mess *mess_);
+s_sis_memory *sis_ws_mess_serialize_sds(s_sis_ws_mess *mess_);
 
 
 /////////////////////////

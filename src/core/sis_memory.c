@@ -115,6 +115,7 @@ size_t sis_memory_get_size(s_sis_memory *m_)
 }
 void sis_memory_set_size(s_sis_memory *m_, size_t len_)
 {
+	printf("set size :%zu -- %zu\n", len_, m_->offset);
 	sis_memory_set_maxsize(m_, len_ + m_->offset);
 	m_->size = len_ + m_->offset;
 }
@@ -124,6 +125,7 @@ size_t sis_memory_get_maxsize(s_sis_memory *m_)
 }
 size_t sis_memory_set_maxsize(s_sis_memory *m_, size_t len_)
 {
+	printf("%zu -- %zu\n", len_, m_->maxsize);
 	if (len_ > m_->maxsize)
 	{
 		m_->maxsize = len_ + 256;

@@ -11,9 +11,7 @@ static char __ws_define_101[] = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: we
 // static char* __ws_define_400 = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nContent-Type: text/plain\r\nConnection: Close\r\n\r\n";
 // static char* __ws_define_403 = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nContent-Type: text/plain\r\nConnection: Close\r\n\r\n";
 
-static s_sis_ws_server __server = {
-};
-
+static s_sis_ws_server __server = {};
 
 sis_http_parser_settings __http_settings =
     {
@@ -87,7 +85,7 @@ int cb_message_complete(s_sis_http_parser *p)
   s_sis_ws_client *client = p->data;
   s_sis_ws_hand_info *info = client->request;
   s_sis_ws_mess *message = sis_ws_mess_create_hand();
-  message->source = client->input; 
+  message->source = client->input;
   int i;
   for (i = 0; i < info->num_headers; i++)
   {
@@ -230,7 +228,7 @@ int sis_ws_messages_input(s_sis_ws_messages *ws_, void *source_, const char *in_
 
     offset = sis_memory_get_address(ws_->buffer);
     printf("==2==  %d - %zu -- stream : %d\n", offset, sis_memory_get_size(ws_->buffer),
-            sis_bitstream_getbytelen(stream));
+           sis_bitstream_getbytelen(stream));
     // sis_out_binary("--2--", sis_memory(ws_->buffer), sis_memory_get_size(ws_->buffer));
     if (sis_memory_get_size(ws_->buffer) < 1)
     {
@@ -266,14 +264,15 @@ s_sis_sds sis_json_node_get_sds(s_sis_sds s_, s_sis_json_node *node_, const char
   {
     // 暂时只取第一个参数，其余以后在说
     s_sis_json_node *node = sis_json_cmp_child_node(n, "0");
-    if(node)
+    if (node)
     {
       size_t len = 0;
       char *str = sis_json_output_zip(node, &len);
       s_ = sis_sdscpy(s_, str);
       sis_free(str);
     }
-  } else
+  }
+  else
   // else if( n->type == SIS_JSON_OBJECT)
   {
     size_t len = 0;
@@ -283,12 +282,12 @@ s_sis_sds sis_json_node_get_sds(s_sis_sds s_, s_sis_json_node *node_, const char
   }
   return s_;
 }
-s_sis_ws_mess * sis_ws_mess_create_hand()
+s_sis_ws_mess *sis_ws_mess_create_hand()
 {
   s_sis_ws_mess *mess = sis_malloc(sizeof(s_sis_ws_mess));
   memset(mess, 0, sizeof(s_sis_ws_mess));
   mess->style = SIS_WS_STYLE_HAND;
-  return mess;  
+  return mess;
 }
 s_sis_ws_mess *sis_ws_mess_create(const char *in_, size_t ilen_)
 {
@@ -369,72 +368,173 @@ s_sis_object *sis_ws_mess_send(s_sis_ws_mess *mess_)
   return mess_->reply;
 }
 
-s_sis_sds sis_ws_mess_serialize_sds(s_sis_ws_mess *mess_)
+// s_sis_memory *sis_ws_mess_serialize_sds(s_sis_ws_mess *mess_)
+// {
+//   size_t msg_size = 1;
+
+//   if (mess_->in && mess_->in->source)
+//   {  msg_size += sis_sdslen(mess_->in->source);}
+//   if (mess_->reply && mess_->reply->ptr)
+//   {
+//     msg_size += sis_sdslen(mess_->reply->ptr);
+//   }
+
+//   size_t maxlen = msg_size + SIS_MAXLEN_WS_HEAD;
+
+//   s_sis_memory *out = sis_memory_create();
+//   sis_memory_set_maxsize(out, maxlen);
+
+//   s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)sis_memory(out), maxlen, 0);
+
+//   sis_bitstream_put(stream, 1, 1); // fin
+//   sis_bitstream_put(stream, 0, 3); // rsv
+//   sis_bitstream_put(stream, 1, 4); // opcode
+//   sis_bitstream_put(stream, 0, 1); // mask
+// // printf("len= %d\n", sis_bitstream_getbytelen(stream));
+//   if (msg_size < 126)
+//   {
+//     sis_bitstream_put(stream, msg_size, 7);
+//   }
+//   else if (msg_size >= 126 && msg_size <= (size_t)0xFFFF)
+//   {
+//     sis_bitstream_put(stream, 126, 7);
+//     sis_bitstream_put(stream, msg_size, 16);
+//   }
+//   else
+//   {
+//     sis_bitstream_put(stream, 127, 7);
+//     sis_bitstream_put(stream, msg_size, 64);
+//   }
+//   if (mess_->in && mess_->in->source)
+//   {
+//     sis_bitstream_put_buffer(stream, mess_->in->source, sis_sdslen(mess_->in->source));
+//   }
+
+//   sis_bitstream_put_buffer(stream, ":", 1);
+
+//   if (mess_->reply)
+//   {
+//     sis_bitstream_put_buffer(stream, mess_->reply->ptr, sis_sdslen(mess_->reply->ptr));
+//   }
+//   size_t curlen = sis_bitstream_getbytelen(stream);
+//   printf("out= %zu\n", curlen);
+//   sis_memory_set_size(out, curlen);
+
+//   sis_bitstream_destroy(stream);
+//   // printf("out= %d  %d\n", sis_sdslen(out), curlen);
+
+//   sis_object_set(mess_->reply, SIS_OBJECT_MEMORY, out);
+//   // sis_object_decr(mess_->reply);
+//   // mess_->reply = NULL;
+
+//   return out;
+// }
+#define MAX_SEND_BUFF (16 * 1024)
+// 浏览器的ws协议不能超过64K数据大小，因此必须拆包，才能发送给浏览器，否则发送失败
+s_sis_memory *sis_ws_mess_serialize_sds(s_sis_ws_mess *mess_)
 {
-  size_t msg_size = 1;
+
+  size_t msg_size = 0;
+  size_t source_size = 0;
 
   if (mess_->in && mess_->in->source)
-    msg_size += sis_sdslen(mess_->in->source);
+  {
+    source_size = sis_sdslen(mess_->in->source); // ":"
+  }
   if (mess_->reply && mess_->reply->ptr)
   {
-    msg_size += sis_sdslen(mess_->reply->ptr);
+    msg_size = sis_sdslen(mess_->reply->ptr);
   }
+  int count = msg_size / MAX_SEND_BUFF + 1;
+  printf("%zu, %zu, %d\n",msg_size,source_size,count);
+  size_t maxlen = source_size + msg_size + 1; // ":"
 
-  size_t maxlen = msg_size + SIS_MAXLEN_WS_HEAD;
+  s_sis_memory *out = sis_memory_create();
+  sis_memory_set_maxsize(out, maxlen + count * 10);
 
-  s_sis_sds out = sis_sdsnewlen(NULL, maxlen + SIS_MAXLEN_WS_HEAD);
-  s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)out, maxlen, 0);
-
-  sis_bitstream_put(stream, 1, 1); // fin
-  sis_bitstream_put(stream, 0, 3); // rsv
-  sis_bitstream_put(stream, 1, 4); // opcode
-  sis_bitstream_put(stream, 0, 1); // mask
-  if (msg_size < 126)
+  size_t size;
+  size_t outlen = 0;
+  char *sendstr = (char *)mess_->reply->ptr;
+  for (int i = 0; i < count; i++)
   {
-    sis_bitstream_put(stream, msg_size, 7);
-  }
-  else if (msg_size >= 126 && msg_size <= (size_t)0xFFFF)
-  {
-    sis_bitstream_put(stream, 126, 7);
-    sis_bitstream_put(stream, msg_size, 16);
-  }
-  else
-  {
-    sis_bitstream_put(stream, 127, 7);
-    sis_bitstream_put(stream, msg_size, 64);
-  }
-  if (mess_->in && mess_->in->source)
-  {
-    sis_bitstream_put_buffer(stream, mess_->in->source, sis_sdslen(mess_->in->source));
-  }
+      size = maxlen > MAX_SEND_BUFF? MAX_SEND_BUFF : maxlen;
+      
+      s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)sis_memory(out), size + 4, 0);
 
-  sis_bitstream_put_buffer(stream, ":", 1);
+      if(i == count - 1)
+      {
+        sis_bitstream_put(stream, 1, 1); // fin
+      }
+      else
+      {
+        sis_bitstream_put(stream, 0, 1); // fin
+      }
+      sis_bitstream_put(stream, 0, 3); // rsv
+      if(count > 0&& i>0)
+      {
+        sis_bitstream_put(stream, 0, 4); // opcode
+      }
+      else
+      {
+        sis_bitstream_put(stream, 1, 4); // opcode
+      }
+      sis_bitstream_put(stream, 0, 1); // mask
+                                      // printf("len= %d\n", sis_bitstream_getbytelen(stream));
+      if (size < 126)
+      {
+        sis_bitstream_put(stream, size, 7);
+      }
+      else 
+      {
+        sis_bitstream_put(stream, 126, 7);
+        sis_bitstream_put(stream, size, 16);
+      }
 
-  if (mess_->reply)
-  {
-    sis_bitstream_put_buffer(stream, mess_->reply->ptr, sis_sdslen(mess_->reply->ptr));
+      if (i == 0)
+      {
+        if (source_size > 0)
+        {
+          sis_bitstream_put_buffer(stream, mess_->in->source, sis_sdslen(mess_->in->source));
+          maxlen -= source_size;
+          size-=source_size;
+        }
+        sis_bitstream_put_buffer(stream, ":", 1);
+        maxlen -= 1;
+        size-=1;
+      }
+
+      if (mess_->reply)
+      {
+        sis_bitstream_put_buffer(stream, sendstr, size);
+        sendstr+=size;
+        maxlen-=size;
+      }
+      int curlen = sis_bitstream_getbytelen(stream);
+      outlen += curlen;
+      printf("%d:%d out= %zu  %d\n", i, count, outlen, curlen);
+      sis_out_binary("out:",sis_memory(out), sis_min(curlen,64));
+      sis_memory_set_size(out, curlen);
+      sis_memory_move(out, curlen);
+      sis_bitstream_destroy(stream);
   }
-
-  size_t curlen = sis_bitstream_getbytelen(stream);
-  // printf("out= %d\n", curlen);
-  sis_sdssetlen(out, curlen);
-  sis_bitstream_destroy(stream);
-  // printf("out= %d  %d\n", sis_sdslen(out), curlen);
-
-  sis_object_set(mess_->reply, SIS_OBJECT_SDS, out);
+  // 回到起点
+  sis_memory_jumpto(out, 0);
+  // sis_memory_set_size(out, outlen);
+  // printf("out= %d\n", sis_memory_get_size(out));
+  sis_object_set(mess_->reply, SIS_OBJECT_MEMORY, out);
   // sis_object_decr(mess_->reply);
   // mess_->reply = NULL;
 
   return out;
 }
-
 void cb_write_after_hand(uv_write_t *write, int status)
 {
   if (status < 0)
   {
-    LOG(5)("uv_write error: %s\n", uv_err_name(status));
+    LOG(5)
+    ("uv_write error: %s\n", uv_err_name(status));
   }
-  printf("write ok. %p \n", write->data);
+  printf("write hand ok. %p \n", write->data);
   s_sis_ws_mess *message = (s_sis_ws_mess *)write->data;
   if (message)
   {
@@ -442,39 +542,94 @@ void cb_write_after_hand(uv_write_t *write, int status)
   }
   sis_free(write);
 }
+
+#define BLOCK_SIZE 4096
+
+typedef struct
+{
+  uv_write_t req;
+  uv_buf_t buffer;
+  void *handle;
+  s_sis_memory *in;
+} write_req_t;
+
+void cb_write_after_body(uv_write_t *write, int status);
+
+// static void sis_write_large_buffer(void *handle, s_sis_memory *in)
+// {
+//   size_t size = 0;
+
+//   size_t len = sis_memory_get_size(in);
+
+//   size = len > BLOCK_SIZE ? BLOCK_SIZE : len;
+
+//   char *buffer = sis_malloc(size);
+//   memmove(buffer, sis_memory(in), size);
+
+//   write_req_t *write = (write_req_t *)sis_malloc(sizeof(write_req_t));
+//   write->buffer = uv_buf_init(buffer, size);
+//   write->handle = handle;
+//   write->in = in;
+
+//   printf("write ..... %zu :: %zu\n", size, len);
+
+//   if (uv_write((uv_write_t *)write, handle, &write->buffer, 1, cb_write_after_body))
+//   {
+//     LOG(5)
+//     ("uv_write fail.\n", size);
+//     exit(1);
+//   }
+//   sis_memory_move(in, size);
+// }
+
 void cb_write_after_body(uv_write_t *write, int status)
 {
   if (status < 0)
   {
-    LOG(5)("uv_write error: %s\n", uv_err_name(status));
+    LOG(5)
+    ("uv_write error: %s\n", uv_err_name(status));
   }
-  printf("write ok. %p \n", write->data);
+  // printf("write body ok. %p \n", write->data);
   // 这里释放
   s_sis_ws_mess *message = (s_sis_ws_mess *)write->data;
   if (message)
   {
     sis_ws_mess_destroy(message);
   }
+  // write_req_t *wr = (write_req_t *)write;
+  // if (sis_memory_get_size(wr->in) > 0)
+  // {
+  //   sis_write_large_buffer(wr->handle, wr->in);
+  // }
+  // else
+  // {
+  //   sis_memory_destroy(wr->in);
+  // }
+  // sis_free(wr->buffer.base);
   sis_free(write);
 }
-static void after_shutdown(uv_shutdown_t* req, int status) {
-  uv_close((uv_handle_t*) req->handle, cb_close);
-  sis_free(req);
-}
+// static void after_shutdown(uv_shutdown_t* req, int status) {
+//   uv_close((uv_handle_t*) req->handle, cb_close);
+//   sis_free(req);
+// }
+
 // void cb_read_after(uv_stream_t *handle, ssize_t insize, uv_buf_t buffer)
-static void cb_read_after(uv_stream_t* handle,
-                       ssize_t nread,
-                       const uv_buf_t* buf)
+static void cb_read_after(uv_stream_t *handle,
+                          ssize_t nread,
+                          const uv_buf_t *buf)
 {
   // printf("----------%d----------%p -- %p\n", (int)nread, handle, buf);
 
-  uv_shutdown_t* sreq;
+  // uv_shutdown_t* sreq;
   if (nread < 0)
   {
-    ASSERT(nread == UV_EOF);
-    sis_free(buf->base);
-    sreq = sis_malloc(sizeof(uv_shutdown_t));
-    ASSERT(0 == uv_shutdown(sreq, handle, after_shutdown));
+    // ASSERT(nread == UV_EOF);
+    // sis_free(buf->base);
+    // // uv_close((uv_handle_t*) handle, cb_close);
+    // sreq = sis_malloc(sizeof(uv_shutdown_t));
+    // ASSERT(0 == uv_shutdown(sreq, handle, after_shutdown));
+    ASSERT(nread == UV_ECONNRESET || nread == UV_EOF);
+    uv_close((uv_handle_t *)handle, NULL);
     return;
   }
   if (nread == 0)
@@ -487,7 +642,7 @@ static void cb_read_after(uv_stream_t* handle,
   if (client->request->handshake == 0)
   {
     size_t bytes = sis_http_parser_execute(client->parser, &__http_settings, buf->base, nread);
-    
+
     // sis_out_binary("hand", buf->base, nread);
 
     sis_free(buf->base);
@@ -513,9 +668,11 @@ static void cb_read_after(uv_stream_t* handle,
       sis_ws_mess_send(message);
       if (message->reply)
       {
-        s_sis_sds reply = sis_ws_mess_serialize_sds(message);
-        sis_out_binary("reply: ", reply, sis_sdslen(reply));
-        message->write_buffer = uv_buf_init(reply, sis_sdslen(reply));
+        s_sis_memory *reply = sis_ws_mess_serialize_sds(message);
+        sis_out_binary("reply: ", sis_memory(reply), sis_min(sis_memory_get_size(reply), 64));
+        // sis_write_large_buffer(message->source, reply);
+
+        message->write_buffer = uv_buf_init(sis_memory(reply), sis_memory_get_size(reply));
         uv_write_t *write = sis_malloc(sizeof(uv_write_t));
         write->data = message;
         printf("write ..... %p \n", write->data);
@@ -533,11 +690,11 @@ static void cb_read_after(uv_stream_t* handle,
 void _client_connected_init(uv_stream_t *input_)
 {
   s_sis_ws_client *client = sis_malloc(sizeof(s_sis_ws_client));
-  
+
   client->messages = sis_ws_messages_create();
 
   client->parser = sis_malloc(sizeof(s_sis_http_parser));
-  client->request = sis_malloc(sizeof(s_sis_ws_hand_info)); 
+  client->request = sis_malloc(sizeof(s_sis_ws_hand_info));
 
   strcpy(client->request->wskey, __ws_define_hash);
   client->request->id = 0;
@@ -562,25 +719,28 @@ void _client_shutdown_free(uv_handle_t *handle)
   sis_free(handle);
 }
 // uv_buf_t cb_read_alloc(uv_handle_t *handle, size_t suggested_size)
-static void cb_read_alloc(uv_handle_t* handle,
-                       size_t suggested_size,
-                       uv_buf_t* buf)
+static void cb_read_alloc(uv_handle_t *handle,
+                          size_t suggested_size,
+                          uv_buf_t *buf)
 {
-  buf->base = sis_malloc(suggested_size);
-  buf->len = suggested_size;
-  // return uv_buf_init(sis_malloc(suggested_size), suggested_size);
+  *buf = uv_buf_init(sis_malloc(suggested_size), suggested_size);
+  // buf->base = sis_malloc(suggested_size);
+  // buf->len = suggested_size;
 }
-
+// static void on_uv_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
+// 	*buf = uv_buf_init(malloc(suggested_size), suggested_size);
+// }
 void cb_connection(uv_stream_t *server, int status)
 {
   uv_stream_t *client;
   int r;
   if (status != 0)
   {
-    LOG(1)("connect error %s\n", uv_err_name(status));
+    LOG(1)
+    ("connect error %s\n", uv_err_name(status));
   }
   assert(status == 0);
-  
+
   client = sis_malloc(sizeof(uv_tcp_t));
 
   assert(client != NULL);
@@ -590,7 +750,7 @@ void cb_connection(uv_stream_t *server, int status)
   assert(r == 0);
 
   _client_connected_init(client);
-  
+
   r = uv_read_start(client, cb_read_alloc, cb_read_after);
   assert(r == 0);
 }
@@ -613,7 +773,7 @@ int sis_ws_server_start(int port)
     ("socket create error.\n");
     return 1;
   }
-  r = uv_tcp_bind(&__server.server, (const struct sockaddr*) &addr, 0);
+  r = uv_tcp_bind(&__server.server, (const struct sockaddr *)&addr, 0);
   if (r)
   {
     LOG(1)

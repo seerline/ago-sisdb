@@ -12,6 +12,7 @@
 #pragma pack(push,1)
 
 #define SIS_OBJECT_SDS   0  // 字符串
+#define SIS_OBJECT_MEMORY  3  // sis_memory 结构体的指针
 #define SIS_OBJECT_LIST  1  // sis_struct_list 结构体的指针
 #define SIS_OBJECT_NODE  2  // sis_socket_node 专用于网络传输的链表
 
