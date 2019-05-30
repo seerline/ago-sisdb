@@ -62,8 +62,10 @@ typedef struct dictType {
     void *(*keyDup)(void *privdata, const void *key);
     void *(*valDup)(void *privdata, const void *obj);
     int (*keyCompare)(void *privdata, const void *key1, const void *key2);
-    void (*keyDestructor)(void *privdata, void *key);
-    void (*valDestructor)(void *privdata, void *obj);
+    // void (*keyDestructor)(void *privdata, void *key);
+    // void (*valDestructor)(void *privdata, void *obj);
+    void (*kfree)(void *obj);
+    void (*vfree)(void *obj);
 } dictType;
 
 /* This is our hash table structure. Every dictionary has two of this as we
@@ -104,8 +106,13 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 
 /* ------------------------------- Macros ------------------------------------*/
 #define dictFreeVal(d, entry) \
+    if ((d)->type->vfree) \
+        (d)->type->vfree((entry)->v.val)
+/*
+#define dictFreeVal(d, entry) \
     if ((d)->type->valDestructor) \
         (d)->type->valDestructor((d)->privdata, (entry)->v.val)
+*/
 
 #define dictSetVal(d, entry, _val_) do { \
     if ((d)->type->valDup) \
@@ -123,9 +130,14 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 #define dictSetDoubleVal(entry, _val_) \
     do { (entry)->v.d = _val_; } while(0)
 
+/*
 #define dictFreeKey(d, entry) \
     if ((d)->type->keyDestructor) \
         (d)->type->keyDestructor((d)->privdata, (entry)->key)
+*/
+#define dictFreeKey(d, entry) \
+    if ((d)->type->kfree) \
+        (d)->type->kfree((entry)->key)
 
 #define dictSetKey(d, entry, _key_) do { \
     if ((d)->type->keyDup) \

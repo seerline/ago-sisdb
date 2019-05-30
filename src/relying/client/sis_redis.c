@@ -101,17 +101,17 @@ bool _sis_redis_check_connect(s_sis_socket *sock)
 	// s_sis_list_node   *links;     //来源信息专用, 数据来源链路，每次多一跳就增加一个节点
 	// s_sis_list_node   *nodes;     //附带的信息数据链表  node->value 为 s_sis_sds 类型
 
-int _sis_redis_get_cmds(s_sis_message_node * mess_)
+int _sis_redis_get_cmds(s_sis_net_message * mess_)
 {
 	int o = 0;
 	if (mess_->command) o++;
 	if (mess_->key) o++;
 	if (mess_->argv) o++;
 	if (mess_->source) o++;
-	o += sis_sdsnode_get_count(mess_->nodes);
+	o += sis_sdsnode_get_count(mess_->argvs);
 	return o++;
 }
-bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
+bool sis_redis_send_message(s_sis_socket *sock_, s_sis_net_message * mess_)
 {
 	// printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
 	if (!_sis_redis_check_connect(sock_)){
@@ -148,7 +148,7 @@ bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 		index++;
 	}
 
-	s_sis_list_node *node = mess_->nodes;
+	s_sis_list_node *node = mess_->argvs;
 	while(node) 
 	{
 		// printf("node len=%d. \n", sis_sdslen(node->value));	
@@ -175,7 +175,7 @@ bool sis_redis_send_message(s_sis_socket *sock_, s_sis_message_node * mess_)
 	return true;
 }
 
-s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_node *mess_)
+s_sis_net_message *sis_redis_query_message(s_sis_socket *sock_, s_sis_net_message *mess_)
 {
 	// printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
 	if (!_sis_redis_check_connect(sock_)){
@@ -211,7 +211,7 @@ s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_n
 		index++;
 	}
 
-	s_sis_message_node *node = NULL;
+	s_sis_net_message *node = NULL;
 
 	redisReply *reply;
 
@@ -221,7 +221,7 @@ s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_n
 		node = mess_;
 		if(reply->type == REDIS_REPLY_STRING) 
 		{
-			node->nodes = sis_sdsnode_create(reply->str, reply->len);
+			node->argvs = sis_sdsnode_create(reply->str, reply->len);
 		} else {
 
 		}
@@ -242,7 +242,7 @@ s_sis_message_node *sis_redis_query_message(s_sis_socket *sock_, s_sis_message_n
 
 int main()
 {
-	s_sis_url url = {
+	s_sis_url_v1 url = {
 		.protocol = "redis",
 		.ip = "127.0.0.1",
 		.port = 6379,
@@ -274,7 +274,7 @@ int main()
 
 void _test_set_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
 {
-	s_sis_message_node *node=sis_message_node_create();
+	s_sis_net_message *node=sis_socket_node_create();
 	
 	node->command = sdsempty();
 	// node->command = sdscatfmt(node->command, "%s.set", socket->url.dbname);
@@ -282,16 +282,16 @@ void _test_set_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, s
 	node->argv = sdsempty();
 	node->key = sdsempty();
 	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
-	node->nodes = sis_sdsnode_create(in_, len_);
+	node->argvs = sis_sdsnode_create(in_, len_);
 
 	sis_redis_send_message(socket, node);
 	
-	sis_message_node_destroy(node);
+	sis_socket_node_destroy(node);
 }
 
 void _test_get_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
 {
-	s_sis_message_node *node=sis_message_node_create();
+	s_sis_net_message *node=sis_socket_node_create();
 	
 	node->command = sdsempty();
 	// node->command = sdscatfmt(node->command, "%s.get", socket->url.dbname);
@@ -301,14 +301,14 @@ void _test_get_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, s
 	node->key = sdscatfmt(node->key, "%s.%s", code_, db_);
 	node->argv = sdsnewlen(in_, len_);
 
-	s_sis_message_node *reply = sis_socket_query_message(socket, node);
+	s_sis_net_message *reply = sis_socket_query_message(socket, node);
 	if (reply)
 	{
-		printf("reply : %s\n",(char *)reply->nodes->value);
+		printf("reply : %s\n",(char *)reply->argvs->value);
 	}	
-	sis_message_node_destroy(node);
+	sis_socket_node_destroy(node);
 }
-s_sis_message_node *sis_redis_query_message_stream(s_sis_socket *sock_, s_sis_message_node *mess_)
+s_sis_net_message *sis_redis_query_message_stream(s_sis_socket *sock_, s_sis_net_message *mess_)
 {
 	printf("redis send %s. status=%d [%s:%d]\n", mess_->key, sock_->status, sock_->url.ip, sock_->url.port);
 	if (!_sis_redis_check_connect(sock_)){
@@ -344,7 +344,7 @@ s_sis_message_node *sis_redis_query_message_stream(s_sis_socket *sock_, s_sis_me
 		index++;
 	}
 
-	s_sis_list_node *node = mess_->nodes;
+	s_sis_list_node *node = mess_->argvs;
 	while(node) 
 	{
 		// printf("node len=%d. \n", sis_sdslen(node->value));	
@@ -354,7 +354,7 @@ s_sis_message_node *sis_redis_query_message_stream(s_sis_socket *sock_, s_sis_me
 		node = node->next;
 	}
 
-	s_sis_message_node *out = NULL;
+	s_sis_net_message *out = NULL;
 
 	redisReply *reply;
 
@@ -364,7 +364,7 @@ s_sis_message_node *sis_redis_query_message_stream(s_sis_socket *sock_, s_sis_me
 		out = mess_;
 		if(reply->type == REDIS_REPLY_STRING) 
 		{
-			out->nodes = sis_sdsnode_create(reply->str, reply->len);
+			out->argvs = sis_sdsnode_create(reply->str, reply->len);
 		} else {
 
 		}
@@ -383,46 +383,46 @@ s_sis_message_node *sis_redis_query_message_stream(s_sis_socket *sock_, s_sis_me
 
 void _test_send_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
 {
-	s_sis_message_node *node=sis_message_node_create();
+	s_sis_net_message *node=sis_socket_node_create();
 	
 	node->command = sdsnew("xadd");
 	node->key = sdsnew(db_);
 	node->argv = sdsnew("*");
-	node->nodes = sis_sdsnode_create(code_, strlen(code_));
-	node->nodes = sis_sdsnode_push_node(node->nodes,in_,len_);
+	node->argvs = sis_sdsnode_create(code_, strlen(code_));
+	node->argvs = sis_sdsnode_push_node(node->argvs,in_,len_);
 
-	s_sis_message_node *reply = sis_socket_query_message(socket, node);
+	s_sis_net_message *reply = sis_socket_query_message(socket, node);
 	if (reply)
 	{
-		// printf("reply : %s\n",(char *)reply->nodes->value);
+		// printf("reply : %s\n",(char *)reply->argvs->value);
 	}	
-	sis_message_node_destroy(node);
+	sis_socket_node_destroy(node);
 }
 int _test_recv_socket(s_sis_socket *socket, char *code_, char *db_, char *in_, size_t len_)
 {
 	int o =0;
-	s_sis_message_node *node=sis_message_node_create();
+	s_sis_net_message *node=sis_socket_node_create();
 	
 	node->command = sdsnew("xread");
 	node->key = sdsnew("block");
 	node->argv = sdsnew("0");
-	node->nodes = sis_sdsnode_create("streams", strlen("streams"));
-	node->nodes = sis_sdsnode_push_node(node->nodes,db_,strlen(db_));
-	node->nodes = sis_sdsnode_push_node(node->nodes,"$",1);
+	node->argvs = sis_sdsnode_create("streams", strlen("streams"));
+	node->argvs = sis_sdsnode_push_node(node->argvs,db_,strlen(db_));
+	node->argvs = sis_sdsnode_push_node(node->argvs,"$",1);
 
-	s_sis_message_node *reply = sis_socket_query_message(socket, node);
+	s_sis_net_message *reply = sis_socket_query_message(socket, node);
 	if (reply)
 	{
-		printf("reply : %s\n",(char *)reply->nodes->value);
-		o = sis_sdslen((s_sis_sds)reply->nodes->value);
+		printf("reply : %s\n",(char *)reply->argvs->value);
+		o = sis_sdslen((s_sis_sds)reply->argvs->value);
 	}	
-	sis_message_node_destroy(node);
+	sis_socket_node_destroy(node);
 	return o;
 }
 #include "sis_time.h"
 int main(int argc, char *argv[])
 {
-	s_sis_url url = {
+	s_sis_url_v1 url = {
 		.protocol = "redis",
 		// .ip = "127.0.0.1",
 		.ip = "192.168.3.118",

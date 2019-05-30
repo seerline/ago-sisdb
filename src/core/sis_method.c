@@ -22,6 +22,7 @@ s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, co
 	s_sis_method *val = NULL;
 	if (map_)
 	{
+
 		s_sis_sds key = sis_sdsnew(style_);
 		key = sis_sdscatfmt(key, ".%s", name_);
 		val = (s_sis_method *)sis_dict_fetch_value(map_, key);

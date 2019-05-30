@@ -163,7 +163,6 @@ void struct_list_set_size(s_sis_struct_list *list_, int len_)
 
 int sis_struct_list_set(s_sis_struct_list *list_, void *in_, int inlen_)
 {
-
 	int count = inlen_ / list_->len;
 	struct_list_set_size(list_, count);
 	if (in_)
@@ -177,6 +176,30 @@ int sis_struct_list_set(s_sis_struct_list *list_, void *in_, int inlen_)
 	list_->count = count;
 	list_->start = 0;
 	return count;
+}
+
+int sis_struct_list_setone(s_sis_struct_list *list_, int index_, void *in_)
+{
+	if (index_ < 0)
+	{
+		return sis_struct_list_push(list_, in_);
+	}
+	if (index_ >= 0 && index_ < list_->count)
+	{
+		int offset = index_ + list_->start;
+		memmove((char *)list_->buffer + (offset * list_->len), in_, list_->len);
+		return index_;
+	}
+	else
+	{
+		_struct_list_grow(list_, index_ - list_->count + 1);
+		int offset = index_ + list_->start;
+		memmove((char *)list_->buffer + (offset * list_->len), in_, list_->len);
+
+		list_->count = index_ + 1;
+	}
+	return index_;
+	
 }
 
 void sis_struct_list_limit(s_sis_struct_list *list_, int limit_)
@@ -380,8 +403,11 @@ int sis_pointer_list_delete(s_sis_pointer_list *list_, int start_, int count_)
 			list_->free(ptr[i]);
 		}
 	}
-	memmove((char *)list_->buffer + (start_ * list_->len), (char *)list_->buffer + ((start_ + count_) * list_->len),
+	if ((list_->count > count_ + start_))
+	{
+		memmove((char *)list_->buffer + (start_ * list_->len), (char *)list_->buffer + ((start_ + count_) * list_->len),
 			(list_->count - count_ - start_) * list_->len);
+	}
 
 	list_->count = list_->count - count_;
 	return count_;
@@ -693,7 +719,7 @@ int sis_string_list_push_only(s_sis_string_list *list_, const char *in_, size_t 
 	int index = sis_string_list_indexofcase(list_, str);
 	if (index < 0)
 	{
-		return sis_pointer_list_push(list_->strlist, str);
+		return sis_pointer_list_push(list_->strlist, str) - 1;
 	}
 	else
 	{

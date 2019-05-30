@@ -2,6 +2,7 @@
 #include "sis_net.obj.h"
 #include "os_thread.h"
 #include "sis_memory.h"
+#include "sis_net.node.h"
 
 void _sdsfree(void *p)
 {
@@ -29,6 +30,7 @@ void sis_object_set(s_sis_object *obj_, int style_, void *ptr)
         {
             case SIS_OBJECT_SDS: sis_sdsfree(obj_->ptr); break;
             case SIS_OBJECT_MEMORY: sis_memory_destroy(obj_->ptr); break;
+            case SIS_OBJECT_NETNODE: sis_net_message_destroy(obj_->ptr) ; break;
             // case OBJ_LIST: freeListObject(o); break;
             // case OBJ_SET: freeSetObject(o); break;
             // case OBJ_ZSET: freeZsetObject(o); break;
@@ -54,6 +56,7 @@ void sis_object_decr(s_sis_object *obj_)
         {
             case SIS_OBJECT_SDS: sis_sdsfree(obj_->ptr); break;
             case SIS_OBJECT_MEMORY: sis_memory_destroy(obj_->ptr); break;
+            case SIS_OBJECT_NETNODE: sis_net_message_destroy(obj_->ptr) ; break;
             // case OBJ_LIST: freeListObject(o); break;
             // case OBJ_SET: freeSetObject(o); break;
             // case OBJ_ZSET: freeZsetObject(o); break;

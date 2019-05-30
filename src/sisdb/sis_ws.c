@@ -300,7 +300,7 @@ s_sis_ws_mess *sis_ws_mess_create(const char *in_, size_t ilen_)
 
   sis_out_binary("input: ", in_, ilen_);
 
-  mess->in = sis_message_node_create();
+  mess->in = sis_net_message_create();
 
   int set = sis_str_pos(in, 64, ':');
   if (set > 0)
@@ -312,7 +312,7 @@ s_sis_ws_mess *sis_ws_mess_create(const char *in_, size_t ilen_)
   if (!handle)
   {
     sis_free(in);
-    sis_message_node_destroy(mess->in);
+    sis_net_message_destroy(mess->in);
     sis_free(mess);
     LOG(5)
     ("parse %s error.\n", in);
@@ -345,7 +345,7 @@ void sis_ws_mess_destroy(s_sis_ws_mess *mess_)
   }
   if (mess_->in)
   {
-    sis_message_node_destroy(mess_->in);
+    sis_net_message_destroy(mess_->in);
   }
   if (mess_->reply)
   {
@@ -476,7 +476,7 @@ s_sis_memory *sis_ws_mess_serialize_sds(s_sis_ws_mess *mess_)
       }
       else
       {
-        sis_bitstream_put(stream, 1, 4); // opcode
+        sis_bitstream_put(stream, 1, 4); // opcode  1 - text 2 - binary
       }
       sis_bitstream_put(stream, 0, 1); // mask
                                       // printf("len= %d\n", sis_bitstream_getbytelen(stream));
@@ -788,6 +788,7 @@ int sis_ws_server_start(int port)
     return 1;
   }
   uv_run(__server.loop, UV_RUN_DEFAULT);
+  
   return 0;
 }
 

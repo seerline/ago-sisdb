@@ -677,25 +677,25 @@ s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *unit_, s_sis_sds in_
 	{
 		// sis_out_binary("get", val, sis_sdslen(in_));
 		jval = _sis_struct_to_array(unit_, val, fields_);
-		if (unit_->db->control.limits != 1)
+		// if (unit_->db->control.limits != 1)
 		{
 			sis_json_array_add_node(jtwo, jval);
 		}
-		else
-		{
-			break;
-		}
+		// else
+		// {
+		// 	break;
+		// }
 		val += unit_->value->len;
 	}
 
-	if (unit_->db->control.limits != 1)
+	// if (unit_->db->control.limits != 1)
 	{
 		sis_json_object_add_node(jone, SIS_JSON_KEY_ARRAYS, jtwo);
 	}
-	else
-	{
-		sis_json_object_add_node(jone, SIS_JSON_KEY_ARRAY, jval);
-	}
+	// else
+	// {
+	// 	sis_json_object_add_node(jone, SIS_JSON_KEY_ARRAY, jval);
+	// }
 	// size_t ll;
 	// printf("jone = %s\n", sis_json_output(jone, &ll));
 	// 输出数据

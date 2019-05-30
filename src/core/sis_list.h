@@ -44,6 +44,8 @@ void *sis_struct_list_next(s_sis_struct_list *list_, void *);
 void struct_list_set_size(s_sis_struct_list *list_, int len_);
 int sis_struct_list_set(s_sis_struct_list *, void *in_, int inlen_);
 
+int sis_struct_list_setone(s_sis_struct_list *, int index_, void *in_);
+
 void sis_struct_list_limit(s_sis_struct_list *, int limit_);
 int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *dst_);
 int sis_struct_list_delete(s_sis_struct_list *src_, int start_, int count_);
@@ -64,8 +66,8 @@ typedef struct s_sis_pointer_list {
 	int		     maxcount; // 总数
 	int		     count;    // 当前个数
 	int          len;      // 每条记录的长度
-	void        *buffer;   // 必须是mallco申请的char*类型
-	void(*free)(void *);   // ==NULL 不释放对应内存
+	void        *buffer;   // 
+	void(*free)(void *);   // == NULL 不释放对应内存
 } s_sis_pointer_list;
 #ifdef __cplusplus
 extern "C" {

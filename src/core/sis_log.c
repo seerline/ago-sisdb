@@ -6,7 +6,7 @@
 // 一定要用static定义，不然内存混乱
 static s_sis_log _sis_log = {
 	.outscreen = true,
-	.level = 5,
+	.level = 10,
 	.maxsize = 5,
 	.logfp = NULL
 }

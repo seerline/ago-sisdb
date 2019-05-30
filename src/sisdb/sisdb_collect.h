@@ -29,7 +29,7 @@
 #define SIS_CHECK_LASTTIME_OK    3   // 等于最后一条记录
 #define SIS_CHECK_LASTTIME_ERROR 4   // 错误，不处理
 
-#define SIS_JSON_KEY_ARRAY ("value")   // 获取一个股票一条数据
+// #define SIS_JSON_KEY_ARRAY ("value")   // 获取一个股票一条数据
 #define SIS_JSON_KEY_ARRAYS ("values") //获取一个股票多个数据
 #define SIS_JSON_KEY_GROUPS ("groups")  //获取多个股票数据
 #define SIS_JSON_KEY_FIELDS ("fields")  // 字段定义

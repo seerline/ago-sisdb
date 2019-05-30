@@ -177,48 +177,46 @@ int sis_sdsnode_get_count(s_sis_list_node *node_)
 //  操作 s_stsis_ssage_node 列表的函数
 ///////////////////////////////////////////////////////////////////////////
 
-s_sis_message_node *sis_message_node_create()
+s_sis_net_message *sis_net_message_create()
 {
-	s_sis_message_node *o = (s_sis_message_node *)sis_malloc(sizeof(*o));
-	memset(o, 0, sizeof(s_sis_message_node));
+	s_sis_net_message *o = (s_sis_net_message *)sis_malloc(sizeof(*o));
+	memset(o, 0, sizeof(s_sis_net_message));
 	// o->links = sis_sdsnode_create(NULL,0);
-	// o->nodes = sis_sdsnode_create(NULL,0);
+	// o->argvs = sis_sdsnode_create(NULL,0);
 	return o;
 }
-s_sis_list_node *sis_message_node_set_nodes(s_sis_message_node *node_,const char *in_,size_t ilen_)
-{
-	if (!node_->nodes)
-	{
-		node_->nodes = sis_sdsnode_create(in_,ilen_);
-	}
-	return node_->nodes;
-}
-void sis_message_node_destroy(void *in_)
+
+void sis_net_message_destroy(void *in_)
 {
 	if (in_ == NULL)
 	{
 		return;
 	}
-	s_sis_message_node *in = (s_sis_message_node *)in_;
+	s_sis_net_message *in = (s_sis_net_message *)in_;
 	sis_sdsnode_destroy(in->links);
-	sis_sdsnode_destroy(in->nodes);
+	sis_sdsnode_destroy(in->argvs);
 
 	sis_sdsfree(in->command);
 	sis_sdsfree(in->key);
 	sis_sdsfree(in->argv);
 	sis_sdsfree(in->source);
 
+	sis_sdsnode_destroy(in->rlist);
+	sis_sdsfree(in->rval);
+
 	sis_free(in);
 }
 
-s_sis_message_node *sis_message_node_clone(s_sis_message_node *in_)
+s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_)
 {
 	if (in_ == NULL)
 	{
 		return NULL;
 	}
-	s_sis_message_node *o = sis_message_node_create();
+	s_sis_net_message *o = sis_net_message_create();
 
+	// o->cid = in_->cid;
+	o->style = in_->style;
 	if (in_->command)
 	{
 		o->command = sis_sdsdup(in_->command);
@@ -236,9 +234,16 @@ s_sis_message_node *sis_message_node_clone(s_sis_message_node *in_)
 		o->source = sis_sdsdup(in_->source);
 	}
 
-	o->links = sis_sdsnode_clone(in_->links);
-	o->nodes = sis_sdsnode_clone(in_->nodes);
+	o->argvs = sis_sdsnode_clone(in_->argvs);
 
+	o->rint = in_->rint;
+	if (in_->rval)
+	{
+		o->rval = sis_sdsdup(in_->rval);
+	}
+	o->rlist = sis_sdsnode_clone(in_->rlist);
+
+	o->links = sis_sdsnode_clone(in_->links);
 	return o;
 }
 

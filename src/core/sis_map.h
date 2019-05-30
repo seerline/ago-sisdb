@@ -61,23 +61,26 @@ int  sis_map_buffer_set(s_sis_map_buffer *, const char *key_, void *value_);
 // void *sis_map_list_get(s_sis_map_list *, const char *key_);
 // int sis_map_list_set(s_sis_map_list *, const char *key_, void *value_); 
 // int sis_map_list_getsize(s_sis_map_list *);
-
+typedef void (*_map_vfree)(void *);
 
 s_sis_map_pointer *sis_map_custom_create(s_sis_dict_type *);
 
 s_sis_map_pointer *sis_map_pointer_create();
+s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_);
 #define sis_map_pointer_destroy sis_map_buffer_destroy
 #define sis_map_pointer_clear sis_map_buffer_clear
 #define sis_map_pointer_get sis_map_buffer_get
 #define sis_map_pointer_set sis_map_buffer_set
-#define sis_map_pointer_getsize dictSize
+#define sis_map_pointer_getsize sis_dict_getsize
+void sis_map_pointer_del(s_sis_map_pointer *, const char *key_);
+// #define sis_map_pointer_del sis_dict_delete
 
 s_sis_map_int *sis_map_int_create();
 #define sis_map_int_destroy sis_map_buffer_destroy
 #define sis_map_int_clear sis_map_buffer_clear
 int64_t sis_map_int_get(s_sis_map_int *, const char *key_);
 int sis_map_int_set(s_sis_map_int *, const char *key_, int64_t value_);
-#define sis_map_int_getsize dictSize
+#define sis_map_int_getsize sis_dict_getsize
 
 s_sis_map_sds *sis_map_sds_create();
 #define sis_map_sds_destroy sis_map_buffer_destroy
@@ -88,10 +91,13 @@ int sis_map_sds_set(s_sis_map_sds *, const char *key_, char *val_);
 uint64_t _sis_dict_sds_hash(const void *key);
 uint64_t _sis_dict_sdscase_hash(const void *key);
 int _sis_dict_sdscase_compare(void *privdata, const void *key1, const void *key2);
-void _sis_dict_buffer_free(void *privdata, void *val);
 void *_sis_dict_sds_dup(void *privdata, const void *val);
-void _sis_dict_sds_free(void *privdata, void *val);
-void _sis_dict_list_free(void *privdata, void *val);
+// void _sis_dict_buffer_free(void *privdata, void *val);
+// void _sis_dict_sds_free(void *privdata, void *val);
+// void _sis_dict_list_free(void *privdata, void *val);
+void _sis_dict_buffer_free(void *val);
+void _sis_dict_sds_free(void *val);
+void _sis_dict_list_free(void *val);
 
 #ifdef __cplusplus
 }

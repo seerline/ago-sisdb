@@ -38,7 +38,7 @@ typedef struct s_sis_ws_mess {
   // void      *whither;  //  向何处去，以及向何处去的数据等
   uv_buf_t   write_buffer; //
   s_sis_sds sign;
-  s_sis_message_node *in;
+  s_sis_net_message *in;
   s_sis_object *reply;
 } s_sis_ws_mess;
 
@@ -149,7 +149,7 @@ void _client_shutdown_free(uv_handle_t *handle);
 
 int sis_ws_server_start(int port);
 
-int sis_ws_server_create();
+// int sis_ws_server_create();
 
 
 //  char r400[96];

@@ -93,8 +93,18 @@ void listJoin(list *l, list *o);
 #define AL_START_TAIL 1
 
 #define s_sis_list list
-#define s_sis_list_create listCreate
-#define s_sis_list_destroy listRelease
+#define sis_list_create listCreate
+#define sis_list_destroy listRelease
+#define sis_list_clear listEmpty
+#define sis_list_delete listDelNode
+#define sis_list_push listAddNodeTail
+#define sis_list_get listIndex
+#define sis_list_getsize listLength
+#define sis_list_first listFirst
+#define sis_list_last  listLast
+#define sis_list_prev listPrevNode
+#define sis_list_next listNextNode
+
 #define s_sis_list_node listNode
 
 #endif /* _SIS_NODE_LIST_H */

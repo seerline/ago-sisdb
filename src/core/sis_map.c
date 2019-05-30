@@ -17,25 +17,27 @@ int _sis_dict_sdscase_compare(void *privdata, const void *key1, const void *key2
 	SIS_NOTUSED(privdata);
 	return sis_strcasecmp((const char *)key1, (const char *)key2) == 0;
 }
-
-void _sis_dict_buffer_free(void *privdata, void *val)
-{
-	SIS_NOTUSED(privdata);
-	sis_free(val);
-}
 void *_sis_dict_sds_dup(void *privdata, const void *val)
 {
 	SIS_NOTUSED(privdata);
 	return sis_sdsnew(val);
 }
-void _sis_dict_sds_free(void *privdata, void *val)
+// void _sis_dict_buffer_free(void *privdata, void *val)
+void _sis_dict_buffer_free(void *val)
 {
-	SIS_NOTUSED(privdata);
+	// SIS_NOTUSED(privdata);
+	sis_free(val);
+}
+// void _sis_dict_sds_free(void *privdata, void *val)
+void _sis_dict_sds_free(void *val)
+{
+	// SIS_NOTUSED(privdata);
 	sis_sdsfree((s_sis_sds)val);
 }
-void _sis_dict_list_free(void *privdata, void *val)
+// void _sis_dict_list_free(void *privdata, void *val)
+void _sis_dict_list_free(void *val)
 {
-	SIS_NOTUSED(privdata);
+	// SIS_NOTUSED(privdata);
 	sis_struct_list_destroy((s_sis_struct_list *)val);
 }
 
@@ -139,6 +141,18 @@ s_sis_map_pointer *sis_map_pointer_create()
 	return map;
 };
 
+s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_)
+{
+	s_sis_map_pointer *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);
+	map->type->vfree = (_map_vfree)vfree_;
+	return map;
+};
+void sis_map_pointer_del(s_sis_map_pointer *map_, const char *key_)
+{
+	s_sis_sds key = sis_sdsnew(key_);
+	sis_dict_delete(map_, key);
+	sis_sdsfree(key);	
+}
 //////////////////////////////////////////
 //  s_sis_map_int 基础定义
 //////////////////////////////////////////
