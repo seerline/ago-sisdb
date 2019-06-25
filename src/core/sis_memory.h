@@ -33,6 +33,8 @@ void sis_memory_set_size(s_sis_memory *m_, size_t len_);
 size_t sis_memory_get_maxsize(s_sis_memory *m_);
 size_t sis_memory_set_maxsize(s_sis_memory *, size_t);
 
+char *sis_memory_read_line(s_sis_memory *m_, size_t *len_);
+
 size_t sis_memory_get_line_sign(s_sis_memory *);
 void sis_memory_move(s_sis_memory *, size_t);
 char *sis_memory(s_sis_memory *);

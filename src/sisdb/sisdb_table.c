@@ -13,7 +13,7 @@ s_sisdb_table *sisdb_table_create(s_sis_db *db_, const char *name_, s_sis_json_n
 	s_sisdb_table *tb = sisdb_get_table(db_, name_);
 	if (tb)
 	{ 
-		sis_out_log(1)("%s already exist.", name_);
+		LOG(1)("%s already exist.", name_);
 		return NULL;
 		// sisdb_table_destroy(tb);
 	}

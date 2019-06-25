@@ -94,6 +94,83 @@ void polyfit(int n, double x[], double y[], int poly_n, double a[])
 	sis_free(sumxy);
 	sis_free(ata);
 }
+double sis_ai_slope(int n, double ins[])
+{
+    double a[3];
+    double *x = (double *)sis_calloc(sizeof(double) * n);
+    for (int m = 0; m < n; m++)
+    {
+        x[m] = m + 1;
+    }
+    polyfit(n, x, ins, 1, a);
+    sis_free(x);
+    // printf("%f %f %f\n", a[0], a[1], a[2]);
+    return a[1];
+}
+// -1 ... +1 之间
+double sis_ai_slope_rate(int n, double ins[])
+{
+    if (n < 3) 
+    {
+        return  0.0;
+    }
+    double min = 0.0;
+    double max = 0.0;
+
+    double a[3];
+    double *x = (double *)sis_calloc(sizeof(double) * n);
+    for (int m = 0; m < n; m++)
+    {
+        x[m] = m;
+        min = sis_min(min, ins[m]);
+        max = sis_max(max, ins[m]);
+        // printf("%f %f %f \n", ins[m], min , max);
+    }
+    double *y = (double *)sis_calloc(sizeof(double) * n);
+    // 保证从 0 出发
+    // printf("%f %f \n", min , max);
+    for (int m = 0; m < n; m++)
+    {
+        // y[m] = (ins[m] - ins[0]) / max * m;
+        y[m] = (ins[m] - min) / ((max - min) / (n - 1));
+        // printf("%f %f %f\n", ins[m], x[m], y[m]);
+    }    
+    polyfit(n, x, y, 1, a);
+    sis_free(x);
+    sis_free(y);
+    // printf("%f %f %f\n", a[0], a[1], a[2]);
+    return a[1];
+}
+
+void   sis_ai_series_argv(int n, double ins[], double *avg, double *vari)
+{
+    *avg = 0.0;
+    *vari = 0.0;
+    if (n < 1)
+    {
+        return ;
+    }
+    double sum = 0.0;
+    for (int i = 0; i < n; i++)
+    {
+        sum += ins[i];
+    }
+    *avg = sum / (double)n;
+    sum = 0.0;
+    for (int i = 0; i < n; i++)
+    {
+        sum += pow(ins[i] - *avg, 2);
+    }    
+    *vari = sqrt(sum / (n-1));
+}
+double sis_ai_series(double in, double avg, double vari)
+{
+    if (vari==0)
+    {
+        return 0.0;
+    }
+    return exp(-1*pow(in - avg, 2)/(2*pow(vari,2))) / (sqrt(2*SIS_AI_CONST_PAI)*vari);
+}
 
 /////////////////////////////////////////////////////
 //  下面是通用的求组合结果的类
@@ -117,6 +194,16 @@ int sis_calc_cycle_push(s_sis_calc_cycle *calc_, double value_)
     sis_struct_list_push(calc_->list, &value_);
     return calc_->list->count;
 }
+void sis_calc_cycle_clear(s_sis_calc_cycle *calc_)
+{
+    sis_struct_list_clear(calc_->list);
+}
+
+double *sis_calc_cycle_get(s_sis_calc_cycle *calc_)
+{
+    return (double *)sis_struct_list_get(calc_->list, 0);
+}
+
 int sis_calc_cycle_set_float(s_sis_calc_cycle *calc_, float *value_, int count_)
 {  
     sis_struct_list_clear(calc_->list);
@@ -299,6 +386,75 @@ int main()
     printf("out: %d\n", out);
     sis_calc_cycle_destroy(cycle);
  
+    return 0;
+}
+
+#endif
+#if 0
+int main()
+{
+    // double in1[8] = { 1, 2, 3, 4, 5, 6, 7, 8};
+    double in1[8] = { 2, 4, 6, 8, 10, 12, 14, 16};
+    double in2[8] = { 3, 4, 5, 6, 7, 8, 9, 10};
+    double in3[8] = { 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008};
+    double in4[8] = { 1001, 1010, 1030, 1050, 1060, 1075, 1090, 1100};
+    // double in3[8] = { 10, 20, 30, 40, 50, 60, 70, 80};
+    // double in4[8] = { 30, 50, 70, 90, 110, 130, 150, 170};
+    // double in3[8] = { 10, 9, 8, 7, 6, 4, 4, 3};
+ 
+    // double in1[5] = { 312, 638, 338, 182, 1209};
+    // double in2[5] = { 702, 1158, 1131, 27559, 1426};
+
+    // double in3[5] = { 65727, 68336, 68383, 67642, 50425};
+    // double in4[5] = { 50914, 48605, 50597, 51816, 60696};
+
+    int count = 8;
+    // for (int i = 0; i < count; i++)
+    // {
+    //     in4[i] = -1 *in4[i];
+    // }
+    printf("slope: %.5f\n", sis_ai_slope_rate(count, in1));
+    printf("slope: %.5f\n", sis_ai_slope_rate(count, in2));
+    printf("slope: %.5f\n", sis_ai_slope_rate(count, in3));
+    printf("slope: %.5f\n", sis_ai_slope_rate(count, in4));
+
+    return 0;
+}
+#endif
+#if 0
+int main()
+{
+    double good[8] = { 0.697, 0.774, 0.634, 0.608, 0.556, 0.403, 0.481, 0.437};
+    double error[9] = { 0.666, 0.243, 0.245, 0.343, 0.639, 0.657, 0.360, 0.593, 0.719};
+    
+    double avg;
+    double vari;
+    double value;
+
+    int count = 8;
+    sis_ai_series_argv(count, good, &avg, &vari);
+    printf("para: %.5f %.5f\n", avg, vari);
+ 
+    value = sis_ai_series(good[0], avg, vari);
+    printf("out: %.5f\n", value);
+
+    count = 9;
+    sis_ai_series_argv(count, error, &avg, &vari);
+    printf("para: %.5f %.5f\n", avg, vari);
+ 
+    value = sis_ai_series(good[0], avg, vari);
+    printf("out: %.5f\n", value);
+
+    s_sis_calc_cycle *list = sis_calc_cycle_create(0);    
+    for (int i = 0; i < 8; i++)
+    {
+        count = sis_calc_cycle_push(list, good[i]*1000); 
+    }
+    sis_ai_series_argv(count, sis_calc_cycle_get(list), &avg, &vari);
+    printf("para: %.5f %.5f %.5f\n", avg, vari, 
+        sis_ai_series( 1697 ,avg, vari));
+
+    sis_calc_cycle_destroy(list);
     return 0;
 }
 

@@ -17,7 +17,14 @@ void sis_net_command_destroy(s_sis_map_pointer *map_);
 void sis_net_command_append(s_sis_net_class *sock_, s_sis_method *method_);
 void sis_net_command_remove(s_sis_net_class *sock_, const char *name_, const char *style_);
 
+bool sis_socket_send_reply_info(s_sis_net_class *sock_, int cid_,const char *in_);
+bool sis_socket_send_reply_error(s_sis_net_class *sock_, int cid_,const char *in_);
+bool sis_socket_send_reply_buffer(s_sis_net_class *sock_, int cid_,const char *in_, size_t ilen_);
+bool sis_socket_check_auth(s_sis_net_class *sock_, int cid_);
+
 // 系统默认的发布和订阅命令
+void * sis_net_cmd_auth(void *sock_, void *mess_);
+
 void *sis_net_cmd_sub(void *sock_, void *mess);
 void *sis_net_cmd_pub(void *sock_, void *mess);
 void *sis_net_cmd_unsub(void *sock_, void *mess);

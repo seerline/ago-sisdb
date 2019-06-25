@@ -609,7 +609,7 @@ void worker_init_working(s_sisdb_worker *worker_)
 					{
 						sisdb_call_market_init(server->sysdb, (void *)market);
 						// 初始化后应该存一次盘，或者清理掉所有该表的写入
-						sis_out_log(5)("init 2 ok %s\n", market);
+						LOG(5)("init 2 ok %s\n", market);
 						_sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
 					}
 				}
@@ -635,7 +635,7 @@ void worker_init_working(s_sisdb_worker *worker_)
 					{
 						sisdb_call_market_init(server->sysdb, (void *)market);
 						// 初始化后应该存一次盘，或者清理掉所有该表的写入
-						sis_out_log(5)("init 1 ok %s\n", market);
+						LOG(5)("init 1 ok %s\n", market);
 						_sisdb_market_set_status(collect, SIS_MARKET_STATUS_INITED);
 					}
 				}
@@ -644,7 +644,7 @@ void worker_init_working(s_sisdb_worker *worker_)
 			{
 				if (status == SIS_MARKET_STATUS_INITED)
 				{
-					sis_out_log(5)("close ok %s\n", market);
+					LOG(5)("close ok %s\n", market);
 					_sisdb_market_set_status(collect, SIS_MARKET_STATUS_CLOSE);
 				}
 			}

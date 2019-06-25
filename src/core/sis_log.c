@@ -136,6 +136,9 @@ void sis_log(const char *fmt_, ...)
 				fprintf(stderr, CLR_LHOT);
 				break;
 			case 1:
+				fprintf(stderr, CLR_LBLUE);
+				break;
+			case 2:
 				fprintf(stderr, CLR_YELLOW);
 				break;
 			default:
@@ -201,11 +204,71 @@ size_t sis_writefile(char *name, void *value, size_t len)
 	return 0;
 }
 
+// void sis_out_binary(const char *key_, const char *val_, size_t len_)
+// {
+// 	printf("%s : %d ==> \n", key_, (int)len_);
+// 	size_t i = 0;
+// 	size_t j;
+// 	while (i < len_)
+// 	{
+// 		uint8 val = val_[i] & 0xff;
+// 		if (i % 8 == 0 && i > 0)
+// 		{
+// 			printf(" ");
+// 		}
+// 		if (i % 16 == 0)
+// 		{
+// 			if (i > 0)
+// 			{
+// 				printf(" ");
+// 				for (j = i - 16; j < i; j++)
+// 				{
+// 					int vv = val_[j];
+// 					if (vv > 0x20 && vv < 0x7e)
+// 					{
+// 						printf("%c", vv);
+// 					}
+// 					else
+// 					{
+// 						printf(".");
+// 					}
+// 				}
+// 				printf("\n");
+// 			}
+// 			printf("%.8lu: ", i);
+// 		}
+// 		printf("%.2x ", val);
+// 		i++;
+// 	}
+// 	if (len_ % 16 != 0)
+// 	{
+// 		for (j = 0; j < (16 - (len_ % 16)); j++)
+// 		{
+// 			printf("   ");
+// 		}
+// 		printf("  ");
+// 		if (len_ % 16 <= 8)
+// 			printf(" ");
+// 		for (j = i - (len_ % 16); j < i; j++)
+// 		{
+// 			int vv = val_[j];
+// 			if (vv > 0x20 && vv < 0x7e)
+// 			{
+// 				printf("%c", vv);
+// 			}
+// 			else
+// 			{
+// 				printf(".");
+// 			}
+// 		}
+// 	}
+// 	printf("\n");
+// }
 void sis_out_binary(const char *key_, const char *val_, size_t len_)
 {
 	printf("%s : %d ==> \n", key_, (int)len_);
 	size_t i = 0;
-	size_t j;
+	size_t k = 0;
 	while (i < len_)
 	{
 		uint8 val = val_[i] & 0xff;
@@ -218,7 +281,7 @@ void sis_out_binary(const char *key_, const char *val_, size_t len_)
 			if (i > 0)
 			{
 				printf(" ");
-				for (j = i - 16; j < i; j++)
+				for (int j = i - 16; j < i; j++)
 				{
 					int vv = val_[j];
 					if (vv > 0x20 && vv < 0x7e)
@@ -230,6 +293,7 @@ void sis_out_binary(const char *key_, const char *val_, size_t len_)
 						printf(".");
 					}
 				}
+				k += 16;
 				printf("\n");
 			}
 			printf("%.8lu: ", i);
@@ -237,16 +301,14 @@ void sis_out_binary(const char *key_, const char *val_, size_t len_)
 		printf("%.2x ", val);
 		i++;
 	}
-	if (len_ % 16 != 0)
+	if (k < len_)
 	{
-		for (j = 0; j < (16 - (len_ % 16)); j++)
+		for (int j = 0; j < (16 - len_ + k) % 16 ; j++)
 		{
 			printf("   ");
 		}
 		printf("  ");
-		if (len_ % 16 <= 8)
-			printf(" ");
-		for (j = i - (len_ % 16); j < i; j++)
+		for (int j = k; j < len_; j++)
 		{
 			int vv = val_[j];
 			if (vv > 0x20 && vv < 0x7e)
@@ -261,7 +323,6 @@ void sis_out_binary(const char *key_, const char *val_, size_t len_)
 	}
 	printf("\n");
 }
-
 #if 0
 
 // inline void why_me()

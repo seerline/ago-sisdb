@@ -82,7 +82,7 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 	s_sisdb_table *tb = sisdb_get_table(db_, dbname);
 	if (!tb)
 	{
-		sis_out_log(3)("table [%s--%s] no find.\n", key_ , dbname);
+		LOG(3)("table [%s--%s] no find.\n", key_ , dbname);
 		return NULL;
 	}
 
@@ -1128,7 +1128,7 @@ s_sis_sds sisdb_collect_fastget_sds(s_sis_db *db_, const char *key_)
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
-		// sis_out_log(5)("no find key %s.\n", key_);
+		// LOG(5)("no find key %s.\n", key_);
 		return NULL;
 	}
 	int start = 0;
@@ -1163,7 +1163,7 @@ s_sis_sds sisdb_collect_get_sds(s_sis_db *db_, const char *key_, const char *com
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
-		// sis_out_log(5)("no find key %s.\n", key_);
+		// LOG(5)("no find key %s.\n", key_);
 		return NULL;
 	}
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
@@ -1304,7 +1304,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *tbname_, const 
 	const char *codes = sis_json_get_str(handle->node, "codes");
 	// if (!codes)
 	// {
-	// 	sis_out_log(3)("no find codes [%s].\n", com_);
+	// 	LOG(3)("no find codes [%s].\n", com_);
 	// 	goto error;
 	// }
 	// sis_string_list_load(codes, codes, strlen(codes), ",");
@@ -1312,7 +1312,7 @@ s_sis_sds sisdb_collects_get_last_sds(s_sis_db *db_, const char *tbname_, const 
 	// int count = sis_string_list_getsize(codes);
 	// if (count < 1)
 	// {
-	// 	sis_out_log(3)("no find codes [%s].\n", com_);
+	// 	LOG(3)("no find codes [%s].\n", com_);
 	// 	goto error;
 	// }
 
@@ -1464,7 +1464,7 @@ int sisdb_collect_delete(s_sis_db *db_, const char *key_, const char *com_)
 	s_sisdb_collect *collect = sisdb_get_collect(db_, key_);
 	if (!collect)
 	{
-		sis_out_log(5)("no find key [del] %s.\n", key_);
+		LOG(5)("no find key [del] %s.\n", key_);
 		return 0;
 	}
 	s_sis_json_handle *handle = sis_json_load(com_, strlen(com_));
@@ -1624,7 +1624,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *unit_, const char *
 		int size = sis_json_get_size(jval);
 		if (size != fields)
 		{
-			sis_out_log(3)("input fields[%d] count error [%d].\n", size, fields);
+			LOG(3)("input fields[%d] count error [%d].\n", size, fields);
 			jval = jval->next;
 			continue;
 		}
@@ -2299,7 +2299,7 @@ int sisdb_collect_update(s_sisdb_collect *unit_, s_sis_sds in_, bool ispub_)
 	//这里应该判断数据完整性
 	if (count * unit_->value->len != ilen)
 	{
-		sis_out_log(3)("source format error [%d*%d!=%u]\n", count, unit_->value->len, ilen);
+		LOG(3)("source format error [%d*%d!=%u]\n", count, unit_->value->len, ilen);
 		return 0;
 	}
 	// printf("-----count =%d len=%d:%d\n", count, ilen, unit_->value->len);
@@ -2550,7 +2550,7 @@ int sisdb_collect_update_block(s_sisdb_collect *unit_, const char *in_, size_t i
 	//这里应该判断数据完整性
 	if (count * unit_->value->len != ilen_)
 	{
-		sis_out_log(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
+		LOG(3)("source format error [%d*%d!=%lu]\n", count, unit_->value->len, ilen_);
 		return 0;
 	}
 	// printf("-[%s]----count =%d len=%ld:%d\n", unit_->father->name, count, ilen_, unit_->value->len);

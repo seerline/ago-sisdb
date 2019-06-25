@@ -143,9 +143,21 @@ s_sis_map_pointer *sis_map_pointer_create()
 
 s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_)
 {
-	s_sis_map_pointer *map = sis_dict_create(&_sis_dict_type_owner_free_val_s, NULL);
+	s_sis_dict_type *type =SIS_MALLOC(s_sis_dict_type, type);
+	memmove(type, &_sis_dict_type_owner_free_val_s, sizeof(s_sis_dict_type));
+	s_sis_map_pointer *map = sis_dict_create(type, (void *)1);
 	map->type->vfree = (_map_vfree)vfree_;
 	return map;
+};
+void sis_map_pointer_destroy(s_sis_map_pointer *map_)
+{
+	sis_dict_empty(map_, NULL);
+	if (map_->privdata != NULL)
+	{
+		sis_free(map_->type);
+	}
+	sis_free(map_);
+	// sis_dict_destroy(map_);
 };
 void sis_map_pointer_del(s_sis_map_pointer *map_, const char *key_)
 {

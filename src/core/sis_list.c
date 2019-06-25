@@ -150,6 +150,21 @@ void *sis_struct_list_next(s_sis_struct_list *list_, void *current_)
 		return NULL;
 	}
 }
+void *sis_struct_list_offset(s_sis_struct_list *list_, void *current_, int offset_)
+{
+	int offset = offset_;
+	char *o = (char *)current_ + offset * list_->len;
+	if (o >= (char *)list_->buffer + list_->start * list_->len &&
+		o <= (char *)list_->buffer + (list_->start + list_->count - 1) * list_->len)
+	{
+		return o;
+	}
+	else
+	{
+		return NULL;
+	}	
+}
+
 // 仅仅设置尺寸，不初始化
 void struct_list_set_size(s_sis_struct_list *list_, int len_)
 {
@@ -218,6 +233,15 @@ int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *list_)
 	sis_struct_list_set(list_, (char *)src_->buffer + (src_->start * src_->len), src_->count * list_->len);
 	return src_->count;
 }
+int sis_struct_list_append(s_sis_struct_list *src_, s_sis_struct_list *dst_)
+{
+	for (int i = 0; i < src_->count; i++)
+	{
+		sis_struct_list_push(dst_, sis_struct_list_get(src_,i));
+	}
+	return dst_->count;
+}
+
 int sis_struct_list_pack(s_sis_struct_list *list_)
 {
 	char *tmp = (char *)sis_malloc(list_->count * list_->len);

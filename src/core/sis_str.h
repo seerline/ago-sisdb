@@ -87,6 +87,8 @@ bool sis_str_get_id(char *out_, size_t olen_);
 
 bool sis_str_get_time_id(char *out_, size_t olen_);
 
+int64 sis_str_read_long(char *s);
+
 #ifdef __cplusplus
 }
 #endif

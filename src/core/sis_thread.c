@@ -202,7 +202,7 @@ bool sis_plan_task_start(s_sis_plan_task *task_, SIS_THREAD_START_ROUTINE func_,
 {
 	if (!sis_thread_create(func_, val_, &task_->work_thread))
 	{
-		// sis_out_log(1)("can't link task thread.\n");
+		// LOG(1)("can't link task thread.\n");
 		return false;
 	}
 	task_->working = true;
@@ -228,7 +228,7 @@ void sis_plan_task_destroy(s_sis_plan_task *task_)
 	sis_struct_list_destroy(task_->work_plans);
 
 	sis_free(task_);
-	sis_out_log(5)("plan_task end.\n");
+	LOG(5)("plan_task end.\n");
 }
 
 #if 0

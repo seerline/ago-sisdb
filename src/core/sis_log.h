@@ -72,7 +72,7 @@ void sis_log(const char *fmt_, ...);
 }
 #endif
 
-#define sis_out_log(a) if(a>1) printf
+// #define LOG(a) if(a>1) printf
 
 #define LOG(level) 	if (sis_log_input(level, sis_thread_self(),__func__)) sis_log
 

@@ -291,6 +291,8 @@ void sds_free(void *ptr);
 #define sis_sdsnewlong sdsfromlonglong
 #define sis_sdsnewlen sdsnewlen
 #define sis_sdssetlen sdssetlen
+#define sis_sds_addlen sdsMakeRoomFor
+
 inline s_sis_sds sis_sdscpy(s_sis_sds s, const char *t)
 {
     if (!s)

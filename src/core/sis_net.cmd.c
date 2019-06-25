@@ -3,6 +3,7 @@
 #include <sis_list.h>
 
 static struct s_sis_method _sis_net_method_system[] = {
+	{"auth",   SIS_NET_METHOD_SYSTEM, sis_net_cmd_auth, ""},
 	{"sub",    SIS_NET_METHOD_SYSTEM, sis_net_cmd_sub, ""},
 	{"unsub",  SIS_NET_METHOD_SYSTEM, sis_net_cmd_unsub, ""}, 
 	{"pub",    SIS_NET_METHOD_SYSTEM, sis_net_cmd_pub, ""},  
@@ -47,10 +48,88 @@ void sis_net_command_remove(s_sis_net_class *sock_, const char *name_, const cha
 ////////////////////////////////////////////////////////////////////////////////
 // command list
 ////////////////////////////////////////////////////////////////////////////////
+#define SIS_NET_REPLY_SHORT_LEN 1024
+bool sis_socket_send_reply_info(s_sis_net_class *sock_, int cid_,const char *in_)
+{
+	char str[SIS_NET_REPLY_SHORT_LEN];
+	sis_sprintf(str, SIS_NET_REPLY_SHORT_LEN, "+%s\r\n", in_);
+	if (sock_->connect_method == SIS_NET_IO_CONNECT)
+	{
+		return sis_socket_client_send(sock_->client, str, strlen(str));
+	}
+	else
+	{
+		return sis_socket_server_send(sock_->server, cid_, str, strlen(str));
+	}
+}
+bool sis_socket_send_reply_error(s_sis_net_class *sock_, int cid_,const char *in_)
+{
+	char str[SIS_NET_REPLY_SHORT_LEN];
+	sis_sprintf(str, SIS_NET_REPLY_SHORT_LEN, "-%s\r\n", in_);
+	if (sock_->connect_method == SIS_NET_IO_CONNECT)
+	{
+		return  sis_socket_client_send(sock_->client, str, strlen(str));
+	}
+	else
+	{
+		return sis_socket_server_send(sock_->server, cid_, str, strlen(str));
+	}
+}
+bool sis_socket_send_reply_buffer(s_sis_net_class *sock_, int cid_,const char *in_, size_t ilen_)
+{
+	if (sock_->connect_method == SIS_NET_IO_CONNECT)
+	{
+		return sis_socket_client_send(sock_->client, in_, ilen_);
+	}
+	else
+	{
+		return sis_socket_server_send(sock_->server, cid_, in_, ilen_);
+	}
+}
+bool sis_socket_check_auth(s_sis_net_class *sock_, int cid_)
+{
+	char key[16];
+	sis_sprintf(key, 16, "%d", cid_);
+	s_sis_net_client *client = sis_map_pointer_get(sock_->sessions, key);
+	if (!client->auth)
+	{
+		sis_socket_send_reply_error(sock_, cid_, "no auth.");
+		return false;
+	}
+	return true;
+}
+
+void * sis_net_cmd_auth(void *sock_, void *mess_)
+{
+	s_sis_net_class *sock = (s_sis_net_class *)sock_;
+	s_sis_net_message *mess = (s_sis_net_message *)mess_;
+
+	if (sock->cb_auth)
+	{
+		if (!sock->cb_auth(sock_, mess->key, mess->argv))
+		{
+			sis_socket_send_reply_error(sock, mess->cid, "auth fail.");
+			return SIS_METHOD_VOID_FALSE;
+		}
+	}
+	char key[16];
+	sis_sprintf(key, 16, "%d", mess->cid);
+	s_sis_net_client *client = sis_map_pointer_get(sock->sessions, key);
+	if (client)
+	{
+		client->auth = true;
+	}
+	sis_socket_send_reply_info(sock, mess->cid, SIS_REPLY_MSG_OK);
+	return SIS_METHOD_VOID_TRUE;
+}
 void * sis_net_cmd_unsub(void *sock_, void *mess_)
 {
 	s_sis_net_class *sock = (s_sis_net_class *)sock_;
 	s_sis_net_message *mess = (s_sis_net_message *)mess_;
+	if(!sis_socket_check_auth(sock, mess->cid))
+	{
+		return SIS_METHOD_VOID_FALSE;
+	}
 
 	s_sis_struct_list *cids = (s_sis_struct_list *)sis_map_pointer_get(sock->sub_clients, mess->key);
 	if (!cids)
@@ -63,9 +142,11 @@ void * sis_net_cmd_unsub(void *sock_, void *mess_)
 		if (cid == mess->cid)
 		{
 			sis_struct_list_delete(cids, i, 1);
+			sis_socket_send_reply_info(sock, mess->cid, SIS_REPLY_MSG_OK);
 			return SIS_METHOD_VOID_TRUE;
 		}
 	}
+	sis_socket_send_reply_error(sock, mess->cid, "no find sub key.");
 	return SIS_METHOD_VOID_FALSE;
 }
 
@@ -73,6 +154,10 @@ void * sis_net_cmd_sub(void *sock_, void *mess_)
 {
 	s_sis_net_class *sock = (s_sis_net_class *)sock_;
 	s_sis_net_message *mess = (s_sis_net_message *)mess_;
+	if(!sis_socket_check_auth(sock, mess->cid))
+	{
+		return SIS_METHOD_VOID_FALSE;
+	}
 
 	s_sis_struct_list *cids = (s_sis_struct_list *)sis_map_pointer_get(sock->sub_clients, mess->key);
 	if (!cids)
@@ -85,22 +170,49 @@ void * sis_net_cmd_sub(void *sock_, void *mess_)
 		int cid = *(int *)sis_struct_list_get(cids, i);
 		if (cid == mess->cid)
 		{
-			return (void *)0;
+			sis_socket_send_reply_error(sock, mess->cid, "already sub.");
+			return SIS_METHOD_VOID_FALSE;
 		}
 	}
 	sis_struct_list_push(cids, &mess->cid);
-	return (void *)1;
+	sis_socket_send_reply_info(sock, mess->cid, SIS_REPLY_MSG_OK);
+	return SIS_METHOD_VOID_TRUE;
 }
 void * sis_net_cmd_pub(void *sock_, void *mess_)
 {
 	s_sis_net_class *sock = (s_sis_net_class *)sock_;
-	s_sis_net_message *mess = (s_sis_net_message *)mess_;
+	s_sis_net_message *mess = sis_net_message_clone((s_sis_net_message *)mess_);
+	if(!sis_socket_check_auth(sock, mess->cid))
+	{
+		return SIS_METHOD_VOID_FALSE;
+	}
 
-	s_sis_sds out = sock->cb_pack_ask(sock, mess_);
+	mess->style = SIS_NET_REPLY_ARRAY;
+	mess->subpub = 1;
+	s_sis_list_node *newnode = NULL;
+	if (mess->argv)
+	{
+		newnode = sis_sdsnode_create(mess->argv, sis_sdslen(mess->argv));
+	}
+	s_sis_list_node *node = mess->argvs;
+	while (node != NULL)
+	{
+		newnode = sis_sdsnode_push_node(newnode, node->value, sis_sdslen((s_sis_sds)node->value));
+		node = node->next;
+	};
+	mess->rlist = newnode;
+
+	s_sis_sds out = sock->cb_pack(sock, mess);
+
 	if (!out)
 	{
-		return (void *)-3;
+		sis_socket_send_reply_error(sock, mess->cid, "unknown format.");
+		sis_net_message_destroy(mess);
+		return (void *)0;
 	}
+	// 
+	sis_socket_send_reply_info(sock, mess->cid, SIS_REPLY_MSG_OK);
+
 	int64 oks = 0;
 	s_sis_struct_list *cids = (s_sis_struct_list *)sis_map_pointer_get(sock->sub_clients, mess->key);
 	if (cids)
@@ -108,7 +220,7 @@ void * sis_net_cmd_pub(void *sock_, void *mess_)
 		for (int i = 0; i < cids->count; i++)
 		{
 			int cid = *(int *)sis_struct_list_get(cids, i);
-			if (sis_socket_server_send(sock->server, cid, out, sis_sdslen(out)))
+			if (sis_socket_send_reply_buffer(sock, cid, out, sis_sdslen(out)))
 			// if (_sis_net_class_sendto(sock_, cid, out, sis_sdslen(out)))
 			{
 				oks++;
@@ -117,5 +229,6 @@ void * sis_net_cmd_pub(void *sock_, void *mess_)
 	}
 	printf("publish key =%lld\n",oks);
 	sis_sdsfree(out);
+	sis_net_message_destroy(mess);
 	return (void *)oks;	
 }

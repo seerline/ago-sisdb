@@ -18,7 +18,7 @@ s_sis_sds sis_file_read_to_sds(const char *fn_)
 	sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);
 	if (!fp)
 	{
-		sis_out_log(3)("cann't open file [%s].\n", fn_);
+		LOG(3)("cann't open file [%s].\n", fn_);
 		return NULL;
 	}
 	size_t size = sis_file_size(fp);
@@ -41,14 +41,14 @@ bool sis_file_sds_write(const char *fn_, s_sis_sds buffer_)
 
     if (!sis_path_mkdir(path))
     {
-        sis_out_log(3)("cann't create dir [%s].\n", path);
+        LOG(3)("cann't create dir [%s].\n", path);
         return false;
     }
 
     sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
     if (!fp)
     {
-        sis_out_log(3)("cann't open file [%s].\n", fn_);
+        LOG(3)("cann't open file [%s].\n", fn_);
         return false;
     }
     sis_file_seek(fp, 0, SEEK_SET);
@@ -75,9 +75,9 @@ void sis_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int
     sis_path_complete(outpath_,SIS_PATH_LEN);
     if(!sis_path_mkdir(outpath_))
     {
-		sis_out_log(3)("cann't create dir [%s].\n", outpath_);   
+		LOG(3)("cann't create dir [%s].\n", outpath_);   
     }
-    sis_out_log(5)("outpath_:%s\n",outpath_);
+    LOG(5)("outpath_:%s\n",outpath_);
 }
 
 void sis_check_path(const char *fn_)

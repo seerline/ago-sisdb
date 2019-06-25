@@ -70,18 +70,11 @@ struct s_sis_net_class;
 
 typedef void (*callback_net_recv)(struct s_sis_net_class *,s_sis_net_message *);
 typedef s_sis_sds (*callback_net_pack)(struct s_sis_net_class *,s_sis_net_message *);
-typedef size_t (*callback_net_unpack)(struct s_sis_net_class *,s_sis_net_message *, char* in_, size_t ilen_);
-
-// 消息交换机
-typedef struct s_sis_net_switchboard {
-	int    cid;    	       // 哪个客户端的信息 -- 仅在server时有用, client时为0
-	s_sis_net_message *request;
-	callback_net_recv cb_reply; // 回调函数
-}s_sis_net_switchboard;
+typedef bool (*callback_net_unpack)(struct s_sis_net_class *,s_sis_net_message *, s_sis_memory* in_);
 
 typedef struct s_sis_net_client {
 	int cid;
-
+	bool auth;  // 是否授权通过
 	s_sis_net_message *message;  // set 时消息的指针 有且仅有一条
 
 	s_sis_map_pointer *sub_msgs;// s_sis_net_message
@@ -116,20 +109,23 @@ typedef struct s_sis_net_class {
 	s_sis_map_pointer *sub_clients; // s_sis_string_list cid 列表 
 	// 其他人订阅我的key 找不到就不广播 每个键对应一个字符串列表
 
-	// 系统信息回调
-	void(*cb_connected)(struct s_sis_net_class *, int cid_); // 连接成功 client时 cid=0
-	// 必须等待握手成功，才能发出链接成功
-	void(*cb_disconnect)(struct s_sis_net_class *, int cid_); // 断开连接
-	// void(*cb_auth)(struct s_sis_net_class *);  // 用户合法校验
 	// 数据序列化和反序列化的回调
 	callback_net_pack cb_pack;
 	callback_net_unpack cb_unpack;
 
+	// 系统信息回调
+	void(*cb_connected)(struct s_sis_net_class *, int cid_); // 连接成功 client时 cid=0
+	// 必须等待握手成功，才能发出链接成功
+	void(*cb_disconnect)(struct s_sis_net_class *, int cid_); // 断开连接
+	// 连接到对方后 进行校验的回调函数， 登录后自动调用
+	bool(*cb_auth)(struct s_sis_net_class *, const char *,const char *);  // 用户合法校验
 	// 收到数据后的回调函数 
 	callback_net_recv cb_recv;  // 收到请求数据
-	callback_net_recv_reply cb_recv_reply;  // 收到应答数据
 
 } s_sis_net_class;
+
+#define SIS_REPLY_MSG_OK  ("OK")
+#define SIS_REPLY_MSG_NO  ("NO")
 
 s_sis_net_client *sis_net_client_create(int cid_); 
 void sis_net_client_destroy(void *);
@@ -138,16 +134,16 @@ void sis_net_client_destroy(void *);
 s_sis_net_class *sis_net_class_create(s_sis_url *url_); //rale_ 表示身份
 void sis_net_class_destroy(s_sis_net_class *);
 
-void sis_net_class_set_recv_cb(s_sis_net_class *sock_, callback_net_recv cb_);
+// void sis_net_class_set_recv_cb(s_sis_net_class *sock_, callback_net_recv cb_);
 
 void sis_net_class_open(s_sis_net_class *sock_);
 void sis_net_class_close(s_sis_net_class *sock_);
 
 // 发送请求 立即返回 发送的信息保存 如果 cb=NULL 表示收到响应直接丢弃
-// 如果请求为sub就进入订阅模式，sub模式必须有cb 否则发送失败
-int sis_net_class_send(s_sis_net_class *sock_, s_sis_net_message *mess_, callback_net_recv_reply cb_);
+// 如果请求为订阅模式，设置 subpub 订阅模式必须有cb 否则发送失败
+int sis_net_class_send_ask(s_sis_net_class *sock_, s_sis_net_message *mess_, callback_net_recv cb_);
 // 发送应答 发送后状态设置为正常
-int sis_net_class_reply(s_sis_net_class *sock_, s_sis_net_message *mess_);
+int sis_net_class_send_ans(s_sis_net_class *sock_, s_sis_net_message *mess_);
 
 // 1、底层协议格式 参考redis协议
 // https://blog.csdn.net/u014608280/article/details/84586042
@@ -159,7 +155,7 @@ int sis_net_class_reply(s_sis_net_class *sock_, s_sis_net_message *mess_);
 			// +  --  成功字符串 以\r\n为结束
 			// -  --  串错误字符 以\r\n为结束
 			// :  --  整数
-			// #  --  订阅的键
+			// ++ --  订阅的键
 			// *  --  +数量+数组 可以为任何类型
 
 // 请求格式例子:
@@ -186,10 +182,10 @@ int sis_net_class_reply(s_sis_net_class *sock_, s_sis_net_message *mess_);
 			//    第三个元素为一个成功字符串和一个5字节长度的数据缓存的数组
 
 			// *2\r\n
-			// +now\r\n
+			// ++now\r\n  
 			// $5\r\n
 			// 12345\r\n 
-			// 表示收到一个标记为now的数据列，通常用于sub时的返回数据
+			// 表示收到一个标记为now的广播数据，通常用于sub时的返回数据
 
 // 2、高级协议格式 主要应用于 ws 协议下的web应用 
 // 基于json数据格式，通过驱动来转换数据格式，从协议层来说相当于底层协议的解释层，

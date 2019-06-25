@@ -109,6 +109,24 @@ s_sis_list_node *sis_sdsnode_push_node(s_sis_list_node *node_, const void *in, s
 	last->next = node;
 	return sis_sdsnode_first_node(node);
 }
+
+s_sis_list_node *sis_sdsnode_push_node_sds(s_sis_list_node *node_, s_sis_sds in_)
+{
+	s_sis_list_node *node = (s_sis_list_node *)sis_malloc(sizeof(s_sis_list_node));
+	node->value = in_;
+
+	if (node_ == NULL)
+	{
+		node->prev = NULL;
+		node->next = NULL;
+		return node;
+	}
+	s_sis_list_node *last = sis_sdsnode_last_node(node_); //这里一定返回真
+	node->prev = last;
+	node->next = NULL;
+	last->next = node;
+	return sis_sdsnode_first_node(node_);
+}
 s_sis_list_node *sis_sdsnode_update(s_sis_list_node *node_, const void *in, size_t inlen)
 {
 	if (node_ == NULL)
@@ -179,7 +197,7 @@ int sis_sdsnode_get_count(s_sis_list_node *node_)
 
 s_sis_net_message *sis_net_message_create()
 {
-	s_sis_net_message *o = (s_sis_net_message *)sis_malloc(sizeof(*o));
+	s_sis_net_message *o = (s_sis_net_message *)sis_malloc(sizeof(s_sis_net_message));
 	memset(o, 0, sizeof(s_sis_net_message));
 	// o->links = sis_sdsnode_create(NULL,0);
 	// o->argvs = sis_sdsnode_create(NULL,0);
@@ -215,7 +233,7 @@ s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_)
 	}
 	s_sis_net_message *o = sis_net_message_create();
 
-	// o->cid = in_->cid;
+	o->cid = in_->cid;
 	o->style = in_->style;
 	if (in_->command)
 	{
@@ -242,6 +260,8 @@ s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_)
 		o->rval = sis_sdsdup(in_->rval);
 	}
 	o->rlist = sis_sdsnode_clone(in_->rlist);
+
+	o->cb_reply = in_->cb_reply;
 
 	o->links = sis_sdsnode_clone(in_->links);
 	return o;

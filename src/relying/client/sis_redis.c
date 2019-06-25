@@ -25,7 +25,7 @@ void _sis_redis_connect(s_sis_socket *sock_)
 {
 	if(sock_->status == SIS_NET_CONNECTSTOP) 
 	{
-		sis_out_log(5)("connect already close.\n");
+		LOG(5)("connect already close.\n");
 		return ;
 	}
 	sock_->status = SIS_NET_CONNECTING;
@@ -38,13 +38,13 @@ void _sis_redis_connect(s_sis_socket *sock_)
 	{
 		if (context)
 		{
-			sis_out_log(3)("connection error: %s\n", context->errstr);
+			LOG(3)("connection error: %s\n", context->errstr);
 			redisFree(context);
 			context = NULL;
 		}
 		else
 		{
-			sis_out_log(3)("connection error: can't allocate redis context\n");
+			LOG(3)("connection error: can't allocate redis context\n");
 		}
 	}
 	else

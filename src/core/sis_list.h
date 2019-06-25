@@ -41,6 +41,8 @@ void *sis_struct_list_last(s_sis_struct_list *);
 void *sis_struct_list_get(s_sis_struct_list *, int index_);
 void *sis_struct_list_next(s_sis_struct_list *list_, void *);
 
+void *sis_struct_list_offset(s_sis_struct_list *list_, void *, int offset_);
+
 void struct_list_set_size(s_sis_struct_list *list_, int len_);
 int sis_struct_list_set(s_sis_struct_list *, void *in_, int inlen_);
 
@@ -48,6 +50,7 @@ int sis_struct_list_setone(s_sis_struct_list *, int index_, void *in_);
 
 void sis_struct_list_limit(s_sis_struct_list *, int limit_);
 int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *dst_);
+int sis_struct_list_append(s_sis_struct_list *src_, s_sis_struct_list *dst_);
 int sis_struct_list_delete(s_sis_struct_list *src_, int start_, int count_);
 int sis_struct_list_pack(s_sis_struct_list *list_);
 #ifdef __cplusplus

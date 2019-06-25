@@ -103,7 +103,7 @@ void * sisdb_call_get_code_sds(void *server_, void *com_)
 	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
 	if (!handle)
 	{
-		sis_out_log(3)("parse %s error.\n", com);
+		LOG(3)("parse %s error.\n", com);
 		return NULL;
 	}
 
@@ -112,25 +112,25 @@ void * sisdb_call_get_code_sds(void *server_, void *com_)
 	const char *match = sis_json_get_str(handle->node, "match");
 	if (!match)
 	{
-		sis_out_log(3)("no find match [%s].\n", com);
+		LOG(3)("no find match [%s].\n", com);
 		goto error;
 	}
 	if (strlen(match) < 2)
 	{
-		sis_out_log(3)("match too short [%s].\n", com);
+		LOG(3)("match too short [%s].\n", com);
 		goto error;
 	}
 
 	s_sisdb_table *tb = sisdb_get_table(db, SIS_TABLE_INFO);
 	if (!tb)
 	{
-		sis_out_log(3)("no info table.\n");
+		LOG(3)("no info table.\n");
 		goto error;
 	}	
 	s_sis_sds buffer = sisdb_collects_get_last_sds(db, SIS_TABLE_INFO, SIS_QUERY_COM_NORMAL);
 	if (!buffer)
 	{
-		sis_out_log(3)("no info data.\n");
+		LOG(3)("no info data.\n");
 		goto error;
 	}
 
@@ -373,7 +373,7 @@ void *sisdb_call_get_close_sds(void *server_, void *com_)
 	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
 	if (!handle)
 	{
-		sis_out_log(3)("parse %s error.\n", com);
+		LOG(3)("parse %s error.\n", com);
 		return NULL;
 	}
 	s_sis_sds o = NULL;
@@ -382,7 +382,7 @@ void *sisdb_call_get_close_sds(void *server_, void *com_)
 	const char *co = sis_json_get_str(handle->node, "codes");
 	if (!co)
 	{
-		sis_out_log(3)("no find codes [%s].\n", com);
+		LOG(3)("no find codes [%s].\n", com);
 		goto error;
 	}
 	sis_string_list_load(codes, co, strlen(co), ",");
@@ -390,7 +390,7 @@ void *sisdb_call_get_close_sds(void *server_, void *com_)
 	int count = sis_string_list_getsize(codes);
 	if (count < 1)
 	{
-		sis_out_log(3)("no find codes [%s].\n", com);
+		LOG(3)("no find codes [%s].\n", com);
 		goto error;
 	}
 	const char *fmt = sis_json_get_str(handle->node, "format");
@@ -501,7 +501,7 @@ void * sisdb_call_get_right_sds(void *server_, void *com_)
 	s_sis_json_handle *handle = sis_json_load(com, strlen(com));
 	if (!handle)
 	{
-        sis_out_log(3)("parse %s error.\n", com);
+        LOG(3)("parse %s error.\n", com);
 		return NULL;
 	}
     
@@ -509,7 +509,7 @@ void * sisdb_call_get_right_sds(void *server_, void *com_)
 
 // 	const char *code = sis_json_get_str(handle->node, "code");
 //     if(!code) {
-//         sis_out_log(3)("no find code [%s].\n", com);
+//         LOG(3)("no find code [%s].\n", com);
 // 		goto error;
 //     } 
 

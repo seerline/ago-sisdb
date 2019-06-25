@@ -67,7 +67,8 @@ s_sis_map_pointer *sis_map_custom_create(s_sis_dict_type *);
 
 s_sis_map_pointer *sis_map_pointer_create();
 s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_);
-#define sis_map_pointer_destroy sis_map_buffer_destroy
+void sis_map_pointer_destroy(s_sis_map_pointer *map_);
+// #define sis_map_pointer_destroy sis_map_buffer_destroy
 #define sis_map_pointer_clear sis_map_buffer_clear
 #define sis_map_pointer_get sis_map_buffer_get
 #define sis_map_pointer_set sis_map_buffer_set

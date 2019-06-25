@@ -1,507 +1,457 @@
 #include <sis_net.tcp.h>
-
-// #include "fmacros.h"
-// #include <string.h>
-// #include <stdlib.h>
-// #ifndef _MSC_VER
-// #include <unistd.h>
-// #endif
-// #include <assert.h>
-// #include <errno.h>
-// #include <ctype.h>
-
-// #include "read.h"
-// #include "sis_malloc.h"
-
-// static void __redisReaderSetError(redisReader *r, int type, const char *str) {
-//     size_t len;
-
-//     if (r->reply != NULL && r->fn && r->fn->freeObject) {
-//         r->fn->freeObject(r->reply);
-//         r->reply = NULL;
-//     }
-
-//     /* Clear input buffer on errors. */
-//     if (r->buf != NULL) {
-//         sdsfree(r->buf);
-//         r->buf = NULL;
-//         r->pos = r->len = 0;
-//     }
-
-//     /* Reset task stack. */
-//     r->ridx = -1;
-
-//     /* Set error. */
-//     r->err = type;
-//     len = strlen(str);
-//     len = len < (sizeof(r->errstr)-1) ? len : (sizeof(r->errstr)-1);
-//     memcpy(r->errstr,str,len);
-//     r->errstr[len] = '\0';
-// }
-
-// static size_t chrtos(char *buf, size_t size, char byte) {
-//     size_t len = 0;
-
-//     switch(byte) {
-//     case '\\':
-//     case '"':
-//         len = snprintf(buf,size,"\"\\%c\"",byte);
-//         break;
-//     case '\n': len = snprintf(buf,size,"\"\\n\""); break;
-//     case '\r': len = snprintf(buf,size,"\"\\r\""); break;
-//     case '\t': len = snprintf(buf,size,"\"\\t\""); break;
-//     case '\a': len = snprintf(buf,size,"\"\\a\""); break;
-//     case '\b': len = snprintf(buf,size,"\"\\b\""); break;
-//     default:
-//         if (isprint(byte))
-//             len = snprintf(buf,size,"\"%c\"",byte);
-//         else
-//             len = snprintf(buf,size,"\"\\x%02x\"",(unsigned char)byte);
-//         break;
-//     }
-
-//     return len;
-// }
-
-// static void __redisReaderSetErrorProtocolByte(redisReader *r, char byte) {
-//     char cbuf[8], sbuf[128];
-
-//     chrtos(cbuf,sizeof(cbuf),byte);
-//     snprintf(sbuf,sizeof(sbuf),
-//         "Protocol error, got %s as reply type byte", cbuf);
-//     __redisReaderSetError(r,REDIS_ERR_PROTOCOL,sbuf);
-// }
-
-// static void __redisReaderSetErrorOOM(redisReader *r) {
-//     __redisReaderSetError(r,REDIS_ERR_OOM,"Out of memory");
-// }
-
-// static char *readBytes(redisReader *r, unsigned int bytes) {
-//     char *p;
-//     if (r->len-r->pos >= bytes) {
-//         p = r->buf+r->pos;
-//         r->pos += bytes;
-//         return p;
-//     }
-//     return NULL;
-// }
-
-// /* Find pointer to \r\n. */
-// static char *seekNewline(char *s, size_t len) {
-//     int pos = 0;
-//     int _len = len-1;
-
-//     /* Position should be < len-1 because the character at "pos" should be
-//      * followed by a \n. Note that strchr cannot be used because it doesn't
-//      * allow to search a limited length and the buffer that is being searched
-//      * might not have a trailing NULL character. */
-//     while (pos < _len) {
-//         while(pos < _len && s[pos] != '\r') pos++;
-//         if (pos==_len) {
-//             /* Not found. */
-//             return NULL;
-//         } else {
-//             if (s[pos+1] == '\n') {
-//                 /* Found. */
-//                 return s+pos;
-//             } else {
-//                 /* Continue searching. */
-//                 pos++;
-//             }
-//         }
-//     }
-//     return NULL;
-// }
-
-// /* Read a long long value starting at *s, under the assumption that it will be
-//  * terminated by \r\n. Ambiguously returns -1 for unexpected input. */
-// static long long readLongLong(char *s) {
-//     long long v = 0;
-//     int dec, mult = 1;
-//     char c;
-
-//     if (*s == '-') {
-//         mult = -1;
-//         s++;
-//     } else if (*s == '+') {
-//         mult = 1;
-//         s++;
-//     }
-
-//     while ((c = *(s++)) != '\r') {
-//         dec = c - '0';
-//         if (dec >= 0 && dec < 10) {
-//             v *= 10;
-//             v += dec;
-//         } else {
-//             /* Should not happen... */
-//             return -1;
-//         }
-//     }
-
-//     return mult*v;
-// }
-
-// static char *readLine(redisReader *r, int *_len) {
-//     char *p, *s;
-//     int len;
-
-//     p = r->buf+r->pos;
-//     s = seekNewline(p,(r->len-r->pos));
-//     if (s != NULL) {
-//         len = s-(r->buf+r->pos);
-//         r->pos += len+2; /* skip \r\n */
-//         if (_len) *_len = len;
-//         return p;
-//     }
-//     return NULL;
-// }
-
-// static void moveToNextTask(redisReader *r) {
-//     redisReadTask *cur, *prv;
-//     while (r->ridx >= 0) {
-//         /* Return a.s.a.p. when the stack is now empty. */
-//         if (r->ridx == 0) {
-//             r->ridx--;
-//             return;
-//         }
-
-//         cur = &(r->rstack[r->ridx]);
-//         prv = &(r->rstack[r->ridx-1]);
-//         assert(prv->type == REDIS_REPLY_ARRAY);
-//         if (cur->idx == prv->elements-1) {
-//             r->ridx--;
-//         } else {
-//             /* Reset the type because the next item can be anything */
-//             assert(cur->idx < prv->elements);
-//             cur->type = -1;
-//             cur->elements = -1;
-//             cur->idx++;
-//             return;
-//         }
-//     }
-// }
-
-// static int processLineItem(redisReader *r) {
-//     redisReadTask *cur = &(r->rstack[r->ridx]);
-//     void *obj;
-//     char *p;
-//     int len;
-
-//     if ((p = readLine(r,&len)) != NULL) {
-//         if (cur->type == REDIS_REPLY_INTEGER) {
-//             if (r->fn && r->fn->createInteger)
-//                 obj = r->fn->createInteger(cur,readLongLong(p));
-//             else
-//                 obj = (void*)REDIS_REPLY_INTEGER;
-//         } else {
-//             /* Type will be error or status. */
-//             if (r->fn && r->fn->createString)
-//                 obj = r->fn->createString(cur,p,len);
-//             else
-//                 obj = (void*)(size_t)(cur->type);
-//         }
-
-//         if (obj == NULL) {
-//             __redisReaderSetErrorOOM(r);
-//             return REDIS_ERR;
-//         }
-
-//         /* Set reply if this is the root object. */
-//         if (r->ridx == 0) r->reply = obj;
-//         moveToNextTask(r);
-//         return REDIS_OK;
-//     }
-
-//     return REDIS_ERR;
-// }
-
-// static int processBulkItem(redisReader *r) {
-//     redisReadTask *cur = &(r->rstack[r->ridx]);
-//     void *obj = NULL;
-//     char *p, *s;
-//     long len;
-//     unsigned long bytelen;
-//     int success = 0;
-
-//     p = r->buf+r->pos;
-//     s = seekNewline(p,r->len-r->pos);
-//     if (s != NULL) {
-//         p = r->buf+r->pos;
-//         bytelen = s-(r->buf+r->pos)+2; /* include \r\n */
-//         len = readLongLong(p);
-
-//         if (len < 0) {
-//             /* The nil object can always be created. */
-//             if (r->fn && r->fn->createNil)
-//                 obj = r->fn->createNil(cur);
-//             else
-//                 obj = (void*)REDIS_REPLY_NIL;
-//             success = 1;
-//         } else {
-//             /* Only continue when the buffer contains the entire bulk item. */
-//             bytelen += len+2; /* include \r\n */
-//             if (r->pos+bytelen <= r->len) {
-//                 if (r->fn && r->fn->createString)
-//                     obj = r->fn->createString(cur,s+2,len);
-//                 else
-//                     obj = (void*)REDIS_REPLY_STRING;
-//                 success = 1;
-//             }
-//         }
-
-//         /* Proceed when obj was created. */
-//         if (success) {
-//             if (obj == NULL) {
-//                 __redisReaderSetErrorOOM(r);
-//                 return REDIS_ERR;
-//             }
-
-//             r->pos += bytelen;
-
-//             /* Set reply if this is the root object. */
-//             if (r->ridx == 0) r->reply = obj;
-//             moveToNextTask(r);
-//             return REDIS_OK;
-//         }
-//     }
-
-//     return REDIS_ERR;
-// }
-
-// static int processMultiBulkItem(redisReader *r) {
-//     redisReadTask *cur = &(r->rstack[r->ridx]);
-//     void *obj;
-//     char *p;
-//     long elements;
-//     int root = 0;
-
-//     /* Set error for nested multi bulks with depth > 7 */
-//     if (r->ridx == 8) {
-//         __redisReaderSetError(r,REDIS_ERR_PROTOCOL,
-//             "No support for nested multi bulk replies with depth > 7");
-//         return REDIS_ERR;
-//     }
-
-//     if ((p = readLine(r,NULL)) != NULL) {
-//         elements = readLongLong(p);
-//         root = (r->ridx == 0);
-
-//         if (elements == -1) {
-//             if (r->fn && r->fn->createNil)
-//                 obj = r->fn->createNil(cur);
-//             else
-//                 obj = (void*)REDIS_REPLY_NIL;
-
-//             if (obj == NULL) {
-//                 __redisReaderSetErrorOOM(r);
-//                 return REDIS_ERR;
-//             }
-
-//             moveToNextTask(r);
-//         } else {
-//             if (r->fn && r->fn->createArray)
-//                 obj = r->fn->createArray(cur,elements);
-//             else
-//                 obj = (void*)REDIS_REPLY_ARRAY;
-
-//             if (obj == NULL) {
-//                 __redisReaderSetErrorOOM(r);
-//                 return REDIS_ERR;
-//             }
-
-//             /* Modify task stack when there are more than 0 elements. */
-//             if (elements > 0) {
-//                 cur->elements = elements;
-//                 cur->obj = obj;
-//                 r->ridx++;
-//                 r->rstack[r->ridx].type = -1;
-//                 r->rstack[r->ridx].elements = -1;
-//                 r->rstack[r->ridx].idx = 0;
-//                 r->rstack[r->ridx].obj = NULL;
-//                 r->rstack[r->ridx].parent = cur;
-//                 r->rstack[r->ridx].privdata = r->privdata;
-//             } else {
-//                 moveToNextTask(r);
-//             }
-//         }
-
-//         /* Set reply if this is the root object. */
-//         if (root) r->reply = obj;
-//         return REDIS_OK;
-//     }
-
-//     return REDIS_ERR;
-// }
-
-// static int processItem(redisReader *r) {
-//     redisReadTask *cur = &(r->rstack[r->ridx]);
-//     char *p;
-
-//     /* check if we need to read type */
-//     if (cur->type < 0) {
-//         if ((p = readBytes(r,1)) != NULL) {
-//             switch (p[0]) {
-//             case '-':
-//                 cur->type = REDIS_REPLY_ERROR;
-//                 break;
-//             case '+':
-//                 cur->type = REDIS_REPLY_STATUS;
-//                 break;
-//             case ':':
-//                 cur->type = REDIS_REPLY_INTEGER;
-//                 break;
-//             case '$':
-//                 cur->type = REDIS_REPLY_STRING;
-//                 break;
-//             case '*':
-//                 cur->type = REDIS_REPLY_ARRAY;
-//                 break;
-//             default:
-//                 __redisReaderSetErrorProtocolByte(r,*p);
-//                 return REDIS_ERR;
-//             }
-//         } else {
-//             /* could not consume 1 byte */
-//             return REDIS_ERR;
-//         }
-//     }
-
-//     /* process typed item */
-//     switch(cur->type) {
-//     case REDIS_REPLY_ERROR:
-//     case REDIS_REPLY_STATUS:
-//     case REDIS_REPLY_INTEGER:
-//         return processLineItem(r);
-//     case REDIS_REPLY_STRING:
-//         return processBulkItem(r);
-//     case REDIS_REPLY_ARRAY:
-//         return processMultiBulkItem(r);
-//     default:
-//         assert(NULL);
-//         return REDIS_ERR; /* Avoid warning. */
-//     }
-// }
-
-// redisReader *redisReaderCreateWithFunctions(redisReplyObjectFunctions *fn) {
-//     redisReader *r;
-
-//     r = calloc(sizeof(redisReader),1);
-//     if (r == NULL)
-//         return NULL;
-
-//     r->err = 0;
-//     r->errstr[0] = '\0';
-//     r->fn = fn;
-//     r->buf = sdsempty();
-//     r->maxbuf = REDIS_READER_MAX_BUF;
-//     if (r->buf == NULL) {
-//         free(r);
-//         return NULL;
-//     }
-
-//     r->ridx = -1;
-//     return r;
-// }
-
-// void redisReaderFree(redisReader *r) {
-//     if (r->reply != NULL && r->fn && r->fn->freeObject)
-//         r->fn->freeObject(r->reply);
-//     if (r->buf != NULL)
-//         sdsfree(r->buf);
-//     free(r);
-// }
-
-// int redisReaderFeed(redisReader *r, const char *buf, size_t len) {
-//     sds newbuf;
-
-//     /* Return early when this reader is in an erroneous state. */
-//     if (r->err)
-//         return REDIS_ERR;
-
-//     /* Copy the provided buffer. */
-//     if (buf != NULL && len >= 1) {
-//         /* Destroy internal buffer when it is empty and is quite large. */
-//         if (r->len == 0 && r->maxbuf != 0 && sdsavail(r->buf) > r->maxbuf) {
-//             sdsfree(r->buf);
-//             r->buf = sdsempty();
-//             r->pos = 0;
-
-//             /* r->buf should not be NULL since we just free'd a larger one. */
-//             assert(r->buf != NULL);
-//         }
-
-//         newbuf = sdscatlen(r->buf,buf,len);
-//         if (newbuf == NULL) {
-//             __redisReaderSetErrorOOM(r);
-//             return REDIS_ERR;
-//         }
-
-//         r->buf = newbuf;
-//         r->len = sdslen(r->buf);
-//     }
-
-//     return REDIS_OK;
-// }
-
-// int redisReaderGetReply(redisReader *r, void **reply) {
-//     /* Default target pointer to NULL. */
-//     if (reply != NULL)
-//         *reply = NULL;
-
-//     /* Return early when this reader is in an erroneous state. */
-//     if (r->err)
-//         return REDIS_ERR;
-
-//     /* When the buffer is empty, there will never be a reply. */
-//     if (r->len == 0)
-//         return REDIS_OK;
-
-//     /* Set first item to process when the stack is empty. */
-//     if (r->ridx == -1) {
-//         r->rstack[0].type = -1;
-//         r->rstack[0].elements = -1;
-//         r->rstack[0].idx = -1;
-//         r->rstack[0].obj = NULL;
-//         r->rstack[0].parent = NULL;
-//         r->rstack[0].privdata = r->privdata;
-//         r->ridx = 0;
-//     }
-
-//     /* Process items in reply. */
-//     while (r->ridx >= 0)
-//         if (processItem(r) != REDIS_OK)
-//             break;
-
-//     /* Return ASAP when an error occurred. */
-//     if (r->err)
-//         return REDIS_ERR;
-
-//     /* Discard part of the buffer when we've consumed at least 1k, to avoid
-//      * doing unnecessary calls to memmove() in sds.c. */
-//     if (r->pos >= 1024) {
-//         sdsrange(r->buf,r->pos,-1);
-//         r->pos = 0;
-//         r->len = sdslen(r->buf);
-//     }
-
-//     /* Emit a reply when there is one. */
-//     if (r->ridx == -1) {
-//         if (reply != NULL)
-//             *reply = r->reply;
-//         r->reply = NULL;
-//     }
-//     return REDIS_OK;
-// }
-
+#include <sis_math.h>
+
+static void _calc_sds_to_buffer(s_sis_sds s_, int *count_, size_t *size_) 
+{
+    if (s_)
+    {
+        int len = sis_sdslen(s_);
+        if (len > 0)
+        {
+            *count_ = *count_ + 1;
+            *size_ = *size_ + 1 + sis_sqrt10(len) + 2 + len + 2;
+        }
+    }
+}
+
+static s_sis_sds _pack_sds_to_buffer(s_sis_sds s_, s_sis_sds cmd) 
+{
+    if (s_)
+    {
+        int len = sis_sdslen(s_);
+        if (len > 0)
+        {
+            cmd = sis_sdscatfmt(cmd, "$%u\r\n", len);
+            cmd = sis_sdscatlen(cmd, s_, len);
+            cmd = sis_sdscatlen(cmd, "\r\n", sizeof("\r\n") - 1);
+        }
+    }
+    return cmd;
+}
+
+s_sis_sds _sis_net_pack_tcp_ask(s_sis_net_message *in_)
+{
+    s_sis_sds cmd;
+    size_t size = 0;
+    int count = 0;
+
+    _calc_sds_to_buffer(in_->command, &count, &size);
+    _calc_sds_to_buffer(in_->key, &count, &size);
+    _calc_sds_to_buffer(in_->argv, &count, &size);
+
+    {
+        s_sis_list_node *node = in_->argvs;
+        while (node != NULL)
+        {
+            _calc_sds_to_buffer((s_sis_sds)node->value, &count, &size);
+            node = node->next;
+        };
+    }
+    size += 1 + sis_sqrt10(count) + 2;
+
+    cmd = sis_sdsempty();
+    /* we already know how much storage we need */
+    cmd = sis_sds_addlen(cmd, size);
+    if (cmd == NULL)
+    {
+        return NULL;
+    }
+
+    /* ccnstruct command */
+    cmd = sis_sdscatfmt(cmd, "*%i\r\n", count);
+    cmd = _pack_sds_to_buffer(in_->command, cmd);
+    cmd = _pack_sds_to_buffer(in_->key, cmd);
+    cmd = _pack_sds_to_buffer(in_->argv, cmd);
+    {
+        s_sis_list_node *node = in_->argvs;
+        while (node != NULL)
+        {
+            cmd = _pack_sds_to_buffer((s_sis_sds)node->value, cmd);
+            node = node->next;
+        };
+    }
+
+    assert(sis_sdslen(cmd)==size);
+
+    return cmd;
+}
+///////////
+static void _calc_sds_to_sub(s_sis_sds s_, int *count_, size_t *size_) 
+{
+    if (s_)
+    {
+        int len = sis_sdslen(s_);
+        if (len > 0)
+        {
+            *count_ = *count_ + 1;
+            *size_ = *size_ + 2 + len + 2;
+            return ;
+        }
+    }
+    *count_ = *count_ + 1;
+    *size_ = *size_ + 1 + 1 + 2;  // +*\r\n
+}
+static s_sis_sds _pack_sds_to_sub(s_sis_sds sub_, s_sis_sds cmd) 
+{
+    if (sub_)
+    {
+        int len = sis_sdslen(sub_);
+        if (len > 0)
+        {
+            cmd = sis_sdscatfmt(cmd, "++%s\r\n", sub_);
+            return cmd;
+        }
+    }
+    cmd = sis_sdscatlen(cmd, "++*\r\n", 5);  // == all    
+    return cmd;
+}
+s_sis_sds _sis_net_pack_tcp_ans_items(s_sis_net_message *in_, s_sis_sds cmd)
+{
+    size_t size = 0;
+    int count = 0;
+
+    if (in_->subpub)
+    {
+        _calc_sds_to_sub(in_->key, &count, &size);
+    }
+    {
+        s_sis_list_node *node = in_->rlist;
+        while (node != NULL)
+        {
+            _calc_sds_to_buffer((s_sis_sds)node->value, &count, &size);
+            node = node->next;
+        };
+    }
+    size += 1 + sis_sqrt10(count) + 2;
+
+    // cmd = sis_sdsempty();
+    /* we already know how much storage we need */
+    cmd = sis_sds_addlen(cmd, size);
+    if (cmd == NULL)
+    {
+        return NULL;
+    }
+
+    /* ccnstruct command */
+    cmd = sis_sdscatfmt(cmd, "*%i\r\n", count);
+    if (in_->subpub)
+    {
+        _pack_sds_to_sub(in_->key, cmd);
+    }
+    {
+        s_sis_list_node *node = in_->rlist;
+        while (node != NULL)
+        {
+            cmd = _pack_sds_to_buffer((s_sis_sds)node->value, cmd);
+            node = node->next;
+        };
+    }
+
+    assert(sis_sdslen(cmd)==size);
+
+    return cmd;
+
+}
+s_sis_sds _sis_net_pack_tcp_ans_item(s_sis_net_message *in_, s_sis_sds cmd)
+{
+    if (!in_->subpub)
+    {
+        size_t len = sis_sdslen(in_->rval);
+        cmd = sis_sdscatfmt(cmd, "$%u\r\n", len);
+        cmd = sis_sdscatlen(cmd, in_->rval, len);
+        cmd = sis_sdscatlen(cmd, "\r\n", sizeof("\r\n") - 1);
+    }
+    else
+    {
+        size_t size = 0;
+        int count = 0;
+
+        _calc_sds_to_sub(in_->key, &count, &size);
+        _calc_sds_to_buffer(in_->rval, &count, &size);
+
+        size += 1 + sis_sqrt10(count) + 2;
+
+        // cmd = sis_sdsempty();
+        cmd = sis_sds_addlen(cmd, size);
+        if (cmd == NULL)
+        {
+            return NULL;
+        }
+        /* construct command */
+        cmd = sis_sdscatfmt(cmd, "*%i\r\n", count);
+        cmd = _pack_sds_to_sub(in_->key, cmd);
+        cmd = _pack_sds_to_buffer(in_->rval, cmd);
+    }
+    return cmd;
+}
+
+s_sis_sds _sis_net_pack_tcp_ans(s_sis_net_message *in_)
+{
+    s_sis_sds cmd = sis_sdsempty();
+
+    switch (in_->style)
+    {
+    case SIS_NET_REPLY_STRING:
+        cmd = _sis_net_pack_tcp_ans_item(in_, cmd);
+        break;
+    case SIS_NET_REPLY_ARRAY:
+        cmd = _sis_net_pack_tcp_ans_items(in_, cmd);
+        break;
+    case SIS_NET_REPLY_INTEGER:
+        cmd = sis_sdscatfmt(cmd, ":%I\r\n", in_->rint);
+        break;
+    case SIS_NET_REPLY_INFO:
+        cmd = sis_sdscatfmt(cmd, "+%s\r\n", in_->rval);
+        break;
+    case SIS_NET_REPLY_ERROR:
+        cmd = sis_sdscatfmt(cmd, "-%s\r\n", in_->rval);
+        break;
+    default:
+        return NULL;
+    }
+    return cmd;   
+}
 s_sis_sds sis_net_pack_tcp(struct s_sis_net_class *sock_, s_sis_net_message *in_)
 {
-    // s_sis_net_message *ask = (s_sis_net_message *)in_;
-    return NULL;
+    s_sis_sds out = NULL;
+    if (in_->style < SIS_NET_REPLY_MESSAGE)
+    {
+        out = _sis_net_pack_tcp_ask(in_);
+    }
+    else
+    {
+        out = _sis_net_pack_tcp_ans(in_);
+    }
+    return out;
 }
-// 如果数据不合法就返回0 数据解析正确就返回当前数据块大小
-size_t sis_net_unpack_tcp(struct s_sis_net_class *sock_, s_sis_net_message *out_, char* in_, size_t ilen_)
+
+//////////////////////////////////////////////////////////////////////
+//  unpack -- 
+//////////////////////////////////////////////////////////////////////
+
+s_sis_sds _sis_net_unpack_tcp_item(s_sis_sds str_, s_sis_memory* in_)
 {
-    // s_sis_net_message *ask = (s_sis_net_message *)out_;
-    return 0;
+    if (str_)
+    {
+        sis_sdsfree(str_);
+        str_ = NULL;
+    }
+    size_t len;
+    char *ptr = sis_memory_read_line(in_, &len);
+    if (!ptr || len < 1 || ptr[0]!='$')
+    {
+        return NULL;
+    }
+    size_t size = sis_str_read_long(&ptr[1]);
+    if (size > 0 && sis_memory_get_size(in_) >= (len + 2 + size + 2))
+    {
+        sis_memory_move(in_, len + 2); // \r\n
+        str_ = sis_sdsnewlen(sis_memory(in_), size); 
+        sis_memory_move(in_, size + 2);
+    }  
+    return str_;   
+}
+
+int _sis_net_unpack_tcp_ask_array(s_sis_net_message *out_, s_sis_memory* in_)
+{
+    size_t offset = sis_memory_get_address(in_);
+
+    size_t len;
+    char  *ptr = sis_memory_read_line(in_, &len);
+    int    count = sis_str_read_long(&ptr[1]);
+    
+    sis_memory_move(in_, len + 2); // \r\n    
+    out_->command = _sis_net_unpack_tcp_item(out_->command, in_);
+    if (!out_->command)
+    {
+        goto error;
+    }
+    if (--count == 0)
+    {
+        return 0;
+    }
+    out_->key = _sis_net_unpack_tcp_item(out_->key, in_);
+    if (!out_->key)
+    {
+        goto error;
+    }
+    if (--count == 0)
+    {
+        return 0;
+    }
+    out_->argv = _sis_net_unpack_tcp_item(out_->argv, in_);
+    if (!out_->argv)
+    {
+        goto error;
+    }
+    if (--count == 0)
+    {
+        return 0;
+    }
+    s_sis_sds value = NULL;
+    while(count > 0)
+    {
+        value = _sis_net_unpack_tcp_item(value, in_);
+        if (value)
+        {
+            out_->argvs = sis_sdsnode_push_node_sds(out_->argvs, value);
+            value = NULL;
+        }
+        count--;
+    }    
+error:
+    sis_memory_jumpto(in_, offset);
+    return -1;
+
+}
+int _sis_net_unpack_tcp_ask(s_sis_net_message *out_, s_sis_memory* in_)
+{
+    int o = -1;
+    size_t len;
+    char *first = sis_memory_read_line(in_, &len);
+    if (first && len > 0)
+    {
+        switch (first[0])
+        {
+        case '+':
+            out_->style = SIS_NET_ASK_INFO;
+            out_->command = sis_sdsnewlen(&first[1], len - 1); 
+            sis_memory_move(in_, len + 2); // \r\n
+            o = 0;
+            break;
+        case '$':
+            {
+                out_->style = SIS_NET_ASK_STRING;
+                out_->argv = _sis_net_unpack_tcp_item(out_->argv, in_);
+                if (out_->argv)
+                {
+                    // 不为空才会移动in位置
+                    o = 0;
+                }
+            }
+            break;
+        case '*':
+            {
+                out_->style = SIS_NET_ASK_ARRAY;
+                o = _sis_net_unpack_tcp_ask_array(out_, in_);
+            }
+            break;
+        default:
+            return -2;
+        }
+    }
+    return o;
+}
+
+int _sis_net_unpack_tcp_ans_array(s_sis_net_message *out_, s_sis_memory* in_)
+{
+    size_t offset = sis_memory_get_address(in_);
+
+    size_t len;
+    char  *ptr = sis_memory_read_line(in_, &len);
+    int count = sis_str_read_long(&ptr[1]);
+    
+    sis_memory_move(in_, len + 2); // \r\n  
+
+    if(count > 1)
+    {
+        ptr = sis_memory_read_line(in_, &len);
+        if (len > 2 &&ptr[0] == '+' && ptr[1] == '+')
+        {
+            out_->subpub = 1; // 
+            out_->key = sis_sdsnewlen(&ptr[2], len - 2); 
+            sis_memory_move(in_, len + 2); // \r\n
+            count--;
+        }
+    }
+    if(count == 1)
+    {
+        out_->rval = _sis_net_unpack_tcp_item(out_->rval, in_);
+        if (!out_->rval)
+        {
+            goto error;
+        }
+        return 0;   
+    }
+    else
+    {
+        s_sis_sds value = NULL;
+        while(count > 0)
+        {
+            value = _sis_net_unpack_tcp_item(value, in_);
+            if (value)
+            {
+                out_->rlist = sis_sdsnode_push_node_sds(out_->rlist, value);
+                value = NULL;
+            }
+            count--;
+        }      
+    } 
+error:
+    sis_memory_jumpto(in_, offset);
+    return -1;
+
+}
+int _sis_net_unpack_tcp_ans(s_sis_net_message *out_, s_sis_memory* in_)
+{
+    int o = -1;
+    size_t len;
+    char *first = sis_memory_read_line(in_, &len);
+    if (first && len > 0)
+    {
+        switch (first[0])
+        {
+        case ':':
+            out_->style = SIS_NET_REPLY_INTEGER;
+            out_->rint = sis_str_read_long(&first[1]);
+            sis_memory_move(in_, len + 2); // \r\n
+            o = 0;
+            break;
+        case '+':
+            out_->style = SIS_NET_REPLY_INFO;
+            out_->rval = sis_sdsnewlen(&first[1], len - 1); 
+            sis_memory_move(in_, len + 2); // \r\n
+            o = 0;
+            break;
+        case '-':
+            out_->style = SIS_NET_REPLY_ERROR;
+            out_->rval = sis_sdsnewlen(&first[1], len - 1); 
+            sis_memory_move(in_, len + 2); // \r\n
+            o = 0;
+            break;
+        case '$':
+            {
+                out_->style = SIS_NET_REPLY_STRING;
+                out_->argv = _sis_net_unpack_tcp_item(out_->argv, in_);
+                if (out_->argv)
+                {
+                    // 不为空才会移动in位置
+                    o = 0;
+                }
+            }
+            break;
+        case '*':
+            {
+                out_->style = SIS_NET_REPLY_ARRAY;
+                o = _sis_net_unpack_tcp_ans_array(out_, in_);
+            }
+            break;
+        default:
+            return -2;
+        }
+    }
+    return o;
+}
+bool sis_net_unpack_tcp(s_sis_net_class *sock_, s_sis_net_message *out_, s_sis_memory* in_)
+{
+    int ok = -1;
+    if (out_->style < SIS_NET_REPLY_MESSAGE)
+    {
+        ok = _sis_net_unpack_tcp_ask(out_, in_);
+    }
+    else
+    {
+        ok = _sis_net_unpack_tcp_ans(out_, in_);
+    }
+    return (ok==0);
 }

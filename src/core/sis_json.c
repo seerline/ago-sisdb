@@ -285,7 +285,7 @@ s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 		// printf("fail : %s \n", content_);
 		int len = 0;
 		handle->error = sis_str_getline(handle->error, &len, content_, len_);
-		sis_out_log(3)("json parse fail : %.*s \n", len, handle->error);
+		LOG(3)("json parse fail : %.*s \n", len, handle->error);
 		
 		sis_json_close(handle);
 		return NULL;
@@ -298,7 +298,7 @@ void sis_json_save(s_sis_json_node *node_, const char *fn_)
 	sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
 	if (!fp)
 	{
-		sis_out_log(3)("cann't write json file [%s].\n", fn_);
+		LOG(3)("cann't write json file [%s].\n", fn_);
 		return;
 	}
 	size_t len;

@@ -133,6 +133,47 @@ size_t sis_memory_set_maxsize(s_sis_memory *m_, size_t len_)
 	}
 	return m_->maxsize;
 }
+
+static char *_seek_new_line(char *s, size_t len) {
+    int pos = 0;
+    int _len = len - 1;
+
+    /* position should be < len-1 because the character at "pos" should be
+     * followed by a \n. Note that strchr cannot be used because it doesn't
+     * allow to search a limited length and the buffer that is being searched
+     * might not have a trailing NULL character. */
+    while (pos < _len) {
+        while(pos < _len && s[pos] != '\r') pos++;
+        if (pos==_len) {
+            /* Not found. */
+            return NULL;
+        } else {
+            if (s[pos + 1] == '\n') {
+                /* found. */
+                return s + pos;
+            } else {
+                /* continue searching. */
+                pos++;
+            }
+        }
+    }
+    return NULL;
+}
+char *sis_memory_read_line(s_sis_memory *m_, size_t *len_) 
+{
+    char *p, *s;
+    size_t len;
+
+    p = sis_memory(m_);
+    s = _seek_new_line(p, sis_memory_get_size(m_));
+    if (s != NULL) 
+	{
+        len = s - sis_memory(m_);
+        if (len_) *len_ = len;
+        return p;
+    }
+    return NULL;
+}
 size_t sis_memory_get_line_sign(s_sis_memory *m_)
 {
 	if (!m_)

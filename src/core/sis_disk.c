@@ -9,7 +9,7 @@
 //     sis_file_handle fp = sis_file_open(conf, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
 //     if (!fp)
 //     {
-//         sis_out_log(3)("cann't open file [%s].\n", conf);
+//         LOG(3)("cann't open file [%s].\n", conf);
 //         return false;
 //     }
 //     sis_file_seek(fp, 0, SEEK_SET);
@@ -26,7 +26,7 @@
 
 //     if (!sis_path_mkdir(sdb))
 //     {
-//         sis_out_log(3)("cann't create dir [%s].\n", sdb);
+//         LOG(3)("cann't create dir [%s].\n", sdb);
 //         return false;
 //     }
 //     return true;
@@ -93,7 +93,7 @@
 //     sis_file_handle sdb_fp = sis_file_open(sdb, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
 //     if (!sdb_fp)
 //     {
-//         sis_out_log(3)("cann't open file [%s].\n", sdb);
+//         LOG(3)("cann't open file [%s].\n", sdb);
 //         return false;
 //     }
 //     // sis_file_seek(fp, 0, SEEK_END);
@@ -106,7 +106,7 @@
 //     sis_file_handle zero_fp = sis_file_open(zero, SIS_FILE_IO_CREATE | SIS_FILE_IO_WRITE | SIS_FILE_IO_TRUCT, 0);
 //     if (!zero_fp)
 //     {
-//         sis_out_log(3)("cann't open file [%s].\n", zero);
+//         LOG(3)("cann't open file [%s].\n", zero);
 //         sis_file_close(sdb_fp);
 //         return false;
 //     }
@@ -212,7 +212,7 @@
 // 	s_sisdb_collect *collect = sisdb_get_collect(server->db, key_);
 // 	if (!collect)
 // 	{
-// 		sis_out_log(3)("no find key [disk] %s.\n", key_);
+// 		LOG(3)("no find key [disk] %s.\n", key_);
 // 		return false;
 // 	}
 // 	char code[SIS_MAXLEN_CODE];
@@ -260,7 +260,7 @@
 //         sis_sdsfree(other);
 //         break;  
 //     default:
-//         sis_out_log(3)("save data type [%d] error.\n", fmt_);
+//         LOG(3)("save data type [%d] error.\n", fmt_);
 //         break;
 //         // return false;          
 // 	}

@@ -53,7 +53,7 @@ s_sis_method_node *_sis_method_node_load(
 	new->method = sis_method_map_find(map_, (const char *)&node_->key[1], style_);
 	if (!new->method)
 	{
-		sis_out_log(5)("no find method %s\n", (const char *)&node_->key[1]);
+		LOG(5)("no find method %s\n", (const char *)&node_->key[1]);
 		sis_free(new);
 		return first_;
 	}

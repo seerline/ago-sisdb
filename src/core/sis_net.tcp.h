@@ -3,8 +3,7 @@
 #define _SIS_NET_TCP_H
 
 #include <sis_net.h>
-
-// #define SIS_NET_REPLY_SUB     7
+#include <sis_memory.h>
 
 // #define REDIS_ERR -1
 // #define REDIS_OK 0
@@ -78,9 +77,9 @@
 
 // 根据 s_sis_net_message 中 style 决定如何打包和拆包
 // 从用户数据转为 out,len， 返回 非空 表示解析正常
-s_sis_sds sis_net_pack_tcp(struct s_sis_net_class *, s_sis_net_message *in_);
+s_sis_sds sis_net_pack_tcp(s_sis_net_class *, s_sis_net_message *in_);
 // 如果数据不合法就返回 0 数据解析正确就返回当前数据块大小
-size_t sis_net_unpack_tcp(struct s_sis_net_class *, s_sis_net_message *out_, char* in_, size_t ilen_);
+bool sis_net_unpack_tcp(s_sis_net_class *, s_sis_net_message *out_, s_sis_memory *in_);
 
 #ifdef __cplusplus
 }

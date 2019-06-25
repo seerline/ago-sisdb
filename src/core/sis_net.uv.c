@@ -340,6 +340,7 @@ static void cb_server_read_after(uv_stream_t *handle, ssize_t nread, const uv_bu
 
 	if (nread > 0 && session->cb_recv) 
 	{
+		buffer->base[nread] = 0;
 		session->cb_recv(server->data, session->client_id, buffer->base, nread);
 	}
 	LOG(5)("recv .%d. %p %p\n", nread, session, session->cb_recv);
@@ -689,6 +690,7 @@ static void cb_client_read_after(uv_stream_t *handle, ssize_t nread, const uv_bu
 
 	if (nread > 0 && client->cb_recv) 
 	{
+		buffer->base[nread] = 0;
 		client->cb_recv(client->data, 0, buffer->base, nread);
 	}
 
@@ -861,7 +863,7 @@ void _thread_connect6(void* arg)
 
 	// uv_loop_close(client->loop); 
 
-	LOG(5)("client connect thread stop. [%d]\n", client->status);
+	LOG(5)("client connect6 thread stop. [%d]\n", client->status);
 }
 bool sis_socket_client_open6(s_sis_socket_client *sock_)
 {
@@ -967,7 +969,7 @@ bool sis_socket_send(void *sock_, int cid_, const char* in_, size_t ilen_)
 }
 
 
-#if 1
+#if 0
 
 #include <signal.h>
 
