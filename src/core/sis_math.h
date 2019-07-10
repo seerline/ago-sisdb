@@ -63,4 +63,30 @@ inline bool sis_isbetween(int value_, int min_, int max_)
 	return false;
 }
 
+// 大于基准值的个数
+inline int sis_inside_up(double div_, int count, double in[])
+{
+	int o = 0;
+	for(int i =0 ;i < count; i++)
+	{
+		if (in[i] > div_)
+		{
+			o++;
+		}
+	}
+	return o;
+}
+// 小于基准值的个数
+inline int sis_inside_dn(double div_, int count, double in[])
+{
+	int o = 0;
+	for(int i =0 ;i < count; i++)
+	{
+		if (in[i] < div_)
+		{
+			o++;
+		}
+	}
+	return o;
+}
 #endif //_SIS_MATH_H

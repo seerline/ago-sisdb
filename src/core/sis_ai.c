@@ -126,6 +126,11 @@ double sis_ai_slope_rate(int n, double ins[])
         max = sis_max(max, ins[m]);
         // printf("%f %f %f \n", ins[m], min , max);
     }
+    if (max - min > -0.000001 && max - min < 0.000001)
+    {
+        sis_free(x);
+        return 0.0;
+    }
     double *y = (double *)sis_calloc(sizeof(double) * n);
     // 保证从 0 出发
     // printf("%f %f \n", min , max);
@@ -163,13 +168,41 @@ void   sis_ai_series_argv(int n, double ins[], double *avg, double *vari)
     }    
     *vari = sqrt(sum / (n-1));
 }
-double sis_ai_series(double in, double avg, double vari)
+double sis_ai_series_chance(double in, double avg, double vari)
 {
-    if (vari==0)
+    if (vari == 0)
     {
         return 0.0;
     }
     return exp(-1*pow(in - avg, 2)/(2*pow(vari,2))) / (sqrt(2*SIS_AI_CONST_PAI)*vari);
+}
+// 16 个数最大
+static  double __fibonacci[] = {
+    // 0.3, 0.477, 0.6, 0.7, 0.778, 0.845, 0.9, 0.954, 1.0
+    1, 1, 2, 3, 5, 8, 13, 21, 34, 55
+    // , 89, 144, 233, 377, 610, 987
+};
+double _get_calc_fibonacci(int index_, int count_)
+{
+    int index = ((float)index_ / (float)count_ * 10.0);
+    return __fibonacci[index];
+}
+double sis_ai_fibonacci_avg(int n, double ins[])
+{
+    if ( n < 1 )
+    {
+        return 0;
+    }
+    double denominator = 0.0;
+    double avg = 0.0;
+    for (int i = 0; i < n; i++)
+    {
+        double factor = _get_calc_fibonacci(i, n);
+        denominator += factor;
+        avg += ins[i] * factor;
+    }
+    avg /= denominator; 
+    return avg;
 }
 
 /////////////////////////////////////////////////////
@@ -435,14 +468,14 @@ int main()
     sis_ai_series_argv(count, good, &avg, &vari);
     printf("para: %.5f %.5f\n", avg, vari);
  
-    value = sis_ai_series(good[0], avg, vari);
+    value = sis_ai_series_chance(good[0], avg, vari);
     printf("out: %.5f\n", value);
 
     count = 9;
     sis_ai_series_argv(count, error, &avg, &vari);
     printf("para: %.5f %.5f\n", avg, vari);
  
-    value = sis_ai_series(good[0], avg, vari);
+    value = sis_ai_series_chance(good[0], avg, vari);
     printf("out: %.5f\n", value);
 
     s_sis_calc_cycle *list = sis_calc_cycle_create(0);    
@@ -452,7 +485,7 @@ int main()
     }
     sis_ai_series_argv(count, sis_calc_cycle_get(list), &avg, &vari);
     printf("para: %.5f %.5f %.5f\n", avg, vari, 
-        sis_ai_series( 1697 ,avg, vari));
+        sis_ai_series_chance( 1697 ,avg, vari));
 
     sis_calc_cycle_destroy(list);
     return 0;

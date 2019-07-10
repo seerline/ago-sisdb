@@ -74,7 +74,14 @@ void _struct_list_grow(s_sis_struct_list *list_, int addlen_)
 	{
 		maxlen = newlen + STRUCT_LIST_STEP_ROW;
 	}
-	list_->buffer = sis_realloc(list_->buffer, maxlen * list_->len);
+	void *newbuffer = sis_malloc(maxlen * list_->len);
+	if (list_->buffer)
+	{
+		memmove(newbuffer, list_->buffer, list_->maxcount * list_->len);
+		sis_free(list_->buffer);
+	}
+	list_->buffer = newbuffer;
+	// list_->buffer = sis_realloc(list_->buffer, maxlen * list_->len);
 	list_->maxcount = maxlen;
 }
 

@@ -17,9 +17,12 @@ void polyfit(int n, double x[], double y[], int poly_n, double a[]);
 
 double sis_ai_slope(int n, double ins[]);
 double sis_ai_slope_rate(int n, double ins[]);
-// 以均值和方差求贝叶斯分类
+// 求样本均值和标准方差
 void   sis_ai_series_argv(int n, double ins[], double *avg, double *vari);
-double sis_ai_series(double in, double avg, double vari);
+// 求基于连续样本值的概率密度
+double sis_ai_series_chance(double in, double avg, double vari);
+// 求菲数列的均值, 最近的值权重最高
+double sis_ai_fibonacci_avg(int n, double ins[]);
 
 // 判断类型
 #define JUDGE_STYLE_NONE     0  // 
