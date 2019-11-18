@@ -1,5 +1,6 @@
 ﻿
 #include "sis_list.h"
+#include "sis_math.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -7,7 +8,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-s_sis_struct_list *sis_struct_list_create(int len_, void *in_, int inlen_)
+s_sis_struct_list *sis_struct_list_create(int len_)
 {
 	if (len_ < 1)
 	{
@@ -19,10 +20,6 @@ s_sis_struct_list *sis_struct_list_create(int len_, void *in_, int inlen_)
 	sbl->count = 0;
 	sbl->start = 0;
 	sbl->buffer = NULL;
-	if (in_ && inlen_ > 0)
-	{
-		sis_struct_list_set(sbl, in_, inlen_);
-	}
 	return sbl;
 }
 void sis_struct_list_destroy(s_sis_struct_list *list_)
@@ -173,7 +170,7 @@ void *sis_struct_list_offset(s_sis_struct_list *list_, void *current_, int offse
 }
 
 // 仅仅设置尺寸，不初始化
-void struct_list_set_size(s_sis_struct_list *list_, int len_)
+void sis_struct_list_set_size(s_sis_struct_list *list_, int len_)
 {
 	if (len_ <= list_->maxcount)
 	{
@@ -186,7 +183,7 @@ void struct_list_set_size(s_sis_struct_list *list_, int len_)
 int sis_struct_list_set(s_sis_struct_list *list_, void *in_, int inlen_)
 {
 	int count = inlen_ / list_->len;
-	struct_list_set_size(list_, count);
+	sis_struct_list_set_size(list_, count);
 	if (in_)
 	{
 		memmove(list_->buffer, in_, inlen_);
@@ -287,6 +284,314 @@ int sis_struct_list_delete(s_sis_struct_list *list_, int start_, int count_)
 // 	}
 // 	return (int)(((char *)p_ - (char *)list_->buffer) / list_->len) - list_->start;
 // }
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_sort_list --------------------------------//
+///////////////////////////////////////////////////////////////////////////
+
+s_sis_sort_list *sis_sort_list_create(int len_)
+{
+	s_sis_sort_list *o = SIS_MALLOC(s_sis_sort_list, o);
+	o->key = sis_struct_list_create(sizeof(int));
+	o->value = sis_struct_list_create(len_);
+	return o;
+}
+void sis_sort_list_destroy(s_sis_sort_list *list_)
+{
+	sis_struct_list_destroy(list_->key);
+	sis_struct_list_destroy(list_->value);
+	sis_free(list_);
+}
+void sis_sort_list_clear(s_sis_sort_list *list_)
+{
+	sis_struct_list_clear(list_->key);
+	sis_struct_list_clear(list_->value);
+}
+
+void *sis_sort_list_set(s_sis_sort_list *list_, int key_, void *in_)
+{
+	void *unit = sis_sort_list_find(list_, key_);
+	if (unit)
+	{
+		memmove(unit, in_, list_->value->len);
+		return unit;
+	}
+	for (int i = 0; i < list_->key->count; i++)
+	{
+		int *key = (int *)sis_struct_list_get(list_->key, i);
+		if (*key < key_)
+		{
+			sis_struct_list_insert(list_->key, i, &key_);
+			sis_struct_list_insert(list_->value, i, in_);
+			return sis_struct_list_get(list_->value, i);
+		}
+	}
+	sis_struct_list_push(list_->key, &key_);
+	sis_struct_list_push(list_->value, in_);
+	return sis_struct_list_get(list_->value, list_->key->count - 1);
+}
+void *sis_sort_list_first(s_sis_sort_list *list_)
+{
+	return sis_struct_list_first(list_->value);
+}
+void *sis_sort_list_last(s_sis_sort_list *list_)
+{
+	return sis_struct_list_last(list_->value);
+}
+void *sis_sort_list_next(s_sis_sort_list *list_, void *value_)
+{
+	return sis_struct_list_offset(list_->value, value_, 1);
+}
+void *sis_sort_list_prev(s_sis_sort_list *list_, void *value_)
+{
+	return sis_struct_list_offset(list_->value, value_, -1);
+}
+
+void *sis_sort_list_find(s_sis_sort_list *list_, int key_)
+{
+	for (int i = 0; i < list_->key->count; i++)
+	{
+		int *key = (int *)sis_struct_list_get(list_->key, i);
+		if (*key == key_)
+		{
+			return sis_struct_list_get(list_->value, i);
+		}
+	}
+	return NULL;
+}
+void *sis_sort_list_get(s_sis_sort_list *list_, int index_)
+{
+	return sis_struct_list_get(list_->value, index_);
+}
+void *sis_sort_list_del(s_sis_sort_list *list_, void *value_)
+{
+	int index = (int)(((char *)value_ - (char *)list_->value->buffer) / list_->value->len);
+	sis_struct_list_delete(list_->key, index, 1);
+	sis_struct_list_delete(list_->value, index, 1);
+	return sis_struct_list_get(list_->value, index);
+}
+
+int sis_sort_list_getsize(s_sis_sort_list *list_)
+{
+	return sis_min(list_->key->count, list_->value->count);
+}
+
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_double_list --------------------------------//
+///////////////////////////////////////////////////////////////////////////
+
+s_sis_double_list *sis_double_list_create()
+{
+	s_sis_double_list *o = SIS_MALLOC(s_sis_double_list, o);
+	o->value = sis_struct_list_create(sizeof(double));
+	o->split = sis_struct_list_create(sizeof(s_sis_double_split));
+	o->sides = sis_struct_list_create(sizeof(s_sis_double_sides));
+	return o;
+}
+void sis_double_list_destroy(void *list)
+{
+	s_sis_double_list *list_ = (s_sis_double_list *)list;
+	sis_struct_list_destroy(list_->value);
+	sis_struct_list_destroy(list_->split);
+	sis_struct_list_destroy(list_->sides);
+	sis_free(list_);
+}
+void sis_double_list_clear(s_sis_double_list *list_)
+{
+	list_->avgv = 0.0;
+	list_->minv = 0.0;
+	list_->maxv = 0.0;
+	sis_struct_list_clear(list_->value);
+}
+int sis_double_list_set(s_sis_double_list *list_, double in_)
+{
+	int count = list_->value->count;
+	double sumv = count * list_->avgv;
+	list_->avgv = (sumv + in_) / (count + 1);
+	list_->maxv = sis_max(list_->maxv, in_);
+	list_->minv = SIS_MINF(list_->minv, in_);
+	return sis_struct_list_push(list_->value, &in_);
+}
+double sis_double_list_get(s_sis_double_list *list_, int index_)
+{
+	double *o = (double *)sis_struct_list_get(list_->value, index_);
+	if (o)
+	{
+		return *o;
+	}
+	return 0.0;
+}
+
+int sis_double_list_getsize(s_sis_double_list *list_)
+{
+	return list_->value->count;
+}
+
+static int _sort_double_list(const void *arg1, const void *arg2 ) 
+{ 
+    return (*(double *)arg1 - *(double *)arg2);
+}
+
+s_sis_struct_list *sis_double_list_count_split(s_sis_double_list *list_, int nums_)
+{
+	sis_struct_list_clear(list_->split);
+	int count = list_->value->count;
+	if (nums_ > count)
+	{
+		return NULL;
+	}
+	double *ins = sis_malloc(sizeof(double)*count);
+	memmove(ins, sis_struct_list_first(list_->value), sizeof(double)*count);
+
+    qsort(ins, count, sizeof(double), _sort_double_list);
+
+	double step = (double)count / (double)nums_;
+	s_sis_double_split split;
+	int start = 0;
+	int stop = 0;
+	for (int i = 0; i < nums_; i++)
+	{
+		if (i == 0)
+		{	
+			stop = (int)step;
+			split.minv = ins[0] - 0.001;
+			split.maxv = ins[stop] - 0.001;			
+		}
+		else 
+		if (i == nums_ - 1)
+		{
+			stop = count - 1;
+			split.minv = ins[start];
+			split.maxv = ins[stop] + 0.001;			
+		}
+		else
+		{
+			stop = (int)(step * (i + 1));
+			split.minv = ins[start];
+			split.maxv = ins[stop] - 0.001;
+		}
+		start = stop;	
+		sis_struct_list_push(list_->split, &split);
+	}
+	sis_free(ins);
+	return list_->split;
+}
+
+s_sis_struct_list *sis_double_list_count_sides(s_sis_double_list *list_, int steps_)
+{
+	sis_struct_list_clear(list_->sides);
+	s_sis_struct_list *splits = sis_double_list_count_split(list_, steps_);
+	if (!splits)
+	{
+		return NULL;
+	}
+	for (int m = steps_ - 1; m > 0; m--)
+	{
+		s_sis_double_split *upmin = (s_sis_double_split *)sis_struct_list_get(splits, m);  
+		for (int n = m; n < steps_; n++)
+		{
+			s_sis_double_split *upmax = (s_sis_double_split *)sis_struct_list_get(splits, n);  
+			for (int i = 0; i < m; i++)
+			{
+				s_sis_double_split *dnmin = (s_sis_double_split *)sis_struct_list_get(splits, i);  
+				for (int j = i; j < m; j++)
+				{
+					s_sis_double_split *dnmax = (s_sis_double_split *)sis_struct_list_get(splits, j);  
+	
+					s_sis_double_sides sides;
+					sides.up_minv = upmin->minv;
+					sides.up_maxv = upmax->maxv;
+					sides.dn_minv = dnmin->minv;
+					sides.dn_maxv = dnmax->maxv;
+					// printf("[%3d] [%d.%d.%d.%d]: %7.2f %7.2f | %7.2f %7.2f\n",
+					// 	list_->sides->count, m,n,i,j,
+					// 	sides.up_minv, sides.up_maxv, sides.dn_minv, sides.dn_maxv);
+					sis_struct_list_push(list_->sides, &sides);
+				}
+			}
+		}
+	}
+	return list_->sides;
+}
+
+int sis_get_simple_split(s_sis_struct_list *out_, double minv_, double maxv_, int nums_)
+{
+	sis_struct_list_clear(out_);
+	if (!out_ || (maxv_ - minv_) < (nums_ + 1) * 0.001)
+	{
+		return 0;
+	}	
+	s_sis_double_split split;
+	double gapv = (maxv_ - minv_) / (double)nums_;
+	for (int i = 0; i < nums_; i++)
+	{
+		if (i == 0)
+		{	
+			split.minv = minv_ - 0.001;
+			split.maxv = split.minv + gapv;			
+		}
+		else 
+		if (i == nums_ - 1)
+		{
+			split.minv = split.maxv + 0.001;
+			split.maxv = maxv_ + 0.001;			
+		}
+		else
+		{
+			split.minv = split.maxv + 0.001;
+			split.maxv = split.minv + gapv;
+		}
+		sis_struct_list_push(out_, &split);
+	}
+	return out_->count;
+}
+
+s_sis_struct_list *sis_double_list_simple_split(s_sis_double_list *list_, int nums_)
+{
+	// if (list_->value->count <  nums_ || (list_->maxv - list_->minv) < (nums_ + 1) * 0.001)
+	if ((list_->maxv - list_->minv) < (nums_ + 1) * 0.001)
+	{
+		return NULL;
+	}	
+	sis_get_simple_split(list_->split, list_->minv, list_->maxv, nums_);
+	return list_->split;
+}
+
+s_sis_struct_list *sis_double_list_simple_sides(s_sis_double_list *list_, int steps_)
+{
+	sis_struct_list_clear(list_->sides);
+	s_sis_struct_list *splits = sis_double_list_simple_split(list_, steps_);
+	if (!splits)
+	{
+		return NULL;
+	}
+	for (int m = steps_ - 1; m > 0; m--)
+	{
+		s_sis_double_split *upmin = (s_sis_double_split *)sis_struct_list_get(splits, m);  
+		for (int n = m; n < steps_; n++)
+		{
+			s_sis_double_split *upmax = (s_sis_double_split *)sis_struct_list_get(splits, n);  
+			for (int i = 0; i < m; i++)
+			{
+				s_sis_double_split *dnmin = (s_sis_double_split *)sis_struct_list_get(splits, i);  
+				for (int j = i; j < m; j++)
+				{
+					s_sis_double_split *dnmax = (s_sis_double_split *)sis_struct_list_get(splits, j);  
+	
+					s_sis_double_sides sides;
+					sides.up_minv = upmin->minv;
+					sides.up_maxv = upmax->maxv;
+					sides.dn_minv = dnmin->minv;
+					sides.dn_maxv = dnmax->maxv;
+					// printf("[%3d] [%d.%d.%d.%d]: %7.2f %7.2f | %7.2f %7.2f\n",
+					// 	list_->sides->count, m,n,i,j,
+					// 	sides.up_minv, sides.up_maxv, sides.dn_minv, sides.dn_maxv);
+					sis_struct_list_push(list_->sides, &sides);
+				}
+			}
+		}
+	}
+	return list_->sides;
+}
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_pointer_list --------------------------------//
 //  存储指针的列表,依赖于struct_list,记录长度为sizeof(char *)
@@ -842,6 +1147,47 @@ int main(void) {
 	// 	sis_sdsfree(sss);		
 	// }	
 
+	return 0;
+}
+#endif
+
+#if 0
+int main()
+{
+	s_sis_double_list *vlist = sis_double_list_create(); 
+
+    for (int i = 0; i < 20; i++)
+    {
+        sis_double_list_set(vlist, i + 1);
+    }
+    sis_double_list_count_sides(vlist, 5);
+    for (int i = 0; i < vlist->sides->count; i++)
+    {
+        s_sis_double_sides *sides =(s_sis_double_sides *)sis_struct_list_get(vlist->sides, i);
+        printf("count_sides [%3d] : %7.3f %7.3f | %7.3f %7.3f\n",
+            i, sides->up_minv, sides->up_maxv, sides->dn_minv, sides->dn_maxv);
+    }
+    sis_double_list_simple_sides(vlist, 5);
+    for (int i = 0; i < vlist->sides->count; i++)
+    {
+        s_sis_double_sides *sides =(s_sis_double_sides *)sis_struct_list_get(vlist->sides, i);
+        printf("simple_sides [%3d] : %7.3f %7.3f | %7.3f %7.3f\n",
+            i, sides->up_minv, sides->up_maxv, sides->dn_minv, sides->dn_maxv);
+    }
+    sis_double_list_count_split(vlist, 5);
+    for (int i = 0; i < vlist->split->count; i++)
+    {
+        s_sis_double_split *split =(s_sis_double_split *)sis_struct_list_get(vlist->split, i);
+        printf("count_split [%3d] : %7.3f %7.3f \n",i, split->minv, split->maxv);
+    }
+    sis_double_list_simple_split(vlist, 5);
+    for (int i = 0; i < vlist->split->count; i++)
+    {
+        s_sis_double_split *split =(s_sis_double_split *)sis_struct_list_get(vlist->split, i);
+        printf("simple_split [%3d] : %7.3f %7.3f \n",i, split->minv, split->maxv);
+    }
+
+    sis_double_list_destroy(vlist);
 	return 0;
 }
 #endif

@@ -146,6 +146,50 @@ const char *sis_file_csv_get_ptr(s_sis_file_csv *csv_, int idx_, int field)
 // {
 // 	return 0;
 // }
+s_sis_sds sis_csv_make_str(s_sis_sds in_, char *str_)
+{
+	size_t size = sis_sdslen(in_);
+	if (size > 0 && in_[size - 1] != '\n')
+	{
+		return sis_sdscatfmt(in_, ",%s", str_);
+	}
+	else
+	{
+		return sis_sdscatlen(in_, str_, strlen(str_));
+	}
+}
+s_sis_sds sis_csv_make_int(s_sis_sds in_, int val_)
+{
+	char str[16];
+	size_t size = sis_sdslen(in_);
+	if (size > 0 && in_[size - 1] != '\n')
+	{
+		sprintf(str, ",%d", val_);
+	}
+	else
+	{
+		sprintf(str, "%d", val_);
+	}
+	return sis_sdscatlen(in_, str, strlen(str));
+}
+s_sis_sds sis_csv_make_double(s_sis_sds in_, double val_, int dot_)
+{
+	char str[16];
+	size_t size = sis_sdslen(in_);
+	if (size > 0 && in_[size - 1] != '\n')
+	{
+		sprintf(str, ",%.*f", dot_, val_);
+	}
+	else
+	{
+		sprintf(str, "%.*f", dot_, val_);
+	}
+	return sis_sdscatlen(in_, str, strlen(str));
+}
+s_sis_sds sis_csv_make_end(s_sis_sds in_)
+{
+	return sis_sdscatlen(in_, "\r\n", 2);
+}
 
 #if 0
 
@@ -163,6 +207,80 @@ int main(int n, const char *argv[])
 	printf("end.\n");
 	sis_free(str);
 	safe_memory_stop();
+	return 0;
+}
+#endif
+
+#if 0
+
+#include <sis_math.h> 
+
+int main(int n, const char *argv[])
+{
+	s_sis_sds str = sis_sdsempty();
+	sis_init_random();
+
+	// printf("%.*f \n", 2, sis_get_random(0.001, 0.999));
+	// return 0;
+	double box[6];
+	box[0] = 0.001;
+	box[1] = 0.2;
+	box[2] = 0.4;
+	box[3] = 0.6;
+	box[4] = 0.8;
+	box[5] = 0.999;
+	
+	int out;
+	for (int i = 0; i < 10000; i++)
+	{
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		out = (int)(sis_get_random(0, 4.0) + 0.5);
+		str = sis_csv_make_int(str, out);
+		for (int j = 0; j < 100; j++)
+		{
+			if (j % 10 == 0)
+			{
+				str = sis_csv_make_double(str, sis_get_random(0.001 , 0.999), 3);
+			}
+			else
+			{
+				str = sis_csv_make_double(str, sis_get_random(box[out] , box[out + 1]), 3);
+			}
+		}
+		str = sis_csv_make_end(str);
+		// printf("%d %d %d\n",str[sis_sdslen(str) - 1], '\n', '\r');
+	}	
+	sis_writefile("sh600745.study.csv", str, sis_sdslen(str));
+	str = sis_sdsempty();
+	for (int i = 0; i < 100; i++)
+	{
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		str = sis_csv_make_int(str, 0);
+		out = (int)(sis_get_random(0, 4.0) + 0.5);
+		str = sis_csv_make_int(str, out);
+		for (int j = 0; j < 100; j++)
+		{
+			if (j % 10 == 0)
+			{
+				str = sis_csv_make_double(str, sis_get_random(0.001 , 0.999), 3);
+			}
+			else
+			{
+				str = sis_csv_make_double(str, sis_get_random(box[out] , box[out + 1]), 3);
+			}		}
+		str = sis_csv_make_end(str);
+		// printf("%f\n",sis_get_random(0.001, 0.999));
+	}	
+	sis_writefile("sh600745.test.csv", str, sis_sdslen(str));
+
+	sis_sdsfree(str);
 	return 0;
 }
 

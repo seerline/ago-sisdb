@@ -2,6 +2,589 @@
 #include <sis_core.h>
 #include <sis_ai.h>
 
+// 从连续值中求得标准归一值 mid 无用
+double sis_ai_normalization_series(double value_, double min_, double max_)
+{
+    if (max_ <= min_) return SIS_AI_MIN;
+    if (value_ <= min_) return SIS_AI_MIN;
+    if (value_ >= max_) return SIS_AI_MAX;
+    return SIS_AI_MIN + (SIS_AI_MAX - SIS_AI_MIN) * (value_ - min_) / (max_ - min_);
+}
+int sis_ai_normalization_series_array(int nums_, double ins_[], double outs_[], double min_, double max_)
+{
+    if (min_ == 0 && max_ == 0)
+    {
+        min_ = ins_[0];
+        max_ = ins_[0];
+        for (int m = 1; m < nums_; m++)
+        {
+            min_ = sis_min(min_, ins_[m]);
+            max_ = sis_max(max_, ins_[m]);
+        }
+    }
+    for (int m = 0; m < nums_; m++)
+    {
+        outs_[m] = sis_ai_normalization_series(ins_[m], min_, max_);
+    }
+    return nums_;
+}
+// 从连续值中求得标准归一值 以 mid 为分界线 分处于 0.5 两端 
+double sis_ai_normalization_split(double value_, double min_, double max_, double mid_)
+{
+    if (max_ <= min_ || mid_ <= min_ || mid_ >= max_) return SIS_AI_MIN;
+    if (value_ <= min_) return SIS_AI_MIN;
+    if (value_ >= max_) return SIS_AI_MAX;
+    if (value_ > mid_)
+    {
+        return SIS_AI_MID + (SIS_AI_MAX - SIS_AI_MID) * (value_ - mid_) / (max_ - mid_);
+    }
+    return SIS_AI_MIN + (SIS_AI_MID - SIS_AI_MIN) * (value_ - min_) / (mid_ - min_);
+}
+int sis_ai_normalization_split_array(int nums_, double ins_[], double outs_[], double min_, double max_, double mid_)
+{
+    if (min_ == 0 && max_ == 0 && mid_ == 0)
+    {
+        double sum = ins_[0];
+        min_ = ins_[0];
+        max_ = ins_[0];
+        for (int m = 1; m < nums_; m++)
+        {
+            sum += ins_[m];
+            min_ = sis_min(min_, ins_[m]);
+            max_ = sis_max(max_, ins_[m]);
+        }
+        mid_ = sum / (double) nums_;
+    }
+    for (int m = 0; m < nums_; m++)
+    {
+        outs_[m] = sis_ai_normalization_split(ins_[m], min_, max_, mid_);
+    }
+    return nums_;    
+}
+/////////////////////////////////////////////////////////
+//
+/////////////////////////////////////////////////////////
+s_ai_nearest_drift *sis_ai_nearest_drift_create()
+{
+    s_ai_nearest_drift *o = SIS_MALLOC(s_ai_nearest_drift, o);
+    o->ins = sis_struct_list_create(sizeof(double));
+    // o->indexs = sis_struct_list_create(sizeof(int));
+    return o;
+}
+void sis_ai_nearest_drift_destroy(s_ai_nearest_drift *in_)
+{
+    sis_struct_list_destroy(in_->ins);
+    // sis_struct_list_destroy(in_->indexs);
+    sis_free(in_);
+}
+void sis_ai_nearest_drift_clear(s_ai_nearest_drift *in_)
+{
+    sis_struct_list_clear(in_->ins);
+    // sis_struct_list_clear(in_->indexs);
+    in_->rate = 0.0;
+    in_->drift = 0.0;
+    in_->offset = 0;
+}
+int sis_ai_nearest_drift_push(s_ai_nearest_drift *in_, double val_)
+{
+    // sis_struct_list_push(in_->indexs, &idx_);
+    return sis_struct_list_push(in_->ins, &val_);
+}
+int sis_ai_nearest_drift_insert(s_ai_nearest_drift *in_, double val_)
+{
+    // sis_struct_list_insert(in_->indexs, 0, &idx_);
+    return sis_struct_list_insert(in_->ins, 0, &val_);
+}
+// int sis_ai_nearest_drift_get_index(s_ai_nearest_drift *in_, int idx_)
+// {
+//     return *(int *)sis_struct_list_get(in_->indexs, idx_);
+// }
+int sis_ai_nearest_drift_size(s_ai_nearest_drift *in_)
+{
+    return in_->ins->count;
+}
+
+int sis_ai_nearest_drift_calc_future(s_ai_nearest_drift *in_, double inrate_, double min_, double max_)
+{
+    in_->inrate = inrate_;
+    in_->rate = inrate_;
+    in_->offset = in_->ins->count - 1;
+    return sis_ai_nearest_drift_future(in_->ins->count, (double *)in_->ins->buffer, min_, max_, &in_->rate, &in_->offset, &in_->drift);
+}
+
+int sis_ai_nearest_drift_calc_formerly(s_ai_nearest_drift *in_, double inrate_, double min_, double max_)
+{
+    in_->inrate = inrate_;
+    in_->rate = inrate_;
+    in_->offset = 0;
+    return sis_ai_nearest_drift_formerly(in_->ins->count, (double *)in_->ins->buffer, min_, max_, &in_->rate, &in_->offset, &in_->drift);
+}
+
+double sis_ai_normalization_split_slope(int nums_, double ins_[], double min_, double max_, double mid_)
+{
+    if (nums_ < 3)
+    {
+        return 0.0;
+    }
+    // 求斜率
+    double *x = (double *)sis_calloc(sizeof(double) * nums_);
+    for (int m = 0; m < nums_; m++)
+    {
+        x[m] = m;
+    }
+
+    double xs[3];
+    double *outs = (double *)sis_calloc(sizeof(double) * nums_);
+
+    sis_ai_normalization_split_array(nums_, ins_, outs, min_, max_, mid_);
+
+    sis_ai_polyfit(nums_, x, outs, 1, xs);
+
+    sis_free(x);
+    sis_free(outs);
+
+    return xs[1];   
+}
+// 返回归一化的斜率 rate -> 按斜率计算的涨跌幅 和实际涨跌可能不一致，
+double sis_ai_normalization_series_slope(int nums_, double ins_[], double min_, double max_, double *rate_)
+{
+    if (nums_ < 3)
+    {
+        return 0.0;
+    }
+    if (rate_)
+    {
+        *rate_ = 0.0;
+    }
+    // 求斜率
+    double *x = (double *)sis_calloc(sizeof(double) * nums_);
+    for (int m = 0; m < nums_; m++)
+    {
+        x[m] = m;
+    }
+
+    double xs[3];
+    double *outs = (double *)sis_calloc(sizeof(double) * nums_);
+
+    sis_ai_normalization_series_array(nums_, ins_, outs, min_, max_);
+
+    sis_ai_polyfit(nums_, x, outs, 1, xs);
+
+    sis_free(x);
+    sis_free(outs);
+
+    if (rate_ && (ins_[0] > 0.000001 || ins_[0] > -0.000001))
+    {
+        double c = (max_ - min_) * xs[0] / (SIS_AI_MAX - SIS_AI_MIN) + min_;
+        // printf("%f %f %f -- %f \n", xs[0], xs[1], xs[2], c);
+        *rate_ = (c - ins_[0]) / ins_[0]; 
+    }
+
+    return xs[1];
+}
+double sis_ai_get_slope(int nums_, double ins_[])
+{
+    return sis_ai_normalization_series_slope(nums_, ins_, 0.0, 0.0, NULL); 
+}
+double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double min_, double max_)
+{
+    if (nums_ < 5)
+    {
+        return 0.0;
+    }
+    // 求斜率
+    double *x = (double *)sis_calloc(sizeof(double) * nums_);
+    double *outs = (double *)sis_calloc(sizeof(double) * nums_);
+    for (int m = 0; m < nums_; m++)
+    {
+        x[m] = m; 
+        // * (SIS_AI_MAX - SIS_AI_MIN) / nums_;
+        // outs[m] = ins_[m];
+    }
+
+    sis_ai_normalization_series_array(nums_, ins_, outs, min_, max_);
+
+    // double xs[4];
+    // sis_ai_polyfit(nums_, x, outs, 2, xs);
+    // sis_free(x);
+    // sis_free(outs);
+    // //  求导数 
+    // return 2 * xs[2]*(nums_-1) + xs[1];
+    double xs[5];
+    sis_ai_polyfit(nums_, x, outs, 3, xs);
+    sis_free(x);
+    sis_free(outs);
+    //  求导数 
+    return 3 * xs[3]*(nums_-1)*(nums_-1) + 2 * xs[2]*(nums_-1) + xs[1];
+    // return 6 * xs[3]*(nums_-1) + 2 * xs[2];
+}
+
+int sis_ai_nearest_drift_future(int nums_, double ins_[], double min_, double max_, double *minrate_, int *stop_, double *drift_)
+{
+    if (nums_ < 3 || (ins_[0] < 0.00001 && ins_[0] > -0.00001))
+    {
+        return SIS_AI_DRIFT_MID;
+    }
+    double first = ins_[0];
+    double minv = first;
+    double maxv = first;
+
+    int mini = -1;
+    int maxi = -1;
+
+    double minrate = *minrate_;
+    // 先求最大值
+    for (int m = 1; m < nums_; m++)
+    {
+        if (ins_[m] > maxv)
+        {
+            maxv = ins_[m];
+            double rate = (maxv - first) / first;
+            if (rate > minrate) // 有一个下降波动
+            {
+                maxi = m;
+                // break;
+            }
+        }
+        else
+        {
+            if (maxi >= 0)
+            {
+                break;
+            }
+        }
+    }
+    // 先求最小值
+    for (int m = 1; m < nums_; m++)
+    {
+        if (ins_[m] < minv)
+        {
+            minv = ins_[m];
+            double rate = (first - minv) / first;
+            if (rate > minrate) // 有一个上涨波动
+            {
+                mini = m;
+                // break;
+            }
+        }
+        else
+        {
+            if (mini >= 0)
+            {
+                break;
+            }
+        }
+    }
+    *stop_ = nums_ - 1;
+    int o = SIS_AI_DRIFT_MID;
+    if (maxi < 0 && mini < 0)  // 无波动
+    {
+        *stop_ = nums_ - 1;
+        // 这里是否要求波动斜率
+    }
+    else 
+    {
+        if (maxi > mini)   // 下降
+        {
+            *stop_ = mini < 0 ? maxi : mini;
+            o = SIS_AI_DRIFT_DN;
+        }
+        if (maxi < mini)   // 上升
+        {
+            *stop_ = maxi < 0 ? mini : maxi;
+            o = SIS_AI_DRIFT_UP;
+        }
+    }
+    // 求斜率
+    int count = *stop_ + 1;
+    // printf("%d : %d %d %d \n", count, *stop_, mini, maxi);
+    double *x = (double *)sis_calloc(sizeof(double) * count);
+    for (int m = 0; m < count; m++)
+    {
+        x[m] = m;
+    }
+
+    double xs[3];
+    double *outs = (double *)sis_calloc(sizeof(double) * count);
+
+    sis_ai_normalization_series_array(count, ins_, outs, min_, max_);
+    // for (size_t i = 0; i < count; i++)
+    // {
+    //     printf("%.4f - %.4f | ", ins_[i], outs[i]);
+    // }
+    sis_ai_polyfit(count, x, outs, 1, xs);
+    // printf("---- %f %f %f\n", xs[0], xs[1], xs[2]);
+
+    sis_free(x);
+    sis_free(outs);
+
+    if (*stop_ == nums_ - 1)
+    {
+        double c = (max_ - min_) * xs[0] / (SIS_AI_MAX - SIS_AI_MIN) + min_;
+        // printf("%f %f %f -- %f \n", xs[0], xs[1], xs[2], c);
+        *minrate_ = (c - first) / first; 
+    }
+    else
+    {
+        *minrate_ = (ins_[*stop_] -  first) / first; 
+    }
+    *drift_ = xs[1];
+    return o;
+}
+int sis_ai_nearest_drift_formerly(int nums_, double ins_[], double min_, double max_, double *minrate_, int *start_, double *drift_)
+{
+    if (nums_ < 3 || (ins_[nums_ - 1] < 0.00001 && ins_[nums_ - 1] > -0.00001))
+    {
+        return SIS_AI_DRIFT_MID;
+    }
+
+    double last = ins_[nums_ - 1];
+    double minv = last;
+    double maxv = last;
+
+    int mini = -1;
+    int maxi = -1;
+
+    double minrate = *minrate_;
+    // 先求最大值
+    for (int m = nums_ - 2; m >=0; m--)
+    {
+        if (ins_[m] > maxv)
+        {
+            maxv = ins_[m];
+            double rate = (maxv - last) / last;
+            if (rate > minrate) // 有一个下降波动
+            {
+                maxi = m;
+                // break;
+            }
+        }
+        else
+        {
+            if (maxi >= 0)
+            {
+                break;
+            }
+        }
+    }
+    // 先求最小值
+    for (int m = nums_ - 2; m >=0; m--)
+    {
+        if (ins_[m] < minv)
+        {
+            minv = ins_[m];
+            double rate = (last - minv) / last;
+            if (rate > minrate) // 有一个上涨波动
+            {
+                mini = m;
+                // break;
+            }
+        }
+        else
+        {
+            if (mini >= 0)
+            {
+                break;
+            }
+        }
+    }
+    int o = SIS_AI_DRIFT_MID;
+    *start_ = 0;
+    if (maxi < 0 && mini < 0)  // 无波动
+    {
+        *start_ = 0;
+        // 这里是否要求波动斜率
+    }
+    else 
+    {
+        if (maxi > mini)  // 下降
+        {
+            *start_ = maxi;
+            o = SIS_AI_DRIFT_DN;
+        }
+        if (maxi < mini) // 上升
+        {
+            *start_ = mini;
+            o = SIS_AI_DRIFT_UP;
+        }
+    }
+
+    // 求斜率
+    int count = nums_ - *start_;
+    double *x = (double *)sis_calloc(sizeof(double) * count);
+    for (int m = 0; m < count; m++)
+    {
+        x[m] = m;
+    }
+
+    double xs[3];
+    double *outs = (double *)sis_calloc(sizeof(double) * count);
+
+    sis_ai_normalization_series_array(count, &ins_[*start_], outs, min_, max_);
+    // for (size_t i = 0; i < count; i++)
+    // {
+    //     printf("%.4f - %.4f | ", ins_[*start_ + i], outs[i]);
+    // }
+    // printf("\n %.4f - %.4f \n", min_, max_);
+    sis_ai_polyfit(count, x, outs, 1, xs);
+    // printf("%f %f %f\n", xs[0], xs[1], xs[2]);
+
+    // sis_ai_normalization_series_array(count, &ins_[*start_], outs, 0, 0);
+    // for (size_t i = 0; i < count; i++)
+    // {
+    //     printf("%.4f  ", outs[i]);
+    // }
+    // printf("\n");
+    // sis_ai_polyfit(count, x, outs, 1, xs);
+    // printf("%f %f %f\n", xs[0], xs[1], xs[2]);
+
+    // sis_ai_polyfit(count, x, &ins_[*start_], 1, xs);
+    // printf("%f %f %f\n", xs[0], xs[1], xs[2]);
+
+    sis_free(x);
+    sis_free(outs);
+
+    if (*start_ == 0)
+    {
+        double c = (max_ - min_) * xs[0] / (SIS_AI_MAX - SIS_AI_MIN) + min_;
+        // printf("%f %f %f -- %f \n", xs[0], xs[1], xs[2], c);
+        *minrate_ = (last - c) / last; 
+    }
+    else
+    {
+        *minrate_ = (last - ins_[*start_]) / last; 
+    }
+    *drift_ = xs[1];
+    return o;
+}
+// 返回实际的最大 diff
+double sis_ai_nearest_diff_formerly(int nums_, double ins_[])
+{
+    if (nums_ < 2)
+    {
+        return 0.0;
+    }
+
+    double last = ins_[nums_ - 1];
+    double minv = last;
+    double maxv = last;
+
+    int mini = -1;
+    int maxi = -1;
+
+    // 先求最大值
+    for (int m = nums_ - 1; m >=0; m--)
+    {
+        if (ins_[m] > maxv)
+        {
+            maxv = ins_[m];
+            maxi = m;
+        }
+        else
+        {
+            if (maxi >= 0)
+            {
+                break;
+            }
+        }
+    }
+    // 先求最小值
+    for (int m = nums_ - 1; m >=0; m--)
+    {
+        if (ins_[m] < minv)
+        {
+            minv = ins_[m];
+            mini = m;
+        }
+        else
+        {
+            if (mini >= 0)
+            {
+                break;
+            }
+        }
+    }
+    // printf("\n %d - %d : %.4f - %.4f = %.4f \n", maxi, mini, maxv, minv, last);
+    if (maxi > mini)  // 下降
+    {
+        return last - maxv;
+    }
+    if (maxi < mini) // 上升
+    {
+    // printf("\n %d - %d : %.4f - %.4f = %.4f \n", maxi, mini, maxv, minv, last);
+        return last - minv;
+    }
+    return 0.0;
+}
+
+double sis_ai_drift_series(int nums_, double ins_[], double min_, double max_)
+{
+    if (nums_ < 3 || (ins_[nums_ - 1] < 0.00001 && ins_[nums_ - 1] > -0.00001))
+    {
+        return 0.0;
+    }
+    double minv = min_;
+    double maxv = max_;
+
+    for (int m = nums_ - 1; m >=0; m--)
+    {
+        minv = sis_min(minv, ins_[m]);
+        maxv = sis_min(maxv, ins_[m]);
+    }
+    double *x = (double *)sis_calloc(sizeof(double) * nums_);
+    for (int m = 0; m < nums_; m++)
+    {
+        x[m] = m;
+    }
+
+    double xs[3];
+    double *outs = (double *)sis_calloc(sizeof(double) * nums_);
+    sis_ai_normalization_series_array(nums_, ins_, outs, minv, maxv);
+
+    sis_ai_polyfit(nums_, x, outs, 1, xs);
+    // printf("%f %f %f\n", xs[0], xs[1], xs[2]);
+
+    sis_free(x);
+    sis_free(outs);
+
+    return xs[1];
+}
+double sis_ai_drift_split(int nums_, double ins_[], double min_, double max_, double mid_)
+{
+    if (nums_ < 3 || (ins_[nums_ - 1] < 0.00001 && ins_[nums_ - 1] > -0.00001))
+    {
+        return 0.0;
+    }
+    double minv = min_;
+    double maxv = max_;
+
+    for (int m = nums_ - 1; m >=0; m--)
+    {
+        minv = sis_min(minv, ins_[m]);
+        maxv = sis_min(maxv, ins_[m]);
+    }
+    double *x = (double *)sis_calloc(sizeof(double) * nums_);
+    for (int m = 0; m < nums_; m++)
+    {
+        x[m] = m;
+    }
+
+    double xs[3];
+    double *outs = (double *)sis_calloc(sizeof(double) * nums_);
+    sis_ai_normalization_split_array(nums_, ins_, outs, minv, maxv, mid_);
+
+    sis_ai_polyfit(nums_, x, outs, 1, xs);
+    // printf("%f %f %f\n", xs[0], xs[1], xs[2]);
+
+    sis_free(x);
+    sis_free(outs);
+
+    return xs[1];
+}
+//////////////////////////////
+//
+//////////////////////////////
+
 void gauss_solve(int n, double A[], double x[], double b[])
 {
 	int i, j, k, r;
@@ -46,11 +629,11 @@ void gauss_solve(int n, double A[], double x[], double b[])
 	}
 
 }
-/*==================polyfit(n,x,y,poly_n,a)===================*/
+/*==================sis_ai_polyfit(n,x,y,poly_n,a)===================*/
 /*=======拟合y=a0+a1*x+a2*x^2+……+apoly_n*x^poly_n========*/
 /*=====n是数据个数 xy是数据值 poly_n是多项式的项数======*/
 /*===返回a0,a1,a2,……a[poly_n]，系数比项数多一（常数项）=====*/
-void polyfit(int n, double x[], double y[], int poly_n, double a[])
+void sis_ai_polyfit(int n, double x[], double y[], int poly_n, double a[])
 {
 	int i, j;
 	double *tempx, *tempy, *sumxx, *sumxy, *ata;
@@ -102,7 +685,7 @@ double sis_ai_slope(int n, double ins[])
     {
         x[m] = m + 1;
     }
-    polyfit(n, x, ins, 1, a);
+    sis_ai_polyfit(n, x, ins, 1, a);
     sis_free(x);
     // printf("%f %f %f\n", a[0], a[1], a[2]);
     return a[1];
@@ -140,11 +723,163 @@ double sis_ai_slope_rate(int n, double ins[])
         y[m] = (ins[m] - min) / ((max - min) / (n - 1));
         // printf("%f %f %f\n", ins[m], x[m], y[m]);
     }    
-    polyfit(n, x, y, 1, a);
+    sis_ai_polyfit(n, x, y, 1, a);
     sis_free(x);
     sis_free(y);
     // printf("%f %f %f\n", a[0], a[1], a[2]);
     return a[1];
+}
+int8 sis_ai_factor_drift_three(double in1, double in2, double in3, double in4)
+{
+    int8 o = 0;
+    if (in4 >= in3) 
+    {
+        o = o << 1;  o |= 1;
+    }
+    else
+    {
+        o = o << 1;
+    }    
+    if (in3 >= in2) 
+    {
+        o = o << 1;  o |= 1;
+    }
+    else
+    {
+        o = o << 1;
+    } 
+    if (in2 >= in1) 
+    {
+        o = o << 1;  o |= 1;
+    }
+    else
+    {
+        o = o << 1;
+    } 
+    return o;
+}
+
+int8 sis_ai_factor_drift(int n, double *ins, int level)
+{
+    if (n < 1) return 0;
+
+    int8 o = 0;
+    if (level > n - 1)
+    {
+        int count = 2 * n - 1;
+        double *outs = (double *)sis_malloc(count * sizeof(double));
+        for (int i = 0, k = 0; i < n; i++, k++)
+        {
+            outs[k] = ins[i];
+            if (i < n - 1)
+            {
+                k++;
+                outs[k] = (ins[i] + ins[i + 1]) / 2.0;
+            }
+        }
+        o = sis_ai_factor_drift(count, outs, level);
+        sis_free(outs);
+    }
+    else if (level < n - 1)
+    {
+        int count = n - 1;
+        double *outs = (double *)sis_malloc(count *sizeof(double));
+        for (int i = n - 1, k = count -1; i > 0; i--, k--)
+        {
+            outs[k] = (ins[i] + ins[i - 1]) / 2.0;
+        }
+        o = sis_ai_factor_drift(count, outs, level);
+        sis_free(outs);
+    } 
+    else
+    {
+        o = 0;
+        for (int i = n - 1; i > 0; i--)
+        { 
+            // printf(" %d: %.0f %.0f = %d\n", i, ins[i], ins[i - 1], o);
+            if (ins[i] >= ins[i - 1])
+            {
+                o = o << 1;
+                o |= 1;
+            }
+            else
+            {
+                o = o << 1;
+                // o |= 0;
+            }          
+        }
+    } 
+    return o;
+}
+
+int8 sis_ai_factor_drift_pair(int n, double *asks, double *bids, int level)
+{
+    if (n < 1) return 0;
+
+    int8 o = 0;
+    if (level > n)
+    {
+        int count = 2 * n - 1;
+        double *oasks = (double *)sis_malloc(count *sizeof(double));
+        double *obids = (double *)sis_malloc(count *sizeof(double));
+        for (int i = 0, k = 0; i < n; i++, k++)
+        {
+            oasks[k] = asks[i];
+            if (i < n - 1)
+            {
+                k++;
+                oasks[k] = (asks[i] + asks[i + 1]) / 2.0;
+            }
+        }
+        for (int i = 0, k = 0; i < n; i++, k++)
+        {
+            obids[k] = bids[i];
+            if (i < n - 1)
+            {
+                k++;
+                obids[k] = (bids[i] + bids[i + 1]) / 2.0;
+            }
+        }
+        o = sis_ai_factor_drift_pair(count, oasks, obids, level);
+        sis_free(oasks);
+        sis_free(obids);
+    }
+    else if (level < n)
+    {
+        int count = n - 1;
+        double *oasks = (double *)sis_malloc(count *sizeof(double));
+        double *obids = (double *)sis_malloc(count *sizeof(double));
+        for (int i = n - 1, k = count - 1; i > 0; i--, k--)
+        {
+            oasks[k] = (asks[i] + asks[i - 1]) / 2.0;
+        }
+        for (int i = n - 1, k = count - 1; i > 0; i--, k--)
+        {
+            obids[k] = (bids[i] + bids[i - 1]) / 2.0;
+        }
+        o = sis_ai_factor_drift_pair(count, oasks, obids, level);
+        sis_free(oasks);
+        sis_free(obids);
+    } 
+    else
+    {
+        o = 0;
+        for (int i = n - 1; i > 0; i--)
+        { 
+            // printf(" %d: %.0f %.0f = %d\n", i, ins[i], ins[i - 1], o);
+            if (asks[i] >= bids[i])
+            {
+                o = o << 1;
+                o |= 1;
+            }
+            else
+            {
+                o = o << 1;
+                // o |= 0;
+            }          
+        }
+    } 
+    return o;    
 }
 
 void   sis_ai_series_argv(int n, double ins[], double *avg, double *vari)
@@ -168,6 +903,7 @@ void   sis_ai_series_argv(int n, double ins[], double *avg, double *vari)
     }    
     *vari = sqrt(sum / (n-1));
 }
+
 double sis_ai_series_chance(double in, double avg, double vari)
 {
     if (vari == 0)
@@ -214,7 +950,7 @@ s_sis_calc_cycle *sis_calc_cycle_create(int style_)
 {
     s_sis_calc_cycle *calc = (s_sis_calc_cycle *)sis_malloc(sizeof(s_sis_calc_cycle));
     calc->style = style_;
-    calc->list = sis_struct_list_create(sizeof(double), NULL, 0);
+    calc->list = sis_struct_list_create(sizeof(double));
     return calc;
 }
 void sis_calc_cycle_destroy(s_sis_calc_cycle *calc_)
@@ -492,3 +1228,100 @@ int main()
 }
 
 #endif
+
+#if 0
+int main()
+{
+    double ins[8] = { 1, 2, 3, 4, 5, 6, 7, 8};    
+    // printf(" %d \n", sis_ai_factor_drift(8, ins, 3));
+
+    return 0;
+}
+#endif
+
+#if 0
+int main()
+{
+    // double ins[10] = { 100.50, 99.95, 100.10, 100.20, 100.35, 100.45, 100.75, 100.85, 100.98, 101};    
+    // double ins[10] = { 101.0, 101.50, 102.55, 99.30, 100.35, 100.85, 101.5, 101.85, 100.98, 101};    
+    // double ins[10] = { 101.0, 101.50, 101.55, 101.30, 100.35, 100.85, 101.5, 101.85, 101.98, 101}; 
+    double ins[10] = { 101.95, 101.80, 100.10, 99.60, 101.5, 104.4, 101.3, 101.2, 101.1, 101};    
+    double max = 110.0;
+    double min = 90.0;
+
+    double rate = 0.01;
+    // int start = 0;
+
+    // double drift = sis_ai_nearest_drift_formerly(10, ins, 90.0, 110.0, &rate, &start);
+    // printf(" drift = %f , rate = %f, start = %d \n", drift, rate, start);
+
+    // rate = 0.01;
+    // drift = sis_ai_nearest_drift_future(10, ins, min, max, &rate, &start);
+    // printf(" drift = %f , rate = %f, start = %d \n", drift, rate, start);
+
+    // 测试类
+    s_ai_nearest_drift *cls = sis_ai_nearest_drift_create();
+    for (int m = 0; m < 10; m++)
+    {
+        sis_ai_nearest_drift_push(cls, ins[m]);
+    }
+    sis_ai_nearest_drift_calc_formerly(cls, rate, min, max);
+    printf(" drift = %f , rate = %f, start = %d \n", cls->drift, cls->rate, cls->offset);
+    sis_ai_nearest_drift_calc_future(cls, rate, min, max);
+    printf(" drift = %f , rate = %f, start = %d \n", cls->drift, cls->rate, cls->offset);
+    sis_ai_nearest_drift_destroy(cls);
+    return 0;
+}
+#endif
+
+#if 0
+int main()
+{
+    // 10 元股票为例 0.1 为 1%
+    double ins[10] = { 0.21, 0.20, 0.15, 0.18, 0.1, -0.1, -0.12, -0.05, 0.021, 0.053};    
+    double diff = sis_ai_nearest_diff_formerly(6, ins);
+    printf(" diff = %f \n", diff);
+
+    // rate = 0.01;
+    // drift = sis_ai_nearest_drift_future(10, ins, min, max, &rate, &start);
+    // printf(" drift = %f , rate = %f, start = %d \n", drift, rate, start);
+
+    // 测试类
+    // s_ai_nearest_drift *cls = sis_ai_nearest_drift_create();
+    // for (int m = 0; m < 10; m++)
+    // {
+    //     sis_ai_nearest_drift_push(cls, ins[m]);
+    // }
+    // sis_ai_nearest_drift_calc_formerly(cls, rate, min, max);
+    // printf(" drift = %f , rate = %f, start = %d \n", cls->drift, cls->rate, cls->offset);
+    // sis_ai_nearest_drift_calc_future(cls, rate, min, max);
+    // printf(" drift = %f , rate = %f, start = %d \n", cls->drift, cls->rate, cls->offset);
+    // sis_ai_nearest_drift_destroy(cls);
+    return 0;
+}
+#endif
+
+#if 0
+int main()
+{
+    // 10 元股票为例 0.1 为 1%
+    // double ins[10] = { 10.11, 10.12, 10.55, 10.35, 10.25, 10.15, 10.25, 10.35, 10.65, 10.95};   
+    double ins[10] = { 9.20, 9.5, 9.8, 10.0, 10.1, 10.15, 10.25, 10.35, 10.65, 10.95};   
+    // double ins[10] = { 10.1, 10.2, 10.3, 10.4, 10.7, 10.6, 10.5, 10.4, 10.3, 10.2};   
+    double ins10[10];
+    for (int i = 0; i < 10; i++)
+    {
+        ins10[i] = ins[i] * 10;
+    }
+    for (int i = 3; i < 10; i++)
+    {
+        double rate10 = sis_ai_normalization_series_acceleration(i + 1, ins10, 90.0, 110.0);
+        double rate = sis_ai_normalization_series_acceleration(i + 1, ins, 9.0, 11.0);
+        double rate1;
+        double slope = sis_ai_normalization_series_slope(i + 1, ins, 9.0, 11.0, &rate1);
+        printf(" [%d] rate = %f %f | %f %f\n", i, rate, rate10,slope, rate1);
+    }
+    return 0;
+}
+#endif
+

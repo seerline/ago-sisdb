@@ -29,7 +29,7 @@ typedef struct s_sis_struct_list {
 #ifdef __cplusplus
 extern "C" {
 #endif
-s_sis_struct_list *sis_struct_list_create(int len_, void *in_, int inlen_); //len_为每条记录长度
+s_sis_struct_list *sis_struct_list_create(int len_); //len_为每条记录长度
 void sis_struct_list_destroy(s_sis_struct_list *list_);
 void sis_struct_list_clear(s_sis_struct_list *list_);
 
@@ -43,7 +43,7 @@ void *sis_struct_list_next(s_sis_struct_list *list_, void *);
 
 void *sis_struct_list_offset(s_sis_struct_list *list_, void *, int offset_);
 
-void struct_list_set_size(s_sis_struct_list *list_, int len_);
+void sis_struct_list_set_size(s_sis_struct_list *list_, int len_);
 int sis_struct_list_set(s_sis_struct_list *, void *in_, int inlen_);
 
 int sis_struct_list_setone(s_sis_struct_list *, int index_, void *in_);
@@ -56,9 +56,93 @@ int sis_struct_list_pack(s_sis_struct_list *list_);
 #ifdef __cplusplus
 }
 #endif
-// 获取指针的位置编号
-// int sis_struct_list_pto_recno(s_sis_struct_list *list_,void *);
 
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_sort_list ---------------------------------//
+//  固定长度的列表
+//////////////////////////////////////////////////////////////////////////
+
+
+typedef struct s_sis_sort_list {
+	s_sis_struct_list *key;     // int 类型
+	s_sis_struct_list *value;   // 结构类型
+} s_sis_sort_list;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+s_sis_sort_list *sis_sort_list_create(int len_); 
+void sis_sort_list_destroy(s_sis_sort_list *list_);
+void sis_sort_list_clear(s_sis_sort_list *list_);
+
+void *sis_sort_list_set(s_sis_sort_list *, int key_, void *in_);
+void *sis_sort_list_first(s_sis_sort_list *);
+void *sis_sort_list_last(s_sis_sort_list *);
+void *sis_sort_list_get(s_sis_sort_list *, int index_);
+
+void *sis_sort_list_find(s_sis_sort_list *, int key_);
+
+void *sis_sort_list_next(s_sis_sort_list *list_, void *value_);
+void *sis_sort_list_prev(s_sis_sort_list *list_, void *value_);
+// 返回下一条记录指针
+void *sis_sort_list_del(s_sis_sort_list *list_, void *value_);
+
+int sis_sort_list_getsize(s_sis_sort_list *list_);
+#ifdef __cplusplus
+}
+#endif
+
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_double_list -----------------------------//
+// 一组浮点数的数组，支持取均值，排序后取分割区块值 
+//////////////////////////////////////////////////////////////////////////
+
+typedef struct s_sis_double_split {
+	double minv;
+	double maxv;
+} s_sis_double_split;
+
+typedef struct s_sis_double_sides {
+	double up_minv;
+	double up_maxv;
+	double dn_minv;
+	double dn_maxv;
+} s_sis_double_sides;
+
+typedef struct s_sis_double_list {
+	double avgv;
+	double minv;
+	double maxv;
+	s_sis_struct_list *value;   // 结构类型
+	s_sis_struct_list *split;   // s_sis_double_split 结构
+	s_sis_struct_list *sides;   // s_sis_double_sides 结构
+} s_sis_double_list;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+s_sis_double_list *sis_double_list_create(); 
+void sis_double_list_destroy(void *);
+void sis_double_list_clear(s_sis_double_list *list_);
+
+int sis_double_list_set(s_sis_double_list *, double in_);
+double sis_double_list_get(s_sis_double_list *, int index_);
+
+int sis_double_list_getsize(s_sis_double_list *list_);
+
+// 获取区间分片，排序后按数量分片
+s_sis_struct_list *sis_double_list_count_split(s_sis_double_list *list_, int nums_);
+// 获取区间分片，取左右两边为边界的分片, steps_ 为采样步长
+s_sis_struct_list *sis_double_list_count_sides(s_sis_double_list *list_, int steps_);
+
+// 获取区间分片，按最大最小值分片,
+s_sis_struct_list *sis_double_list_simple_split(s_sis_double_list *list_, int nums_);
+s_sis_struct_list *sis_double_list_simple_sides(s_sis_double_list *list_, int steps_);
+
+#ifdef __cplusplus
+}
+#endif
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_pointer_list --------------------------------//
 //  存储指针的列表,记录长度为sizeof(char *)

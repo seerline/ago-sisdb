@@ -162,7 +162,7 @@ void * sis_net_cmd_sub(void *sock_, void *mess_)
 	s_sis_struct_list *cids = (s_sis_struct_list *)sis_map_pointer_get(sock->sub_clients, mess->key);
 	if (!cids)
 	{
-		cids = sis_struct_list_create(sizeof(int), NULL, 0);
+		cids = sis_struct_list_create(sizeof(int));
 		sis_map_pointer_set(sock->sub_clients, mess->key, cids);
 	}
 	for (int i = 0; i < cids->count; i++)

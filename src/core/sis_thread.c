@@ -179,7 +179,7 @@ s_sis_plan_task *sis_plan_task_create()
 	s_sis_plan_task *task = sis_malloc(sizeof(s_sis_plan_task));
 	memset(task, 0, sizeof(s_sis_plan_task));
 
-	task->work_plans = sis_struct_list_create(sizeof(uint16), NULL, 0);
+	task->work_plans = sis_struct_list_create(sizeof(uint16));
 
 	task->wait_handle = sis_wait_malloc();
 

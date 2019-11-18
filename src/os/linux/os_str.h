@@ -76,4 +76,8 @@ inline void sis_trim(char *s)
 	}
 }
 
+inline size_t sis_strlen(char *str_)
+{
+	return str_ ? strlen(str_) : 0;
+}
 #endif //_OS_STR_H

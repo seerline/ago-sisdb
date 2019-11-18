@@ -106,6 +106,8 @@ void sis_out_percent(size_t step_, size_t count_);
 void sis_out_percent_stop();
 
 size_t sis_writefile(char *name, void *value, size_t len);
+size_t sis_readfile(char *name, void *value, size_t len);
+
 void sis_out_binary(const char *key_, const char *val_, size_t len_);
 
 

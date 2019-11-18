@@ -12,6 +12,12 @@
 #define  sis_max(a,b)    (((a) > (b)) ? (a) : (b))
 #define  sis_min(a,b)    (((a) < (b)) ? (a) : (b))
 
+#define SIS_MINI(a, b) (a && b ? (((a) < (b)) ? (a) : (b)) : (a ? a : b))
+
+#define SIS_IS_ZERO(a) ((a > -0.0000001) && ( a < 0.0000001))
+#define SIS_MINF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) < (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
+#define SIS_MAXF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) > (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
+
 //限制返回值a在某个区域内
 #define  sis_between(a,min,max)    (((a) < (min)) ? (min) : (((a) > (max)) ? (max) : (a)))
 
@@ -88,5 +94,75 @@ inline int sis_inside_dn(double div_, int count, double in[])
 		}
 	}
 	return o;
+}
+
+// 大于基准值的个数
+inline int sis_inside_upi(int div_, int count, int in[])
+{
+	int o = 0;
+	for(int i =0 ;i < count; i++)
+	{
+		if (in[i] > div_)
+		{
+			o++;
+		}
+	}
+	return o;
+}
+// 小于基准值的个数
+inline int sis_inside_dni(int div_, int min, int count, int in[])
+{
+	int o = 0;
+	for(int i =0 ;i < count; i++)
+	{
+		if (in[i] < min) continue; 
+		if (in[i] < div_)
+		{
+			o++;
+		}
+	}
+	return o;
+}
+// 两组数是否相交 > 最小的 0.382
+inline int sis_is_mixed(double min1, double max1, double min2, double max2)
+{
+	if (min1 >= max2 || min2 >= max1)
+	{
+		return 0;
+	}
+	// double min = sis_min(max1 - min1, max2 - min2);
+	double gap = sis_min(max1, max2) - sis_max(min1, min2);
+	// if (gap > min * 0.382)
+	if (gap > 0.001)
+	{
+		return 1;
+	}
+	return 0;
+}
+
+inline void sis_init_random()
+{
+	srand((unsigned)time(NULL));
+}
+
+inline double sis_get_random(double min_, double max_)
+{
+	int min = (int)(min_ * 1000);
+	int max = (int)(max_ * 1000);
+	int mid;
+
+	if(min > max)
+	{
+		mid = max;
+		max = min;
+		min = mid;
+	}
+	if (min == max)
+	{
+		return min_;
+	}
+	mid = max - min + 1;
+	mid = rand() % mid + min;
+	return (double)mid / 1000.0;
 }
 #endif //_SIS_MATH_H

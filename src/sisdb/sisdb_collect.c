@@ -106,7 +106,7 @@ s_sisdb_collect *sisdb_collect_create(s_sis_db *db_, const char *key_)
 	unit->stepinfo = sisdb_stepindex_create();
 	// 仅仅在这里计算了记录长度，
 	int size = sisdb_table_get_fields_size(tb);
-	unit->value = sis_struct_list_create(size, NULL, 0);
+	unit->value = sis_struct_list_create(size);
 
 	if (tb->control.issubs)
 	{

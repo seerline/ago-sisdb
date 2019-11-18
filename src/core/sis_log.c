@@ -203,7 +203,17 @@ size_t sis_writefile(char *name, void *value, size_t len)
 	}
 	return 0;
 }
-
+size_t sis_readfile(char *name, void *value, size_t len)
+{
+	sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ, 0);
+	if (fp)
+	{
+		size_t size = sis_file_read(fp, (char *)value, 1, len);
+		sis_file_close(fp);
+		return size;
+	}
+	return 0;
+}
 // void sis_out_binary(const char *key_, const char *val_, size_t len_)
 // {
 // 	printf("%s : %d ==> \n", key_, (int)len_);

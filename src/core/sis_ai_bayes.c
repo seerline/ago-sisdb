@@ -7,8 +7,8 @@ s_ai_bayes_unit *sis_ai_bayes_unit_create(const char *name_)
     s_ai_bayes_unit *o = sis_malloc(sizeof(s_ai_bayes_unit));
     memset(o, 0, sizeof(s_ai_bayes_unit));
     sis_strcpy(o->name, 32, name_);
-    o->samples = sis_struct_list_create(sizeof(s_ai_bayes_input), NULL, 0);
-    o->classify = sis_struct_list_create(sizeof(s_ai_bayes_value), NULL, 0);
+    o->samples = sis_struct_list_create(sizeof(s_ai_bayes_input));
+    o->classify = sis_struct_list_create(sizeof(s_ai_bayes_value));
     return o;
 }
  
@@ -19,13 +19,6 @@ void sis_ai_bayes_unit_destroy(s_ai_bayes_unit *unit_)
     sis_free(unit_);
 }
 
-void sis_ai_bayes_unit_clear(s_ai_bayes_unit *unit_)
-{
-    sis_struct_list_clear(unit_->samples);
-    sis_struct_list_clear(unit_->classify);   
-	unit_->avg = 0.0;
-	unit_->vari = 0.0; 
-}
 int sis_ai_bayes_unit_push_factor(s_ai_bayes_unit *unit_, int8 value_)
 {
     s_ai_bayes_input in;
@@ -144,7 +137,7 @@ void sis_ai_bayes_destroy(s_ai_bayes_class *cls_)
     sis_free(cls_);
 }
 
-void sis_ai_bayes_clear(s_ai_bayes_class *cls_)
+void sis_ai_bayes_study_init(s_ai_bayes_class *cls_)
 {
     sis_map_pointer_clear(cls_->factor_add_lists);
     sis_map_pointer_clear(cls_->factor_mid_lists);
@@ -153,7 +146,7 @@ void sis_ai_bayes_clear(s_ai_bayes_class *cls_)
     sis_map_buffer_clear(cls_->factor);
     sis_map_buffer_clear(cls_->style_list);
 }
-void sis_ai_bayes_chance_push_style(s_ai_bayes_class *cls_, const char *key_, uint8 style_)
+void _sis_ai_bayes_set_style(s_ai_bayes_class *cls_, const char *key_, uint8 style_)
 {
     s_ai_bayes_style *style = (s_ai_bayes_style *)sis_map_buffer_get(cls_->style_list, key_);
     if (!style)
@@ -167,7 +160,7 @@ void sis_ai_bayes_chance_push_style(s_ai_bayes_class *cls_, const char *key_, ui
     // printf("style count = %d\n",sis_map_buffer_getsize(cls_->style_list));
 }
 
-int sis_ai_bayes_push_factor(s_ai_bayes_class *cls_, 
+int sis_ai_bayes_study_push_factor(s_ai_bayes_class *cls_, 
 	uint8 status_, const char *key_, 
 	int8 value_)
 {
@@ -196,12 +189,12 @@ int sis_ai_bayes_push_factor(s_ai_bayes_class *cls_,
         sis_map_pointer_set(map, key_, unit);
     }
     sis_ai_bayes_unit_push_factor(unit, value_);
-    sis_ai_bayes_chance_push_style(cls_, key_, AI_BAYES_TYPE_FACTOR);
+    _sis_ai_bayes_set_style(cls_, key_, AI_BAYES_TYPE_FACTOR);
 
     return 0;
 }
 
-int sis_ai_bayes_push_series(s_ai_bayes_class *cls_, 
+int sis_ai_bayes_study_push_series(s_ai_bayes_class *cls_, 
 	uint8 status_, const char *key_, 
 	double value_)
 {
@@ -230,12 +223,12 @@ int sis_ai_bayes_push_series(s_ai_bayes_class *cls_,
         sis_map_pointer_set(map, key_, unit);
     }
     sis_ai_bayes_unit_push_series(unit, value_);
-    sis_ai_bayes_chance_push_style(cls_, key_, AI_BAYES_TYPE_SERIES);
+    _sis_ai_bayes_set_style(cls_, key_, AI_BAYES_TYPE_SERIES);
 
     return 0;
 }
 
-int sis_ai_bayes_push_random(s_ai_bayes_class *cls_, 
+int sis_ai_bayes_study_push_random(s_ai_bayes_class *cls_, 
 	uint8 status_, const char *key_, 
 	double value_)
 {
@@ -264,49 +257,49 @@ int sis_ai_bayes_push_random(s_ai_bayes_class *cls_,
         sis_map_pointer_set(map, key_, unit);
     }
     sis_ai_bayes_unit_push_random(unit, value_);
-    sis_ai_bayes_chance_push_style(cls_, key_, AI_BAYES_TYPE_RANDOM);
+    _sis_ai_bayes_set_style(cls_, key_, AI_BAYES_TYPE_RANDOM);
 
     return 0;
 }
 // 清理数据区 factor
-void sis_ai_bayes_chance_init(s_ai_bayes_class *cls_)
+void sis_ai_bayes_check_init(s_ai_bayes_class *cls_)
 {
     sis_map_buffer_clear(cls_->factor);
 }
 
 // 写入 factor
-void sis_ai_bayes_chance_push_factor(s_ai_bayes_class *cls_, const char *key_, int8 value_)
+void sis_ai_bayes_check_push_factor(s_ai_bayes_class *cls_, const char *key_, int8 value_)
 {
     s_ai_bayes_input *in = SIS_MALLOC(s_ai_bayes_input, in);
     in->style = AI_BAYES_TYPE_FACTOR;
     in->class = value_;
     sis_map_buffer_set(cls_->factor, key_, in);
 } 
-void sis_ai_bayes_chance_push_series(s_ai_bayes_class *cls_, const char *key_, double value_)
+void sis_ai_bayes_check_push_series(s_ai_bayes_class *cls_, const char *key_, double value_)
 {
     s_ai_bayes_input *in = SIS_MALLOC(s_ai_bayes_input, in);
     in->style = AI_BAYES_TYPE_SERIES;
     in->series = value_;
     sis_map_buffer_set(cls_->factor, key_, in);
 }
-void sis_ai_bayes_chance_push_random(s_ai_bayes_class *cls_, const char *key_, double value_)
+void sis_ai_bayes_check_push_random(s_ai_bayes_class *cls_, const char *key_, double value_)
 {
     s_ai_bayes_input *in = SIS_MALLOC(s_ai_bayes_input, in);
     in->style = AI_BAYES_TYPE_RANDOM;
     in->series = value_;
     sis_map_buffer_set(cls_->factor, key_, in);
 }
-double _sis_ai_bayes_chance_calc_factor(s_ai_bayes_unit *unit_, int8 value_)
+double _sis_ai_bayes_check_calc_factor(s_ai_bayes_unit *unit_, int8 value_)
 {
     int nums = unit_->samples->count + 3;
     int son_nums = sis_ai_bayes_unit_get_num(unit_, value_) + 1;
     // printf(" %d / %d = %f\n",son_nums, nums, (double)son_nums / (double)nums);
     return (double)son_nums / (double)nums;
 }
-double _sis_ai_bayes_chance_calc_series(s_ai_bayes_unit *unit_, s_ai_bayes_style *style_, double value_)
+double _sis_ai_bayes_check_calc_series(s_ai_bayes_unit *unit_, s_ai_bayes_style *style_, double value_)
 {
     int nums = unit_->samples->count + 3;
-    int son_nums = 0;
+    int son_nums = 1;
     int class = AI_BAYES_DIV1;
     if (value_ > style_->serise_mid)
     {
@@ -326,10 +319,10 @@ double _sis_ai_bayes_chance_calc_series(s_ai_bayes_unit *unit_, s_ai_bayes_style
     }
     return (double)son_nums / (double)nums;
 }
-double _sis_ai_bayes_chance_calc_random(s_ai_bayes_unit *unit_, s_ai_bayes_style *style_, double value_)
+double _sis_ai_bayes_check_calc_random(s_ai_bayes_unit *unit_, s_ai_bayes_style *style_, double value_)
 {
     int nums = unit_->samples->count + 3;
-    int son_nums = 0;
+    int son_nums = 1;
     int class = AI_BAYES_DIV1;
     if (value_ > style_->serise_right)
     {
@@ -361,7 +354,7 @@ double _sis_ai_bayes_chance_calc_random(s_ai_bayes_unit *unit_, s_ai_bayes_style
     }
     return (double)son_nums / (double)nums;
 }
-double sis_ai_bayes_chance_output(s_ai_bayes_class *cls_, uint8 status_)
+double sis_ai_bayes_check_output(s_ai_bayes_class *cls_, uint8 status_)
 {
     s_sis_map_pointer *map = NULL;
     switch (status_)
@@ -397,10 +390,17 @@ double sis_ai_bayes_chance_output(s_ai_bayes_class *cls_, uint8 status_)
             sis_dict_iter_free(di); 
             goto error;
         }
+
+        // s_ai_bayes_style *style = sis_ai_bayes_get_style(cls_, unit->name);
+        // if (!style->used)
+        // {
+        //     // 排除掉影响小的特征
+        //     continue;
+        // }
         if (in->style == AI_BAYES_TYPE_FACTOR)
         {
             // printf("[%s]: ", unit->name);
-            double val = _sis_ai_bayes_chance_calc_factor(unit, in->class);
+            double val = _sis_ai_bayes_check_calc_factor(unit, in->class);
             if (val < -0.000001 || val > 0.000001) out += log(val);
             // printf("factor [%s]: %f\n", unit->name, out);
         }
@@ -411,7 +411,7 @@ double sis_ai_bayes_chance_output(s_ai_bayes_class *cls_, uint8 status_)
             // s_ai_bayes_style *style = sis_map_buffer_get(cls_->style_list, unit->name);
             // if (style)  
             // {
-            //    out += log(_sis_ai_bayes_chance_calc_series(unit, style, in->series)); 
+            //    out += log(_sis_ai_bayes_check_calc_series(unit, style, in->series)); 
             // } 
             if (val < -0.000001 || val > 0.000001) out += log(val);
             // printf("series [%s]: %f\n", unit->name, out);
@@ -422,7 +422,7 @@ double sis_ai_bayes_chance_output(s_ai_bayes_class *cls_, uint8 status_)
             // s_ai_bayes_style *style = sis_map_buffer_get(cls_->style_list, unit->name);
             // if (style)  
             // {
-            //    out += log(_sis_ai_bayes_chance_calc_random(unit, style, in->series)); 
+            //    out += log(_sis_ai_bayes_check_calc_random(unit, style, in->series)); 
             // }          
             if (val < -0.000001 || val > 0.000001) out += log(val);
             // printf("random [%s]: %f\n", unit->name, out);
@@ -466,13 +466,20 @@ double sis_ai_bayes_chance_get_gain_factor(s_ai_bayes_class *cls_, const char *k
     s_ai_bayes_unit *add_unit = sis_map_pointer_get(cls_->factor_add_lists, key_);
     s_ai_bayes_unit *dec_unit = sis_map_pointer_get(cls_->factor_dec_lists, key_);
 
+    // printf("name=%s  %p %p\n", key_, add_unit, dec_unit);
+
+    if (!add_unit||!dec_unit)
+    {
+        return 0.0;
+    }
+
     int adds = add_unit->samples->count;
     int decs = dec_unit->samples->count;
     int nums = adds + decs;
     double out = _calc_bayes_gain2(adds + decs, adds, decs);
-    // printf("[%d %d %d] %f %f\n",adds, decs, nums, out, log(0));
+    // printf("[%d %d %d] %f\n",adds, decs, nums, out);
     // 合并所有类
-    s_sis_struct_list *gain_class = sis_struct_list_create(sizeof(s_ai_bayes_gain_factor), NULL, 0);
+    s_sis_struct_list *gain_class = sis_struct_list_create(sizeof(s_ai_bayes_gain_factor));
     
     for (int i = 0; i < add_unit->classify->count; i++)
     {
@@ -566,6 +573,12 @@ double sis_ai_bayes_chance_get_gain_series(s_ai_bayes_class *cls_, const char *k
 {
     s_ai_bayes_unit *add_unit = sis_map_pointer_get(cls_->factor_add_lists, key_);
     s_ai_bayes_unit *dec_unit = sis_map_pointer_get(cls_->factor_dec_lists, key_);
+
+    if (!add_unit||!dec_unit)
+    {
+        return 0.0;
+    }
+    
     // printf("%s %d %p %p\n",key_, sis_map_pointer_getsize(cls_->factor_add_lists) ,add_unit, dec_unit);
     int adds = add_unit->samples->count;
     int decs = dec_unit->samples->count;
@@ -573,7 +586,7 @@ double sis_ai_bayes_chance_get_gain_series(s_ai_bayes_class *cls_, const char *k
     double out = _calc_bayes_gain2(adds + decs, adds, decs);
 
     // 设置count的目的是为了减少计算量     
-    s_sis_struct_list *series_list = sis_struct_list_create(sizeof(s_ai_bayes_gain_series), NULL, 0);
+    s_sis_struct_list *series_list = sis_struct_list_create(sizeof(s_ai_bayes_gain_series));
     for (int i = 0; i < add_unit->samples->count; i++)
     {
         s_ai_bayes_input *in = (s_ai_bayes_input *)sis_struct_list_get(add_unit->samples, i);
@@ -599,7 +612,7 @@ double sis_ai_bayes_chance_get_gain_series(s_ai_bayes_class *cls_, const char *k
     // 排序后取中值点
     qsort(sis_struct_list_first(series_list), series_list->count, sizeof(s_ai_bayes_gain_series), _sort_gain_series);
     
-    s_sis_struct_list *mids = sis_struct_list_create(sizeof(double), NULL, 0);
+    s_sis_struct_list *mids = sis_struct_list_create(sizeof(double));
 
     _sis_ai_bayes_get_mids(series_list, mids);
     int count = mids->count;
@@ -712,13 +725,18 @@ double sis_ai_bayes_chance_get_gain_random(s_ai_bayes_class *cls_, const char *k
     s_ai_bayes_unit *add_unit = sis_map_pointer_get(cls_->factor_add_lists, key_);
     s_ai_bayes_unit *dec_unit = sis_map_pointer_get(cls_->factor_dec_lists, key_);
 
+    if (!add_unit||!dec_unit)
+    {
+        return 0.0;
+    }
+    
     int adds = add_unit->samples->count;
     int decs = dec_unit->samples->count;
     int nums = adds + decs;
     double out = _calc_bayes_gain2(adds + decs, adds, decs);
 
-    // 设置count的目的是为了减少计算量     
-    s_sis_struct_list *series_list = sis_struct_list_create(sizeof(s_ai_bayes_gain_series), NULL, 0);
+    // 设置 count 的目的是为了减少计算量     
+    s_sis_struct_list *series_list = sis_struct_list_create(sizeof(s_ai_bayes_gain_series));
     for (int i = 0; i < add_unit->samples->count; i++)
     {
         s_ai_bayes_input *in = (s_ai_bayes_input *)sis_struct_list_get(add_unit->samples, i);
@@ -744,7 +762,10 @@ double sis_ai_bayes_chance_get_gain_random(s_ai_bayes_class *cls_, const char *k
     // 排序后取中值点
     qsort(sis_struct_list_first(series_list), series_list->count, sizeof(s_ai_bayes_gain_series), _sort_gain_series);
     
-    s_sis_struct_list *mids = sis_struct_list_create(sizeof(s_ai_bayes_box_random), NULL, 0);
+    s_sis_struct_list *mids = sis_struct_list_create(sizeof(s_ai_bayes_box_random));
+
+    *left_ = 0.0;
+    *right_ = 0.0;
 
     _sis_ai_bayes_get_mids_random(series_list, mids);
     int count = mids->count;
@@ -795,7 +816,7 @@ double sis_ai_bayes_chance_get_gain_random(s_ai_bayes_class *cls_, const char *k
             double gain = _calc_bayes_gain2(adds[i] + decs[i], adds[i], decs[i]);
             cur_gain += (double)(adds[i] + decs[i]) / (double)nums * gain;
         }
-        // printf("gain = %f %f %f [%d,%d,%d,%d]\n", out, cur_gain, *mid, adds_min, decs_min, adds_max, decs_max);
+        printf(":: = %f %f  | %f  %f [%d,%d,%d],[%d,%d,%d]\n", out, cur_gain, mid->left, mid->right, adds[0], adds[1], adds[2], decs[0], decs[1], decs[2]);
         cur_gain = out - cur_gain;
 
         if (cur_gain > out_gain)
@@ -805,13 +826,17 @@ double sis_ai_bayes_chance_get_gain_random(s_ai_bayes_class *cls_, const char *k
             *right_ = mid->right;
         }
     }
-    // printf("gain = %f %d %d\n", out_gain, count, series_list->count);
+    printf("%s = %f %d %d : %f %f\n", key_, out_gain, count, series_list->count, *left_, *right_);
     sis_struct_list_destroy(mids);
     sis_struct_list_destroy(series_list);
     return out_gain;
 }
-int sis_ai_bayes_assess_style(s_ai_bayes_class *cls_)
+int sis_ai_bayes_study_output(s_ai_bayes_class *cls_)
 {
+    if (sis_dict_getsize(cls_->style_list) < 1)
+    {
+        return -1;
+    }
     double max_gain = 0.0;
     {
         s_sis_dict_entry *de;
@@ -857,12 +882,12 @@ int sis_ai_bayes_assess_style(s_ai_bayes_class *cls_)
     return 0;
 }
 // list 为从小到大的顺序化数列
-int sis_ai_bayes_classify(double in_, int n, double list[])
+int sis_ai_bayes_classify(double in_, int n, double ins[])
 {
     // -0.05 -0.02 0.02 0.05
     for (int i = 0; i < n; i++)
     {
-        if (in_ < list[i])
+        if (in_ < ins[i])
         {
             return i;
         }        
@@ -938,15 +963,15 @@ int main()
         for (int k = 0; k < 6; k++)
         {
             sis_sprintf(name, 32, "x%d", k);
-            sis_ai_bayes_push_factor(class, AI_BAYES_ADD, name, ok[i].x[k]);
+            sis_ai_bayes_study_push_factor(class, AI_BAYES_ADD, name, ok[i].x[k]);
         }
         for (int k = 0; k < 2; k++)
         {
             sis_sprintf(name, 32, "y%d", k);
 #ifdef TEST_RANDOM
-            sis_ai_bayes_push_random(class, AI_BAYES_ADD, name, ok[i].y[k]);
+            sis_ai_bayes_study_push_random(class, AI_BAYES_ADD, name, ok[i].y[k]);
 #else
-            sis_ai_bayes_push_series(class, AI_BAYES_ADD, name, ok[i].y[k]);
+            sis_ai_bayes_study_push_series(class, AI_BAYES_ADD, name, ok[i].y[k]);
 #endif               
         }
     }
@@ -955,15 +980,15 @@ int main()
         for (int k = 0; k < 6; k++)
         {
             sis_sprintf(name, 32, "x%d", k);
-            sis_ai_bayes_push_factor(class, AI_BAYES_DEC, name, err[i].x[k]);
+            sis_ai_bayes_study_push_factor(class, AI_BAYES_DEC, name, err[i].x[k]);
         }
         for (int k = 0; k < 2; k++)
         {
             sis_sprintf(name, 32, "y%d", k);
 #ifdef TEST_RANDOM
-            sis_ai_bayes_push_random(class, AI_BAYES_DEC, name, err[i].y[k]);
+            sis_ai_bayes_study_push_random(class, AI_BAYES_DEC, name, err[i].y[k]);
 #else
-            sis_ai_bayes_push_series(class, AI_BAYES_DEC, name, err[i].y[k]);
+            sis_ai_bayes_study_push_series(class, AI_BAYES_DEC, name, err[i].y[k]);
 #endif   
         }
     }
@@ -1016,7 +1041,7 @@ int main()
 
     // 求增益 和相关其他值
     {
-        sis_ai_bayes_assess_style(class);
+        sis_ai_bayes_study_output(class);
         
         for (int k = 0; k < 6; k++)
         {
@@ -1036,26 +1061,153 @@ int main()
         }
     }
 
-    sis_ai_bayes_chance_init(class);
+    sis_ai_bayes_check_init(class);
     for (int k = 0; k < 6; k++)
     {
         sis_sprintf(name, 32, "x%d", k);
-        sis_ai_bayes_chance_push_factor(class, name, ok[1].x[k]);
+        sis_ai_bayes_check_push_factor(class, name, ok[1].x[k]);
     }
     for (int k = 0; k < 2; k++)
     {
         sis_sprintf(name, 32, "y%d", k);
 #ifdef TEST_RANDOM
-        sis_ai_bayes_chance_push_random(class, name, ok[1].y[k]);
+        sis_ai_bayes_check_push_random(class, name, ok[1].y[k]);
 #else
-        sis_ai_bayes_chance_push_series(class, name, ok[1].y[k]);
+        sis_ai_bayes_check_push_series(class, name, ok[1].y[k]);
 #endif
     }
 
-    double add = sis_ai_bayes_chance_output(class, AI_BAYES_ADD);
+    double add = sis_ai_bayes_check_output(class, AI_BAYES_ADD);
     printf("add = %f \n", add);
-    double dec = sis_ai_bayes_chance_output(class, AI_BAYES_DEC);
+    double dec = sis_ai_bayes_check_output(class, AI_BAYES_DEC);
     printf("dec = %f \n", dec);
+
+    sis_ai_bayes_destroy(class);
+    return 0;
+}
+
+#endif
+
+
+#if 0
+
+// 根据数据特征模拟传入数据，求最后的评判结果
+
+int main()
+{
+    s_ai_bayes_class *class = sis_ai_bayes_create();
+
+    sis_init_random();
+    char name[32];
+    for (int i = 0; i < 100; i++)
+    {
+        for (int k = 0; k < 5; k++)
+        {
+            sis_sprintf(name, 32, "x%d", k);
+            // sis_ai_bayes_study_push_random(class, AI_BAYES_ADD, name, sis_get_random(0.5 , 0.9));
+            // sis_ai_bayes_study_push_random(class, AI_BAYES_DEC, name, sis_get_random(-0.9 , -0.5));
+            // sis_ai_bayes_study_push_random(class, AI_BAYES_MID, name, sis_get_random(-0.4 , 0.4));
+            sis_ai_bayes_study_push_random(class, AI_BAYES_ADD, name, sis_get_random(0.6 , 0.99));
+            sis_ai_bayes_study_push_random(class, AI_BAYES_DEC, name, sis_get_random(0.01 , 0.5));
+            sis_ai_bayes_study_push_random(class, AI_BAYES_MID, name, sis_get_random(0.41 , 0.699));
+        }
+    }
+    for (int i = 0; i < 100; i++)
+    {
+        for (int k = 0; k < 5; k++)
+        {
+            sis_sprintf(name, 32, "x%d", k);
+            // sis_ai_bayes_study_push_random(class, AI_BAYES_ADD, name, sis_get_random(0.5 , 0.9));
+            // sis_ai_bayes_study_push_random(class, AI_BAYES_DEC, name, sis_get_random(-0.9 , -0.5));
+            // sis_ai_bayes_study_push_random(class, AI_BAYES_MID, name, sis_get_random(-0.4 , 0.4));
+            sis_ai_bayes_study_push_random(class, AI_BAYES_ADD, name, sis_get_random(0.01 , 0.2));
+            sis_ai_bayes_study_push_random(class, AI_BAYES_DEC, name, sis_get_random(0.01 , 0.5));
+            sis_ai_bayes_study_push_random(class, AI_BAYES_MID, name, sis_get_random(0.41 , 0.699));
+        }
+    }
+    printf("%d %d %d\n", 
+            (int)sis_map_pointer_getsize(class->factor_add_lists),
+            (int)sis_map_pointer_getsize(class->factor_dec_lists),
+            (int)sis_map_pointer_getsize(class->factor_mid_lists));
+    // {
+    //     s_sis_dict_entry *de;
+    //     s_sis_dict_iter *di = sis_dict_get_iter(class->factor_add_lists);
+    //     while ((de = sis_dict_next(di)) != NULL)
+    //     {
+    //         s_ai_bayes_unit *unit = (s_ai_bayes_unit *)sis_dict_getval(de);
+    //         printf("add [%s] avg=%f, vari=%f\n", unit->name, unit->avg, unit->vari);
+    //         for (int i = 0; i < unit->classify->count; i++)
+    //         {
+    //             s_ai_bayes_value *value = (s_ai_bayes_value *)sis_struct_list_get(unit->classify, i);
+    //             printf("class : %d %d\n", value->count, value->class);
+    //         }
+    //         for (int i = 0; i < unit->samples->count; i++)
+    //         {
+    //             s_ai_bayes_input *input = (s_ai_bayes_input *)sis_struct_list_get(unit->samples, i);
+    //             printf("value : %d %d %f\n", input->style, input->class, input->series);
+    //         }
+            
+    //     }
+    //     sis_dict_iter_free(di);
+    // }
+    // {
+    //     s_sis_dict_entry *de;
+    //     s_sis_dict_iter *di = sis_dict_get_iter(class->factor_dec_lists);
+    //     while ((de = sis_dict_next(di)) != NULL)
+    //     {
+    //         s_ai_bayes_unit *unit = (s_ai_bayes_unit *)sis_dict_getval(de);
+    //         printf("dec [%s] avg=%f, vari=%f\n", unit->name, unit->avg, unit->vari);
+    //         for (int i = 0; i < unit->classify->count; i++)
+    //         {
+    //             s_ai_bayes_value *value = (s_ai_bayes_value *)sis_struct_list_get(unit->classify, i);
+    //             printf("class : %d %d\n", value->count, value->class);
+    //         }
+    //         for (int i = 0; i < unit->samples->count; i++)
+    //         {
+    //             s_ai_bayes_input *input = (s_ai_bayes_input *)sis_struct_list_get(unit->samples, i);
+    //             printf("value : %d %d %f\n", input->style, input->class, input->series);
+    //         }
+            
+    //     }
+    //     sis_dict_iter_free(di);
+    // }
+    // 求增益 和相关其他值
+    {
+        sis_ai_bayes_study_output(class);
+        
+        for (int k = 0; k < 5; k++)
+        {
+            sis_sprintf(name, 32, "x%d", k);
+            s_ai_bayes_style *style = sis_ai_bayes_get_style(class, name);
+            printf("rate [%s:%d:%d] %f %f %f %f \n", name, style->used, style->style, 
+                style->gain, style->serise_mid, 
+                style->serise_left, style->serise_right); 
+        }
+    }
+
+    sis_ai_bayes_check_init(class);
+
+    for (int k = 0; k < 5; k++)
+    {
+        sis_sprintf(name, 32, "x%d", k);
+        // sis_ai_bayes_check_push_random(class, name, sis_get_random(0.5 , 0.9));
+        // sis_ai_bayes_check_push_random(class, name, sis_get_random(0.4 , 0.6));
+        // sis_ai_bayes_check_push_random(class, name, sis_get_random(0.1 , 0.2));
+        sis_ai_bayes_check_push_random(class, name, sis_get_random(0.6 , 0.8));
+        // sis_ai_bayes_study_push_random(class, AI_BAYES_MID, name, sis_get_random(-0.6 , 0.4));
+    }
+    // sis_ai_bayes_check_push_random(class, "x0", 0.65);
+    // sis_ai_bayes_check_push_random(class, "x1", 0.1);
+    // sis_ai_bayes_check_push_random(class, "x2", 0.75);
+    // sis_ai_bayes_check_push_random(class, "x3", 0.15);
+    // sis_ai_bayes_check_push_random(class, "x4", 0.85);
+
+    double add = sis_ai_bayes_check_output(class, AI_BAYES_ADD);
+    printf("add = %f \n", add);
+    double dec = sis_ai_bayes_check_output(class, AI_BAYES_DEC);
+    printf("dec = %f \n", dec);
+    double mid = sis_ai_bayes_check_output(class, AI_BAYES_MID);
+    printf("mid = %f \n", mid);
 
     sis_ai_bayes_destroy(class);
     return 0;

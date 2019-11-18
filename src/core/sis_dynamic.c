@@ -200,7 +200,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	s_sis_dynamic_db *dyna = (s_sis_dynamic_db *)sis_malloc(sizeof(s_sis_dynamic_db));
 	memset(dyna, 0, sizeof(s_sis_dynamic_db));
 
-	dyna->fields = sis_struct_list_create(sizeof(s_sis_dynamic_unit),NULL,0); 
+	dyna->fields = sis_struct_list_create(sizeof(s_sis_dynamic_unit)); 
 
 	int offset = 0;
 	s_sis_dynamic_unit unit;
@@ -1158,6 +1158,8 @@ int main()
 #endif
 
 #if 0
+
+// ########
 typedef void _method_define();
 
 typedef struct s_method {
@@ -1179,6 +1181,8 @@ void json_demo2()
 #define REGISTER_API(a,name) { a->command = json_##name; }
 // #define REGISTER_API_CHR(a,name) { a->command = "json_" #name ; }
 
+#define REGISTER_API_STR(a,name) { a->command = json_##name; }
+
 int main()
 {
 	s_method *method = sis_malloc(sizeof(s_method));
@@ -1193,6 +1197,8 @@ int main()
 	REGISTER_API(method,demo2);
 	method->command();
 
+	REGISTER_API_STR(method,"demo2");
+	method->command();
 	// REGISTER_API_CHR(method,"demo1");
 	// method->command();
 
@@ -1202,7 +1208,7 @@ int main()
 	printf(" 1 method = %p, ptr= %p\n", method, ptr);
 	sis_free(method);
 	printf(" 2 method = %p, ptr= %p\n", method, ptr);
-	&method = (s_method *)NULL;
+	// &method = (s_method *)NULL;
 	printf(" 3 method = %p, ptr= %p\n", method, ptr);
 	return 0;
 }

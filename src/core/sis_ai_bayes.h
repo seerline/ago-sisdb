@@ -101,7 +101,7 @@ typedef struct s_ai_bayes_class
 s_ai_bayes_unit *sis_ai_bayes_unit_create(const char *);
 void sis_ai_bayes_unit_destroy(s_ai_bayes_unit *unit_);
 
-void sis_ai_bayes_unit_clear(s_ai_bayes_unit *unit_);
+// void sis_ai_bayes_unit_clear(s_ai_bayes_unit *unit_);
 int sis_ai_bayes_unit_push_factor(s_ai_bayes_unit *unit_, int8 value_);
 int sis_ai_bayes_unit_push_series(s_ai_bayes_unit *unit_, double value_);
 int sis_ai_bayes_unit_push_random(s_ai_bayes_unit *unit_, double value_);
@@ -111,37 +111,36 @@ int sis_ai_bayes_unit_get_num(s_ai_bayes_unit *unit_, uint8  class);
 ////////////////////////////////
 //
 ////////////////////////////////
-
 s_ai_bayes_class *sis_ai_bayes_create();
 void sis_ai_bayes_destroy(s_ai_bayes_class *cls_);
 
-void sis_ai_bayes_clear(s_ai_bayes_class *cls_);
+void sis_ai_bayes_study_init(s_ai_bayes_class *cls_);
+int sis_ai_bayes_study_push_factor(s_ai_bayes_class *unit_, 
+	uint8 status_, const char *key_, int8 value_);
+int sis_ai_bayes_study_push_series(s_ai_bayes_class *unit_, 
+	uint8 status_, const char *key_, double value_);
+int sis_ai_bayes_study_push_random(s_ai_bayes_class *unit_, 
+	uint8 status_, const char *key_, double value_);
+// 评估所有的类型， 低于最大值10倍的设置为不处理
+int sis_ai_bayes_study_output(s_ai_bayes_class *cls_);
 
-int sis_ai_bayes_push_factor(s_ai_bayes_class *unit_, 
-	uint8 status_, const char *key_, 
-	int8 value_);
-int sis_ai_bayes_push_series(s_ai_bayes_class *unit_, 
-	uint8 status_, const char *key_, 
-	double value_);
-int sis_ai_bayes_push_random(s_ai_bayes_class *unit_, 
-	uint8 status_, const char *key_, 
-	double value_);
-
-// 清理数据区 factor
-void sis_ai_bayes_chance_init(s_ai_bayes_class *cls_); 
+/////////////////////
+// 对单一输入特征，求结果
+void sis_ai_bayes_check_init(s_ai_bayes_class *cls_); 
 // 写入 factor
-void sis_ai_bayes_chance_push_factor(s_ai_bayes_class *cls_, const char *key_, int8 value_); 
-void sis_ai_bayes_chance_push_series(s_ai_bayes_class *cls_, const char *key_, double value_); 
-void sis_ai_bayes_chance_push_random(s_ai_bayes_class *cls_, const char *key_, double value_); 
+void sis_ai_bayes_check_push_factor(s_ai_bayes_class *cls_, const char *key_, int8 value_); 
+void sis_ai_bayes_check_push_series(s_ai_bayes_class *cls_, const char *key_, double value_); 
+void sis_ai_bayes_check_push_random(s_ai_bayes_class *cls_, const char *key_, double value_); 
 
-double sis_ai_bayes_chance_output(s_ai_bayes_class *cls_, uint8 status_); // 得到综合概率
+double sis_ai_bayes_check_output(s_ai_bayes_class *cls_, uint8 status_); // 得到综合概率
 
+/////////////////////
+//
+/////////////////////
 s_ai_bayes_style *sis_ai_bayes_get_style(s_ai_bayes_class *cls_, const char *key_);
 
-// 评估所有的类型， 低于最大值10倍的设置为不处理
-int sis_ai_bayes_assess_style(s_ai_bayes_class *cls_);
-
-int sis_ai_bayes_classify(double in_, int n, double list[]);
+// 以传入数组为分割线，返回对应的数组下标，用于非连续值的抽象化
+int sis_ai_bayes_classify(double in_, int n, double ins[]);
 
 #endif
 //_SIS_LEVEL2_T0_H

@@ -66,7 +66,7 @@ s_sis_file_dbf * sis_file_dbf_open(const char *name_,int mode_, int access_)
     memset(o, 0, sizeof(s_sis_file_dbf));
 
 	o->fp = fp;
-	o->fields = sis_struct_list_create(sizeof(s_sis_dbf_field), 0, 0);
+	o->fields = sis_struct_list_create(sizeof(s_sis_dbf_field));
 	o->map_fields = sis_map_buffer_create();
 
     _sis_file_dbf_parse(o);

@@ -529,7 +529,8 @@ void * sisdb_call_get_right_sds(void *server_, void *com_)
 // 		o = sdsnewlen(com,strlen(com));
 // 		return o;
 // 	}
-// 	s_sis_struct_list *right_list = sis_struct_list_create(sizeof(s_stock_right), right, sdslen(right));
+// 	s_sis_struct_list *right_list = sis_struct_list_create(sizeof(s_stock_right));
+//  sis_struct_list_set(right_list, right, sdslen(right));
 // 	sis_sdsfree(right);	
 
 // 	int dot = 2;
