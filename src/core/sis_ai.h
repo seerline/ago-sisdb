@@ -7,6 +7,13 @@
 #include <sis_malloc.h>
 
 #define SIS_AI_CONST_PAI     (3.1415927)  // 
+
+// 求等比分布的全部情况，返回到list_中, div切分的等分, count为list单条记录的数量
+// 返回总数
+int sis_cut_ratio_int(s_sis_struct_list *list_, int count_, int div_);
+int sis_cut_ratio_double(s_sis_struct_list *list_, int count_, int div_, double min_, double max_);
+int sis_cut_ratio_random(s_sis_struct_list *list_, int inc_, double ins_[], int div_, double min_, double max_);
+
 //////////////////////////////////////////////
 //  归一化的算法
 //  转换所有数据为 0.001 -- 0.999 之间的数据

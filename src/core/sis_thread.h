@@ -46,8 +46,8 @@ typedef struct s_sis_plan_task {
 	s_sis_struct_list  *work_plans;       // plans-work 定时任务 uint16 的数组
 	s_sis_time_gap      work_gap; 		  // always-work 循环运行的配置
 
-	s_sis_mutex_t 		mutex;  // 锁
-	s_sis_thread        work_thread;   // 其中working 是线程完全执行完毕
+	s_sis_mutex_t 		mutex;         // 锁
+	s_sis_thread        work_thread;   // 其中 working 是线程完全执行完毕
 
 	s_sis_wait_handle 	wait_handle;   //   线程内部延时处理
 	void(*call)(void *);        // ==NULL 不释放对应内存

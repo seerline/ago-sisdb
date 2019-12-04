@@ -2,6 +2,151 @@
 #include <sis_core.h>
 #include <sis_ai.h>
 
+    // 1 1
+    // 2 2  ==> (1,1)(1,2)(1,3) (2,1)(2,2)(2,3) (3,1)(3,2)(3,3)
+    // 3 3  
+    // for (int i = 0; i < divc_; i++)
+    // {
+    //     for (int j = 0; j < divc_; j++)
+    //     {
+    //         ins_[0] = divs_[i];           
+    //         ins_[1] = divs_[j];   
+    //     }
+    // }
+
+    // 1 1 1
+    // 2 2 2 ==> (1,1,1)(1,1,2)(1,1,3) (1,2,1)(1,2,2)(1,2,3) (1,3,1)(1,3,2)(1,3,3) ... 
+    // 3 3 3 
+    // for (int i = 0; i < divc_; i++)
+    // {
+    //     for (int j = 0; j < divc_; j++)
+    //     {
+    //         for (int k = 0; k < divc_; k++)
+    //         {
+    //             ins_[0] = divs_[i];
+    //             ins_[1] = divs_[j];
+    //             ins_[2] = divs_[k];
+    //         }
+    //     }
+    // }
+
+// 针对不同基准值 ins_ 生成数据，以百分比gap为间隔左右个取div个间隔 默认在 （0..100）之间
+// （50, 0.1, 5）=> (25,30,35,40,45 |50| 55,60,65,70,75)
+int sis_cut_ratio_random(s_sis_struct_list *list_, int inc_, double ins_[], int div_, double min_, double max_)
+{
+    s_sis_struct_list *ilist = (s_sis_struct_list *)sis_struct_list_create(inc_ * sizeof(int));
+    
+    int nums = 2 * div_ + 1;
+    double gap = 1 / (double)(2 * div_);
+    // printf("gap=%f \n",gap);
+    sis_cut_ratio_int(ilist, inc_, nums);
+
+    // for (int i = 0; i < ilist->count; i++)
+    // {
+    //     int *vals = (int *)sis_struct_list_get(ilist, i);
+    //     printf("[%d:%d] ",ilist->count, i);
+    //     for (int j = 0; j < inc_; j++)
+    //     {
+    //         printf("%d ", vals[j]);
+    //     }
+    //     printf("\n");       
+    // }
+
+    sis_struct_list_clear(list_);
+
+    double mid = (max_ - min_) / 2.0;
+    double *ins = sis_malloc(inc_ * sizeof(double));
+    for (int i = 0; i < ilist->count; i++)
+    {
+        int *vals = (int *)sis_struct_list_get(ilist, i);
+        bool ok = true;
+        for (int k = 0; k < inc_; k++)
+        {
+            if (ins_[k] > mid)
+            {
+                ins[k] = ins_[k] + (max_ - ins_[k]) * (double)(vals[k] - div_ - 1) * gap;
+            }
+            else if (ins_[k] < mid)
+            {
+                ins[k] = ins_[k] + (ins_[k] - min_) * (double)(vals[k] - div_ - 1) * gap;
+            }
+            else
+            {
+                ins[k] = ins_[k] + ins_[k] * (double)(vals[k] - div_ - 1) * gap;
+            } 
+            // printf("gap=%f %f : %f %f\n",gap,mid, ins[k], ins_[k]);
+            if (ins[k] > max_ || ins[k] < min_)
+            {
+                ok = false;
+                break;
+            }
+        } 
+        if (ok)
+        {
+            sis_struct_list_push(list_, ins);   
+        }    
+    }
+    sis_free(ins);
+    sis_struct_list_destroy(ilist);
+    return list_->count;
+}
+int sis_cut_ratio_double(s_sis_struct_list *list_, int count_, int div_, double min_, double max_)
+{
+    sis_struct_list_clear(list_);
+
+    double gaps = (max_ - min_) / (double)div_;
+    // 提取分割点,忽略最小值
+    int nums = div_;
+    double *divs = sis_malloc(nums*sizeof(double));
+    for (int i = 0; i < nums; i++)
+    {
+        divs[i] = min_ + (i + 1) * gaps;
+    }
+    divs[nums - 1] = max_;
+    // [1,2,3]
+    double *ins = sis_malloc(count_*sizeof(double));
+    int count = (int)pow(nums, count_);
+    for (int m = 0; m < count; m++)
+    {
+        for (int i = 0; i < count_; i++)
+        {   
+            int xx = m / (int)pow(nums, i) % nums;  
+            ins[count_ - 1 - i] = divs[xx];
+            // printf("%d %d | %d %.0f\n", m, i, xx, divs[xx]);
+        }
+        sis_struct_list_push(list_, ins);
+    }
+    sis_free(ins);
+    return list_->count;
+}
+
+int sis_cut_ratio_int(s_sis_struct_list *list_, int count_, int div_)
+{
+    sis_struct_list_clear(list_);
+
+    // 提取分割点,忽略最小值
+    int nums = div_;
+    int *divs = sis_malloc(nums*sizeof(int));
+    for (int i = 0; i < nums; i++)
+    {
+        divs[i] = i + 1;
+    }
+    // [1,2,3]
+    int *ins = sis_malloc(count_*sizeof(int));
+    int count = (int)pow(nums, count_);
+    for (int m = 0; m < count; m++)
+    {
+        for (int i = 0; i < count_; i++)
+        {   
+            int xx = m / (int)pow(nums, i) % nums;  
+            ins[count_ - 1 - i] = divs[xx];
+            // printf("%d %d | %d %.0f\n", m, i, xx, divs[xx]);
+        }
+        sis_struct_list_push(list_, ins);
+    }
+    sis_free(ins);
+    return list_->count;
+}
 // 从连续值中求得标准归一值 mid 无用
 double sis_ai_normalization_series(double value_, double min_, double max_)
 {
@@ -1325,3 +1470,40 @@ int main()
 }
 #endif
 
+#if 0
+int main()
+{
+    int count = 4;
+    s_sis_struct_list *list = sis_struct_list_create(count*sizeof(int));
+    sis_cut_ratio_int(list, count, 3);
+    for (int i = 0; i < list->count; i++)
+    {
+        int *vals = (int *)sis_struct_list_get(list, i);
+        printf("[%d:%d] ",list->count, i);
+        for (int j = 0; j < count; j++)
+        {
+            printf("%d ", vals[j]);
+        }
+        printf("\n");       
+    }
+}
+#endif
+#if 0
+int main()
+{
+    double ins[3] = { 5.00, 3.00, 9.00 };
+    int count = 3;
+    s_sis_struct_list *list = sis_struct_list_create(count*sizeof(double));
+    sis_cut_ratio_random(list, count, ins, 5, 0.1, 10.0);
+    for (int i = 0; i < list->count; i++)
+    {
+        double *vals = (double *)sis_struct_list_get(list, i);
+        printf("[%d:%d] ",list->count, i);
+        for (int j = 0; j < count; j++)
+        {
+            printf("%.2f ", vals[j]);
+        }
+        printf("\n");       
+    }
+}
+#endif

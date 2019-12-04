@@ -428,7 +428,7 @@ int sis_double_list_getsize(s_sis_double_list *list_)
 
 static int _sort_double_list(const void *arg1, const void *arg2 ) 
 { 
-    return (*(double *)arg1 - *(double *)arg2);
+    return (*(double *)arg1 > *(double *)arg2);
 }
 
 s_sis_struct_list *sis_double_list_count_split(s_sis_double_list *list_, int nums_)

@@ -4,6 +4,7 @@
 #include <sis_core.h>
 #include <sis_list.h>
 #include <sis_map.h>
+#include <sis_ai.h>
 
 // 主要功能：
 // 多指标多日期数据输入，
@@ -48,8 +49,13 @@
 #define SIS_SERIES_MIN_DAYS   1    // 最少几天数据
 #define SIS_SERIES_MAX_DAYS  21    // 取多少天样本数据
 #define SIS_SERIES_GAPS      10    // 取值范围的分割区间数
-#define SIS_SERIES_TOPS       5    // 收胜率排名最前的几名 取大于0 并且小于第一名不超过10倍的样本
+#define SIS_SERIES_TOPS      10    // 收胜率排名最前的几名 取大于0 并且小于第一名不超过10倍的样本
                                    // 1% 0.9%(OK) 0.3%(OK) 0.1%(NO) -0.5%(NO)
+
+#define SIS_MIN_ORDERS      (5)       // 最低交易次数
+#define SIS_MIN_WINR        (0.50)    // 最低胜率
+#define SIS_MIN_INCR        (0.05)    // 最低收胜率 * 100
+#define SIS_MIN_COST        (0.001)  // 最低手续费
 
 #define SIS_SERIES_STYLE_STUDY  0
 #define SIS_SERIES_STYLE_CHECK  1
@@ -87,21 +93,38 @@ typedef struct s_sis_ai_factor_unit {
 	char    name[64];  // 因子的名字
     double  weight;    // 权重的需回硕历史数据 求的最优的配比
     double  dispersed; // 离散度 买卖点取值范围离的越远，离散度越大
-    s_sis_double_sides  sides;       // 最优收胜率的阀值
-    
-    s_sis_struct_list  *optimals;   // 最优的参数列表, 由此得到权重参考值 s_sis_ai_factor_wins
+    s_sis_double_sides  sides;      // 最优收胜率的阀值    
+    s_sis_struct_list  *optimals;   // 最优的参数列表, 由此得到因子阀值的参考值 s_sis_ai_factor_wins
 } s_sis_ai_factor_unit;
-
-typedef struct s_sis_ai_factor {
-    s_sis_map_int       *fields_map;  // 字段映射表 - 对应 list 的索引值
-    s_sis_pointer_list  *fields;      // s_sis_ai_factor_unit    
-} s_sis_ai_factor;
 
 s_sis_ai_factor_unit *sis_ai_factor_unit_create(const char *);
 void sis_ai_factor_unit_destroy(void *);
 
+void sis_ai_factor_unit_calc_optimals(s_sis_ai_factor_unit *);
+
+typedef struct s_sis_ai_factor_weights {
+    double   incr;      // 收益率
+    double   winr;      // 胜率
+    double   inwinr;    // 收胜率
+    double  *weights;    // 权重
+} s_sis_ai_factor_weights;
+
+s_sis_ai_factor_weights *sis_ai_factor_weights_create(int count);
+void sis_ai_factor_weights_destroy(void *);
+
+typedef struct s_sis_ai_factor {
+    s_sis_map_int       *fields_map;  // 字段映射表 - 对应 list 的索引值
+    s_sis_pointer_list  *fields;      // s_sis_ai_factor_unit   
+
+    // s_sis_pointer_list   *woptimals;   // 权重参数列表, 由此得到权重参考值 s_sis_ai_factor_weights
+    s_sis_double_sides   orders;           // 最优收胜率的阀值  
+    s_sis_struct_list   *ooptimals;        // 保存最优的指令阀值 s_sis_ai_factor_wins
+} s_sis_ai_factor;
+
 s_sis_ai_factor *sis_ai_factor_create(); 
 void sis_ai_factor_destroy(s_sis_ai_factor *);
+
+void sis_ai_factor_clone(s_sis_ai_factor *src_, s_sis_ai_factor *des_);
 
 int sis_ai_factor_inc_factor(s_sis_ai_factor *, const char *fn_);
 s_sis_ai_factor_unit *sis_ai_factor_get(s_sis_ai_factor *, const char *fn_);
@@ -249,8 +272,10 @@ s_sis_ai_series_unit *sis_ai_series_class_get_study(s_sis_ai_series_class *, int
 // ---------  这里开始处理数据 ---------- // 
 // 数据准备 根据 sources 中的数据 计算出各个指标的阀值和权重
 // 采集某日的最优解, 继承agof 并传导到 curf 中
-void sis_ai_factor_optimal_start(s_sis_ai_series_unit *);
-void sis_ai_factor_optimal_stop(s_sis_ai_series_unit *);
+// *** 单因子用收益率 权重用胜率 买卖力道用综合 ***
+void sis_ai_factor_optimal_step1(s_sis_ai_series_unit *);
+void sis_ai_factor_optimal_step2(s_sis_ai_series_unit *);
+void sis_ai_factor_optimal_step3(s_sis_ai_series_unit *);
 
 // 返回最后的特征数据，用于测试check的计算
 s_sis_ai_factor *sis_ai_series_class_study(s_sis_ai_series_class *);

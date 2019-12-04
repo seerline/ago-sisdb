@@ -5,7 +5,6 @@
 #include <sis_core.h>
 #include <sis_malloc.h>
 #include <sis_str.h>
-// #include <sis_list.h>
 
 #define SIS_FILE_BUFFER_LEN  1024*1024
 

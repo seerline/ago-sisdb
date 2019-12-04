@@ -2,6 +2,8 @@
 #include <sis_ai_bayes.h>
 #include <sis_ai.h>
 
+char *teststr = "my is extern val.";
+
 s_ai_bayes_unit *sis_ai_bayes_unit_create(const char *name_)
 {
     s_ai_bayes_unit *o = sis_malloc(sizeof(s_ai_bayes_unit));
