@@ -3,10 +3,10 @@
 #include <sis_list.h>
 
 static struct s_sis_method _sis_net_method_system[] = {
-	{"auth",   SIS_NET_METHOD_SYSTEM, sis_net_cmd_auth, ""},
-	{"sub",    SIS_NET_METHOD_SYSTEM, sis_net_cmd_sub, ""},
-	{"unsub",  SIS_NET_METHOD_SYSTEM, sis_net_cmd_unsub, ""}, 
-	{"pub",    SIS_NET_METHOD_SYSTEM, sis_net_cmd_pub, ""},  
+	{"auth",   sis_net_cmd_auth,  SIS_NET_METHOD_SYSTEM, ""},
+	{"sub",    sis_net_cmd_sub,   SIS_NET_METHOD_SYSTEM, ""},
+	{"unsub",  sis_net_cmd_unsub, SIS_NET_METHOD_SYSTEM, ""}, 
+	{"pub",    sis_net_cmd_pub,   SIS_NET_METHOD_SYSTEM, ""},  
 };
 
 s_sis_map_pointer *sis_net_command_create()

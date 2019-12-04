@@ -9,30 +9,29 @@
 #include "sisdb_call.h"
 
 static struct s_sis_method _sis_method_table[] = {
-	{"incr",    SISDB_METHOD_STYLE_WRITE, sisdb_method_write_incr},     // 数值必须增长且不为零
-	{"nonzero", SISDB_METHOD_STYLE_WRITE, sisdb_method_write_nonzero},  // 仅仅非零
-
-	{"once",    SISDB_METHOD_STYLE_SUBSCRIBE, sisdb_method_subscribe_once},  // 只对 0 值赋值一次，后面不再赋值
-	{"min",     SISDB_METHOD_STYLE_SUBSCRIBE, sisdb_method_subscribe_min},   // 求最小值
-	{"max",     SISDB_METHOD_STYLE_SUBSCRIBE, sisdb_method_subscribe_max},   // 求最大值
-	{"gap",     SISDB_METHOD_STYLE_SUBSCRIBE, sisdb_method_subscribe_gap},  // 和上一笔的差值
+	{"incr",    sisdb_method_write_incr,    SISDB_METHOD_STYLE_WRITE,    NULL},     // 数值必须增长且不为零
+	{"nonzero", sisdb_method_write_nonzero, SISDB_METHOD_STYLE_WRITE,    NULL},  // 仅仅非零
+	{"once",    sisdb_method_subscribe_once,SISDB_METHOD_STYLE_SUBSCRIBE,NULL},  // 只对 0 值赋值一次，后面不再赋值
+	{"min",     sisdb_method_subscribe_min, SISDB_METHOD_STYLE_SUBSCRIBE,NULL},   // 求最小值
+	{"max",     sisdb_method_subscribe_max, SISDB_METHOD_STYLE_SUBSCRIBE,NULL},   // 求最大值
+	{"gap",     sisdb_method_subscribe_gap, SISDB_METHOD_STYLE_SUBSCRIBE,NULL},  // 和上一笔的差值
 	// 以下是系统函数调用,
-	{"list", SISDB_CALL_STYLE_SYSTEM, sisdb_call_list_sds, 
+	{"list", sisdb_call_list_sds, SISDB_CALL_STYLE_SYSTEM, 
 			"> sisdb.call list"},
 	// 得到多个符合条件的股票 从search字段中检索 返回代码和名称 format - json
-	{"matchcode", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_code_sds, 
+	{"matchcode", sisdb_call_get_code_sds, SISDB_CALL_STYLE_SYSTEM,
 			"> sisdb.call matchcode {\"match\":\"YH\",\"count\":5}"},
 	// 得到多股票的最新价
-	{"lastclose", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_close_sds, 
+	{"lastclose", sisdb_call_get_close_sds, SISDB_CALL_STYLE_SYSTEM,
 			"> sisdb.call lastclose {\"codes\":\"SH600600,SZ000001\"}"},
 	// format - json
-	{"collects", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_collects_sds, 
+	{"collects", sisdb_call_get_collects_sds, SISDB_CALL_STYLE_SYSTEM,
 			"> sisdb.call collects {\"table\":\"now\",\"format\":\"array\"}"},
 	// format - json array
 	// {"exright", SISDB_CALL_STYLE_SYSTEM, sisdb_call_get_right_sds, 
 	// 		"> sisdb.call collects {\"code\":\"sh600600\",\"start\":20180101, \"stop\":20180301,\"vol\":1000, \"close\":12.34}"},
 	// format - json
-	{"init", SISDB_CALL_STYLE_SYSTEM, sisdb_call_market_init, 
+	{"init", sisdb_call_market_init, SISDB_CALL_STYLE_SYSTEM,
 			"> sisdb.call init sh"},
 };
 
