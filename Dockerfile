@@ -1,7 +1,7 @@
 FROM centos:latest as apps-builder
 LABEL maintainer="micjoyce <micjoyce90@gmail.com>"
 
-RUN yum install -y cmake gcc gcc-c++ gdb make nss curl libcurl
+RUN yum install -y --allowerasing cmake gcc gcc-c++ gdb make nss curl libcurl
 
 WORKDIR /home
 
