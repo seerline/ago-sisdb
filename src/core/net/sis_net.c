@@ -125,13 +125,17 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 	// 		sis_strcpy(url_->password, 128, str);
 	// 	}
 	// }
-    s_sis_json_node *next = sis_json_cmp_child_node(node_, "argvs");
-    while(next)
-    {
-		sis_url_set(url_, next->key, next->value);
-		LOG(5)("load url info : key = %s, v =%s\n", next->key, next->value);			
-        next = next->next;
-    } 
+    s_sis_json_node *argvs = sis_json_cmp_child_node(node_, "argvs");
+	if (argvs)
+	{
+		s_sis_json_node *next = sis_json_first_node(argvs);
+		while(next)
+		{
+			sis_url_set(url_, next->key, next->value);
+			LOG(5)("load url info : key = %s, v =%s\n", next->key, next->value);			
+			next = next->next;
+		} 
+	}
     return true;
 }
 //////////////////////////
@@ -309,10 +313,10 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 		sis_strcpy(o->client->ip, 128, o->url->ip);
 	}
 
-	o->ready_recv_cxts = sis_share_list_create("", 1);
+	o->ready_recv_cxts = sis_share_list_create("", 1000*1000);
     o->reader_recv = sis_share_reader_login(o->ready_recv_cxts, SIS_SHARE_FROM_HEAD, o, cb_sis_reader_recv);
 
-	o->ready_send_cxts = sis_share_list_create("", 1);
+	o->ready_send_cxts = sis_share_list_create("", 1000*1000);
     o->reader_send = sis_share_reader_login(o->ready_send_cxts, SIS_SHARE_FROM_HEAD, o, cb_sis_reader_send);
 
 	o->cxts = sis_map_pointer_create_v(sis_net_context_destroy);
@@ -320,6 +324,7 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 	o->map_subs = sis_map_pointer_create_v(sis_pointer_list_destroy);
 	o->map_pubs = sis_map_pointer_create_v(sis_pointer_list_destroy);
 	
+	o->cb_source = o;
 	o->work_status = SIS_NET_NONE;
 
 	return o;
@@ -452,7 +457,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			// 这里发送登录信息 
 			if (cls->cb_connected)
 			{
-				cls->cb_connected(cls, sid_);
+				cls->cb_connected(cls->cb_source, sid_);
 			}			
 		}
 		else if (rtn != 0) // 收到错误的握手信息
@@ -517,7 +522,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			// 这里发送登录信息 
 			if (cls->cb_connected)
 			{
-				cls->cb_connected(cls, sid_);
+				cls->cb_connected(cls->cb_source, sid_);
 			}			
 		}
 		else if (rtn != 0)
@@ -595,7 +600,7 @@ static void cb_server_connected(void *handle_, int sid_)
 		cxt->status =  SIS_NET_WORKING;
 		if (cls->cb_connected)
 		{
-			cls->cb_connected(cls, sid_);
+			cls->cb_connected(cls->cb_source, sid_);
 		}
 	}
 }
@@ -615,7 +620,7 @@ static void cb_server_disconnect(void *handle_, int sid_)
 			cxt->status = SIS_NET_DISCONNECT;
 			if (cls->cb_disconnect)
 			{
-				cls->cb_disconnect(cls, sid_);
+				cls->cb_disconnect(cls->cb_source, sid_);
 			}
 		}
 		sis_net_class_delete(cls, sid_);
@@ -656,7 +661,7 @@ static void cb_client_connected(void *handle_, int sid_)
 		cxt->status = SIS_NET_WORKING;
 		if (cls->cb_connected)
 		{
-			cls->cb_connected(cls, sid_);
+			cls->cb_connected(cls->cb_source, sid_);
 		}		
 	}
 
@@ -673,7 +678,7 @@ static void cb_client_disconnect(void *handle_, int sid_)
 			cxt->status = SIS_NET_DISCONNECT;
 			if (cls->cb_disconnect)
 			{
-				cls->cb_disconnect(cls, sid_);
+				cls->cb_disconnect(cls->cb_source, sid_);
 			}
 		}
 		sis_net_class_delete(cls, 0);

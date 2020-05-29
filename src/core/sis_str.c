@@ -129,7 +129,37 @@ const char *sis_str_split(const char *s_, size_t *len_, char c_)
 	}
 	return ptr;
 }
-
+int sis_str_divide(const char *in_, char ch_, char *one_, char *two_)
+{
+	one_[0] = 0;
+	two_[0] = 0;
+	int index = 0;
+	const char *ptr = in_;
+	while (ptr && *ptr)
+	{
+		if (*ptr == ch_)
+		{
+			one_[index] = 0;
+			index = 0;
+			ptr++;
+			while (*ptr)
+			{
+				two_[index] = *ptr;
+				index++;
+				ptr++;
+			}
+			two_[index] = 0;
+			return 2;
+		}
+		else
+		{
+			one_[index] = *ptr;
+		}
+		index++;
+		ptr++;
+	}
+	return 1;
+}
 const char *sis_str_replace(const char *in_, char ic_, char oc_)
 {
 	char *ptr = (char *)in_;

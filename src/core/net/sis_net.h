@@ -175,6 +175,7 @@ typedef struct s_sis_net_class {
 	s_sis_share_reader   *reader_recv;  // 读取接收队列
 	s_sis_share_reader   *reader_send;  // 读取发送队列
 
+	void                 *cb_source;     // 回调句柄
 	cb_socket_connect     cb_connected;  // 链接成功
 	cb_socket_connect     cb_disconnect; // 链接断开
 

@@ -53,7 +53,7 @@ s_sis_worker *sis_worker_load(s_sis_worker *worker_, s_sis_json_node *);
 int sis_worker_init_multiple(s_sis_worker *worker_, s_sis_json_node *);
 
 // 调用指定 worker 的方法
-int sis_worker_command(s_sis_worker *worker_, const char *cmd_, s_sis_message *msg_);
+int sis_worker_command(s_sis_worker *worker_, const char *cmd_, void *msg_);
 
 // 得到 worker 子工作者下属指定名字 worker
 s_sis_worker *sis_worker_get(s_sis_worker *worker_, const char *);

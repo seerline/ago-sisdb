@@ -48,13 +48,13 @@ int sis_strncasecmp(const char *s1_, const char *s2_, size_t len_);
 
 int sis_strncmp(const char *s1_, const char *s2_, size_t len_);
 
-
 char *sis_strdup(const char *str_, size_t len_);  SIS_NEW
 
 char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...); SIS_NEW
 
 const char *sis_str_split(const char *s, size_t *len_, char c);
 
+int sis_str_divide(const char *in_, char ch_, char *one_, char *two_);
 // 返回字符所在位置
 int sis_strsub(char *big_, char *small_);
 

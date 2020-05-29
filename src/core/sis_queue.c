@@ -69,7 +69,7 @@ int   sis_queue_push(s_sis_queue *queue_, void *value_)
     sis_mutex_lock(&(queue_->taillock));
     queue_->tail->next = node;
     queue_->tail = node;
-    FAA(&(queue_->count), 1);
+    queue_->count++;
     sis_mutex_unlock(&(queue_->taillock));
     return queue_->count;
 }
@@ -85,7 +85,7 @@ void *sis_queue_pop(s_sis_queue *queue_)
     }
     void *value = new_head->value;
     queue_->head = new_head;
-    FAS(&(queue_->count), 1);
+    queue_->count--;
     sis_mutex_unlock(&(queue_->headlock));
     sis_free(head);
     return value;

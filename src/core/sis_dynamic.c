@@ -1230,7 +1230,7 @@ error:
 
 // }
 
-#if 1
+#if 0
 #pragma pack(push, 1)
 typedef struct _local_info {
 	int open;
@@ -1250,6 +1250,10 @@ typedef struct _remote_info {
 #pragma pack(pop)
 int main()
 {
+	char argv[2][32];
+    sis_str_divide("123.234.456.789", '.', argv[0], argv[1]);
+	printf("%s %s\n", argv[0], argv[1]);
+
 	const char *test_indb = "{stock:{fields:{open:[I,4],close:[F,8,1,3],ask:[I,4,5],name:[C,4]}}}";
 	const char *test_outdb = "{stock:{fields:{open:[U,8],close:[F,4,1,2],ask:[I,4,10],name:[C,8],agop:[I,4]}}}";
 

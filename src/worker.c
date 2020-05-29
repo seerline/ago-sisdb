@@ -298,12 +298,12 @@ int sis_worker_init_multiple(s_sis_worker *worker_, s_sis_json_node *node_)
 //  worker tools
 /////////////////////////////////
 
-int sis_worker_command(s_sis_worker *worker_, const char *cmd_, s_sis_message *msg_)
+int sis_worker_command(s_sis_worker *worker_, const char *cmd_, void *msg_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_;
     if (!worker)
     {
-        return SIS_METHOD_ERROR;
+        return SIS_METHOD_NOWORK;
     }
     // s_sis_dict_entry *de;
     // s_sis_dict_iter *di = sis_dict_get_iter(worker_->methods);
@@ -321,7 +321,7 @@ int sis_worker_command(s_sis_worker *worker_, const char *cmd_, s_sis_message *m
         // printf("---- %s : %p %s\n", method->name, method->proc, method->style);
         return method->proc(worker_, msg_);
     }
-    return SIS_METHOD_ERROR;
+    return SIS_METHOD_NOCMD;
 }
 
 // 仅仅找当前 worker->workers 下的 workname_ = aaa
