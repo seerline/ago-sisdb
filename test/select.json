@@ -1,0 +1,26 @@
+{
+	"start": 20050420,
+	"stop": 20170420,
+	"codes": "*",
+	"referzs": "SH000001",
+	"algorithm": {
+		"isrefer": 1,
+		"refer-level": 1,
+		"peroid": [60, 12, 1,"aaa","bbb"],
+		"ask-level": 0,
+		"bid-level": 0
+	},
+	"risk": {
+		"stopless": 0.062,
+		"sideway-day": 60,
+		"sideway-rate": 0.04
+	},
+	"money": {
+		"allmoney": 1000000,
+		"minmoney": 300000,
+		"maxmoney": 500000,
+		"ratemoney": 0.15,
+		"filter-name": "energy"
+	},
+	"must-filter": []
+}
