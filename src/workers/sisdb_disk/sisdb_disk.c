@@ -10,11 +10,7 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_disk_methods[] = {
-    {"init", cmd_sisdb_disk_get, NULL, NULL},  // json 格式
-    {"set", cmd_sisdb_disk_set, NULL, NULL},   // json 格式
-    {"bget", cmd_sisdb_disk_bget, NULL, NULL}, // 二进制格式
-    {"bset", cmd_sisdb_disk_bset, NULL, NULL}, // 二进制格式
-    {"del", cmd_sisdb_disk_del, NULL, NULL},   // 删除数据
+    {"write", cmd_sisdb_disk_write, NULL, NULL},  // json 格式
 };
 // 通用文件存取接口
 s_sis_modules sis_modules_sisdb_disk = {
@@ -52,26 +48,11 @@ void sisdb_disk_method_uninit(void *worker_)
 {
 }
 
-int cmd_sisdb_disk_get(void *worker_, void *argv_)
+int cmd_sisdb_disk_write(void *worker_, void *argv_)
 {
     return 0;
 }
-int cmd_sisdb_disk_set(void *worker_, void *argv_)
-{
-    return 0;
-}
-int cmd_sisdb_disk_bget(void *worker_, void *argv_)
-{
-    return 0;
-}
-int cmd_sisdb_disk_bset(void *worker_, void *argv_)
-{
-    return 0;
-}
-int cmd_sisdb_disk_del(void *worker_, void *argv_)
-{
-    return 0;
-}
+
 
 ///////////////////////////
 //  s_sis_disk_index

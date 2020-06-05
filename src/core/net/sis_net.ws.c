@@ -90,9 +90,9 @@ int sis_net_ws_chk_ans(s_sis_memory *in_)
 // #define MAX_SEND_BUFF (16)
 // 浏览器的ws协议不能超过64K数据大小，因此必须拆包，才能发送给浏览器，否则发送失败
 // 打包
-int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_)
+int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s_sis_memory_info *info)
 {
-    size_t insize = sis_memory_get_size(in_);
+    size_t insize = sis_memory_get_size(in_) + sizeof(s_sis_memory_info);
     int count = insize / MAX_SEND_BUFF + 1;
     sis_memory_clear(out_);
     sis_memory_set_maxsize(out_, insize + count * 10);
@@ -137,20 +137,27 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_)
             sis_bitstream_put(stream, 126, 7);
             sis_bitstream_put(stream, size, 16);
         }
-
-        sis_bitstream_put_buffer(stream, inptr, size);
+        if (i == count - 1)
+        {
+            sis_bitstream_put_buffer(stream, inptr, size - sizeof(s_sis_memory_info));
+            sis_bitstream_put_buffer(stream, (char *)info, sizeof(s_sis_memory_info));
+        }
+        else
+        {
+            sis_bitstream_put_buffer(stream, inptr, size);
+        }
         inptr += size;
         insize -= size;
 
         int cursor = sis_bitstream_getbytelen(stream);
         sis_memory_set_size(out_, cursor);
         sis_memory_move(out_, cursor);
-        // printf("1 == [%d : %d] %zu\n",i, cursor, sis_memory_get_size(out_));
+        printf("1 == [%d : %d] %zu\n",i, cursor, sis_memory_get_size(out_));
         sis_bitstream_destroy(stream);
     }
     // 回到起点
     sis_memory_jumpto(out_, 0);
-    // printf("2 == %zu\n",sis_memory_get_size(out_));
+    printf("2 == %zu\n",sis_memory_get_size(out_));
     // sis_out_binary("pack", sis_memory(out_), sis_memory_get_size(out_));
 
     return 0;
@@ -255,12 +262,12 @@ int sis_net_pack_ws(s_sis_memory *in_, s_sis_memory_info *info, s_sis_memory *ou
 {
     if (info->is_bytes == 0)
     {
-        sis_net_pack_ws_message(1, in_, out_);
+        sis_net_pack_ws_message(1, in_, out_, NULL);
     }
     else
     {
-        sis_net_pack_ws_message(0, in_, out_);
-        sis_memory_cat(out_, (char *)info, sizeof(s_sis_memory_info));
+        sis_net_pack_ws_message(0, in_, out_, info);
+        // sis_memory_cat(out_, (char *)info, sizeof(s_sis_memory_info));
     }
     return 1;
 }

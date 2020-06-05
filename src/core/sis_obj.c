@@ -19,65 +19,7 @@ s_sis_object *sis_object_incr(s_sis_object *obj_)
         return obj_;
     }
     return NULL;
-    // {
-    //     void *newptr = NULL;
-    //     if (obj_->ptr)
-    //     {
-    //         switch(obj_->style) 
-    //         {
-    //             case SIS_OBJECT_SDS: 
-    //             {
-    //                 newptr = sis_sdsdup((s_sis_sds)obj_->ptr); 
-    //             }
-    //             break;
-    //             case SIS_OBJECT_MEMORY: sis_memory_destroy(obj_->ptr); break;
-    //             {
-    //                 newptr = sis_memory_create();
-    //                 s_sis_memory *oldptr = (s_sis_memory *)obj_->ptr;
-    //                 sis_memory_clone(oldptr, newptr);
-    //             }
-    //             break;
-    //             case SIS_OBJECT_LIST: 
-    //             {
-    //                 s_sis_struct_list *oldptr = (s_sis_struct_list *)obj_->ptr;
-    //                 newptr = sis_struct_list_create(oldptr->len);
-    //                 sis_struct_list_clone(oldptr, newptr);
-    //             }
-    //             break;
-    //             default: 
-    //                 LOG(5)("unknown object type"); 
-    //             break;
-    //         }
-    //     } 
-    //     // 引用数满了，copy一个新的
-    //     return sis_object_create(obj_->style, newptr);
-    // }
 }
-
-// int sis_object_set(s_sis_object *obj_, int style_, void *ptr) 
-// {
-//     if (!obj_)
-//     {
-//         return -1;
-//     }
-//     // if (obj_->style != style_)
-//     // {
-//     //     return -2;
-//     // }
-//     if (obj_->ptr)
-//     {
-//         switch(obj_->style) 
-//         {
-//             case SIS_OBJECT_SDS: sis_sdsfree(obj_->ptr); break;
-//             case SIS_OBJECT_MEMORY: sis_memory_destroy(obj_->ptr); break;
-//             case SIS_OBJECT_LIST: sis_struct_list_destroy(obj_->ptr); break;
-//             default: LOG(5)("unknown object type"); break;
-//         }
-//     }
-//     obj_->style = style_;
-//     obj_->ptr = ptr;
-//     return 0;
-// }
 
 void sis_object_decr(void *obj_) 
 {
@@ -100,6 +42,7 @@ void sis_object_decr(void *obj_)
             case SIS_OBJECT_MEMORY: sis_memory_destroy(obj->ptr); break;
             case SIS_OBJECT_NETMSG: sis_net_message_destroy(obj->ptr); break;
             case SIS_OBJECT_LIST: sis_struct_list_destroy(obj->ptr); break;
+            case SIS_OBJECT_NODES: sis_list_destroy(obj->ptr); break;
             default: LOG(5)("unknown object type"); break;
         }
         sis_free(obj);
@@ -122,6 +65,18 @@ size_t sis_object_getsize(void *obj)
             {
                 s_sis_struct_list *list = (s_sis_struct_list *)obj_->ptr;
                 size = list->len * list->count;
+            }
+            break;
+        case SIS_OBJECT_NODES:
+            {
+                s_sis_list *list = (s_sis_list *)obj_->ptr;
+                size = 0;
+                s_sis_list_node *node = sis_list_first(list);
+                while (node->next)
+                {
+                    size += sis_sdslen((s_sis_sds)node->value);
+                    node = node->next;
+                }
             }
             break;
         default: LOG(5)("unknown object type"); break;

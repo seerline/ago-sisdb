@@ -6,7 +6,7 @@
 #include "sis_memory.h"
 #include "sis_net.node.h"
 #include "sis_list.h"
-
+#include "sis_nodelist.h"
 
 #define SIS_OBJECT_MAX_REFS 0xFFFFFFFF
 

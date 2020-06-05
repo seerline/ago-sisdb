@@ -156,7 +156,7 @@ s_sis_share_list *sis_share_list_create(const char *, size_t maxsize_);
 void sis_share_list_destroy(s_sis_share_list *); 
 
 // 广播写入入口 读是依靠回调实现 
-int  sis_share_list_publish(s_sis_share_list *, s_sis_object *value_);
+int  sis_share_list_push(s_sis_share_list *, s_sis_object *value_);
 
 // 写入缓存数据 读取是依靠get按索引获取
 int  sis_share_list_catch_set(s_sis_share_list *, char *key_, s_sis_object *value_);

@@ -578,11 +578,7 @@ void  sisdb_disk_uninit(void *);
 void  sisdb_disk_method_init(void *);
 void  sisdb_disk_method_uninit(void *);
 
-int cmd_sisdb_disk_get(void *worker_, void *argv_);
-int cmd_sisdb_disk_set(void *worker_, void *argv_);
-int cmd_sisdb_disk_bget(void *worker_, void *argv_);
-int cmd_sisdb_disk_bset(void *worker_, void *argv_);
-int cmd_sisdb_disk_del(void *worker_, void *argv_);
+int cmd_sisdb_disk_write(void *worker_, void *argv_);
 
 
 

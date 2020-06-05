@@ -25,7 +25,7 @@ typedef int (sis_method_define)(void *, void *);
 typedef struct s_sis_method {
     const char *name;     // 方法的名字
 	int (*proc)(void *, void *);
-    const char *style;    // 方法属于的类别，相当于命名空间 subscribe append zip 等
+    const char *access;   // 方法属于的类别，相当于命名空间 subscribe append zip 等
 	const char *explain;  // 方法的说明
 }s_sis_method;
 
@@ -87,7 +87,7 @@ typedef struct s_sis_method_class {
 //   method_map 这里定义的是方法列表
 ///////////////////////////////////////////////
 s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_);
-s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, const char *style_);
+s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_);
 void sis_method_map_destroy(s_sis_map_pointer *map_);
 
 //////////////////////////////////////////////
@@ -114,7 +114,6 @@ void sis_method_map_destroy(s_sis_map_pointer *map_);
 
 s_sis_method_class *sis_method_class_create(
 	s_sis_map_pointer *map_,
-	const char *style_, 
 	s_sis_json_node *node_);
 
 // 下面的算法可能有破坏内存的嫌疑

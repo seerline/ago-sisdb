@@ -58,15 +58,15 @@ typedef float float32;
 typedef double float64;
 #endif
 #ifndef msec_t
-typedef long long msec_t;
+typedef unsigned long long msec_t;
 #endif
 #ifndef fsec_t
-typedef long long fsec_t;
+typedef unsigned long long fsec_t;
 #endif
 #ifndef date_t
-typedef int date_t;
+typedef unsigned int date_t;
 #endif
 #ifndef minute_t
-typedef int minute_t;
+typedef unsigned int minute_t;
 #endif
 #endif //_OS_TYPES_H

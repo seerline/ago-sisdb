@@ -26,10 +26,6 @@
 #define SIS_NET_ROLE_REQUEST   0  // client 发起请求方 request
 #define SIS_NET_ROLE_ANSWER    1  // server 等待请求，相应请求 answer
 
-// request 方决定网络数据传输方式 是按字节流还是 JSON 字符串
-#define SIS_NET_FORMAT_CHARS   0
-#define SIS_NET_FORMAT_BYTES   1 
-
 // request 方决定网络数据压缩方式 
 #define SIS_NET_ZIP_NONE       0
 #define SIS_NET_ZIP_SNAPPY     1
@@ -59,7 +55,6 @@ typedef struct s_sis_url {
 	uint8     role;        // 角色 client server 两种方式 由客户端发起请求 server 响应请求
 	uint8     version;     // 数据交换协议版本号 协议格式变更在这里处理 默认为 1 ws的协议 
     uint8     protocol;    // 通讯协议 -- 默认为 0 tcp 协议     
-    uint8     format;      // 请求或者响应的数据格式 -- 默认为0 json 数据格式  
 	uint8     compress;    // 压缩方式 默认不压缩
 	uint8     crypt;       // 加密方式 默认不加密   
 	char      ip[128];     // ip地址 
@@ -78,10 +73,11 @@ typedef struct s_sis_url {
 // 如果需要压缩加密把字符串当字节流处理就可以了
 // 根据ws协议头就知道后面的数据是什么格式 二进制就跟这个结构 字符出就没有这个结构
 typedef struct s_sis_memory_info {
-	unsigned is_bytes : 1;     // 数据以什么格式传播 如果是字符串 不能压缩不能加密  
-	unsigned is_compress : 3;  // 数据是否被压缩
-	unsigned is_crypt : 3;     // 数据是否被加密 
+	unsigned is_bytes : 1;     // 数据以什么格式传播
+	unsigned is_compress : 1;  // 数据是否被压缩
+	unsigned is_crypt : 1;     // 数据是否被加密 
 	unsigned is_crc16 : 1;     // 是否有crc16校验 如果有去前面取16个字节用于校验
+	unsigned other : 4;     // 是否有crc16校验 如果有去前面取16个字节用于校验
 } s_sis_memory_info;
 
 // 序列化和反序列化 程序内部的数据和网络通讯协议互转
@@ -110,7 +106,7 @@ typedef struct s_sis_net_slot {
 	sis_net_unpack_define   slot_net_unpack; // 如果有脏数据 需要移动到正确的位置 并返回最新的数据 
 } s_sis_net_slot;
 
-void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 format, uint8 protocol);
+void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 protocol);
 
 // 收到消息后的回调 s_sis_net_message - 
 typedef void (*cb_net_reply)(void *, s_sis_net_message *);
@@ -155,12 +151,6 @@ typedef struct s_sis_net_class {
 	// s_sis_net_context    *client_cxt;       // 客户端的上下文信息
 	// 发出的请求,以时间顺序保存 回来的数据一一对应调用回调
 	s_sis_pointer_list   *ask_lists;  // s_sis_net_message - s_sis_object
-	// 记录我订阅了哪些数据 收到信息后一一对应后调用回调
-	s_sis_map_pointer    *map_subs;  // 以 key 为索引的 s_sis_net_sub 结构的 s_sis_pointer_list *
-									 // 保存订阅列表 方便断线后从新发送订阅信息
-	// 多个client订阅的列表 需要一一对应发送
-	s_sis_map_pointer    *map_pubs;  // 以key为索引的 s_sis_net_pub 结构的 s_sis_pointer_list *
-									 // 同一key可能有多个用户订阅
 
 	// recv放的是解包后的数据 send 放的是打包后的数据
 	// 刚出队列的数据 等待处理成功后释放 
@@ -224,22 +214,13 @@ int sis_net_class_set_cb(s_sis_net_class *, int sid_, void *source_, cb_net_repl
 // 连接后由客户端决定是否发送login信息 如果不发送就以默认的方式通讯 如果发送服务端收到信息,根据自身支持的协议返回一个确认包
 // 服务端就直到客户端传过来是什么格式 客户端也知道了服务端是什么格式
 // 此功能实现由外部控制 
-int sis_net_class_set_slot(s_sis_net_class *, int sid_, char *compress, char * crypt, char * format, char * protocol);
+int sis_net_class_set_slot(s_sis_net_class *, int sid_, char *compress, char * crypt, char * protocol);
 
 // 不阻塞 不要释放传进来的 s_sis_net_message 系统自己会处理
 int sis_net_class_send(s_sis_net_class *, s_sis_net_message *);
 
 // 阻塞直到有返回 超过 wait_msec 没有数据返回就超时退出
 // int sis_net_class_ask_wait(s_sis_net_class *, s_sis_object *send_, s_sis_object *recv_);
-
-// 订阅消息 系统会保留相关信息
-int sis_net_class_subscibe(s_sis_net_class *, s_sis_net_message *);
-// 发布消息 对所有订阅了我的消息的广播
-int sis_net_class_publish(s_sis_net_class *, s_sis_net_message *);
-// 收到客户的订阅请求增加发布的map
-int sis_net_class_pub_add(s_sis_net_class *, s_sis_net_message *);
-// 客户断开连接 删除该客户的订阅map
-int sis_net_class_pub_del(s_sis_net_class *, int sid_);
 
 /////////////////////////////////////////////////////////////
 // 协议说明

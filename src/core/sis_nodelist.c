@@ -1,4 +1,4 @@
-﻿/* adlist.c - A generic doubly linked list implementation
+﻿/* adlist.c - A generic doubly linked s_list implementation
  *
  * Copyright (c) 2006-2010, Salvatore Sanfilippo <antirez at gmail dot com>
  * All rights reserved.
@@ -7,9 +7,9 @@
  * modification, are permitted provided that the following conditions are met:
  *
  *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
+ *     this s_list of conditions and the following disclaimer.
  *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
+ *     notice, this s_list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *   * Neither the name of Redis nor the names of its contributors may be used
  *     to endorse or promote products derived from this software without
@@ -31,61 +31,66 @@
 #include <stdlib.h>
 #include <os_malloc.h>
 #include "sis_nodelist.h"
-/* Create a new list. The created list can be freed with
+/* Create a new s_list. The created s_list can be freed with
  * AlFreeList(), but private value of every node need to be freed
  * by the user before to call AlFreeList().
  *
- * On error, NULL is returned. Otherwise the pointer to the new list. */
-list *listCreate(void)
+ * On error, NULL is returned. Otherwise the pointer to the new s_list. */
+s_list *listCreate(void)
 {
-    struct list *list;
+    struct s_list *s_list;
 
-    if ((list = sis_malloc(sizeof(*list))) == NULL)
+    if ((s_list = sis_malloc(sizeof(*s_list))) == NULL)
         return NULL;
-    list->head = list->tail = NULL;
-    list->len = 0;
-    list->dup = NULL;
-    list->free = NULL;
-    list->match = NULL;
-    return list;
+    s_list->head = s_list->tail = NULL;
+    s_list->len = 0;
+    s_list->dup = NULL;
+    s_list->free = NULL;
+    s_list->match = NULL;
+    return s_list;
 }
 
-/* Remove all the elements from the list without destroying the list itself. */
-void listEmpty(list *list)
+/* Remove all the elements from the s_list without destroying the s_list itself. */
+void listEmpty(s_list *s_list)
 {
     unsigned long len;
     listNode *current, *next;
 
-    current = list->head;
-    len = list->len;
+    current = s_list->head;
+    len = s_list->len;
     while (len--)
     {
         next = current->next;
-        if (list->free)
-            list->free(current->value);
+        if (s_list->free)
+            s_list->free(current->value);
         sis_free(current);
         current = next;
     }
-    list->head = list->tail = NULL;
-    list->len = 0;
+    s_list->head = s_list->tail = NULL;
+    s_list->len = 0;
 }
 
-/* Free the whole list.
+/* Free the whole s_list.
  *
  * This function can't fail. */
-void listRelease(list *list)
+void listRelease(s_list *s_list)
 {
-    listEmpty(list);
-    sis_free(list);
+    listEmpty(s_list);
+    sis_free(s_list);
 }
 
-/* Add a new node to the list, to head, containing the specified 'value'
+void sis_list_destroy(void *list_)
+{
+    s_list *list = (s_list *)list_;
+    listRelease(list);
+}
+/* Add a new node to the s_list, to head, containing the specified 'value'
  * pointer as value.
  *
  * On error, NULL is returned and no operation is performed (i.e. the
- * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
-list *listAddNodeHead(list *list, void *value)
+ * s_list remains unaltered).
+ * On success the 's_list' pointer you pass to the function is returned. */
+s_list *listAddNodeHead(s_list *s_list, void *value)
 {
     listNode *node;
 
@@ -94,29 +99,29 @@ list *listAddNodeHead(list *list, void *value)
         return NULL;
     }
     node->value = value;
-    if (list->len == 0)
+    if (s_list->len == 0)
     {
-        list->head = list->tail = node;
+        s_list->head = s_list->tail = node;
         node->prev = node->next = NULL;
     }
     else
     {
         node->prev = NULL;
-        node->next = list->head;
-        list->head->prev = node;
-        list->head = node;
+        node->next = s_list->head;
+        s_list->head->prev = node;
+        s_list->head = node;
     }
-    list->len++;
-    return list;
+    s_list->len++;
+    return s_list;
 }
 
-/* Add a new node to the list, to tail, containing the specified 'value'
+/* Add a new node to the s_list, to tail, containing the specified 'value'
  * pointer as value.
  *
  * On error, NULL is returned and no operation is performed (i.e. the
- * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
-list *listAddNodeTail(list *list, void *value)
+ * s_list remains unaltered).
+ * On success the 's_list' pointer you pass to the function is returned. */
+s_list *listAddNodeTail(s_list *s_list, void *value)
 {
     listNode *node;
 
@@ -125,23 +130,23 @@ list *listAddNodeTail(list *list, void *value)
         return NULL;
     }
     node->value = value;
-    if (list->len == 0)
+    if (s_list->len == 0)
     {
-        list->head = list->tail = node;
+        s_list->head = s_list->tail = node;
         node->prev = node->next = NULL;
     }
     else
     {
-        node->prev = list->tail;
+        node->prev = s_list->tail;
         node->next = NULL;
-        list->tail->next = node;
-        list->tail = node;
+        s_list->tail->next = node;
+        s_list->tail = node;
     }
-    list->len++;
-    return list;
+    s_list->len++;
+    return s_list;
 }
 
-list *listInsertNode(list *list, listNode *old_node, void *value, int after)
+s_list *listInsertNode(s_list *s_list, listNode *old_node, void *value, int after)
 {
     listNode *node;
 
@@ -154,18 +159,18 @@ list *listInsertNode(list *list, listNode *old_node, void *value, int after)
     {
         node->prev = old_node;
         node->next = old_node->next;
-        if (list->tail == old_node)
+        if (s_list->tail == old_node)
         {
-            list->tail = node;
+            s_list->tail = node;
         }
     }
     else
     {
         node->next = old_node;
         node->prev = old_node->prev;
-        if (list->head == old_node)
+        if (s_list->head == old_node)
         {
-            list->head = node;
+            s_list->head = node;
         }
     }
     if (node->prev != NULL)
@@ -176,15 +181,15 @@ list *listInsertNode(list *list, listNode *old_node, void *value, int after)
     {
         node->next->prev = node;
     }
-    list->len++;
-    return list;
+    s_list->len++;
+    return s_list;
 }
 
-/* Remove the specified node from the specified list.
+/* Remove the specified node from the specified s_list.
  * It's up to the caller to free the private value of the node.
  *
  * This function can't fail. */
-void listDelNode(list *list, listNode *node)
+void listDelNode(s_list *s_list, listNode *node)
 {
     if (node->prev)
     {
@@ -192,7 +197,7 @@ void listDelNode(list *list, listNode *node)
     }
     else
     {
-        list->head = node->next;
+        s_list->head = node->next;
     }
     if (node->next)
     {
@@ -200,21 +205,21 @@ void listDelNode(list *list, listNode *node)
     }
     else
     {
-        list->tail = node->prev;
+        s_list->tail = node->prev;
     }
-    if (list->free)
+    if (s_list->free)
     {
-        list->free(node->value);
+        s_list->free(node->value);
     }
     sis_free(node);
-    list->len--;
+    s_list->len--;
 }
 
-/* Returns a list iterator 'iter'. After the initialization every
- * call to listNext() will return the next element of the list.
+/* Returns a s_list iterator 'iter'. After the initialization every
+ * call to listNext() will return the next element of the s_list.
  *
  * This function can't fail. */
-listIter *listGetIterator(list *list, int direction)
+listIter *listGetIterator(s_list *s_list, int direction)
 {
     listIter *iter;
 
@@ -224,11 +229,11 @@ listIter *listGetIterator(list *list, int direction)
     }
     if (direction == AL_START_HEAD)
     {
-        iter->next = list->head;
+        iter->next = s_list->head;
     }
     else
     {
-        iter->next = list->tail;
+        iter->next = s_list->tail;
     }
     iter->direction = direction;
     return iter;
@@ -240,16 +245,16 @@ void listReleaseIterator(listIter *iter)
     sis_free(iter);
 }
 
-/* Create an iterator in the list private iterator structure */
-void listRewind(list *list, listIter *li)
+/* Create an iterator in the s_list private iterator structure */
+void listRewind(s_list *s_list, listIter *li)
 {
-    li->next = list->head;
+    li->next = s_list->head;
     li->direction = AL_START_HEAD;
 }
 
-void listRewindTail(list *list, listIter *li)
+void listRewindTail(s_list *s_list, listIter *li)
 {
-    li->next = list->tail;
+    li->next = s_list->tail;
     li->direction = AL_START_TAIL;
 }
 
@@ -257,11 +262,11 @@ void listRewindTail(list *list, listIter *li)
  * It's valid to remove the currently returned element using
  * listDelNode(), but not to remove other elements.
  *
- * The function returns a pointer to the next element of the list,
+ * The function returns a pointer to the next element of the s_list,
  * or NULL if there are no more elements, so the classical usage patter
  * is:
  *
- * iter = listGetIterator(list,<direction>);
+ * iter = listGetIterator(s_list,<direction>);
  * while ((node = listNext(iter)) != NULL) {
  *     doSomethingWith(listNodeValue(node));
  * }
@@ -285,17 +290,17 @@ listNode *listNext(listIter *iter)
     return current;
 }
 
-/* Duplicate the whole list. On out of memory NULL is returned.
- * On success a copy of the original list is returned.
+/* Duplicate the whole s_list. On out of memory NULL is returned.
+ * On success a copy of the original s_list is returned.
  *
  * The 'Dup' method set with listSetDupMethod() function is used
  * to copy the node value. Otherwise the same pointer value of
  * the original node is used as value of the copied node.
  *
- * The original list both on success or error is never modified. */
-list *listDup(list *orig)
+ * The original s_list both on success or error is never modified. */
+s_list *listDup(s_list *orig)
 {
-    list *copy;
+    s_list *copy;
     listIter iter;
     listNode *node;
 
@@ -333,7 +338,7 @@ list *listDup(list *orig)
     return copy;
 }
 
-/* Search the list for a node matching a given key.
+/* Search the s_list for a node matching a given key.
  * The match is performed using the 'match' method
  * set with listSetMatchMethod(). If no 'match' method
  * is set, the 'value' pointer of every node is directly
@@ -342,17 +347,17 @@ list *listDup(list *orig)
  * On success the first matching node pointer is returned
  * (search starts from head). If no matching node exists
  * NULL is returned. */
-listNode *listSearchKey(list *list, void *key)
+listNode *listSearchKey(s_list *s_list, void *key)
 {
     listIter iter;
     listNode *node;
 
-    listRewind(list, &iter);
+    listRewind(s_list, &iter);
     while ((node = listNext(&iter)) != NULL)
     {
-        if (list->match)
+        if (s_list->match)
         {
-            if (list->match(node->value, key))
+            if (s_list->match(node->value, key))
             {
                 return node;
             }
@@ -373,14 +378,14 @@ listNode *listSearchKey(list *list, void *key)
  * and so on. Negative integers are used in order to count
  * from the tail, -1 is the last element, -2 the penultimate
  * and so on. If the index is out of range NULL is returned. */
-listNode *listIndex(list *list, long index)
+listNode *listIndex(s_list *s_list, long index)
 {
     listNode *n;
 
     if (index < 0)
     {
         index = (-index) - 1;
-        n = list->tail;
+        n = s_list->tail;
         while (index-- && n)
         {
             n = n->prev;
@@ -388,7 +393,7 @@ listNode *listIndex(list *list, long index)
     }
     else
     {
-        n = list->head;
+        n = s_list->head;
         while (index-- && n)
         {
             n = n->next;
@@ -397,29 +402,29 @@ listNode *listIndex(list *list, long index)
     return n;
 }
 
-/* Rotate the list removing the tail node and inserting it to the head. */
-void listRotate(list *list)
+/* Rotate the s_list removing the tail node and inserting it to the head. */
+void listRotate(s_list *s_list)
 {
-    listNode *tail = list->tail;
+    listNode *tail = s_list->tail;
 
-    if (listLength(list) <= 1)
+    if (listLength(s_list) <= 1)
     {
         return;
     }
 
     /* Detach current tail */
-    list->tail = tail->prev;
-    list->tail->next = NULL;
+    s_list->tail = tail->prev;
+    s_list->tail->next = NULL;
     /* Move it as head */
-    list->head->prev = tail;
+    s_list->head->prev = tail;
     tail->prev = NULL;
-    tail->next = list->head;
-    list->head = tail;
+    tail->next = s_list->head;
+    s_list->head = tail;
 }
 
-/* Add all the elements of the list 'o' at the end of the
- * list 'l'. The list 'other' remains empty but otherwise valid. */
-void listJoin(list *l, list *o)
+/* Add all the elements of the s_list 'o' at the end of the
+ * s_list 'l'. The s_list 'other' remains empty but otherwise valid. */
+void listJoin(s_list *l, s_list *o)
 {
     if (o->head)
     {
@@ -441,7 +446,7 @@ void listJoin(list *l, list *o)
     }
     l->len += o->len;
 
-    /* Setup other as an empty list. */
+    /* Setup other as an empty s_list. */
     o->head = o->tail = NULL;
     o->len = 0;
 }

@@ -1,4 +1,4 @@
-﻿/* adlist.h - A generic doubly linked list implementation
+﻿/* adlist.h - A generic doubly linked s_list implementation
  *
  * Copyright (c) 2006-2012, Salvatore Sanfilippo <antirez at gmail dot com>
  * All rights reserved.
@@ -7,9 +7,9 @@
  * modification, are permitted provided that the following conditions are met:
  *
  *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
+ *     this s_list of conditions and the following disclaimer.
  *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
+ *     notice, this s_list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *   * Neither the name of Redis nor the names of its contributors may be used
  *     to endorse or promote products derived from this software without
@@ -44,14 +44,14 @@ typedef struct listIter {
     int direction;
 } listIter;
 
-typedef struct list {
+typedef struct s_list {
     listNode *head;
     listNode *tail;
     void *(*dup)(void *ptr);
     void (*free)(void *ptr);
     int (*match)(void *ptr, void *key);
     unsigned long len;
-} list;
+} s_list;
 
 /* Functions implemented as macros */
 #define listLength(l) ((l)->len)
@@ -70,31 +70,32 @@ typedef struct list {
 #define listGetMatchMethod(l) ((l)->match)
 
 /* Prototypes */
-list *listCreate(void);
-void listRelease(list *list);
-void listEmpty(list *list);
-list *listAddNodeHead(list *list, void *value);
-list *listAddNodeTail(list *list, void *value);
-list *listInsertNode(list *list, listNode *old_node, void *value, int after);
-void listDelNode(list *list, listNode *node);
-listIter *listGetIterator(list *list, int direction);
+s_list *listCreate(void);
+void listRelease(s_list *s_list);
+void listEmpty(s_list *s_list);
+s_list *listAddNodeHead(s_list *s_list, void *value);
+s_list *listAddNodeTail(s_list *s_list, void *value);
+s_list *listInsertNode(s_list *s_list, listNode *old_node, void *value, int after);
+void listDelNode(s_list *s_list, listNode *node);
+listIter *listGetIterator(s_list *s_list, int direction);
 listNode *listNext(listIter *iter);
 void listReleaseIterator(listIter *iter);
-list *listDup(list *orig);
-listNode *listSearchKey(list *list, void *key);
-listNode *listIndex(list *list, long index);
-void listRewind(list *list, listIter *li);
-void listRewindTail(list *list, listIter *li);
-void listRotate(list *list);
-void listJoin(list *l, list *o);
+s_list *listDup(s_list *orig);
+listNode *listSearchKey(s_list *s_list, void *key);
+listNode *listIndex(s_list *s_list, long index);
+void listRewind(s_list *s_list, listIter *li);
+void listRewindTail(s_list *s_list, listIter *li);
+void listRotate(s_list *s_list);
+void listJoin(s_list *l, s_list *o);
 
 /* Directions for iterators */
 #define AL_START_HEAD 0
 #define AL_START_TAIL 1
 
-#define s_sis_list list
+#define s_sis_list s_list
 #define sis_list_create listCreate
-#define sis_list_destroy listRelease
+void sis_list_destroy(void *list_);
+
 #define sis_list_dup listDup
 #define sis_list_clear listEmpty
 #define sis_list_delete listDelNode

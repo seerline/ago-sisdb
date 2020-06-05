@@ -324,6 +324,17 @@ int sis_worker_command(s_sis_worker *worker_, const char *cmd_, void *msg_)
     return SIS_METHOD_NOCMD;
 }
 
+s_sis_method *sis_worker_get_method(s_sis_worker *worker_, const char *cmd_)
+{
+    s_sis_method *method = sis_methods_get(worker_->methods, cmd_);
+    if (method&&method->proc)
+    {
+        // printf("---- %s : %p %s\n", method->name, method->proc, method->style);
+        return method;
+    }
+    return NULL;   
+}
+
 // 仅仅找当前 worker->workers 下的 workname_ = aaa
 s_sis_worker *sis_worker_get(s_sis_worker *worker_, const char *workname_)
 {

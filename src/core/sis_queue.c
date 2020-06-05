@@ -381,7 +381,7 @@ void sis_share_list_destroy(s_sis_share_list *obj_)
     sis_free(obj_);
 }
 
-int  sis_share_list_publish(s_sis_share_list *cls_, s_sis_object *value_)
+int  sis_share_list_push(s_sis_share_list *cls_, s_sis_object *value_)
 {
     s_sis_share_node *node = sis_share_node_create(value_);
     sis_mutex_lock(&(cls_->taillock));
@@ -485,7 +485,7 @@ void *thread_push(void *arg)
     {
         series++;
         int data = series;
-        sis_share_list_publish(share, &data,  sizeof(int), NULL); 
+        sis_share_list_push(share, &data,  sizeof(int), NULL); 
         printf("队列插入元素：%d %zu\n",data, share->count);
         sis_sleep(10);
     }

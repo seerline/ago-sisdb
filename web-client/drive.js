@@ -70,6 +70,11 @@ function make_command_buffer(sign, command) {
       cmd += '"key":' + isjson + command[k] + isjson
     }
     else
+    if (k === 2)
+    {
+      cmd += '"val":' + isjson + command[k] + isjson
+    }
+    else
     {
       if (!argv)
       {
@@ -94,27 +99,66 @@ function make_command_buffer(sign, command) {
 }
 
 client.ws.onmessage = function (message) {
-  let start = message.data.indexOf(':');
-  let sign = message.data.substr(0, start);
 
   console.log('===>', typeof message.data, message.data);
-
-  if (client.wait.commands[sign] !== undefined) {
-    client.wait.messages[client.wait.commands[sign]] =
-      JSON.parse(message.data.substr(start + 1, message.data.length));
+  if(typeof(message.data)=="string")
+  {  
+    console.log('recv : ', message.data);
   }
-  //   console.log('-->', client.wait.messages, client.wait.commands[sign]);
-  let all = true;
-  for (const item in client.wait.commands) {
-    // console.log('--- ss --- ', client.wait.commands[item]);
-    if (client.wait.messages[client.wait.commands[item]] === undefined) {
-      all = false
-      break
+  else
+  {  
+    // parseBlob(message.data)
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(message.data)
+    reader.onload = function (e) {
+      console.info(reader.result); //ArrayBuffer {}
+      var buf = new Uint8Array(reader.result);
+      console.info(buf);
+
+      //经常会遇到的异常 Uncaught RangeError: byte length of Int16Array should be a multiple of 2
+      //var buf = new int16array(reader.result);
+      //console.info(buf);
+  
+      //将 ArrayBufferView  转换成Blob
+      // var buf = new Uint8Array(reader.result);
+      // console.info(buf);
+      // console.info(buf); //[228, 184, 173, 230, 150, 135, 229, 173, 151, 231, 172, 166, 228, 184, 178]
+      // reader.readAsText(new Blob([buf]), 'utf-8');
+      // reader.onload = function () {
+      //     console.info(reader.result); //中文字符串
+      // };
+  
+      //将 ArrayBufferView  转换成Blob
+      // var buf = new DataView(reader.result);
+      // console.info(buf); //DataView {}
+      reader.readAsText(new Blob([buf]), 'utf-8');
+      reader.onload = function () {
+          console.info(reader.result); //中文字符串
+      };
     }
   }
-  if (all) {
-    client.wait.callback(client.wait.messages);
-  }
+
+  // console.log('===>', typeof message.data, message.data);
+
+  // let start = message.data.indexOf(':');
+  // let sign = message.data.substr(0, start);
+
+  // if (client.wait.commands[sign] !== undefined) {
+  //   client.wait.messages[client.wait.commands[sign]] =
+  //     JSON.parse(message.data.substr(start + 1, message.data.length));
+  // }
+  // //   console.log('-->', client.wait.messages, client.wait.commands[sign]);
+  // let all = true;
+  // for (const item in client.wait.commands) {
+  //   // console.log('--- ss --- ', client.wait.commands[item]);
+  //   if (client.wait.messages[client.wait.commands[item]] === undefined) {
+  //     all = false
+  //     break
+  //   }
+  // }
+  // if (all) {
+  //   client.wait.callback(client.wait.messages);
+  // }
 }
 
 // 当发出的指令全部返回后，就回调函数

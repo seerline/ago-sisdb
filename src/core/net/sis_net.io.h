@@ -6,25 +6,20 @@
 #include <sis_memory.h>
 #include <sis_net.h>
 
-int sis_net_ask_command(s_sis_net_class *net_, int handle_, 
-    char *cmd_, char *key_, char *sdb_, char *val_, size_t vlen_);
+void sis_net_ask_with_string(s_sis_net_message *netmsg_, 
+    char *cmd_, char *key_, char *val_, size_t vlen_);
 
-int sis_net_sub_command(s_sis_net_class *net_, int handle_, 
-    char *key_, char *sdb_, char *val_, size_t vlen_);
+void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, 
+    char *cmd_, char *key_, char *val_, size_t vlen_);
 
-int sis_net_pub_command(s_sis_net_class *net_, int handle_, 
-    char *key_, char *sdb_, char *val_, size_t vlen_);
+void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, s_sis_object *in_);
 
-// 写结果数据
-int sis_net_ans_ok(s_sis_net_class *net_, int handle_);
-int sis_net_ans_error(s_sis_net_class *net_, int handle_, char *rval_, size_t vlen_);
-// 写整数数据
-int sis_net_ans_int(s_sis_net_class *net_, int handle_, int64 val_);
-// 写正常数据
-int sis_net_ans_reply(s_sis_net_class *net_, int handle_, char *rval_, size_t vlen_);
-
-// 写入其他数据 argv 是 s_sis_object 的一个缓存指针 避免重复拷贝
-int sis_net_write_argv(s_sis_net_message *net_, int argc_, s_sis_object **argv_);
+void sis_net_ans_with_string(s_sis_net_message *, const char *in_, size_t ilen_);
+void sis_net_ans_with_int(s_sis_net_message *, int in_);
+void sis_net_ans_with_ok(s_sis_net_message *);
+void sis_net_ans_with_error(s_sis_net_message *, char *rval_, size_t vlen_);
+// in_被吸入
+void sis_net_ans_with_bytes(s_sis_net_message *, s_sis_object *in_);
 
 // #define SIS_NET_METHOD_SYSTEM   "system"   // 基础的函数
 // #define SIS_NET_METHOD_PUBLIC   "public"   // 实际启动服务时注册的函数
@@ -93,7 +88,7 @@ int sis_net_write_argv(s_sis_net_message *net_, int argc_, s_sis_object **argv_)
 // 		// if (_check_login_ask(cls, cxt))
 // 		// {
 // 		// 	cxt->inited = 1;
-// 		// 	sis_net_slot_set(cxt->slots, cxt->info.compress, cxt->info.crypt, cxt->info.format, cxt->info.protocol);
+// 		// 	sis_net_slot_set(cxt->slots, cxt->info.compress, cxt->info.crypt, cxt->info.protocol);
 // 		// 	// cxt->status = SIS_NET_WORKING;
 // 		// 	// 这里发送登录信息 
 // 		// 	if (cls->cb_connected)
@@ -159,7 +154,7 @@ int sis_net_write_argv(s_sis_net_message *net_, int argc_, s_sis_object **argv_)
 // 		// if (_check_login_ans(cls, cxt))
 // 		// {
 // 		// 	cxt->inited = 1;
-// 		// 	sis_net_slot_set(cxt->slots, cxt->info.compress, cxt->info.crypt, cxt->info.format, cxt->info.protocol);
+// 		// 	sis_net_slot_set(cxt->slots, cxt->info.compress, cxt->info.crypt, cxt->info.protocol);
 // 		// 	cls->status = SIS_NET_WORKING;
 // 		// 	// 这里发送登录信息 
 // 		// 	if (cls->cb_connected)

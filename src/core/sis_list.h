@@ -33,6 +33,7 @@ s_sis_struct_list *sis_struct_list_create(int len_); //len_为每条记录长度
 void sis_struct_list_destroy(void *list_);
 void sis_struct_list_clear(s_sis_struct_list *list_);
 
+int sis_struct_list_pushs(s_sis_struct_list *, void *in_, int count_);
 int sis_struct_list_push(s_sis_struct_list *, void *in_);
 int sis_struct_list_insert(s_sis_struct_list *, int index_, void *in_);
 int sis_struct_list_update(s_sis_struct_list *, int index_, void *in_);

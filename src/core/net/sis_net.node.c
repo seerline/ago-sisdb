@@ -21,10 +21,6 @@ void _sis_net_message_del(s_sis_net_message *in_)
 	{
 		sis_pointer_list_destroy(in_->argvs);
 	}
-	if(in_->links)
-	{
-		sis_pointer_list_destroy(in_->links);
-	}
 	sis_sdsfree(in_->source);
 	sis_sdsfree(in_->cmd);
 	sis_sdsfree(in_->key);
@@ -78,10 +74,6 @@ void sis_net_message_clear(s_sis_net_message *in_)
 	{
 		sis_pointer_list_clear(in_->argvs);
 	}
-	if(in_->links)
-	{
-		sis_pointer_list_clear(in_->links);
-	}
 	in_->cid = 0;
 	in_->style = 0;
 	in_->rint = 0;
@@ -95,7 +87,7 @@ size_t _sis_net_message_list_size(s_sis_pointer_list *list_)
 		size += list_->count * sizeof(void *);
 		for (int i = 0; i < list_->count; i++)
 		{
-			s_sis_sds val = (s_sis_sds)sis_pointer_list_get(list_, i);
+			s_sis_sds val = (s_sis_sds)((s_sis_object *)sis_pointer_list_get(list_, i))->ptr;
 			size += sis_sdslen(val);
 		}
 	}
@@ -110,7 +102,6 @@ size_t sis_net_message_get_size(s_sis_net_message *msg_)
 	size += msg_->val ? sis_sdslen(msg_->val) : 0;
 	size += msg_->rval ? sis_sdslen(msg_->rval) : 0;
 	size += _sis_net_message_list_size(msg_->argvs);
-	size += _sis_net_message_list_size(msg_->links);
 	return size;
 }
 
@@ -118,8 +109,9 @@ void _sis_net_message_list_clone(s_sis_pointer_list *inlist_, s_sis_pointer_list
 {
 	for (int i = 0; i < inlist_->count; i++)
 	{
-		s_sis_sds in = (s_sis_sds)sis_pointer_list_get(inlist_, i);
-		sis_pointer_list_push(outlist_, sis_sdsdup(in));
+		s_sis_object *obj = (s_sis_object *)sis_pointer_list_get(inlist_, i);
+		sis_object_incr(obj);
+		sis_pointer_list_push(outlist_, obj);
 	}
 }
 
@@ -159,27 +151,31 @@ s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_)
 		o->argvs->vfree = sis_object_decr;
 		_sis_net_message_list_clone(in_->argvs, o->argvs);
 	}
-	if (in_->links)
-	{
-		o->links = sis_pointer_list_create();
-		o->links->vfree = sis_sdsfree_call;
-		_sis_net_message_list_clone(in_->links, o->links);
-	}
 	return o;
 }
 
+// 写入其他数据 argv 是 s_sis_object 底层用法 用户自行发送信息 一般不用 encoded 编码
+int sis_net_message_write_argv(s_sis_net_message *mess_, s_sis_object *val_)
+{
+	if (!mess_->argvs)
+	{
+		mess_->argvs = sis_pointer_list_create();
+		mess_->argvs->vfree = sis_object_decr;
+	}
+	sis_object_incr(val_);
+	sis_pointer_list_push(mess_->argvs, val_);
+    return mess_->argvs->count;     
+}
+void sis_net_message_clear_argv(s_sis_net_message *mess_)
+{
+	sis_pointer_list_clear(mess_->argvs);
+}
 ////////////////////////////////////////////////////////
 //  解码函数
 ////////////////////////////////////////////////////////
 
-bool sis_net_encoded_json(s_sis_net_message *in_, s_sis_memory *out_)
+bool sis_net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 {
-    sis_memory_clear(out_);
-    if (in_->source)
-    {
-        sis_memory_cat(out_, in_->source, sis_sdslen(in_->source));
-    }
-    sis_memory_cat(out_, ":", 1);
     s_sis_json_node *node = sis_json_create_object();
     if (in_->style & SIS_NET_ASK_MSG)
     {
@@ -198,22 +194,22 @@ bool sis_net_encoded_json(s_sis_net_message *in_, s_sis_memory *out_)
     }
     else
     {
-		if (in_->style & SIS_NET_REPLY_NORMAL && in_->rval)
+		if (in_->style & SIS_NET_ANS_VAL && in_->rval)
 		{
 			sis_json_object_set_string(node, "reply", in_->rval, sis_sdslen(in_->rval)); 
 		}       
-		if (in_->style & SIS_NET_REPLY_INT)
+		if (in_->style & SIS_NET_ANS_INT)
 		{
 			sis_json_object_set_int(node, "reply", in_->rint); 
 		}       
-		if (in_->style & SIS_NET_REPLY_OK)
+		if (in_->style & SIS_NET_ANS_OK)
 		{
 			sis_json_object_set_string(node, "reply", "OK", 2); 
 		}       
-		if (in_->style & SIS_NET_REPLY_ERROR && in_->rval)
+		if (in_->style & SIS_NET_ANS_ERROR && in_->rval)
 		{
 			sis_json_object_set_string(node, "reply", "ERROR", 5); 
-			sis_json_object_set_string(node, "rval", in_->rval, sis_sdslen(in_->rval)); 
+			sis_json_object_set_string(node, "message", in_->rval, sis_sdslen(in_->rval)); 
 		}       	
     }
 	printf(":::%d %d %s \n%s \n%s \n%s \n%s \n", in_->style, (int)in_->rint,
@@ -254,25 +250,15 @@ s_sis_sds _sis_json_node_get_sds(s_sis_json_node *node_, const char *key_)
     }
     return o;
 }
-bool sis_net_decoded_json(s_sis_memory *in_, s_sis_net_message *out_)
+bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 {
-    char *in = sis_memory(in_);
-    int cursor = sis_str_pos(in, sis_min((int)sis_memory_get_size(in_) ,64), ':');
-    if (cursor < 0)
-    {
-        return false;
-    }
     s_sis_net_message *mess = (s_sis_net_message *)out_;
-    sis_net_message_clear(mess);
-    if (cursor > 0)
-    {
-        mess->source = sis_sdsnewlen(in, cursor);
-    }
-    size_t size = sis_memory_get_size(in_) - cursor + 1;
-    s_sis_json_handle *handle = sis_json_load(in + cursor + 1, size);
+
+    size_t size = sis_memory_get_size(in_);
+    s_sis_json_handle *handle = sis_json_load(sis_memory(in_), size);
     if (!handle)
     {
-        LOG(5)("json parse %s error.\n", in);
+        LOG(5)("json parse error.\n");
         return false;
     }
     s_sis_json_node *reply = sis_json_cmp_child_node(handle->node, "reply");
@@ -280,23 +266,23 @@ bool sis_net_decoded_json(s_sis_memory *in_, s_sis_net_message *out_)
     {
 		if (reply->type == SIS_JSON_INT)
 		{
-			mess->style = SIS_NET_REPLY_INT;
+			mess->style = SIS_NET_ANS_INT;
 			mess->rint = atoll(reply->value);
 		}
 		else if (reply->type == SIS_JSON_STRING)
 		{
 			if (!sis_strcasecmp(reply->value, "OK"))
 			{
-				mess->style = SIS_NET_REPLY_OK;
+				mess->style = SIS_NET_ANS_OK;
 			}
 			else if (!sis_strcasecmp(reply->value, "ERROR"))
 			{
-				mess->style = SIS_NET_REPLY_ERROR;
-				mess->rval = _sis_json_node_get_sds(handle->node, "rval");  
+				mess->style = SIS_NET_ANS_ERROR;
+				mess->rval = _sis_json_node_get_sds(handle->node, "message");  
 			}
 			else
 			{
-				mess->style = SIS_NET_REPLY_NORMAL;
+				mess->style = SIS_NET_ANS_VAL;
 				mess->rval = sis_sdsnew(reply->value);
 			}
 		}
@@ -305,7 +291,7 @@ bool sis_net_decoded_json(s_sis_memory *in_, s_sis_net_message *out_)
 			size_t len = 0;
 			char *str = sis_json_output_zip(reply, &len);
 
-			mess->style = SIS_NET_REPLY_NORMAL;
+			mess->style = SIS_NET_ANS_VAL;
 			mess->rval = sis_sdsnewlen(str, len);
 
 			sis_free(str);
@@ -337,7 +323,7 @@ bool sis_net_decoded_json(s_sis_memory *in_, s_sis_net_message *out_)
     return true;
 }
 
-bool sis_net_encoded_bytes(s_sis_net_message *in_, s_sis_memory *out_)
+bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 {
 	// 编码 一般只写 argvs 中的数据
     sis_memory_clear(out_);
@@ -346,19 +332,75 @@ bool sis_net_encoded_bytes(s_sis_net_message *in_, s_sis_memory *out_)
         sis_memory_cat(out_, in_->source, sis_sdslen(in_->source));
     }
     sis_memory_cat(out_, ":", 1);
-	sis_memory_cat_ssize(out_, in_->argvs->count);
-	for (int i = 0; i < in_->argvs->count; i++)
+	if (in_->format == SIS_NET_FORMAT_CHARS)
 	{
-		s_sis_object *obj = sis_pointer_list_get(in_->argvs, i);
-		sis_memory_cat_ssize(out_, SIS_OBJ_GET_SIZE(obj));
-		sis_memory_cat(out_, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+		return sis_net_encoded_chars(in_, out_);
+	}
+	// 二进制流
+	sis_memory_cat(out_, "B", 1); 
+	sis_memory_cat_byte(out_, in_->style, 2);
+    if (in_->style & SIS_NET_ASK_MSG)
+    {
+		if (in_->style & SIS_NET_ASK_CMD) 
+		{
+			sis_memory_cat_ssize(out_, in_->cmd ? sis_sdslen(in_->cmd) : 0);
+			if (in_->cmd)
+			{
+				sis_memory_cat(out_, in_->cmd, sis_sdslen(in_->cmd));
+			}
+		}
+		if (in_->style & SIS_NET_ASK_KEY)
+		{
+			sis_memory_cat_ssize(out_, in_->key ? sis_sdslen(in_->key) : 0);
+			if (in_->key)
+			{
+				sis_memory_cat(out_, in_->key, sis_sdslen(in_->key));
+			}
+		}
+		if (in_->style & SIS_NET_ASK_VAL)
+		{
+			sis_memory_cat_ssize(out_, in_->val ? sis_sdslen(in_->val) : 0);
+			if (in_->val)
+			{
+				sis_memory_cat(out_, in_->val, sis_sdslen(in_->val));
+			}
+		}
+		if (in_->style & SIS_NET_ASK_ARGVS)
+		{
+			if (in_->argvs)
+			{
+				sis_memory_cat_ssize(out_, in_->argvs->count);
+				for (int i = 0; i < in_->argvs->count; i++)
+				{
+					s_sis_object *obj = sis_pointer_list_get(in_->argvs, i);
+					sis_memory_cat_ssize(out_, SIS_OBJ_GET_SIZE(obj));
+					sis_memory_cat(out_, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+				}
+			}
+		}
+    }
+    else
+    {
+		if (in_->style & SIS_NET_ANS_ARGVS)
+		{
+			if (in_->argvs)
+			{
+				sis_memory_cat_ssize(out_, in_->argvs->count);
+				for (int i = 0; i < in_->argvs->count; i++)
+				{
+					s_sis_object *obj = sis_pointer_list_get(in_->argvs, i);
+					sis_memory_cat_ssize(out_, SIS_OBJ_GET_SIZE(obj));
+					sis_memory_cat(out_, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+				}
+			}
+		}       
 	}
     return true;
 }
-bool sis_net_decoded_bytes(s_sis_memory *in_, s_sis_net_message *out_)
+bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
 {
-    char *in = sis_memory(in_);
-    int cursor = sis_str_pos(in, sis_min((int)sis_memory_get_size(in_) ,64), ':');
+	size_t start = sis_memory_get_address(in_);
+    int cursor = sis_str_pos(sis_memory(in_), sis_min((int)sis_memory_get_size(in_) ,64), ':');
     if (cursor < 0)
     {
         return false;
@@ -367,19 +409,78 @@ bool sis_net_decoded_bytes(s_sis_memory *in_, s_sis_net_message *out_)
     sis_net_message_clear(mess);
     if (cursor > 0)
     {
-        mess->source = sis_sdsnewlen(in, cursor);
+        mess->source = sis_sdsnewlen(sis_memory(in_), cursor);
     }
-	size_t start = sis_memory_get_address(in_);
 	sis_memory_move(in_, cursor + 1);
-    size_t count = sis_memory_get_ssize(in_);
-	for (int i = 0; i < count; i++)
+
+	if (*sis_memory(in_) != 'B')
 	{
-		size_t size = sis_memory_get_ssize(in_);
-		s_sis_memory *memory = sis_memory_create();
-		sis_memory_cat(memory, sis_memory(in_), size);
-		sis_memory_move(in_, size);
-		s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
-		sis_pointer_list_push(out_->argvs, obj);
+		out_->format = SIS_NET_FORMAT_CHARS;
+		bool o = sis_net_decoded_chars(in_, out_);
+		sis_memory_jumpto(in_, start);
+		return o;
+	}
+	mess->format = SIS_NET_FORMAT_BYTES;
+	sis_memory_move(in_, 1);
+	mess->style = sis_memory_get_byte(in_, 2);
+    if (mess->style & SIS_NET_ASK_MSG)
+    {
+		if (mess->style & SIS_NET_ASK_CMD) 
+		{
+			size_t size = sis_memory_get_ssize(in_);
+			if (size > 0)
+			{
+				mess->cmd = sis_sdsnewlen(sis_memory(in_), size);
+			}
+			sis_memory_move(in_, size);
+		}
+		if (mess->style & SIS_NET_ASK_KEY) 
+		{
+			size_t size = sis_memory_get_ssize(in_);
+			if (size > 0)
+			{
+				mess->key = sis_sdsnewlen(sis_memory(in_), size);
+			}
+			sis_memory_move(in_, size);
+		}
+		if (mess->style & SIS_NET_ASK_VAL) 
+		{
+			size_t size = sis_memory_get_ssize(in_);
+			if (size > 0)
+			{
+				mess->val = sis_sdsnewlen(sis_memory(in_), size);
+			}
+			sis_memory_move(in_, size);
+		}
+		if (mess->style & SIS_NET_ASK_ARGVS) 
+		{
+			size_t count = sis_memory_get_ssize(in_);
+			for (int i = 0; i < count; i++)
+			{
+				size_t size = sis_memory_get_ssize(in_);
+				s_sis_sds val = sis_sdsnewlen(sis_memory(in_), size);
+				sis_memory_move(in_, size);
+				s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, val);
+				sis_net_message_write_argv(mess, obj);
+				sis_object_destroy(obj);
+			}
+		}
+	}
+	else
+	{
+		if (mess->style & SIS_NET_ANS_ARGVS)
+		{
+			size_t count = sis_memory_get_ssize(in_);
+			for (int i = 0; i < count; i++)
+			{
+				size_t size = sis_memory_get_ssize(in_);
+				s_sis_sds val = sis_sdsnewlen(sis_memory(in_), size);
+				sis_memory_move(in_, size);
+				s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, val);
+				sis_net_message_write_argv(mess, obj);
+				sis_object_destroy(obj);
+			}
+		}		
 	}
 	sis_memory_jumpto(in_, start);
     return true;

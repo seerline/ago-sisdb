@@ -146,31 +146,44 @@ const char *sis_file_csv_get_ptr(s_sis_file_csv *csv_, int idx_, int field)
 // {
 // 	return 0;
 // }
-s_sis_sds sis_csv_make_str(s_sis_sds in_, char *str_)
+s_sis_sds sis_csv_make_str(s_sis_sds in_, char *str_, size_t len_)
 {
 	size_t size = sis_sdslen(in_);
 	if (size > 0 && in_[size - 1] != '\n')
 	{
-		return sis_sdscatfmt(in_, ",%s", str_);
+		in_ = sis_sdscatlen(in_, ",", 1);
+		return sis_sdscatlen(in_, str_, len_);
 	}
 	else
 	{
-		return sis_sdscatlen(in_, str_, strlen(str_));
+		return sis_sdscatlen(in_, str_, len_);
 	}
 }
-s_sis_sds sis_csv_make_int(s_sis_sds in_, int val_)
+s_sis_sds sis_csv_make_int(s_sis_sds in_, int64 val_)
 {
 	char str[16];
 	size_t size = sis_sdslen(in_);
 	if (size > 0 && in_[size - 1] != '\n')
 	{
-		sis_sprintf(str, 16, ",%d", val_);
+		return sis_sdscatfmt(in_, ",%I", val_);
 	}
 	else
 	{
-		sis_sprintf(str, 16, "%d", val_);
+		return sis_sdscatfmt(in_, "%I", val_);
 	}
-	return sis_sdscatlen(in_, str, strlen(str));
+}
+s_sis_sds sis_csv_make_uint(s_sis_sds in_, uint64 val_)
+{
+	char str[16];
+	size_t size = sis_sdslen(in_);
+	if (size > 0 && in_[size - 1] != '\n')
+	{
+		return sis_sdscatfmt(in_, ",%U", val_);
+	}
+	else
+	{
+		return sis_sdscatfmt(in_, "%U", val_);
+	}
 }
 s_sis_sds sis_csv_make_double(s_sis_sds in_, double val_, int dot_)
 {

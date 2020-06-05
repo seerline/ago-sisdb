@@ -3,26 +3,28 @@
 #include "server.h"
 #include "sis_method.h"
 
+#include "sis_message.h"
 #include "sisdb_server.h"
+#include "sisdb_collect.h"
 
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_server_methods[] = {
-    {"auth", cmd_sisdb_server_auth, NULL, NULL},
-    {"get", cmd_sisdb_server_get, NULL, NULL},   // json 格式
-    {"set", cmd_sisdb_server_set, NULL, NULL},   // json 格式
-    {"getb", cmd_sisdb_server_getb, NULL, NULL}, // 二进制 格式
-    {"setb", cmd_sisdb_server_setb, NULL, NULL}, // 二进制 格式
-    {"del", cmd_sisdb_server_del, NULL, NULL},
+    {"auth",  cmd_sisdb_server_auth, NULL, NULL},   // 用户登录
+    {"show",  cmd_sisdb_server_show, NULL, NULL},   // 显示有多少数据集
+    {"save",  cmd_sisdb_server_save, "write,admin", NULL},   // 手动存盘
+    {"pack",  cmd_sisdb_server_pack, "write,admin", NULL},   // 手动清理磁盘旧的数据
+    {"call",  cmd_sisdb_server_call, NULL, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
+    {"wlog",  cmd_sisdb_server_wlog, NULL, NULL},   // get 后是否写log文件 方便查看信息
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_server = {
     sisdb_server_init,
-    NULL,
-    NULL,
-    NULL,
+    sisdb_server_work_init,
+    sisdb_server_working,
+    sisdb_server_work_uninit,
     sisdb_server_uninit,
     sisdb_server_method_init,
     sisdb_server_method_uninit,
@@ -31,8 +33,8 @@ s_sis_modules sis_modules_sisdb_server = {
 };
 
 static int cb_reader_recv(void *cls_, s_sis_object *in_);
-static int cb_reader_fast(void *cls_, s_sis_object *in_);
-static int cb_reader_catch(void *cls_, s_sis_object *in_);
+static int cb_reader_wlog(void *cls_, s_sis_object *in_);
+static int cb_reader_convert(void *cls_, s_sis_object *in_);
 static void cb_recv(void *worker_, s_sis_net_message *msg);
 
 static void _cb_connected(void *worker_, int sid)
@@ -59,23 +61,26 @@ bool sisdb_server_init(void *worker_, void *argv_)
     s_sisdb_server_cxt *context = SIS_MALLOC(s_sisdb_server_cxt, context);
     worker->context = context;
 
+    sis_mutex_init(&(context->save_lock), NULL);
+    sis_mutex_init(&(context->wlog_lock), NULL);
+    sis_mutex_init(&(context->fast_lock), NULL);
+
     context->level = sis_json_get_int(node, "level", 10);
 
     context->recv_list = sis_share_list_create("system", 32*1000*1000);
     context->reader_recv = sis_share_reader_login(context->recv_list, 
         SIS_SHARE_FROM_HEAD, worker, cb_reader_recv);
-    context->reader_fast = sis_share_reader_login(context->recv_list, 
-        SIS_SHARE_FROM_HEAD, worker, cb_reader_fast);
-    context->reader_catch = sis_share_reader_login(context->recv_list, 
-        SIS_SHARE_FROM_HEAD, worker, cb_reader_catch);
 
-    s_sis_json_node *catchnode = sis_json_cmp_child_node(node, "catch-save");
+    s_sis_json_node *catchnode = sis_json_cmp_child_node(node, "wlog-save");
     if (catchnode)
     {
         s_sis_worker *service = sis_worker_create(worker, catchnode);
         if (service)
         {
-            context->catch_save = service;  // 根据是否为空判断是订阅还是自动执行
+            context->wlog_save = service;  // 根据是否为空判断是订阅还是自动执行
+            context->wlog_method = sis_worker_get_method(context->wlog_save, "write");
+            context->reader_wlog = sis_share_reader_login(context->recv_list, 
+                SIS_SHARE_FROM_HEAD, worker, cb_reader_wlog);
         }     
     }
 
@@ -86,6 +91,7 @@ bool sisdb_server_init(void *worker_, void *argv_)
         if (service)
         {
             context->fast_save = service;  // 根据是否为空判断是订阅还是自动执行
+            context->fast_method = sis_worker_get_method(context->fast_save, "write");
         }     
     }
 
@@ -97,19 +103,25 @@ bool sisdb_server_init(void *worker_, void *argv_)
         while(next)
         {
             s_sisdb_userinfo *userinfo = SIS_MALLOC(s_sisdb_userinfo, userinfo);
-            userinfo->authority = sis_json_get_int(next, "auth", 0xFF);
+            userinfo->access = sis_json_get_int(next, "auth", 0xFF);
             sis_strcpy(userinfo->username, 32, sis_json_get_str(next,"username"));
             sis_strcpy(userinfo->password, 32, sis_json_get_str(next,"password"));
             if (!userinfo->username[0])
             {
                 sis_strcpy(userinfo->username, 32, "guest");
-                userinfo->authority = 0;  // 可读
+                userinfo->access = 0;  // 可读
                 // 如果不设置用户名就默认 guest 登录
             }
             sis_map_pointer_set(context->user_auth, userinfo->username, userinfo);
             next = next->next;
-        }  
+        } 
+        context->logined = false; 
     }
+    else
+    {
+        context->logined = true;
+    }
+    
 
     s_sis_json_node *dsnode = sis_json_cmp_child_node(node, "datasets");
     if (dsnode)
@@ -118,7 +130,8 @@ bool sisdb_server_init(void *worker_, void *argv_)
         s_sis_json_node *next = sis_json_first_node(dsnode);
         while(next)
         {
-            s_sis_worker *service = sis_worker_create(worker, next);
+            // s_sis_worker *service = sis_worker_create(worker, next);
+            s_sis_worker *service = sis_worker_create(NULL, next);
             if (service)
             {
                 sis_map_list_set(context->datasets, next->key, service);
@@ -127,6 +140,24 @@ bool sisdb_server_init(void *worker_, void *argv_)
             next = next->next;
         }  
     }
+    s_sis_json_node *cvnode = sis_json_cmp_child_node(node, "converts");
+    if (cvnode)
+    {
+        s_sis_worker *service = sis_worker_create(worker, cvnode);
+        if (service)
+        {
+            context->convert_worker = service;  // 根据是否为空判断是订阅还是自动执行
+            context->convert_method = sis_worker_get_method(context->convert_worker, "write");
+            s_sis_message *message = sis_message_create();
+            sis_message_set(message, "node", cvnode, NULL);
+            sis_message_set(message, "server", context, NULL);
+            sis_worker_command(context->convert_worker, "init", message);
+            sis_message_destroy(message);
+        }     
+        context->reader_convert = sis_share_reader_login(context->recv_list, 
+            SIS_SHARE_FROM_HEAD, worker, cb_reader_convert);
+    }
+
     context->message = sis_message_create();
 
     int isopen = 0;
@@ -152,15 +183,7 @@ bool sisdb_server_init(void *worker_, void *argv_)
     }
     return true;
 }
-// void  sisdb_server_work_init(void *worker_)
-// {
-// }
-// void  sisdb_server_working(void *worker_)
-// {
-// }
-// void  sisdb_server_work_uninit(void *worker_)
-// {
-// }
+
 void sisdb_server_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -180,15 +203,21 @@ void sisdb_server_uninit(void *worker_)
         sis_map_pointer_destroy(context->user_auth);
     }
 
-	sis_share_reader_logout(context->recv_list, context->reader_fast);
     if (context->fast_save)
     {
         sis_worker_destroy(context->fast_save);
     }
-	sis_share_reader_logout(context->recv_list, context->reader_catch);
-    if (context->catch_save)
+
+    if (context->wlog_save)
     {
-        sis_worker_destroy(context->catch_save);
+    	sis_share_reader_logout(context->recv_list, context->reader_wlog);
+        sis_worker_destroy(context->wlog_save);
+    }
+
+    if (context->convert_worker)
+    {
+    	sis_share_reader_logout(context->recv_list, context->reader_convert);
+        sis_worker_destroy(context->convert_worker);
     }
 
 	sis_share_reader_logout(context->recv_list, context->reader_recv);
@@ -211,79 +240,56 @@ static void cb_recv(void *worker_, s_sis_net_message *msg)
 
     sis_net_message_incr(msg);
     s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, msg);
-    sis_share_list_publish(context->recv_list, obj);
+    sis_share_list_push(context->recv_list, obj);
 	sis_object_destroy(obj);
-
-    // if (msg->style & SIS_NET_ASK_MSG)
-	// {
-	// 	printf("recv query: [%d] %d : %s %s %s\n", msg->cid, 1, 
-	// 		msg->cmd ? msg->cmd : "null",
-	// 		msg->key ? msg->key : "null",
-	// 		msg->val ? msg->val : "null");
-	// 	s_sis_sds reply = sis_sdsempty();
-	// 	reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
-	// 	sis_net_ans_reply(socket, msg->cid, reply, sis_sdslen(reply));
-	// 	sis_sdsfree(reply);
-	// }	
+	
 }
-void sisdb_server_reply_error(s_sisdb_server_cxt *context, int handle, char *name)
+void sisdb_server_reply_error(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
 {
     s_sis_sds reply = sis_sdsempty();
-    reply = sis_sdscatfmt(reply, "method [%s] fail.", name);
-    sis_net_ans_error(context->server, handle, reply, sis_sdslen(reply));
+    reply = sis_sdscatfmt(reply, "method [%s] fail.", netmsg->cmd);
+    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_class_send(context->server, netmsg);
     sis_sdsfree(reply);
 }
-void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, int handle, char *name)
+void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
 {
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "no find method [%s].", name);
-    sis_net_ans_error(context->server, handle, reply, sis_sdslen(reply));
+    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_class_send(context->server, netmsg);
     sis_sdsfree(reply);
 }
-void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, int handle, char *name)
+void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
 {
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "no find service [%s].", name);
-    sis_net_ans_error(context->server, handle, reply, sis_sdslen(reply));
+    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_class_send(context->server, netmsg);
     sis_sdsfree(reply);
 }
-static int cb_reader_recv(void *worker_, s_sis_object *in_)
+void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 
-    sis_object_incr(in_);
-    s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
+    char argv[2][128]; 
+    int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
+    printf("cb_reader_recv: %d %s %s \n", cmds, argv[0], argv[1]);
 
-    char argv[2][32]; 
-    int count = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
-    printf("cb_reader_recv: %d %s %s \n", count, argv[0], argv[1]);
-    if (count == 1)
+    if (cmds == 1)
     {
-        int noservice = 1;
-        int count = sis_map_list_getsize(context->datasets);
-        for (int i = 0; i < count; i++)
+        int o = sis_worker_command(worker, netmsg->cmd, netmsg);
+        if (o == SIS_METHOD_OK)
         {
-            s_sis_worker *service = sis_map_list_geti(context->datasets, i);
-            int o = sis_worker_command(service, netmsg->cmd, netmsg);
-            if ( o < SIS_METHOD_ERROR)
-            {
-                continue;
-            }
-            noservice = 0;
-            if ( o == SIS_METHOD_OK)
-            {
-                sis_net_class_send(context->server, netmsg);
-            }
-            else
-            {
-                sisdb_server_reply_error(context, netmsg->cid, netmsg->cmd);
-            }
-            break;
+            sis_net_class_send(context->server, netmsg);
+        }  
+        else if (o == SIS_METHOD_NOCMD)
+        {
+            sisdb_server_reply_no_method(context, netmsg, netmsg->cmd);
         }
-        if (noservice)
+        else // if (o == SIS_METHOD_ERROR)
         {
-            sisdb_server_reply_no_method(context, netmsg->cid, netmsg->cmd);
+            sisdb_server_reply_error(context, netmsg);
         }
     }
     else
@@ -291,46 +297,98 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         s_sis_worker *service = sis_map_list_get(context->datasets, argv[0]);
         if (service)
         {
-            // sis_message_set(context->message, "message", netmsg, NULL);
-            // if (sis_worker_command(service, argv[1], context->message) == SIS_METHOD_OK)
             int o = sis_worker_command(service, argv[1], netmsg);
             if (o == SIS_METHOD_OK)
             {
                 sis_net_class_send(context->server, netmsg);
-            }
-            else if (o == SIS_METHOD_ERROR)
+            } 
+            else if (o == SIS_METHOD_NOCMD)
             {
-                sisdb_server_reply_error(context, netmsg->cid, netmsg->cmd);
+                sisdb_server_reply_no_method(context, netmsg, argv[1]);
             }
-            else
+            else // if (o == SIS_METHOD_ERROR)
             {
-                sisdb_server_reply_no_method(context, netmsg->cid, argv[1]);
+                sisdb_server_reply_error(context, netmsg);
             }
         } 
         else
         {
-            sisdb_server_reply_no_service(context, netmsg->cid, argv[0]);
+            sisdb_server_reply_no_service(context, netmsg, argv[0]);
+        }               
+    }  
+}
+static int cb_reader_recv(void *worker_, s_sis_object *in_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    sis_object_incr(in_);
+    s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
+
+    if (context->user_auth && !context->logined && sis_strcasecmp("auth", netmsg->cmd))
+    {
+        sis_net_ans_with_error(netmsg, "no auth.", 8);
+        sis_net_class_send(context->server, netmsg);
+    }
+    else
+    {
+        sisdb_server_send_service(worker, netmsg);
+    }
+
+	sis_object_decr(in_);
+	return 0;
+}
+
+static int cb_reader_wlog(void *worker_, s_sis_object *in_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    sis_object_incr(in_);
+    s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
+    if (!context->user_auth || context->logined)
+    {
+        // 如果不需要写盘 就不执行下面这句
+        if (context->wlog_method && sis_str_subcmp_strict("write",  context->wlog_method->access, ',') >= 0)
+        {
+            sis_mutex_lock(&context->wlog_lock);
+            context->wlog_method->proc(context->wlog_save, netmsg);
+            sis_mutex_unlock(&context->wlog_lock);
         }
-               
+    }
+	sis_object_decr(in_);
+	return 0;
+}
+// 数据转换好后直接写入队列 当成用户数据输入 保证单线程运行
+static int cb_reader_convert(void *worker_, s_sis_object *in_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    if (context->status != SISDB_STATUS_WORKING)
+    {
+        // 数据库重新加载时不工作
+        return 0;
+    }
+    sis_object_incr(in_);
+    s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);    
+    if (!context->user_auth || context->logined)
+    {
+        // 判断是否需要转数据需要就传数据 并取得返回值
+        context->wlog_method->proc(context->convert_worker, netmsg);
+        // 把返回值重新写入队列 供大家使用
     }
 	sis_object_decr(in_);
 	return 0;
 }
 
-static int cb_reader_fast(void *worker_, s_sis_object *in_)
+void sisdb_server_work_init(void *worker_)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-	return 0;
 }
-
-static int cb_reader_catch(void *worker_, s_sis_object *in_)
+void sisdb_server_working(void *worker_)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-	return 0;
+    cmd_sisdb_server_save(worker_, NULL);
 }
-
+void sisdb_server_work_uninit(void *worker_)
+{
+}
 void sisdb_server_method_init(void *worker_)
 {
 }
@@ -339,26 +397,117 @@ void sisdb_server_method_uninit(void *worker_)
 }
 int cmd_sisdb_server_auth(void *worker_, void *argv_)
 {
-    return 0;
-}
-int cmd_sisdb_server_get(void *worker_, void *argv_)
-{
-    return 0;
-}
-int cmd_sisdb_server_set(void *worker_, void *argv_)
-{
-    return 0;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    if (!context->user_auth)
+    {
+        sis_net_ans_with_ok(netmsg);
+        return SIS_METHOD_OK;
+    }
+    s_sisdb_userinfo *uinfo = (s_sisdb_userinfo *)sis_map_pointer_get(context->user_auth, netmsg->key);
+    if (!uinfo || sis_strcasecmp(uinfo->password, netmsg->val))
+    {
+        sis_net_ans_with_error(netmsg, "auth fail.", 10);
+    }
+    else
+    {
+        context->logined = true;
+        if (sis_map_list_getsize(context->datasets) > 0)
+        {
+            sis_net_ans_with_ok(netmsg);
+        }
+        else
+        {
+            sis_net_ans_with_error(netmsg, "auth ok. but no dataset.", 24);
+        }
+    }
+    return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_server_getb(void *worker_, void *argv_)
+int cmd_sisdb_server_show(void *worker_, void *argv_)
 {
-    return 0;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+        
+    s_sis_json_node *jone = sis_json_create_object();
+    s_sis_json_node *jval = sis_json_create_array();
+    sis_json_object_add_node(jone, "datasets", jval);
+    int count = sis_map_list_getsize(context->datasets);
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
+        sis_json_array_add_string(jval, service->workername, sis_sdslen(service->workername));
+    }
+    size_t len;
+    char *str = sis_json_output_zip(jone, &len);
+
+    sis_net_ans_with_string(netmsg, str, len);
+
+    sis_free(str);
+    sis_json_delete_node(jone);
+
+    return SIS_METHOD_OK;
+
 }
-int cmd_sisdb_server_setb(void *worker_, void *argv_)
+int cmd_sisdb_server_save(void *worker_, void *argv_)
 {
-    return 0;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+
+    sis_mutex_lock(&context->save_lock);
+    sis_mutex_lock(&context->wlog_lock);
+    sis_mutex_lock(&context->fast_lock);
+    // 需要保存磁盘数据 并清理catch 等工作
+    int fastok = sis_worker_command(context->fast_save, "save", NULL);
+    int catchok = sis_worker_command(context->wlog_save, "save", NULL);
+    if (fastok == SIS_METHOD_OK && catchok == SIS_METHOD_OK)
+    {
+        sis_worker_command(context->fast_save, "save-stop", NULL);
+        sis_worker_command(context->wlog_save, "save-stop", NULL);
+        sis_mutex_unlock(&context->fast_lock);
+        sis_mutex_unlock(&context->wlog_lock);
+        sis_mutex_unlock(&context->save_lock);
+        return SIS_METHOD_OK;
+    }
+    sis_worker_command(context->wlog_save, "save-cancel", NULL);
+    // 不成功就恢复老的数据
+    sis_worker_command(context->fast_save, "save-cancel", NULL);
+
+    sis_mutex_unlock(&context->fast_lock);
+    sis_mutex_unlock(&context->wlog_lock);
+    sis_mutex_unlock(&context->save_lock);
+    return SIS_METHOD_ERROR;
+
 }
-int cmd_sisdb_server_del(void *worker_, void *argv_)
+int cmd_sisdb_server_pack(void *worker_, void *argv_)
 {
-    return 0;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    sis_mutex_lock(&context->save_lock);
+    // pack 只是对磁盘数据进行重写 所以和save互斥
+    int fastok = sis_worker_command(context->fast_save, "pack", NULL);
+    if (fastok == SIS_METHOD_OK)
+    {
+        sis_worker_command(context->fast_save, "pack-stop", NULL);
+        sis_mutex_unlock(&context->save_lock);
+        return SIS_METHOD_OK;
+    }
+    sis_worker_command(context->fast_save, "pack-cancel", NULL);
+    sis_mutex_unlock(&context->save_lock);
+    return SIS_METHOD_ERROR;
+}
+int cmd_sisdb_server_call(void *worker_, void *argv_)
+{
+    // 调用其他扩展方法
+    return SIS_METHOD_ERROR;
+}
+int cmd_sisdb_server_wlog(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    context->switch_wget = !context->switch_wget;
+    return SIS_METHOD_OK;
 }

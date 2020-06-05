@@ -3,100 +3,78 @@
 #include <sis_malloc.h>
 #include <sis_net.node.h>
 
-int sis_net_ask_command(s_sis_net_class *net_, int handle_, 
-    char *cmd_, char *key_, char *sdb_, char *val_, size_t vlen_)
+void sis_net_ask_with_string(s_sis_net_message *netmsg_, 
+    char *cmd_, char *key_, char *val_, size_t vlen_)
 {
-    s_sis_net_message *msg = sis_net_message_create();
-    msg->style = SIS_NET_ASK_NORMAL;
-    msg->cid = handle_;
-    msg->cmd = cmd_ ? sdsnew(cmd_) : NULL;
-    msg->key = key_ ? sdsnew(key_) : NULL;
-    msg->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
-    int o = sis_net_class_send(net_, msg);
-    sis_net_message_destroy(msg);
-    return o;
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ASK_NORMAL;
+    netmsg_->cmd = cmd_ ? sdsnew(cmd_) : NULL;
+    netmsg_->key = key_ ? sdsnew(key_) : NULL;
+    netmsg_->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
+}
+void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
+    char *cmd_, char *key_, char *val_, size_t vlen_)
+{
+    netmsg_->format = SIS_NET_FORMAT_BYTES;
+    netmsg_->style = SIS_NET_ASK_NORMAL;
+    netmsg_->cmd = cmd_ ? sdsnew(cmd_) : NULL;
+    netmsg_->key = key_ ? sdsnew(key_) : NULL;
+    netmsg_->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
+}
+void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, s_sis_object *in_)
+{
+	if (!netmsg_->argvs)
+	{
+		netmsg_->argvs = sis_pointer_list_create();
+		netmsg_->argvs->vfree = sis_object_decr;
+	}
+    sis_object_incr(in_);
+    sis_pointer_list_push(netmsg_->argvs, in_);
 }
 
-int sis_net_sub_command(s_sis_net_class *net_, int handle_, 
-    char *key_, char *sdb_, char *val_, size_t vlen_)
+void sis_net_ans_with_string(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
-    s_sis_net_message *msg = sis_net_message_create();
-    msg->style = SIS_NET_ASK_NORMAL;
-    msg->cid = handle_;
-    msg->cmd = sdsnew("sub");
-    msg->key = key_ ? sdsnew(key_) : NULL;
-    msg->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
-    int o = sis_net_class_send(net_, msg);
-    sis_net_message_destroy(msg);
-    return o;    
-}
-
-int sis_net_pub_command(s_sis_net_class *net_, int handle_, 
-    char *key_, char *sdb_, char *val_, size_t vlen_)
-{
-    s_sis_net_message *msg = sis_net_message_create();
-    msg->style = SIS_NET_ASK_NORMAL;
-    msg->cid = handle_;
-    msg->cmd = sdsnew("pub");
-    msg->key = key_ ? sdsnew(key_) : NULL;
-    msg->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
-    int o = sis_net_class_send(net_, msg);
-    sis_net_message_destroy(msg);
-    return o;        
-}
-
-// 写结果数据
-int sis_net_ans_ok(s_sis_net_class *net_, int handle_)
-{
-    s_sis_net_message *msg = sis_net_message_create();
-    msg->style = SIS_NET_REPLY_OK;
-    msg->cid = handle_;
-    int o = sis_net_class_send(net_, msg);
-    sis_net_message_destroy(msg);
-    return o;            
-}
-int sis_net_ans_error(s_sis_net_class *net_, int handle_, char *rval_, size_t vlen_)
-{
-    s_sis_net_message *msg = sis_net_message_create();
-    msg->style = SIS_NET_REPLY_ERROR;
-    msg->cid = handle_;
-    msg->rval = rval_ ? sdsnewlen(rval_, vlen_) : NULL;
-    int o = sis_net_class_send(net_, msg);
-    sis_net_message_destroy(msg);
-    return o;                
-}
-// 写整数数据
-int sis_net_ans_int(s_sis_net_class *net_, int handle_, int64 val_)
-{
-    s_sis_net_message *msg = sis_net_message_create();
-    msg->style = SIS_NET_REPLY_INT;
-    msg->cid = handle_;
-    msg->rint = val_;
-    int o = sis_net_class_send(net_, msg);
-    sis_net_message_destroy(msg);
-    return o;      
-}
-// 写正常数据
-int sis_net_ans_reply(s_sis_net_class *net_, int handle_, char *rval_, size_t vlen_)
-{
-    s_sis_net_message *msg = sis_net_message_create();
-    msg->style = SIS_NET_REPLY_NORMAL;
-    msg->cid = handle_;
-    msg->rval = rval_ ? sdsnewlen(rval_, vlen_) : NULL;
-    int o = sis_net_class_send(net_, msg);
-    sis_net_message_destroy(msg);
-    return o;     
-}
-
-// 写入其他数据 argv 是 s_sis_object 底层用法 用户自行发送信息 一般不用 encoded 编码
-int sis_net_write_argv(s_sis_net_message *mess_, int argc_, s_sis_object **argv_)
-{
-    for (int i = 0; i < argc_; i++)
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_VAL;
+    if (netmsg_->rval)
     {
-        sis_object_incr(argv_[i]);
-        sis_pointer_list_push(mess_->argvs, argv_[i]);
+        sis_sdsfree(netmsg_->rval);
     }
-    return mess_->argvs->count;     
+    if (in_ && ilen_ <= 0 )
+    {
+        ilen_ = sis_strlen((char *)in_);
+    }
+    netmsg_->rval = in_ ? sdsnewlen(in_, ilen_) : NULL;
+}
+void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, s_sis_object *in_)
+{
+    // 二进制数据流
+    netmsg_->format = SIS_NET_FORMAT_BYTES;
+    netmsg_->style = SIS_NET_ANS_ARGVS;
+	if (!netmsg_->argvs)
+	{
+		netmsg_->argvs = sis_pointer_list_create();
+		netmsg_->argvs->vfree = sis_object_decr;
+	}
+    sis_object_incr(in_);
+    sis_pointer_list_push(netmsg_->argvs, in_);
+}
+void sis_net_ans_with_int(s_sis_net_message *netmsg_, int in_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_INT;
+    netmsg_->rint = in_;
+}
+void sis_net_ans_with_ok(s_sis_net_message *netmsg_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_OK;
+}
+void sis_net_ans_with_error(s_sis_net_message *netmsg_, char *rval_, size_t vlen_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_ERROR;
+    netmsg_->rval = rval_ ? sdsnewlen(rval_, vlen_) : NULL;
 }
 // int sis_net_send_ask(s_sis_net_class *net_, s_sis_net_message *msg)
 // {
@@ -154,11 +132,11 @@ int sis_net_write_argv(s_sis_net_message *mess_, int argc_, s_sis_object **argv_
 // ////////////////////////////////////////////////////////////////////////////////
 // // command list
 // ////////////////////////////////////////////////////////////////////////////////
-// #define SIS_NET_REPLY_SHORT_LEN 1024
+// #define SIS_NET_ANS_SHORT_LEN 1024
 // bool sis_socket_send_reply_info(s_sis_net_class *sock_, int cid_,const char *in_)
 // {
-// 	char str[SIS_NET_REPLY_SHORT_LEN];
-// 	sis_sprintf(str, SIS_NET_REPLY_SHORT_LEN, "+%s\r\n", in_);
+// 	char str[SIS_NET_ANS_SHORT_LEN];
+// 	sis_sprintf(str, SIS_NET_ANS_SHORT_LEN, "+%s\r\n", in_);
 // 	if (sock_->connect_method == SIS_NET_IO_CONNECT)
 // 	{
 // 		// return sis_socket_client_send(sock_->client, str, strlen(str));
@@ -171,8 +149,8 @@ int sis_net_write_argv(s_sis_net_message *mess_, int argc_, s_sis_object **argv_
 // }
 // bool sis_socket_send_reply_error(s_sis_net_class *sock_, int cid_,const char *in_)
 // {
-// 	char str[SIS_NET_REPLY_SHORT_LEN];
-// 	sis_sprintf(str, SIS_NET_REPLY_SHORT_LEN, "-%s\r\n", in_);
+// 	char str[SIS_NET_ANS_SHORT_LEN];
+// 	sis_sprintf(str, SIS_NET_ANS_SHORT_LEN, "-%s\r\n", in_);
 // 	if (sock_->connect_method == SIS_NET_IO_CONNECT)
 // 	{
 // 		// return  sis_socket_client_send(sock_->client, str, strlen(str));
@@ -294,7 +272,7 @@ int sis_net_write_argv(s_sis_net_message *mess_, int argc_, s_sis_object **argv_
 // 		return SIS_METHOD_ERROR;
 // 	}
 
-// 	mess->style = SIS_NET_REPLY_ARRAY;
+// 	mess->style = SIS_NET_ANS_ARRAY;
 // 	mess->subpub = 1;
 // 	s_sis_list_node *newnode = NULL;
 // 	if (mess->argv)

@@ -10,7 +10,7 @@ s_sis_methods *sis_methods_create(s_sis_method *methods_, int count_)
 	s_sis_map_pointer *map = sis_map_pointer_create();
 	for (int i = 0; i < count_; i++)
 	{
-		struct s_sis_method *c = methods_ + i;
+		s_sis_method *c = methods_ + i;
 		sis_methods_register(map, c);
 	}
 	return map;
@@ -22,17 +22,11 @@ void sis_methods_destroy(s_sis_methods *map_)
 
 int sis_methods_register(s_sis_methods *map_, s_sis_method *methods_)
 {
-	s_sis_sds key = sis_sdsempty();
-	key = sis_sdscatfmt(key, "%s", methods_->name);
-	struct s_sis_method *method = (s_sis_method *)sis_dict_fetch_value(map_, key); 
-	if (method) 
+	s_sis_method *method = (s_sis_method *)sis_map_pointer_get(map_, methods_->name); 
+	if (!method) 
 	{
-		sis_sdsfree(key);
+		sis_map_pointer_set(map_, methods_->name, methods_);
 	}  
-	else
-	{
-		sis_dict_add(map_, key, methods_);
-	}		 
 	return sis_map_pointer_getsize(map_);
 }
 
@@ -41,58 +35,11 @@ s_sis_method *sis_methods_get(s_sis_methods *map_, const char *name_)
 	s_sis_method *method = NULL;
 	if (map_)
 	{
-        s_sis_sds key = sis_sdsempty();
-		key = sis_sdscatfmt(key, "%s", name_);
-		method = (s_sis_method *)sis_dict_fetch_value(map_, key);
-		sis_sdsfree(key);
+		method = (s_sis_method *)sis_map_pointer_get(map_, name_);
 	}
 	return method;
 }
 
-// int sis_methods_register(s_sis_methods *map_, s_sis_method *methods_, const char *style_)
-// {
-// 	s_sis_sds key = sis_sdsempty();
-// 	if (style_)
-// 	{
-// 		key = sis_sdscatfmt(key, "%s.%s", style_, methods_->name);
-// 	}
-// 	else
-// 	{
-// 		key = sis_sdscatfmt(key, "%s", methods_->name);
-// 	}   
-// 	struct s_sis_method *method = (s_sis_method *)sis_dict_fetch_value(map_, key); 
-// 	if (method) 
-// 	{
-// 		sis_sdsfree(key);
-// 	}  
-// 	else
-// 	{
-// 		sis_dict_add(map_, key, methods_);
-// 	}		 
-// 	// int o = sis_dict_add(map, key, c);
-// 	// assert(o == DICT_OK);
-// 	return sis_map_pointer_getsize(map_);
-// }
-
-// s_sis_method *sis_methods_get(s_sis_methods *map_, const char *name_, const char *style_)
-// {
-// 	s_sis_method *method = NULL;
-// 	if (map_)
-// 	{
-//         s_sis_sds key = sis_sdsempty();
-//         if (style_)
-//         {
-// 		    key = sis_sdscatfmt(key, "%s.%s", style_, name_);
-//         }
-//         else
-//         {
-//             key = sis_sdscatfmt(key, "%s", name_);
-//         }        
-// 		method = (s_sis_method *)sis_dict_fetch_value(map_, key);
-// 		sis_sdsfree(key);
-// 	}
-// 	return method;
-// }
 
 //////////////////////////////////////////////
 //   sis_method_map function define
@@ -103,23 +50,19 @@ s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_)
 	for (int i = 0; i < count_; i++)
 	{
 		struct s_sis_method *c = methods_ + i;
-		s_sis_sds key = sis_sdsnew(c->style);
+		s_sis_sds key = sis_sdsnew(c->access);
 		key = sis_sdscatfmt(key, ".%s", c->name);
-		int o = sis_dict_add(map, key, c);
+		int o = sis_map_pointer_set(map, key, c);
 		assert(o == DICT_OK);
 	}
 	return map;
 }
-s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_, const char *style_)
+s_sis_method *sis_method_map_find(s_sis_map_pointer *map_, const char *name_)
 {
 	s_sis_method *val = NULL;
 	if (map_)
 	{
-
-		s_sis_sds key = sis_sdsnew(style_);
-		key = sis_sdscatfmt(key, ".%s", name_);
-		val = (s_sis_method *)sis_dict_fetch_value(map_, key);
-		sis_sdsfree(key);
+		val = (s_sis_method *)sis_map_pointer_get(map_, name_);
 	}
 	return val;
 }
@@ -136,14 +79,13 @@ s_sis_method_node *_sis_method_node_load(
 	s_sis_map_pointer *map_,
 	s_sis_method_node *first_,
 	s_sis_method_node *father_,
-	const char *style_,
 	s_sis_json_node *node_)
 {
-	// printf("new = %s %p\n",style_, node_);
+	// printf("new = %p\n", node_);
 	s_sis_method_node *new = (s_sis_method_node *)sis_malloc(sizeof(s_sis_method_node));
 	memset(new, 0, sizeof(s_sis_method_node));
 
-	new->method = sis_method_map_find(map_, (const char *)&node_->key[1], style_);
+	new->method = sis_method_map_find(map_, (const char *)&node_->key[1]);
 	if (!new->method)
 	{
 		LOG(5)("no find method %s\n", (const char *)&node_->key[1]);
@@ -186,7 +128,7 @@ s_sis_method_node *_sis_method_node_load(
 		{
 			if (next->key[0] == '$')
 			{
-				first = _sis_method_node_load(map_, first, new, style_, next);
+				first = _sis_method_node_load(map_, first, new, next);
 			}
 			else
 			{
@@ -216,7 +158,7 @@ s_sis_method_node *sis_method_node_first(s_sis_method_node *node_)
 	return node_;
 }
 // 起点，最外层为一个或者关系的方法列表，
-s_sis_method_node *sis_method_node_create(s_sis_map_pointer *map_, const char *style_, s_sis_json_node *node_)
+s_sis_method_node *sis_method_node_create(s_sis_map_pointer *map_, s_sis_json_node *node_)
 {
 	if (!map_ || !node_)
 	{
@@ -230,7 +172,7 @@ s_sis_method_node *sis_method_node_create(s_sis_map_pointer *map_, const char *s
 	{
 		if (next->key[0] == '$')
 		{
-			first = _sis_method_node_load(map_, first, NULL, style_, next);
+			first = _sis_method_node_load(map_, first, NULL, next);
 		}
 		next = next->next;
 	}
@@ -260,9 +202,9 @@ void sis_method_node_destroy(void *node_)
 	}
 }
 
-s_sis_method_class *sis_method_class_create(s_sis_map_pointer *map_, const char *style_, s_sis_json_node *node_)
+s_sis_method_class *sis_method_class_create(s_sis_map_pointer *map_, s_sis_json_node *node_)
 {
-	s_sis_method_node *node = sis_method_node_create(map_, style_, node_);
+	s_sis_method_node *node = sis_method_node_create(map_, node_);
 	if (!node)
 	{
 		return NULL;

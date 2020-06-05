@@ -1,5 +1,5 @@
-#ifndef _SISDB_CATCH_H
-#define _SISDB_CATCH_H
+#ifndef _SISDB_WLOG_H
+#define _SISDB_WLOG_H
 
 #include "sis_method.h"
 	
@@ -25,7 +25,7 @@
 // 取边界外的数据不支持
 // 最多的方法是取一段时间的数据
 
-typedef struct s_sisdb_catch_cxt
+typedef struct s_sisdb_wlog_cxt
 {
 	// int  status;
 	// int  cursor;   // 游标
@@ -46,7 +46,7 @@ typedef struct s_sisdb_catch_cxt
 	
 	// s_factor_init   init_info; // 初始化的信息作用是 必须大于均量才会生效
 	
-}s_sisdb_catch_cxt;
+}s_sisdb_wlog_cxt;
 
 // bget 二进制获取 同种结构的单一品种数据 key+db
 // bset 二进制写入 同种结构的单一品种数据 key+db
@@ -71,19 +71,20 @@ typedef struct s_sisdb_catch_cxt
 // fget 浮点数获取 
 // fset 浮点数写入 
 
-bool  sisdb_catch_init(void *, void *);
-void  sisdb_catch_work_init(void *);
-void  sisdb_catch_working(void *);
-void  sisdb_catch_work_uninit(void *);
-void  sisdb_catch_uninit(void *);
-void  sisdb_catch_method_init(void *);
-void  sisdb_catch_method_uninit(void *);
+bool  sisdb_wlog_init(void *, void *);
+void  sisdb_wlog_work_init(void *);
+void  sisdb_wlog_working(void *);
+void  sisdb_wlog_work_uninit(void *);
+void  sisdb_wlog_uninit(void *);
+void  sisdb_wlog_method_init(void *);
+void  sisdb_wlog_method_uninit(void *);
 
-int cmd_sisdb_catch_get(void *worker_, void *argv_);
-int cmd_sisdb_catch_set(void *worker_, void *argv_);
-int cmd_sisdb_catch_bget(void *worker_, void *argv_);
-int cmd_sisdb_catch_bset(void *worker_, void *argv_);
-int cmd_sisdb_catch_del(void *worker_, void *argv_);
+// 从log中获取数据并回写
+int cmd_sisdb_wlog_read(void *worker_, void *argv_);
+// 接收数据并顺序写入log
+int cmd_sisdb_wlog_write(void *worker_, void *argv_);
+// 数据全部处理完后清理内存
+int cmd_sisdb_wlog_clear(void *worker_, void *argv_);
 
 
 #endif

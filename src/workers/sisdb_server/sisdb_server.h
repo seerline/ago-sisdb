@@ -7,6 +7,10 @@
 #include "sis_net.io.h"
 #include "sis_message.h"
 
+#define SISDB_STATUS_NONE     0
+#define SISDB_STATUS_INITING  1
+#define SISDB_STATUS_WORKING  2
+
 // 四个时间尺度的数据表 同名字段会传递只能由大到小
 // 'T'  TICK数据 4-8 不覆盖 有就追加数据
 // 'M'  分钟数据 4 同值最新覆盖
@@ -29,11 +33,12 @@
 // 取边界外的数据不支持
 // 最多的方法是取一段时间的数据
 
+
 typedef struct s_sisdb_userinfo
 {
 	char username[32];
 	char password[32];
-	int  authority;    // 权限 
+	int  access;       // 权限 
 } s_sisdb_userinfo;
 
 typedef struct s_sisdb_server_cxt
@@ -43,65 +48,54 @@ typedef struct s_sisdb_server_cxt
 	int    level;    // 等级 默认0为最高级 只能 0 --> 1,2,3... 发数据 ||  0 <--> 0 数据是互相备份
 	// 不能反向 用于以后的数据同步
 	s_sis_share_reader *reader_recv; // 读取发送队列
-	s_sis_share_reader *reader_fast; // 读取发送队列
-	s_sis_share_reader *reader_catch; // 读取发送队列
 
 	s_sis_share_list   *recv_list;   // 所有收到的数据放队列中 供多线程分享任务
 
-	// s_sis_worker     *catch_save; // 实时缓存存储类 对每条指令都记录在盘 save 无误后清除 
-	s_sis_worker       *catch_save;  // 实时缓存存储类 对每条指令都记录在盘 save 无误后清除 
+	s_sis_share_reader *reader_wlog; // 读取发送队列 - 只有写动做会记录 wlog 
+	s_sis_method       *wlog_method; // 默认传入数据的方法
+	s_sis_worker       *wlog_save;   // 实时缓存存储类 对每条指令都记录在盘 save 无误后清除 
 	// 下次加载从fast_save加载限定数据 
 
+	s_sis_share_reader *reader_convert; // 读取发送队列
+	s_sis_method       *convert_method;   // 默认传入数据的方法
+	s_sis_worker       *convert_worker;   // 数据自动切片或转移
+
+	// 节省内存 所有订阅请求都发送到fast_save 由这个方法来处理
+	s_sis_method       *fast_method; // 默认传入数据的方法
 	s_sis_worker       *fast_save;   // 快速存储类
 
 	// s_sis_worker       *slow_save;   // 慢速存储类
+	s_sis_mutex_t       wlog_lock;  // 写时 save 和 write 时加锁 
+	s_sis_mutex_t       fast_lock;   // 写时 save 和 write 时加锁 
+	s_sis_mutex_t       save_lock;   // 写时 save 和 pack 互排斥
 
 	s_sis_map_pointer  *user_auth;   // 用户账号密码 s_sisdb_userinfo
 
 	s_sis_message      *message;     // 消息传递
-	s_sis_map_list     *datasets;    // 数据集合 分为不同目录存储 
+	
+	bool                logined;     // 是否已经登录     
+
+	bool                switch_wget;  // 设置后所有 get 会同时存盘
+
+	s_sis_map_list     *datasets;    // 数据集合 s_sis_worker s_sis_db 分为不同目录存储 
 
 	s_sis_net_class    *server;      // 服务监听器 s_sis_net_server
 
 }s_sisdb_server_cxt;
 
-// bget 二进制获取 同种结构的单一品种数据 key+db
-// bset 二进制写入 同种结构的单一品种数据 key+db
-// bsub 二进制订阅 一次一条或多条数据多种数据 key+dbs
-// 
-// aget 数组获取 同种结构的单一品种数据 key+db
-// aset 数组写入 同种结构的单一品种数据 key+db
-// asub 数组订阅 一次一条或多条数据多种数据 key+dbs 
-
-// get  字符串获取 
-// set  字符串写入 
-
-// jget JSON类型获取 
-// jset JSON类型写入 
-
-// lget 列表类型获取 
-// lset 列表类型写入 
-
-// iget 整数获取 
-// iset 整数写入 
-
-// fget 浮点数获取 
-// fset 浮点数写入 
-
 bool  sisdb_server_init(void *, void *);
-// void  sisdb_server_work_init(void *);
-// void  sisdb_server_working(void *);
-// void  sisdb_server_work_uninit(void *);
+void  sisdb_server_work_init(void *);
+void  sisdb_server_working(void *);
+void  sisdb_server_work_uninit(void *);
 void  sisdb_server_uninit(void *);
 void  sisdb_server_method_init(void *);
 void  sisdb_server_method_uninit(void *);
 
 int cmd_sisdb_server_auth(void *worker_, void *argv_);
-int cmd_sisdb_server_get(void *worker_, void *argv_);
-int cmd_sisdb_server_set(void *worker_, void *argv_);
-int cmd_sisdb_server_getb(void *worker_, void *argv_);
-int cmd_sisdb_server_setb(void *worker_, void *argv_);
-int cmd_sisdb_server_del(void *worker_, void *argv_);
-
+int cmd_sisdb_server_show(void *worker_, void *argv_);
+int cmd_sisdb_server_save(void *worker_, void *argv_);
+int cmd_sisdb_server_pack(void *worker_, void *argv_);
+int cmd_sisdb_server_call(void *worker_, void *argv_);
+int cmd_sisdb_server_wlog(void *worker_, void *argv_);
 
 #endif

@@ -2,7 +2,7 @@
 #include <sis_net.ws.h>
 #include <sis_net.rds.h>
 #include <sis_net.h>
-
+#include <sis_net.node.h>
 //////////////////////////
 // s_sis_url
 //////////////////////////
@@ -26,7 +26,6 @@ void sis_url_clone(s_sis_url *src_, s_sis_url *des_)
 	des_->role = src_->role;
 	des_->version = src_->version;
 	des_->protocol = src_->protocol;
-	des_->format = src_->format;
 	des_->protocol = src_->protocol;
 	des_->compress = src_->compress;
 	des_->crypt = src_->crypt;
@@ -86,10 +85,6 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 		{
 			url_->protocol = SIS_NET_PROTOCOL_TCP;
 		}
-	}
-	{
-		const char *str = sis_json_get_str(node_, "format"); // chars bytes
-	    url_->format = str && !sis_strcasecmp(str, "bytes") ? SIS_NET_FORMAT_BYTES : SIS_NET_FORMAT_CHARS ;
 	}
 	{
 		const char *str = sis_json_get_str(node_, "compress");
@@ -160,7 +155,7 @@ void sis_net_context_destroy(void *cxt_)
 	sis_free(cxt);
 }
 
-void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 format, uint8 protocol)
+void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 protocol)
 {
 	// coded 必须有值
 	// slots->slot_net_encoded = NULL;
@@ -183,16 +178,10 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 		slots->slot_net_encrypt = sis_net_ssl_encrypt;
 		slots->slot_net_decrypt = sis_net_ssl_decrypt;
 	}
-	if (format == SIS_NET_FORMAT_BYTES)
-	{
-		slots->slot_net_encoded = sis_net_encoded_bytes;
-		slots->slot_net_decoded = sis_net_decoded_bytes;		
-	}	
-	else
-	{
-		slots->slot_net_encoded = sis_net_encoded_json;
-		slots->slot_net_decoded = sis_net_decoded_json;		
-	}
+
+	slots->slot_net_encoded = sis_net_encoded_normal;
+	slots->slot_net_decoded = sis_net_decoded_normal;
+
 	if (protocol == SIS_NET_PROTOCOL_RDS)
 	{
 		slots->slot_net_compress = NULL;
@@ -321,9 +310,6 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 
 	o->cxts = sis_map_pointer_create_v(sis_net_context_destroy);
 
-	o->map_subs = sis_map_pointer_create_v(sis_pointer_list_destroy);
-	o->map_pubs = sis_map_pointer_create_v(sis_pointer_list_destroy);
-	
 	o->cb_source = o;
 	o->work_status = SIS_NET_NONE;
 
@@ -353,9 +339,6 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 	sis_share_list_destroy(cls->ready_send_cxts);
 
 	sis_map_pointer_destroy(cls->cxts);
-
-	sis_map_pointer_destroy(cls->map_subs);
-	sis_map_pointer_destroy(cls->map_pubs);
 
 	sis_free(cls);
 }
@@ -478,7 +461,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			if (rtn == 1)
 			{
 				mess->cid = sid_;
-				sis_share_list_publish(cls->ready_recv_cxts, obj);
+				sis_share_list_push(cls->ready_recv_cxts, obj);
 			}
 			else if (rtn == 0)
 			{
@@ -518,7 +501,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 		if (rtn == 1)
 		{
 			cxt->status = SIS_NET_WORKING;
-			// sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->format, cls->url->protocol);
+			// sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 			// 这里发送登录信息 
 			if (cls->cb_connected)
 			{
@@ -543,7 +526,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			if (rtn == 1)
 			{
 				mess->cid = sid_;
-				sis_share_list_publish(cls->ready_recv_cxts, obj);
+				sis_share_list_push(cls->ready_recv_cxts, obj);
 			}			
 			else if (rtn == 0)
 			{
@@ -589,7 +572,7 @@ static void cb_server_connected(void *handle_, int sid_)
 		sis_memory_clear(cxt->recv_buffer);
 	}
 	sis_socket_server_set_rwcb(cls->server, sid_, cb_server_recv_after, cb_server_send_after);
-	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, SIS_NET_FORMAT_CHARS, cls->url->protocol);
+	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 	if (cls->url->protocol == SIS_NET_PROTOCOL_WS)
 	{
 		cxt->status = SIS_NET_HANDING;
@@ -642,7 +625,7 @@ static void cb_client_connected(void *handle_, int sid_)
 		sis_memory_clear(cxt->recv_buffer);
 	}
 	sis_socket_client_set_rwcb(cls->client, cb_client_recv_after, cb_client_send_after);
-	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, SIS_NET_FORMAT_CHARS, cls->url->protocol);
+	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 
 	//  客户端连接后立即发送握手包 两者通过后才能发送连接成功的信号
 	if (cls->url->io == SIS_NET_IO_CONNECT)
@@ -695,14 +678,12 @@ void sis_net_class_delete(s_sis_net_class *cls_, int sid_)
 	if (sid_ == 0)
 	{
 		sis_map_pointer_del(cls_->cxts, "0");
-		sis_net_class_pub_del(cls_, -1);
 	}
 	else
 	{
 		char key[16];
 		sis_sprintf(key, 16, "%d", sid_);
 		sis_map_pointer_del(cls_->cxts, key);
-		sis_net_class_pub_del(cls_, sid_);
 	}
 
 }
@@ -761,14 +742,13 @@ int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_
 	}
 	return 0;
 }
-int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, char * crypt_, char * format_, char * protocol_)
+int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, char * crypt_, char * protocol_)
 {
 	char key[16];
 	sis_sprintf(key, 16, "%d", sid_);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
 	uint8 compress = SIS_NET_ZIP_NONE;
 	uint8 crypt = SIS_NET_CRYPT_NONE;
-	uint8 format = SIS_NET_FORMAT_CHARS;
 	uint8 protocol = SIS_NET_PROTOCOL_TCP;
 
 	if (protocol_ && !sis_strcasecmp(protocol_, "redis"))
@@ -779,11 +759,10 @@ int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, cha
 	{
 		protocol = SIS_NET_PROTOCOL_WS;
 	}
-	format = format_ && !sis_strcasecmp(format_, "bytes") ? SIS_NET_FORMAT_BYTES : SIS_NET_FORMAT_CHARS ;
 	compress = compress_ && !sis_strcasecmp(compress_, "snappy") ? SIS_NET_ZIP_SNAPPY : SIS_NET_ZIP_NONE;
 	crypt = crypt_ && !sis_strcasecmp(crypt_, "ssl") ? SIS_NET_CRYPT_SSL : SIS_NET_CRYPT_NONE;
 
-	sis_net_slot_set(cxt->slots, compress, crypt, format, protocol);
+	sis_net_slot_set(cxt->slots, compress, crypt, protocol);
 
 	return 0;
 }
@@ -795,127 +774,8 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 	}
 	sis_net_message_incr(mess_);
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess_);
-	sis_share_list_publish(cls_->ready_send_cxts, obj);
+	sis_share_list_push(cls_->ready_send_cxts, obj);
 	sis_object_destroy(obj);
-	return 0;
-}
-
-int sis_net_class_subscibe(s_sis_net_class *cls_, s_sis_net_message *mess_)
-{
-	if(cls_->work_status != SIS_NET_WORKING)
-	{
-		return -1;
-	}
-	sis_net_message_incr(mess_);
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess_);
-
-	s_sis_pointer_list *list = (s_sis_pointer_list *)sis_map_pointer_get(cls_->map_subs, mess_->key);
-	if (!list)
-	{
-		list = sis_pointer_list_create();
-		list->vfree = sis_object_decr;
-		sis_map_pointer_set(cls_->map_subs, mess_->key, list);
-	}
-	bool isnew = true;
-	for (int i = 0; i < list->count; i++)
-	{
-		s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-		if (SIS_OBJ_NETMSG(info)->cid ==  mess_->cid)
-		{
-			isnew = false;
-			break;
-		}
-	}
-	if (isnew)
-	{
-		sis_object_incr(obj);
-		sis_pointer_list_push(list, obj);
-	}
-	// 断线重连后自动发送订阅信息用
-	sis_share_list_publish(cls_->ready_send_cxts, obj);
-	sis_object_destroy(obj);
-	return 0;
-}
-int sis_net_class_publish(s_sis_net_class *cls_, s_sis_net_message *mess_)
-{
-	if(cls_->work_status != SIS_NET_WORKING)
-	{
-		return -1;
-	}
-	s_sis_pointer_list *list = (s_sis_pointer_list *)sis_map_pointer_get(cls_->map_pubs, mess_->key);
-	if (list)
-	{
-		return -2;
-	}
-	for (int i = 0; i < list->count; i++)
-	{
-		s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-		if (mess_->cid == -1 || mess_->cid == SIS_OBJ_NETMSG(info)->cid )
-		{
-			s_sis_net_message *newmsg = sis_net_message_clone(mess_);
-			newmsg->cid = SIS_OBJ_NETMSG(info)->cid;
-			if (!newmsg->source)
-			{
-				newmsg->source = sis_sdsempty();
-			}
-			newmsg->source = sis_sdscpy(newmsg->source, SIS_OBJ_NETMSG(info)->source);
-			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newmsg);
-			sis_share_list_publish(cls_->ready_send_cxts, obj);
-			sis_object_destroy(obj);
-		}
-	}
-	return 0;
-}
-int sis_net_class_pub_add(s_sis_net_class *cls_, s_sis_net_message *mess_)
-{
-	sis_net_message_incr(mess_);
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess_);
-	s_sis_pointer_list *list = (s_sis_pointer_list *)sis_map_pointer_get(cls_->map_pubs, mess_->key);
-	if (!list)
-	{
-		list = sis_pointer_list_create();
-		list->vfree = sis_object_decr;
-		sis_map_pointer_set(cls_->map_pubs, mess_->key, list);
-	}
-	bool isnew = true;
-	for (int i = 0; i < list->count; i++)
-	{
-		s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-		if (SIS_OBJ_NETMSG(info)->cid ==  mess_->cid)
-		{
-			isnew = false;
-			break;
-		}
-	}
-	if (isnew)
-	{
-		sis_object_incr(obj);
-		sis_pointer_list_push(list, obj);
-	}
-	sis_object_destroy(obj);
-	return 0;
-}
-int sis_net_class_pub_del(s_sis_net_class *cls_, int sid_)
-{
-	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(cls_->map_pubs);
-	while ((de = sis_dict_next(di)) != NULL)
-	{
-		s_sis_pointer_list *list = (s_sis_pointer_list *)sis_dict_getval(de);
-		for (int i = 0; i < list->count; )
-		{
-			s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-			if (SIS_OBJ_NETMSG(info)->cid ==  sid_)
-			{
-				sis_pointer_list_delete(list, i, 1);
-			}
-			else
-			{
-				i++;
-			}			
-		}			
-	}
-	sis_dict_iter_free(di);
 	return 0;
 }
 
@@ -960,7 +820,10 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 		}
 		sis_memory_destroy(outmemptr);
 	}
-	if (call->slot_net_decoded)
+
+	mess_->format = info.is_bytes;  // 这里设置数据区格式
+
+ 	if (call->slot_net_decoded)
 	{
 		if (!(call->slot_net_decoded(inmemptr, mess_)))
 		{
@@ -989,11 +852,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	s_sis_memory *outmemptr = outmem;
 
 	s_sis_memory_info info;
-	info.is_bytes = 1;
-	if (!call->slot_net_compress && !call->slot_net_encrypt && cxt_->rurl.format == SIS_NET_FORMAT_CHARS)
-	{
-		info.is_bytes = 0;
-	}
+	info.is_bytes = mess_->format == SIS_NET_FORMAT_BYTES ? 1 : 0;
 	info.is_compress = 0;
 	info.is_crypt = 0;
 	info.is_crc16 = 0;
@@ -1030,7 +889,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	return obj;
 }
 
-#if 0
+#if 1
 
 #include "sis_net.io.h"
 
@@ -1064,8 +923,14 @@ void cb_recv(void *sock_, s_sis_net_message *msg)
 			msg->val ? msg->val : "null");
 		s_sis_sds reply = sis_sdsempty();
 		reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
-		sis_net_ans_reply(socket, msg->cid, reply, sis_sdslen(reply));
-		sis_sdsfree(reply);
+		s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, reply);
+		
+		// sis_net_ans_with_string(msg, reply, sis_sdslen(reply));
+		sis_net_ans_with_bytes(msg, obj);
+		
+		sis_net_class_send(socket, msg);
+
+		sis_object_destroy(obj);
 	}
 	else
 	{
@@ -1081,7 +946,13 @@ static void _cb_connected(void *handle_, int sid)
 
 	if (socket->url->role== SIS_NET_ROLE_REQUEST)
 	{		
-		int rtn = sis_net_ask_command(socket, sid, "set", "myname", NULL, "ding", 4);
+		s_sis_net_message *msg = sis_net_message_create();
+	    msg->cid = sid;
+		// sis_net_ask_with_string(msg, "set", "myname", "ding", 4);
+		sis_net_ask_with_bytes(msg, "set", "myname", "ding", 4);
+
+		int rtn = sis_net_class_send(socket, msg);
+		sis_net_message_destroy(msg);
 		LOG(5)("client [%d] connect ok. rtn = [%d]\n", sid, rtn);	
 	}
 	else
@@ -1113,8 +984,8 @@ int main(int argc, const char **argv)
 
 	signal(SIGINT, exithandle);
 
-	s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, SIS_NET_FORMAT_BYTES, 0, 0, TEST_SIP, TEST_PORT, NULL};
-	s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, SIS_NET_FORMAT_BYTES, 0, 0, TEST_IP, TEST_PORT, NULL};
+	s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_SIP, TEST_PORT, NULL};
+	s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, TEST_PORT, NULL};
 	// s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_REQUEST, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};
 	// s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_ANSWER, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};
 	// s_sis_url url_srv = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_ANSWER, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};

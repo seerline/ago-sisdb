@@ -5,6 +5,7 @@
 #include <sis_map.h>
 #include <sis_list.h>
 #include <sis_conf.h>
+#include <sis_csv.h>
 // 为什么要定义动态结构：
 // 每次增加功能都需要同步更新server和client，实际应用中不能保证同步更新，
 // 要求是server可以随时升级，client即使不升级也不会导致出错。
@@ -46,8 +47,6 @@
 //     最大的好处是，以后增加服务接口，不用每个接口定义一个数据结构，可以通过 key-value的方式就可以增加接口了
 //     只要client收到信息，解析成功后，就直接返回一个 数据集合名 数据区；做好安全检查后，就可以映射到一个数据结构，
 
-
-
 #define SIS_DYNAMIC_CHR_LEN   64
 
 #define SIS_DYNAMIC_OK      0
@@ -77,8 +76,10 @@
 #define SIS_DYNAMIC_TYPE_UINT   'U'
 #define SIS_DYNAMIC_TYPE_CHAR   'C'
 #define SIS_DYNAMIC_TYPE_FLOAT  'F'
+#define SIS_DYNAMIC_TYPE_PRICE  'P'
 // 时间类型 定义
-#define SIS_DYNAMIC_TYPE_MSEC   'T'  // 秒/毫秒 8  表示顺序写入
+#define SIS_DYNAMIC_TYPE_MSEC   'T'  // 毫秒 8  
+#define SIS_DYNAMIC_TYPE_SEC    'S'  // 秒   8  
 #define SIS_DYNAMIC_TYPE_MINU   'M'  // 分钟 4 time_t/60
 #define SIS_DYNAMIC_TYPE_DATE   'D'  // 天 4 20010101
 
@@ -88,7 +89,7 @@
 #pragma pack(push,1)
 
 typedef struct s_sis_dynamic_field {    
-    char  name[SIS_DYNAMIC_CHR_LEN];  // 字段名
+    s_sis_sds      name;  // 字段名
                                       // 以字段名为唯一检索标记，如果用户对字段名
     unsigned char  style;      // 数据类型
     unsigned short len;        // 数据长度
@@ -97,8 +98,6 @@ typedef struct s_sis_dynamic_field {
     unsigned char  mindex;     // 该字段是否为主索引
     unsigned char  solely;     // 该字段是否为唯一值
 	unsigned short offset;     // 在该结构的偏移位置
-	// struct s_sis_dynamic_field *map_unit;      // 对应的字段指针，s_sis_dynamic_field 为空表示不做转换
-	// void(*shift)(void *, void *, void *);      // 转移方法 == NULL 什么都不做
 } s_sis_dynamic_field;
 
 //***********************注意***********************//
@@ -111,13 +110,12 @@ typedef struct s_sis_dynamic_field {
 ////////////////////////////////////////////////////
 typedef struct s_sis_dynamic_db {
     // 描述结构体的标志符号 // 类别 . 名称 . 版本 
-	char                      name[SIS_DYNAMIC_CHR_LEN];     
-	s_sis_map_list           *fields;     // 字段信息 s_sis_dynamic_field
-    unsigned short            size;       // 结构总长度
-    s_sis_dynamic_field      *timefield;  // 时间对应字段 根据字段类型对应 仅仅有一个
-    // 转移方法  0 - 没有关联 1 - 直接拷贝 2 - 根据字段定义的方法取值
-	// struct s_sis_dynamic_db  *map_db;     // 对应的 s_sis_dynamic_db 为空表示不做转换
-    // void  (*method)(void *, void *, size_t, void *,size_t); // 转换数据的方法
+	s_sis_sds                 name;     
+	s_sis_map_list           *fields;         // 字段信息 s_sis_dynamic_field
+    unsigned short            size;           // 结构总长度
+    s_sis_dynamic_field      *field_time;      // 时间对应字段 根据字段类型对应 仅仅有一个
+	s_sis_dynamic_field      *field_mindex;   // 主索引字段 字段索引 仅仅有一个
+	s_sis_pointer_list       *field_solely;   // 唯一性字段集合 字段索引  
 } s_sis_dynamic_db;
 
 ////////////////////////////////////////////////////
@@ -137,8 +135,6 @@ typedef struct s_sis_dynamic_convert {
     void(*cb_convert)(void *, void *, size_t, void *,size_t);  // 整个数据块的转移回调
 } s_sis_dynamic_convert;
 
-
-
 // // 多个同名的db 转换结构
 // typedef struct s_sis_dynamic_class {
 //     int error;                 // 描述错误编号
@@ -148,19 +144,333 @@ typedef struct s_sis_dynamic_convert {
 
 #pragma pack(pop)
 
+inline uint64 _sis_field_get_uint(s_sis_dynamic_field *unit_, const char *val_, int index_)
+{
+	uint64  o = 0;
+	uint8  *v8;
+	uint16 *v16;
+	uint32 *v32;
+	uint64 *v64;
+
+	switch (unit_->len)
+	{
+	case 1:
+		v8 = (uint8 *)(val_ + unit_->offset + index_*sizeof(uint8));
+		o = *v8;
+		break;
+	case 2:
+		v16 = (uint16 *)(val_ + unit_->offset + index_*sizeof(uint16));
+		o = *v16;
+		break;
+	case 4:
+		v32 = (uint32 *)(val_ + unit_->offset + index_*sizeof(uint32));
+		o = *v32;
+		break;
+	case 8:
+		v64 = (uint64 *)(val_ + unit_->offset + index_*sizeof(uint64));
+		o = *v64;
+		break;
+	default:
+		break;
+	}
+	return o;
+}
+inline int64 _sis_field_get_int(s_sis_dynamic_field *unit_, const char *val_, int index_)
+{
+	int64  o = 0;
+	int8  *v8;
+	int16 *v16;
+	int32 *v32;
+	int64 *v64;
+
+	switch (unit_->len)
+	{
+	case 1:
+		v8 = (int8 *)(val_ + unit_->offset + index_*sizeof(uint8));
+		o = *v8;
+		break;
+	case 2:
+		v16 = (int16 *)(val_ + unit_->offset + index_*sizeof(uint16));
+		o = *v16;
+		break;
+	case 4:
+		v32 = (int32 *)(val_ + unit_->offset + index_*sizeof(uint32));
+		o = *v32;
+		break;
+	case 8:
+		v64 = (int64 *)(val_ + unit_->offset + index_*sizeof(uint64));
+		o = *v64;
+		break;
+	default:
+		break;
+	}
+	return o;
+}
+inline double _sis_field_get_float(s_sis_dynamic_field *unit_, const char *val_, int index_)
+{
+	double   o = 0.0;
+	float32 *f32;
+	float64 *f64;
+	switch (unit_->len)
+	{
+	case 4:
+		f32 = (float32 *)(val_ + unit_->offset + index_*sizeof(float32));
+		o = (double)*f32;
+		break;
+	case 8:
+		f64 = (float64 *)(val_ + unit_->offset + index_*sizeof(float64));
+		o = (double)*f64;
+		break;
+	default:
+		break;
+	}
+	return o;
+}
+inline void _sis_field_set_uint(s_sis_dynamic_field *unit_, char *val_, uint64 v64_, int index_)
+{
+	uint8   v8 = 0;
+	uint16 v16 = 0;
+	uint32 v32 = 0;
+	uint64 v64 = 0;
+
+	switch (unit_->len)
+	{
+	case 1:
+		v8 = (uint8)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint8), &v8, unit_->len);
+		break;
+	case 2:
+		v16 = (uint16)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint16), &v16, unit_->len);
+		break;
+	case 4:
+		v32 = (uint32)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint32), &v32, unit_->len);
+		break;
+	case 8:
+		v64 = (uint64)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint64), &v64, unit_->len);
+		break;
+	default:
+		break;
+	}	
+}
+
+inline void _sis_field_set_int(s_sis_dynamic_field *unit_, char *val_, int64 v64_, int index_)
+{
+	int8   v8 = 0;
+	int16 v16 = 0;
+	int32 v32 = 0;
+	int64 v64 = 0;
+
+	switch (unit_->len)
+	{
+	case 1:
+		v8 = (int8)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint8), &v8, unit_->len);
+		break;
+	case 2:
+		v16 = (int16)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint16), &v16, unit_->len);
+		break;
+	case 4:
+		v32 = (int32)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint32), &v32, unit_->len);
+		break;
+	case 8:
+		v64 = (int64)v64_;
+		memmove(val_ + unit_->offset + index_*sizeof(uint64), &v64, unit_->len);
+		break;
+	default:
+		break;
+	}	
+}
+
+inline void _sis_field_set_float(s_sis_dynamic_field *unit_, char *val_, double f64_, int index_)
+{
+	float32 f32 = 0.0;
+	float64 f64 = 0.0;
+	switch (unit_->len)
+	{
+	case 4:
+		f32 = (float32)f64_;
+		memmove(val_ + unit_->offset + index_*sizeof(float32), &f32, unit_->len);
+		break;
+	case 8:
+	default:
+		f64 = (float64)f64_;
+		memmove(val_ + unit_->offset + index_*sizeof(float64), &f64, unit_->len);
+		break;
+	}
+}
+inline void _sis_field_set_price(s_sisdb_field *unit_, char *val_, double f64_, int index_)
+{
+	int32 v32 = 0;
+	int64 v64 = 0;
+	int64 zoom = sis_zoom10(unit_->dot);
+	switch (unit_->len)
+	{
+	case 4:
+		v32 = (int32)(f64_ * zoom);
+		memmove(val_ + unit_->offset + index_*sizeof(float32), &v32, unit_->len);
+		break;
+	case 8:
+	default:
+		v64 = (int64)(f64_ * zoom);
+		memmove(val_ + unit_->offset + index_*sizeof(float64), &v64, unit_->len);
+		break;
+	}
+
+}
+inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_field *field_, const char *val_)
+{
+	if(field_) 
+	{
+		for(int index = 0; index < field_->count; index++)
+		{
+			switch (field_->style)
+			{
+			case SIS_DYNAMIC_TYPE_INT:
+				in_ = sis_csv_make_int(in_, _sis_field_get_int(field_, val_, index));
+				break;
+			case SIS_DYNAMIC_TYPE_SEC:
+			case SIS_DYNAMIC_TYPE_MSEC:
+			case SIS_DYNAMIC_TYPE_MINU:
+			case SIS_DYNAMIC_TYPE_DATE:
+			case SIS_DYNAMIC_TYPE_UINT:
+				in_ = sis_csv_make_uint(in_, _sis_field_get_uint(field_, val_, index));
+				break;
+			case SIS_DYNAMIC_TYPE_FLOAT:
+				{
+					in_ = sis_csv_make_double(in_, _sis_field_get_float(field_, val_, index), field_->dot);
+				}
+				break;
+			case SIS_DYNAMIC_TYPE_CHAR:
+				in_ = sis_csv_make_str(in_, val_ + field_->offset + index*field_->len, field_->len);
+				break;
+			default:
+				in_ = sis_csv_make_str(in_, " ", 1);
+				break;
+			}
+		}
+	}
+	return in_;
+}
+
+inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynamic_field *field_, const char *val_)
+{
+	if(field_) 
+	{
+		for(int index = 0; index < field_->count; index++)
+		{
+			switch (field_->style)
+			{
+			case SIS_DYNAMIC_TYPE_INT:
+				sis_json_array_add_int(in_, _sis_field_get_int(field_, val_, index));
+				break;
+			case SIS_DYNAMIC_TYPE_SEC:
+			case SIS_DYNAMIC_TYPE_MSEC:
+			case SIS_DYNAMIC_TYPE_MINU:
+			case SIS_DYNAMIC_TYPE_DATE:
+			case SIS_DYNAMIC_TYPE_UINT:
+				sis_json_array_add_uint(in_, _sis_field_get_uint(field_, val_, index));
+				break;
+			case SIS_DYNAMIC_TYPE_FLOAT:
+				{
+					sis_json_array_add_double(in_, _sis_field_get_float(field_, val_, index), field_->dot);
+				}
+				break;
+			case SIS_DYNAMIC_TYPE_CHAR:
+				sis_json_array_add_string(in_, val_ + field_->offset + index*field_->len, field_->len);
+				break;
+			default:
+				sis_json_array_add_string(in_, " ", 1);
+				break;
+			}
+		}
+	}
+}
+// index_ 表示为当前字段的第几个 默认为 0 必须保证 out足够大
+void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynamic_field *field_, int index_,
+			char *key_, s_sis_json_node *innode_)
+{
+
+	int64  i64 = 0;
+	double f64 = 0.0;
+	const char *str;
+	switch (field_->style)
+	{
+	case SIS_DYNAMIC_TYPE_CHAR:
+		str = sis_json_get_str(innode_, key_);
+		if (str)
+		{
+			int len = sis_min(field_->len, strlen(str));
+			memmove(out_ + field_->offset + index_ *field_->len, str, len);
+			if (len < field_->len)
+			{
+				out_[field_->offset + index_*field_->len + len] = 0;
+			}
+		}
+		// sis_out_binary("update 0 ", in_, 60);
+		break;
+    case SIS_DYNAMIC_TYPE_SEC:
+    case SIS_DYNAMIC_TYPE_MSEC:
+    case SIS_DYNAMIC_TYPE_MINU:
+    case SIS_DYNAMIC_TYPE_DATE:
+    case SIS_DYNAMIC_TYPE_UINT:
+		if (sis_json_find_node(innode_, key_))
+		{
+			i64 = sis_json_get_int(innode_, key_, 0);
+			_sis_field_set_uint(field_, out_, (uint64)i64, index_);
+		}
+		break;
+	case SIS_DYNAMIC_TYPE_INT:
+		if (sis_json_find_node(innode_, key_))
+		{
+			i64 = sis_json_get_int(innode_, key_, 0);
+			_sis_field_set_int(field_, out_, i64, index_);
+		}
+		break;
+	case SIS_DYNAMIC_TYPE_FLOAT:
+		if (sis_json_find_node(innode_, key_))
+		{
+			f64 = sis_json_get_double(innode_, key_, 0.0);
+			_sis_field_set_float(field_, out_, f64, index_);
+		}
+		break;
+	case SIS_DYNAMIC_TYPE_PRICE:
+		if (sis_json_find_node(innode_, key_))
+		{
+			f64 = sis_json_get_double(innode_, key_, 0.0);
+			_sis_field_set_price(field_, out_, f64, index_);
+		}
+		break;
+	default:
+		break;
+	}
+}
+//////////////////////////////////////////////////////////////
+// 
+//////////////////////////////////////////////////////////////
+s_sis_dynamic_field *sis_dynamic_field_create(char *name_);
+void sis_dynamic_field_destroy(void *db_);
+
+
 s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
 void sis_dynamic_db_destroy(void *db_);
 
-// s_sis_sds sis_dynamic_db_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
-
-s_sis_sds sis_dynamic_db_to_json(s_sis_dynamic_db *db_, s_sis_sds in_);
+s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, char *field_);
+// s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
+// 从db转为json格式数据结构
+s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
 
 // 获得当前缓存的时间
 msec_t sis_dynamic_db_gettime(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_);
-// {field:{}}
-s_sis_sds sis_dynamic_conf_to_array_sds(const char *dbstr_, void *in_, size_t ilen_); 
+// 直接通过配置转数据格式
+s_sis_sds sis_dynamic_conf_to_array_sds(const char *confstr_, void *in_, size_t ilen_); 
 
-s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_); 
+// 数据转换为array
+s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, char *key_, void *in_, size_t ilen_); 
 
 s_sis_sds sis_dynamic_db_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_);
 
