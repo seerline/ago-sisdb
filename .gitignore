@@ -1,6 +1,6 @@
 bin/*
 db/
-other/
+deps/
 db*/
 o/
 out/
@@ -17,6 +17,14 @@ CMakeCache.txt
 *.zip
 *.rar
 core.*
+*.cfg
+*.pdb
+*.ilk
+*.exp
+*.a
+macos/
+win/
+x64/
 !bin/*.conf
 !bin/Makefile
 

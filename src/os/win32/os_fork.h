@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #define sis_signal(a,b)
+#define SIGPIPE  SIGBREAK
 
 void sis_sigignore(int sign_);
 

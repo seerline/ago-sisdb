@@ -76,7 +76,7 @@ inline void sis_trim(char *s)
 	}
 }
 
-inline size_t sis_strlen(char *str_)
+inline size_t sis_strlen(const char *str_)
 {
 	return str_ ? strlen(str_) : 0;
 }

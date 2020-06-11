@@ -4,16 +4,15 @@
 #include <sis_os.h>
 #include <os_time.h>
 #include <minwinbase.h>
+
 // 超过时间才返回该值，如果强制退出不返回该值
 #define SIS_ETIMEDOUT ETIMEDOUT  // 60
 // 线程常量定义
-typedef void *(_stdcall SIS_THREAD_START_ROUTINE)(void *);
 #define  SIS_THREAD_PROC unsigned int _stdcall
 
 // 线程类型定义
-//ssstypedef void * (SIS_THREAD_START_ROUTINE)(void *); 
+typedef void *(_stdcall SIS_THREAD_START_ROUTINE)(void *);
 typedef CRITICAL_SECTION s_sis_mutex_t;
-//typedef pthread_cond_t s_sis_cond_t;
 typedef HANDLE s_sis_thread_id_t;
 
 #define sis_thread_mutex_destroy(m) DeleteCriticalSection(m)
@@ -29,52 +28,51 @@ typedef struct s_sis_thread {
 	SIS_THREAD_START_ROUTINE *worker;
 	void 					 *argv;
 } s_sis_thread;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 // 线程函数定义
-bool sis_thread_create(SIS_THREAD_START_ROUTINE func, void* var,  s_sis_thread *thread);
+bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread *thread_);
 // 等待线程结束
-void sis_thread_join(s_sis_thread_id_t thread); // 等待线程结束
-void sis_thread_clear(s_sis_thread_id_t thread); // 仅仅对linux，释放线程资源
-s_sis_thread_id_t sis_thread_self(); //获取线程ID
-// 获取线程ID
+void sis_thread_finish(s_sis_thread *thread_);
+void sis_thread_join(s_sis_thread *thread_); 
+// 仅仅对linux，释放线程资源
+void sis_thread_clear(s_sis_thread *thread);
+//获取线程ID
 s_sis_thread_id_t sis_thread_self(); 
 // 杀死
 void sis_thread_kill(s_sis_thread_id_t thread);
+#ifdef __cplusplus
+}
+#endif
 
-// 互斥锁定义
-// windows支持的锁
-// PTHREAD_MUTEX_RECURSIVE_NP  即嵌套锁
+typedef struct s_sis_wait {
+	bool          used;
+	HANDLE        semaphore;
+	int           count;
+	s_sis_mutex_t mutex;
+} s_sis_wait;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int  sis_mutex_create(s_sis_mutex_t *m);
 void sis_mutex_destroy(s_sis_mutex_t *m);
 void sis_mutex_lock(s_sis_mutex_t *m);
 void sis_mutex_unlock(s_sis_mutex_t *m);
-//#define sis_mutex_init    	pthread_mutex_init
-//#define sis_mutex_trylock   pthread_mutex_trylock
-
-/*#ifdef __cplusplus
-}
-#endif
-
-// 线程同步条件定义
-
-#ifdef __cplusplus
-extern "C" {
-#endif*/
-
-typedef struct s_sis_wait {
-	bool          end;
-	//s_sis_cond_t  cond;
-	s_sis_mutex_t mutex;
-} s_sis_wait;
+int  sis_mutex_init(s_sis_mutex_t *m, void *);
+int  sis_mutex_trylock(s_sis_mutex_t *m, void *);
 
 void sis_thread_wait_create(s_sis_wait *wait_);
 void sis_thread_wait_destroy(s_sis_wait *wait_);
 void sis_thread_wait_kill(s_sis_wait *wait_);
+void sis_thread_wait_notice(s_sis_wait *wait_);
 
 // 采用这种延时方式一般延时都在1秒以上，否则没有必要这么复杂，所以delay单位为秒
 int   sis_thread_wait_sleep(s_sis_wait *wait_, int delay_);
+int   sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_);
 void  sis_thread_wait_start(s_sis_wait *wait_);
 void  sis_thread_wait_stop(s_sis_wait *wait_);
 

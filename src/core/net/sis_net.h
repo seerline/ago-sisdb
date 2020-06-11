@@ -73,11 +73,11 @@ typedef struct s_sis_url {
 // 如果需要压缩加密把字符串当字节流处理就可以了
 // 根据ws协议头就知道后面的数据是什么格式 二进制就跟这个结构 字符出就没有这个结构
 typedef struct s_sis_memory_info {
-	unsigned is_bytes : 1;     // 数据以什么格式传播
-	unsigned is_compress : 1;  // 数据是否被压缩
-	unsigned is_crypt : 1;     // 数据是否被加密 
-	unsigned is_crc16 : 1;     // 是否有crc16校验 如果有去前面取16个字节用于校验
-	unsigned other : 4;     // 是否有crc16校验 如果有去前面取16个字节用于校验
+	unsigned char is_bytes : 1;     // 数据以什么格式传播
+	unsigned char is_compress : 1;  // 数据是否被压缩
+	unsigned char is_crypt : 1;     // 数据是否被加密 
+	unsigned char is_crc16 : 1;     // 是否有crc16校验 如果有去前面取16个字节用于校验
+	unsigned char other : 4;     // 是否有crc16校验 如果有去前面取16个字节用于校验
 } s_sis_memory_info;
 
 // 序列化和反序列化 程序内部的数据和网络通讯协议互转

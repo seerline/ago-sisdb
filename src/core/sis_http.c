@@ -1,4 +1,4 @@
-/* Based on src/http/ngx_http_parse.c from NGINX copyright Igor Sysoev
+﻿/* Based on src/http/ngx_http_parse.c from NGINX copyright Igor Sysoev
  *
  * Additional changes are licensed under the same terms as NGINX and
  * copyright Joyent, Inc. and other Node contributors. All rights reserved.
@@ -1989,7 +1989,7 @@ http_parser_parse_url(const char *buf, size_t buflen, int is_connect,
       continue;
     }
 
-    u->field_data[uf].off = p - buf;
+	u->field_data[uf].off = (uint16_t)(p - buf);
     u->field_data[uf].len = 1;
 
     u->field_set |= (1 << uf);

@@ -1,4 +1,4 @@
-#ifndef _SIS_MESSAGE_H
+﻿#ifndef _SIS_MESSAGE_H
 #define _SIS_MESSAGE_H
 
 #include <sis_core.h>

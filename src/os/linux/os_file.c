@@ -1,8 +1,22 @@
 
 #include <os_file.h>
-s_sis_handle sis_open(const char *fn_, int access_, int mode_)
+
+void sis_file_fixpath(char *in_)
 {
-	return open(fn_, access_, mode_);
+	int size = strlen(in_);
+	for (int i = size - 1; i > 0; i--)
+	{
+		if (in_[i] == '\\')
+		{
+			in_[i] = SIS_PATH_SEPARATOR;
+		}
+	}
+}
+
+s_sis_handle sis_open(const char *fn_, int mode_, int access_)
+{
+	sis_file_fixpath((char *)fn_);
+	return open(fn_, mode_, access_);
 }
 
 int sis_getpos(s_sis_handle fp_, size_t *offset_)
@@ -38,9 +52,9 @@ size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_)
 	return write(fp_, in_, len_);
 }
 
-
 s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 {
+	sis_file_fixpath((char *)fn_);
 	s_sis_file_handle fp = NULL;
 	char mode[5];
 	int index = 0;
@@ -89,7 +103,23 @@ long long sis_file_seek(s_sis_file_handle fp_, size_t offset_, int where_)
 	}
 	return -1;
 }
-
+#ifdef __APPLE__
+int sis_file_getpos(s_sis_file_handle fp_, size_t *offset_)
+{
+	fpos_t pos;
+    int o = fgetpos(fp_, &pos);
+	*offset_ = pos;
+	return o;
+}
+int sis_file_setpos(s_sis_file_handle fp_, size_t *offset_)
+{
+	fpos_t pos;
+	pos = *offset_;
+    int o = fsetpos(fp_, &pos);
+	*offset_ = pos;
+	return o;
+}
+#else
 int sis_file_getpos(s_sis_file_handle fp_, size_t *offset_)
 {
 	fpos_t pos;
@@ -105,7 +135,7 @@ int sis_file_setpos(s_sis_file_handle fp_, size_t *offset_)
 	*offset_ = pos.__pos;
 	return o;
 }
-
+#endif
 size_t sis_file_size(s_sis_file_handle fp_)
 {
 	fseek(fp_, 0, SEEK_END);
@@ -124,11 +154,12 @@ size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_)
 
 void sis_file_getpath(const char *fn_, char *out_, int olen_)
 {
+	sis_file_fixpath((char *)fn_);
 	out_[0] = 0;
 	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{
-		if (fn_[i] == '\\' || fn_[i] == '/')
+		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(out_, olen_, fn_, i + 1);
 			return;
@@ -137,12 +168,14 @@ void sis_file_getpath(const char *fn_, char *out_, int olen_)
 }
 void sis_file_getname(const char *fn_, char *out_, int olen_)
 {
+	sis_file_fixpath((char *)fn_);
 	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{
-		if (fn_[i] == '\\' || fn_[i] == '/')
+		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);
+			
 			return;
 		}
 	}
@@ -150,12 +183,15 @@ void sis_file_getname(const char *fn_, char *out_, int olen_)
 }
 bool sis_file_exists(const char *fn_)
 {
+	sis_file_fixpath((char *)fn_);
 	if (access(fn_, SIS_FILE_ACCESS_EXISTS) == 0)
 	{
 		return true;
 	}
 	else
+	{
 		return false;
+	}
 }
 bool sis_path_exists(const char *path_)
 {
@@ -166,7 +202,9 @@ bool sis_path_exists(const char *path_)
 		return true;
 	}
 	else
+	{
 		return false;
+	}
 }
 bool sis_path_mkdir(const char *path_)
 {
@@ -175,10 +213,11 @@ bool sis_path_mkdir(const char *path_)
 	{
 		return false;
 	}
+	sis_file_fixpath((char *)path_);
 	char dir[SIS_PATH_LEN];
 	for (int i = 0; i < len; i++)
 	{
-		if (path_[i] == '\\' || path_[i] == '/')
+		if (path_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(dir, SIS_PATH_LEN, path_, i + 1);
 			if (sis_path_exists(dir))
@@ -200,41 +239,31 @@ bool sis_path_mkdir(const char *path_)
 
 void sis_file_rename(char *oldn_, char *newn_)
 {
+	sis_file_fixpath((char *)oldn_);
+	sis_file_fixpath((char *)newn_);
 	rename(oldn_, newn_);
 }
 
 void sis_file_delete(const char *fn_)
 {
+	sis_file_fixpath((char *)fn_);
 	unlink(fn_);
-}
-
-char sis_path_separator()
-{
-	return '/';
 }
 
 void sis_path_complete(char *path_, int maxlen_)
 {
+	sis_file_fixpath(path_);
 	size_t len = strlen(path_);
-	for (int i = 0; i < len; i++)
+	int last = len - 1;
+	if (path_[last] != SIS_PATH_SEPARATOR)
 	{
-		if (path_[i] == '\\')
+		if (maxlen_ > (int)len)
 		{
-			path_[i] = '/';
+			path_[last + 1] = SIS_PATH_SEPARATOR;
 		}
-		if (i == len - 1)
+		else
 		{
-			if (path_[i] != '/')
-			{
-				if (maxlen_ > len)
-				{
-					path_[i + 1] = '/';
-				}
-				else
-				{
-					path_[i] = '/';
-				}
-			}
+			path_[last] = SIS_PATH_SEPARATOR;
 		}
 	}
 }

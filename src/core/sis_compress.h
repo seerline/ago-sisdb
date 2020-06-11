@@ -1,4 +1,4 @@
-#ifndef _SIS_COMPRESS_H
+﻿#ifndef _SIS_COMPRESS_H
 #define _SIS_COMPRESS_H
 
 #include "sis_memory.h"

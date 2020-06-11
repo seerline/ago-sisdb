@@ -106,17 +106,17 @@ char *sis_strdup(const char *str_, size_t len_) SIS_NEW
 	return buffer;
 }
 
-char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...) SIS_NEW
-{
-	char *str = (char *)sis_malloc(mlen_ + 1);
-	va_list args;
-	va_start(args, fmt_);
-	//snprintf(str, mlen_, fmt_, args);
-	vsnprintf(str, mlen_, fmt_, args);
-	va_end(args);
-	str[mlen_] = 0;
-	return str;
-}
+// char *sis_str_sprintf(size_t mlen_, const char *fmt_, ...) SIS_NEW
+// {
+// 	char *str = (char *)sis_malloc(mlen_ + 1);
+// 	va_list args;
+// 	va_start(args, fmt_);
+// 	//snprintf(str, mlen_, fmt_, args);
+// 	vsnprintf(str, mlen_, fmt_, args);
+// 	va_end(args);
+// 	str[mlen_] = 0;
+// 	return str;
+// }
 
 const char *sis_str_split(const char *s_, size_t *len_, char c_)
 {
@@ -405,7 +405,7 @@ const char *sis_str_getline(const char *e_, int *len_, const char *s_, size_t si
 	lines = 1;
 	// int slen = size_- (e_ - s_);
 	const char *stop = e_;
-	while(*stop&&(stop - s_) < (size_ - 1)&&lines > 0) {
+	while (*stop && (unsigned char)(stop - s_) < (size_ - 1) && lines > 0) {
 		if((unsigned char)*stop == '\n') 
 		{ 
 			lines--;

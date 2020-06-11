@@ -47,7 +47,7 @@ int sis_time_get_time_from_longstr(const char* , int* , int* ); //"2015-10-20 12
 int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:38.110" => 20151020,123038
 
 // 适用于短暂等待
-#define SIS_WAIT(_a_) ({ while(!(_a_)) { sis_sleep(300); }})
+#define SIS_WAIT(_a_) do{ while(!(_a_)) { sis_sleep(300); }} while(0)
 
 typedef struct s_sis_time_delay {
 	bool is_busy;

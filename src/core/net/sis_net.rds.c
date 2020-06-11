@@ -1,4 +1,4 @@
-#include <sis_net.rds.h>
+﻿#include <sis_net.rds.h>
 #include <sis_math.h>
 
 // static void _calc_sds_to_buffer(s_sis_sds s_, int *count_, size_t *size_) 

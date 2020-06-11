@@ -39,10 +39,10 @@ typedef unsigned int uint32;
 #endif
 #ifndef __APPLE__
 #ifndef int64_t
-typedef long int64_t;
+typedef long long int64_t;
 #endif
 #ifndef uint64_t
-typedef unsigned long uint64_t;
+typedef unsigned long long uint64_t;
 #endif
 #endif
 #ifndef int64

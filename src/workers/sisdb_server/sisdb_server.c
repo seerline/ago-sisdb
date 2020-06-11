@@ -143,17 +143,10 @@ bool sisdb_server_init(void *worker_, void *argv_)
     s_sis_json_node *cvnode = sis_json_cmp_child_node(node, "converts");
     if (cvnode)
     {
-        s_sis_worker *service = sis_worker_create(worker, cvnode);
-        if (service)
-        {
-            context->convert_worker = service;  // 根据是否为空判断是订阅还是自动执行
-            context->convert_method = sis_worker_get_method(context->convert_worker, "write");
-            s_sis_message *message = sis_message_create();
-            sis_message_set(message, "node", cvnode, NULL);
-            sis_message_set(message, "server", context, NULL);
-            sis_worker_command(context->convert_worker, "init", message);
-            sis_message_destroy(message);
-        }     
+        context->converts = sis_map_pointer_create_v(sis_pointer_list_destroy);
+
+        sisdb_convert_init(context, cvnode);
+
         context->reader_convert = sis_share_reader_login(context->recv_list, 
             SIS_SHARE_FROM_HEAD, worker, cb_reader_convert);
     }
@@ -214,10 +207,10 @@ void sisdb_server_uninit(void *worker_)
         sis_worker_destroy(context->wlog_save);
     }
 
-    if (context->convert_worker)
+    if (context->converts)
     {
     	sis_share_reader_logout(context->recv_list, context->reader_convert);
-        sis_worker_destroy(context->convert_worker);
+        sis_map_pointer_destroy(context->converts);
     }
 
 	sis_share_reader_logout(context->recv_list, context->reader_recv);
@@ -372,8 +365,8 @@ static int cb_reader_convert(void *worker_, s_sis_object *in_)
     if (!context->user_auth || context->logined)
     {
         // 判断是否需要转数据需要就传数据 并取得返回值
-        context->wlog_method->proc(context->convert_worker, netmsg);
         // 把返回值重新写入队列 供大家使用
+        sisdb_convert_working(context, netmsg);
     }
 	sis_object_decr(in_);
 	return 0;

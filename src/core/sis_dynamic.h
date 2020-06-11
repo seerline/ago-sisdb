@@ -6,6 +6,8 @@
 #include <sis_list.h>
 #include <sis_conf.h>
 #include <sis_csv.h>
+#include <sis_math.h>
+
 // 为什么要定义动态结构：
 // 每次增加功能都需要同步更新server和client，实际应用中不能保证同步更新，
 // 要求是server可以随时升级，client即使不升级也不会导致出错。
@@ -46,6 +48,7 @@
 //          对client发给server老的数据结构，只要server的数据集合名还在，就可以解析出来，并为client服务
 //     最大的好处是，以后增加服务接口，不用每个接口定义一个数据结构，可以通过 key-value的方式就可以增加接口了
 //     只要client收到信息，解析成功后，就直接返回一个 数据集合名 数据区；做好安全检查后，就可以映射到一个数据结构，
+#define SIS_MEMORY_DB_SIZE    32*1024
 
 #define SIS_DYNAMIC_CHR_LEN   64
 
@@ -78,7 +81,7 @@
 #define SIS_DYNAMIC_TYPE_FLOAT  'F'
 #define SIS_DYNAMIC_TYPE_PRICE  'P'
 // 时间类型 定义
-#define SIS_DYNAMIC_TYPE_MSEC   'T'  // 毫秒 8  
+#define SIS_DYNAMIC_TYPE_TICK   'T'  // 毫秒 8  
 #define SIS_DYNAMIC_TYPE_SEC    'S'  // 秒   8  
 #define SIS_DYNAMIC_TYPE_MINU   'M'  // 分钟 4 time_t/60
 #define SIS_DYNAMIC_TYPE_DATE   'D'  // 天 4 20010101
@@ -113,7 +116,7 @@ typedef struct s_sis_dynamic_db {
 	s_sis_sds                 name;     
 	s_sis_map_list           *fields;         // 字段信息 s_sis_dynamic_field
     unsigned short            size;           // 结构总长度
-    s_sis_dynamic_field      *field_time;      // 时间对应字段 根据字段类型对应 仅仅有一个
+    s_sis_dynamic_field      *field_time;     // 时间对应字段 根据字段类型对应 仅仅有一个
 	s_sis_dynamic_field      *field_mindex;   // 主索引字段 字段索引 仅仅有一个
 	s_sis_pointer_list       *field_solely;   // 唯一性字段集合 字段索引  
 } s_sis_dynamic_db;
@@ -226,13 +229,34 @@ inline double _sis_field_get_float(s_sis_dynamic_field *unit_, const char *val_,
 	}
 	return o;
 }
+
+inline double _sis_field_get_price(s_sis_dynamic_field *unit_, const char *val_, int index_)
+{
+	double   o = 0.0;
+	int32 *v32;
+	int64 *v64;
+	int64 zoom = sis_zoom10(unit_->dot);
+	switch (unit_->len)
+	{
+	case 4:
+		v32 = (int32 *)(val_ + unit_->offset + index_*sizeof(uint32));
+		o = (double)((float32)*v32 / (float32)zoom);
+		break;
+	case 8:
+		v64 = (int64 *)(val_ + unit_->offset + index_*sizeof(uint64));
+		o = (double)((float64)*v64 / (float64)zoom);
+		break;
+	default:
+		break;
+	}
+	return o;
+}
 inline void _sis_field_set_uint(s_sis_dynamic_field *unit_, char *val_, uint64 v64_, int index_)
 {
 	uint8   v8 = 0;
 	uint16 v16 = 0;
 	uint32 v32 = 0;
 	uint64 v64 = 0;
-
 	switch (unit_->len)
 	{
 	case 1:
@@ -303,7 +327,7 @@ inline void _sis_field_set_float(s_sis_dynamic_field *unit_, char *val_, double 
 		break;
 	}
 }
-inline void _sis_field_set_price(s_sisdb_field *unit_, char *val_, double f64_, int index_)
+inline void _sis_field_set_price(s_sis_dynamic_field *unit_, char *val_, double f64_, int index_)
 {
 	int32 v32 = 0;
 	int64 v64 = 0;
@@ -334,7 +358,7 @@ inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_field *fi
 				in_ = sis_csv_make_int(in_, _sis_field_get_int(field_, val_, index));
 				break;
 			case SIS_DYNAMIC_TYPE_SEC:
-			case SIS_DYNAMIC_TYPE_MSEC:
+			case SIS_DYNAMIC_TYPE_TICK:
 			case SIS_DYNAMIC_TYPE_MINU:
 			case SIS_DYNAMIC_TYPE_DATE:
 			case SIS_DYNAMIC_TYPE_UINT:
@@ -343,6 +367,11 @@ inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_field *fi
 			case SIS_DYNAMIC_TYPE_FLOAT:
 				{
 					in_ = sis_csv_make_double(in_, _sis_field_get_float(field_, val_, index), field_->dot);
+				}
+				break;
+			case SIS_DYNAMIC_TYPE_PRICE:
+				{
+					in_ = sis_csv_make_double(in_, _sis_field_get_price(field_, val_, index), field_->dot);
 				}
 				break;
 			case SIS_DYNAMIC_TYPE_CHAR:
@@ -369,7 +398,7 @@ inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynamic_field
 				sis_json_array_add_int(in_, _sis_field_get_int(field_, val_, index));
 				break;
 			case SIS_DYNAMIC_TYPE_SEC:
-			case SIS_DYNAMIC_TYPE_MSEC:
+			case SIS_DYNAMIC_TYPE_TICK:
 			case SIS_DYNAMIC_TYPE_MINU:
 			case SIS_DYNAMIC_TYPE_DATE:
 			case SIS_DYNAMIC_TYPE_UINT:
@@ -378,6 +407,11 @@ inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynamic_field
 			case SIS_DYNAMIC_TYPE_FLOAT:
 				{
 					sis_json_array_add_double(in_, _sis_field_get_float(field_, val_, index), field_->dot);
+				}
+				break;
+			case SIS_DYNAMIC_TYPE_PRICE:
+				{
+					sis_json_array_add_double(in_, _sis_field_get_price(field_, val_, index), field_->dot);
 				}
 				break;
 			case SIS_DYNAMIC_TYPE_CHAR:
@@ -391,7 +425,7 @@ inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynamic_field
 	}
 }
 // index_ 表示为当前字段的第几个 默认为 0 必须保证 out足够大
-void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynamic_field *field_, int index_,
+inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynamic_field *field_, int index_,
 			char *key_, s_sis_json_node *innode_)
 {
 
@@ -414,7 +448,7 @@ void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynamic_field *field
 		// sis_out_binary("update 0 ", in_, 60);
 		break;
     case SIS_DYNAMIC_TYPE_SEC:
-    case SIS_DYNAMIC_TYPE_MSEC:
+    case SIS_DYNAMIC_TYPE_TICK:
     case SIS_DYNAMIC_TYPE_MINU:
     case SIS_DYNAMIC_TYPE_DATE:
     case SIS_DYNAMIC_TYPE_UINT:
@@ -459,20 +493,26 @@ void sis_dynamic_field_destroy(void *db_);
 s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
 void sis_dynamic_db_destroy(void *db_);
 
-s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, char *field_);
-// s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
+s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_);
+
+s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
 // 从db转为json格式数据结构
 s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
 
 // 获得当前缓存的时间
-msec_t sis_dynamic_db_gettime(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_);
+msec_t sis_dynamic_db_get_time(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_);
+// 获得当前索引的值 以长整数返回
+uint64 sis_dynamic_db_get_mindex(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_);
+
 // 直接通过配置转数据格式
 s_sis_sds sis_dynamic_conf_to_array_sds(const char *confstr_, void *in_, size_t ilen_); 
 
 // 数据转换为array
-s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, char *key_, void *in_, size_t ilen_); 
+s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in_, size_t ilen_); 
 
 s_sis_sds sis_dynamic_db_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_);
+
+s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_);
 
 ///////////////////////////////
 // 转换对象定义
@@ -485,6 +525,7 @@ size_t sis_dynamic_convert_length(s_sis_dynamic_convert *cls_, const char *in_, 
 // 得到转换数据
 int sis_dynamic_convert(s_sis_dynamic_convert *cls_, 
 		const char *in_, size_t ilen_, char *out_, size_t olen_);
+
 
 // // 参数为json结构的数据表定义,必须两个数据定义全部传入才创建成功
 // // 同名的自动生成link信息，不同名的没有link信息

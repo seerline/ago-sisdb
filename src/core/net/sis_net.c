@@ -236,7 +236,7 @@ static int cb_sis_reader_recv(void *cls_, s_sis_object *in_)
 static int cb_sis_reader_send(void *cls_, s_sis_object *in_)
 {
 	// 从队列中来 往网络端口去
-	printf("reader read +++ %p.\n", in_);
+	// printf("reader read +++ %p.\n", in_);
 
 	if (in_ == NULL)
 	{
@@ -889,7 +889,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	return obj;
 }
 
-#if 1
+#if 0
 
 #include "sis_net.io.h"
 
@@ -923,14 +923,12 @@ void cb_recv(void *sock_, s_sis_net_message *msg)
 			msg->val ? msg->val : "null");
 		s_sis_sds reply = sis_sdsempty();
 		reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
-		s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, reply);
 		
 		// sis_net_ans_with_string(msg, reply, sis_sdslen(reply));
-		sis_net_ans_with_bytes(msg, obj);
+		sis_net_ans_with_bytes(msg, reply);
 		
 		sis_net_class_send(socket, msg);
 
-		sis_object_destroy(obj);
 	}
 	else
 	{

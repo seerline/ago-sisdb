@@ -5,8 +5,6 @@
 #include <math.h>
 #include <sis_malloc.h>
 
-#define  LOWORD(l)         ( (unsigned short)(l) )
-#define  HIWORD(l)         ( (unsigned short)(((unsigned int)(l) >> 16) & 0xFFFF) )
 #define  MERGEINT(a,b)     ( (unsigned int)( ((unsigned short)(a) << 16) | (unsigned short)(b)) )
 
 #define  sis_max(a,b)    (((a) > (b)) ? (a) : (b))
@@ -46,10 +44,10 @@ inline uint32 sis_sqrt10(uint64 v)
   uint32 rtn = 1;
   for (;;) 
   {
-    if (v <= 10) return rtn;
-    if (v <= 100) return rtn + 1;
-    if (v <= 1000) return rtn + 2;
-    if (v <= 10000) return rtn + 3;
+    if (v < 10) return rtn;
+    if (v < 100) return rtn + 1;
+    if (v < 1000) return rtn + 2;
+    if (v < 10000) return rtn + 3;
     v /= 10000U;
     rtn += 4;
   }

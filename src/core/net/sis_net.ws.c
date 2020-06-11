@@ -1,4 +1,4 @@
-#include "sis_net.ws.h"
+﻿#include "sis_net.ws.h"
 
 static char __ws_define_hash[] = "                        258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 static char __ws_define_ans[] = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ";
@@ -92,7 +92,11 @@ int sis_net_ws_chk_ans(s_sis_memory *in_)
 // 打包
 int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s_sis_memory_info *info)
 {
-    size_t insize = sis_memory_get_size(in_) + sizeof(s_sis_memory_info);
+    size_t insize = sis_memory_get_size(in_);
+    if (info) 
+    {
+        insize += sizeof(s_sis_memory_info);
+    }
     int count = insize / MAX_SEND_BUFF + 1;
     sis_memory_clear(out_);
     sis_memory_set_maxsize(out_, insize + count * 10);
@@ -137,7 +141,7 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s
             sis_bitstream_put(stream, 126, 7);
             sis_bitstream_put(stream, size, 16);
         }
-        if (i == count - 1)
+        if (i == count - 1 && info)
         {
             sis_bitstream_put_buffer(stream, inptr, size - sizeof(s_sis_memory_info));
             sis_bitstream_put_buffer(stream, (char *)info, sizeof(s_sis_memory_info));

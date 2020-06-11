@@ -41,7 +41,7 @@ void sis_log_open(const char *log_, int level_, int limit_)
 	// error直接输出到屏幕
 	sis_log_close();
 
-	if (!log_ || !strcasecmp(log_, "console"))
+	if (!log_ || !sis_strcasecmp(log_, "console"))
 	{
 		_sis_log.outscreen = true;
 	}
@@ -68,7 +68,7 @@ void sis_log_open(const char *log_, int level_, int limit_)
 		}
 	}
 }
-bool sis_log_input(int level_, int thread_, const char *func_)
+bool sis_log_input(int level_, s_sis_thread_id_t thread_, const char *func_)
 {
 	if (level_ > _sis_log.level)
 	{
@@ -171,7 +171,7 @@ void sis_out_percent_start(const char *info_)
 	{
 		return ;
 	}
-	printf("%s     ", info_);
+	// printf("%s     ", info_);
 }
 
 void sis_out_percent(size_t step_, size_t count_)

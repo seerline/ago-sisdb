@@ -1,4 +1,4 @@
-#include "sis_modules.h"
+﻿#include "sis_modules.h"
 #include "worker.h"
 #include "server.h"
 #include "sis_method.h"
@@ -246,6 +246,7 @@ void sis_disk_wcatch_clear(s_sis_disk_wcatch *in_)
 ////////////////////////////////////////////////////////
 int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, const char *fname_)
 {
+
     cls_->style = style_;
     sis_strcpy(cls_->fpath, 255, fpath_);
     sis_strcpy(cls_->fname, 255, fname_);
@@ -281,6 +282,7 @@ int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, 
             cls_->work_fps->main_head.index = 1;
             cls_->work_fps->main_head.wtime = sis_time_get_idate_from_str(fname_, 0);
             cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MAXPAGE;
+            // cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MIDPAGE;
             cls_->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
             sis_sprintf(index_fn, SIS_DISK_NAME_LEN, "%s/%s/%s.%s",
                                        fpath_, SIS_DISK_SNO_DIR, fname_, SIS_DISK_IDX_CHAR);
@@ -303,7 +305,7 @@ int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, 
     default: // SIS_DISK_TYPE_STREAM
         // 其他类型的文件直接传入文件名 用户可自定义类型
         sis_sprintf(work_fn, SIS_DISK_NAME_LEN, "%s/%s", fpath_, fname_);
-        cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MAXPAGE;
+        cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MIDPAGE;
         cls_->work_fps->max_file_size = 0; // 顺序读写的文件 不需要设置最大值 
         break;
     }
@@ -331,7 +333,8 @@ int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, 
     return 0;
 }
 
-s_sis_disk_class *sis_disk_class_create(int style_, const char *fpath_, const char *fname_)
+// s_sis_disk_class *sis_disk_class_create(int style_, const char *fpath_, const char *fname_)
+s_sis_disk_class *sis_disk_class_create()
 {
     s_sis_disk_class *cls = SIS_MALLOC(s_sis_disk_class, cls);
 
@@ -351,6 +354,7 @@ s_sis_disk_class *sis_disk_class_create(int style_, const char *fpath_, const ch
     cls->work_fps = sis_files_create();
     cls->index_fps = sis_files_create();
 
+    cls->status = SIS_DISK_STATUS_CLOSED;
     // if (sis_disk_class_init(cls, style_, fpath_, fname_))
     // {
     //     sis_disk_class_destroy(cls);
@@ -574,8 +578,10 @@ int test_stream()
     // return 0;
     sis_log_open(NULL, 10, 0);
     safe_memory_start();
-    s_sis_disk_class *rwf = sis_disk_class_create(SIS_DISK_TYPE_STREAM, "dbs", "1111.aof");
+    s_sis_disk_class *rwf = sis_disk_class_create();
     // 先写
+    sis_disk_class_init(rwf, SIS_DISK_TYPE_STREAM, "dbs", "1111.aof");
+
     sis_disk_file_write_start(rwf, SIS_DISK_ACCESS_CREATE);
 
     int count = 1*1000*1000;
@@ -742,8 +748,10 @@ void write_log(s_sis_disk_class *rwf)
     sis_disk_class_set_sdb(rwf, sdbs, sis_strlen(sdbs));
 
     sis_disk_file_write_start(rwf, SIS_DISK_ACCESS_CREATE);
+    
+
     // int count = 1*1000*1000;
-    sis_disk_class_set_size(rwf, 400*1000, 20*1000);
+    sis_disk_class_set_size(rwf, 400*1000000, 20*1000);
     // sis_disk_class_set_size(rwf, 0, 300*1000);    
     size_t size = sis_disk_file_write_sdb(rwf, "k1", "info", &info_data[0], sizeof(s_info));
     size += sis_disk_file_write_sdb(rwf, "k2", "info", &info_data[1], sizeof(s_info));
@@ -751,7 +759,7 @@ void write_log(s_sis_disk_class *rwf)
     
     size+= write_hq(rwf);
 
-    printf("%zu\n", size);
+    printf("style : %d, size = %zu\n", rwf->work_fps->main_head.style, size);
 
     sis_disk_file_write_stop(rwf);
     
@@ -829,19 +837,20 @@ int main()
     // sis_disk_class_destroy(rwf);
 
 // test sno
-    // s_sis_disk_class *rwf = sis_disk_class_create(SIS_DISK_TYPE_SNO ,"dbs", "20200101");  
-    // // write_log(rwf);
-    // read_of_sub(rwf);
-    // sis_disk_class_destroy(rwf);
-
-// test other
-    s_sis_disk_class *rwf = sis_disk_class_create(SIS_DISK_TYPE_SDB ,"dbs", "20200101");  
-    // write_sdb(rwf, keys, sdbs);  // sdb
-    write_sdb(rwf, NULL, sdbs);  // kdb
-    // write_sdb(rwf, keys, NULL);  // key
-    // write_sdb(rwf, NULL, NULL);  // any
+    s_sis_disk_class *rwf = sis_disk_class_create();//SIS_DISK_TYPE_SNO ,"dbs", "20200101");  
+    sis_disk_class_init(rwf, SIS_DISK_TYPE_SNO, "dbs", "20200101");
+    write_log(rwf);
     read_of_sub(rwf);
     sis_disk_class_destroy(rwf);
+
+// test other
+    // s_sis_disk_class *rwf = sis_disk_class_create(SIS_DISK_TYPE_SDB ,"dbs", "20200101");  
+    // // write_sdb(rwf, keys, sdbs);  // sdb
+    // write_sdb(rwf, NULL, sdbs);  // kdb
+    // // write_sdb(rwf, keys, NULL);  // key
+    // // write_sdb(rwf, NULL, NULL);  // any
+    // read_of_sub(rwf);
+    // sis_disk_class_destroy(rwf);
     
     safe_memory_stop();
     sis_log_close();

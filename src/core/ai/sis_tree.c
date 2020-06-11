@@ -555,25 +555,25 @@
 // 	}
 // }
 // //////////////////////////////////////////////////////
-// void sis_tree_array_add_int(s_sis_tree_node *node_, long value_)
+// void sis_tree_array_add_int(s_sis_tree_node *node_, long long value_)
 // {
 // 	char key[16];
 // 	sis_sprintf(key, 10, "%d", sis_tree_get_size(node_));
 // 	sis_tree_object_add_int(node_, key, value_);
 // }
-// void sis_tree_array_set_int(s_sis_tree_node *node_, int index_, long value_)
+// void sis_tree_array_set_int(s_sis_tree_node *node_, int index_, long long value_)
 // {
 // 	char key[16];
 // 	sis_sprintf(key, 10, "%d", index_);
 // 	sis_tree_object_set_int(node_, key, value_);
 // }
-// void sis_tree_array_add_uint(s_sis_tree_node *node_, unsigned long value_)
+// void sis_tree_array_add_uint(s_sis_tree_node *node_, unsigned long long value_)
 // {
 // 	char key[16];
 // 	sis_sprintf(key, 10, "%d", sis_tree_get_size(node_));
 // 	sis_tree_object_add_uint(node_, key, value_);
 // }
-// void sis_tree_array_set_uint(s_sis_tree_node *node_, int index_, unsigned long value_)
+// void sis_tree_array_set_uint(s_sis_tree_node *node_, int index_, unsigned long long value_)
 // {
 // 	char key[16];
 // 	sis_sprintf(key, 10, "%d", index_);

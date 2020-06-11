@@ -46,7 +46,19 @@ void sis_net_ans_with_string(s_sis_net_message *netmsg_, const char *in_, size_t
     }
     netmsg_->rval = in_ ? sdsnewlen(in_, ilen_) : NULL;
 }
-void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, s_sis_object *in_)
+
+void sis_net_ans_with_sds(s_sis_net_message *netmsg_, s_sis_sds in_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_VAL;
+    if (netmsg_->rval)
+    {
+        sis_sdsfree(netmsg_->rval);
+    }
+    netmsg_->rval = in_ ;
+}
+
+void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, s_sis_sds in_)
 {
     // 二进制数据流
     netmsg_->format = SIS_NET_FORMAT_BYTES;
@@ -56,8 +68,10 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, s_sis_object *in_)
 		netmsg_->argvs = sis_pointer_list_create();
 		netmsg_->argvs->vfree = sis_object_decr;
 	}
-    sis_object_incr(in_);
-    sis_pointer_list_push(netmsg_->argvs, in_);
+    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, in_);
+    sis_object_incr(obj);
+    sis_pointer_list_push(netmsg_->argvs, obj);
+    sis_object_destroy(obj);
 }
 void sis_net_ans_with_int(s_sis_net_message *netmsg_, int in_)
 {

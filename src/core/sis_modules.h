@@ -1,4 +1,4 @@
-#ifndef _MFM_CORE_H
+﻿#ifndef _MFM_CORE_H
 #define _MFM_CORE_H
 
 #include "sis_core.h"

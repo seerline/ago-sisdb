@@ -1,4 +1,4 @@
-
+﻿
 #include "sisdb_disk.h"
 
 ///////////////////////////
@@ -245,7 +245,12 @@ int _sis_disk_read_hid_sno(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
     int sdbi = sis_memory_get_ssize(memory);
     s_sis_disk_dict *key = (s_sis_disk_dict *)sis_map_list_geti(cls_->keys, keyi);
     s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, sdbi); 
-    
+    if (!key||!sdb)
+    {
+        LOG(8)("no find .kid = %d : %d  sid = %d : %d\n", 
+            keyi, sis_map_list_getsize(cls_->keys), sdbi, sis_map_list_getsize(cls_->sdbs));
+        return 0;
+    }
     s_sis_disk_dict_unit *unit = NULL; 
     if (iunit_)
     {
@@ -341,6 +346,7 @@ int sis_read_unit_from_index(s_sis_disk_class *cls_, uint8 *hid_, s_sis_disk_ind
 {
     return sis_files_read(cls_->work_fps, iunit_->fidx, iunit_->offset, iunit_->size, hid_, out_);
 }
+
 int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
 {
     // 索引已加载
@@ -354,7 +360,7 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
         return 0;
     }
     // 按页获取数据
-    for (int page = 0; page < cls_->sno_pages; page++)
+    for (uint32 page = 0; page < cls_->sno_pages; page++)
     {
         sis_pointer_list_clear(cls_->sno_rcatch);
         for (int i = 0; i < filters->count; i++)
@@ -887,10 +893,11 @@ int sis_disk_file_read_start(s_sis_disk_class *cls_)
         ("open is no valid.[%s]\n", cls_->work_fps->cur_name);
         return -1;
     }
-    if (sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_RDONLY))
+    int o = sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_RDONLY);
+    if (o)
     {
         LOG(5)
-        ("open file fail.[%s]\n", cls_->work_fps->cur_name);
+        ("open file fail.[%s:%d]\n", cls_->work_fps->cur_name, o);
         return -2;
     }
     if (cls_->work_fps->main_head.index)
@@ -906,12 +913,17 @@ int sis_disk_file_read_start(s_sis_disk_class *cls_)
         sis_disk_file_read_dict(cls_);
         sis_files_close(cls_->index_fps);
     }
+    cls_->status = SIS_DISK_STATUS_OPENED;
     return 0;
 }
 
 // 关闭文件
 int sis_disk_file_read_stop(s_sis_disk_class *cls_)
 {
+   if (cls_->status == SIS_DISK_STATUS_CLOSED)
+    {
+        return 0;
+    }
     // 根据文件类型写索引，并关闭文件
     sis_files_close(cls_->work_fps);
     if (cls_->work_fps->main_head.index)

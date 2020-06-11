@@ -146,7 +146,7 @@ const char *sis_file_csv_get_ptr(s_sis_file_csv *csv_, int idx_, int field)
 // {
 // 	return 0;
 // }
-s_sis_sds sis_csv_make_str(s_sis_sds in_, char *str_, size_t len_)
+s_sis_sds sis_csv_make_str(s_sis_sds in_, const char *str_, size_t len_)
 {
 	size_t size = sis_sdslen(in_);
 	if (size > 0 && in_[size - 1] != '\n')
@@ -161,7 +161,6 @@ s_sis_sds sis_csv_make_str(s_sis_sds in_, char *str_, size_t len_)
 }
 s_sis_sds sis_csv_make_int(s_sis_sds in_, int64 val_)
 {
-	char str[16];
 	size_t size = sis_sdslen(in_);
 	if (size > 0 && in_[size - 1] != '\n')
 	{
@@ -174,7 +173,6 @@ s_sis_sds sis_csv_make_int(s_sis_sds in_, int64 val_)
 }
 s_sis_sds sis_csv_make_uint(s_sis_sds in_, uint64 val_)
 {
-	char str[16];
 	size_t size = sis_sdslen(in_);
 	if (size > 0 && in_[size - 1] != '\n')
 	{

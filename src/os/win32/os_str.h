@@ -135,8 +135,8 @@ inline int sis_sprintf(char *str, size_t mlen_, const char *fmt_, ...)
 {
 	size_t size = strlen(fmt_);
     char *fmt = (char *)sis_malloc(size + 1);
-	memmove(fmt,fmt_,size); fmt[size] = 0;
-	fmt = sis_replace_string(fmt, "%lld", "%I64d");
+	memmove(fmt, fmt_, size);  fmt[size] = 0;
+	fmt = sis_replace_string(fmt, "%ll", "%I64");
 	//替换lld
 
   	va_list args;
@@ -148,6 +148,11 @@ inline int sis_sprintf(char *str, size_t mlen_, const char *fmt_, ...)
 	sis_free(fmt);
     return strlen(str);
 }
+inline size_t sis_strlen(char *str_)
+{
+	return str_ ? strlen(str_) : 0;
+}
+
 
 // inline int strerror_r(int err, char* buf, size_t buflen)
 // {
@@ -157,7 +162,7 @@ inline int sis_sprintf(char *str, size_t mlen_, const char *fmt_, ...)
 // 		err,
 // 		0,
 // 		buf,
-// 		(unsigned long)buflen,
+// 		(unsigned long long)buflen,
 // 		NULL);
 // 	if (size == 0) {
 // 		char* strerr = strerror(err);

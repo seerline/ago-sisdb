@@ -55,7 +55,7 @@ typedef struct s_sis_net_message {
 	s_sis_sds	        rval;      // 应答缓存
 
 	// 存放字节流数据
-	s_sis_pointer_list *argvs;     //  按顺序获取 s_sis_object
+	s_sis_pointer_list *argvs;     //  按顺序获取 s_sis_object s_sis_sds
 
 } s_sis_net_message;
 

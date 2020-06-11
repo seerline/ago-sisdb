@@ -69,11 +69,11 @@ void sis_json_object_add_node(s_sis_json_node *source_, const char *key_, s_sis_
 // 追加到child的末尾，key不能有'.'
 // 增加到child，在末尾增加一个元素
 // 修改到child，如果没有发现key_,就增加一个
-void sis_json_object_add_int(s_sis_json_node *node_, const char *key_, long value_);
-void sis_json_object_set_int(s_sis_json_node *node_, const char *key_, long value_);
+void sis_json_object_add_int(s_sis_json_node *node_, const char *key_, int64 value_);
+void sis_json_object_set_int(s_sis_json_node *node_, const char *key_, int64 value_);
 
-void sis_json_object_add_uint(s_sis_json_node *node_, const char *key_, unsigned long value_);
-void sis_json_object_set_uint(s_sis_json_node *node_, const char *key_, unsigned long value_);
+void sis_json_object_add_uint(s_sis_json_node *node_, const char *key_, uint64 value_);
+void sis_json_object_set_uint(s_sis_json_node *node_, const char *key_, uint64 value_);
 
 void sis_json_object_add_double(s_sis_json_node *node_, const char *key_, double value_, int dot_);
 void sis_json_object_set_double(s_sis_json_node *node_, const char *key_, double value_, int dot_);
@@ -85,11 +85,11 @@ void sis_json_object_set_string(s_sis_json_node *node_, const char *key_, const 
 // 追加到child的末尾，key不能有'.'
 // 增加到child，在末尾增加一个元素
 // 修改到child，如果没有发现key_,就增加一个 
-void sis_json_array_add_int(s_sis_json_node *node_, long value_);
-void sis_json_array_set_int(s_sis_json_node *node_, int index_, long value_);
+void sis_json_array_add_int(s_sis_json_node *node_, int64 value_);
+void sis_json_array_set_int(s_sis_json_node *node_, int index_, int64 value_);
 
-void sis_json_array_add_uint(s_sis_json_node *node_, unsigned long value_);
-void sis_json_array_set_uint(s_sis_json_node *node_, int index_, unsigned long value_);
+void sis_json_array_add_uint(s_sis_json_node *node_, uint64 value_);
+void sis_json_array_set_uint(s_sis_json_node *node_, int index_, uint64 value_);
 
 void sis_json_array_add_double(s_sis_json_node *node_, double value_, int dot_);
 void sis_json_array_set_double(s_sis_json_node *node_, int index_,  double value_, int dot_);

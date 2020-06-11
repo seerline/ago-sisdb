@@ -1,8 +1,8 @@
-#include <stdlib.h>
+﻿#include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
-
+#include <sis_os.h>
 /*
 most of the code here was taken from:
 https://code.google.com/p/smallsha1/source/browse/trunk/sha1.cpp?spec=svn4&r=4

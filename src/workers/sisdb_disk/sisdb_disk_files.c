@@ -1,4 +1,4 @@
-#include "sisdb_disk.h"
+﻿#include "sisdb_disk.h"
 
 ///////////////////////////
 //  s_sis_files
@@ -59,6 +59,7 @@ void sis_files_close(s_sis_files *cls_)
                 cls_->main_tail.count = cls_->lists->count;
                 sis_write(unit->fp, (const char *)&cls_->main_tail, sizeof(s_sis_disk_main_tail));
                 unit->offset += sizeof(s_sis_disk_main_tail);
+                LOG(5)("write tail ok. count = %d\n", cls_->main_tail.count);
             }
             // 关闭文件
             sis_close(unit->fp);
@@ -78,11 +79,12 @@ void sis_files_init(s_sis_files *cls_, char *fn_)
     int count = 1;
     if(sis_file_exists(cls_->cur_name))
     {
-        int fp = sis_open(cls_->cur_name, SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ , 0);
+        int fp = sis_open(cls_->cur_name, SIS_FILE_IO_BINARY | SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ , 0);
         s_sis_disk_main_tail tail;
-        sis_seek(fp, -1 * sizeof(s_sis_disk_main_tail), SEEK_END);  
+        sis_seek(fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);  
         sis_read(fp, (char *)&tail, sizeof(s_sis_disk_main_tail));
         count = tail.count;
+        // LOG(3)("init files [%s] %d count = %d\n", cls_->cur_name, tail.hid, count);
         sis_close(fp);      
     }
     for (int i = 0; i < count; i++)
@@ -131,7 +133,7 @@ int sis_files_open_append(s_sis_files *cls_, s_sis_files_unit *unit)
     {
         return -1;
     }
-    unit->fp = sis_open(unit->fn, SIS_FILE_IO_DSYNC | SIS_FILE_IO_RDWR, 0 );
+    unit->fp = sis_open(unit->fn, SIS_FILE_IO_BINARY | SIS_FILE_IO_DSYNC | SIS_FILE_IO_RDWR, 0 );
     if (unit->fp < 0)
     {
         return -2;
@@ -143,25 +145,28 @@ int sis_files_open_append(s_sis_files *cls_, s_sis_files_unit *unit)
         sis_files_close(cls_);
         return -3;
     }     
-    unit->offset = sis_seek(unit->fp, -1 * sizeof(s_sis_disk_main_tail), SEEK_END);
+    unit->offset = sis_seek(unit->fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);
     unit->status = SIS_DISK_STATUS_APPEND | SIS_DISK_STATUS_NOSTOP;
     return 0;
 }
+
 int sis_files_open_rdonly(s_sis_files *cls_, s_sis_files_unit *unit)
 {
     if (!unit)
     {
         return -1;
     }
-    unit->fp = sis_open(unit->fn, SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ, 0 );
+    unit->fp = sis_open(unit->fn, SIS_FILE_IO_BINARY | SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ, 0 );
     if (unit->fp < 0)
     {
         return -2;
     }
     s_sis_disk_main_head head;
     size_t bytes = sis_read(unit->fp, (char *)&head, sizeof(s_sis_disk_main_head));
+    // sis_out_binary("head", (char *)&head, bytes);
     if (bytes != sizeof(s_sis_disk_main_head) || head.style != cls_->main_head.style)
     {
+        LOG(5)("style fail. [%d %d] [%d %d]\n", bytes , sizeof(s_sis_disk_main_head), head.style, cls_->main_head.style);
         sis_files_close(cls_);
         return -4;
     }     
@@ -184,6 +189,10 @@ int sis_files_open(s_sis_files *cls_, int access_)
             }
             sis_struct_list_delete(cls_->lists, 1, cls_->lists->count - 1);
             s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, 0);
+            if (cls_->lists->count < 1)
+            {
+                return -1;
+            }
             cls_->cur_unit = 0;
             sis_files_open_create(cls_, unit);
         }
@@ -192,6 +201,10 @@ int sis_files_open(s_sis_files *cls_, int access_)
         {
             cls_->cur_unit = cls_->lists->count - 1;
             s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, cls_->cur_unit);
+            if (cls_->lists->count < 1)
+            {
+                return -2;
+            }
             return sis_files_open_append(cls_, unit);
         }
         break;    
@@ -200,9 +213,17 @@ int sis_files_open(s_sis_files *cls_, int access_)
             for (int  i = 0; i < cls_->lists->count; i++)
             {
                 s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, i);
-                sis_files_open_rdonly(cls_, unit);
+                int o = sis_files_open_rdonly(cls_, unit);
+                if (o)
+                {
+                    LOG(3)("open rdonly fail. [%d]\n", o);
+                }
             }      
-            cls_->cur_unit = 0;      
+            if (cls_->lists->count < 1)
+            {
+                return -3;
+            }   
+            cls_->cur_unit = 0;   
         }
         break;
     }
@@ -351,6 +372,7 @@ size_t sis_files_uncompress(s_sis_files *cls_, s_sis_disk_head *head_,
             }
             else
             {
+                printf("%d %zu \n",head_->hid, ilen_);
                 LOG(8)("snappy_uncompress fail.\n");
                 return 0;   
             }
@@ -443,8 +465,9 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
 size_t sis_files_read(s_sis_files *cls_, int fidx_, size_t offset_, size_t size_, uint8 *hid_, s_sis_memory *out_)
 {
     s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, fidx_); 
+    printf("unit =%p, fidx = %d : %d\n",unit, fidx_, cls_->lists->count);
 
-    size_t           size = 0;
+    size_t           size = 0; 
     s_sis_disk_head  head;   
 
     s_sis_memory    *memory = sis_memory_create();

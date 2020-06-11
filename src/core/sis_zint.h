@@ -1,4 +1,4 @@
-#ifndef _SIS_ZINT_H
+ï»¿#ifndef _SIS_ZINT_H
 #define _SIS_ZINT_H
 
 #include "sis_core.h"
@@ -25,7 +25,7 @@ static inline void uint32_to_uint24(uint32 in_, struct uint24 *out_){
 
 #define ZINT32_MAXBASE 0x1FFFFFFF
 
-//×î´óÖµÎª 0x1FFFFFFF*16*16*16 ´óÔ¼2ÍòÒÚ£¬³¬¹ı0x1FFFFFFFºóµÄÊı¾İÔÚ×îµÍ¼¸Î»²¢²»ÄÜÍêÈ«»¹Ô­
+//æœ€å¤§å€¼ä¸º 0x1FFFFFFF*16*16*16 å¤§çº¦2ä¸‡äº¿ï¼Œè¶…è¿‡0x1FFFFFFFåçš„æ•°æ®åœ¨æœ€ä½å‡ ä½å¹¶ä¸èƒ½å®Œå…¨è¿˜åŸ
 typedef struct zint32
 {
 	int base : 30;

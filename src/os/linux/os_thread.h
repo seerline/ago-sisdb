@@ -42,10 +42,10 @@ void sis_thread_clear(s_sis_thread *thread);
 //获取线程ID
 s_sis_thread_id_t sis_thread_self(); 
 // 杀死
+#define sis_thread_kill kill
 #ifdef __cplusplus
 }
 #endif
-#define sis_thread_kill kill
 
 // 互斥锁定义
 // windows支持的锁
@@ -63,18 +63,6 @@ s_sis_thread_id_t sis_thread_self();
 #define  SIS_PTHREAD_MUTEX_ERRORCHECK PTHREAD_MUTEX_ERRORCHECK // 纠错锁
 #endif
 
-
-
-int  sis_mutex_create(s_sis_mutex_t *mutex_);
-#define sis_mutex_destroy 	pthread_mutex_destroy
-#define sis_mutex_lock    	pthread_mutex_lock
-#define sis_mutex_unlock  	pthread_mutex_unlock
-#define sis_mutex_init    	pthread_mutex_init
-#define sis_mutex_trylock   pthread_mutex_trylock
-
-#define sis_pthread_cond_init	pthread_cond_init
-#define sis_pthread_mutex_init  pthread_mutex_init
-
 typedef struct s_sis_wait {
 	bool          used;  // 是否正在使用
 	s_sis_cond_t  cond;  
@@ -85,6 +73,14 @@ typedef struct s_sis_wait {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int  sis_mutex_create(s_sis_mutex_t *mutex_);
+#define sis_mutex_destroy 	pthread_mutex_destroy
+#define sis_mutex_lock    	pthread_mutex_lock
+#define sis_mutex_unlock  	pthread_mutex_unlock
+#define sis_mutex_init    	pthread_mutex_init
+#define sis_mutex_trylock   pthread_mutex_trylock
+
 void sis_thread_wait_create(s_sis_wait *wait_);
 void sis_thread_wait_destroy(s_sis_wait *wait_);
 void sis_thread_wait_kill(s_sis_wait *wait_);
@@ -95,6 +91,7 @@ int   sis_thread_wait_sleep(s_sis_wait *wait_, int delay_);
 int   sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_);
 void  sis_thread_wait_start(s_sis_wait *wait_);
 void  sis_thread_wait_stop(s_sis_wait *wait_);
+
 #ifdef __cplusplus
 }
 #endif

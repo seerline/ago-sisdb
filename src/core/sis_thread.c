@@ -12,8 +12,7 @@ s_sis_wait_handle sis_wait_malloc()
 		for(int i = 0; i < SIS_MAX_WAIT; i++)
 		{
 			__sys_wait_pool[i].used = false;
-			sis_pthread_cond_init(&__sys_wait_pool[i].cond, NULL);
-			sis_pthread_mutex_init(&__sys_wait_pool[i].mutex, NULL);
+			sis_thread_wait_create(&__sys_wait_pool[i]);
 		}		
 		__sys_wait_init = true;
 	}
@@ -345,7 +344,7 @@ int main()
 	__plan_task->work_gap.stop = 2359;
 	__plan_task->work_gap.delay = 5;
 
-	printf(" test ..0.. %p wait = %ld\n", __plan_task, sizeof(__plan_task->wait));
+	printf(" test ..0.. %p wait = %lld\n", __plan_task, sizeof(__plan_task->wait));
 	sis_service_thread_start(__plan_task, _plan_task_example, __plan_task);
 
 	signal(SIGINT, exithandle);

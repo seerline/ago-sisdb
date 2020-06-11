@@ -2,7 +2,13 @@
 #ifndef _SIS_OS_H
 #define _SIS_OS_H
 
-//#include <stdafx.h>
+#pragma warning(disable: 4200 4267 4047 4996 4819 4244)
+
+#define random rand
+#define inline __inline
+#define __func__  __FUNCTION__
+
+#define __WIN32__
 
 // ***  注意顺序不能变  *** //
 #include <winsock2.h>
@@ -24,7 +30,6 @@
 #include <stdint.h>
 
 #include <os_malloc.h>
-
 #include <os_types.h>
 
 /*#include <winsock2.h>
@@ -42,5 +47,6 @@
 #include <vector>
 #include <map>
 #include <parser.h>*/
+
 
 #endif //_SIS_OS_H

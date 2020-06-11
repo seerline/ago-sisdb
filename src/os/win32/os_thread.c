@@ -6,7 +6,6 @@
 unsigned _thread_process(void* arg)
 {
 	s_sis_thread *thread = (s_sis_thread *)arg;
-	// printf("thread start...\n");
 	thread->worker(thread->argv);
 	return 0;
 }
@@ -14,25 +13,42 @@ bool sis_thread_create(SIS_THREAD_START_ROUTINE func, void* var, s_sis_thread *t
 {
 	uintptr_t result = 0;
 	unsigned int id = 0;
-	thread->worker = func;
-	thread->argv = var;
 	result = _beginthreadex(NULL, 0, &_thread_process, thread, 0, &id);
 	if (result == 0)
 	{
 		return false;
 	}
+	thread->argv = var;
+	thread->worker = func;
 	thread->thread_id = (s_sis_thread_id_t)result;
 	thread->working = true;
 	return true;
 }
-
-void sis_thread_join(s_sis_thread_id_t thread)
+void sis_thread_finish(s_sis_thread *thread_)
 {
-	WaitForSingleObject((void*)thread, INFINITE);
-	CloseHandle((s_sis_thread_id_t)thread);
+	if (thread_)
+	{
+		thread_->working = false;
+	}
+}
+void sis_thread_join(s_sis_thread *thread_)
+{
+	int msec = thread_->timeout < 500 ? 500 : thread_->timeout;
+	while(thread_->working)
+	{
+		sis_sleep(10);
+		msec-=10;
+		if (msec < 0)
+		{
+			// 防止用户使用不当时延时退出
+			break;
+		}
+	}
+	WaitForSingleObject((void*)thread_->thread_id, INFINITE);
+	CloseHandle((s_sis_thread_id_t)thread_->thread_id);
 }
 
-void sis_thread_clear(s_sis_thread_id_t thread)
+void sis_thread_clear(s_sis_thread *thread_)
 {
 }
 
@@ -53,6 +69,7 @@ void sis_thread_kill(s_sis_thread_id_t thread)
 //////////////////////////////////////////
 int sis_mutex_create(s_sis_mutex_t *m)
 {
+	assert(m);
 	InitializeCriticalSection(m);
 	return 0;
 }
@@ -72,46 +89,74 @@ void sis_mutex_unlock(s_sis_mutex_t *m)
 	assert(m);
 	LeaveCriticalSection(m);
 }
+int sis_mutex_init(s_sis_mutex_t *m, void *n)
+{
+	InitializeCriticalSection(m);
+	return 0;
+}
+int  sis_mutex_trylock(s_sis_mutex_t *m, void *n)
+{
+	if(TryEnterCriticalSection(m))
+	{
+		return 1;
+	}
+	return 0;
+}
 
 /////////////////////////////////////
-//
+//  s_sis_wait
 //////////////////////////////////////////
-void  sis_thread_wait_start(s_sis_wait *wait_) 
+
+void sis_thread_wait_create(s_sis_wait *wait_)
 {
-	// sis_mutex_lock(&wait_->mutex); 	
-}
-void  sis_thread_wait_stop(s_sis_wait *wait_) 
-{
-	// sis_mutex_unlock(&wait_->mutex); 	
+	wait_->used = 1;
+	wait_->count = 0;
+	wait_->semaphore = CreateSemaphoreA (NULL, 0, 0xFFFFFFFF, NULL);
+	sis_mutex_create(&wait_->mutex);
 }
 
-int  sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // Ãë
+void sis_thread_wait_destroy(s_sis_wait *wait_)
 {
-	while (delay_&&!wait_->end)
-	{
-		// printf("%d\n",delay_);
-		sis_sleep(1000);
-		delay_--;
-	}
-	return SIS_ETIMEDOUT;
-}
-
-void  sis_thread_wait_create(s_sis_wait *wait_)
-{
-	wait_->end = false;
-    // pthread_cond_init(&wait_->cond, NULL);  
-    // sis_mutex_init(&wait_->mutex, NULL);  
-	
+	CloseHandle(wait_->semaphore);
+	sis_mutex_destroy(&wait_->mutex);
 }
 void sis_thread_wait_kill(s_sis_wait *wait_)
 {
-	wait_->end = true;
-    // sis_mutex_lock(&wait_->mutex);  
-	// pthread_cond_broadcast(&wait_->cond); 
-    // sis_mutex_unlock(&wait_->mutex);  
+	if (wait_->count > 0)
+	{
+        ReleaseSemaphore (wait_->semaphore, wait_->count, NULL);
+	}
 }
-void sis_thread_wait_destroy(s_sis_wait *wait_)
+void sis_thread_wait_notice(s_sis_wait *wait_)
 {
-    // pthread_cond_destroy(&wait_->cond);  
-    // sis_mutex_destroy(&wait_->mutex);  
+	if (wait_->count > 0)
+	{
+        ReleaseSemaphore (wait_->semaphore, 1, NULL);
+	}
+}
+int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
+{
+	wait_->count++;
+	int o = SignalObjectAndWait(&wait_->mutex, wait_->semaphore, delay_ * 1000, FALSE);
+	sis_mutex_lock(&wait_->mutex);
+	wait_->count--;
+	return o == WAIT_OBJECT_0 ? 0 : SIS_ETIMEDOUT;
+	// 返回 SIS_ETIMEDOUT 就正常处理
+}
+int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // 毫秒
+{
+	wait_->count++;
+	int o = SignalObjectAndWait(&wait_->mutex, wait_->semaphore, msec_, FALSE);
+	sis_mutex_lock(&wait_->mutex);
+	wait_->count--;
+	return o == WAIT_OBJECT_0 ? 0 : SIS_ETIMEDOUT;
+	// 返回 SIS_ETIMEDOUT 就正常处理
+}
+void sis_thread_wait_start(s_sis_wait *wait_)
+{
+	sis_mutex_lock(&wait_->mutex);
+}
+void sis_thread_wait_stop(s_sis_wait *wait_)
+{
+	sis_mutex_unlock(&wait_->mutex);
 }

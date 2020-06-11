@@ -1,4 +1,4 @@
-
+﻿
 #include <server.h>
 #include <signal.h>
 #include <worker.h>
@@ -81,7 +81,7 @@ bool _server_open()
 	if (lognode)
 	{
 		// printf("%s || %s\n",conf_path, _server.conf_name);
-		sis_get_fixed_path(conf_path, sis_json_get_str(lognode, "path"),
+		sis_cat_fixed_path(conf_path, sis_json_get_str(lognode, "path"),
 						   _server.log_path, SIS_PATH_LEN);
 		// printf("%s == %s\n",conf_path, _server.log_path);
 		_server.log_screen = sis_json_get_bool(lognode, "screen", false);

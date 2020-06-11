@@ -1,13 +1,65 @@
 ﻿
 #include "os_file.h"
 
-int sis_open(const char *fn_, int access_, int mode_)
+void sis_file_fixpath(char *in_)
 {
-	return open(fn_, access_, mode_);
+	int size = strlen(in_);
+	for (int i = size - 1; i > 0; i--)
+	{
+		if (in_[i] == '/')
+		{
+			in_[i] = SIS_PATH_SEPARATOR;
+		}
+	}
+}
+s_sis_handle sis_open(const char *fn_, int mode_, int access_)
+{
+	sis_file_fixpath((char *)fn_);
+	// printf("%s %x %x\n", fn_, mode_, access_);
+	return open(fn_, mode_, access_);
+}
+int64 sis_seek(s_sis_handle fp_, int64 offset_, int set_)
+{
+	return lseek(fp_, offset_, set_);
+	// return _lseeki64(fp_, offset_, set_);
+}
+
+int sis_getpos(s_sis_handle fp_, size_t *offset_)
+{
+    long long size = sis_seek(fp_, 0, SEEK_CUR);
+	if (size >=0 )
+	{	
+		*offset_ = size;
+		return 0;
+	}
+	return -1;
+}
+int sis_setpos(s_sis_handle fp_, size_t *offset_)
+{
+    long long size = sis_seek(fp_, *offset_, SEEK_SET);
+	if (size >= 0 )
+	{	
+		*offset_ = size;
+		return 0;
+	}
+	return -1;
+}
+size_t sis_size(s_sis_handle fp_)
+{
+    return sis_seek(fp_, 0, SEEK_END);
+}
+size_t sis_read(s_sis_handle fp_, char *in_, size_t len_)
+{
+	return read(fp_, in_, len_);
+}
+size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_)
+{
+	return write(fp_, in_, len_);
 }
 
 s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 {
+	sis_file_fixpath((char *)fn_);
 	s_sis_file_handle fp = NULL;
 	char mode[5];
 	int index = 0;
@@ -37,30 +89,44 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 		index++;
 	}
 	mode[index] = 0;
+
 	fopen_s(&fp, fn_, mode);
 	return fp;
 }
+/*long long sis_file_seek(s_sis_file_handle fp_, size_t offset_, int where_)
+{
+	long long o = fseek(fp_, offset_, where_);
+	if ( o == 0)
+	{
+		return ftell(fp_);
+	}
+	return -1;
+}*/
 
 size_t sis_file_size(s_sis_file_handle fp_)
 {
 	fseek(fp_, 0, SEEK_END);
 	return ftell(fp_);
 }
-size_t sis_file_read(s_sis_file_handle fp_, const char *in_, size_t size_, size_t len_)
+size_t sis_file_read(s_sis_file_handle fp_, char *in_, size_t len_)
 {
-	return fread((char *)in_, size_, len_, fp_) * size_;
+	return fread((char *)in_, 1, len_, fp_);
 }
-size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t size_, size_t len_)
+size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_)
 {
-	return fwrite((char *)in_, size_, len_, fp_) * size_;
+	size_t size = fwrite((char *)in_, 1, len_, fp_);
+	// fflush(fp_);
+	return size;
 }
+
 void sis_file_getpath(const char *fn_, char *out_, int olen_)
 {
+	sis_file_fixpath((char *)fn_);
 	out_[0] = 0;
 	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{
-		if (fn_[i] == '\\' || fn_[i] == '/')
+		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(out_, olen_, fn_, i + 1);
 			return;
@@ -69,10 +135,11 @@ void sis_file_getpath(const char *fn_, char *out_, int olen_)
 }
 void sis_file_getname(const char *fn_, char *out_, int olen_)
 {
+	sis_file_fixpath((char *)fn_);
 	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{
-		if (fn_[i] == '\\' || fn_[i] == '/')
+		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);
 			return;
@@ -82,6 +149,7 @@ void sis_file_getname(const char *fn_, char *out_, int olen_)
 }
 bool sis_file_exists(const char *fn_)
 {
+	sis_file_fixpath((char *)fn_);
 	if (access(fn_, SIS_FILE_ACCESS_EXISTS) == 0)
 	{
 		return true;
@@ -111,10 +179,11 @@ bool sis_path_mkdir(const char *path_)
 	{
 		return false;
 	}
+	sis_file_fixpath((char *)path_);
 	char dir[SIS_PATH_LEN];
 	for (int i = 0; i < len; i++)
 	{
-		if (path_[i] == '\\' || path_[i] == '/')
+		if (path_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(dir, SIS_PATH_LEN, path_, i + 1);
 			if (sis_path_exists(dir))
@@ -122,7 +191,7 @@ bool sis_path_mkdir(const char *path_)
 				continue;
 			}
 			// _mkdir(dir);
-			CreateDirectory((LPCWSTR)dir, NULL);
+			CreateDirectory((LPCSTR)dir, NULL);
 		}
 	}
 	if (sis_path_exists(path_))
@@ -137,41 +206,31 @@ bool sis_path_mkdir(const char *path_)
 
 void sis_file_rename(char *oldn_, char *newn_)
 {
+	sis_file_fixpath(oldn_);
+	sis_file_fixpath(newn_);
 	rename(oldn_, newn_);
 }
 
 void sis_file_delete(const char *fn_)
 {
+	sis_file_fixpath((char *)fn_);
 	unlink(fn_);
-}
-
-char sis_path_separator()
-{
-	return '\\';
 }
 
 void sis_path_complete(char *path_, int maxlen_)
 {
+	sis_file_fixpath(path_);
 	size_t len = strlen(path_);
-	for (int i = 0; i < (int)len; i++)
+	int last = len - 1;
+	if (path_[last] != SIS_PATH_SEPARATOR)
 	{
-		if (path_[i] == '\\')
+		if (maxlen_ > (int)len)
 		{
-			path_[i] = '/';
+			path_[last + 1] = SIS_PATH_SEPARATOR;
 		}
-		if (i == len - 1)
+		else
 		{
-			if (path_[i] != '/')
-			{
-				if (maxlen_ > (int)len)
-				{
-					path_[i + 1] = '/';
-				}
-				else
-				{
-					path_[i] = '/';
-				}
-			}
+			path_[last] = SIS_PATH_SEPARATOR;
 		}
 	}
 }
@@ -263,3 +322,46 @@ void sis_path_complete(char *path_, int maxlen_)
 // 	FindClose(done);
 
 // }
+#if 0
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <io.h>
+#include <stdio.h>
+
+int main( void )
+{
+   int fh1, fh2;
+
+   fh1 = open( "CRT_OPEN.C", _O_RDONLY ); // C4996
+   // Note: _open is deprecated; consider using _sopen_s instead
+   if( fh1 == -1 )
+      perror( "Open failed on input file" );
+   else
+   {
+      printf( "Open succeeded on input file\n" );
+      close( fh1 );
+   }
+
+   fh2 = open( "CRT_OPEN.C", _O_WRONLY | _O_CREAT, _S_IREAD |
+                            _S_IWRITE ); // C4996
+   if( fh2 == -1 )
+      perror( "Open failed on output file" );
+   else
+   {
+      printf( "Open succeeded on output file\n" );
+      close( fh2 );
+   }
+
+   fh1 = open("..\\..\\..\\..\\data\\sisdb\\snos\\20200407.sno", _O_RDONLY ); // C4996
+   // Note: _open is deprecated; consider using _sopen_s instead
+   if( fh1 == -1 )
+      perror( "Open failed on input file" );
+   else
+   {
+      printf( "Open succeeded on input file\n" );
+      close( fh1 );
+   }
+
+}
+#endif

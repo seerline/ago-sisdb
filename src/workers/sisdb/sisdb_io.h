@@ -15,27 +15,27 @@
 #include "sis_obj.h"
 
 //  非结构化数据IO
-s_sis_sds sisdb_single_get_sds(s_sisdb_cxt *sisdb_, char *key_, uint16 *format_, s_sis_sds argv_);
-s_sis_sds sisdb_single_gets_sds(s_sisdb_cxt *sisdb_, char *keys_, s_sis_sds argv_);
-int sisdb_single_set(s_sisdb_cxt *sisdb_, char *key_, uint16 format_, s_sis_sds argv_);
-int sisdb_single_del(s_sisdb_cxt *sisdb_, char *key_, s_sis_sds argv_);
-int sisdb_single_dels(s_sisdb_cxt *sisdb_, char *keys_, s_sis_sds argv_);
+s_sis_sds sisdb_single_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_);
+s_sis_sds sisdb_single_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_);
+int sisdb_single_set(s_sisdb_cxt *sisdb_, const char *key_, uint16 format_, s_sis_sds argv_);
+int sisdb_single_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
+int sisdb_single_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_);
 
 // 以下为结构化数据的IO
 // 只返回内存中的对应数据
-s_sis_sds sisdb_get_sds(s_sisdb_cxt *sisdb_, char *key_, uint16 *format_, s_sis_sds argv_);
+s_sis_sds sisdb_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_);
 // 只返回内存中每个key的最后一条记录
-s_sis_sds sisdb_gets_sds(s_sisdb_cxt *sisdb_, char *keys_, char *sdbs_, s_sis_sds argv_);
+s_sis_sds sisdb_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_sds argv_);
 
 // 删除某个key的某些数据
-int sisdb_del(s_sisdb_cxt *sisdb_, char *key_,  s_sis_sds argv_);
+int sisdb_del(s_sisdb_cxt *sisdb_, const char *key_,  s_sis_sds argv_);
 // 删除多个key的数据
-int sisdb_dels(s_sisdb_cxt *sisdb_, char *keys_, char *sdbs_, s_sis_sds argv_);
+int sisdb_dels(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_sds argv_);
 
 // 以json方式写入数据 自动创建数据结构表
-int sisdb_set_chars(s_sisdb_cxt *sisdb_, char *key_, s_sis_sds argv_);
+int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
 // 以二进制方式写入数据 数据表必须已经存在 否则返回错误
-int sisdb_set_bytes(s_sisdb_cxt *sisdb_, char *key_, s_sis_sds argv_);
+int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
 
 // // 订阅消息 系统会保留相关信息
 // int sis_net_class_subscibe(s_sis_net_class *, s_sis_net_message *);

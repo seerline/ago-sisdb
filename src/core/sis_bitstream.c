@@ -1,8 +1,8 @@
-
+ï»¿
 #include "sis_bitstream.h"
 #include "sis_malloc.h"
 #include "sis_math.h"
-// ÊÇ·ñÔ­Ê¼Êı¾İ
+// æ˜¯å¦åŸå§‹æ•°æ®
 bool _is_original_data(const s_sis_bit_code *bm)
 {
 	return (bm->m_method_c == 'D' || bm->m_method_c == 'F' || bm->m_method_c == 'M');
@@ -178,7 +178,7 @@ int sis_bitstream_put_buffer(s_sis_bit_stream *s_, char *in, size_t len)
 		sis_bitstream_put(s_, in[i], 8);
 	}
 	return (int)len  * 8;
-	// 2019-3-12 +1»á¶à³öÀ´Ò»¸ö0½áÊø·û
+	// 2019-3-12 +1ä¼šå¤šå‡ºæ¥ä¸€ä¸ª0ç»“æŸç¬¦
 	// return (int)(len + 1) * 8;
 }
 
@@ -229,7 +229,7 @@ const s_sis_bit_code* sis_bitstream_encode_find_match(s_sis_bit_stream *s_, uint
 			uint32 dw = *out_;
 			if(pCur->m_method_c=='b')
 			{
-				if (*out_ & 0x80000000)	//¸ºÊı
+				if (*out_ & 0x80000000)	//è´Ÿæ•°
 				{
 					dw += pCur->m_data_offset_dw;
 					uint32 dwMask = (0xFFFFFFFF<<(pCur->m_data_dw-1));
@@ -269,7 +269,7 @@ const s_sis_bit_code* sis_bitstream_encode_find_match(s_sis_bit_stream *s_, uint
 			}
 			else if(pCur->m_method_c=='m')
 			{
-				if (*out_ & 0x80000000)	//¸ºÊı
+				if (*out_ & 0x80000000)	//è´Ÿæ•°
 				{
 					dw += pCur->m_data_offset_dw;
 					uint32 dwMask = (0xFFFFFFFF<<pCur->m_data_dw);
@@ -310,7 +310,7 @@ const s_sis_bit_code* sis_bitstream_encode_find_match(s_sis_bit_stream *s_, uint
 						{
 							if ((dw >> j) == 1)
 							{
-								dw = j;		//·µ»ØÎ»ÖÃ
+								dw = j;		//è¿”å›ä½ç½®
 								pRet = pCur;
 							}
 							else
@@ -351,7 +351,7 @@ const s_sis_bit_code* sis_bitstream_decode_find_match(s_sis_bit_stream *s_, uint
 		for (i = 0; i<s_->m_nowcode_count; i++)
 		{
 			const s_sis_bit_code* pCur = s_->m_nowcode_p + i;
-			if (pCur->m_sign_w == (dwNextCode >> (nCodeLen - pCur->m_len_by)))	//ÕÒµ½
+			if (pCur->m_sign_w == (dwNextCode >> (nCodeLen - pCur->m_len_by)))	//æ‰¾åˆ°
 			{
 				pCode = pCur;
 				break;
@@ -372,7 +372,7 @@ const s_sis_bit_code* sis_bitstream_decode_find_match(s_sis_bit_stream *s_, uint
 			case 's':
 				break;
 			case 'b':
-				if (*out_&(1 << (pCode->m_data_len_by - 1)))	//¸ºÊı
+				if (*out_&(1 << (pCode->m_data_len_by - 1)))	//è´Ÿæ•°
 				{
 					*out_ |= (0xFFFFFFFF << pCode->m_data_len_by);
 				}
@@ -665,7 +665,7 @@ float sis_bitstream_decode_float(s_sis_bit_stream *s_, bool check0)
 	return fRet;
 }
 
-uint32 sis_bitstream_decode_string(s_sis_bit_stream *s_, char* in_, int inLen_, uint32 *base_)						//Èç¹û½â³öÊı×ÖLabel£¬Ôò·µ»Ø¸ÃÊı×Ö£¬·ñÔò·µ»Ø0xFFFFFFFF,¸üĞÂdwLastData
+uint32 sis_bitstream_decode_string(s_sis_bit_stream *s_, char* in_, int inLen_, uint32 *base_)						//å¦‚æœè§£å‡ºæ•°å­—Labelï¼Œåˆ™è¿”å›è¯¥æ•°å­—ï¼Œå¦åˆ™è¿”å›0xFFFFFFFF,æ›´æ–°dwLastData
 {
 	uint32 dw = 0;
 	const s_sis_bit_code* pCode = sis_bitstream_decode_find_match(s_, &dw);
@@ -694,43 +694,43 @@ uint32 sis_bitstream_decode_string(s_sis_bit_stream *s_, char* in_, int inLen_, 
 
 #if 0
 
-	int GetBitLength(){ return m_nowpos_i; }						//µÃµ½µ±Ç°BitÁ÷BitÊı
-	int GetByteLength(){ return (m_nowpos_i + 7) / 8; }				//µÃµ½µ±Ç°BitÁ÷ByteÊı
+	int GetBitLength(){ return m_nowpos_i; }						//å¾—åˆ°å½“å‰BitæµBitæ•°
+	int GetByteLength(){ return (m_nowpos_i + 7) / 8; }				//å¾—åˆ°å½“å‰BitæµByteæ•°
 	int GetCurPos(){ return m_nowpos_i; }
 	int GetBitSize(){ return m_bit_size_i; }
 
-	virtual uint32 Get(int nBit);				//È¡µÃnBitÊı¾İ£¬×î¶à32Bit
-	virtual int GetNoMove(int nBit, uint32& dw);	//²»ÒÆ¶¯ÄÚ²¿Ö¸Õë£¬È¡µÃnBitÊı¾İ£¬×î¶à32Bit£¬·µ»ØÊµ¼ÊÈ¡µÃµÄ³¤¶È
+	virtual uint32 Get(int nBit);				//å–å¾—nBitæ•°æ®ï¼Œæœ€å¤š32Bit
+	virtual int GetNoMove(int nBit, uint32& dw);	//ä¸ç§»åŠ¨å†…éƒ¨æŒ‡é’ˆï¼Œå–å¾—nBitæ•°æ®ï¼Œæœ€å¤š32Bitï¼Œè¿”å›å®é™…å–å¾—çš„é•¿åº¦
 	int GetString(char* pBuf, int inLen_);
 
-	virtual int Put(uint32 dw, int nBit);			//Ïòµ±Ç°Î»ÖÃÌí¼ÓnBitÊı¾İ
+	virtual int Put(uint32 dw, int nBit);			//å‘å½“å‰ä½ç½®æ·»åŠ nBitæ•°æ®
 	int PutBuffer(char *in, size_t len);
 	int PutString(const char * str);
 
-	int Move(int nBit){ return MoveTo(m_nowpos_i + nBit); }		//ÒÆ¶¯ÄÚ²¿Ö¸Õë£¬nBit¿ÉÒÔÎª¸º£¬·µ»ØĞÂµÄÎ»ÖÃ
-	int MoveTo(int nPos);					//ÒÆ¶¯ÄÚ²¿Ö¸Õëµ½nPos´¦
+	int Move(int nBit){ return MoveTo(m_nowpos_i + nBit); }		//ç§»åŠ¨å†…éƒ¨æŒ‡é’ˆï¼ŒnBitå¯ä»¥ä¸ºè´Ÿï¼Œè¿”å›æ–°çš„ä½ç½®
+	int MoveTo(int nPos);					//ç§»åŠ¨å†…éƒ¨æŒ‡é’ˆåˆ°nPoså¤„
 
-	void SaveCurrentPos(){ m_savepos_i = m_nowpos_i; }		//±£´æµ±Ç°Î»ÖÃ
-	int  RestoreToSavedPos(){ return MoveTo(m_savepos_i); }		//»Ø¾íµ½ÉÏÒ»´Î±£´æµÄÎ»ÖÃ
+	void SaveCurrentPos(){ m_savepos_i = m_nowpos_i; }		//ä¿å­˜å½“å‰ä½ç½®
+	int  RestoreToSavedPos(){ return MoveTo(m_savepos_i); }		//å›å·åˆ°ä¸Šä¸€æ¬¡ä¿å­˜çš„ä½ç½®
 
 	void SetBitCode(const BITCODE* pCodes, int nNumCode){ m_nowcode_p = pCodes; m_nowcode_count = nNumCode; }
 
-	int EncodeData(uint32 dwData, const uint32* pdwLastData = NULL, bool bReverse = FALSE);	//¸ù¾İÇé¿ö±àÂë£¬·µ»Ø±àÂëBit³¤¶È
-	int EncodeData(zint32 mData, const zint32* pmLastData = NULL);	//¸ù¾İÇé¿ö±àÂë£¬·µ»Ø±àÂëBit³¤¶È
-	int EncodeFloat(float f, bool bCheck0 = FALSE);				//·µ»Ø±àÂëBit³¤¶È,²»ĞèÒª±àÂë
-	int EncodeStringData(const char * strData, uint32& dwLastData);							//¸ù¾İÇé¿ö±àÂë£¬·µ»Ø±àÂëBit³¤¶È,¸üĞÂdwLastData
+	int EncodeData(uint32 dwData, const uint32* pdwLastData = NULL, bool bReverse = FALSE);	//æ ¹æ®æƒ…å†µç¼–ç ï¼Œè¿”å›ç¼–ç Bité•¿åº¦
+	int EncodeData(zint32 mData, const zint32* pmLastData = NULL);	//æ ¹æ®æƒ…å†µç¼–ç ï¼Œè¿”å›ç¼–ç Bité•¿åº¦
+	int EncodeFloat(float f, bool bCheck0 = FALSE);				//è¿”å›ç¼–ç Bité•¿åº¦,ä¸éœ€è¦ç¼–ç 
+	int EncodeStringData(const char * strData, uint32& dwLastData);							//æ ¹æ®æƒ…å†µç¼–ç ï¼Œè¿”å›ç¼–ç Bité•¿åº¦,æ›´æ–°dwLastData
 
 	uint32 DecodeData(const uint32* pdwLastData = NULL, bool bReverse = FALSE);
 	zint32 DecodeMWordData(const zint32* pmLastData = NULL, bool bReverse = FALSE);
 	float DecodeFloat(bool bCheck0 = FALSE);
-	uint32 DecodeStringData(char* pBuf, int nBufSize, uint32& dwLastData);						//Èç¹û½â³öÊı×ÖLabel£¬Ôò·µ»Ø¸ÃÊı×Ö£¬·ñÔò·µ»Ø0xFFFFFFFF,¸üĞÂdwLastData
+	uint32 DecodeStringData(char* pBuf, int nBufSize, uint32& dwLastData);						//å¦‚æœè§£å‡ºæ•°å­—Labelï¼Œåˆ™è¿”å›è¯¥æ•°å­—ï¼Œå¦åˆ™è¿”å›0xFFFFFFFF,æ›´æ–°dwLastData
 
 	int GetNumZero(uint32& dw);
 	int GetNumZero(zint32& m);
 
 protected:
-	const BITCODE* EncodeFindMatch(uint32& dw);							//ÕÒµ½ÅäºÏµÄ±àÂë,±àÂëºóµÄÊı¾İÍ¨¹ıdw´ø»Ø
-	const BITCODE* DecodeFindMatch(uint32& dw);							//ÕÒµ½ÅäºÏµÄ±àÂë£¬²¢Í¨¹ıdw·µ»Ø
+	const BITCODE* EncodeFindMatch(uint32& dw);							//æ‰¾åˆ°é…åˆçš„ç¼–ç ,ç¼–ç åçš„æ•°æ®é€šè¿‡dwå¸¦å›
+	const BITCODE* DecodeFindMatch(uint32& dw);							//æ‰¾åˆ°é…åˆçš„ç¼–ç ï¼Œå¹¶é€šè¿‡dwè¿”å›
 
 	const BITCODE* FindOrgMData();
 	const BITCODE* FindStringData();
@@ -784,7 +784,7 @@ int c_bit_stream::GetNumZero(zint32& m)
 }
 
 #ifdef _DEBUG
-//_DEBUG¶¨Òåºó»á²úÉúwarning LNK4098: Ä¬ÈÏ¿â¡°MSVCRT¡±ÓëÆäËû¿âµÄÊ¹ÓÃ³åÍ»£»ÇëÊ¹ÓÃ /NODEFAULTLIB:library´íÎó
+//_DEBUGå®šä¹‰åä¼šäº§ç”Ÿwarning LNK4098: é»˜è®¤åº“â€œMSVCRTâ€ä¸å…¶ä»–åº“çš„ä½¿ç”¨å†²çªï¼›è¯·ä½¿ç”¨ /NODEFAULTLIB:libraryé”™è¯¯
 float GetAvgCodeLen(BITCODE* pCode,int nNum)
 {
 	float f = 0.0f;

@@ -4,6 +4,7 @@
 
 #include "sisdb.h"
 #include "sisdb_io.h"
+#include "sis_net.io.h"
 #include "sisdb_collect.h"
 
 ///////////////////////////////////////////////////
@@ -62,7 +63,7 @@ s_sisdb_table *sisdb_table_create(s_sis_json_node *node_)
     for (int i = 0; i < sis_map_list_getsize(db->fields); i++)
     {
         s_sis_dynamic_field *field = (s_sis_dynamic_field *)sis_map_list_geti(db->fields, i);
-        sis_string_list_push(db->fields, field->name, sis_sdslen(field->name));
+        sis_string_list_push(o->fields, (const char *)field->name, sis_sdslen(field->name));
     }
     return o;
 }
@@ -88,10 +89,10 @@ bool sisdb_init(void *worker_, void *argv_)
 
 	context->sdbs = sis_map_list_create(sisdb_table_destroy);
     {
-        s_sis_json_node *node = sis_json_cmp_child_node(node, "tables");
-        if (node)
+        s_sis_json_node *tbnode = sis_json_cmp_child_node(node, "tables");
+        if (tbnode)
         {
-            s_sis_json_node *next = sis_conf_first_node(node);
+            s_sis_json_node *next = sis_conf_first_node(tbnode);
             while (next)
             {
                 s_sisdb_table *table = sisdb_table_create(next);
@@ -139,7 +140,7 @@ int cmd_sisdb_get(void *worker_, void *argv_)
     printf("cmd_sisdb_get: %d %s %s \n", cmds, argv[0], argv[1]);
     s_sis_sds o = NULL;
 
-    uint8 format = SISDB_FORMAT_CHARS;
+    uint16 format = SISDB_FORMAT_CHARS;
     if (cmds == 1)
     {
         // 单
@@ -153,7 +154,7 @@ int cmd_sisdb_get(void *worker_, void *argv_)
 	{
         if(format == SISDB_FORMAT_CHARS)
         {
-            sis_net_ans_with_string(netmsg, o);
+            sis_net_ans_with_sds(netmsg, o);
         }
         else
         {
@@ -246,7 +247,7 @@ int cmd_sisdb_gets(void *worker_, void *argv_)
     }
 	if (o)
 	{
-        sis_net_ans_with_string(netmsg, o);
+        sis_net_ans_with_sds(netmsg, o);
 		return SIS_METHOD_OK;
 	}
 	return SIS_METHOD_ERROR;

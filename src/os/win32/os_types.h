@@ -54,30 +54,16 @@ typedef double float64;
 #ifndef ssize_t
 typedef long long ssize_t;
 #endif
-
-/////
-// #ifndef int8_t
-// typedef int8 int8_t;
-// #endif
-// #ifndef uint8_t
-// typedef uint8 uint8_t;
-// #endif
-// #ifndef int16_t
-// typedef int16 int16_t;
-// #endif
-// #ifndef uint16_t
-// typedef uint16 uint16_t;
-// #endif
-// #ifndef int32_t
-// typedef int32 int32_t;
-// #endif
-// #ifndef uint32_t
-// typedef uint32 uint32_t;
-// #endif
-// #ifndef int64_t
-// typedef int64 int64_t;
-// #endif
-// #ifndef uint64_t
-// typedef uint64 uint64_t;
-// #endif
+#ifndef msec_t
+typedef unsigned long long msec_t;
+#endif
+#ifndef fsec_t
+typedef unsigned long long fsec_t;
+#endif
+#ifndef date_t
+typedef unsigned int date_t;
+#endif
+#ifndef minute_t
+typedef unsigned int minute_t;
+#endif
 #endif //_OS_TYPES_H

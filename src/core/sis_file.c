@@ -58,12 +58,12 @@ bool sis_file_sds_write(const char *fn_, s_sis_sds buffer_)
     return true;	
 }
 
-void sis_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
+void sis_cat_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_)
 {
     if (!inpath_) {
         sis_sprintf(outpath_,size_,"%s", srcpath_);
     } else {
-        if (*inpath_=='/'||!srcpath_) {
+        if (*inpath_== SIS_PATH_SEPARATOR ||!srcpath_) {
             // 如果为根目录，就直接使用
             sis_sprintf(outpath_,size_,"%s", inpath_);
         } else {

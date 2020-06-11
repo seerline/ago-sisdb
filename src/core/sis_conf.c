@@ -142,7 +142,8 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 		}
 		else
 		{
-			child->key = sis_str_sprintf(16, "%d", index++);
+			child->key = sis_malloc(32);
+			sis_sprintf(child->key, 32, "%d", index++);
 			value_ = _sis_conf_skip(handle_,_sis_parse_value(handle_, child, value_)); /* skip any spacing, get the value_. */
 		}
 		if (!value_ || !*value_)
@@ -415,7 +416,7 @@ bool _sis_conf_parse(s_sis_conf_handle *handle_, const char *content_)
 			value = _sis_conf_skip(handle_,_sis_parse_include(handle_, child, value));
 			while (child->next)
 			{	child = child->next;}
-			printf("a include is %.10s \n", value);
+			// printf("a include is %.10s \n", value);
 		}
 		else
 		{
@@ -609,7 +610,7 @@ int main()
 
 	size_t len = 0;
 	char *str = sis_conf_to_json(h->node, &len);
-	printf("[%ld]  |%s|\n", len, str);
+	printf("[%lld]  |%s|\n", len, str);
 	sis_free(str);
 	sis_conf_close(h);
 

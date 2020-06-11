@@ -50,7 +50,7 @@ typedef struct s_list {
     void *(*dup)(void *ptr);
     void (*free)(void *ptr);
     int (*match)(void *ptr, void *key);
-    unsigned long len;
+    unsigned int len;
 } s_list;
 
 /* Functions implemented as macros */

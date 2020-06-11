@@ -1,4 +1,4 @@
-#ifndef _SISDB_DISK_H
+﻿#ifndef _SISDB_DISK_H
 #define _SISDB_DISK_H
 
 #include "sis_method.h"
@@ -112,8 +112,8 @@
 
 // #define  SIS_DISK_MAXLEN_FILE      0x7FFFFFFF  // 2G - 2147483647 
 // #define  SIS_DISK_MAXLEN_INDEX     0x07FFFFFF  // 2G -  134217727
-#define  SIS_DISK_MAXLEN_FILE      2000000000  //   2G  数据文件专用
-#define  SIS_DISK_MAXLEN_INDEX      100000000  // 100M  索引文件专用
+#define  SIS_DISK_MAXLEN_FILE      0xFFFFFFFF  //   4G  数据文件专用
+#define  SIS_DISK_MAXLEN_INDEX     0x08FFFFFF  // 150M  索引文件专用
 #define  SIS_DISK_MAXLEN_MINPAGE   0x000FFFFF  //   1M 索引文件块大小
 #define  SIS_DISK_MAXLEN_MIDPAGE   0x00FFFFFF  //  16M 实时文件块大小
 #define  SIS_DISK_MAXLEN_MAXPAGE   0x1FFFFFFF  // 536M 实时文件块大小
@@ -131,9 +131,9 @@
 // 第一个字节为253, 后面跟4个字节X X为实际数量
 
 #define SIS_DISK_BLOCK_HEAD  \
-		unsigned fin : 1;    \
-		unsigned zip : 1;    \
-		unsigned hid : 6;    \
+		uint8 fin : 1;    \
+		uint8 zip : 1;    \
+		uint8 hid : 6;    \
 // 后面紧跟 len(dsize) 为数据区长度 根据实际数据长度可以得到数据有多少条
 // hid 的定义如下 总共有64中头描述
 // 不考虑key sdb 异构问题
@@ -194,16 +194,19 @@
 #define  SIS_DISK_ZIP_NONE        0
 #define  SIS_DISK_ZIP_SNAPPY      1
 
+// 位域定义长度必须和类型匹配 否则长度不对
 typedef struct s_sis_disk_main_head {
 	SIS_DISK_BLOCK_HEAD
     char     sign[3];        // 标志符 "SIS" (4)
-    unsigned version       :   5; // 版本号 最多 32 个版本
-    unsigned style         :   4; // 文件类型 最多 16 种类型
-    unsigned compress      :   3; // 压缩方法 0 - 不压缩 1 - 各个结构自己的压缩 2 - 3 其他
-    unsigned index         :   1; // [工程文件专用] 1 有索引 0 没有索引文件 
-    unsigned other         :  27; // 开关类保留 (9)
-    unsigned workers       :   8; // [索引专用] 当前关联的工作文件总数 编号大的比前一个文件大一倍 2^(n-1)
-    unsigned long wtime    :  48; // 是数据的日期 不是创建的时间 统一秒 
+    uint16   version       :   5; // 版本号 最多 32 个版本
+    uint16   style         :   4; // 文件类型 最多 16 种类型
+    uint16   compress      :   3; // 压缩方法 0 - 不压缩 1 - 各个结构自己的压缩 2 - 3 其他
+    uint16   index         :   1; // [工程文件专用] 1 有索引 0 没有索引文件 
+    uint16   nouse         :   3; // 开关类保留 (9)
+    uint8    switchs[3];          // 开关类保留 (9)
+    uint8    workers;             // [索引专用] 当前关联的工作文件总数 编号大的比前一个文件大一倍 2^(n-1)
+    uint32   wtime;               // 是数据的日期 不是创建的时间 统一秒 
+    uint16   other;               // 
 }s_sis_disk_main_head;            // 16个字节头 128
 
 // 对于sno文件每个索引都有一个page，在重建索引时根据sno的结束块来确定page的数量
@@ -316,7 +319,8 @@ typedef struct s_sis_disk_reader {
 
 // 文件状态
 #define  SIS_DISK_STATUS_CLOSED    0x0
-#define  SIS_DISK_STATUS_RDOPEN    0x1  // 文件只读打开 
+#define  SIS_DISK_STATUS_OPENED    0x1
+#define  SIS_DISK_STATUS_RDOPEN    0x2  // 文件只读打开 
 // #define  SIS_DISK_STATUS_RDREAD    0x2  // 文件只读并且已经读取相关基础信息 
 
 #define  SIS_DISK_STATUS_APPEND    0x10  // 文件可写打开 从文件尾写入数据
@@ -358,6 +362,7 @@ typedef struct s_sis_disk_class {
     char  fpath[255];
     char  fname[255];
 
+    int   status;
     // 字典表应该是这样的
     // 第一次写入的为全字典 后续写的如果内容一样 不增加 如果新的数据字典为新的就直接写入
     // 注意 新写入的数据总是以当前key值最大的索引为参考 
@@ -549,7 +554,7 @@ int sis_disk_file_read_get(s_sis_disk_class *cls_, s_sis_disk_reader *reader_);
 
 typedef struct s_sisdb_disk_cxt
 {
-	// int  status;
+	int  status;
 	// int  cursor;   // 游标
 
 	// s_sis_double_list *inputs;   // 传入的数据列表

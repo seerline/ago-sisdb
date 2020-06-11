@@ -3,6 +3,8 @@
 #define _SIS_LOG_H
 
 #include <sis_os.h>
+#include <os_thread.h>
+#include <os_file.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -64,7 +66,7 @@ void sis_log_stop();
 
 void sis_log_open(const char *log_, int level_, int limit_);
 void sis_log_close();
-bool sis_log_input(int, int, const char *);  // 传递 线程号 函数名
+bool sis_log_input(int, s_sis_thread_id_t, const char *);  // 传递 线程号 函数名
 
 void sis_log(const char *fmt_, ...);
 
@@ -72,10 +74,9 @@ void sis_log(const char *fmt_, ...);
 }
 #endif
 
-#define LOG(a) if(a>1) printf
+#define LOG(a) if(a > 1) printf
 
 // #define LOG(level) 	if (sis_log_input(level, sis_thread_self(),__func__)) sis_log
-
 
 //////////////////////////////////////////
 //

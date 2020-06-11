@@ -18,7 +18,7 @@ int _sis_dynamic_get_style(const char *str_)
 	}
 	if(!sis_strcasecmp(str_,"msec")||!sis_strcasecmp(str_,"T"))
 	{
-		return SIS_DYNAMIC_TYPE_MSEC;
+		return SIS_DYNAMIC_TYPE_TICK;
 	}
 	if(!sis_strcasecmp(str_,"sec")||!sis_strcasecmp(str_,"S"))
 	{
@@ -43,6 +43,10 @@ int _sis_dynamic_get_style(const char *str_)
 	if(!sis_strcasecmp(str_,"char")||!sis_strcasecmp(str_,"C"))
 	{
 		return SIS_DYNAMIC_TYPE_CHAR;
+	}
+	if(!sis_strcasecmp(str_,"price")||!sis_strcasecmp(str_,"P"))
+	{
+		return SIS_DYNAMIC_TYPE_PRICE;
 	}
 	return SIS_DYNAMIC_TYPE_NONE;
 }
@@ -114,6 +118,10 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 			continue;				
 		}
 		int dot = sis_json_get_int(node, "3", 0);
+		if (style == SIS_DYNAMIC_TYPE_PRICE && dot == 0)
+		{
+			dot = 3;
+		}
 		const char *flag = sis_json_get_str(node, "4");
 
 		// 到此认为数据合法	
@@ -132,13 +140,13 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 
 		if (!dyna->field_time &&
 		 	(unit->style == SIS_DYNAMIC_TYPE_SEC || 
-			 unit->style == SIS_DYNAMIC_TYPE_MSEC || 
+			 unit->style == SIS_DYNAMIC_TYPE_TICK || 
 			 unit->style == SIS_DYNAMIC_TYPE_MINU ||
 			 unit->style == SIS_DYNAMIC_TYPE_DATE))
 		{
 			dyna->field_time = unit;
 		}
-		if (!dyna->field_mindex && unit->mindex)
+		if (unit->mindex)
 		{
 			dyna->field_mindex = unit;
 		}
@@ -155,6 +163,11 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		return NULL;
 	} 
 	dyna->size = offset; 
+	// if have time field, than must set main index is it.
+	if (dyna->field_time)
+	{
+		dyna->field_mindex = dyna->field_time;
+	}
 	printf("dyna->size ---%s %d\n", dyna->name, dyna->size);
 	return dyna;
 }
@@ -168,43 +181,78 @@ void sis_dynamic_db_destroy(void *db_)
 	sis_pointer_list_destroy(db->field_solely);
 	sis_free(db);
 }
-s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, char *field_)
+s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_)
 {
-	???
-	return (s_sis_dynamic_field *)sis_map_list_get(db_->fields, field_);
+	s_sis_dynamic_field *field = sis_map_list_get(db_->fields, field_);
+	if (!index_ || field)
+	{
+		return field;
+	}
+    char argv[2][128]; 
+    int cmds = sis_str_divide(field_, '.', argv[0], argv[1]);
+	field = sis_map_list_get(db_->fields, argv[0]);
+	if (cmds != 2 || !field)
+	{
+		return NULL;
+	}
+	*index_ = (int)atoll(argv[1]);
+	return field;
 }
 
-// s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
-// {
-// 	in_ = sis_sdscatfmt(in_, "%s:", db_->name);
-// 	in_ = sis_sdscat(in_, "{fields:{");
-// 	char sign[2];
-// 	int fnums = sis_map_list_getsize(db_->fields);
-// 	for(int i = 0; i < fnums; i++)
-// 	{
-// 		s_sis_dynamic_field *unit= (s_sis_dynamic_field *)sis_map_list_geti(db_->fields, i);
-// 		if(!unit) continue;
-// 		if (i > 0)
-// 		{
-// 			in_ = sis_sdscat(in_, ",");
-// 		}
-// 		in_ = sis_sdscatfmt(in_, "%s:[", unit->name);
-// 		sign[0] = unit->style; sign[1] = 0;
-// 		in_ = sis_sdscatfmt(in_, "%s", sign);
-// 		in_ = sis_sdscatfmt(in_, ",%u", unit->len);
-// 		if(unit->count > 1||unit->dot > 0)
-// 		{
-// 			in_ = sis_sdscatfmt(in_, ",%u", unit->count);
-// 		}
-// 		if(unit->dot > 0)
-// 		{
-// 			in_ = sis_sdscatfmt(in_, ",%u", unit->dot);
-// 		}
-// 		in_ = sis_sdscat(in_, "]");
-// 	}
-// 	in_ = sis_sdscat(in_, "}}");
-// 	return in_;
-// }
+s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
+{
+	in_ = sis_sdscatfmt(in_, "%s:", db_->name);
+	in_ = sis_sdscat(in_, "{fields:{");
+	char sign[5];
+	int fnums = sis_map_list_getsize(db_->fields);
+	for(int i = 0; i < fnums; i++)
+	{
+		s_sis_dynamic_field *unit= (s_sis_dynamic_field *)sis_map_list_geti(db_->fields, i);
+		if(!unit) continue;
+		if (i > 0)
+		{
+			in_ = sis_sdscat(in_, ",");
+		}
+		in_ = sis_sdscatfmt(in_, "%s:[", unit->name);
+		sign[0] = unit->style; sign[1] = 0;
+		in_ = sis_sdscatfmt(in_, "%s", sign);
+		in_ = sis_sdscatfmt(in_, ",%u", unit->len);
+		int index = 0;
+		if (unit->mindex)
+		{
+			sign[index] = 'I'; index++;
+		} 
+		if (unit->solely)
+		{
+			sign[index] = 'O'; index++;
+		} 
+		sign[index] = 0;
+		if (sign[0]) 
+		{
+			in_ = sis_sdscatfmt(in_, ",%u", unit->count);
+			in_ = sis_sdscatfmt(in_, ",%u", unit->dot);
+			in_ = sis_sdscatfmt(in_, "%s", sign);
+		}
+		else
+		{
+			if (unit->dot > 0) 
+			{
+				in_ = sis_sdscatfmt(in_, ",%u", unit->count);
+				in_ = sis_sdscatfmt(in_, ",%u", unit->dot);
+			}	
+			else
+			{
+				if (unit->count > 0) 
+				{
+					in_ = sis_sdscatfmt(in_, ",%u", unit->count);
+				}
+			}
+		}
+		in_ = sis_sdscat(in_, "]");
+	}
+	in_ = sis_sdscat(in_, "}}");
+	return in_;
+}
 s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
 {
 	s_sis_json_node *jone = sis_json_create_object();
@@ -268,25 +316,36 @@ s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
 	sis_json_delete_node(jone);
 	return in_;
 }
-msec_t sis_dynamic_db_gettime(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_)
+msec_t sis_dynamic_db_get_time(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_)
 {
-	if (!db_->field_time || ilen_ % db_->size || ( index_ + 1 ) * db_->size > ilen_)
+	if (!db_->field_time || !in_ || ilen_ % db_->size || ( index_ + 1 ) * db_->size > ilen_)
 	{
 		return 0;
 	}
 	return _sis_field_get_uint(db_->field_time, (const char*)in_ + index_ * db_->size, 0);
 }
-
-s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, char *key_, void *in_, size_t ilen_)
+uint64 sis_dynamic_db_get_mindex(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_)
+{
+	if (!db_->field_mindex || !in_ || ilen_ % db_->size || ( index_ + 1 ) * db_->size > ilen_)
+	{
+		return 0;
+	}
+	return _sis_field_get_uint(db_->field_mindex, (const char*)in_ + index_ * db_->size, 0);
+}
+s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in_, size_t ilen_)
 {
 	s_sis_dynamic_db *indb = db_;
-
-	s_sis_json_node *jone = sis_json_create_object();
-	s_sis_json_node *jtwo = sis_json_create_array();
 
 	int count = (int)(ilen_ / indb->size);
 	int fnums = sis_map_list_getsize(indb->fields);
 
+	if (count < 1 || fnums < 1)
+	{
+		return NULL;
+	}
+	s_sis_json_node *jone = sis_json_create_object();
+	s_sis_json_node *jtwo = sis_json_create_array();
+	// printf("to array : fnum = %d count = %d \n", fnums, count);
 	const char *val = (const char *)in_;
 	for (int k = 0; k < count; k++)
 	{
@@ -296,23 +355,28 @@ s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, char *key_, void *i
 			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_geti(indb->fields, i);
 			sis_dynamic_field_to_array(jval, inunit, val);
 		}
-		sis_json_array_add_node(jtwo, jval);
+		if (count == 1)
+		{
+			sis_json_delete_node(jtwo);	
+			jtwo = jval;
+		}
+		else
+		{
+			sis_json_array_add_node(jtwo, jval);
+		}
 		val += indb->size;
 	}
-	s_sis_sds o = NULL;
-	char *str;
-	size_t olen;
+	// printf("to array : fnum = %d count = %d \n", fnums, count);
+	s_sis_sds o = NULL;	
 	if (key_)
 	{
 		sis_json_object_add_node(jone, key_, jtwo);
-		str = sis_json_output(jone, &olen);
+		o = sis_json_to_sds(jone, true);
 	}
 	else
 	{
-		str = sis_json_output(jtwo, &olen);		
+		o = sis_json_to_sds(jtwo, true);	
 	}
-	o = sis_sdsnewlen(str, olen);
-	sis_free(str);
 	sis_json_delete_node(jone);	
 	return o;
 }
@@ -382,12 +446,12 @@ uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 	case SIS_DYNAMIC_TYPE_SEC:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_MSEC: u64 = in64 * 1000; break;
+			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 1000; break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = in64 / 60;   break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64);   break;
 		}
 		break;
-	case SIS_DYNAMIC_TYPE_MSEC:
+	case SIS_DYNAMIC_TYPE_TICK:
 		switch (outstyle)
 		{
 			case SIS_DYNAMIC_TYPE_SEC: u64 = in64 / 1000; break;
@@ -398,7 +462,7 @@ uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 	case SIS_DYNAMIC_TYPE_MINU:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_MSEC: u64 = in64 * 60 * 1000; break;
+			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 60 * 1000; break;
 			case SIS_DYNAMIC_TYPE_SEC:  u64 = in64 * 60; break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64 * 60);   break;
 		}
@@ -406,7 +470,7 @@ uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 	case SIS_DYNAMIC_TYPE_DATE:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_MSEC: u64 = sis_time_make_time(in64, 120000) * 1000; break;
+			case SIS_DYNAMIC_TYPE_TICK: u64 = sis_time_make_time(in64, 120000) * 1000; break;
 			case SIS_DYNAMIC_TYPE_SEC:  u64 = sis_time_make_time(in64, 120000); break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = sis_time_make_time(in64, 120000) / 60;   break;
 		}
@@ -435,10 +499,11 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					switch (outunit->style)
 					{
 					case SIS_DYNAMIC_TYPE_INT:
+					case SIS_DYNAMIC_TYPE_PRICE:
 						_sis_field_set_int(outunit, (char *)out_, i64, i);
 						break;
 					case SIS_DYNAMIC_TYPE_SEC:
-					case SIS_DYNAMIC_TYPE_MSEC:
+					case SIS_DYNAMIC_TYPE_TICK:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
 					case SIS_DYNAMIC_TYPE_UINT:
@@ -454,7 +519,7 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 				}
 				break;
 			case SIS_DYNAMIC_TYPE_SEC:
-			case SIS_DYNAMIC_TYPE_MSEC:
+			case SIS_DYNAMIC_TYPE_TICK:
 			case SIS_DYNAMIC_TYPE_MINU:
 			case SIS_DYNAMIC_TYPE_DATE:
 			case SIS_DYNAMIC_TYPE_UINT:
@@ -463,10 +528,11 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					switch (outunit->style)
 					{
 					case SIS_DYNAMIC_TYPE_INT:
+					case SIS_DYNAMIC_TYPE_PRICE:
 						_sis_field_set_int(outunit, (char *)out_, (int64)u64, i);
 						break;
 					case SIS_DYNAMIC_TYPE_SEC:
-					case SIS_DYNAMIC_TYPE_MSEC:
+					case SIS_DYNAMIC_TYPE_TICK:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
 						u64 = _sis_time_unit_convert(inunit->style, outunit->style, u64);
@@ -493,7 +559,7 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 						_sis_field_set_int(outunit, (char *)out_, (int64)f64, i);
 						break;
 					case SIS_DYNAMIC_TYPE_SEC:
-					case SIS_DYNAMIC_TYPE_MSEC:
+					case SIS_DYNAMIC_TYPE_TICK:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
 					case SIS_DYNAMIC_TYPE_UINT:
@@ -501,6 +567,38 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 						break;
 					case SIS_DYNAMIC_TYPE_FLOAT:
 						_sis_field_set_float(outunit, (char *)out_, (double)f64, i);
+						break;
+					case SIS_DYNAMIC_TYPE_PRICE:
+						// 这里特殊处理一下
+						_sis_field_set_price(outunit, (char *)out_, (double)f64, i);
+						break;
+					case SIS_DYNAMIC_TYPE_CHAR:
+						// 不支持
+						break;
+					}
+				}
+				break;
+			case SIS_DYNAMIC_TYPE_PRICE:
+				{
+					f64 = _sis_field_get_price(inunit, in_, i);
+					switch (outunit->style)
+					{
+					case SIS_DYNAMIC_TYPE_INT:
+						_sis_field_set_int(outunit, (char *)out_, (int64)f64, i);
+						break;
+					case SIS_DYNAMIC_TYPE_SEC:
+					case SIS_DYNAMIC_TYPE_TICK:
+					case SIS_DYNAMIC_TYPE_MINU:
+					case SIS_DYNAMIC_TYPE_DATE:
+					case SIS_DYNAMIC_TYPE_UINT:
+						_sis_field_set_uint(outunit, (char *)out_, (uint64)f64, i);
+						break;
+					case SIS_DYNAMIC_TYPE_FLOAT:
+						_sis_field_set_float(outunit, (char *)out_, (double)f64, i);
+						break;
+					case SIS_DYNAMIC_TYPE_PRICE:
+						// 这里特殊处理一下
+						_sis_field_set_price(outunit, (char *)out_, (double)f64, i);
 						break;
 					case SIS_DYNAMIC_TYPE_CHAR:
 						// 不支持
@@ -563,6 +661,22 @@ void _sis_dynamic_method_owner(void *convert_, void *in_, size_t ilen_, void *ou
 	}
 }
 
+s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_)
+{
+	char *str = NULL;
+	size_t olen;
+	if (iszip_)
+	{
+		str = sis_json_output_zip(node_, &olen);
+	}
+	else
+	{
+		str = sis_json_output(node_, &olen);
+	}
+	s_sis_sds o = sis_sdsnewlen(str, olen);
+	sis_free(str);
+    return o;
+}
 ////////////////////////////////////////////////////
 // 单个db转换为其他结构 传入需要转换的db
 ////////////////////////////////////////////////////
@@ -1113,7 +1227,7 @@ error:
 // }
 
 #if 0
-#pragma pack(push, 1)
+#pragma pack(push,1)
 typedef struct _local_info {
 	int open;
 	double close;

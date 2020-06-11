@@ -48,4 +48,7 @@
 #include <os_thread.h>
 #include <os_malloc.h>
 
+#define  LOWORD(l)         ( (unsigned short)(l) )
+#define  HIWORD(l)         ( (unsigned short)(((unsigned int)(l) >> 16) & 0xFFFF) )
+
 #endif //_SIS_OS_H

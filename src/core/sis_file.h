@@ -5,7 +5,12 @@
 #include <sis_core.h>
 #include <sis_malloc.h>
 #include <sis_str.h>
-#include <sis_list.h>
+
+#define SIS_FILE_BUFFER_LEN  1024*1024
+
+#define WRITE_FILE_INT(f__,l__)  { int len__=(int)l__ ;sis_file_write(f__, &len__, sizeof(int));}
+#define WRITE_FILE_STRING(f__,s__,l__)  { int len__=(int)l__ ;sis_file_write(f__, &len__, sizeof(int)); \
+                                        sis_file_write(f__, s__, len__); }
 
 typedef struct s_sis_file {
 	s_sis_file_handle fp;
@@ -35,7 +40,7 @@ s_sis_sds sis_file_read_to_sds(const char *fn_);
 
 bool sis_file_sds_write(const char *fn_, s_sis_sds buffer_);
 
-void sis_get_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_);
+void sis_cat_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int size_);
 
 void sis_check_path(const char *fn_);
 

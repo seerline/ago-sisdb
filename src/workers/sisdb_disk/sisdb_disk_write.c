@@ -1,4 +1,4 @@
-#include "sisdb_disk.h"
+﻿#include "sisdb_disk.h"
 
 
 ///////////////////////////
@@ -15,7 +15,7 @@ size_t sis_disk_write_work(s_sis_disk_class *cls_, int hid_, s_sis_disk_wcatch *
     if (wcatch_ && cls_->work_fps->main_head.index)
     {
         s_sis_disk_index *node = sis_disk_index_get(cls_->index_infos, wcatch_->key, wcatch_->sdb);        
-        // printf("%s %d \n ",SIS_OBJ_SDS(wcatch_->key), hid_);
+        printf("%s %d \n ",SIS_OBJ_SDS(wcatch_->key), hid_);
         wcatch_->winfo.active++;
         sis_struct_list_push(node->index, &wcatch_->winfo); // 写完盘后增加一条索引记录
     }
@@ -108,10 +108,10 @@ size_t sis_disk_file_write_sdb_sno(s_sis_disk_class *cls_,
         {
             cls_->sno_size += sis_memory_cat_ssize(wcatch->memory, key->index);
             cls_->sno_size += sis_memory_cat_ssize(wcatch->memory, sdb->index);
-            wcatch->winfo.start = sis_dynamic_db_gettime(unit->db, 0, in_, ilen_);
+            wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
         }
         // sno 因为是序列化存储 不计算停止时间
-        // msec_t stop = sis_dynamic_db_gettime(unit->db, count - 1, in_, ilen_);
+        // msec_t stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
         // wcatch->winfo.stop = sis_max(wcatch->winfo.stop, stop);
 
         wcatch->winfo.kdict = key->units->count - 1;
@@ -125,6 +125,7 @@ size_t sis_disk_file_write_sdb_sno(s_sis_disk_class *cls_,
             cls_->sno_series++;
             cls_->sno_size += sis_memory_cat(wcatch->memory, (char *)in_ + i * unit->db->size, unit->db->size);
         }
+        // printf("%zu --> %zu\n", cls_->sno_size ,cls_->work_fps->max_page_size);
         if (cls_->sno_size > cls_->work_fps->max_page_size)
         {
             printf("%zu %zu %zu %d\n", cls_->sno_size, cls_->work_fps->max_page_size, cls_->sno_series, cls_->sno_pages);
@@ -173,8 +174,8 @@ size_t sis_disk_file_write_sdb_one(s_sis_disk_class *cls_,
         s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key->name, sdb->name);
 
         int count = ilen_ / unit->db->size;
-        wcatch->winfo.start = sis_dynamic_db_gettime(unit->db, 0, in_, ilen_);
-        wcatch->winfo.stop = sis_dynamic_db_gettime(unit->db, count - 1, in_, ilen_);
+        wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
+        wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
         // printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
 
         wcatch->winfo.kdict = key->units->count - 1;
@@ -234,8 +235,8 @@ size_t _sis_disk_file_write_kdb(s_sis_disk_class *cls_,
         s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key, sdb_->name);
         
         int count = ilen_ / unit->db->size;
-        wcatch->winfo.start = sis_dynamic_db_gettime(unit->db, 0, in_, ilen_);
-        wcatch->winfo.stop = sis_dynamic_db_gettime(unit->db, count - 1, in_, ilen_);
+        wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
+        wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
         // printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
 
         wcatch->winfo.kdict = -1;
@@ -325,7 +326,7 @@ size_t sis_disk_file_write_sdb(s_sis_disk_class *cls_,
         key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
     }
     s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_get(cls_->sdbs, sdb_);
-    // printf("look sdb : %s\n", sdb ? SIS_OBJ_SDS(sdb->name) : "null");
+    // printf("look sdb : %s %s %s\n", key_, sdb_, sdb ? SIS_OBJ_SDS(sdb->name) : "null");
     if (key && sdb)
     {
         size = _sis_disk_file_write_sdb(cls_, key, sdb, in_, ilen_);
@@ -636,6 +637,7 @@ size_t sis_disk_file_write_surplus(s_sis_disk_class *cls_)
     case SIS_DISK_TYPE_SNO:
     {
         size = sis_disk_file_write_sno(cls_);
+        printf("write sno : %zu\n", size);
     }
     break;
     default: // SIS_DISK_TYPE_SDB  // 所有数据及时写入，
@@ -731,7 +733,7 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_)
         sis_disk_file_write_key_dict(cls_);
         sis_disk_file_write_sdb_dict(cls_);
     }
-
+    cls_->status = SIS_DISK_STATUS_OPENED;
     cls_->sno_size = 0;   // 当前块的总大小
     cls_->sno_series = 0; // 当前块的序号 每个新的page重新计数
 
@@ -741,6 +743,10 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_)
 // 写入结束标记，并生成索引文件
 int sis_disk_file_write_stop(s_sis_disk_class *cls_)
 {
+    if (cls_->status == SIS_DISK_STATUS_CLOSED)
+    {
+        return 0;
+    }
     // 根据文件类型写索引，并关闭文件
     sis_disk_file_write_surplus(cls_);
 
@@ -765,5 +771,6 @@ int sis_disk_file_write_stop(s_sis_disk_class *cls_)
         sis_files_close(cls_->index_fps);
     }
     sis_disk_class_clear(cls_);
+    cls_->status = SIS_DISK_STATUS_CLOSED;
     return 0;
 }

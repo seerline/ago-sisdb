@@ -6,6 +6,8 @@
 #include "sis_net.h"
 #include "sis_net.io.h"
 #include "sis_message.h"
+#include "worker.h"
+#include "sis_dynamic.h"
 
 #define SISDB_STATUS_NONE     0
 #define SISDB_STATUS_INITING  1
@@ -41,6 +43,12 @@ typedef struct s_sisdb_userinfo
 	int  access;       // 权限 
 } s_sisdb_userinfo;
 
+typedef struct s_sisdb_convert
+{
+	char                   dateset[128];
+	s_sis_dynamic_convert *convert;
+} s_sisdb_convert;
+
 typedef struct s_sisdb_server_cxt
 {
 	int    status;
@@ -57,8 +65,7 @@ typedef struct s_sisdb_server_cxt
 	// 下次加载从fast_save加载限定数据 
 
 	s_sis_share_reader *reader_convert; // 读取发送队列
-	s_sis_method       *convert_method;   // 默认传入数据的方法
-	s_sis_worker       *convert_worker;   // 数据自动切片或转移
+	s_sis_map_pointer  *converts;    // 需要转换的表 (dataset+table) s_sis_pointer_list * --> s_sisdb_convert
 
 	// 节省内存 所有订阅请求都发送到fast_save 由这个方法来处理
 	s_sis_method       *fast_method; // 默认传入数据的方法
@@ -83,6 +90,14 @@ typedef struct s_sisdb_server_cxt
 
 }s_sisdb_server_cxt;
 
+//////////////////////////////////
+// s_sisdb_convert
+///////////////////////////////////
+s_sisdb_convert *sisdb_convert_create(const char *dataset_, s_sis_dynamic_convert *convert_);
+void sisdb_convert_destroy(void *);
+int sisdb_convert_init(s_sisdb_server_cxt *server_, s_sis_json_node *node_);
+int sisdb_convert_working(s_sisdb_server_cxt *server_, s_sis_net_message *netmsg_);
+
 bool  sisdb_server_init(void *, void *);
 void  sisdb_server_work_init(void *);
 void  sisdb_server_working(void *);
@@ -97,5 +112,6 @@ int cmd_sisdb_server_save(void *worker_, void *argv_);
 int cmd_sisdb_server_pack(void *worker_, void *argv_);
 int cmd_sisdb_server_call(void *worker_, void *argv_);
 int cmd_sisdb_server_wlog(void *worker_, void *argv_);
+
 
 #endif

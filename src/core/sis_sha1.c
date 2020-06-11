@@ -1,4 +1,4 @@
-#include "sis_sha1.h"
+﻿#include "sis_sha1.h"
 
 static char encoding_table[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',

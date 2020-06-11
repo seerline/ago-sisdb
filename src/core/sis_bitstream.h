@@ -1,41 +1,41 @@
-#ifndef _SIS_BITSTREAM_H
+ï»¿#ifndef _SIS_BITSTREAM_H
 #define _SIS_BITSTREAM_H
 
 #include "sis_core.h"
 #include "sis_zint.h"
 
 //m_method_c
-//'B':Êý¾Ý²»³¬¹ým_data_dwÎ», 
-//'b':Êý¾Ý²»³¬¹ým_data_dwÎ», ´ø·ûºÅÊý
-//'m':Êý¾Ý²»³¬¹ým_data_dwÎ», ¸ºÊý
-//'S':Êý¾ÝÓÒÒÆHIWORD(m_data_dw)ºó²»³¬¹ýLOWORD(m_data_dw)Î»
-//'E':Êý¾ÝµÈÓÚCodeData
-//'Z':Êý¾ÝÎªx*10^N, x<CodeData,N==1-4
-//'P':ÔÚm_data_dwÎ»Êý¾ÝÖÐ£¬´æÔÚÒ»¸ö1£¬Õâ¸ö1µÄÎ»ÖÃ
-//'D':Ô­Ê¼ÕûÐÎÊý¾Ý£¬Ô­Ê¼Êý¾Ý·ÅÈëBitÁ÷,×ÜÊÇ·ÅÔÚ×îºóÃæ£¬²»½øÐÐÆ¥Åä
-//'F':Ô­Ê¼¸¡µãÊý¾Ý£¬Ô­Ê¼Êý¾Ý·ÅÈëBitÁ÷,×ÜÊÇ·ÅÔÚ×îºóÃæ£¬²»½øÐÐÆ¥Åä
-//'M':Ô­Ê¼zint32Êý¾Ý£¬Ô­Ê¼Êý¾Ý·ÅÈëBitÁ÷,×ÜÊÇ·ÅÔÚ×îºóÃæ£¬²»½øÐÐÆ¥Åä
+//'B':æ•°æ®ä¸è¶…è¿‡m_data_dwä½, 
+//'b':æ•°æ®ä¸è¶…è¿‡m_data_dwä½, å¸¦ç¬¦å·æ•°
+//'m':æ•°æ®ä¸è¶…è¿‡m_data_dwä½, è´Ÿæ•°
+//'S':æ•°æ®å³ç§»HIWORD(m_data_dw)åŽä¸è¶…è¿‡LOWORD(m_data_dw)ä½
+//'E':æ•°æ®ç­‰äºŽCodeData
+//'Z':æ•°æ®ä¸ºx*10^N, x<CodeData,N==1-4
+//'P':åœ¨m_data_dwä½æ•°æ®ä¸­ï¼Œå­˜åœ¨ä¸€ä¸ª1ï¼Œè¿™ä¸ª1çš„ä½ç½®
+//'D':åŽŸå§‹æ•´å½¢æ•°æ®ï¼ŒåŽŸå§‹æ•°æ®æ”¾å…¥Bitæµ,æ€»æ˜¯æ”¾åœ¨æœ€åŽé¢ï¼Œä¸è¿›è¡ŒåŒ¹é…
+//'F':åŽŸå§‹æµ®ç‚¹æ•°æ®ï¼ŒåŽŸå§‹æ•°æ®æ”¾å…¥Bitæµ,æ€»æ˜¯æ”¾åœ¨æœ€åŽé¢ï¼Œä¸è¿›è¡ŒåŒ¹é…
+//'M':åŽŸå§‹zint32æ•°æ®ï¼ŒåŽŸå§‹æ•°æ®æ”¾å…¥Bitæµ,æ€»æ˜¯æ”¾åœ¨æœ€åŽé¢ï¼Œä¸è¿›è¡ŒåŒ¹é…
 
 #pragma pack(push,1)
 
 typedef struct s_sis_bit_code{
-	uint16	m_sign_w;	    //±àÂë±ê¼Ç
-	uint8	m_len_by;		//±àÂë³¤¶È
-	uint8	m_data_len_by;	//±àÂëºó¸úËæµÄÊý¾Ý³¤¶È,µ¥Î»Bit£¬×î´ó32Bit
-	char	m_method_c;		//±àÂë·½·¨
-	uint32	m_data_dw;	         //±àÂëÊý¾Ý
-	uint32	m_data_offset_dw;	//±àÂëÊý¾ÝÆ«ÒÆÁ¿
+	uint16	m_sign_w;	    //ç¼–ç æ ‡è®°
+	uint8	m_len_by;		//ç¼–ç é•¿åº¦
+	uint8	m_data_len_by;	//ç¼–ç åŽè·Ÿéšçš„æ•°æ®é•¿åº¦,å•ä½Bitï¼Œæœ€å¤§32Bit
+	char	m_method_c;		//ç¼–ç æ–¹æ³•
+	uint32	m_data_dw;	         //ç¼–ç æ•°æ®
+	uint32	m_data_offset_dw;	//ç¼–ç æ•°æ®åç§»é‡
 }s_sis_bit_code;
 
 typedef struct s_sis_bit_stream{
-	uint8*    m_stream;				//»º³åÇø
-	uint32    m_bit_size_i;			//»º³åÇø´óÐ¡£¬Bit
+	uint8*    m_stream;				//ç¼“å†²åŒº
+	uint32    m_bit_size_i;			//ç¼“å†²åŒºå¤§å°ï¼ŒBit
 
-	uint32    m_nowpos_i;			//µ±Ç°Î»ÖÃ
-	uint32    m_savepos_i;			//ÉÏÒ»´Î±£´æµÄÎ»ÖÃ
+	uint32    m_nowpos_i;			//å½“å‰ä½ç½®
+	uint32    m_savepos_i;			//ä¸Šä¸€æ¬¡ä¿å­˜çš„ä½ç½®
 
-	const   s_sis_bit_code  *m_nowcode_p;    //µ±Ç°±à½âÂëÂë±í
-	int		m_nowcode_count;	     //µ±Ç°±à½âÂëÂë±í¼ÇÂ¼Êý
+	const   s_sis_bit_code  *m_nowcode_p;    //å½“å‰ç¼–è§£ç ç è¡¨
+	int		m_nowcode_count;	     //å½“å‰ç¼–è§£ç ç è¡¨è®°å½•æ•°
 }s_sis_bit_stream;
 
 #pragma pack(pop)
@@ -48,7 +48,7 @@ s_sis_bit_stream *sis_bitstream_create(uint8 *in_, size_t inLen_, uint32 initPos
 void sis_bitstream_destroy(s_sis_bit_stream *);
 
 void sis_bitstream_link(s_sis_bit_stream *s_, uint8 *in_, uint32 inLen_, uint32 initPos_);
-int  sis_bitstream_getbytelen(s_sis_bit_stream *s_);//µÃµ½µ±Ç°BitÁ÷ByteÊý
+int  sis_bitstream_getbytelen(s_sis_bit_stream *s_);//å¾—åˆ°å½“å‰BitæµByteæ•°
 
 int    sis_bitstream_get_nomove(s_sis_bit_stream *s_, int nBit, uint32 *out);
 uint32 sis_bitstream_get(s_sis_bit_stream *s_, int nBit);
@@ -72,7 +72,7 @@ int sis_bitstream_encode_string(s_sis_bit_stream *s_, const char * strData, uint
 uint32 sis_bitstream_decode_uint32(s_sis_bit_stream *s_, const uint32* base, bool bReverse);
 void sis_bitstream_decode_zint32(s_sis_bit_stream *s_, const zint32* base, zint32 *out, bool bReverse);
 float sis_bitstream_decode_float(s_sis_bit_stream *s_, bool check0);
-uint32 sis_bitstream_decode_string(s_sis_bit_stream *s_, char* in_, int inLen_, uint32 *base_);						//Èç¹û½â³öÊý×ÖLabel£¬Ôò·µ»Ø¸ÃÊý×Ö£¬·ñÔò·µ»Ø0xFFFFFFFF,¸üÐÂdwLastData
+uint32 sis_bitstream_decode_string(s_sis_bit_stream *s_, char* in_, int inLen_, uint32 *base_);						//å¦‚æžœè§£å‡ºæ•°å­—Labelï¼Œåˆ™è¿”å›žè¯¥æ•°å­—ï¼Œå¦åˆ™è¿”å›ž0xFFFFFFFF,æ›´æ–°dwLastData
 
 #endif //_LW_BITSTREAM_H
 

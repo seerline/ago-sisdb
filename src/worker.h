@@ -1,4 +1,4 @@
-#ifndef _WORKER_H
+﻿#ifndef _WORKER_H
 #define _WORKER_H
 
 #include <sis_core.h>

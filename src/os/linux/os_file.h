@@ -22,8 +22,8 @@
 #define SIS_FILE_IO_CREATE     /*0x0100   */   O_CREAT  
 #define SIS_FILE_IO_TRUNC      /*0x0200   */   O_TRUNC  
 #define SIS_FILE_IO_APPEND     /*0x0800   */   O_APPEND 
-#define SIS_FILE_IO_TEXT       /*0x4000   */   O_TEXT   
-#define SIS_FILE_IO_BINARY     /*0x8000   */   O_BINARY 
+#define SIS_FILE_IO_TEXT       /*0x4000   */   0x4000   
+#define SIS_FILE_IO_BINARY     /*0x8000   */   0x8000 
 #define SIS_FILE_IO_DSYNC      /*0x400000 */   O_DSYNC  
 #define SIS_FILE_IO_RSYNC      /*0x101000 */   O_RSYNC  
 #define SIS_FILE_IO_SYNC       /*0x80     */   O_SYNC   
@@ -56,9 +56,7 @@
 
 #define SIS_FILE_MODE_NORMAL    S_IREAD|S_IWRITE  // 0x0180
 
-#define SIS_FILE_MODE_EXEC   0x1
-#define SIS_FILE_MODE_WRITE  0x2
-#define SIS_FILE_MODE_READ   0x4
+#define SIS_PATH_SEPARATOR  '/'
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,12 +66,15 @@ extern "C" {
 // 在64位机器中 seek 是能准确定位到大于4G的文件位置的
 #define s_sis_handle int
 
-s_sis_handle sis_open(const char *fn_, int access_, int mode_);
+void sis_file_fixpath(char *in_);
+
+s_sis_handle sis_open(const char *fn_, int mode_, int access_);
 #define sis_seek(a, b, c) lseek(a, b, c)
 #define sis_close(a) close(a)
 
 int sis_getpos(s_sis_handle fp_, size_t *offset_);
 int sis_setpos(s_sis_handle fp_, size_t *offset_);
+
 size_t sis_size(s_sis_handle fp_);
 size_t sis_read(s_sis_handle fp_, char *in_, size_t len_);
 size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_);
@@ -81,13 +82,13 @@ size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_);
 
 #define s_sis_file_handle FILE *
 
-s_sis_file_handle sis_file_open(const char *fn_, int access_, int mode_);
+s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_);
 #define sis_file_close(a) fclose(a)
-// -1 失败
 long long sis_file_seek(s_sis_file_handle fp_, size_t offset_, int where_);
 
 int sis_file_getpos(s_sis_file_handle fp_, size_t *offset_);
 int sis_file_setpos(s_sis_file_handle fp_, size_t *offset_);
+
 size_t sis_file_size(s_sis_file_handle fp_);
 size_t sis_file_read(s_sis_file_handle fp_, char *in_, size_t len_);
 size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_);
@@ -102,7 +103,6 @@ void sis_file_rename(char *oldn_, char *newn_);
 
 void sis_file_delete(const char *fn_);
 
-char sis_path_separator();
 void sis_path_complete(char *path_,int maxlen_);
 bool sis_path_mkdir(const char *path_);
 #ifdef __cplusplus

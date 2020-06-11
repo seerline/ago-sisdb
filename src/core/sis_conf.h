@@ -25,6 +25,9 @@ typedef struct s_sis_conf_handle
 } s_sis_conf_handle;         //专门提供给读json的快速结构体
 
 //-------- output option function-------- //
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 s_sis_conf_handle *sis_conf_open(const char *fn_); // 从文件打开 不读取注释
 void sis_conf_close(s_sis_conf_handle *handle_); // 关闭并释放
@@ -49,4 +52,7 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_);
 
 s_sis_sds sis_conf_file_to_json_sds(const char *fn_);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

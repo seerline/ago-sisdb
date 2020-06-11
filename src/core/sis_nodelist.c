@@ -53,7 +53,7 @@ s_list *listCreate(void)
 /* Remove all the elements from the s_list without destroying the s_list itself. */
 void listEmpty(s_list *s_list)
 {
-    unsigned long len;
+    unsigned int len;
     listNode *current, *next;
 
     current = s_list->head;
