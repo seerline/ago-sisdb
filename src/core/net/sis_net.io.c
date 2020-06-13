@@ -187,8 +187,8 @@ void sis_net_ans_with_error(s_sis_net_message *netmsg_, char *rval_, size_t vlen
 // }
 // bool sis_socket_check_auth(s_sis_net_class *sock_, int cid_)
 // {
-// 	char key[16];
-// 	sis_sprintf(key, 16, "%d", cid_);
+// 	char key[32];
+// 	sis_llutoa(sid_, key, 32, 10);
 // 	s_sis_net_client *client = sis_map_pointer_get(sock_->sessions, key);
 // 	if (!client->auth)
 // 	{
@@ -211,8 +211,8 @@ void sis_net_ans_with_error(s_sis_net_message *netmsg_, char *rval_, size_t vlen
 // 			return SIS_METHOD_ERROR;
 // 		}
 // 	}
-// 	char key[16];
-// 	sis_sprintf(key, 16, "%d", mess->cid);
+// 	char key[32];
+// 	sis_llutoa(sid_, key, 32, 10);
 // 	s_sis_net_client *client = sis_map_pointer_get(sock->sessions, key);
 // 	if (client)
 // 	{

@@ -217,7 +217,7 @@ static int cb_sis_reader_recv(void *cls_, s_sis_object *in_)
 	// 从队列中来 往上层用户而去
 	s_sis_net_class *cls = (s_sis_net_class *)cls_;
 	char key[16];
-	sis_sprintf(key, 16, "%d", SIS_OBJ_NETMSG(in_)->cid);
+	sis_llutoa(SIS_OBJ_NETMSG(in_)->cid, key, 16, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (!cxt)
 	{
@@ -246,7 +246,7 @@ static int cb_sis_reader_send(void *cls_, s_sis_object *in_)
 	sis_object_incr(in_);
 	s_sis_net_class *cls = (s_sis_net_class *)cls_;
 	char key[16];
-	sis_sprintf(key, 16, "%d", SIS_OBJ_NETMSG(in_)->cid);
+	sis_llutoa(SIS_OBJ_NETMSG(in_)->cid, key, 16, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (!cxt)
 	{
@@ -422,8 +422,8 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 
-	char key[16];
-	sis_sprintf(key, 16, "%d", sid_);
+	char key[32];
+	sis_llutoa(sid_, key, 32, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (!cxt)
 	{
@@ -559,8 +559,8 @@ static void cb_server_connected(void *handle_, int sid_)
 	printf("new connect . sid_ = %d \n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 
-	char key[16];
-	sis_sprintf(key, 16, "%d", sid_);
+	char key[32];
+	sis_llutoa(sid_, key, 32, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (!cxt)
 	{
@@ -593,8 +593,8 @@ static void cb_server_disconnect(void *handle_, int sid_)
 
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 
-	char key[16];
-	sis_sprintf(key, 16, "%d", sid_);
+	char key[32];
+	sis_llutoa(sid_, key, 32, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (cxt)
 	{
@@ -681,8 +681,8 @@ void sis_net_class_delete(s_sis_net_class *cls_, int sid_)
 	}
 	else
 	{
-		char key[16];
-		sis_sprintf(key, 16, "%d", sid_);
+		char key[32];
+		sis_llutoa(sid_, key, 32, 10);
 		sis_map_pointer_del(cls_->cxts, key);
 	}
 
@@ -732,8 +732,8 @@ void sis_net_class_close(s_sis_net_class *cls_)
 
 int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_reply cb_)
 {
-	char key[16];
-	sis_sprintf(key, 16, "%d", sid_);
+	char key[32];
+	sis_llutoa(sid_, key, 32, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
 	if (cxt)
 	{
@@ -744,8 +744,8 @@ int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_
 }
 int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, char * crypt_, char * protocol_)
 {
-	char key[16];
-	sis_sprintf(key, 16, "%d", sid_);
+	char key[32];
+	sis_llutoa(sid_, key, 32, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
 	uint8 compress = SIS_NET_ZIP_NONE;
 	uint8 crypt = SIS_NET_CRYPT_NONE;

@@ -413,14 +413,14 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 			jval = jval->next;
 			continue;
 		}
-		char key[16];
+		char key[32];
 		int fidx = 0;
 		for (int k = 0; k < fnums; k++)
 		{
 			s_sisdb_field *fu = (s_sisdb_field *)sis_map_list_geti(collect_->sdb->db->fields, k);
 			for (int i = 0; i < fu->count; i++)
 			{
-				sis_sprintf(key, 10, "%d", fidx);
+				sis_llutoa(fidx, key, 32, 10);
 				sis_dynamic_field_json_to_struct(o + index * collect_->value->len, fu, fidx, key, jval);
 				fidx++;
 			}

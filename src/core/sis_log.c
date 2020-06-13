@@ -6,21 +6,23 @@
 // 一定要用static定义，不然内存混乱
 static s_sis_log _sis_log = {
 	.outscreen = true,
+	.init_mutex = false,
 	.level = 10,
 	.maxsize = 5,
 	.logfp = NULL
-}
-;
+};
 
 /********************************/
 void sis_log_start()
 {
 	sis_mutex_init(&_sis_log.mutex, NULL);
+	_sis_log.init_mutex = true;
 }
 void sis_log_stop()
 {
 	sis_log_close();
 	sis_mutex_destroy(&_sis_log.mutex);
+	_sis_log.init_mutex = false;
 }
 
 void sis_log_close()
@@ -121,6 +123,10 @@ void sis_log_check()
 
 void sis_log(const char *fmt_, ...)
 {
+	if (!_sis_log.init_mutex)
+	{
+		sis_log_start();
+	}
 	sis_mutex_lock(&_sis_log.mutex);
 	
 	sis_log_check();

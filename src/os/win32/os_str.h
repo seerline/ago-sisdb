@@ -152,8 +152,98 @@ inline size_t sis_strlen(char *str_)
 {
 	return str_ ? strlen(str_) : 0;
 }
+// 以下两个函数会异常 放弃使用
+// #define sis_lldtoa _i64toa_s
+// #define sis_llutoa _ui64toa_s
 
+inline int sis_lldtoa(long long val_, char *buf_, size_t ilen_, unsigned radix_)
+{
+	char *p;		 /*   pointer   to   traverse   string   */
+	char *firstdig;  /*   pointer   to   first   digit   */
+	unsigned digval; /*   value   of   digit   */
+	if (val_ < 0)
+	{
+		buf_[0] = '-';
+		p = &buf_[1];
+		val_ = -1 * val_;
+		ilen_--;
+	}
+	else
+	{
+		p = &buf_[0];
+	}
+	firstdig = p; /*   save   pointer   to   first   digit   */
+	do
+	{
+		digval = (unsigned)(val_ % radix_);
+		val_ /= radix_; /*   get   next   digit   */
 
+		/*   convert   to   ascii   and   store   */
+		if (digval > 9)
+			*p++ = (char)(digval - 10 + 'a'); /*   a   letter   */
+		else
+			*p++ = (char)(digval + '0'); /*   a   digit   */
+		ilen_--;
+		if (ilen_ < 1)
+		{
+			buf_[0] = 0;
+			return -1;
+		}
+	} while (val_ > 0);
+
+	*p-- = '\0'; /*   terminate   string;   p   points   to   last   digit   */
+
+	char reverse;		 /*   reverse   char   */
+	do
+	{
+		reverse = *p;
+		*p = *firstdig;
+		*firstdig = reverse; /*   swap   *p   and   *firstdig   */
+		--p;
+		++firstdig;			/*   advance   to   next   two   digits   */
+	} while (firstdig < p); /*   repeat   until   halfway   */
+	return 0;
+}
+
+inline int sis_llutoa(unsigned long long val_, char *buf_, size_t ilen_, unsigned radix_)
+{
+	char *p;		 /*   pointer   to   traverse   string   */
+	char *firstdig;  /*   pointer   to   first   digit   */
+	unsigned digval; /*   value   of   digit   */
+
+	p = buf_;
+	firstdig = p; /*   save   pointer   to   first   digit   */
+	do
+	{
+		digval = (unsigned)(val_ % radix_);
+		val_ /= radix_; /*   get   next   digit   */
+
+		/*   convert   to   ascii   and   store   */
+		if (digval > 9)
+			*p++ = (char)(digval - 10 + 'a'); /*   a   letter   */
+		else
+			*p++ = (char)(digval + '0'); /*   a   digit   */
+		ilen_--;
+		if (ilen_ < 1)
+		{
+			buf_[0] = 0;
+			return -1;
+		}
+	} while (val_ > 0);
+
+	*p-- = '\0'; /*   terminate   string;   p   points   to   last   digit   */
+
+	char reverse;		 /*   reverse   char   */
+	do
+	{
+		reverse = *p;
+		*p = *firstdig;
+		*firstdig = reverse; /*   swap   *p   and   *firstdig   */
+		--p;
+		++firstdig;			/*   advance   to   next   two   digits   */
+	} while (firstdig < p); /*   repeat   until   halfway   */
+	return 0;
+}
 // inline int strerror_r(int err, char* buf, size_t buflen)
 // {
 // 	int size = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |

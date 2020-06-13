@@ -37,7 +37,7 @@ typedef int int32;
 #ifndef uint32 
 typedef unsigned int uint32;
 #endif
-#ifndef __APPLE__
+#ifdef __APPLE__
 #ifndef int64_t
 typedef long long int64_t;
 #endif

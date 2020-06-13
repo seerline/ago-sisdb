@@ -20,8 +20,8 @@ s_sis_handle sis_open(const char *fn_, int mode_, int access_)
 }
 int64 sis_seek(s_sis_handle fp_, int64 offset_, int set_)
 {
-	return lseek(fp_, offset_, set_);
-	// return _lseeki64(fp_, offset_, set_);
+	// return lseek(fp_, offset_, set_);
+	return _lseeki64(fp_, offset_, set_);
 }
 
 int sis_getpos(s_sis_handle fp_, size_t *offset_)

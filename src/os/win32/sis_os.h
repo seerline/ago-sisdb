@@ -48,5 +48,16 @@
 #include <map>
 #include <parser.h>*/
 
+#define CLR_RED    ""
+#define CLR_GREEN  ""
+#define CLR_BLUE   ""
+#define CLR_GOLD   ""
+
+#define CLR_LRED   ""
+#define CLR_LGREEN ""
+#define CLR_LBLUE  ""
+#define CLR_LHOT   ""
+#define CLR_YELLOW ""
+#define RESET      ""
 
 #endif //_SIS_OS_H

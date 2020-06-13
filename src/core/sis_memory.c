@@ -1,12 +1,13 @@
 ﻿
 #include <sis_memory.h>
+#include <sis_math.h>
 
 s_sis_memory *sis_memory_create()
 {
 	s_sis_memory *m = (s_sis_memory *)sis_malloc(sizeof(s_sis_memory));
-	m->buffer = (char *)sis_malloc(SIS_MEMORY_SIZE);
+	m->buffer = (char *)sis_malloc(255);
 	m->size = 0;
-	m->maxsize = SIS_MEMORY_SIZE;
+	m->maxsize = 255;
 	m->offset = 0;
 
 	return m;
@@ -75,15 +76,20 @@ char *sis_memory(s_sis_memory *m_)
 	}
 	return m_->buffer + m_->offset;
 }
+void sis_memory_grow(s_sis_memory *m_, size_t nsize_)
+{
+	if (nsize_ > m_->maxsize)
+	{
+		size_t grow = sis_min(SIS_MEMORY_SIZE, (nsize_ + m_->maxsize) / 2);
+		m_->maxsize = nsize_ + grow;
+		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+	}	
+}
 size_t sis_memory_cat(s_sis_memory *m_, char *in_, size_t ilen_)
 {
 	if (ilen_ > 0)
 	{
-		if (ilen_ + m_->size > m_->maxsize)
-		{
-			m_->maxsize = ilen_ + m_->size + SIS_MEMORY_SIZE;
-			m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
-		}
+		sis_memory_grow(m_, ilen_ + m_->size);
 		memmove(m_->buffer + m_->size, in_, ilen_);
 		m_->size += ilen_;
 	}
@@ -91,11 +97,7 @@ size_t sis_memory_cat(s_sis_memory *m_, char *in_, size_t ilen_)
 }
 size_t sis_memory_cat_int(s_sis_memory *m_, int in_)
 {
-	if (sizeof(int) + m_->size > m_->maxsize)
-	{
-		m_->maxsize = sizeof(int) + m_->size + SIS_MEMORY_SIZE;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
-	}
+	sis_memory_grow(m_, sizeof(int) + m_->size);
 	memmove(m_->buffer + m_->size, &in_, sizeof(int));
 	m_->size += sizeof(int);
 	return sizeof(int);
@@ -115,11 +117,7 @@ size_t sis_memory_cat_byte(s_sis_memory *m_, int64 in_, int bytes_)
 {
 	if (bytes_ == 1|| bytes_ == 2 || bytes_ == 4 || bytes_ == 8)
 	{
-		if (bytes_ + m_->size > m_->maxsize)
-		{
-			m_->maxsize = bytes_ + m_->size + SIS_MEMORY_SIZE;
-			m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
-		}
+		sis_memory_grow(m_, bytes_ + m_->size);
 		memmove(m_->buffer + m_->size, &in_, bytes_);
 		m_->size += bytes_;
 	}
@@ -231,11 +229,7 @@ bool sis_memory_try_ssize(s_sis_memory *s_)
 
 size_t sis_memory_cat_double(s_sis_memory *m_, double in_)
 {
-	if (sizeof(double) + m_->size > m_->maxsize)
-	{
-		m_->maxsize = sizeof(double) + m_->size + SIS_MEMORY_SIZE;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
-	}
+	sis_memory_grow(m_, sizeof(double) + m_->size);
 	memmove(m_->buffer + m_->size, &in_, sizeof(double));
 	m_->size += sizeof(double);
 	return sizeof(double);
@@ -260,11 +254,7 @@ size_t sis_memory_readfile(s_sis_memory *m_, s_sis_file_handle fp_, size_t len_)
 	}
 	sis_memory_pack(m_);
 
-	if (bytes + m_->size > m_->maxsize)
-	{
-		m_->maxsize = bytes + m_->size + SIS_MEMORY_SIZE;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
-	}
+	sis_memory_grow(m_, bytes + m_->size);
 	memmove(m_->buffer + m_->size, mem, bytes);
 	m_->size += bytes;
 	// m_->buffer[m_->size] = 0;
@@ -287,11 +277,7 @@ size_t sis_memory_read(s_sis_memory *m_, s_sis_handle fp_, size_t len_)
 	}
 	sis_memory_pack(m_);
 
-	if (bytes + m_->size > m_->maxsize)
-	{
-		m_->maxsize = bytes + m_->size + SIS_MEMORY_SIZE;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
-	}
+	sis_memory_grow(m_, bytes + m_->size);
 	memmove(m_->buffer + m_->size, mem, bytes);
 	m_->size += bytes;
 	// m_->buffer[m_->size] = 0;

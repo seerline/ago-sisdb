@@ -166,7 +166,7 @@ int sis_files_open_rdonly(s_sis_files *cls_, s_sis_files_unit *unit)
     // sis_out_binary("head", (char *)&head, bytes);
     if (bytes != sizeof(s_sis_disk_main_head) || head.style != cls_->main_head.style)
     {
-        LOG(5)("style fail. [%d %d] [%d %d]\n", bytes , sizeof(s_sis_disk_main_head), head.style, cls_->main_head.style);
+        LOG(5)("style fail. [%d %d] [%d %d]\n", (int)bytes , (int)sizeof(s_sis_disk_main_head), head.style, cls_->main_head.style);
         sis_files_close(cls_);
         return -4;
     }     
@@ -465,7 +465,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
 size_t sis_files_read(s_sis_files *cls_, int fidx_, size_t offset_, size_t size_, uint8 *hid_, s_sis_memory *out_)
 {
     s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, fidx_); 
-    printf("unit =%p, fidx = %d : %d\n",unit, fidx_, cls_->lists->count);
+    printf("unit =%p, fidx = %d : %d | %d  %d\n",unit, fidx_, cls_->lists->count, (int)offset_, (int)size_);
 
     size_t           size = 0; 
     s_sis_disk_head  head;   

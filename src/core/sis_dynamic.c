@@ -75,7 +75,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	{
 		return NULL;	
 	}
-
+	
 	s_sis_dynamic_db *dyna = SIS_MALLOC(s_sis_dynamic_db, dyna);
 	dyna->name = sis_sdsnew(node_->key);
 
@@ -134,7 +134,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		unit->solely = (flag && (strchr(flag, 'O') || strchr(flag, 'o'))) ? 1 : 0;
 		unit->offset = offset;
 
-		// printf("%s : %c %d %d %d\n",name, unit.style,unit.len,unit.offset,unit.count);
+		// printf("%s : %c %d %d %d\n",name, unit->style,unit->len,unit->offset,unit->count);
 		offset += unit->len * unit->count;
 		sis_map_list_set(dyna->fields, name, unit);		
 
@@ -168,7 +168,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	{
 		dyna->field_mindex = dyna->field_time;
 	}
-	printf("dyna->size ---%s %d\n", dyna->name, dyna->size);
+	LOG(5)("dyna->size ---%s %d\n", dyna->name, dyna->size);
 	return dyna;
 }
 
@@ -431,7 +431,7 @@ void _sis_dynamic_unit_copy(void *inunit_, void *in_, void *out_)
 	int count = sis_min(inunit->count, outunit->count);
 	memmove((char *)out_ + outunit->offset, (char *)in_ + inunit->offset, inunit->len * count);
 
-	printf("convert : %c %c %d %d\n", inunit->style, outunit->style, inunit->offset, outunit->offset);
+	// printf("convert : %c %c %d %d\n", inunit->style, outunit->style, inunit->offset, outunit->offset);
 	// if (outunit->count > count)	
 	// {
 	// 	memmove((char *)out_+outunit->offset + outunit->len*count, 
@@ -630,12 +630,12 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 
 void _sis_dynamic_method_copy(void *convert_, void *in_, size_t ilen_, void *out_, size_t olen_)
 {
-	printf("_sis_dynamic_method_copy ------ \n");
+	// printf("_sis_dynamic_method_copy ------ \n");
 	memmove((char *)out_, (char *)in_, olen_);
 }
 void _sis_dynamic_method_owner(void *convert_, void *in_, size_t ilen_, void *out_, size_t olen_)
 {
-	printf("_sis_dynamic_method_owner ------ \n");
+	// printf("_sis_dynamic_method_owner ------ \n");
 	s_sis_dynamic_convert *convert = (s_sis_dynamic_convert *)convert_;
 	s_sis_dynamic_db *indb = convert->in;
 	s_sis_dynamic_db *outdb = convert->out;
@@ -711,14 +711,14 @@ void _sis_dynamic_match(s_sis_dynamic_convert *convert_)
 			{
 				change = true;
 				curunit->cb_shift = _sis_dynamic_unit_convert;
-				printf("shift: convert \n");
+				// printf("shift: convert \n");
 			}
 			else if (inunit->len != outunit->len)
 			{
 				// 类型一样 长度不同，数量可能不同
 				change = true;
 				curunit->cb_shift = _sis_dynamic_unit_convert;
-				printf("shift: convert \n");
+				// printf("shift: convert \n");
 			}
 			else if (inunit->count != outunit->count)
 			{
@@ -728,10 +728,10 @@ void _sis_dynamic_match(s_sis_dynamic_convert *convert_)
 			else
 			{
 				curunit->cb_shift = _sis_dynamic_unit_copy;
-				printf("shift: copy \n");
+				// printf("shift: copy \n");
 			}
 		}
-		printf("inunit: %s -> %s \n", inunit->name, outunit->name);
+		// printf("inunit: %s -> %s \n", inunit->name, outunit->name);
 	}
 	if (change)
 	{

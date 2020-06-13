@@ -51,4 +51,16 @@
 #define  LOWORD(l)         ( (unsigned short)(l) )
 #define  HIWORD(l)         ( (unsigned short)(((unsigned int)(l) >> 16) & 0xFFFF) )
 
+#define CLR_RED "\033[0;32;31m"
+#define CLR_GREEN "\033[0;32;32m"
+#define CLR_BLUE "\033[0;32;36m"
+#define CLR_GOLD "\033[0;32;33m"
+
+#define CLR_LRED "\033[1;31m"
+#define CLR_LGREEN "\033[1;32m"
+#define CLR_LBLUE "\033[1;36m"
+#define CLR_LHOT "\033[1;35m"
+#define CLR_YELLOW "\033[1;33m"
+#define RESET "\033[0m"
+
 #endif //_SIS_OS_H

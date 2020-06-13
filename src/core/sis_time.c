@@ -211,8 +211,8 @@ void sis_time_format_date(char *out_, size_t olen_, time_t tt_) //"20150912"
 	}
 	struct tm ptm = {0};
 	sis_time_check(tt_, &ptm);
-
-	sis_sprintf(out_, olen_, "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
+	sis_llutoa((ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday, out_, olen_, 10);	
+	// sis_sprintf(out_, olen_, "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
 }
 void sis_time_format_datetime(char *out_, size_t olen_, time_t tt_) //"20150912103000"
 {

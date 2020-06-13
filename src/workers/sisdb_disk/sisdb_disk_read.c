@@ -85,6 +85,18 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
 
     // printf("== %s : %d %d\n", reader_->keys, issdbs, sis_string_list_getsize(keys));
 
+    // s_sis_dict_entry *de;
+    // s_sis_dict_iter *di = sis_dict_get_iter(cls_->index_infos->map);
+    // while ((de = sis_dict_next(di)) != NULL)
+    // {
+    //     if (strstr(sis_dict_getkey(de), "stk_snapshot"))
+    //     {
+    //          printf("== %s : \n", sis_dict_getkey(de));
+    //     }
+    // }
+    // sis_dict_iter_free(di);
+
+    
     char info[255];
     for (int i = 0; i < sis_string_list_getsize(keys); i++)
     {
@@ -92,10 +104,11 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
         {
             for (int k = 0; k < sis_string_list_getsize(sdbs); k++)
             {
-                sis_sprintf(info, 255, "%s.%s", sis_string_list_get(keys, i), sis_string_list_get(sdbs, k));
+                sis_sprintf(info, 255, "%s.%s", sis_string_list_get(keys, i), sis_string_list_get(sdbs, k));                
                 s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, info);
                 if (node)
                 {
+                    // printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", info);
                     sis_pointer_list_push(list_, node);
                 }
             }
@@ -104,9 +117,9 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
         {
 
             s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, sis_string_list_get(keys, i));
-            printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", sis_string_list_get(keys, i));
             if (node)
             {
+            // printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", sis_string_list_get(keys, i));
                 sis_pointer_list_push(list_, node);
             }            
         }
@@ -263,7 +276,7 @@ int _sis_disk_read_hid_sno(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
     while(sis_memory_get_size(memory) > 0)
     {
         uint64 sno = sis_memory_get_ssize(memory);
-        // printf("sno = %d  %s %s\n", sno, SIS_OBJ_SDS(key->name), SIS_OBJ_SDS(sdb->name));
+        // printf("count = %d sno = %d  %s %s\n", count, sno, SIS_OBJ_SDS(key->name), SIS_OBJ_SDS(sdb->name));
         s_sis_disk_rcatch *catch = sis_disk_rcatch_create(sno, key->name, sdb->name);
         s_sis_memory *output = SIS_OBJ_MEMORY(catch->output);
         sis_memory_cat(output, sis_memory(memory), unit->db->size);
@@ -280,6 +293,7 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
         // 一个块数据读完 对数据进行排序 
         // 指针列表排序 必须直接传入buffer
         // qsort(sis_pointer_list_first(cls_->sno_rcatch), cls_->sno_rcatch->count, sizeof(void *), _sort_sno_rcatch);
+        // printf("sno_rcatch : start %d\n", cls_->sno_rcatch->count);
         qsort(cls_->sno_rcatch->buffer, cls_->sno_rcatch->count, sizeof(void *), _sort_sno_rcatch);
         // sis_out_binary("rr:", (const char *)cls_->sno_rcatch->buffer, 24);
         // for (int i = 0; i < 20; i++)
@@ -287,7 +301,7 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
         //     s_sis_disk_rcatch *rr =(s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);
         //     printf("[%p] %p list no = %d\n", sis_pointer_list_first(cls_->sno_rcatch), rr, rr->sno);     
         // }
-        
+        // printf("sno_rcatch : stop %d\n", cls_->sno_rcatch->count);
         // 然后发布出去
         if (cls_->reader->callback && cls_->reader->callback->cb_read)
         {
@@ -354,6 +368,7 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     s_sis_pointer_list *filters = sis_pointer_list_create(); 
     // 获取数据索引列表 --> filters
     sis_reader_sub_filters(cls_, reader_, filters);
+    LOG(5)("sub filters count =  %d\n",filters->count);
     if(filters->count < 1)
     {
         sis_pointer_list_destroy(filters);
@@ -486,7 +501,7 @@ int _sis_disk_read_hid_key(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
     s_sis_disk_dict *key = (s_sis_disk_dict *)sis_map_list_geti(cls_->keys, keyi);
     int vlen = sis_memory_get_ssize(memory);
 
-    printf("%d %d %zu\n", keyi, vlen, sis_memory_get_size(memory));
+    // printf("%d %d %zu\n", keyi, vlen, sis_memory_get_size(memory));
     if (!cls_->reader->issub)
     {
         return 0;
@@ -546,7 +561,7 @@ int _sis_disk_read_hid_any(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
 size_t sis_disk_file_read_of_index(s_sis_disk_class *cls_, uint8 hid_, s_sis_disk_index_unit *iunit_, s_sis_memory *inmem_)
 {
     // 根据hid不同写入不同的数据到obj
-    printf("%d %zu\n", hid_, iunit_->offset);
+    // printf("%d %zu\n", hid_, iunit_->offset);
     switch (hid_)
     {
     case SIS_DISK_HID_MSG_SDB: // 只有一个key + 可能多条数据
@@ -574,7 +589,7 @@ int sis_disk_read_sub_sdb(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     // 获取数据索引列表 --> filters
     sis_reader_sub_filters(cls_, reader_, filters);
     
-    printf("filters : %d \n", filters->count);
+    // printf("filters : %d \n", filters->count);
     if(filters->count < 1)
     {
         sis_pointer_list_destroy(filters);
@@ -684,6 +699,7 @@ int sis_disk_file_read_dict(s_sis_disk_class *cls_)
                 sis_memory_clear(memory);
                 if (sis_read_unit_from_index(cls_, NULL, unit, memory) > 0)
                 {
+                    // sis_out_binary("key", sis_memory(memory), 64);
                     sis_disk_class_set_key(cls_, sis_memory(memory), sis_memory_get_size(memory));
                 }
             }
@@ -693,12 +709,14 @@ int sis_disk_file_read_dict(s_sis_disk_class *cls_)
         s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, SIS_DISK_SIGN_SDB);
         if (node)
         {
+            
             for (int k = 0; k < node->index->count; k++)
             {
                 s_sis_disk_index_unit *unit = sis_disk_index_get_unit(node, k);
                 sis_memory_clear(memory);
                 if (sis_read_unit_from_index(cls_, NULL, unit, memory) > 0)
                 {
+                    // sis_out_binary("sdb", sis_memory(memory), 64);
                     sis_disk_class_set_sdb(cls_, sis_memory(memory), sis_memory_get_size(memory));
                 }
             }

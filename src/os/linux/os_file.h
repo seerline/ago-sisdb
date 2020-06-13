@@ -25,7 +25,11 @@
 #define SIS_FILE_IO_TEXT       /*0x4000   */   0x4000   
 #define SIS_FILE_IO_BINARY     /*0x8000   */   0x8000 
 #define SIS_FILE_IO_DSYNC      /*0x400000 */   O_DSYNC  
-#define SIS_FILE_IO_RSYNC      /*0x101000 */   O_RSYNC  
+#ifdef __APPLE__
+#define SIS_FILE_IO_RSYNC      /*0x101000 */   O_DSYNC 
+#else
+#define SIS_FILE_IO_RSYNC      /*0x101000 */   O_RSYNC 
+#endif 
 #define SIS_FILE_IO_SYNC       /*0x80     */   O_SYNC   
 
 // access 访问模式，宏定义和含义如下：

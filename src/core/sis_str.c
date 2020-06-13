@@ -354,7 +354,7 @@ int sis_str_subcmp_match(const char *sub, const char *s, char c) //-1没有匹�
 		if (s[i] == c)
 		{
 			sis_strncpy(str, 16, &s[pos], i - pos);
-			printf("%s,  %s\n", str, sub);
+			// printf("%s,  %s\n", str, sub);
 			if (strstr(sub, str))
 			{
 				return count;

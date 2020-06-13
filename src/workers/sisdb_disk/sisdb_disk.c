@@ -472,7 +472,7 @@ int sis_disk_class_set_sdb(s_sis_disk_class *cls_, const char *in_, size_t ilen_
         sis_json_close(injson);
         return 0;
     }
-    s_sis_json_node *innode = sis_json_first_node(injson->node); 
+   s_sis_json_node *innode = sis_json_first_node(injson->node); 
     while (innode)
     {
         s_sis_dynamic_db *sdb = sis_dynamic_db_create(innode);

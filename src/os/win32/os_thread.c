@@ -69,24 +69,24 @@ void sis_thread_kill(s_sis_thread_id_t thread)
 //////////////////////////////////////////
 int sis_mutex_create(s_sis_mutex_t *m)
 {
-	assert(m);
+	// assert(m);
 	InitializeCriticalSection(m);
 	return 0;
 }
 void sis_mutex_destroy(s_sis_mutex_t *m)
 {
-	assert(m);
+	// assert(m);
 	DeleteCriticalSection(m);
 }
 
 void sis_mutex_lock(s_sis_mutex_t *m)
 {
-	assert(m);
+	// assert(m);
 	EnterCriticalSection(m);
 }
 void sis_mutex_unlock(s_sis_mutex_t *m)
 {
-	assert(m);
+	// assert(m);
 	LeaveCriticalSection(m);
 }
 int sis_mutex_init(s_sis_mutex_t *m, void *n)

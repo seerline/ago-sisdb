@@ -143,7 +143,7 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 		else
 		{
 			child->key = sis_malloc(32);
-			sis_sprintf(child->key, 32, "%d", index++);
+			sis_llutoa(index++, child->key, 32, 10);
 			value_ = _sis_conf_skip(handle_,_sis_parse_value(handle_, child, value_)); /* skip any spacing, get the value_. */
 		}
 		if (!value_ || !*value_)
