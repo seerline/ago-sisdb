@@ -87,21 +87,36 @@ bool sisdb_init(void *worker_, void *argv_)
 
     context->kvs = sis_map_pointer_create_v(sisdb_kv_destroy);
 
+    context->keys = sis_map_list_create(sis_sdsfree_call);
 	context->sdbs = sis_map_list_create(sisdb_table_destroy);
     {
-        s_sis_json_node *tbnode = sis_json_cmp_child_node(node, "tables");
+        s_sis_json_node *snnode = sis_json_cmp_child_node(node, "snos");
+        if (snnode)
+        {
+            s_sis_json_node *next = sis_conf_first_node(snnode);
+            while (next)
+            {
+                s_sisdb_table *table = sisdb_table_create(next);
+                table->style = SISDB_TB_STYLE_SNO;
+                sis_map_list_set(context->sdbs, next->key, table);
+                next = next->next;
+            }
+        }
+        s_sis_json_node *tbnode = sis_json_cmp_child_node(node, "sdbs");
         if (tbnode)
         {
             s_sis_json_node *next = sis_conf_first_node(tbnode);
             while (next)
             {
                 s_sisdb_table *table = sisdb_table_create(next);
+                table->style = SISDB_TB_STYLE_SDB;
                 sis_map_list_set(context->sdbs, next->key, table);
                 next = next->next;
             }
         }
     }
-
+    // 设置为 4M 容量
+    context->series = sis_node_list_create(4000000, sizeof(s_sisdb_collect_sno));
     context->collects = sis_map_pointer_create_v(sisdb_collect_destroy);
 
     return true;
@@ -112,8 +127,10 @@ void sisdb_uninit(void *worker_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
 
     sis_map_pointer_destroy(context->collects);
-
+    sis_node_list_destroy(context->series);
+    
     sis_map_pointer_destroy(context->kvs);
+    sis_map_list_destroy(context->keys);
     sis_map_list_destroy(context->sdbs);
 
     sis_sdsfree(context->name);
@@ -311,6 +328,8 @@ int cmd_sisdb_dels(void *worker_, void *argv_)
 
 int cmd_sisdb_sub(void *worker_, void *argv_)
 {
+    // 如果只订阅最后一条记录 不开线程 否则开启一个线程处理
+
     return 0;
 }
 int cmd_sisdb_unsub(void *worker_, void *argv_)

@@ -81,8 +81,12 @@ typedef struct s_sisdb_sub_info
 
 #define s_sisdb_field s_sis_dynamic_field
 
+#define SISDB_TB_STYLE_SNO    1
+#define SISDB_TB_STYLE_SDB    0
+
 typedef struct s_sisdb_table
 {
+	uint8                 style;    // SISDB_TB_STYLE_SNO : SISDB_TB_STYLE_SDB
 	s_sis_dynamic_db     *db;       // 对应的数据表
 	s_sis_string_list    *fields;   // 默认的字段序列
 } s_sisdb_table;	
@@ -96,10 +100,11 @@ typedef struct s_sisdb_cxt
 	s_sis_map_pointer  *kvs;         // 单键值的映射表 的字典表 s_sisdb_kv 记录 单键的信息
 	// 下面数据永不清理
 	s_sis_map_list     *keys;        // key 的结构字典表 s_sis_sds
-	s_sis_map_list     *sdbs;        // sdb 的结构字典表 s_sisdb_table 
+	s_sis_map_list     *sdbs;        // sdb 的结构字典表 s_sisdb_table 包括
 	// 下面数据可能定时清理
 	s_sis_map_pointer  *collects;    // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
 									 // SH600600.DAY 
+	s_sis_node_list    *series;      // 专门提供给序列数据的列表 s_sisdb_collect_sno
 	// 用户订阅后登记到 sub_dict 中, 先把内存中数据发布到 pub_list 由其他线程 pub_reader 处理数据发送给客户
 	// 当key数据更新后 如果key被订阅 就写入 pub_list 中,也由 pub_reader 处理数据
 	s_sis_share_list   *pub_list;    // 发布的信息汇总到这个列表 回调后再 根据 s_sisdb_sub_info 一一发送信息

@@ -68,13 +68,12 @@ typedef struct s_sisdb_server_cxt
 	s_sis_map_pointer  *converts;    // 需要转换的表 (dataset+table) s_sis_pointer_list * --> s_sisdb_convert
 
 	// 节省内存 所有订阅请求都发送到fast_save 由这个方法来处理
-	s_sis_method       *fast_method; // 默认传入数据的方法
 	s_sis_worker       *fast_save;   // 快速存储类
+	// 快速写盘不做 reader 写盘时从内存中获取数据直接写盘 
 
 	// s_sis_worker       *slow_save;   // 慢速存储类
-	s_sis_mutex_t       wlog_lock;  // 写时 save 和 write 时加锁 
-	s_sis_mutex_t       fast_lock;   // 写时 save 和 write 时加锁 
-	s_sis_mutex_t       save_lock;   // 写时 save 和 pack 互排斥
+	s_sis_mutex_t       wlog_lock;   // wlog & save & pack 互斥  
+	// s_sis_mutex_t       save_lock;   // 由于命令是一条一条执行 save 时其他动作都做不了 所以不用再加锁
 
 	s_sis_map_pointer  *user_auth;   // 用户账号密码 s_sisdb_userinfo
 
@@ -98,6 +97,16 @@ void sisdb_convert_destroy(void *);
 int sisdb_convert_init(s_sisdb_server_cxt *server_, s_sis_json_node *node_);
 int sisdb_convert_working(s_sisdb_server_cxt *server_, s_sis_net_message *netmsg_);
 
+//////////////////////////////////
+// s_sisdb_index
+// 索引块 用于当日订阅时顺序输出数据
+///////////////////////////////////
+
+
+//////////////////////////////////
+// s_sisdb_server
+///////////////////////////////////
+
 bool  sisdb_server_init(void *, void *);
 void  sisdb_server_work_init(void *);
 void  sisdb_server_working(void *);
@@ -111,7 +120,7 @@ int cmd_sisdb_server_show(void *worker_, void *argv_);
 int cmd_sisdb_server_save(void *worker_, void *argv_);
 int cmd_sisdb_server_pack(void *worker_, void *argv_);
 int cmd_sisdb_server_call(void *worker_, void *argv_);
-int cmd_sisdb_server_wlog(void *worker_, void *argv_);
+int cmd_sisdb_server_wget(void *worker_, void *argv_);
 
 
 #endif

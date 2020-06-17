@@ -94,6 +94,7 @@ s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 	s_sisdb_collect *o = SIS_MALLOC(s_sisdb_collect, o);
 	sis_map_pointer_set(sisdb_->collects, key_, o);
 
+	o->key = sis_sdsnew(code);
 	o->father = sisdb_;
 	o->sdb = sdb;
 
@@ -114,6 +115,7 @@ void sisdb_collect_destroy(void *collect_)
 	{
 		sisdb_stepindex_destroy(collect->stepinfo);
 	}
+	sis_sdsfree(collect->key);
 	sis_free(collect);
 }
 

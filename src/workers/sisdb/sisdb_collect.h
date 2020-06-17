@@ -63,35 +63,25 @@ typedef struct s_sis_step_index
 
 typedef struct s_sisdb_collect
 {
-	int                style; 
-	s_sis_object      *obj;  
+	// int                  style; 
+	// s_sis_object        *obj;  
+	s_sis_sds            key;
 
-	s_sisdb_cxt       *father;
+	s_sisdb_cxt         *father;
 	////////////////////////////////////////////////////////////
-	s_sisdb_table     *sdb;    // sdb的指针，可以获得字段定义的相关信息
+	s_sisdb_table       *sdb;    // sdb的指针，可以获得字段定义的相关信息
 
 	////////////////////////////////////////////////////////////
-	s_sis_step_index  *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
-	s_sis_struct_list *value;    // 结构化数据
+	s_sis_step_index    *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
+	s_sis_struct_list   *value;    // 结构化数据
 
 } s_sisdb_collect;
 
-#define SIS_OPTION_NONE    0
-#define SIS_OPTION_APPEND  1
-#define SIS_OPTION_INSERT  2
-
-typedef struct s_sis_collect_method_buffer
+typedef struct s_sisdb_collect_sno
 {
-	int              option;     // APPEND=1 INSERT=2 NONE=0 
-	int              index;      // 在index前插入记录
-	
-	bool             init;       // 
-	const char      *in;         // 来源数据
-	const char      *last;       // 最后一条数据
-	char      	    *out;        // 输出数据
-	s_sisdb_field   *field;      // 当前字段
-	s_sisdb_collect *collect;   // 当前集合
-} s_sis_collect_method_buffer;
+	s_sisdb_collect   *collect;
+	uint32             recno;    // 记录号
+} s_sisdb_collect_sno;
 
 #pragma pack(pop)
 
@@ -202,10 +192,13 @@ int sisdb_collect_delete(s_sisdb_collect  *, s_sis_json_node *jsql); // jsql 为j
 ///////////////////////////
 //			set        ////
 ///////////////////////////
-
+// 写通用sdb数据 需要检验数据合法性
 int sisdb_collect_update(s_sisdb_collect *, s_sis_sds in_);
 
-// 不做检验 直接追加数据
-int sisdb_collect_push(s_sisdb_collect *, s_sis_sds in_);
+// 写sno数据 即使数据会覆盖 此种格式也要记录下每一次变化
+int sisdb_collect_wseries(s_sisdb_collect *, s_sis_sds in_);
+
+// 从磁盘中整块写入，不逐条进行校验 直接追加数据
+int sisdb_collect_wpush(s_sisdb_collect *, s_sis_sds in_);
 
 #endif /* _SIS_COLLECT_H */

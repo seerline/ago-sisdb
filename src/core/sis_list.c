@@ -187,7 +187,14 @@ void sis_struct_list_set_size(s_sis_struct_list *list_, int len_)
 	{
 		return;
 	}
-	list_->buffer = sis_realloc(list_->buffer, len_ * list_->len);
+	if (list_->buffer)
+	{
+		list_->buffer = sis_realloc(list_->buffer, len_ * list_->len);
+	}
+	else
+	{
+		list_->buffer = sis_malloc(len_ * list_->len);
+	}
 	list_->maxcount = len_;
 }
 
@@ -295,6 +302,79 @@ int sis_struct_list_delete(s_sis_struct_list *list_, int start_, int count_)
 // 	}
 // 	return (int)(((char *)p_ - (char *)list_->buffer) / list_->len) - list_->start;
 // }
+
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_node_list ---------------------------------//
+//////////////////////////////////////////////////////////////////////////
+
+s_sis_node_list *sis_node_list_create(int count_, int len_)
+{
+	s_sis_node_list *o = SIS_MALLOC(s_sis_node_list, o);
+	o->nodes = sis_pointer_list_create();
+	o->nodes->vfree = sis_struct_list_destroy;
+	o->node_size = len_;
+	o->node_count = count_;
+	o->count = 0;
+
+	s_sis_struct_list *node = sis_struct_list_create(o->node_size);
+	sis_struct_list_set_size(node, o->node_count);
+	sis_pointer_list_push(o->nodes, node);
+	return o;
+} 
+void sis_node_list_destroy(void *list_)
+{
+	s_sis_node_list *list = (s_sis_node_list *)list_;
+	sis_pointer_list_destroy(list->nodes);
+	sis_free(list);
+}
+void sis_node_list_clear(s_sis_node_list *list_)
+{
+	int count = list_->nodes->count - 1;
+	if (count > 0)
+	{
+		sis_pointer_list_delete(list_->nodes, 1, count);
+	}
+	sis_struct_list_clear(sis_pointer_list_first(list_->nodes));
+	list_->count = 0;
+}
+
+int   sis_node_list_push(s_sis_node_list *list_, void *in_)
+{
+	s_sis_struct_list *last = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, list_->nodes->count - 1);
+	if (last->count >= list_->node_count)
+	{
+		s_sis_struct_list *node = sis_struct_list_create(list_->node_size);
+		sis_struct_list_set_size(node, list_->node_count);
+		sis_pointer_list_push(list_->nodes, node);
+		sis_struct_list_push(node, in_);
+	}
+	else
+	{
+		sis_struct_list_push(last, in_);
+	}	
+	list_->count++;
+	return list_->count - 1;
+}
+
+void *sis_node_list_get(s_sis_node_list *list_, int index_)
+{
+	int index = index_ / list_->node_count;
+	s_sis_struct_list *node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, index);
+	if (node)
+	{
+		return sis_struct_list_get(node, index_ % list_->node_count);
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+int   sis_node_list_get_size(s_sis_node_list *list_)
+{
+	return list_->count;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_sort_list --------------------------------//
 ///////////////////////////////////////////////////////////////////////////

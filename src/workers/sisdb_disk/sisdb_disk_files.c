@@ -54,12 +54,16 @@ void sis_files_close(s_sis_files *cls_)
         s_sis_files_unit *unit =(s_sis_files_unit *)sis_struct_list_get(cls_->lists, i);
         if (unit->status != SIS_DISK_STATUS_CLOSED)
         {
-            if (unit->status & SIS_DISK_STATUS_NOSTOP)
+            if (cls_->main_head.style != SIS_DISK_TYPE_STREAM && cls_->main_head.style != SIS_DISK_TYPE_LOG)
             {
-                cls_->main_tail.count = cls_->lists->count;
-                sis_write(unit->fp, (const char *)&cls_->main_tail, sizeof(s_sis_disk_main_tail));
-                unit->offset += sizeof(s_sis_disk_main_tail);
-                LOG(5)("write tail ok. count = %d\n", cls_->main_tail.count);
+                if (unit->status & SIS_DISK_STATUS_NOSTOP)
+                {
+                    cls_->main_tail.count = cls_->lists->count;
+                    sis_write(unit->fp, (const char *)&cls_->main_tail, sizeof(s_sis_disk_main_tail));
+                    unit->offset += sizeof(s_sis_disk_main_tail);
+                    LOG(5)
+                    ("write tail ok. count = %d\n", cls_->main_tail.count);
+                }
             }
             // 关闭文件
             sis_close(unit->fp);
@@ -77,15 +81,19 @@ void sis_files_init(s_sis_files *cls_, char *fn_)
     // 此时需要初始化list 设置一些
     sis_struct_list_clear(cls_->lists);
     int count = 1;
-    if(sis_file_exists(cls_->cur_name))
+    // 流式文件 和 LOG 文件没有尾部 只有一个文件
+    if (cls_->main_head.style != SIS_DISK_TYPE_STREAM && cls_->main_head.style != SIS_DISK_TYPE_LOG)
     {
-        int fp = sis_open(cls_->cur_name, SIS_FILE_IO_BINARY | SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ , 0);
-        s_sis_disk_main_tail tail;
-        sis_seek(fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);  
-        sis_read(fp, (char *)&tail, sizeof(s_sis_disk_main_tail));
-        count = tail.count;
-        // LOG(3)("init files [%s] %d count = %d\n", cls_->cur_name, tail.hid, count);
-        sis_close(fp);      
+        if(sis_file_exists(cls_->cur_name))
+        {
+            int fp = sis_open(cls_->cur_name, SIS_FILE_IO_BINARY | SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ , 0);
+            s_sis_disk_main_tail tail;
+            sis_seek(fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);  
+            sis_read(fp, (char *)&tail, sizeof(s_sis_disk_main_tail));
+            count = tail.count;
+            // LOG(3)("init files [%s] %d count = %d\n", cls_->cur_name, tail.hid, count);
+            sis_close(fp);      
+        }
     }
     for (int i = 0; i < count; i++)
     {
@@ -145,7 +153,15 @@ int sis_files_open_append(s_sis_files *cls_, s_sis_files_unit *unit)
         sis_files_close(cls_);
         return -3;
     }     
-    unit->offset = sis_seek(unit->fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);
+    if (cls_->main_head.style != SIS_DISK_TYPE_STREAM && cls_->main_head.style != SIS_DISK_TYPE_LOG)
+    {
+        unit->offset = sis_seek(unit->fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);
+    }
+    else
+    {
+        unit->offset = sis_seek(unit->fp, 0, SEEK_END);
+    }
+    
     unit->status = SIS_DISK_STATUS_APPEND | SIS_DISK_STATUS_NOSTOP;
     return 0;
 }
@@ -173,6 +189,15 @@ int sis_files_open_rdonly(s_sis_files *cls_, s_sis_files_unit *unit)
     unit->status = SIS_DISK_STATUS_RDOPEN;
 
     return 0;
+}
+int sis_files_delete(s_sis_files *cls_)
+{
+    for (int  i = 0; i < cls_->lists->count; i++)
+    {
+        s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, i);
+        sis_file_delete(unit->fn);
+    }
+    return cls_->lists->count;
 }
 int sis_files_open(s_sis_files *cls_, int access_)
 {

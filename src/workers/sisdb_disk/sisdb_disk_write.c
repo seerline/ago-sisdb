@@ -647,7 +647,22 @@ size_t sis_disk_file_write_surplus(s_sis_disk_class *cls_)
     return size;
 }
 
+void sis_disk_file_delete(s_sis_disk_class *cls_)
+{
+    sis_files_delete(cls_->work_fps);
+}
 
+void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
+{
+    char newfn[255];
+    for (int  i = 0; i < cls_->work_fps->lists->count; i++)
+    {
+        s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->work_fps->lists, i);
+        sis_file_getname(unit->fn, newfn, 255);
+        sis_sprintf(newfn, 255, "%s/%s/%s", path_, cls_->midpath , newfn);
+        sis_file_rename(unit->fn, newfn);
+    }
+}
 // 检查文件是否有效
 int sis_disk_file_valid(s_sis_disk_class *cls_)
 {

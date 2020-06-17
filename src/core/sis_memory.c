@@ -115,10 +115,32 @@ int sis_memory_get_int(s_sis_memory *m_)
 /////////////////
 size_t sis_memory_cat_byte(s_sis_memory *m_, int64 in_, int bytes_)
 {
-	if (bytes_ == 1|| bytes_ == 2 || bytes_ == 4 || bytes_ == 8)
+	if (bytes_ == 1)
 	{
 		sis_memory_grow(m_, bytes_ + m_->size);
-		memmove(m_->buffer + m_->size, &in_, bytes_);
+		int8 in = (int8)in_;
+		memmove(m_->buffer + m_->size, &in, bytes_);
+		m_->size += bytes_;
+	}
+	if (bytes_ == 2)
+	{
+		sis_memory_grow(m_, bytes_ + m_->size);
+		int16 in = (int16)in_;
+		memmove(m_->buffer + m_->size, &in, bytes_);
+		m_->size += bytes_;
+	}
+	if (bytes_ == 4)
+	{
+		sis_memory_grow(m_, bytes_ + m_->size);
+		int32 in = (int32)in_;
+		memmove(m_->buffer + m_->size, &in, bytes_);
+		m_->size += bytes_;
+	}
+	if (bytes_ == 8)
+	{
+		sis_memory_grow(m_, bytes_ + m_->size);
+		int64 in = (int64)in_;
+		memmove(m_->buffer + m_->size, &in, bytes_);
 		m_->size += bytes_;
 	}
 	return bytes_;

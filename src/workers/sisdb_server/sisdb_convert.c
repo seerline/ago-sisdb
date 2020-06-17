@@ -76,9 +76,9 @@ int sisdb_convert_working(s_sisdb_server_cxt *server_, s_sis_net_message *netmsg
 {
     s_sisdb_server_cxt *context = server_;
     s_sis_net_message *netmsg = netmsg_;
-    if (netmsg->format != SIS_NET_FORMAT_BYTES)
+    if (netmsg->style == SIS_NET_NODE_NONE)
     {
-        // 非二进制暂时不支持播报
+        // 不嵌套播报数据 根据style来判断
         return SIS_METHOD_ERROR;
     }
 
@@ -103,6 +103,7 @@ int sisdb_convert_working(s_sisdb_server_cxt *server_, s_sis_net_message *netmsg
         char *out = sis_malloc(size + 1);
         sis_dynamic_convert(unit->convert, netmsg->val, sis_sdslen(netmsg->val), out, size);
         s_sis_net_message *newmsg = sis_net_message_clone(netmsg);
+        newmsg->style = SIS_NET_NODE_NONE;
         sis_sdsfree(newmsg->cmd);
         newmsg->cmd = sis_sdsnew(unit->dateset);
         newmsg->cmd = sis_sdscatfmt(newmsg->cmd , ".%s", command);

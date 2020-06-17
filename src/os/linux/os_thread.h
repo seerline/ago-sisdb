@@ -79,7 +79,9 @@ int  sis_mutex_create(s_sis_mutex_t *mutex_);
 #define sis_mutex_lock    	pthread_mutex_lock
 #define sis_mutex_unlock  	pthread_mutex_unlock
 #define sis_mutex_init    	pthread_mutex_init
+// 返回 0 表示锁成功
 #define sis_mutex_trylock   pthread_mutex_trylock
+
 
 void sis_thread_wait_create(s_sis_wait *wait_);
 void sis_thread_wait_destroy(s_sis_wait *wait_);

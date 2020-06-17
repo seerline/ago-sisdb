@@ -98,9 +98,9 @@ int  sis_mutex_trylock(s_sis_mutex_t *m, void *n)
 {
 	if(TryEnterCriticalSection(m))
 	{
-		return 1;
+		return 0;
 	}
-	return 0;
+	return 1;
 }
 
 /////////////////////////////////////

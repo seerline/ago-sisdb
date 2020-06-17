@@ -308,7 +308,17 @@ int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
         }    
     }
     // 到这里已经有了collect
-    int o = sisdb_collect_update(collect, value_);
+    int o = 0;
+    if (collect->sdb->style == SISDB_TB_STYLE_SNO)
+    {
+        o = sisdb_collect_wseries(collect, value_);
+    }
+    else
+    {
+        o = sisdb_collect_update(collect, value_);
+    }
+    
+    
     
     if (o <= 0)
     {
@@ -343,11 +353,21 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
     {
         value = sisdb_collect_array_to_struct_sds(collect, value_);
     }
-    if (!value || sis_sdslen(value) < 1)
+    if (!value)
     {
         return -3;
     }
-    int o = sisdb_collect_update(collect, value); 
+    int o = 0;
+    if (collect->sdb->style == SISDB_TB_STYLE_SNO)
+    {
+        o = sisdb_collect_wseries(collect, value_);
+    }
+    else
+    {
+        o = sisdb_collect_update(collect, value_);
+    }    
+    sis_sdsfree(value_);
+
     if (o <= 0)
     {
         return -5;

@@ -16,7 +16,6 @@
 //  固定长度的列表
 //////////////////////////////////////////////////////////////////////////
 
-
 typedef struct s_sis_struct_list {
 	int		     maxcount; // 总数
 	int		     count;    // 当前个数
@@ -54,6 +53,7 @@ int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *dst_);
 int sis_struct_list_append(s_sis_struct_list *src_, s_sis_struct_list *dst_);
 int sis_struct_list_delete(s_sis_struct_list *src_, int start_, int count_);
 int sis_struct_list_pack(s_sis_struct_list *list_);
+
 #ifdef __cplusplus
 }
 #endif
@@ -201,6 +201,28 @@ int sis_pointer_list_delete(s_sis_pointer_list *src_, int start_, int count_);
 int sis_pointer_list_indexof(s_sis_pointer_list *list_, void *in_);
 int sis_pointer_list_find_and_update(s_sis_pointer_list *, void *finder_, void *in_);
 int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
+#ifdef __cplusplus
+}
+#endif
+
+typedef struct s_sis_node_list {
+	int                 node_size;
+	int                 node_count; // 单结点最大数量
+	int                 count;
+	s_sis_pointer_list *nodes;     // 数据列表 s_sis_struct_list
+} s_sis_node_list;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+s_sis_node_list *sis_node_list_create(int count, int len_); 
+void sis_node_list_destroy(void *list_);
+void sis_node_list_clear(s_sis_node_list *list_);
+
+int   sis_node_list_push(s_sis_node_list *, void *in_);
+void *sis_node_list_get(s_sis_node_list *, int index_);
+
+int   sis_node_list_get_size(s_sis_node_list *);
 #ifdef __cplusplus
 }
 #endif

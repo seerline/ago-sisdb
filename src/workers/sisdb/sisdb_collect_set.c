@@ -169,8 +169,7 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 	// printf("-----count =%d len=%d:%d\n", count, ilen, collect_->value->len);
 	s_sisdb_table *tb = collect_->sdb;
 	// 先判断是否可以直接插入
-	if ((tb->db->field_mindex && tb->db->field_mindex->style == SIS_DYNAMIC_TYPE_TICK) ||
-		(tb->db->field_solely->count == 0 && !tb->db->field_mindex) ||
+	if ((tb->db->field_solely->count == 0 && !tb->db->field_mindex) ||
 		(collect_->value->count < 1))
 		// !tb->db->field_time field_mindex 为空则 field_time 一定为空
 	{
@@ -204,9 +203,37 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 }
 ////////////////
 
+int sisdb_collect_wseries(s_sisdb_collect *collect_, s_sis_sds in_)
+{
+	int ilen = sis_sdslen(in_);
+	if (ilen < collect_->value->len)
+	{
+		return 0;
+	}
+	int count = (int)(ilen / collect_->value->len);
+	if (count * collect_->value->len != ilen)
+	{
+		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->value->len, ilen);
+		return 0;
+	}
+	// 应该写入一个队列中
+	int start = collect_->value->count;
+	sis_struct_list_pushs(collect_->value, in_, count);
+	int stop = collect_->value->count - 1;
+
+	s_sisdb_collect_sno sno;
+	sno.collect = collect_;
+	for (int i = start; i <= stop; i++)
+	{
+		sno.recno = i;
+		sis_node_list_push(collect_->father->series, &sno);
+	}
+
+	return count;
+}
 
 // 从磁盘中整块写入，不逐条进行校验
-int sisdb_collect_push(s_sisdb_collect *collect_, s_sis_sds in_)
+int sisdb_collect_wpush(s_sisdb_collect *collect_, s_sis_sds in_)
 {
 	int ilen = sis_sdslen(in_);
 	if (ilen < collect_->value->len)

@@ -361,6 +361,7 @@ typedef struct s_sis_disk_class {
     int   style;
     char  fpath[255];
     char  fname[255];
+    char  midpath[255];
 
     int   status;
     // 字典表应该是这样的
@@ -446,6 +447,8 @@ void sis_files_clear(s_sis_files *);
 void sis_files_init(s_sis_files *cls_, char *fn_);
 
 int sis_files_inc_unit(s_sis_files *cls_);
+
+int sis_files_delete(s_sis_files *cls_);
 
 int sis_files_open(s_sis_files *cls_, int access_);
 void sis_files_close(s_sis_files *cls_);
@@ -536,6 +539,18 @@ size_t sis_disk_file_write_sdbi(s_sis_disk_class *cls_,
 size_t sis_disk_file_write_sdb(s_sis_disk_class *cls_, 
     const char *key_, const char *sdb_, void *in_, size_t ilen_);
 
+size_t sis_disk_file_write_kdb(s_sis_disk_class *cls_,
+                                const char *key_, const char *sdb_, void *in_, size_t ilen_);
+
+size_t sis_disk_file_write_key(s_sis_disk_class *cls_,
+                                const char *key_, void *in_, size_t ilen_);
+
+size_t sis_disk_file_write_any(s_sis_disk_class *cls_,
+                                const char *key_, void *in_, size_t ilen_);
+
+void sis_disk_file_delete(s_sis_disk_class *cls_);
+
+void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_);
 ///////////////////////////
 //  read
 ///////////////////////////
@@ -552,40 +567,27 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_);
 // 直接获取数据 需要索引 只能获取单一key的数据 可指定时间段 k1 db1
 int sis_disk_file_read_get(s_sis_disk_class *cls_, s_sis_disk_reader *reader_);
 
+///////////////////////////
+//  pack
+///////////////////////////
+size_t sis_disk_file_pack(s_sis_disk_class *src_, s_sis_disk_class *des_);
+
 typedef struct s_sisdb_disk_cxt
 {
 	int  status;
-	// int  cursor;   // 游标
+	s_sis_sds           work_path;
+    s_sis_sds           safe_path; // pack 时需要
 
-	// s_sis_double_list *inputs;   // 传入的数据列表
+    size_t              page_size; // sno 的 page 大小 
 
-	// // s_sis_struct_list *outputs;  // s_factor_output 输出列表
-
-	// int  field;    // 字段
-	// int  output;   // 输出类型
-	// int  period;   // 12	
-	// int  merges;   // 多少个数据合并。默认为1
-	// int  min_count; // 最小数据量
-
-	// int ago_level;
-	// double ago_drift; 
-	// double ago_speed; 
-	
-	// s_factor_init   init_info; // 初始化的信息作用是 必须大于均量才会生效
-	
 }s_sisdb_disk_cxt;
 
 bool  sisdb_disk_init(void *, void *);
-void  sisdb_disk_work_init(void *);
-void  sisdb_disk_working(void *);
-void  sisdb_disk_work_uninit(void *);
 void  sisdb_disk_uninit(void *);
 void  sisdb_disk_method_init(void *);
 void  sisdb_disk_method_uninit(void *);
 
-int cmd_sisdb_disk_write(void *worker_, void *argv_);
-
-
-
+int cmd_sisdb_disk_save(void *worker_, void *argv_);
+int cmd_sisdb_disk_pack(void *worker_, void *argv_);
 
 #endif
