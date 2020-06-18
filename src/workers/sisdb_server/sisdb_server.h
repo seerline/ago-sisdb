@@ -54,26 +54,26 @@ typedef struct s_sisdb_server_cxt
 	int    status;
 
 	int    level;    // 等级 默认0为最高级 只能 0 --> 1,2,3... 发数据 ||  0 <--> 0 数据是互相备份
-	// 不能反向 用于以后的数据同步
-	s_sis_share_reader *reader_recv; // 读取发送队列
 
 	s_sis_share_list   *recv_list;   // 所有收到的数据放队列中 供多线程分享任务
+
+	s_sis_share_reader *reader_recv; // 读取发送队列
 
 	s_sis_share_reader *reader_wlog; // 读取发送队列 - 只有写动做会记录 wlog 
 	s_sis_method       *wlog_method; // 默认传入数据的方法
 	s_sis_worker       *wlog_save;   // 实时缓存存储类 对每条指令都记录在盘 save 无误后清除 
-	// 下次加载从fast_save加载限定数据 
+	s_sis_mutex_t       wlog_lock;   // wlog & save & pack 互斥  
+	// save 时 不再接收数据写入 但仍然可以读取数据
 
-	s_sis_share_reader *reader_convert; // 读取发送队列
-	s_sis_map_pointer  *converts;    // 需要转换的表 (dataset+table) s_sis_pointer_list * --> s_sisdb_convert
+	// 重启加载时从fast_save加载限定数据，然后从wlog中获取最新数据 作为内存数据 
 
-	// 节省内存 所有订阅请求都发送到fast_save 由这个方法来处理
+	// 查询和订阅请求 都发送到 fast_save 由这个方法来处理
 	s_sis_worker       *fast_save;   // 快速存储类
 	// 快速写盘不做 reader 写盘时从内存中获取数据直接写盘 
 
-	// s_sis_worker       *slow_save;   // 慢速存储类
-	s_sis_mutex_t       wlog_lock;   // wlog & save & pack 互斥  
-	// s_sis_mutex_t       save_lock;   // 由于命令是一条一条执行 save 时其他动作都做不了 所以不用再加锁
+	s_sis_share_reader *reader_convert; // 读取发送队列 处理完后 把转换后的数据回写到 recv_list 中, 
+	// style 设置为 0 表示不被 wlog 处理
+	s_sis_map_pointer  *converts;       // 需要转换的表 (dataset+table) s_sis_pointer_list * --> s_sisdb_convert
 
 	s_sis_map_pointer  *user_auth;   // 用户账号密码 s_sisdb_userinfo
 

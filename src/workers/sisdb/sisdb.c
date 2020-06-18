@@ -329,11 +329,44 @@ int cmd_sisdb_dels(void *worker_, void *argv_)
 int cmd_sisdb_sub(void *worker_, void *argv_)
 {
     // 如果只订阅最后一条记录 不开线程 否则开启一个线程处理
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    char argv[2][128]; 
+    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
+    printf("cmd_sisdb_get: %d %s %s \n", cmds, argv[0], argv[1]);
+    s_sis_sds o = NULL;
 
+    uint16 format = SISDB_FORMAT_CHARS;
+    if (cmds == 1)
+    {
+        // 单
+        o = sisdb_single_get_sds(context, argv[0], &format, netmsg->val);
+    }
+    else
+    {
+        o = sisdb_get_sds(context, netmsg->key, &format, netmsg->val);
+    }
+	if (o)
+	{
+        if(format == SISDB_FORMAT_CHARS)
+        {
+            sis_net_ans_with_sds(netmsg, o);
+        }
+        else
+        {
+            sis_net_ans_with_bytes(netmsg, o);
+        }
+        
+		return SIS_METHOD_OK;
+	}
+	return SIS_METHOD_ERROR;
     return 0;
 }
 int cmd_sisdb_unsub(void *worker_, void *argv_)
 {
+
     return 0;
 }
 int cmd_sisdb_subs(void *worker_, void *argv_)

@@ -337,8 +337,13 @@ static int cb_reader_wlog(void *worker_, s_sis_object *in_)
     {
         return 0;
     }
-    sis_object_incr(in_);
+    
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
+    if(netmsg->style & SIS_NET_INSIDE)
+    {
+        return 0;
+    }
+    sis_object_incr(in_);
 
     char argv[2][128]; 
     // int cmds = 
@@ -368,8 +373,13 @@ static int cb_reader_convert(void *worker_, s_sis_object *in_)
         // 数据库重新加载时不工作
         return 0;
     }
-    sis_object_incr(in_);
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);    
+    if(netmsg->style & SIS_NET_INSIDE)
+    {
+        // 不嵌套播报数据 根据style来判断
+        return 0;
+    }
+    sis_object_incr(in_);
     if (!context->user_auth || context->logined)
     {
         // 判断是否需要转数据需要就传数据 并取得返回值

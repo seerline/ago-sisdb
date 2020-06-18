@@ -105,14 +105,14 @@ typedef struct s_sisdb_cxt
 	s_sis_map_pointer  *collects;    // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
 									 // SH600600.DAY 
 	s_sis_node_list    *series;      // 专门提供给序列数据的列表 s_sisdb_collect_sno
+	
 	// 用户订阅后登记到 sub_dict 中, 先把内存中数据发布到 pub_list 由其他线程 pub_reader 处理数据发送给客户
-	// 当key数据更新后 如果key被订阅 就写入 pub_list 中,也由 pub_reader 处理数据
+	// 当key数据更新后 如果 key 被订阅 就写入 pub_list 中,也由 pub_reader 处理数据
 	s_sis_share_list   *pub_list;    // 发布的信息汇总到这个列表 回调后再 根据 s_sisdb_sub_info 一一发送信息
 	s_sis_share_reader *pub_reader;  // 发布信息的读者
 	// 多个 client 订阅的列表 需要一一对应发送
 	s_sis_mutex_t       sub_lock;    // 更新订阅字典 sub_dict 的互斥
 	s_sis_map_pointer  *sub_dict;    // 以 key 为索引的 s_sisdb_sub_info 同一key可能有多个用户订阅
-
 
 }s_sisdb_cxt;
 

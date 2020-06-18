@@ -151,6 +151,7 @@ int cmd_sisdb_wlog_write(void *worker_, void *argv_)
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;
 
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
     char argv[2][128]; 
     int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
     if (cmds != 2)

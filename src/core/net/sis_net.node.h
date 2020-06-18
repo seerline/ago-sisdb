@@ -9,7 +9,6 @@
 //------------------------sdsnode ------------------------------//
 // 非常好的数据结构，基本可以满足所有网络通许所有的信息了                //
 //--------------------------------------------------------------//
-#define SIS_NET_NODE_NONE    0x0     // 不是请求也不是应答
 
 #define SIS_NET_ASK_PING     0x01    // PING 包
 #define SIS_NET_ASK_CMD      0x02    // 正常请求 有 source + cmd
@@ -20,16 +19,17 @@
 
 #define SIS_NET_ASK_MSG      0x00FF  // 有数据 返回一个缓存区  rval
 
-#define SIS_NET_ANS_MSG      0xFF00  // 有数据 返回一个缓存区  rval
+#define SIS_NET_ANS_MSG      0x7F00  // 有数据 返回一个缓存区  rval
 
 #define SIS_NET_ANS_PONG     0x0100  // PONG 包
 #define SIS_NET_ANS_INT      0x0200  // 有数据 返回一个整数   source + rint 
 #define SIS_NET_ANS_VAL      0x0400  // 有数据 返回一个缓存区  source + rval
 #define SIS_NET_ANS_ARGVS    0x0800  // 有数据 返回多个缓存区  source + argvs
 #define SIS_NET_ANS_NIL      0x1000  // 无数据 返回多个缓存区  source + rint = -1
-// #define SIS_NET_ANS_   0x2000  // 有数据 返回一个整数   source + rint 
-#define SIS_NET_ANS_OK       0x4000  // 没有数据 source + rval 为错误字符串
-#define SIS_NET_ANS_ERROR    0x8000  // 没有数据 source + rval 为错误字符串
+#define SIS_NET_ANS_OK       0x2000  // 没有数据 source + rval 为错误字符串
+#define SIS_NET_ANS_ERROR    0x4000  // 没有数据 source + rval 为错误字符串
+
+#define SIS_NET_INSIDE       0x8000  // 表示该条消息为内部传递指令
 
 // request 方决定网络数据传输方式 是按字节流还是 JSON 字符串
 #define SIS_NET_FORMAT_CHARS   0 
