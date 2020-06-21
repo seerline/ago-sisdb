@@ -215,19 +215,7 @@ void *sis_map_list_get(s_sis_map_list *mlist_, const char *key_)
 	}
 	return sis_pointer_list_get(mlist_->list, index);
 }
-// 不改变老的顺序
-// int sis_map_list_set(s_sis_map_list *mlist_, const char *key_, void *value_)
-// {
-// 	int index = sis_map_list_get_index(mlist_, key_);
-// 	if (index >= 0)
-// 	{
-// 		// 设置老的记录为NULL
-// 		sis_pointer_list_update(mlist_->list, index, NULL);
-// 	}
-// 	sis_map_int_set(mlist_->map, key_, mlist_->list->count);
-// 	sis_pointer_list_push(mlist_->list, value_);
-// 	return mlist_->list->count - 1;
-// }
+
 // map有变化必须全部重索引
 int sis_map_list_set(s_sis_map_list *mlist_, const char *key_, void *value_)
 {

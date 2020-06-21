@@ -108,7 +108,7 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
                 s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, info);
                 if (node)
                 {
-                    // printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", info);
+                    printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", info);
                     sis_pointer_list_push(list_, node);
                 }
             }
@@ -812,6 +812,7 @@ size_t cb_sis_disk_file_read_index(void *source_, s_sis_disk_head *head_, s_sis_
             }
             sis_object_destroy(key);
             sis_object_destroy(sdb);
+            // printf(" +++ %s : %d %d  - %d\n", name);
             sis_map_list_set(cls_->index_infos, name, node);   
         }
         count++;

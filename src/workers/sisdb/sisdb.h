@@ -72,7 +72,6 @@ typedef struct s_sisdb_kv
 	s_sis_sds          value;     // 需要保存的信息
 } s_sisdb_kv;	
 
-// 数据量过大需开启线程处理
 typedef struct s_sisdb_sub_info
 {
 	s_sis_struct_list     cids;      // 多个客户ID
@@ -108,11 +107,15 @@ typedef struct s_sisdb_cxt
 	
 	// 用户订阅后登记到 sub_dict 中, 先把内存中数据发布到 pub_list 由其他线程 pub_reader 处理数据发送给客户
 	// 当key数据更新后 如果 key 被订阅 就写入 pub_list 中,也由 pub_reader 处理数据
-	s_sis_share_list   *pub_list;    // 发布的信息汇总到这个列表 回调后再 根据 s_sisdb_sub_info 一一发送信息
-	s_sis_share_reader *pub_reader;  // 发布信息的读者
+	// 发布的信息汇总到这个列表 回调后再 根据 s_sisdb_sub_info 一一发送信息
+	s_sis_share_list   *pub_list;    
+	// 发布信息的读者
+	s_sis_share_reader *pub_reader;  
 	// 多个 client 订阅的列表 需要一一对应发送
-	s_sis_mutex_t       sub_lock;    // 更新订阅字典 sub_dict 的互斥
-	s_sis_map_pointer  *sub_dict;    // 以 key 为索引的 s_sisdb_sub_info 同一key可能有多个用户订阅
+	// 以 key 为索引的 s_sisdb_sub_info 同一key可能有多个用户订阅
+	s_sis_map_pointer  *sub_dict;    
+	// 根据source和cid生成的key 线程池 处理历史数据 处理完后根据需求转入sub_dict中
+	s_sis_map_pointer  *subsno_worker;
 
 }s_sisdb_cxt;
 
@@ -132,9 +135,15 @@ int cmd_sisdb_drop(void *worker_, void *argv_);
 int cmd_sisdb_gets(void *worker_, void *argv_);
 int cmd_sisdb_bset(void *worker_, void *argv_);
 int cmd_sisdb_dels(void *worker_, void *argv_);
-
+// 订阅表的最新数据 历史数据用get获取
 int cmd_sisdb_sub(void *worker_, void *argv_);
 int cmd_sisdb_unsub(void *worker_, void *argv_);
-int cmd_sisdb_subs(void *worker_, void *argv_);
+
+// 订阅sno的数据 读取数据会开一个线程来处理历史数据 历史数据发送完毕线程销毁
+// 历史数据查询指定日期 {"date":20201010} 
+// 当天数据查询日期为0 或不指定 {"date":0} 默认缓存数据读完 发送一条通知消息 然后把相关订阅注册到sub中 以获取最新数据 
+int cmd_sisdb_subsno(void *worker_, void *argv_);
+// 收到此消息 停止发送正在被订阅的数据
+int cmd_sisdb_unsubsno(void *worker_, void *argv_);
 
 #endif

@@ -20,8 +20,9 @@ struct s_sis_method sisdb_methods[] = {
     {"bset",  cmd_sisdb_bset, "write", NULL},   // 默认 二进制 格式
     {"dels",  cmd_sisdb_dels, "write", NULL},   // 删除多个数据
     {"sub",   cmd_sisdb_sub, "subscribe", NULL},   // 订阅数据
-    {"unsub", cmd_sisdb_unsub, "unsubscribe", NULL},   // 订阅数据
-    {"subs",  cmd_sisdb_subs, "subscribe", NULL},   // 多个订阅数据 *.* 
+    {"unsub", cmd_sisdb_unsub, "unsubscribe", NULL},   // 取消订阅
+    {"subsno",  cmd_sisdb_subsno, "subscribe", NULL},   // 订阅sno数据 {"date":20201010}
+    {"unsubsno",  cmd_sisdb_unsubsno, "unsubscribe", NULL},   // 取消订阅sno数据 
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb = {
@@ -369,7 +370,12 @@ int cmd_sisdb_unsub(void *worker_, void *argv_)
 
     return 0;
 }
-int cmd_sisdb_subs(void *worker_, void *argv_)
+int cmd_sisdb_subsno(void *worker_, void *argv_)
 {
+    return 0;
+}
+int cmd_sisdb_unsubsno(void *worker_, void *argv_)
+{
+
     return 0;
 }

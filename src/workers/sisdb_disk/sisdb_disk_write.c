@@ -324,9 +324,14 @@ size_t sis_disk_file_write_sdb(s_sis_disk_class *cls_,
         sis_disk_class_set_key(cls_, msg, sis_sdslen(msg));
         sis_disk_file_write_key_dict(cls_);
         key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
+        sis_sdsfree(msg);
     }
     s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_get(cls_->sdbs, sdb_);
-    // printf("look sdb : %s %s %s\n", key_, sdb_, sdb ? SIS_OBJ_SDS(sdb->name) : "null");
+    // if (!sis_strcasecmp(key_, "SZ002979")||!sis_strcasecmp(key_, "SZ002980"))
+    // {
+    //     int index = sis_map_list_get_index(cls_->keys, key_);
+    //     printf("check : %d %s %s %s\n", index, key_, sdb_, sdb ? SIS_OBJ_SDS(sdb->name) : "null");
+    // }
     if (key && sdb)
     {
         size = _sis_disk_file_write_sdb(cls_, key, sdb, in_, ilen_);
