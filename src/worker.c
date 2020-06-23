@@ -25,13 +25,13 @@ void *_service_work_thread(void *argv_)
         if (sis_service_thread_execute(service_thread) && worker->status != SIS_SERVER_STATUS_CLOSE)
         {
 			// printf("work = %p mode = %d\n", worker, service_thread->work_mode);
-			LOG(6)("work = %p mode = %d\n", worker, service_thread->work_mode);
+			LOG(10)("work = %p mode = %d\n", worker, service_thread->work_mode);
             // --------user option--------- //
 			if (worker->slots->working)
 			{
 				worker->slots->working(worker);
 			}
-			LOG(6)("work end. status = %d\n", worker->status);
+			LOG(10)("work end. status = %d\n", worker->status);
         }
     }	
     sis_service_thread_wait_stop(service_thread);

@@ -85,7 +85,7 @@ int sisdb_single_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
 
 int sisdb_single_set(s_sisdb_cxt *sisdb_, const char *key_, uint16 format_, s_sis_sds argv_)
 {
-    s_sisdb_kv *info = sisdb_kv_create(format_, argv_);
+    s_sisdb_kv *info = sisdb_kv_create(format_, argv_, sis_sdslen(argv_));
     sis_map_pointer_set(sisdb_->kvs, key_, info);
     return 0;
 }
@@ -317,8 +317,6 @@ int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
     {
         o = sisdb_collect_update(collect, value_);
     }
-    
-    
     
     if (o <= 0)
     {

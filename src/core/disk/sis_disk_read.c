@@ -1,5 +1,5 @@
 ﻿
-#include "sisdb_disk.h"
+#include "sis_disk.h"
 
 ///////////////////////////
 //  s_sis_disk_reader
@@ -35,12 +35,98 @@ void sis_disk_reader_set_sdb(s_sis_disk_reader *cls_, const char *in_)
     sis_sdsfree(cls_->sdbs);
     cls_->sdbs = sis_sdsnew(in_);
 }
-void sis_disk_reader_set_time(s_sis_disk_reader *cls_, msec_t start_, msec_t stop_)
+
+void sis_disk_reader_set_stime(s_sis_disk_reader *cls_, int scale_, msec_t start_, msec_t stop_)
 {
-    cls_->start = start_;
-    cls_->stop = stop_;
+    switch (scale_)
+    {
+    case SIS_DISK_IDX_TYPE_MSEC:
+        cls_->search_sno.start = start_;
+        cls_->search_sno.stop = stop_;
+        break;
+    case SIS_DISK_IDX_TYPE_SEC:
+        cls_->search_sec.start = start_;
+        cls_->search_sec.stop = stop_;
+        break;
+    case SIS_DISK_IDX_TYPE_MIN:
+        cls_->search_min.start = start_;
+        cls_->search_min.stop = stop_;
+        break;
+    case SIS_DISK_IDX_TYPE_DAY:
+        cls_->search_day.start = start_;
+        cls_->search_day.stop = stop_;
+        break;    
+    case SIS_DISK_IDX_TYPE_NONE:
+        break;
+    default:
+        cls_->search_int.start = start_;
+        cls_->search_int.stop = stop_;
+        break;
+    }
 }
 
+void sis_disk_reader_get_stime(s_sis_disk_reader *cls_, int scale_, s_sis_msec_pair *pair_)
+{
+    switch (scale_)
+    {
+    case SIS_DISK_IDX_TYPE_MSEC:
+        memmove(pair_, &cls_->search_sno, sizeof(s_sis_msec_pair));
+        break;
+    case SIS_DISK_IDX_TYPE_SEC:
+        memmove(pair_, &cls_->search_sec, sizeof(s_sis_msec_pair));
+        break;
+    case SIS_DISK_IDX_TYPE_MIN:
+        memmove(pair_, &cls_->search_min, sizeof(s_sis_msec_pair));
+        break;
+    case SIS_DISK_IDX_TYPE_DAY:
+        memmove(pair_, &cls_->search_day, sizeof(s_sis_msec_pair));
+        break;   
+    case SIS_DISK_IDX_TYPE_NONE:
+        pair_->start = 0;
+        pair_->stop = 0;
+        break;
+    default:
+        memmove(pair_, &cls_->search_int, sizeof(s_sis_msec_pair));
+        break;
+    }
+}
+int  sis_disk_get_idx_style(s_sis_disk_class *cls_,const char *sdb_, s_sis_disk_index_unit *iunit_)
+{
+    s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_get(cls_->sdbs, sdb_); 
+    if (!sdb)
+    {
+        return SIS_DISK_IDX_TYPE_NONE;
+    }
+    s_sis_disk_dict_unit *unit = NULL; 
+    if (iunit_)
+    {
+        unit = sis_disk_dict_get(sdb, iunit_->sdict); 
+    }
+    if (!unit)
+    {
+        unit = sis_disk_dict_last(sdb); 
+    }
+    if (unit && unit->db->field_mindex)
+    {
+        switch (unit->db->field_mindex->style)
+        {
+        case SIS_DYNAMIC_TYPE_INT:
+        case SIS_DYNAMIC_TYPE_UINT:
+            return SIS_DISK_IDX_TYPE_INT;  
+        case SIS_DYNAMIC_TYPE_TICK:
+            return SIS_DISK_IDX_TYPE_MSEC;  
+        case SIS_DYNAMIC_TYPE_SEC:
+            return SIS_DISK_IDX_TYPE_SEC;  
+        case SIS_DYNAMIC_TYPE_MINU:
+            return SIS_DISK_IDX_TYPE_MIN;  
+        case SIS_DYNAMIC_TYPE_DATE:
+            return SIS_DISK_IDX_TYPE_DAY;  
+        default:
+            break;
+        }
+    }
+    return SIS_DISK_IDX_TYPE_NONE;
+}
 int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s_sis_pointer_list *list_)
 {
     if (!reader_ || !reader_->issub || !list_ || !reader_->keys || sis_sdslen(reader_->keys) < 1)
@@ -181,7 +267,7 @@ int _sis_disk_read_hid_log(s_sis_disk_class *cls_, s_sis_object *obj_)
 // 到这里必须保证已经读取了 head 和 size 并保证数据区全部读入 in
 // 不是删除的记录 也不是头 也不是尾
 
-size_t cb_sis_disk_file_read_work(void *source_, s_sis_disk_head *head_, s_sis_object *obj_)
+size_t cb_sis_disk_file_read_log(void *source_, s_sis_disk_head *head_, s_sis_object *obj_)
 {
     s_sis_disk_class *cls_ = (s_sis_disk_class *)source_;
     s_sis_disk_callback *callback = cls_->reader->callback; 
@@ -191,18 +277,6 @@ size_t cb_sis_disk_file_read_work(void *source_, s_sis_disk_head *head_, s_sis_o
     case SIS_DISK_HID_MSG_LOG: // 可能有多个【key + 一条数据】
         _sis_disk_read_hid_log(cls_, obj_);
         break;
-    // case SIS_DISK_HID_MSG_SDB: // 只有一个key + 可能多条数据
-    //     _sis_disk_read_hid_sdb(cls_, obj_);
-    //     break;
-    // case SIS_DISK_HID_MSG_KDB:
-    //     _sis_disk_read_hid_kdb(cls_, obj_);
-    //     break;
-    // case SIS_DISK_HID_MSG_KEY:
-    //     _sis_disk_read_hid_key(cls_, obj_);
-    //     break;
-    // case SIS_DISK_HID_MSG_ANY:
-    //     _sis_disk_read_hid_any(cls_, obj_);
-    //     break;
     case SIS_DISK_HID_DICT_KEY:
         {
             s_sis_memory *memory = SIS_OBJ_MEMORY(obj_);
@@ -600,30 +674,32 @@ int sis_disk_read_sub_sdb(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
 
     for (int i = 0; i < filters->count; i++)
     {
-        bool iswhole = true;
-        if (reader_->stop > reader_->start || (reader_->stop == 0 && reader_->start == 0))
-        {
-            iswhole = false;
-        }
         s_sis_disk_index *idxinfo = (s_sis_disk_index *)sis_pointer_list_get(filters, i);
-        if (idxinfo)
+        if (!idxinfo)
         {
-            for (int k = 0; k < idxinfo->index->count; k++)
-            {
-                s_sis_disk_index_unit *unit = sis_struct_list_get(idxinfo->index, k);
-                sis_memory_clear(memory);
-                // printf("%d | %d %d %d %d\n",iswhole, reader_->start, reader_->stop, unit->start, unit->stop);
-                if (iswhole || (unit->stop == 0 && unit->start == 0) ||
-                    sis_is_mixed(reader_->start, reader_->stop, unit->start, unit->stop) )
-                {
-                    uint8 hid = 0;
-                    if (sis_read_unit_from_index(cls_, &hid, unit, memory) > 0)
-                    {
-                        sis_disk_file_read_of_index(cls_, hid, unit, memory);
-                    }     
-                }
-            }  
+            continue;
         }
+        for (int k = 0; k < idxinfo->index->count; k++)
+        {
+            s_sis_disk_index_unit *unit = sis_struct_list_get(idxinfo->index, k);
+
+            s_sis_msec_pair search;
+            int style = sis_disk_get_idx_style(cls_, SIS_OBJ_GET_CHAR(idxinfo->sdb), unit);
+            sis_disk_reader_get_stime(reader_, style, &search);
+
+            // printf("%d | %d %d %d %d\n",iswhole, reader_->start, reader_->stop, unit->start, unit->stop);
+            if (sis_msec_pair_whole(&search) || 
+                (unit->stop == 0 && unit->start == 0) ||
+                sis_is_mixed(search.start, search.stop, unit->start, unit->stop) )
+            {
+                uint8 hid = 0;
+                sis_memory_clear(memory);
+                if (sis_read_unit_from_index(cls_, &hid, unit, memory) > 0)
+                {
+                    sis_disk_file_read_of_index(cls_, hid, unit, memory);
+                }     
+            }
+        }  
     }
     sis_object_destroy(obj);
     sis_pointer_list_destroy(filters);
@@ -653,17 +729,18 @@ int sis_disk_read_get_sdb(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     }
 
     s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
-    bool iswhole = true;
-    if (reader_->stop > reader_->start || (reader_->stop == 0 && reader_->start == 0))
-    {
-        iswhole = false;
-    }
+
     for (int k = 0; k < idxinfo->index->count; k++)
     {
         s_sis_disk_index_unit *unit = sis_struct_list_get(idxinfo->index, k);
         // printf("%d | %d %d %d %d\n",iswhole, reader_->start, reader_->stop, unit->start, unit->stop);
-        if (iswhole || (unit->stop == 0 && unit->start == 0) ||
-            sis_is_mixed(reader_->start, reader_->stop, unit->start, unit->stop) )
+        s_sis_msec_pair search;
+        int style = sis_disk_get_idx_style(cls_, SIS_OBJ_GET_CHAR(idxinfo->sdb), unit);
+        sis_disk_reader_get_stime(reader_, style, &search);
+
+        if (sis_msec_pair_whole(&search)|| 
+            (unit->stop == 0 && unit->start == 0) ||
+            sis_is_mixed(search.start, search.stop, unit->start, unit->stop) )
         {
             uint8 hid = 0;
             s_sis_memory *memory = sis_memory_create();
@@ -840,14 +917,14 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     {
     case SIS_DISK_TYPE_STREAM:
         // 每次都从头读起
-        sis_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_file_read_work);
+        sis_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_file_read_log);
         break;
     case SIS_DISK_TYPE_LOG:
         // 清理key 和 dbs 序列表 
         // 每次都从头读起
         sis_map_list_clear(cls_->keys);
         sis_map_list_clear(cls_->sdbs);
-        sis_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_file_read_work);
+        sis_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_file_read_log);
         break;
     case SIS_DISK_TYPE_SNO:
         // 因为有索引，所以文件打开时就已经加载了keys和sdbs
@@ -863,7 +940,11 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
         }
         break;
     default:  // SIS_DISK_TYPE_SDB
-        sis_disk_read_sub_sdb(cls_, reader_);
+    // sdb 因为有废弃的数据 所以只能通过索引去读取数据
+    // 如果索引丢弃 原则是后面的key覆盖前面的key
+        {
+            sis_disk_read_sub_sdb(cls_, reader_);  
+        }
         break;
     }
     if(callback->cb_end)
@@ -903,21 +984,22 @@ int sis_disk_file_read_start(s_sis_disk_class *cls_)
 {
     if (!cls_->isinit)
     {
-        return -10;
+        return SIS_DISK_CMD_NO_INIT;
     }
     // 对已经存在的文件进行合法性检查 如果文件不完整 就打开失败 由外部程序来处理异常，这样相对安全
-    if (sis_disk_file_valid(cls_))
+    int vo = sis_disk_file_valid(cls_);
+    if (vo)
     {
         LOG(5)
         ("open is no valid.[%s]\n", cls_->work_fps->cur_name);
-        return -1;
+        return vo;
     }
     int o = sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_RDONLY);
     if (o)
     {
         LOG(5)
         ("open file fail.[%s:%d]\n", cls_->work_fps->cur_name, o);
-        return -2;
+        return SIS_DISK_CMD_NO_OPEN;
     }
     if (cls_->work_fps->main_head.index)
     {
@@ -926,14 +1008,14 @@ int sis_disk_file_read_start(s_sis_disk_class *cls_)
         {
             LOG(5)
             ("open idxfile fail.[%s]\n", cls_->index_fps->cur_name);
-            return -3;
+            return SIS_DISK_CMD_NO_OPEN_IDX;
         }
         sis_files_read_fulltext(cls_->index_fps, cls_, cb_sis_disk_file_read_index);
         sis_disk_file_read_dict(cls_);
         sis_files_close(cls_->index_fps);
     }
     cls_->status = SIS_DISK_STATUS_OPENED;
-    return 0;
+    return SIS_DISK_CMD_OK;
 }
 
 // 关闭文件

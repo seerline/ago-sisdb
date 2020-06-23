@@ -29,7 +29,13 @@
 #include <sys/stat.h> 
 #include <stdint.h>
 
+#include <os_file.h>
+#include <os_fork.h>
 #include <os_malloc.h>
+// #include <os_net.h>
+#include <os_str.h>
+#include <os_thread.h>
+#include <os_time.h>
 #include <os_types.h>
 
 /*#include <winsock2.h>

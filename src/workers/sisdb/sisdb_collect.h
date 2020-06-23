@@ -199,6 +199,6 @@ int sisdb_collect_update(s_sisdb_collect *, s_sis_sds in_);
 int sisdb_collect_wseries(s_sisdb_collect *, s_sis_sds in_);
 
 // 从磁盘中整块写入，不逐条进行校验 直接追加数据
-int sisdb_collect_wpush(s_sisdb_collect *, s_sis_sds in_);
+int sisdb_collect_wpush(s_sisdb_collect *, char *in_, size_t ilen_);
 
 #endif /* _SIS_COLLECT_H */

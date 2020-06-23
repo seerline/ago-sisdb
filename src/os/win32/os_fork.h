@@ -12,8 +12,16 @@ void sis_sigignore(int sign_);
 
 int sis_fork_process();
 
+int sis_get_signal();
+void sis_set_signal(int sign_);
+
 #ifdef __cplusplus
 }
 #endif
+
+#define SIS_SIGNAL_WORK  0
+#define SIS_SIGNAL_EXIT  1
+
+#define SIGNAL_EXIT_FAST do { if(sis_get_signal() == SIS_SIGNAL_EXIT) break; } while(0);
 
 #endif //_OS_FORK_H

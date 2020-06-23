@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 #include "sis_map.h"
-#include "sisdb_disk.h"
+#include "sis_disk.h"
 
 typedef struct s_sisdb_wlog_unit
 {

@@ -1,4 +1,4 @@
-﻿#include "sisdb_disk.h"
+﻿#include "sis_disk.h"
 
 
 ///////////////////////////
@@ -675,7 +675,7 @@ int sis_disk_file_valid(s_sis_disk_class *cls_)
     {
         LOG(5)
         ("file no exists.[%s]\n", cls_->work_fps->cur_name);
-        return -1;
+        return SIS_DISK_CMD_NO_EXISTS;
     }
     if (cls_->work_fps->main_head.index)
     {
@@ -683,14 +683,14 @@ int sis_disk_file_valid(s_sis_disk_class *cls_)
         {
             LOG(5)
             ("idxfile no exists.[%s]\n", cls_->index_fps->cur_name);
-            return -2;
+            return SIS_DISK_CMD_NO_EXISTS_IDX;
         }
     }
     // 通常判断work和index的尾部是否一样 一样表示完整 否则
     // 检查work file 是否完整 如果不完整就设置最后一个块的位置 并重建索引
     // 如果work file 完整 就检查索引文件是否完整 不完整就重建索引
     // 重建失败就返回 1
-    return 0;
+    return SIS_DISK_CMD_OK;
 }
 
 int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_)

@@ -47,6 +47,8 @@ void _server_close()
 		return;
 	}
 	_server.status = SIS_SERVER_STATUS_CLOSE;
+	// 设置退出信号
+	sis_set_signal(SIS_SIGNAL_EXIT);
 }
 
 void _sig_int(int sn)

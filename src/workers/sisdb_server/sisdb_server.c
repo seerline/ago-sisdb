@@ -148,7 +148,21 @@ bool sisdb_server_init(void *worker_, void *argv_)
             SIS_SHARE_FROM_HEAD, worker, cb_reader_convert);
     }
 
-    context->message = sis_message_create();
+    // context->message = sis_message_create();
+    // 数据集初始化和服务启动完毕，这里开始加载数据
+    // 应该需要判断数据的版本号，如果不同，应该对磁盘上的数据进行数据字段重新匹配
+    s_sis_json_node *catchcfg = sis_json_cmp_child_node(node, "catchcfg");
+    if (catchcfg)
+    {
+        context->catch_cfg.last_day = sis_json_get_int(catchcfg,"last_day", 0);
+        context->catch_cfg.last_min = sis_json_get_int(catchcfg,"last_min", 0);
+        context->catch_cfg.last_sec = sis_json_get_int(catchcfg,"last_sec", 0);
+        context->catch_cfg.last_sno = sis_json_get_int(catchcfg,"last_sno", 0);
+    }
+    if (_sisdb_server_load(context) != SIS_METHOD_OK)
+    {
+        return false;
+    }
 
     int isopen = 0;
     s_sis_json_node *srvnode = sis_json_cmp_child_node(node, "server");
@@ -183,7 +197,7 @@ void sisdb_server_uninit(void *worker_)
     {
         sis_net_class_destroy(context->server);
     }
-    sis_message_destroy(context->message);
+    // sis_message_destroy(context->message);
     if (context->datasets)
     {
         sis_map_list_destroy(context->datasets);
@@ -395,8 +409,38 @@ void sisdb_server_work_init(void *worker_)
 }
 void sisdb_server_working(void *worker_)
 {
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     // 这里要判断是否新的一天 如果是就存盘
-    cmd_sisdb_server_save(worker_, NULL);
+    // 存盘后如果检测到是周五 就执行pack工作
+    if (context->work_date == 0)
+    {
+        context->work_date = sis_time_get_idate(0);
+    }
+    else
+    {
+        int minute = sis_time_get_iminute(0);
+        // 最后一分钟就开始处理数据
+        if (minute >= 2359)
+        {
+            sis_mutex_lock(&context->wlog_lock);
+            _sisdb_server_save(context, context->work_date);
+            int week = sis_time_get_week_ofday(context->work_date);
+            if (week == 5)
+            {
+                _sisdb_server_pack(context);
+            }
+            // 等待新的一天到来
+            while(sis_time_get_idate(0) <= context->work_date)
+            {
+                sis_sleep(1000);
+            }
+            context->work_date = sis_time_get_idate(0);
+            _sisdb_server_load(context);
+
+            sis_mutex_unlock(&context->wlog_lock);
+        }
+    }  
 }
 void sisdb_server_work_uninit(void *worker_)
 {
@@ -464,13 +508,27 @@ int cmd_sisdb_server_show(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 
 }
-int cmd_sisdb_server_save(void *worker_, void *argv_)
+int _sisdb_server_load(s_sisdb_server_cxt *context)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-    sis_mutex_lock(&context->wlog_lock);
+    // 需要把内存数据保存到磁盘中 并清理 wlog 等工作
+    s_sis_message *msg = sis_message_create();
+    int count = sis_map_list_getsize(context->datasets);
+    for (int i = 0; i < count; i++)
+    {
+        s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;
+        sis_message_set(msg, "sisdb", sisdb, NULL);
+        sis_message_set(msg, "config", &context->catch_cfg, NULL);
+        if (sis_worker_command(context->fast_save, "load", msg) != SIS_METHOD_OK)
+        {
+            sis_message_destroy(msg);
+            return SIS_METHOD_ERROR;
+        }
+    }
+    sis_message_destroy(msg);
+    return SIS_METHOD_OK;
+}
+int _sisdb_server_save(s_sisdb_server_cxt *context, int workdate)
+{
     // 需要把内存数据保存到磁盘中 并清理 wlog 等工作
     int oks = 0;
     s_sis_message *msg = sis_message_create();
@@ -479,6 +537,7 @@ int cmd_sisdb_server_save(void *worker_, void *argv_)
     {
         s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;
         sis_message_set(msg, "sisdb", sisdb, NULL);
+        sis_message_set_int(msg, "workdate", workdate);
         if (sis_worker_command(context->fast_save, "save", msg) == SIS_METHOD_OK)
         {
             // 数据已经保存 删除wlog
@@ -486,17 +545,30 @@ int cmd_sisdb_server_save(void *worker_, void *argv_)
             oks++;
         }
     }
-    sis_net_ans_with_int(netmsg, oks); 
     sis_message_destroy(msg);
-    sis_mutex_unlock(&context->wlog_lock);
-    return SIS_METHOD_OK;
+    return oks;
 }
-int cmd_sisdb_server_pack(void *worker_, void *argv_)
+int cmd_sisdb_server_save(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
+    int workdate = context->work_date;
+    if (netmsg->key)
+    {
+        workdate = atoll(netmsg->key);
+    }
+
+    sis_mutex_lock(&context->wlog_lock);
+    int count = _sisdb_server_save(context, workdate);
+    sis_mutex_unlock(&context->wlog_lock);
+
+    sis_net_ans_with_int(netmsg, count); 
+    return SIS_METHOD_OK;
+}
+int _sisdb_server_pack(s_sisdb_server_cxt *context)
+{
     int oks = 0;
     s_sis_message *msg = sis_message_create();
     int count = sis_map_list_getsize(context->datasets);
@@ -509,8 +581,20 @@ int cmd_sisdb_server_pack(void *worker_, void *argv_)
             oks++;
         }
     }
-    sis_net_ans_with_int(netmsg, oks); 
-    sis_message_destroy(msg);
+    return oks;
+}
+int cmd_sisdb_server_pack(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    sis_mutex_lock(&context->wlog_lock);
+    int count = _sisdb_server_pack(context);
+    sis_mutex_unlock(&context->wlog_lock);
+
+    sis_net_ans_with_int(netmsg, count); 
+
     return SIS_METHOD_OK;
 }
 int cmd_sisdb_server_call(void *worker_, void *argv_)

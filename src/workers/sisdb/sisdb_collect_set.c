@@ -233,18 +233,17 @@ int sisdb_collect_wseries(s_sisdb_collect *collect_, s_sis_sds in_)
 }
 
 // 从磁盘中整块写入，不逐条进行校验
-int sisdb_collect_wpush(s_sisdb_collect *collect_, s_sis_sds in_)
+int sisdb_collect_wpush(s_sisdb_collect *collect_, char *in_, size_t ilen_)
 {
-	int ilen = sis_sdslen(in_);
-	if (ilen < collect_->value->len)
+	if (ilen_ < collect_->value->len)
 	{
 		return 0;
 	}
-	int count = (int)(ilen / collect_->value->len);
+	int count = (int)(ilen_ / collect_->value->len);
 	//这里应该判断数据完整性
-	if (count * collect_->value->len != ilen)
+	if (count * collect_->value->len != ilen_)
 	{
-		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->value->len, ilen);
+		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->value->len, ilen_);
 		return 0;
 	}
 	sis_struct_list_pushs(collect_->value, in_, count);

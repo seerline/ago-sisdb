@@ -35,6 +35,14 @@
 // 取边界外的数据不支持
 // 最多的方法是取一段时间的数据
 
+// 保留内存数据的限制
+typedef struct s_sisdb_catch
+{
+	int  last_day;  // > 0 表示加载最后几年的数据 0 表示全部加载
+	int  last_min;  // > 0 表示加载最后几天的分钟线 0 表示不加载历史数据
+	int  last_sec;  // > 0 表示加载最后几天的秒线 0 表示不加载历史数据
+	int  last_sno;  // > 0 表示加载最后几天数据 0 表示只保留当日 不从历史数据加载 只从aof加载 
+} s_sisdb_catch;
 
 typedef struct s_sisdb_userinfo
 {
@@ -54,6 +62,8 @@ typedef struct s_sisdb_server_cxt
 	int    status;
 
 	int    level;    // 等级 默认0为最高级 只能 0 --> 1,2,3... 发数据 ||  0 <--> 0 数据是互相备份
+
+	uint32              work_date;    // 序列存储的起始日
 
 	s_sis_share_list   *recv_list;   // 所有收到的数据放队列中 供多线程分享任务
 
@@ -83,6 +93,7 @@ typedef struct s_sisdb_server_cxt
 
 	bool                switch_wget;  // 设置后所有 get 会同时存盘
 
+	s_sisdb_catch       catch_cfg;
 	s_sis_map_list     *datasets;    // 数据集合 s_sis_worker s_sis_db 分为不同目录存储 
 
 	s_sis_net_class    *server;      // 服务监听器 s_sis_net_server
@@ -114,6 +125,10 @@ void  sisdb_server_work_uninit(void *);
 void  sisdb_server_uninit(void *);
 void  sisdb_server_method_init(void *);
 void  sisdb_server_method_uninit(void *);
+
+int _sisdb_server_load(s_sisdb_server_cxt *context);
+int _sisdb_server_save(s_sisdb_server_cxt *context, int date);
+int _sisdb_server_pack(s_sisdb_server_cxt *context);
 
 int cmd_sisdb_server_auth(void *worker_, void *argv_);
 int cmd_sisdb_server_show(void *worker_, void *argv_);

@@ -103,6 +103,7 @@ typedef struct s_sisdb_cxt
 	// 下面数据可能定时清理
 	s_sis_map_pointer  *collects;    // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
 									 // SH600600.DAY 
+
 	s_sis_node_list    *series;      // 专门提供给序列数据的列表 s_sisdb_collect_sno
 	
 	// 用户订阅后登记到 sub_dict 中, 先把内存中数据发布到 pub_list 由其他线程 pub_reader 处理数据发送给客户
@@ -119,7 +120,7 @@ typedef struct s_sisdb_cxt
 
 }s_sisdb_cxt;
 
-s_sisdb_kv *sisdb_kv_create(uint16 format_, s_sis_sds in_);
+s_sisdb_kv *sisdb_kv_create(uint16 format_, char *in_, size_t ilen_);
 void sisdb_kv_destroy(void *info_);
 
 bool  sisdb_init(void *, void *);

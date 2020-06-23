@@ -60,10 +60,20 @@ s_sis_time_delay *sis_delay_create(unsigned int msec);
 void sis_delay_busy(s_sis_time_delay *m);
 void sis_delay_destroy(s_sis_time_delay *m);
 
-typedef struct s_sis_time_pair{
+typedef struct s_sis_msec_pair{
+	msec_t	start;  
+	msec_t	stop; 
+}s_sis_msec_pair;
+
+inline bool sis_msec_pair_whole(s_sis_msec_pair *mp_)
+{
+	return (mp_->stop < mp_->start || (mp_->stop == 0 && mp_->start == 0));
+}
+
+typedef struct s_sis_minute_pair{
 	uint16	first;  // 单位分钟
 	uint16	second; // 单位分钟
-}s_sis_time_pair;
+}s_sis_minute_pair;
 
 typedef struct s_sis_date_pair{
 	uint32	start;  // 开始日期

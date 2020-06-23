@@ -1,4 +1,4 @@
-﻿#include "sisdb_disk.h"
+﻿#include "sis_disk.h"
 
 ///////////////////////////
 //  s_sis_files
@@ -429,7 +429,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         
         while (!FILEEND)
         {
-            SERVER_FAST_EXIT
+            SIGNAL_EXIT_FAST
             size_t bytes = sis_memory_read(memory, unit->fp, SIS_MEMORY_SIZE);
             if (bytes <= 0)
             {
