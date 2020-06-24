@@ -256,16 +256,16 @@ s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *collect_, s_sis_sds 
 
 	s_sis_json_node *jone = sis_json_create_object();
 	
-	if (isfields_)
-	{
-		s_sis_json_node *jfields = sis_json_create_object();
-		for (int i = 0; i < fnums; i++)
-		{
-			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(collect_->sdb->db->fields, sis_string_list_get(fields_, i));
-			sis_json_object_add_uint(jfields, inunit->name, i);
-		}
-		sis_json_object_add_node(jone, "fields", jfields);
-	}
+	// if (isfields_)
+	// {
+	// 	s_sis_json_node *jfields = sis_json_create_object();
+	// 	for (int i = 0; i < fnums; i++)
+	// 	{
+	// 		s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(collect_->sdb->db->fields, sis_string_list_get(fields_, i));
+	// 		sis_json_object_add_uint(jfields, inunit->name, i);
+	// 	}
+	// 	sis_json_object_add_node(jone, "fields", jfields);
+	// }
 
 	s_sis_json_node *jtwo = sis_json_create_array();
 	const char *val = in_;
@@ -359,7 +359,6 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds 
 
 	s_sisdb_table *tb = collect_->sdb;
 
-	int index = 0;
 	int fnums = sis_string_list_getsize(tb->fields);
 	char key[64];
 	for (int k = 0; k < fnums; k++)
@@ -367,11 +366,20 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds 
 		s_sisdb_field *fu = (s_sisdb_field *)sis_map_list_geti(tb->db->fields, k);
 		for (int i = 0; i < fu->count; i++)
 		{
-			sis_sprintf(key, 64, "%s.%d", fu->name, i);
-			sis_dynamic_field_json_to_struct(o + index * collect_->value->len, fu, i, key, handle->node);
+			if (fu->count > 1)
+			{
+				sis_sprintf(key, 64, "%s%d", fu->name, i);
+				printf("key = %s %d\n", key, i);
+				sis_dynamic_field_json_to_struct(o, fu, i, key, handle->node);
+			}
+			else
+			{
+				sis_dynamic_field_json_to_struct(o, fu, i, fu->name, handle->node);
+			}			
 		}
 	}
 	sis_json_close(handle);
+	// printf("struct len = %d %d\n", collect_->value->len, sis_sdslen(o));
 	return o;
 }
 
@@ -397,6 +405,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 		count = 1;
 		jval = handle->node;
 	}
+	// printf("array to = %d %d\n", count, collect_->value->len);
 	if (count < 1)
 	{
 		sis_json_close(handle);
@@ -423,14 +432,14 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 			for (int i = 0; i < fu->count; i++)
 			{
 				sis_llutoa(fidx, key, 32, 10);
-				sis_dynamic_field_json_to_struct(o + index * collect_->value->len, fu, fidx, key, jval);
+				sis_dynamic_field_json_to_struct(o + index * collect_->value->len, fu, i, key, jval);
+				// printf("%s %d\n",key, fidx);
 				fidx++;
 			}
 		}
 		index++;
 		jval = jval->next;
 	}
-
 	sis_json_close(handle);
 	return o;
 }

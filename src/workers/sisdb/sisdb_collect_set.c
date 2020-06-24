@@ -154,6 +154,8 @@ int sisdb_collect_update_nomindex(s_sisdb_collect *collect_, const char *in_)
 int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 {
 	int ilen = sis_sdslen(in_);
+
+	printf("-----len=%d:%d\n", ilen, collect_->value->len);
 	if (ilen < collect_->value->len)
 	{
 		return 0;
@@ -166,7 +168,6 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 		LOG(3)("source format error [%d*%d!=%u]\n", count, collect_->value->len, ilen);
 		return 0;
 	}
-	// printf("-----count =%d len=%d:%d\n", count, ilen, collect_->value->len);
 	s_sisdb_table *tb = collect_->sdb;
 	// 先判断是否可以直接插入
 	if ((tb->db->field_solely->count == 0 && !tb->db->field_mindex) ||

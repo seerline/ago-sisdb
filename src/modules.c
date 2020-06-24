@@ -24,11 +24,6 @@ extern s_sis_modules sis_modules_trade_api_wb;
 extern s_sis_modules sis_modules_trade_drive_easy;
 extern s_sis_modules sis_modules_trade_drive_fast;
 extern s_sis_modules sis_modules_trade_drive_real;
-extern s_sis_modules sis_modules_memdb;
-extern s_sis_modules sis_modules_sisdb;
-extern s_sis_modules sis_modules_sisdb_disk;
-extern s_sis_modules sis_modules_sisdb_server;
-extern s_sis_modules sis_modules_sisdb_wlog;
 
 s_sis_modules *__modules[] = {
     &sis_modules_digger_bayes,
@@ -55,11 +50,6 @@ s_sis_modules *__modules[] = {
     &sis_modules_trade_drive_easy,
     &sis_modules_trade_drive_fast,
     &sis_modules_trade_drive_real,
-    &sis_modules_memdb,
-    &sis_modules_sisdb,
-    &sis_modules_sisdb_disk,
-    &sis_modules_sisdb_server,
-    &sis_modules_sisdb_wlog,
     0
   };
 
@@ -88,10 +78,5 @@ const char *__modules_name[] = {
     "trade_drive_easy",
     "trade_drive_fast",
     "trade_drive_real",
-    "memdb",
-    "sisdb",
-    "sisdb_disk",
-    "sisdb_server",
-    "sisdb_wlog",
     0
   };

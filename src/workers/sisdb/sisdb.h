@@ -74,9 +74,16 @@ typedef struct s_sisdb_kv
 
 typedef struct s_sisdb_sub_info
 {
+	
 	s_sis_struct_list     cids;      // 多个客户ID
 	s_sis_object         *obj;       // 准备发送的数据 s_sis_net_message 由多个客户共享
 } s_sisdb_sub_info;	
+
+typedef struct s_sisdb_pub_info
+{
+	s_sis_struct_list     cids;      // 多个客户ID
+	s_sis_object         *obj;       // 准备发送的数据 s_sis_net_message 由多个客户共享
+} s_sisdb_pub_info;	
 
 #define s_sisdb_field s_sis_dynamic_field
 

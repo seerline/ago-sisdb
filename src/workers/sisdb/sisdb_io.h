@@ -37,6 +37,19 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
 // 以二进制方式写入数据 数据表必须已经存在 否则返回错误
 int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
 
+/////////////////
+//  sub function
+/////////////////
+
+int sisdb_single_sub(s_sisdb_cxt *sisdb_, const char *key_, s_sis_net_message *);
+int sisdb_single_unsub(s_sisdb_cxt *sisdb_, const char *key_, s_sis_net_message *);
+
+int sisdb_sub(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *);
+int sisdb_unsub(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *);
+
+int sisdb_subsno(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *);
+int sisdb_unsubsno(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *);
+
 // // 订阅消息 系统会保留相关信息
 // int sis_net_class_subscibe(s_sis_net_class *, s_sis_net_message *);
 // // 发布消息 对所有订阅了我的消息的广播

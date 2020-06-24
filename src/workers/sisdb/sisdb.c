@@ -120,12 +120,16 @@ bool sisdb_init(void *worker_, void *argv_)
     context->series = sis_node_list_create(4000000, sizeof(s_sisdb_collect_sno));
     context->collects = sis_map_pointer_create_v(sisdb_collect_destroy);
 
+    context->sub_dict = sis_map_pointer_create_v(sis_map_pointer_destroy);
+
     return true;
 }
 void sisdb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+
+    sis_map_pointer_destroy(context->sub_dict);
 
     sis_map_pointer_destroy(context->collects);
     sis_node_list_destroy(context->series);
@@ -211,6 +215,7 @@ int cmd_sisdb_set(void *worker_, void *argv_)
         sis_net_ans_with_ok(netmsg);
 		return SIS_METHOD_OK;
 	}
+    printf("set rtn : %d\n", o);
 	return SIS_METHOD_ERROR;
 }
 
@@ -336,46 +341,82 @@ int cmd_sisdb_sub(void *worker_, void *argv_)
     
     char argv[2][128]; 
     int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
-    printf("cmd_sisdb_sub: %d %s %s \n", cmds, argv[0], argv[1]);
-    s_sis_sds o = NULL;
 
-    // uint16 format = SISDB_FORMAT_CHARS;
-    // if (cmds == 1)
-    // {
-    //     // 单
-    //     o = sisdb_single_get_sds(context, argv[0], &format, netmsg->val);
-    // }
-    // else
-    // {
-    //     o = sisdb_get_sds(context, netmsg->key, &format, netmsg->val);
-    // }
-	// if (o)
-	// {
-    //     if(format == SISDB_FORMAT_CHARS)
-    //     {
-    //         sis_net_ans_with_sds(netmsg, o);
-    //     }
-    //     else
-    //     {
-    //         sis_net_ans_with_bytes(netmsg, o);
-    //     }
-        
-	// 	return SIS_METHOD_OK;
-	// }
-	return SIS_METHOD_ERROR;
+    int o = 0;
+    if (cmds == 1)
+    {
+        o = sisdb_single_sub(context, argv[0], netmsg);
+    }
+    else
+    {
+        o = sisdb_sub(context, argv[0], argv[1], netmsg);
+    }
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
 }
 int cmd_sisdb_unsub(void *worker_, void *argv_)
 {
+    // 只订阅最后一条记录 不开线程 
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    char argv[2][128]; 
+    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
 
-    return 0;
+    int o = 0;
+    if (cmds == 1)
+    {
+        o = sisdb_single_unsub(context, argv[0], netmsg);
+    }
+    else
+    {
+        o = sisdb_unsub(context, argv[0], argv[1], netmsg);
+    }
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
 }
 int cmd_sisdb_subsno(void *worker_, void *argv_)
 {
     // 开启线程来处理
-    return 0;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    char argv[2][128]; 
+    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
+
+    int o = 0;
+    if (cmds == 1)
+    {
+        return SIS_METHOD_ERROR;
+    }
+    else
+    {
+        o = sisdb_subsno(context, argv[0], argv[1], netmsg);
+    }
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
 }
 int cmd_sisdb_unsubsno(void *worker_, void *argv_)
 {
+    // 开启线程来处理
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    char argv[2][128]; 
+    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
 
-    return 0;
+    int o = 0;
+    if (cmds == 1)
+    {
+        return SIS_METHOD_ERROR;
+    }
+    else
+    {
+        o = sisdb_unsubsno(context, argv[0], argv[1], netmsg);
+    }
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
 }

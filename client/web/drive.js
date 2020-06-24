@@ -1,12 +1,12 @@
 /// ///////////////////////////
 // 从服务器获取数据部分代码
 /// ///////////////////////////
-var client = {}
+var client = {};
 
 function connect_server() {
   client.ws = new WebSocket('ws://192.168.3.118:7329');
   // client.ws = new WebSocket('ws://127.0.0.1:7329');
-  console.log('connection ...')
+  console.log('connection ...');
   // client.ws = new WebSocket('ws://localhost:8888');
   // ws.binaryType = 'blob';
   // client.ws.binaryType = 'arraybuffer';
@@ -16,31 +16,29 @@ connect_server();
 
 client.ws.onopen = function (e) {
   // client.ws.status = 'open';
-  console.log('connection to server opened')
-}
+  console.log('ws onopen.');
+};
+
 client.ws.onclose = function (e) {
-  // client.ws.status = 'close';
   connect_server();
-  console.log('connection closed')
-}
+  console.log('ws onclose.');
+};
+
 client.ws.onerror = function (evt) {
-  console.log(evt)
-}
+  console.log('ws onerror.', evt);
+};
 
-let count = 1000
+let askid = 0;
 function _makeid() {
-  // let text = ''
-  count++
+  askid++
   // const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-
   // for (let i = 0; i < 20; i++) {
   //   text += possible.charAt(Math.floor(Math.random() * possible.length))
   // }
-
-  return count.toString()
+  return askid.toString();
 }
 
-// function make_command_buffer(sign, command) {
+// function make_command_packed(sign, command) {
 //   let count = command.length + 1
 //   let cmd = '*' + count + '\r\n'
 //   cmd += '$' + sign.length + '\r\n' + sign + '\r\n';
@@ -50,10 +48,12 @@ function _makeid() {
 //   return cmd
 // }
 
-function make_command_buffer(sign, command) {
-  // console.log('<===', typeof command, command);
-  let cmd = sign + ':{'
-  let argv = false
+function make_command_packed(sign, input) {
+  console.log('<===', typeof input, input.length);
+  let command = input.split(' ');
+
+  let cmd = sign + ':{';
+  let argv = false;
   for (let k = 0; k < command.length; k++) {
     let isjson = '"';
     if(command[k][0]==='['||command[k][0]==='{')
@@ -62,146 +62,168 @@ function make_command_buffer(sign, command) {
     }
     if (k === 0)
     {
-      cmd += '"cmd":' + isjson + command[k] + isjson
+      cmd += '"cmd":' + isjson + command[k] + isjson;
     }
     else
     if (k === 1)
     {
-      cmd += '"key":' + isjson + command[k] + isjson
+      cmd += '"key":' + isjson + command[k] + isjson;
     }
     else
     if (k === 2)
     {
-      cmd += '"val":' + isjson + command[k] + isjson
+      cmd += '"val":' + isjson + command[k] + isjson;
     }
     else
     {
       if (!argv)
       {
-        cmd += '"argv":['
-        argv = true
+        cmd += '"argv":[';
+        argv = true;
       }
-      cmd += isjson + command[k] + isjson
+      cmd += isjson + command[k] + isjson;
     }
     if (k < command.length - 1) 
     {
-      cmd += ','
+      cmd += ',';
     }
   }
   if (argv)
   {
-    cmd += ']'
+    cmd += ']';
   }
-  cmd += '}'
-  console.log("cmd", cmd);
-  
-  return cmd
+  cmd += '}';
+  return cmd;
 }
+
+// function read_message(message) 
+// {
+//   if(typeof(message.data)=="string")
+//   {  
+//     return message.data;
+//   }
+//   else
+//   {  
+//     var reader = new FileReader();
+//     reader.readAsArrayBuffer(message.data);
+//     reader.onload = function (e) 
+//     {
+//       console.info(reader.result); //ArrayBuffer {}
+//       var buf = new Uint8Array(reader.result);
+//       console.info(buf);
+
+//       reader.readAsText(new Blob([buf]), 'utf-8');
+//       reader.onload = function () 
+//       {
+//         console.info(reader.result); //中文字符串
+//       };
+//     }
+//   }
+// }
 
 client.ws.onmessage = function (message) {
 
   console.log('===>', typeof message.data, message.data);
-  if(typeof(message.data)=="string")
+  if(typeof(message.data) === "string")
   {  
-    console.log('recv : ', message.data);
-  }
-  else
-  {  
-    // parseBlob(message.data)
-    var reader = new FileReader();
-    reader.readAsArrayBuffer(message.data)
-    reader.onload = function (e) {
-      console.info(reader.result); //ArrayBuffer {}
-      var buf = new Uint8Array(reader.result);
-      console.info(buf);
-
-      //经常会遇到的异常 Uncaught RangeError: byte length of Int16Array should be a multiple of 2
-      //var buf = new int16array(reader.result);
-      //console.info(buf);
+    let start = message.data.indexOf(':');
+    let sign = message.data.substr(0, start);
   
-      //将 ArrayBufferView  转换成Blob
-      // var buf = new Uint8Array(reader.result);
-      // console.info(buf);
-      // console.info(buf); //[228, 184, 173, 230, 150, 135, 229, 173, 151, 231, 172, 166, 228, 184, 178]
-      // reader.readAsText(new Blob([buf]), 'utf-8');
-      // reader.onload = function () {
-      //     console.info(reader.result); //中文字符串
-      // };
-  
-      //将 ArrayBufferView  转换成Blob
-      // var buf = new DataView(reader.result);
-      // console.info(buf); //DataView {}
-      reader.readAsText(new Blob([buf]), 'utf-8');
-      reader.onload = function () {
-          console.info(reader.result); //中文字符串
-      };
+    if (client.wait.commands[sign] !== undefined) {
+      let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
+      if (msg.reply === 'ERROR')
+      {
+        client.wait.replys = msg.message;
+      }
+      else
+      {
+        client.wait.replys = msg.reply;
+      }
+    }
+    if (client.wait.multiple)
+    {
+      let whole = true;
+      for (const item in client.wait.commands) 
+      {
+        // console.log('--- ss --- ', client.wait.commands[item]);
+        if (client.wait.replys[client.wait.commands[item]] === undefined) {
+          whole = false;
+          break;
+        }
+      }
+      if (whole) 
+      {
+        client.wait.callback(client.wait.replys);
+      }  
+    }
+    else
+    {
+      client.wait.callback(client.wait.replys);
     }
   }
-
-  // console.log('===>', typeof message.data, message.data);
-
-  // let start = message.data.indexOf(':');
-  // let sign = message.data.substr(0, start);
-
-  // if (client.wait.commands[sign] !== undefined) {
-  //   client.wait.messages[client.wait.commands[sign]] =
-  //     JSON.parse(message.data.substr(start + 1, message.data.length));
-  // }
-  // //   console.log('-->', client.wait.messages, client.wait.commands[sign]);
-  // let all = true;
-  // for (const item in client.wait.commands) {
-  //   // console.log('--- ss --- ', client.wait.commands[item]);
-  //   if (client.wait.messages[client.wait.commands[item]] === undefined) {
-  //     all = false
-  //     break
-  //   }
-  // }
-  // if (all) {
-  //   client.wait.callback(client.wait.messages);
-  // }
 }
 
-// 当发出的指令全部返回后，就回调函数
-function send_client_command(commands, call) {
+function send_single_command(commands, callback) {
   client.wait = {
-    callback: call,
+    multiple: false,
+    callback: callback,
     commands: {},
-    messages: {}
+    replys: {}
+  }
+  let sign = _makeid();
+
+  client.wait.commands[sign] = sign;
+
+  console.log('<===', commands);
+
+  let sendstr = sign + ':' + commands.cmd;
+  // make_command_packed(sign, commands.cmd);
+
+  console.log('<===', sendstr);
+
+  client.ws.send(sendstr);
+}
+// 多个命令组合 当发出的指令全部返回后，就回调函数
+function send_multiple_command(commands, callback) {
+  client.wait = {
+    multiple: true,
+    callback: callback,
+    commands: {},
+    replys: {}
   }
   for (let index = 0; index < commands.length; index++) {
-    let sign = _makeid()
-    client.wait.commands[sign] = commands[index].key
-    // console.log(sign + ' ' + commands[index].cmd);
+    let sign = _makeid();
+    client.wait.commands[sign] = commands[index].key;
 
-    let sendstr = make_command_buffer(sign, commands[index].cmd)
+    let sendstr = make_command_packed(sign, commands[index].cmd);
 
-    console.log('<===', sendstr)
+    console.log('<===', sendstr);
 
-    client.ws.send(sendstr)
+    client.ws.send(sendstr);
   }
   // console.log(client.wait.commands);
 }
 
 function client_config_set(key, value) {
   if (window.localStorage) {
-    window.localStorage.setItem(key, value)
+    window.localStorage.setItem(key, value);
   }
 }
 
 function client_config_get(key) {
   if (window.localStorage) {
-    return window.localStorage.getItem(key)
+    return window.localStorage.getItem(key);
   }
 }
 
 function client_config_clear() {
   if (window.localStorage) {
-    window.localStorage.clear()
+    window.localStorage.clear();
   }
 }
 
 function client_config_remove(key) {
   if (window.localStorage) {
-    window.localStorage.removeItem(key)
+    window.localStorage.removeItem(key);
   }
 }

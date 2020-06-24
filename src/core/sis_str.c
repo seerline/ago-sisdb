@@ -101,7 +101,7 @@ char *sis_strdup(const char *str_, size_t len_) SIS_NEW
 		len = strlen(str_);
 	}
 	char *buffer = (char *)sis_malloc(len + 1);
-	memcpy(buffer, str_, len);
+	memmove(buffer, str_, len);
 	buffer[len] = 0;
 	return buffer;
 }

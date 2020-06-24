@@ -63,7 +63,7 @@ typedef struct s_sis_step_index
 
 typedef struct s_sisdb_collect
 {
-	// int                  style; 
+	int                  style; 
 	// s_sis_object        *obj;  
 	s_sis_sds            key;
 
