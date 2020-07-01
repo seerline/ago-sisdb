@@ -80,6 +80,20 @@ s_sisdb_table *sisdb_get_table(s_sisdb_cxt *sisdb_, const char *dbname_)
 	return tb;
 }
 
+s_sisdb_collect *sisdb_kv_create(uint8 style_, char *in_, size_t ilen_)
+{
+    s_sisdb_collect *o = SIS_MALLOC(s_sisdb_collect, o);
+    o->style = style_;
+    o->obj = sis_object_create(SIS_OBJECT_SDS, sdsnewlen(in_, ilen_));
+    return o;
+}
+void sisdb_kv_destroy(void *info_)
+{
+    s_sisdb_collect *info = (s_sisdb_collect *)info_;
+    sis_object_destroy(info->obj);
+    sis_free(info);
+}
+
 s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 {
 	char code[128];
@@ -93,6 +107,8 @@ s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 	}
 	s_sisdb_collect *o = SIS_MALLOC(s_sisdb_collect, o);
 	sis_map_pointer_set(sisdb_->collects, key_, o);
+	
+	o->style = SISDB_COLLECT_TYPE_TABLE;
 
 	o->key = sis_sdsnew(code);
 	o->father = sisdb_;
@@ -100,7 +116,7 @@ s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 
 	o->stepinfo = sisdb_stepindex_create();
 
-	o->value = sis_struct_list_create(sdb->db->size);
+	o->obj = sis_object_create(SIS_OBJECT_LIST, sis_struct_list_create(sdb->db->size)); 
 
 	return o;
 }
@@ -109,7 +125,7 @@ void sisdb_collect_destroy(void *collect_)
 {
 	s_sisdb_collect *collect = (s_sisdb_collect *)collect_;
 	{
-		sis_struct_list_destroy(collect->value);
+		sis_object_destroy(collect->obj);
 	}
 	if (collect->stepinfo)
 	{
@@ -121,7 +137,7 @@ void sisdb_collect_destroy(void *collect_)
 
 void sisdb_collect_clear(s_sisdb_collect *collect_)
 {
-	sis_struct_list_clear(collect_->value);
+	sis_struct_list_clear(SIS_OBJ_LIST(collect_->obj));
 	sisdb_stepindex_clear(collect_->stepinfo);
 }
 
@@ -131,23 +147,23 @@ void sisdb_collect_clear(s_sisdb_collect *collect_)
 msec_t sisdb_collect_get_time(s_sisdb_collect *collect_, int index_)
 {
 	return sis_dynamic_db_get_time(collect_->sdb->db, index_, 
-		sis_struct_list_first(collect_->value), 
-		collect_->value->count * collect_->value->len);
+		SIS_OBJ_GET_CHAR(collect_->obj),
+		SIS_OBJ_GET_SIZE(collect_->obj));
 }
 
 uint64 sisdb_collect_get_mindex(s_sisdb_collect *collect_, int index_)
 {
 	return sis_dynamic_db_get_mindex(collect_->sdb->db, index_, 
-		sis_struct_list_first(collect_->value), 
-		collect_->value->count * collect_->value->len);
+		SIS_OBJ_GET_CHAR(collect_->obj),
+		SIS_OBJ_GET_SIZE(collect_->obj));
 }
 int sisdb_collect_recs(s_sisdb_collect *collect_)
 {
-	if (!collect_ || !collect_->value)
+	if (!collect_ || !SIS_OBJ_LIST(collect_->obj))
 	{
 		return 0;
 	}
-	return collect_->value->count;
+	return SIS_OBJ_LIST(collect_->obj)->count;
 }
 
 ////////////////////////////////////////////
@@ -222,7 +238,7 @@ s_sis_sds sisdb_collect_struct_to_sds(s_sisdb_collect *collect_, s_sis_sds in_, 
 	// 一定不是全字段
 	s_sis_sds o = NULL;
 
-	int count = (int)(sis_sdslen(in_) / collect_->value->len);
+	int count = (int)(sis_sdslen(in_) / collect_->sdb->db->size);
 	char *val = in_;
 	for (int k = 0; k < count; k++)
 	{
@@ -329,7 +345,7 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *collect_, s_sis_sds i
 	}
 
 	char *val = in_;
-	int count = (int)(sis_sdslen(in_) / collect_->value->len);
+	int count = (int)(sis_sdslen(in_) / collect_->sdb->db->size);
 
 	for (int k = 0; k < count; k++)
 	{
@@ -337,7 +353,7 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *collect_, s_sis_sds i
 		{
 			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(collect_->sdb->db->fields, sis_string_list_get(fields_, i));
 			o = sis_dynamic_field_to_csv(o, inunit, val);
-			val += collect_->value->len;
+			val += collect_->sdb->db->size;
 		}
 		o = sis_csv_make_end(o);
 		val += collect_->sdb->db->size;
@@ -354,8 +370,8 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds 
 		return NULL;
 	}
 	// 取最后一条记录的数据作为底
-	const char *src = sis_struct_list_last(collect_->value);
-	s_sis_sds o = sis_sdsnewlen(src, collect_->value->len);
+	const char *src = sis_struct_list_last(SIS_OBJ_LIST(collect_->obj));
+	s_sis_sds o = sis_sdsnewlen(src, collect_->sdb->db->size);
 
 	s_sisdb_table *tb = collect_->sdb;
 
@@ -379,7 +395,7 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds 
 		}
 	}
 	sis_json_close(handle);
-	// printf("struct len = %d %d\n", collect_->value->len, sis_sdslen(o));
+	// printf("struct len = %d %d\n", collect_->sdb->db->size, sis_sdslen(o));
 	return o;
 }
 
@@ -405,7 +421,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 		count = 1;
 		jval = handle->node;
 	}
-	// printf("array to = %d %d\n", count, collect_->value->len);
+	// printf("array to = %d %d\n", count, collect_->sdb->db->size);
 	if (count < 1)
 	{
 		sis_json_close(handle);
@@ -413,7 +429,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 	}
 
 	int fnums = sis_string_list_getsize(collect_->sdb->fields);
-	s_sis_sds o = sis_sdsnewlen(NULL, count * collect_->value->len);
+	s_sis_sds o = sis_sdsnewlen(NULL, count * collect_->sdb->db->size);
 	int index = 0;
 	while (jval)
 	{
@@ -432,7 +448,7 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 			for (int i = 0; i < fu->count; i++)
 			{
 				sis_llutoa(fidx, key, 32, 10);
-				sis_dynamic_field_json_to_struct(o + index * collect_->value->len, fu, i, key, jval);
+				sis_dynamic_field_json_to_struct(o + index * collect_->sdb->db->size, fu, i, key, jval);
 				// printf("%s %d\n",key, fidx);
 				fidx++;
 			}

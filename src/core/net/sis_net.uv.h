@@ -33,6 +33,8 @@ typedef struct s_sis_socket_session
 	uv_buf_t  read_buffer;  // 接受数据的 buffer 有真实的数据区
 	uv_buf_t  write_buffer; // 写数据的 buffer 没有真实的数据区 直接使用传入的数据缓存指针
 	
+
+	uv_async_t write_async;
 	uv_write_t write_req;
 
 	struct s_sis_socket_server *server; //服务器句柄(保存是因为某些回调函数需要到)
@@ -107,6 +109,7 @@ typedef struct s_sis_socket_client
 	uv_buf_t read_buffer;  // 接受数据的 buffer 有真实的数据区
 	uv_buf_t write_buffer; // 写数据的 buffer 没有真实的数据区 直接使用传入的数据缓存指针
 
+	uv_async_t write_async;
 	uv_write_t write_req;  // 写时请求
 
 	int connect_status; // 连接状态

@@ -447,6 +447,128 @@ int sis_share_list_catch_size(s_sis_share_list *cls_)
     return sis_map_list_getsize(cls_->catch_infos);
 } 
 
+void *_thread_user_reader(void *argv_)
+{
+    s_sis_share_reader *reader = (s_sis_share_reader *)argv_;
+    s_sis_share_list *share = reader->slist;
+
+    reader->notice_wait = sis_wait_malloc();
+    s_sis_wait *wait = sis_wait_get(reader->notice_wait);
+
+    sis_thread_wait_start(wait);
+
+    while (reader->work_status != SIS_SHARE_STATUS_EXIT)
+    {
+        // printf("reader start.....\n");
+        // 这里的save_wait比较特殊,数据满也会即时处理
+        // sis_thread_wait_notice(wait); // 通知立即处理
+        if (sis_thread_wait_sleep_msec(wait, 1000) != SIS_ETIMEDOUT)
+        {
+            if (reader->work_status == SIS_SHARE_STATUS_EXIT)
+            {
+                break;
+            }
+            // printf("reader notice.\n");
+        }
+        if (reader->work_status != SIS_SHARE_STATUS_WORK)
+        {
+            continue;
+        }
+        // 不管什么情况这里都会读取数据
+        if (reader->cursor == NULL)
+        {
+            // 第一次 得到开始的位置
+            if (reader->from == SIS_SHARE_FROM_HEAD)
+            {
+                s_sis_share_node *node = share->head->next;
+                if (node && reader->cb)
+                {
+                    reader->work_status = SIS_SHARE_STATUS_WAIT;
+                    reader->cb(reader->cbobj, node->value);
+                }
+                reader->cursor = node;
+            }
+            else
+            {
+                reader->cursor = share->tail;
+            }
+            continue;
+        }
+        else
+        {
+            if (reader->cursor->next)
+            {
+                s_sis_share_node *node = reader->cursor->next;
+                if (reader->cb)
+                {
+                    reader->work_status = SIS_SHARE_STATUS_WAIT;
+                    reader->cb(reader->cbobj, node->value);
+                }
+                reader->cursor = node;
+            }
+            continue;
+        }
+    }
+    sis_thread_wait_stop(wait);
+    sis_wait_free(reader->notice_wait);
+    sis_thread_finish(&reader->work_thread);
+    reader->work_status = SIS_SHARE_STATUS_NONE;
+    return NULL;
+}
+s_sis_share_reader *sis_share_reader_open(s_sis_share_list *cls_, void *cbobj_, cb_sis_share_reader *cb_)
+{
+    s_sis_share_reader *reader = sis_share_reader_create(cls_, SIS_SHARE_FROM_HEAD, cbobj_, cb_);
+
+    if (!sis_share_reader_work(reader, _thread_user_reader))
+    {
+        sis_share_reader_destroy(reader);
+        return NULL;
+    }
+    sis_pointer_list_push(cls_->reader, reader);
+    reader->work_status = SIS_SHARE_STATUS_WORK;
+
+    return reader;
+}
+// 有新消息就先回调 然后由用户控制读下一条信息 next返回为空时重新激活线程的执行 
+s_sis_object *sis_share_reader_next(s_sis_share_reader *reader_)
+{
+    if (reader_->work_status != SIS_SHARE_STATUS_WAIT)
+    {
+        return NULL;
+        // if (reader_->cursor->next)
+        // {
+        //     reader_->work_status = SIS_SHARE_STATUS_WORK;
+        //     sis_thread_wait_notice(sis_wait_get(reader_->notice_wait));
+        // }
+        // else
+        // {
+        //     reader_->work_status = SIS_SHARE_STATUS_WORK;
+        // }
+    }
+    s_sis_object *o = NULL;
+    if (reader_->cursor->next)
+    {
+        s_sis_share_node *node = reader_->cursor->next;
+        o = node->value;
+        if (reader_->cb)
+        {
+            reader_->cb(reader_->cbobj, node->value);
+        }
+        reader_->cursor = node;
+    }
+    if (!o)  
+    {  
+        // 无数据就恢复正常
+        reader_->work_status = SIS_SHARE_STATUS_WORK;
+    }
+    return o;
+}
+void sis_share_reader_close(s_sis_share_list *cls_, s_sis_share_reader *reader_)
+{
+    int index = sis_pointer_list_indexof(cls_->reader, reader_);
+    sis_pointer_list_delete(cls_->reader, index , 1);
+}   
+
 s_sis_share_reader *sis_share_reader_login(s_sis_share_list *cls_, 
     sis_share_from from_, void *cbobj_, cb_sis_share_reader *cb_)
 {

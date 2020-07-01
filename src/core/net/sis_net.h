@@ -113,12 +113,16 @@ typedef void (*cb_net_reply)(void *, s_sis_net_message *);
 
 typedef struct s_sis_net_context {
 	uint8              status;  // 当前的工作状态 SIS_NET_WORKING...HANDING DISCONNECT
-	
+
 	int                rid;     // 对端的 socket ID 
 	s_sis_url          rurl;    // 客户端的相关信息
 
 	// 网络收到的内容 脱壳 解压 解密 后放入recv_buffer 解析后把完整的数据包 放入主队列 剩余数据保留等待下次收到数据
 	s_sis_memory      *recv_buffer; // 接收数据的残余缓存
+
+	void                 *father;   // s_sis_net_class *的指针
+	s_sis_share_list     *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
+	s_sis_share_reader   *reader_send;  // 读取发送队列 等待上一个读取结束的读者
 
 	s_sis_net_slot    *slots;     // 根据协议对接不同功能函数	
 
@@ -143,7 +147,7 @@ typedef struct s_sis_net_class {
 	uint64                ask_sno;
 	uint8                 work_status;    // 当前的工作状态 SIS_NET_WORKING...NONE EXIT 3 种状态
 	// s_sis_net_slot        slots;     // 请求方使用 	
-
+	
 	s_sis_socket_client  *client;    // 二选一 cxts 只有一条记录
 	s_sis_socket_server  *server;    
 	// 对应的连接客户的集合 s_sis_net_context
@@ -157,13 +161,13 @@ typedef struct s_sis_net_class {
 	// s_sis_object         *after_recv_cxt;  // 当前接收到的数据 等待处理成功后删除 s_sis_net_message 
 	// 可能在一个数据包中有多个请求 一次解析逐个放入队列 
 	s_sis_share_list     *ready_recv_cxts; // 接收到的数据  s_sis_net_message - s_sis_object
+	s_sis_share_reader   *reader_recv;  // 读取接收队列
+
 	// 当前正在发送的信息 刚出队列的 发送成功后释放
 	// s_sis_object         *after_send_cxt;  // 已经发送的数据 等待发送成功后删除 s_sis_memory
 	// 发送队列自行释放内存
-	s_sis_share_list     *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
-
-	s_sis_share_reader   *reader_recv;  // 读取接收队列
-	s_sis_share_reader   *reader_send;  // 读取发送队列
+	// s_sis_share_list     *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
+	// s_sis_share_reader   *reader_send;  // 读取发送队列
 
 	void                 *cb_source;     // 回调句柄
 	cb_socket_connect     cb_connected;  // 链接成功
@@ -189,12 +193,13 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_);
 //  为防止频繁拷贝 对 sis_net_message 消息体进行如下包装
 ////////////////////////////////////////////////////////
 
+s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *mess_);
 
 /////////////////////////////////////////////////////////////
 // s_sis_net_context define 
 /////////////////////////////////////////////////////////////
 
-s_sis_net_context *sis_net_context_create(); 
+s_sis_net_context *sis_net_context_create(s_sis_net_class *, int); 
 void sis_net_context_destroy(void *);
 
 /////////////////////////////////////////////////////////////

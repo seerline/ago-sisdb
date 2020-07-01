@@ -10,13 +10,13 @@
 //////////////////////////////////////////////////
 int _sisdb_collect_delete(s_sisdb_collect *collect_, int start_, int count_)
 {
-	sis_struct_list_delete(collect_->value, start_, count_);
+	sis_struct_list_delete(SIS_OBJ_LIST(collect_->obj), start_, count_);
 	if (collect_->sdb->db->field_mindex)
 	{
 		sisdb_stepindex_rebuild(collect_->stepinfo,
 								sisdb_collect_get_mindex(collect_, 0),
-								sisdb_collect_get_mindex(collect_, collect_->value->count - 1),
-								collect_->value->count);
+								sisdb_collect_get_mindex(collect_, SIS_OBJ_LIST(collect_->obj)->count - 1),
+								SIS_OBJ_LIST(collect_->obj)->count);
 	}
 	return 0;
 }
@@ -46,7 +46,7 @@ int sisdb_collect_delete(s_sisdb_collect  *collect_, s_sis_json_node *jsql)
 	s_sis_json_node *search = sis_json_cmp_child_node(jsql, "search");
 	if (!search)
 	{
-		return collect_->value->count;
+		return SIS_OBJ_LIST(collect_->obj)->count;
 	}
 	uint64 min, max;
 	int start, stop;

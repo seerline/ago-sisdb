@@ -496,6 +496,8 @@ void sis_dynamic_db_destroy(void *db_);
 s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_);
 
 s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
+
+s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_);
 // 从db转为json格式数据结构
 s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
 

@@ -41,7 +41,7 @@ static void _cb_connected(void *worker_, int sid)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-		sis_net_class_set_cb(context->server, sid, worker, cb_recv);
+		sis_net_class_set_cb(context->socket, sid, worker, cb_recv);
     LOG(5)("client connect ok. [%d]\n", sid);
 }
 
@@ -49,7 +49,7 @@ static void _cb_disconnect(void *worker_, int sid)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-	sis_net_class_set_cb(context->server, sid, worker, NULL);
+	sis_net_class_set_cb(context->socket, sid, worker, NULL);
     LOG(5)("client disconnect. [%d]\n", sid);	
 }
 
@@ -132,7 +132,7 @@ bool sisdb_server_init(void *worker_, void *argv_)
             if (service)
             {
                 sis_map_list_set(context->datasets, next->key, service);
-                // printf("add service : %s\n", next->key);
+                // printf("add service : %s %d\n", next->key, 1);
             }
             next = next->next;
         }  
@@ -172,11 +172,11 @@ bool sisdb_server_init(void *worker_, void *argv_)
     {
         url.io = SIS_NET_IO_WAITCNT;
         url.role = SIS_NET_ROLE_ANSWER;
-        context->server = sis_net_class_create(&url);
-        context->server->cb_source = worker;
-        context->server->cb_connected = _cb_connected;
-        context->server->cb_disconnect = _cb_disconnect;
-        if (sis_net_class_open(context->server))
+        context->socket = sis_net_class_create(&url);
+        context->socket->cb_source = worker;
+        context->socket->cb_connected = _cb_connected;
+        context->socket->cb_disconnect = _cb_disconnect;
+        if (sis_net_class_open(context->socket))
         {
             isopen = 1;
         }
@@ -185,6 +185,14 @@ bool sisdb_server_init(void *worker_, void *argv_)
     {
         return false;
     }
+
+    int count = sis_map_list_getsize(context->datasets);
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
+        sis_worker_command(service, "init", context->socket);
+    }
+
     return true;
 }
 
@@ -193,9 +201,9 @@ void sisdb_server_uninit(void *worker_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 
-    if (context->server)
+    if (context->socket)
     {
-        sis_net_class_destroy(context->server);
+        sis_net_class_destroy(context->socket);
     }
     // sis_message_destroy(context->message);
     if (context->datasets)
@@ -253,7 +261,16 @@ void sisdb_server_reply_error(s_sisdb_server_cxt *context, s_sis_net_message *ne
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "method [%s] fail.", netmsg->cmd);
     sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
-    sis_net_class_send(context->server, netmsg);
+    sis_net_class_send(context->socket, netmsg);
+    sis_sdsfree(reply);
+}
+
+void sisdb_server_reply_null(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
+{
+    s_sis_sds reply = sis_sdsempty();
+    reply = sis_sdscatfmt(reply, "no key [%s].", name);
+    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
 void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
@@ -261,7 +278,7 @@ void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "no find method [%s].", name);
     sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
-    sis_net_class_send(context->server, netmsg);
+    sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
 void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
@@ -269,7 +286,7 @@ void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_messag
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "no find service [%s].", name);
     sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
-    sis_net_class_send(context->server, netmsg);
+    sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
 void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
@@ -278,15 +295,19 @@ void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
 
     char argv[2][128]; 
     int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
-    printf("cb_reader_recv: %d %s %s \n", cmds, argv[0], argv[1]);
+    printf("cb_reader_recv: %d %s %s %s\n", cmds, argv[0], argv[1], netmsg->key);
 
     if (cmds == 1)
     {
         int o = sis_worker_command(worker, netmsg->cmd, netmsg);
         if (o == SIS_METHOD_OK)
         {
-            sis_net_class_send(context->server, netmsg);
+            sis_net_class_send(context->socket, netmsg);
         }  
+        else if (o == SIS_METHOD_NULL)
+        {
+            sisdb_server_reply_null(context, netmsg, netmsg->cmd);
+        }
         else if (o == SIS_METHOD_NOCMD)
         {
             sisdb_server_reply_no_method(context, netmsg, netmsg->cmd);
@@ -304,8 +325,12 @@ void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
             int o = sis_worker_command(service, argv[1], netmsg);
             if (o == SIS_METHOD_OK)
             {
-                sis_net_class_send(context->server, netmsg);
+                sis_net_class_send(context->socket, netmsg);
             } 
+            else if (o == SIS_METHOD_NULL)
+            {
+                sisdb_server_reply_null(context, netmsg, argv[1]);
+            }
             else if (o == SIS_METHOD_NOCMD)
             {
                 sisdb_server_reply_no_method(context, netmsg, argv[1]);
@@ -331,7 +356,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     if (context->user_auth && !context->logined && sis_strcasecmp("auth", netmsg->cmd))
     {
         sis_net_ans_with_error(netmsg, "no auth.", 8);
-        sis_net_class_send(context->server, netmsg);
+        sis_net_class_send(context->socket, netmsg);
     }
     else
     {
@@ -489,13 +514,16 @@ int cmd_sisdb_server_show(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
         
     s_sis_json_node *jone = sis_json_create_object();
-    s_sis_json_node *jval = sis_json_create_array();
-    sis_json_object_add_node(jone, "datasets", jval);
+    s_sis_json_node *jdbs = sis_json_create_object();
+    sis_json_object_add_node(jone, "datasets", jdbs);
     int count = sis_map_list_getsize(context->datasets);
     for (int i = 0; i < count; i++)
     {
         s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
-        sis_json_array_add_string(jval, service->workername, sis_sdslen(service->workername));
+        
+        s_sisdb_cxt *cxt = service->context;
+        s_sis_json_node *jdb = sis_sisdb_make_sdb_node(cxt);
+        sis_json_object_add_node(jdbs, service->workername, jdb);
     }
     size_t len;
     char *str = sis_json_output_zip(jone, &len);

@@ -21,15 +21,14 @@ void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
     netmsg_->key = key_ ? sdsnew(key_) : NULL;
     netmsg_->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
 }
-void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, s_sis_object *in_)
+void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
 	if (!netmsg_->argvs)
 	{
 		netmsg_->argvs = sis_pointer_list_create();
-		netmsg_->argvs->vfree = sis_object_decr;
+		netmsg_->argvs->vfree = sis_sdsfree_call;
 	}
-    sis_object_incr(in_);
-    sis_pointer_list_push(netmsg_->argvs, in_);
+    sis_pointer_list_push(netmsg_->argvs, sis_sdsnewlen(in_, ilen_));
 }
 
 void sis_net_ans_with_string(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
@@ -47,7 +46,7 @@ void sis_net_ans_with_string(s_sis_net_message *netmsg_, const char *in_, size_t
     netmsg_->rval = in_ ? sdsnewlen(in_, ilen_) : NULL;
 }
 
-void sis_net_ans_with_sds(s_sis_net_message *netmsg_, s_sis_sds in_)
+void sis_net_ans_with_chars(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
     netmsg_->style = SIS_NET_ANS_VAL;
@@ -55,10 +54,10 @@ void sis_net_ans_with_sds(s_sis_net_message *netmsg_, s_sis_sds in_)
     {
         sis_sdsfree(netmsg_->rval);
     }
-    netmsg_->rval = in_ ;
+    netmsg_->rval = sdsnewlen(in_, ilen_) ;
 }
 
-void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, s_sis_sds in_)
+void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
     // 二进制数据流
     netmsg_->format = SIS_NET_FORMAT_BYTES;
@@ -66,13 +65,11 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, s_sis_sds in_)
 	if (!netmsg_->argvs)
 	{
 		netmsg_->argvs = sis_pointer_list_create();
-		netmsg_->argvs->vfree = sis_object_decr;
+		netmsg_->argvs->vfree = sis_sdsfree_call;
 	}
-    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, in_);
-    sis_object_incr(obj);
-    sis_pointer_list_push(netmsg_->argvs, obj);
-    sis_object_destroy(obj);
+    sis_pointer_list_push(netmsg_->argvs, sdsnewlen(in_, ilen_));
 }
+
 void sis_net_ans_with_int(s_sis_net_message *netmsg_, int in_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
@@ -85,6 +82,12 @@ void sis_net_ans_with_ok(s_sis_net_message *netmsg_)
     netmsg_->style = SIS_NET_ANS_OK;
 }
 void sis_net_ans_with_error(s_sis_net_message *netmsg_, char *rval_, size_t vlen_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_ERROR;
+    netmsg_->rval = rval_ ? sdsnewlen(rval_, vlen_) : NULL;
+}
+void sis_net_ans_with_null(s_sis_net_message *netmsg_, char *rval_, size_t vlen_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
     netmsg_->style = SIS_NET_ANS_ERROR;

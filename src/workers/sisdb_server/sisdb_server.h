@@ -96,7 +96,7 @@ typedef struct s_sisdb_server_cxt
 	s_sisdb_catch       catch_cfg;
 	s_sis_map_list     *datasets;    // 数据集合 s_sis_worker s_sis_db 分为不同目录存储 
 
-	s_sis_net_class    *server;      // 服务监听器 s_sis_net_server
+	s_sis_net_class    *socket;      // 服务监听器 s_sis_net_server
 
 }s_sisdb_server_cxt;
 

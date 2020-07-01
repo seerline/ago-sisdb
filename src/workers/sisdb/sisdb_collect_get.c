@@ -105,7 +105,7 @@ int sisdb_collect_search_left(s_sisdb_collect *collect_, uint64 finder_, int *mo
 	if (dir == 1)
 	{
 		*mode_ = SIS_SEARCH_LEFT;
-		return collect_->value->count - 1;
+		return SIS_OBJ_LIST(collect_->obj)->count - 1;
 	}
 	else
 	{
@@ -338,7 +338,7 @@ s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *collect_, int start_, 
 		return NULL;
 	}
 	int count = (stop_ - start_) + 1;
-	return sis_sdsnewlen(sis_struct_list_get(collect_->value, start_), count * collect_->value->len);
+	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), start_), count * collect_->sdb->db->size);
 }
 s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *collect_, int start_, int count_)
 {
@@ -347,15 +347,15 @@ s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *collect_, int start_, 
 	{
 		return NULL;
 	}
-	return sis_sdsnewlen(sis_struct_list_get(collect_->value, start_), count_ * collect_->value->len);
+	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), start_), count_ * collect_->sdb->db->size);
 }
 s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *collect_)
 {
-	if (!collect_->value||collect_->value->count < 1)
+	if (!SIS_OBJ_LIST(collect_->obj)||SIS_OBJ_LIST(collect_->obj)->count < 1)
 	{
 		return NULL;
 	}
-	return sis_sdsnewlen(sis_struct_list_get(collect_->value, collect_->value->count - 1), collect_->value->len);
+	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), SIS_OBJ_LIST(collect_->obj)->count - 1), collect_->sdb->db->size);
 }
 
 ////////////////////////////////////////////
@@ -509,7 +509,7 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_)
 {
 	int start = 0;
-	int count = collect_->value->count;
+	int count = SIS_OBJ_LIST(collect_->obj)->count;
 
 	if (count * collect_->sdb->db->size > SISDB_MAX_GET_SIZE)
 	{

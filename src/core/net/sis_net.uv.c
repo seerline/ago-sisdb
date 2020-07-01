@@ -423,13 +423,12 @@ static void cb_server_read_after(uv_stream_t *handle, ssize_t nread, const uv_bu
 		sis_socket_server_delete(server, session->session_id);//连接断开，关闭客户端
 		return;
 	}
-
+	LOG(5)("recv .%d. %p %p\n", (int)nread, session, session->cb_recv_after);
 	if (nread > 0 && session->cb_recv_after) 
 	{
 		buffer->base[nread] = 0;
 		session->cb_recv_after(server->source, session->session_id, buffer->base, nread);
 	}
-	LOG(5)("recv .%d. %p %p\n", (int)nread, session, session->cb_recv_after);
 }
 s_sis_socket_session *sis_socket_server_new_session(s_sis_socket_server *server_)
 {
@@ -707,6 +706,8 @@ s_sis_socket_client *sis_socket_client_create()
 
 	socket->read_buffer = uv_buf_init((char*)sis_malloc(MAX_NET_UV_BUFFSIZE), MAX_NET_UV_BUFFSIZE);
     socket->write_buffer = uv_buf_init(NULL, 0);
+
+	// uv_async_init(socket->loop, &socket->write_async, async_cb);
 
 	socket->write_req.data = socket;
 	socket->connect_req.data = socket;
@@ -1089,7 +1090,8 @@ bool sis_socket_client_send(s_sis_socket_client *client_, s_sis_object *in_)
 	client_->write_buffer.len = SIS_OBJ_GET_SIZE(in_);
 
 	uv_buf_t buffer = uv_buf_init(SIS_OBJ_GET_CHAR(client_->write_buffer.base), client_->write_buffer.len);
-	// uv_async_send()
+
+	// int o = uv_async_send(&client_->write_req, (uv_stream_t*)&client_->client_handle, &buffer, 1, cb_client_write_after);
 	int o = uv_write(&client_->write_req, (uv_stream_t*)&client_->client_handle, &buffer, 1, cb_client_write_after);
 	if (o) 
 	{
@@ -1164,15 +1166,15 @@ static void cb_server_resv_after(void *handle_, int sid_, char* in_, size_t ilen
 static void cb_client_send_after(void* handle_, int cid, int status)
 {
 	s_test_client *cli = (s_test_client *)handle_;
-	if (cli->sno < 10*1000)
-	{
-		cli->sno++;
-		s_sis_sds sds = sis_sdsempty();
-		sds = sis_sdscatfmt(sds,"i am client. [sno = %i]. %i", cli->sno, (int)sis_time_get_now());
-		s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sds);
-		sis_socket_client_send(cli->client, obj);
-		sis_object_destroy(obj);
-	}
+	// if (cli->sno < 10*1000)
+	// {
+	// 	cli->sno++;
+	// 	s_sis_sds sds = sis_sdsempty();
+	// 	sds = sis_sdscatfmt(sds,"i am client. [sno = %i]. %i", cli->sno, (int)sis_time_get_now());
+	// 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sds);
+	// 	sis_socket_client_send(cli->client, obj);
+	// 	sis_object_destroy(obj);
+	// }
 }
 static void cb_client_recv_after(void* handle_, int cid, char* in_, size_t ilen_)
 {
@@ -1205,7 +1207,11 @@ static void cb_connected(void *handle_, int sid_)
 	sds = sis_sdscatfmt(sds,"i am client. [sno = %i].", cli->sno);
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sds);
 	// printf("send : %s\n", sds);	
-	sis_socket_client_send(cli->client, obj);
+	// for (int i = 0; i < 10000; i++)
+	{
+		sis_socket_client_send(cli->client, obj);
+	}
+	// sis_socket_client_send(cli->client, obj);
 	sis_object_destroy(obj);
 #endif
 }

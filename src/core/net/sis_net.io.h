@@ -12,15 +12,16 @@ void sis_net_ask_with_string(s_sis_net_message *netmsg_,
 void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, 
     char *cmd_, char *key_, char *val_, size_t vlen_);
 
-void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, s_sis_object *in_);
+void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_);
 
 void sis_net_ans_with_string(s_sis_net_message *, const char *in_, size_t ilen_);
 void sis_net_ans_with_int(s_sis_net_message *, int in_);
 void sis_net_ans_with_ok(s_sis_net_message *);
 void sis_net_ans_with_error(s_sis_net_message *, char *rval_, size_t vlen_);
+void sis_net_ans_with_null(s_sis_net_message *, char *rval_, size_t vlen_);
 // in_被吸入
-void sis_net_ans_with_sds(s_sis_net_message *, s_sis_sds in_);
-void sis_net_ans_with_bytes(s_sis_net_message *, s_sis_sds in_);
+void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);
+void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
 
 // #define SIS_NET_METHOD_SYSTEM   "system"   // 基础的函数
 // #define SIS_NET_METHOD_PUBLIC   "public"   // 实际启动服务时注册的函数

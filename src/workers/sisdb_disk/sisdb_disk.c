@@ -213,9 +213,9 @@ static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_obj
     else
     {
         // 写any
-        uint16 format = (uint16)sis_memory_get_byte(SIS_OBJ_MEMORY(obj_), 2);
-        s_sisdb_kv *info = sisdb_kv_create(format, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
-        sis_map_pointer_set(sisdb->kvs, key_, info);
+        uint8 style = (uint8)sis_memory_get_byte(SIS_OBJ_MEMORY(obj_), 1);
+        s_sisdb_collect *info = sisdb_kv_create(style, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        sis_map_pointer_set(sisdb->collects, key_, info);
     }
 
 } 
@@ -313,7 +313,7 @@ int cmd_sisdb_disk_save(void *worker_, void *argv_)
     {
         s_sisdb_collect_sno *sno = (s_sisdb_collect_sno *)sis_node_list_get(sisdb->series, i);        
         sis_disk_file_write_sdb(snofile, sno->collect->key, sno->collect->sdb->db->name, 
-            sis_struct_list_get(sno->collect->value, sno->recno) , sno->collect->sdb->db->size);
+            sis_struct_list_get(SIS_OBJ_LIST(sno->collect->obj), sno->recno) , sno->collect->sdb->db->size);
     }
     
     sis_disk_file_write_stop(snofile);
@@ -331,36 +331,30 @@ int cmd_sisdb_disk_save(void *worker_, void *argv_)
         sis_sdsfree(sdbs);
     }
     sis_disk_file_write_start(sdbfile, SIS_DISK_ACCESS_APPEND);
-    // 写入自由键值
+    // 写入自由和结构键值
     {
         s_sis_memory *memory = sis_memory_create();
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb->kvs);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_kv *val = (s_sisdb_kv *)sis_dict_getval(de);
-            sis_memory_clear(memory);
-            sis_memory_cat_byte(memory, val->format, 2);
-            sis_memory_cat(memory, val->value, sis_sdslen(val->value));
-            sis_disk_file_write_any(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
-        }
-        sis_dict_iter_free(di);
-        sis_memory_destroy(memory);
-    }
-    // 写入结构键值
-    {
         s_sis_dict_entry *de;
         s_sis_dict_iter *di = sis_dict_get_iter(sisdb->collects);
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (collect->sdb->style == SISDB_TB_STYLE_SDB)
+            if (collect->style == SISDB_COLLECT_TYPE_TABLE)
             {
                 sis_disk_file_write_sdb(sdbfile, collect->key, collect->sdb->db->name, 
-                    sis_struct_list_first(collect->value), collect->value->count * collect->value->len);
+                    SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+            }
+            else 
+            if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
+            {
+                sis_memory_clear(memory);
+                sis_memory_cat_byte(memory, collect->style, 1);
+                sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+                sis_disk_file_write_any(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
             }
         }
         sis_dict_iter_free(di);
+        sis_memory_destroy(memory);
     }
     sis_disk_file_write_stop(sdbfile);
     sis_disk_class_destroy(sdbfile);

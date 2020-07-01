@@ -3,34 +3,35 @@
 //*******************************************************
 
 #include "sisdb_io.h"
+#include "sis_net.io.h"
 #include "sisdb_collect.h"
 
-s_sis_sds sisdb_single_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)
+s_sis_sds sisdb_one_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)
 {
     s_sis_sds o = NULL;
-    s_sisdb_kv *info = sis_map_pointer_get(sisdb_->kvs, key_);
-    if (info && info->value)
+    s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->collects, key_);
+    if (collect && collect->obj )
     {
-        *format_ = info->format;
-        o = sis_sdsdup(info->value);
+        *format_ = collect->style == SISDB_COLLECT_TYPE_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
+        o = sis_sdsdup(SIS_OBJ_SDS(collect->obj));
     }
     return o;
 }
 
 // 多单键取值只处理字符串 非字符串不处理
-s_sis_sds sisdb_single_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
+s_sis_sds sisdb_one_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
 {
     s_sis_json_node *jone = sis_json_create_object();
     if (!sis_strcasecmp(keys_, "*"))
     {
         s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->kvs);
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->collects);
         while ((de = sis_dict_next(di)) != NULL)
         {
-            s_sisdb_kv *info = (s_sisdb_kv *)sis_dict_getval(de);
-            if (info->format == SISDB_FORMAT_CHARS)
+            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+            if (collect->style == SISDB_COLLECT_TYPE_CHARS)
             {
-                sis_json_object_add_string(jone, sis_dict_getkey(de), info->value, sis_sdslen(info->value));
+                sis_json_object_add_string(jone, sis_dict_getkey(de), SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
             }
         }
         sis_dict_iter_free(di);
@@ -44,10 +45,10 @@ s_sis_sds sisdb_single_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sd
         for (int i = 0; i < count; i++)
         {
             const char *key = sis_string_list_get(klist, i);
-            s_sisdb_kv *info = sis_map_pointer_get(sisdb_->kvs, key);
-            if (info->format == SISDB_FORMAT_CHARS)
+            s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->collects, key);
+            if (collect->style == SISDB_COLLECT_TYPE_CHARS)
             {
-                sis_json_object_add_string(jone, key, info->value, sis_sdslen(info->value));
+                sis_json_object_add_string(jone, key, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
             }
         }
         sis_string_list_destroy(klist);
@@ -57,16 +58,34 @@ s_sis_sds sisdb_single_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sd
     return o;
 }
 
-int sisdb_single_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
+int sisdb_one_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
 {
-    sis_map_pointer_del(sisdb_->kvs, key_);
+    s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->collects, key_);
+    if (collect && collect->style != SISDB_COLLECT_TYPE_TABLE)
+    {
+        sis_map_pointer_del(sisdb_->collects, key_);
+        return 1;
+    }
     return 0;
 }
-int sisdb_single_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
+int sisdb_one_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
 {
+    int o = 0;
     if (!sis_strcasecmp(keys_, "*"))
     {
-        sis_map_pointer_clear(sisdb_->kvs);
+        // sis_map_pointer_clear(sisdb_->collects);
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->collects);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+            if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
+            {
+                sis_map_pointer_del(sisdb_->collects, sis_dict_getkey(de));
+                o++;
+            }
+        }
+        sis_dict_iter_free(di);
     }
     else
     {
@@ -77,16 +96,19 @@ int sisdb_single_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
         for (int i = 0; i < count; i++)
         {
             sis_map_pointer_del(sisdb_->collects, sis_string_list_get(klist, i));
+            o++;
         }
         sis_string_list_destroy(klist);
     }
-    return 0;
+    return o;
 }
 
-int sisdb_single_set(s_sisdb_cxt *sisdb_, const char *key_, uint16 format_, s_sis_sds argv_)
+int sisdb_one_set(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds argv_)
 {
-    s_sisdb_kv *info = sisdb_kv_create(format_, argv_, sis_sdslen(argv_));
-    sis_map_pointer_set(sisdb_->kvs, key_, info);
+    s_sisdb_collect *collect = sisdb_kv_create(style_, argv_, sis_sdslen(argv_));
+    sis_map_pointer_set(sisdb_->collects, key_, collect);
+    // 这里处理订阅
+    sisdb_make_sub_message(sisdb_, key_, style_, argv_, sis_sdslen(argv_));
     return 0;
 }
 
@@ -273,7 +295,7 @@ int sisdb_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
     // 返回剩余的记录个数
     sisdb_collect_delete(collect, handle->node);
     sis_json_close(handle);
-    if (collect->value->count == 0)
+    if (SIS_OBJ_LIST(collect->obj)->count == 0)
     {
         // 没有数据 就直接删除key
         sis_map_pointer_del(sisdb_->collects, key_);
@@ -322,6 +344,9 @@ int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
     {
         return -5;
     }
+    // 这里处理订阅
+    sisdb_make_sub_message(sisdb_, key_, SISDB_COLLECT_TYPE_BYTES, value_, sis_sdslen(value_));
+
     return 0;
 }
 
@@ -355,7 +380,7 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
     {
         return -3;
     }
-    sis_out_binary("bytes:",  bytes, sis_sdslen(bytes));
+    // sis_out_binary("bytes:",  bytes, sis_sdslen(bytes));
 
     int o = 0;
     if (collect->sdb->style == SISDB_TB_STYLE_SNO)
@@ -367,29 +392,61 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
         o = sisdb_collect_update(collect, bytes);
     }    
     // printf("count = %d, %s\n", o, bytes ? bytes : "nil");
-    sis_sdsfree(bytes);
 
     if (o <= 0)
     {
         return -5;
     }
+    // 这里处理订阅
+    sisdb_make_sub_message(sisdb_, key_, SISDB_COLLECT_TYPE_BYTES, bytes, sis_sdslen(bytes));
+
+    sis_sdsfree(bytes);
     return 0;
 }
 
 /////////////////
 //  sub function
 /////////////////
-
-int sisdb_single_sub(s_sisdb_cxt *sisdb_, const char *key_, s_sis_net_message *netmsg_)
+void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds in_, size_t ilen_)
 {
-    // s_sisdb_sub_info *sub_info = ;
-	s_sis_pointer_list *sublist = (s_sis_pointer_list *)sis_map_pointer_get(sisdb_->sub_dict, key_);
+    // 先处理单键值订阅
+	s_sis_pointer_list *sublist = (s_sis_pointer_list *)sis_map_pointer_get(sisdb_->sub_single, key_);
+    printf("sublist pub: %p %s\n", sublist, key_);
+    if (sublist)
+    {
+        for (int i = 0; i < sublist->count; i++)
+        {
+            s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist, i);
+            s_sis_net_message *newinfo = sis_net_message_clone(info);
+            printf("sublist : %d  %s\n", sublist->count, newinfo->key);
+
+            if(style_ == SISDB_COLLECT_TYPE_BYTES)
+            {
+                sis_net_ans_with_bytes(newinfo, in_, sis_sdslen(in_));
+            }
+            else if (style_ == SISDB_COLLECT_TYPE_CHARS)
+            {
+                sis_net_ans_with_chars(newinfo, in_, sis_sdslen(in_));
+            }
+            s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newinfo);
+            sis_share_list_push(sisdb_->pub_list, obj);
+            sis_object_destroy(obj);
+        }
+    }
+    
+}
+
+
+int sisdb_one_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
+{
+	s_sis_pointer_list *sublist = (s_sis_pointer_list *)sis_map_pointer_get(sisdb_->sub_single, netmsg_->key);
 	if (!sublist)
 	{
-		sublist = sis_pointer_list_create();
+        sublist = sis_pointer_list_create();
 		sublist->vfree = sis_net_message_decr;
-		sis_map_pointer_set(sisdb_->sub_dict, key_, sublist);
+		sis_map_pointer_set(sisdb_->sub_single, netmsg_->key, sublist);
 	}
+    printf("sublist sub: %s\n",netmsg_->key);
 	bool isnew = true;
 	for (int i = 0; i < sublist->count; i++)
 	{
@@ -407,9 +464,74 @@ int sisdb_single_sub(s_sisdb_cxt *sisdb_, const char *key_, s_sis_net_message *n
 	}
     return isnew ? 1 : 0;
 }
-int sisdb_single_unsub(s_sisdb_cxt *sisdb_, const char *key_, s_sis_net_message *netmsg_)
+
+int sisdb_unsub_whole(s_sisdb_cxt *sisdb_, int cid_)
 {
-	s_sis_pointer_list *sublist = (s_sis_pointer_list *)sis_map_pointer_get(sisdb_->sub_dict, key_);
+    int count = 0;
+    // 单键值定义
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->sub_single);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sis_pointer_list *sublist = (s_sis_pointer_list *)sis_dict_getval(de);
+            int i = 0;
+            while (i < sublist->count)
+            {
+                s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist, i);
+                if (info->cid == cid_)
+                {
+                    sis_pointer_list_delete(sublist, i, 1);
+                    count++;
+                    if (sublist->count == 0)
+                    {
+                        sis_map_pointer_del(sisdb_->sub_single, sis_dict_getkey(de));
+                    }
+                    break;
+                }
+                else
+                {
+                    i++;
+                }
+            }
+        }
+        sis_dict_iter_free(di);
+    }
+    // 多键值定义
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->sub_multiple);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_sub_info *sublist = (s_sisdb_sub_info *)sis_dict_getval(de);
+            int i = 0;
+            while (i < sublist->netmsgs->count) 
+            {
+                s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
+                if (info->cid == cid_)
+                {
+                    sis_pointer_list_delete(sublist->netmsgs, i, 1);
+                    count++;
+                    if (sublist->netmsgs->count == 0)
+                    {
+                        sis_map_pointer_del(sisdb_->sub_multiple, sis_dict_getkey(de));
+                    }
+                    break;
+                }
+                else
+                {
+                    i++;
+                }
+            }
+        }
+        sis_dict_iter_free(di);
+    }
+    return count;
+}
+
+int sisdb_one_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
+{
+	s_sis_pointer_list *sublist = (s_sis_pointer_list *)sis_map_pointer_get(sisdb_->sub_single, netmsg_->key);
     if (sublist)
     {
         int i = 0;
@@ -419,6 +541,10 @@ int sisdb_single_unsub(s_sisdb_cxt *sisdb_, const char *key_, s_sis_net_message 
             if (info->cid ==  netmsg_->cid)
             {
                 sis_pointer_list_delete(sublist, i, 1);
+                if (sublist->count == 0)
+                {
+                    sis_map_pointer_del(sisdb_->sub_single, netmsg_->key);
+                }
                 break;
             }
             else
@@ -431,22 +557,78 @@ int sisdb_single_unsub(s_sisdb_cxt *sisdb_, const char *key_, s_sis_net_message 
     return 0 ;
 }
 
-int sisdb_sub(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *netmsg_)
+int sisdb_multiple_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
-
+	s_sisdb_sub_info *sublist = (s_sisdb_sub_info *)sis_map_pointer_get(sisdb_->sub_multiple, netmsg_->key);
+	if (!sublist)
+	{
+        s_sisdb_sub_info *info = sisdb_sub_info_create(netmsg_);
+		sis_map_pointer_set(sisdb_->sub_multiple, netmsg_->key, info);
+	}
+    printf("multiple_sub: %s\n",netmsg_->key);
+	bool isnew = true;
+	for (int i = 0; i < sublist->netmsgs->count; i++)
+	{
+		s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
+		if (info->cid ==  netmsg_->cid)
+		{
+			isnew = false;
+			break;
+		}
+	}
+	if (isnew)
+	{
+		sis_net_message_incr(netmsg_);
+		sis_pointer_list_push(sublist->netmsgs, netmsg_);
+	}
+    return isnew ? 1 : 0;
 }
-int sisdb_unsub(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *netmsg_)
+int sisdb_multiple_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
-
+	s_sisdb_sub_info *sublist = (s_sisdb_sub_info *)sis_map_pointer_get(sisdb_->sub_multiple, netmsg_->key);
+    if (sublist)
+    {
+        int i = 0;
+        while (i < sublist->netmsgs->count) 
+        {
+            s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
+            if (info->cid == netmsg_->cid)
+            {
+                sis_pointer_list_delete(sublist->netmsgs, i, 1);
+                if (sublist->netmsgs->count == 0)
+                {
+                    sis_map_pointer_del(sisdb_->sub_multiple, netmsg_->key);
+                }
+                break;
+            }
+            else
+            {
+                i++;
+            }
+        }
+        return 1;
+    }
+    return 0 ;
 }
-int sisdb_subsno(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *netmsg_)
+
+int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
-
 }
-int sisdb_unsubsno(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_net_message *netmsg_)
+
+int sisdb_one_unsubsno(s_sisdb_cxt *sisdb_,s_sis_net_message *netmsg_)
 {
-
 }
+
+int sisdb_multiple_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
+{
+    
+}
+
+int sisdb_multiple_unsubsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
+{
+    
+}
+
 // int sis_net_class_subscibe(s_sis_net_class *cls_, s_sis_net_message *mess_)
 // {
 // 	if(cls_->work_status != SIS_NET_WORKING)

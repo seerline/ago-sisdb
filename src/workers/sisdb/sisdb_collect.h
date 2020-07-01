@@ -54,8 +54,9 @@ typedef struct s_sis_step_index
 // 
 
 #define SISDB_COLLECT_TYPE_TABLE   0   // s_sis_struct_list
-#define SISDB_COLLECT_TYPE_SDS     1   // s_sis_sds
-#define SISDB_COLLECT_TYPE_LIST    2   // s_sis_list s_sis_sds
+#define SISDB_COLLECT_TYPE_CHARS   1   // s_sis_sds
+#define SISDB_COLLECT_TYPE_BYTES   2   // s_sis_sds
+#define SISDB_COLLECT_TYPE_LIST    3   // s_sis_list s_sis_sds
 
 // 对于TICK类型的数据表 存储方式不同 是一个nodelist 单元包含 块号+时间区间+索引列表+数据列表 s_struct_list
 // 获取数据时根据不同块号 分批按索引列表 排序后发送数据 需要独立启动一个线程 
@@ -63,8 +64,9 @@ typedef struct s_sis_step_index
 
 typedef struct s_sisdb_collect
 {
-	int                  style; 
-	// s_sis_object        *obj;  
+	uint8                style; 
+	s_sis_object        *obj;  
+
 	s_sis_sds            key;
 
 	s_sisdb_cxt         *father;
@@ -73,7 +75,7 @@ typedef struct s_sisdb_collect
 
 	////////////////////////////////////////////////////////////
 	s_sis_step_index    *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
-	s_sis_struct_list   *value;    // 结构化数据
+	// s_sis_struct_list   *value;    // 结构化数据
 
 } s_sisdb_collect;
 
@@ -95,11 +97,15 @@ void sisdb_stepindex_clear(s_sis_step_index *);
 void sisdb_stepindex_rebuild(s_sis_step_index *, uint64 left_, uint64 right_, int count_);
 int sisdb_stepindex_goto(s_sis_step_index *si_, uint64 curr_);
 
+
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sisdb_collect --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
 s_sisdb_collect *sisdb_get_collect(s_sisdb_cxt *sisdb_, const char *key_);
 s_sisdb_table *sisdb_get_table(s_sisdb_cxt *sisdb_, const char *dbname_);
+
+s_sisdb_collect *sisdb_kv_create(uint8 style_, char *in_, size_t ilen_);
+void sisdb_kv_destroy(void *info_);
 
 s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_,const char *key_);
 void sisdb_collect_destroy(void *);

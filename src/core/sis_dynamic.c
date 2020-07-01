@@ -253,7 +253,8 @@ s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
 	in_ = sis_sdscat(in_, "}}");
 	return in_;
 }
-s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
+
+s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_)
 {
 	s_sis_json_node *jone = sis_json_create_object();
 	s_sis_json_node *jfields = sis_json_create_object();
@@ -306,6 +307,12 @@ s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
 		sis_json_object_add_node(jfields, inunit->name, jfield);
 	}
 	sis_json_object_add_node(jone, "fields", jfields);
+	return jone;
+}
+
+s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
+{
+	s_sis_json_node *jone = sis_dynamic_dbinfo_to_json(db_);
 
 	char *str;
 	size_t olen;

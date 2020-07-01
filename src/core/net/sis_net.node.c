@@ -128,6 +128,7 @@ s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_)
 		o->source = sis_sdsdup(in_->source);
 	}
 	o->style = in_->style;
+	o->format = in_->format;
 	if (in_->cmd)
 	{
 		o->cmd = sis_sdsdup(in_->cmd);

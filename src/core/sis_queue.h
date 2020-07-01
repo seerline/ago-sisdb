@@ -52,7 +52,8 @@ void *sis_queue_pop(s_sis_queue *); // 返回 value
 
 #define SIS_SHARE_STATUS_NONE 0
 #define SIS_SHARE_STATUS_WORK 1
-#define SIS_SHARE_STATUS_EXIT 2
+#define SIS_SHARE_STATUS_WAIT 2
+#define SIS_SHARE_STATUS_EXIT 3
 
 typedef enum {
   SIS_SHARE_FROM_HEAD =  0,
@@ -166,6 +167,12 @@ s_sis_object *sis_share_list_catch_get(s_sis_share_list *, char *key_);
 s_sis_object *sis_share_list_catch_geti(s_sis_share_list *, int index_); 
 
 int sis_share_list_catch_size(s_sis_share_list *); 
+
+// 注册一个自由的读者 从头开始
+s_sis_share_reader *sis_share_reader_open(s_sis_share_list *, void *cbobj_, cb_sis_share_reader *cb_);
+// 有新消息就先回调 然后由用户控制读下一条信息 next返回为空时重新激活线程的执行 
+s_sis_object *sis_share_reader_next(s_sis_share_reader *reader_);
+void sis_share_reader_close(s_sis_share_list *cls_, s_sis_share_reader *reader_);
 
 // 注册一个读者
 s_sis_share_reader *sis_share_reader_login(s_sis_share_list *, 
