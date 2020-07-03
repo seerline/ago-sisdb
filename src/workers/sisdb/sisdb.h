@@ -69,18 +69,32 @@
 #define SISDB_SUB_ONE_MUL       0   // 订阅指定的多个单键值
 #define SISDB_SUB_ONE_ALL       1   // 订阅所有的单键
 
-#define SISDB_SUB_SDB_ONE       4   // 订阅指定的一个sdb键值 订阅sno时有用
-#define SISDB_SUB_SDB_MUL       5   // 订阅指定的多个sdb键值
-#define SISDB_SUB_SDB_KEY       6   // 订阅匹配的key的所有结构数据
-#define SISDB_SUB_SDB_SDB       7   // 订阅匹配的sdb的所有结构数据
-#define SISDB_SUB_SDB_ALL       8   // 订阅所有的结构数据
+#define SISDB_SUB_TABLE_ONE       4   // 订阅指定的一个sdb键值 订阅sno时有用
+#define SISDB_SUB_TABLE_MUL       5   // 订阅指定的多个sdb键值
+#define SISDB_SUB_TABLE_KEY       6   // 订阅匹配的key的所有结构数据
+#define SISDB_SUB_TABLE_SDB       7   // 订阅匹配的sdb的所有结构数据
+#define SISDB_SUB_TABLE_ALL       8   // 订阅所有的结构数据
+
+struct s_sisdb_cxt;
+// 线程的参数
+#define SISDB_SUBSNO_WORK  0   
+#define SISDB_SUBSNO_EXIT  1
+
+typedef struct s_sisdb_subsno_info
+{
+	bool                ismul;
+	volatile int        status;
+	struct s_sisdb_cxt *sisdb;
+	s_sis_thread        thread_cxt;
+	s_sis_net_message  *netmsg;
+}s_sisdb_subsno_info;
 
 typedef struct s_sisdb_sub_info
 {
 	uint8                 subtype;   // 订阅类型
-	s_sis_sds             snokey;    // SISDB_SUB_SDB_ONE 单键值订阅
-	s_sis_sds             keys;      // SISDB_SUB_ONE_MUL SISDB_SUB_SDB_MUL SISDB_SUB_SDB_KEY 时有值
-	s_sis_sds             sdbs;      // SISDB_SUB_SDB_SDB 时有值
+	s_sis_sds             snokey;    // SISDB_SUB_TABLE_ONE 单键值订阅
+	s_sis_sds             keys;      // SISDB_SUB_ONE_MUL SISDB_SUB_TABLE_MUL SISDB_SUB_TABLE_KEY 时有值
+	s_sis_sds             sdbs;      // SISDB_SUB_TABLE_SDB 时有值
 	s_sis_pointer_list   *netmsgs;    // s_sis_net_message
 } s_sisdb_sub_info;	
 	
@@ -100,6 +114,7 @@ typedef struct s_sisdb_cxt
 {
 	int                 status;      // 工作状态
 
+	date_t              work_date;   // 当前工作日期
 	s_sis_sds           name;        // 数据库名字 sisdb
 
 	// 下面数据永不清理
@@ -124,7 +139,7 @@ typedef struct s_sisdb_cxt
 	// 
 	s_sis_map_pointer   *sub_single;   // s_sis_pointer_list -> s_sis_net_message 
 	// 根据source和cid生成的key 线程池 处理历史数据 处理完后根据需求转入 sub_single 中
-	s_sis_map_pointer  *subsno_worker;
+	s_sis_map_pointer  *subsno_worker;  // s_sisdb_subsno_info 的列表
 
 }s_sisdb_cxt;
 
@@ -132,6 +147,9 @@ s_sis_json_node *sis_sisdb_make_sdb_node(s_sisdb_cxt *);
 
 s_sisdb_sub_info *sisdb_sub_info_create(s_sis_net_message *netmsg_);
 void sisdb_sub_info_destroy(void *);
+
+s_sisdb_subsno_info *sisdb_subsno_info_create(s_sisdb_cxt *sisdb_,s_sis_net_message *netmsg_);
+void sisdb_subsno_info_destroy(void *info_);
 
 bool  sisdb_init(void *, void *);
 void  sisdb_uninit(void *);

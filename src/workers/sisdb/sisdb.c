@@ -110,7 +110,18 @@ s_sis_json_node *sis_sisdb_make_sdb_node(s_sisdb_cxt *context_)
     }
     return jone;
 }
-
+int is_single_sub(const char *key, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (key[i] == '*'||key[i] == ',')
+        // if (key[i] == '*')
+        {
+            return false;
+        }
+    }  
+    return true;
+}
 uint8 _set_sub_info_style(s_sisdb_sub_info *info, const char *in, size_t ilen)
 {
     if (sis_strcasecmp(in, "*"))
@@ -119,7 +130,7 @@ uint8 _set_sub_info_style(s_sisdb_sub_info *info, const char *in, size_t ilen)
     }
     if (sis_strcasecmp(in, "*.*"))
     {
-        return SISDB_SUB_SDB_ALL;
+        return SISDB_SUB_TABLE_ALL;
     }
     char argv[2][128]; 
     int cmds = sis_str_divide(in, '.', argv[0], argv[1]);
@@ -128,13 +139,14 @@ uint8 _set_sub_info_style(s_sisdb_sub_info *info, const char *in, size_t ilen)
         if (sis_strcasecmp(argv[0], "*"))
         {
             info->sdbs = sis_sdsnew(argv[1]);
-            return SISDB_SUB_SDB_SDB;
+            return SISDB_SUB_TABLE_SDB;
         }
         if (sis_strcasecmp(argv[1], "*"))
         {
             info->keys = sis_sdsnew(argv[0]);
-            return SISDB_SUB_SDB_KEY;
+            return SISDB_SUB_TABLE_KEY;
         }
+
         s_sis_string_list *klists = sis_string_list_create_w();
         sis_string_list_load(klists, argv[0], sis_strlen(argv[0]), ",");  
         s_sis_string_list *slists = sis_string_list_create_w();
@@ -157,7 +169,7 @@ uint8 _set_sub_info_style(s_sisdb_sub_info *info, const char *in, size_t ilen)
         }
         sis_string_list_destroy(klists);
         sis_string_list_destroy(slists);
-        return SISDB_SUB_SDB_MUL;
+        return SISDB_SUB_TABLE_MUL;
     }
     info->keys = sis_sdsnewlen(in, ilen);
     return SISDB_SUB_ONE_MUL;
@@ -168,10 +180,11 @@ s_sisdb_sub_info *sisdb_sub_info_create(s_sis_net_message *netmsg_)
     {
         return NULL;
     }
-    s_sisdb_sub_info *o = (s_sisdb_sub_info *)SIS_MALLOC(s_sisdb_sub_info, o);
+    s_sisdb_sub_info *o = SIS_MALLOC(s_sisdb_sub_info, o);
     o->subtype = _set_sub_info_style(o, netmsg_->key, sis_sdslen(netmsg_->key));
     o->netmsgs = sis_pointer_list_create();
     o->netmsgs->vfree = sis_net_message_decr;
+
     return o;
 }
 
@@ -187,6 +200,25 @@ void sisdb_sub_info_destroy(void *info_)
         sis_sdsfree(info->sdbs);
     }
     sis_pointer_list_destroy(info->netmsgs);
+    sis_free(info);
+}
+
+s_sisdb_subsno_info *sisdb_subsno_info_create(s_sisdb_cxt *sisdb_,s_sis_net_message *netmsg_)
+{
+    if (!netmsg_||!netmsg_->key)
+    {
+        return NULL;
+    }
+    s_sisdb_subsno_info *o = SIS_MALLOC(s_sisdb_subsno_info, o);
+    o->sisdb = sisdb_;
+    sis_net_message_incr(netmsg_);
+    o->netmsg = netmsg_;
+    return o;
+}
+void sisdb_subsno_info_destroy(void *info_)
+{
+    s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)info_;
+    sis_net_message_decr(info->netmsg);
     sis_free(info);
 }
 
@@ -240,6 +272,7 @@ bool sisdb_init(void *worker_, void *argv_)
 
     context->sub_single = sis_map_pointer_create_v(sis_pointer_list_destroy);
     
+    context->subsno_worker = sis_map_pointer_create_v(sisdb_subsno_info_destroy);
     return true;
 }
 void sisdb_uninit(void *worker_)
@@ -252,6 +285,8 @@ void sisdb_uninit(void *worker_)
 
     sis_map_pointer_destroy(context->sub_multiple);
     sis_map_pointer_destroy(context->sub_single);
+
+    sis_map_pointer_destroy(context->subsno_worker);
 
     sis_map_pointer_destroy(context->collects);
     sis_node_list_destroy(context->series);
@@ -553,9 +588,13 @@ int cmd_sisdb_unsubsno(void *worker_, void *argv_)
     char argv[2][128]; 
     int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
     int o = 0;
-    if (cmds > 1)
+    if (cmds > 1 && netmsg->key && sis_sdslen(netmsg->key) > 0)
     {
-        if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+        if (!sis_strcasecmp(netmsg->key, "*.*"))
+        {
+            o = sisdb_unsubsno_whole(context, netmsg->cid);
+        }    
+        else if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
         {
             o = sisdb_multiple_unsubsno(context, netmsg);
         }

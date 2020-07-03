@@ -43,19 +43,22 @@ int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
 // 处理最新的数据订阅问题
 void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds in_, size_t ilen_);
 
-int sisdb_unsub_whole(s_sisdb_cxt *sisdb_, int );
 int sisdb_one_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *);
-int sisdb_one_unsub(s_sisdb_cxt *sisdb_,s_sis_net_message *);
-
 int sisdb_multiple_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *);
+
+int sisdb_unsub_whole(s_sisdb_cxt *sisdb_, int );
+int sisdb_one_unsub(s_sisdb_cxt *sisdb_,s_sis_net_message *);
 int sisdb_multiple_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *);
 
-// sno 的订阅需要开启线程 传送历史数据 传输完毕后 
+// sno 的订阅需要确定日期 如果没有参数 表示订阅当日且最新的 需要开启线程 传送历史数据 传输完毕后 
 // 如果订阅日期是当日的 把订阅的键值注册到 single 和 multiple 列表中
 int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *);
-int sisdb_one_unsubsno(s_sisdb_cxt *sisdb_,s_sis_net_message *);
-
 int sisdb_multiple_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *);
+
+int sisdb_unsubsno_whole(s_sisdb_cxt *sisdb_, int );
+// 如果有线程在工作 就中断线程 否则就调用 sisdb_one_unsub
+int sisdb_one_unsubsno(s_sisdb_cxt *sisdb_,s_sis_net_message *);
+// 如果有线程在工作 就中断线程 否则就调用 sisdb_multiple_unsub
 int sisdb_multiple_unsubsno(s_sisdb_cxt *sisdb_, s_sis_net_message *);
 
 // // 订阅消息 系统会保留相关信息

@@ -407,6 +407,31 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
 /////////////////
 //  sub function
 /////////////////
+void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, const char *key_, uint8 style_, s_sis_sds in_, size_t ilen_)
+{
+    // s_sis_net_message *newinfo = sis_net_message_clone(info_);
+    // if (newinfo->key)
+    // {
+    //     sis_sdsfree(newinfo->key);
+    // }
+    // 赋新值
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->cid = info_->cid;
+    newinfo->source = sis_sdsdup(info_->source);
+    newinfo->key = sis_sdsnew(key_);
+
+    if(style_ == SISDB_COLLECT_TYPE_BYTES)
+    {
+        sis_net_ans_with_bytes(newinfo, in_, sis_sdslen(in_));
+    }
+    else if (style_ == SISDB_COLLECT_TYPE_CHARS)
+    {
+        sis_net_ans_with_chars(newinfo, in_, sis_sdslen(in_));
+    }
+    s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newinfo);
+    sis_share_list_push(sisdb_->pub_list, obj);
+    sis_object_destroy(obj);   
+}
 void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds in_, size_t ilen_)
 {
     // 先处理单键值订阅
@@ -417,23 +442,40 @@ void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_,
         for (int i = 0; i < sublist->count; i++)
         {
             s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist, i);
-            s_sis_net_message *newinfo = sis_net_message_clone(info);
-            printf("sublist : %d  %s\n", sublist->count, newinfo->key);
-
-            if(style_ == SISDB_COLLECT_TYPE_BYTES)
-            {
-                sis_net_ans_with_bytes(newinfo, in_, sis_sdslen(in_));
-            }
-            else if (style_ == SISDB_COLLECT_TYPE_CHARS)
-            {
-                sis_net_ans_with_chars(newinfo, in_, sis_sdslen(in_));
-            }
-            s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newinfo);
-            sis_share_list_push(sisdb_->pub_list, obj);
-            sis_object_destroy(obj);
+            printf("sublist : %d  %s\n", sublist->count, info->key);
+            _send_sub_message(sisdb_, info, key_, style_, in_, ilen_);
         }
     }
-    
+    // 再处理多键值订阅 这个可能耗时 先这样处理
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->sub_multiple);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_sub_info *sublist = (s_sisdb_sub_info *)sis_dict_getval(de);
+            bool is_publish = false;
+            switch (sublist->subtype)
+            {
+            case SISDB_SUB_ONE_ALL:
+            case SISDB_SUB_TABLE_ALL:
+                is_publish = true;
+                break;
+            case SISDB_SUB_ONE_MUL:
+                break;            
+            default:
+                break;
+            }
+            if (is_publish)
+            {
+                for (int i = 0; i < sublist->netmsgs->count; i++)
+                {
+                    s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
+                    _send_sub_message(sisdb_, info, key_, style_, in_, ilen_);
+                }
+            }
+        }
+        sis_dict_iter_free(di);
+    }    
 }
 
 
@@ -610,141 +652,249 @@ int sisdb_multiple_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
     }
     return 0 ;
 }
-
-int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
+bool _subsno_filter(const char *subkey_, const char *key_)
 {
+    return true;
+}
+void *_thread_publish_realtime(void *argv_)
+{
+    s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)argv_;
+
+    int count = info->sisdb->series->count;
+    for (int i = 0; i < count; i++)
+    {
+        if (info->status == SISDB_SUBSNO_EXIT)
+        {
+            break;
+        }
+        s_sisdb_collect_sno *sno = sis_node_list_get(info->sisdb->series, i);
+        if (_subsno_filter(info->netmsg->key, sno->collect->key))
+        {
+            s_sis_net_message *newinfo = sis_net_message_create();
+            newinfo->cid = info->netmsg->cid;
+            newinfo->source = sis_sdsdup(info->netmsg->source);
+            newinfo->key = sis_sdsnew(sno->collect->key);
+            // 暂时全部返回二进制数据
+            s_sis_struct_list *value = SIS_OBJ_LIST(sno->collect->obj);
+            sis_net_ans_with_bytes(newinfo, sis_struct_list_get(value, sno->recno), sno->collect->sdb->db->size);
+            s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newinfo);
+            sis_share_list_push(info->sisdb->pub_list, obj);
+            sis_object_destroy(obj);               
+        }
+    }
+    sis_thread_finish(&info->thread_cxt);
+    if (info->ismul)
+    {
+        sisdb_multiple_sub(info->sisdb, info->netmsg);
+    }
+    else
+    {
+        sisdb_one_sub(info->sisdb, info->netmsg);
+    }
+    // 线程结束应该从map表中剔除
+    return NULL;
 }
 
-int sisdb_one_unsubsno(s_sisdb_cxt *sisdb_,s_sis_net_message *netmsg_)
+// void market_rfile_sub_excute(void *worker_) 
+// {
+//     s_sis_worker *worker = (s_sis_worker *)worker_;
+//     s_market_rfile_cxt *context = (s_market_rfile_cxt *)worker->context;
+//     char fn[32];
+    
+//     sis_llutoa(context->read_cb->sub_date, fn, 32, 10);
+    
+//     if (sis_disk_class_init(context->read_class, SIS_DISK_TYPE_SNO, context->work_path, fn)
+//      || sis_disk_file_read_start(context->read_class))
+//     {
+//         if (context->read_cb->cb_sub_stop)
+//         {
+//             if (context->ischars)
+//             {
+//                 context->read_cb->cb_sub_stop(context->read_cb->source, fn);
+//             }
+//             else
+//             {
+//                 context->read_cb->cb_sub_stop(context->read_cb->source, &context->read_cb->sub_date);
+//             }
+//         }
+//         return ;
+//     }
+//     s_sis_disk_callback *callback = SIS_MALLOC(s_sis_disk_callback, callback);
+//     callback->source = worker;
+//     callback->cb_begin = cb_begin;
+//     callback->cb_key = cb_key;
+//     callback->cb_sdb = cb_sdb;
+//     callback->cb_read = cb_read;
+//     callback->cb_end = cb_end;
+
+//     s_sis_disk_reader *reader = sis_disk_reader_create(callback);
+//     // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "null");
+//     if (!context->read_cb->sub_sdbs || sis_sdslen(context->read_cb->sub_sdbs) < 1)
+//     {
+//         sis_disk_reader_set_sdb(reader, context->work_sdbs);  
+//     }  
+//     else
+//     {
+//         sis_disk_reader_set_sdb(reader, context->read_cb->sub_sdbs);   
+//     }  
+//     sis_disk_reader_set_key(reader, context->read_cb->sub_codes);
+
+//     // sub 是一条一条的输出
+//     sis_disk_file_read_sub(context->read_class, reader);
+//     // get 是所有符合条件的一次性输出
+//     // sis_disk_file_read_get(rwf, reader);
+//     sis_disk_reader_destroy(reader);
+    
+//     sis_free(callback);
+
+//     sis_disk_file_read_stop(context->read_class);
+// }
+void *_thread_publish_history(void *argv_)
 {
+    // 从文件中获取数据
+    s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)argv_;
+
+
+    sis_thread_finish(&info->thread_cxt);
+    // 线程结束应该从map表中剔除
+    return NULL;
+}
+int _start_subsno_worker(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_, date_t subdate_, bool ismul_)
+{
+    
+    if (subdate_ == 0 || subdate_ == sisdb_->work_date)
+    {
+        s_sisdb_subsno_info *info = sisdb_subsno_info_create(sisdb_, netmsg_);
+        info->ismul = ismul_;
+        sis_map_pointer_set(sisdb_->subsno_worker, netmsg_->key, info);
+        // 线程号和key对应 便于取消订阅
+        if (!sis_thread_create(_thread_publish_realtime, info, &info->thread_cxt))
+        {
+            LOG(1)("can't start _thread_publish_realtime.\n");
+            return -1;
+        }
+    } else if (subdate_ < sisdb_->work_date)
+    {
+        s_sisdb_subsno_info *info = sisdb_subsno_info_create(sisdb_, netmsg_);
+        info->ismul = ismul_;
+        char subkey[255];
+        sis_sprintf(subkey, 255, "%s-%d", netmsg_->key, (int)subdate_);
+        sis_map_pointer_set(sisdb_->subsno_worker, subkey, info);
+        if (!sis_thread_create(_thread_publish_history, info, &info->thread_cxt))
+        {
+            LOG(1)("can't start _thread_publish_history.\n");
+            return -2;
+        }       
+    }
+    else
+    {
+        LOG(5)("subdate [] > today [].\n", subdate_, sisdb_->work_date);
+        return -3;
+    }
+    return 0;
+}
+int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
+{
+    s_sis_json_handle *handle = sis_json_load(netmsg_->val, sis_sdslen(netmsg_->val));
+    if (!handle)
+    {
+        return sisdb_one_sub(sisdb_, netmsg_);
+    }
+    
+    int    start   = sis_json_get_int(handle->node, "start", -1); // 0 从头开始 -1 从尾开始
+    date_t subdate = sis_json_get_int(handle->node, "date", 0);
+    if ((subdate == 0 || subdate == sisdb_->work_date) && start == -1)
+    {
+        // 从尾部开始
+        return sisdb_one_sub(sisdb_, netmsg_);
+    }
+    else
+    {
+        if (_start_subsno_worker(sisdb_, netmsg_, subdate, false))
+        {
+            return 0;
+        }
+    }
+    return 1; 
 }
 
 int sisdb_multiple_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
+    s_sis_json_handle *handle = sis_json_load(netmsg_->val, sis_sdslen(netmsg_->val));
+    if (!handle)
+    {
+        return sisdb_multiple_sub(sisdb_, netmsg_);
+    }
     
+    int    start   = sis_json_get_int(handle->node, "start", -1); // 0 从头开始 -1 从尾开始
+    date_t subdate = sis_json_get_int(handle->node, "date", 0);
+    if ((subdate == 0 || subdate == sisdb_->work_date) && start == -1)
+    {
+        // 从尾部开始
+        return sisdb_multiple_sub(sisdb_, netmsg_);
+    }
+    else
+    {
+        if (_start_subsno_worker(sisdb_, netmsg_, subdate, true))
+        {
+            return 0;
+        }
+    }
+    return 1; 
+}
+
+int sisdb_unsubsno_whole(s_sisdb_cxt *sisdb_, int cid_)
+{
+    int count = 0;
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->subsno_worker);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)sis_dict_getval(de);
+            info->status = SISDB_SUBSNO_EXIT;
+            count++;
+        }
+        sis_dict_iter_free(di);
+    }
+    return count;
+}
+int sisdb_one_unsubsno(s_sisdb_cxt *sisdb_,s_sis_net_message *netmsg_)
+{
+    int count = 0;
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->subsno_worker);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)sis_dict_getval(de);
+            if (!info->ismul)
+            {
+                info->status = SISDB_SUBSNO_EXIT;
+                count++;
+            }
+        }
+        sis_dict_iter_free(di);
+    }
+    return count;
 }
 
 int sisdb_multiple_unsubsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
-    
+    int count = 0;
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->subsno_worker);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)sis_dict_getval(de);
+            if (info->ismul)
+            {
+                info->status = SISDB_SUBSNO_EXIT;
+                count++;
+            }
+        }
+        sis_dict_iter_free(di);
+    }
+    return count;   
 }
-
-// int sis_net_class_subscibe(s_sis_net_class *cls_, s_sis_net_message *mess_)
-// {
-// 	if(cls_->work_status != SIS_NET_WORKING)
-// 	{
-// 		return -1;
-// 	}
-// 	sis_net_message_incr(mess_);
-// 	s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess_);
-
-// 	s_sis_pointer_list *list = (s_sis_pointer_list *)sis_map_pointer_get(cls_->map_subs, mess_->key);
-// 	if (!list)
-// 	{
-// 		list = sis_pointer_list_create();
-// 		list->vfree = sis_object_decr;
-// 		sis_map_pointer_set(cls_->map_subs, mess_->key, list);
-// 	}
-// 	bool isnew = true;
-// 	for (int i = 0; i < list->count; i++)
-// 	{
-// 		s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-// 		if (SIS_OBJ_NETMSG(info)->cid ==  mess_->cid)
-// 		{
-// 			isnew = false;
-// 			break;
-// 		}
-// 	}
-// 	if (isnew)
-// 	{
-// 		sis_object_incr(obj);
-// 		sis_pointer_list_push(list, obj);
-// 	}
-// 	// 断线重连后自动发送订阅信息用
-// 	sis_share_list_push(cls_->ready_send_cxts, obj);
-// 	sis_object_destroy(obj);
-// 	return 0;
-// }
-// int sis_net_class_publish(s_sis_net_class *cls_, s_sis_net_message *mess_)
-// {
-// 	if(cls_->work_status != SIS_NET_WORKING)
-// 	{
-// 		return -1;
-// 	}
-// 	s_sis_pointer_list *list = (s_sis_pointer_list *)sis_map_pointer_get(cls_->map_pubs, mess_->key);
-// 	if (!list)
-// 	{
-// 		return -2;
-// 	}
-// 	for (int i = 0; i < list->count; i++)
-// 	{
-// 		s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-// 		if (mess_->cid == -1 || mess_->cid == SIS_OBJ_NETMSG(info)->cid )
-// 		{
-// 			s_sis_net_message *newmsg = sis_net_message_clone(mess_);
-// 			newmsg->cid = SIS_OBJ_NETMSG(info)->cid;
-// 			if (!newmsg->source)
-// 			{
-// 				newmsg->source = sis_sdsempty();
-// 			}
-// 			newmsg->source = sis_sdscpy(newmsg->source, SIS_OBJ_NETMSG(info)->source);
-// 			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newmsg);
-// 			sis_share_list_push(cls_->ready_send_cxts, obj);
-// 			sis_object_destroy(obj);
-// 		}
-// 	}
-// 	return 0;
-// }
-// int sis_net_class_pub_add(s_sis_net_class *cls_, s_sis_net_message *mess_)
-// {
-// 	sis_net_message_incr(mess_);
-// 	s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess_);
-// 	s_sis_pointer_list *list = (s_sis_pointer_list *)sis_map_pointer_get(cls_->map_pubs, mess_->key);
-// 	if (!list)
-// 	{
-// 		list = sis_pointer_list_create();
-// 		list->vfree = sis_object_decr;
-// 		sis_map_pointer_set(cls_->map_pubs, mess_->key, list);
-// 	}
-// 	bool isnew = true;
-// 	for (int i = 0; i < list->count; i++)
-// 	{
-// 		s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-// 		if (SIS_OBJ_NETMSG(info)->cid ==  mess_->cid)
-// 		{
-// 			isnew = false;
-// 			break;
-// 		}
-// 	}
-// 	if (isnew)
-// 	{
-// 		sis_object_incr(obj);
-// 		sis_pointer_list_push(list, obj);
-// 	}
-// 	sis_object_destroy(obj);
-// 	return 0;
-// }
-// int sis_net_class_pub_del(s_sis_net_class *cls_, int sid_)
-// {
-// 	s_sis_dict_entry *de;
-// 	s_sis_dict_iter *di = sis_dict_get_iter(cls_->map_pubs);
-// 	while ((de = sis_dict_next(di)) != NULL)
-// 	{
-// 		s_sis_pointer_list *list = (s_sis_pointer_list *)sis_dict_getval(de);
-// 		for (int i = 0; i < list->count; )
-// 		{
-// 			s_sis_object *info = (s_sis_object *)sis_pointer_list_get(list, i);
-// 			if (SIS_OBJ_NETMSG(info)->cid ==  sid_)
-// 			{
-// 				sis_pointer_list_delete(list, i, 1);
-// 			}
-// 			else
-// 			{
-// 				i++;
-// 			}			
-// 		}			
-// 	}
-// 	sis_dict_iter_free(di);
-// 	return 0;
-// }
-

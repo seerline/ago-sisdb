@@ -64,18 +64,17 @@ typedef struct s_sis_step_index
 
 typedef struct s_sisdb_collect
 {
-	uint8                style; 
-	s_sis_object        *obj;  
+	uint8                style;  // 数据类型
+	s_sis_object        *obj;    // 值
 
-	s_sis_sds            key;
+	s_sis_sds            key;    // key的值
+	s_sisdb_table       *sdb;    // 数据表的指针，可以获得字段定义的相关信息
 
 	s_sisdb_cxt         *father;
-	////////////////////////////////////////////////////////////
-	s_sisdb_table       *sdb;    // sdb的指针，可以获得字段定义的相关信息
+	
+	// s_sisdb_sub_info    *sub_info;    // 订阅字典的指针 当修改collect时可以快速发布
 
-	////////////////////////////////////////////////////////////
-	s_sis_step_index    *stepinfo; // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
-	// s_sis_struct_list   *value;    // 结构化数据
+	s_sis_step_index    *stepinfo;    // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 
 } s_sisdb_collect;
 
