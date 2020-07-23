@@ -143,6 +143,8 @@ typedef struct s_sisdb_cxt
 
 }s_sisdb_cxt;
 
+s_sisdb_table *sisdb_table_create(s_sis_json_node *node_);
+
 s_sis_json_node *sis_sisdb_make_sdb_node(s_sisdb_cxt *);
 
 s_sisdb_sub_info *sisdb_sub_info_create(s_sis_net_message *netmsg_);

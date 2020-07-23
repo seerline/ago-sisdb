@@ -626,7 +626,9 @@ int _sisdb_server_save(s_sisdb_server_cxt *context, int workdate)
     int count = sis_map_list_getsize(context->datasets);
     for (int i = 0; i < count; i++)
     {
-        s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;        
+        s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;  
+        printf("save [%s] fail. workdate = %d .\n", sisdb->name, workdate);
+      
         if (sis_worker_command(context->wlog_save, "check", sisdb->name) != SIS_METHOD_OK)
         {
             continue;
@@ -639,6 +641,10 @@ int _sisdb_server_save(s_sisdb_server_cxt *context, int workdate)
             // 数据已经保存 删除wlog
             sis_worker_command(context->wlog_save, "clear", sisdb->name);
             oks++;
+        }
+        else
+        {
+            LOG(5)("save [%s] fail. workdate = %d .\n", sisdb->name, workdate);
         }
     }
     sis_message_destroy(msg);

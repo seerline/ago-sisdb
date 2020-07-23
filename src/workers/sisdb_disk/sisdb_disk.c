@@ -188,7 +188,7 @@ int _sisdb_set_keys(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
     return  sis_map_list_getsize(cxt->keys);    
 }
 // 设置结构体
-int _sisdb_set_sdbs(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
+int _sisdb_set_sdbs(s_sisdb_cxt *cxt, bool issno_, const char *in_, size_t ilen_)
 {
     char *in = sis_malloc(ilen_ + 1);
     memmove(in, in_, ilen_);
@@ -203,11 +203,9 @@ int _sisdb_set_sdbs(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
    s_sis_json_node *innode = sis_json_first_node(injson->node); 
     while (innode)
     {
-        s_sis_dynamic_db *sdb = sis_dynamic_db_create(innode);        
-        if (sdb)
-        {
-            sis_map_list_set(cxt->sdbs, innode->key, sdb);
-        }  
+        s_sisdb_table *table = sisdb_table_create(innode);
+        table->style = issno_ ? SISDB_TB_STYLE_SNO : SISDB_TB_STYLE_SDB;
+        sis_map_list_set(cxt->sdbs, innode->key, table);
         innode = sis_json_next_node(innode);
     }
     sis_free(in);
@@ -224,11 +222,17 @@ static void cb_key(void *worker_, void *key_, size_t size)
 
 static void cb_sdb(void *worker_, void *sdb_, size_t size)  
 {
-    // printf("%s : %s\n", __func__, (char *)sdb_);
+    printf("%s : %s\n", __func__, (char *)sdb_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
-    _sisdb_set_sdbs(sisdb, sdb_, size);
+    _sisdb_set_sdbs(sisdb, false, sdb_, size);
 }
 
+static void cb_sdb_sno(void *worker_, void *sdb_, size_t size)  
+{
+    printf("%s : %s\n", __func__, (char *)sdb_);
+    s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
+    _sisdb_set_sdbs(sisdb, true, sdb_, size);
+}
 static void cb_read_sdb(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
 {
     printf("load cb_read : %s %s.\n", key_, sdb_);
@@ -251,7 +255,7 @@ static void cb_read_sdb(void *worker_, const char *key_, const char *sdb_, s_sis
         int start = SIS_OBJ_LIST(collect->obj)->count;
         sisdb_collect_wpush(collect, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
         if (collect->sdb->style == SISDB_TB_STYLE_SNO)
-        {
+        {  // 序号需要增加
             int stop = SIS_OBJ_LIST(collect->obj)->count - 1;
             s_sisdb_collect_sno sno;
             sno.collect = collect;
@@ -285,7 +289,6 @@ int _sisdb_disk_load(const char *pathname, bool issno, s_sisdb_cxt *sisdb, s_sis
         {
             sis_llutoa(sisdb->work_date, snoname, 32, 10);
         }
-        
         sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SNO, pathname, snoname);
     }
     else
@@ -293,6 +296,8 @@ int _sisdb_disk_load(const char *pathname, bool issno, s_sisdb_cxt *sisdb, s_sis
         sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
     }
     int ro = sis_disk_file_read_start(sdbfile);
+
+    // printf("%s , issno = %d ro = %d\n", __func__, issno, ro, sdbfile->work_fps->cur_name);
     if (ro != SIS_DISK_CMD_OK)
     {
         sis_disk_class_destroy(sdbfile);
@@ -303,9 +308,18 @@ int _sisdb_disk_load(const char *pathname, bool issno, s_sisdb_cxt *sisdb, s_sis
     callback->source = sisdb;
     callback->cb_begin = NULL;
     callback->cb_key = cb_key;
-    callback->cb_sdb = cb_sdb;
+    if (issno)
+    {
+        callback->cb_sdb = cb_sdb_sno;
+    }
+    else
+    {
+        callback->cb_sdb = cb_sdb;
+    } 
     callback->cb_read = cb_read_sdb;
     callback->cb_end = NULL;
+
+    printf("%s , issno = %d cb_sdb = %p\n", __func__, issno, callback->cb_sdb);
 
     s_sis_disk_reader *reader = sis_disk_reader_create(callback);
     sis_disk_reader_set_key(reader, "*");

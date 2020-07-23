@@ -491,6 +491,8 @@ size_t cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_ob
         {
             s_sis_memory *memory = SIS_OBJ_MEMORY(obj_);
             sis_disk_class_set_sdb(cls_, false, sis_memory(memory), sis_memory_get_size(memory));
+            printf("%s , cb_sdb = %p\n", __func__, callback->cb_sdb);
+
             if(callback && callback->cb_sdb)
             {
                 callback->cb_sdb(callback->source, sis_memory(memory), sis_memory_get_size(memory));
@@ -987,7 +989,29 @@ size_t cb_sis_disk_file_read_index(void *source_, s_sis_disk_head *head_, s_sis_
     cls_->sno_pages = maxpages + 1; // 表示新写入的 page 以此为准
     return count;
 }
-
+void _disk_file_call_dict(s_sis_disk_class *cls_, s_sis_disk_callback *callback)
+{
+    if (callback->cb_key)
+    {
+        s_sis_sds msg = sis_sdsempty();
+        msg = sis_disk_file_get_keys(cls_, false, msg);
+        if (sis_sdslen(msg) > 2) 
+        {
+            callback->cb_key(callback->source, msg, sis_sdslen(msg));
+        }
+        sis_sdsfree(msg);
+    }
+    if (callback->cb_sdb)
+    {
+        s_sis_sds msg = sis_sdsempty();
+        msg = sis_disk_file_get_sdbs(cls_, false, msg);
+        if (sis_sdslen(msg) > 2) 
+        {
+            callback->cb_sdb(callback->source, msg, sis_sdslen(msg));
+        }
+        sis_sdsfree(msg);                
+    }
+}
 // 只支持 stream log sno sdb
 int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
 {
@@ -1033,26 +1057,7 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     // sdb 因为有废弃的数据 所以只能通过索引去读取数据
     // 如果索引丢弃 原则是后面的key覆盖前面的key
         {
-            if (callback->cb_key)
-            {
-                s_sis_sds msg = sis_sdsempty();
-                msg = sis_disk_file_get_keys(cls_, false, msg);
-                if (sis_sdslen(msg) > 2) 
-                {
-                    callback->cb_key(callback->source, msg, sis_sdslen(msg));
-                }
-                sis_sdsfree(msg);
-            }
-            if (callback->cb_sdb)
-            {
-                s_sis_sds msg = sis_sdsempty();
-                msg = sis_disk_file_get_sdbs(cls_, false, msg);
-                if (sis_sdslen(msg) > 2) 
-                {
-                    callback->cb_sdb(callback->source, msg, sis_sdslen(msg));
-                }
-                sis_sdsfree(msg);                
-            }
+            _disk_file_call_dict(cls_, callback);
             sis_disk_read_sub_sdb(cls_, reader_);  
         }
         break;

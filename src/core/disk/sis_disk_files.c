@@ -429,14 +429,15 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
     for (int i = 0; i < cls_->lists->count; i++)
     {
         s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, i); 
-    
+
         s_sis_memory    *memory = sis_memory_create();
         
         bool             FILEEND = false;
         bool             LINEEND = true;
         size_t           size = 0;
         s_sis_disk_head  head;   
-        
+        // 从头开始读
+        sis_seek(unit->fp, sizeof(s_sis_disk_main_head), SEEK_SET);
         while (!FILEEND)
         {
             SIGNAL_EXIT_FAST
@@ -479,6 +480,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                 }
                 if (head.hid != SIS_DISK_HID_NONE)
                 {
+                    printf("read----: %d \n", head.hid);
                     s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
                     if (sis_files_uncompress(cls_, &head, sis_memory(memory), size, SIS_OBJ_MEMORY(obj)) > 0)
                     {

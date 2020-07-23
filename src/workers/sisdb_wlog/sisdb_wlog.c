@@ -204,10 +204,17 @@ int cmd_sisdb_wlog_check(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;
 
-    s_sisdb_wlog_unit *unit = sis_map_pointer_get(context->datasets, (char *)argv_);
-    if (!unit)
-    {
-        return SIS_METHOD_ERROR;
-    }
-    return SIS_METHOD_OK;
+    // s_sisdb_wlog_unit *unit = sis_map_pointer_get(context->datasets, (char *)argv_);
+    // if (!unit)
+    // {
+    //     return SIS_METHOD_ERROR;
+    // }
+    s_sis_disk_class *rfile = sis_disk_class_create();
+    char fn[255];
+    sis_sprintf(fn, 255, "%s.log", (char *)argv_);
+    sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn);
+    int ok = sis_disk_file_read_start(rfile) == 0 ? SIS_METHOD_OK : SIS_METHOD_ERROR;
+    sis_disk_file_read_stop(rfile);
+    sis_disk_class_destroy(rfile);
+    return ok;
 }

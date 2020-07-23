@@ -117,6 +117,7 @@ s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 
 	o->father = sisdb_;
 	o->sdb = sdb;
+	printf("%s.%s = %d\n", code, dbname, sdb->db->size);
 
 	o->stepinfo = sisdb_stepindex_create();
 

@@ -168,7 +168,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	{
 		dyna->field_mindex = dyna->field_time;
 	}
-	LOG(5)("dyna->size ---%s %d\n", dyna->name, dyna->size);
+	LOG(5)("dyna->size ---%s %d %p\n", dyna->name, dyna->size, dyna);
 	return dyna;
 }
 

@@ -234,7 +234,8 @@ int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char 
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (sis_str_subcmp_strict(collect->sdb->db->name,  sdbs_, ',') >= 0)
+            if (collect->style == SISDB_COLLECT_TYPE_TABLE && 
+                sis_str_subcmp_strict(collect->sdb->db->name,  sdbs_, ',') >= 0)
             {
                 sis_string_list_push(list_, sis_dict_getkey(de), sis_strlen(sis_dict_getkey(de)));
             }
