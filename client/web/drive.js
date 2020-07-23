@@ -131,13 +131,27 @@ client.ws.onmessage = function (message) {
   
     if (client.wait.commands[sign] !== undefined) {
       let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
-      if (msg.reply === 'ERROR')
+      if (msg.sign !== undefined)
       {
-        client.wait.replys = msg.message;
+        if (msg.val)
+        {
+          client.wait.replys = msg.sign + ':' + msg.val;
+        }
+        else
+        {
+          client.wait.replys = msg.sign;
+        }
       }
       else
       {
-        client.wait.replys = msg.reply;
+        if (msg.reply === 'ERROR')
+        {
+          client.wait.replys = msg.message;
+        }
+        else
+        {
+          client.wait.replys = msg.reply;
+        }  
       }
     }
     if (client.wait.multiple)

@@ -230,10 +230,6 @@ static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node 
 
 bool _sis_json_parse(s_sis_json_handle *handle_, const char *content_)
 {
-	if (!content_)
-	{
-		return false;
-	}
 	handle_->error = 0;
 
 	struct s_sis_json_node *node = sis_json_create_node();
@@ -303,7 +299,7 @@ s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 	memset(handle, 0, sizeof(s_sis_json_handle));
 	if (!_sis_json_parse(handle, content_))
 	{
-		// printf("fail : %s \n", content_);
+		printf("fail : %s \n", content_);
 		int len = 0;
 		handle->error = sis_str_getline(handle->error, &len, content_, len_);
 		LOG(3)("json parse fail : %.*s \n", len, handle->error);
@@ -579,6 +575,75 @@ void sis_json_object_set_string(s_sis_json_node *node_, const char *key_, const 
 	{
 		sis_free(c->value);
 		c->value = sis_strdup(value_, len_);
+	}
+}
+
+bool sis_json_object_valid(const char *value_, size_t len_)
+{
+	uint8 isA = 0;
+	uint8 isB = 0;
+	const char *ptr = value_;
+	for (int i = 0; i < len_; i++)
+	{
+		switch (*ptr)
+		{
+		case '"':
+			isA = isA == 0 ? 1 : isA == 1 ? 2 : 1;
+			break;
+		case '{':
+		case '}':
+			isB = isB == 0 ? 1 : isB == 1 ? 2 : 1;
+			break;
+		default:
+			break;
+		}
+		ptr++;
+	}
+	return isA == 2 && isB == 2;
+}
+
+void sis_json_object_add_jstr(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_)
+{	
+	if (sis_json_object_valid(value_, len_))
+	{
+		s_sis_json_handle *handle = sis_json_load(value_, len_);  
+		if (handle)
+		{
+			s_sis_json_node *node = sis_json_clone(handle->node, 1); 
+			sis_json_object_add_node(node_, key_, node);
+			sis_json_close(handle);
+		}		
+	}
+	else
+	{
+		sis_json_object_add_string(node_, key_, value_, len_);
+	}
+}
+void sis_json_object_set_jstr(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_)
+{
+	s_sis_json_node *c = sis_json_cmp_child_node(node_, key_);
+	if (!c)
+	{
+		sis_json_object_add_jstr(node_, key_, value_, len_);
+	}
+	else
+	{
+		if (sis_json_object_valid(value_, len_))
+		{
+			s_sis_json_handle *handle = sis_json_load(value_, len_);
+			if (handle)
+			{
+				sis_json_delete_node(c);
+				s_sis_json_node *node = sis_json_clone(handle->node, 1);
+				sis_json_object_add_node(node_, key_, node);
+				sis_json_close(handle);
+			}
+		}
+		else
+		{
+			sis_free(c->value);
+			c->value = sis_strdup(value_, len_);
+		}
 	}
 }
 //////////////////////////////////////////////////////
@@ -1302,6 +1367,7 @@ void sis_json_show(s_sis_json_node *node_, int *i)
 			node_->father,node_->child, node_->prev, node_->next,
 			node_->key, node_->value);
 }
+
 #if 0
 
 int main1()
@@ -1339,6 +1405,20 @@ int main1()
 int main()
 {
 	safe_memory_start();
+	const char *command = "{\"key1\",\"key2\"}";
+	s_sis_json_handle *h = sis_json_load(command,strlen(command));
+	if (!h) {return -1;}
+
+	int iii=1;
+	sis_json_show(h->node,&iii);
+	sis_json_close(h);
+	safe_memory_stop();
+	return 0;
+
+}
+int main2()
+{
+	safe_memory_start();
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
 	// const char *fn = "../conf/sis.conf";
@@ -1350,6 +1430,7 @@ int main()
 	\"key\":	\"sh600600.info\",\"sss\":	[\"sh\",10, 55], \
 	\"argv\":	{} \
 	}"; \
+
 	// s_sis_json_handle *handel = sis_json_load(command, 64);
 	// int index = 0;
 	// if (handel)
@@ -1396,7 +1477,7 @@ int main()
 	printf("|%s|\n",str);
 	sis_free(str);
 
-	str = sis_json_get_str(h->node, "argv");
+	str = (char *)sis_json_get_str(h->node, "argv");
 	printf("argv : %s \n",str);
 
 	str = sis_json_output_zip(h->node, &len);

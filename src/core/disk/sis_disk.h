@@ -108,6 +108,7 @@
 #define  SIS_DISK_SIGN_KEY      "_keys_"   // 用于索引文件的关键字
 #define  SIS_DISK_SIGN_SDB      "_sdbs_"   // 用于索引文件的关键字
 
+#define  SIS_DISK_CMD_NO_IDX             1
 #define  SIS_DISK_CMD_OK                 0
 #define  SIS_DISK_CMD_NO_EXISTS        -10
 #define  SIS_DISK_CMD_NO_EXISTS_IDX    -11
@@ -282,8 +283,8 @@ typedef struct s_sis_disk_index_unit
 {
     // uint8             hid;    // 索引没有hid是因为定位读取时可从文件中获取
     uint8             active; // 活跃记数 据此可判断是否存放入冷文件中 sno文件中 按从小到大排列
-    int16             kdict;  // 键值字典对应的索引 - 默认为一个文件同一个键值不超过255次改变
-    int16             sdict;  // 结构字典对应的索引
+    uint8             kdict;  // 键值字典对应的索引 - 默认为一个文件同一个键值不超过255次改变 0 表示没有key
+    uint8             sdict;  // 结构字典对应的索引 - 默认为一个文件同一个键值不超过255次改变 0 表示没有sdb
     uint8             fidx;   // 在哪个文件中 文件序号 4G*4G = 16P数据 文件名.1
     size_t            offset; // 文件偏移位置
     size_t            size;   // 数据长度
@@ -426,7 +427,7 @@ s_sis_disk_index_unit *sis_disk_index_get_unit(s_sis_disk_index *cls_, int index
 ///////////////////////////
 //  s_sis_disk_dict
 ///////////////////////////
-s_sis_disk_dict *sis_disk_dict_create(s_sis_json_node *node_, s_sis_dynamic_db * db_);
+s_sis_disk_dict *sis_disk_dict_create(s_sis_json_node *node_, bool iswrite_, s_sis_dynamic_db * db_);
 void sis_disk_dict_destroy(void *in_);
 
 void sis_disk_dict_clear_units(s_sis_disk_dict *dict_);
@@ -434,7 +435,7 @@ void sis_disk_dict_clear_units(s_sis_disk_dict *dict_);
 s_sis_disk_dict_unit *sis_disk_dict_last(s_sis_disk_dict *);
 s_sis_disk_dict_unit *sis_disk_dict_get(s_sis_disk_dict *, int);
 // 传递一个 dict 单元 返回值 = 0 表示没有新增 1.n表示新增
-int sis_disk_dict_set(s_sis_disk_dict *, s_sis_json_node *node_, s_sis_dynamic_db * db_); 
+int sis_disk_dict_set(s_sis_disk_dict *, bool iswrite_, s_sis_json_node *node_, s_sis_dynamic_db * db_); 
 
 ///////////////////////////
 //  s_sis_disk_rcatch
@@ -515,15 +516,19 @@ int sis_disk_class_get_sdbi(s_sis_disk_class *cls_, const char *sdb_);
 const char *sis_disk_class_get_keyn(s_sis_disk_class *cls_, int keyi_);
 // 得到sdb的名字
 const char *sis_disk_class_get_sdbn(s_sis_disk_class *cls_, int sdbi_);
+// 增加 key
+int sis_disk_class_add_key(s_sis_disk_class *cls_, const char *key_);
 // 设置 key
-int sis_disk_class_set_key(s_sis_disk_class *cls_, const char *in_, size_t ilen_);
+int sis_disk_class_set_key(s_sis_disk_class *cls_, bool iswrite_, const char *in_, size_t ilen_);
 // 设置结构体
-int sis_disk_class_set_sdb(s_sis_disk_class *cls_, const char *in_, size_t ilen_);
+int sis_disk_class_set_sdb(s_sis_disk_class *cls_, bool iswrite_, const char *in_, size_t ilen_);
 // 检查文件是否有效
 int sis_disk_file_valid(s_sis_disk_class *cls_);
+// 检查索引
+int sis_disk_file_valid_idx(s_sis_disk_class *cls_);
 
 // 读写数据
-int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_);
+int sis_disk_file_write_start(s_sis_disk_class *cls_);
 //写文件尾 只读文件不做 
 int sis_disk_file_write_stop(s_sis_disk_class *cls_);
 
@@ -599,3 +604,72 @@ int sis_disk_file_read_get(s_sis_disk_class *cls_, s_sis_disk_reader *reader_);
 size_t sis_disk_file_pack(s_sis_disk_class *src_, s_sis_disk_class *des_);
 
 #endif
+
+
+// keys = {"sh600600","sh600601"}
+// sdbs = {"stk_snapshot":{"fields":{"time":["T",8,1],"open":["U",4,1],"high":["U",4,1],"low":["U",4,1],"newp":["U",4,1],"volume":["U",4,1],"money":["U",4,1],"agop":["U",4,1],"stophigh":["U",4,1],"stoplow":["U",4,1],"cjbs":["U",4,1],"waskp":["U",4,1],"waskv":["U",4,1],"wbidp":["U",4,1],"wbidv":["U",4,1],"askp":["U",4,10],"askv":["U",4,10],"bidp":["U",4,10],"bidv":["U",4,10]}},"idx_snapshot":{"fields":{"time":["T",8,1],"open":["U",4,1],"high":["U",4,1],"low":["U",4,1],"newp":["U",4,1],"volume":["U",4,1],"money":["U",4,1],"agop":["U",4,1]}},"stk_transact":{"fields":{"time":["T",8,1],"flag":["C",1,1],"newp":["U",4,1],"volume":["U",4,1],"order":["U",4,1],"bidorder":["U",4,1],"askorder":["U",4,1]}},"stk_mmpqueues":{"fields":{"time":["T",8,1],"askp":["U",4,1],"asknum":["U",4,1],"askv":["U",4,50],"bidp":["U",4,1],"bidnum":["U",4,1],"bidv":["U",4,50]}},"stk_orders":{"fields":{"time":["T",8,1],"flag":["C",1,1],"newp":["U",4,1],"volume":["U",4,1],"order":["U",4,1]}},"cf_snapshot":{"fields":{"time":["T",8,1],"open":["U",4,1],"high":["U",4,1],"low":["U",4,1],"newp":["U",4,1],"volume":["U",4,1],"money":["U",4,1],"agop":["U",4,1],"stophigh":["U",4,1],"stoplow":["U",4,1],"agocc":["U",4,1],"agojs":["U",4,1],"curcc":["U",4,1],"cursp":["U",4,1],"curjs":["U",4,1],"askp":["U",4,5],"askv":["U",4,5],"bidp":["U",4,5],"bidv":["U",4,5]}}}
+// dyna->size ---stk_snapshot 224
+// dyna->size ---idx_snapshot 36
+// dyna->size ---stk_transact 29
+// dyna->size ---stk_mmpqueues 424
+// dyna->size ---stk_orders 21
+// dyna->size ---cf_snapshot 144
+// outpath_:data//sdb//snos/
+// _keys_ N hid=2, 0x7fe2f0007636 fidx = 0 size = 23
+// 17 zip = 0 size = 25 41
+// _keys_ 2 
+//  _sdbs_ N hid=3, 0x7fe2f0007636 fidx = 0 size = 1325
+// 17 zip = 1 size = 419 460
+// _sdbs_ 3 
+//  sh600601 stk_snapshot hid=5, 0x7fe2f0007636 fidx = 0 size = 227
+// 17 zip = 1 size = 37 497
+// sh600601 5 
+//  sh600601 stk_transact hid=5, 0x7fe2f0007636 fidx = 0 size = 32
+// 17 zip = 0 size = 34 531
+// sh600601 5 
+//  hid=6, 0x7fe2f0007636 fidx = 0 size = 0
+// write sno : 72
+// write tail ok. count = 1
+// outpath_:data//sdb//snos/
+// N N hid=2, 0x7fe2f0008736 fidx = 0 size = 4
+// 17 zip = 0 size = 6 22
+// N N hid=3, 0x7fe2f0008736 fidx = 0 size = 5
+// 17 zip = 0 size = 7 29
+// N N hid=49, 0x7fe2f0008736 fidx = 0 size = 72
+// 17 zip = 1 size = 67 96
+// write_index end 80 
+// write tail ok. count = 1
+// keys = {"sh600600","sh600601"}
+// sdbs = {"stk_info":{"fields":{"code":["C",16,1,0,"O"],"name":["C",32,1],"market":["C",3,1],"type":["U",1,1],"point":["U",1,1],"pzoom":["U",1,1],"vunit":["U",1,1]}},"min":{"fields":{"time":["M",4,1,0,"IO"],"open":["U",4,1],"high":["U",4,1],"low":["U",4,1],"newp":["U",4,1],"volume":["U",4,1],"money":["U",4,1]}},"day":{"fields":{"time":["D",4,1,0,"IO"],"open":["U",4,1],"high":["U",4,1],"low":["U",4,1],"newp":["U",4,1],"volume":["U",4,1],"money":["U",4,1]}},"reports":{"fields":{"time":["S",4,1,0,"I"],"flag":["C",1,1],"role":["C",1,1],"nums":["U",2,1],"newp":["U",4,1],"vols":["U",4,1]}},"right":{"fields":{"time":["D",4,1,0,"IO"],"sgs":["I",4,1],"pgs":["I",4,1],"pgj":["I",4,1],"pxs":["I",4,1]}},"fund":{"fields":{"time":["D",4,1,0,"IO"],"ssrq":["U",4,1],"zgb":["U",4,1],"ltag":["U",4,1],"mgsy":["F",4,1,4],"mgjzc":["F",4,1,4],"jzcsyl":["F",4,1,2],"mggjj":["F",4,1,2],"mgwfp":["F",4,1,4],"mgxj":["F",4,1,4],"yysr":["I",4,1],"jlr":["I",4,1],"tzsy":["I",4,1],"yszk":["I",4,1],"hbzj":["I",4,1],"ldzj":["I",4,1],"sykc":["I",4,1]}}}
+// dyna->size ---stk_info 55
+// dyna->size ---min 28
+// dyna->size ---day 28
+// dyna->size ---reports 16
+// dyna->size ---right 20
+// dyna->size ---fund 68
+// outpath_:data//sdb//
+// _keys_ N hid=2, 0x7fe2f0023b66 fidx = 0 size = 23
+// 17 zip = 0 size = 25 41
+// _keys_ 2 
+//  _sdbs_ N hid=3, 0x7fe2f0023b66 fidx = 0 size = 1022
+// 17 zip = 1 size = 475 516
+// _sdbs_ 3 
+//  sh600601 day hid=8, 0x7fe2f0023b66 fidx = 0 size = 30
+// 17 zip = 1 size = 26 542
+// sh600601 8 
+//  sh600600 day hid=8, 0x7fe2f0023b66 fidx = 0 size = 58
+// 17 zip = 1 size = 47 589
+// sh600600 8 
+//  key1 N hid=11, 0x7fe2f0023b66 fidx = 0 size = 18
+// 17 zip = 0 size = 20 609
+// key1 11 
+// write tail ok. count = 1
+// outpath_:data//sdb//
+//  N N hid=2, 0x7fe2f001df46 fidx = 0 size = 4
+// 17 zip = 0 size = 6 22
+// N N hid=3, 0x7fe2f001df46 fidx = 0 size = 5
+// 17 zip = 0 size = 7 29
+// N N hid=48, 0x7fe2f001df46 fidx = 0 size = 89
+// 17 zip = 1 size = 71 100
+// write_index end 84 
+// write tail ok. count = 1

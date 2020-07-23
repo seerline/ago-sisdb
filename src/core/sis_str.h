@@ -54,7 +54,10 @@ char *sis_strdup(const char *str_, size_t len_);  SIS_NEW
 
 const char *sis_str_split(const char *s, size_t *len_, char c);
 
+// 切割字符串
 int sis_str_divide(const char *in_, char ch_, char *one_, char *two_);
+// 切分长字符串, 仅仅定位
+int sis_str_divide_long(const char *in_, char ch_, char *one_, size_t *olen_, char *two_, size_t *tlen_);
 // 返回字符所在位置
 int sis_strsub(char *big_, char *small_);
 

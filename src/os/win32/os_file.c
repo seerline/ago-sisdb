@@ -215,6 +215,7 @@ void sis_file_delete(const char *fn_)
 {
 	sis_file_fixpath((char *)fn_);
 	unlink(fn_);
+	// remove(fn_);
 }
 
 void sis_path_complete(char *path_, int maxlen_)

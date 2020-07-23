@@ -81,6 +81,11 @@ void sis_json_object_set_double(s_sis_json_node *node_, const char *key_, double
 void sis_json_object_add_string(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_);
 void sis_json_object_set_string(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_);
 
+// 初略检测是否json串
+bool sis_json_object_valid(const char *value_, size_t len_);
+void sis_json_object_add_jstr(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_);
+void sis_json_object_set_jstr(s_sis_json_node *node_, const char *key_, const char *value_, size_t len_);
+
 //----------------------------------------------//
 // 追加到child的末尾，key不能有'.'
 // 增加到child，在末尾增加一个元素

@@ -12,17 +12,18 @@
 ///////////////////////////////////////////////////
 // NULL 默认为读取
 struct s_sis_method sisdb_methods[] = {
-    {"init",  cmd_sisdb_init, NULL, NULL},   // 设置一些必要的参数
-    {"get",   cmd_sisdb_get, NULL, NULL},   // 默认 json 格式
-    {"set",   cmd_sisdb_set, "write", NULL},   // 默认 json 格式
-    {"del",   cmd_sisdb_del, "write", NULL},   // 删除一个数据 数据区没有数据时 清理键值
-    {"drop",  cmd_sisdb_drop, "write", NULL},   // 删除一个表结构数据
-    {"gets",  cmd_sisdb_gets, NULL, NULL},   // 默认 json 格式 get 多个key多个sdb数据 暂时不支持
-    {"bset",  cmd_sisdb_bset, "write", NULL},   // 默认 二进制 格式
-    {"dels",  cmd_sisdb_dels, "write", NULL},   // 删除多个数据
-    {"sub",   cmd_sisdb_sub, "subscribe", NULL},   // 订阅数据
-    {"unsub", cmd_sisdb_unsub, "unsubscribe", NULL},   // 取消订阅
-    {"subsno",  cmd_sisdb_subsno, "subscribe", NULL},   // 订阅sno数据 {"date":20201010}
+    {"init",      cmd_sisdb_init, NULL, NULL},   // 设置一些必要的参数
+    {"get",       cmd_sisdb_get,  NULL, NULL},   // 默认 json 格式
+    {"set",       cmd_sisdb_set, "write", NULL},   // 默认 json 格式
+    {"stop",      cmd_sisdb_stop, "write", NULL},   // sno 当日数据完毕
+    {"del",       cmd_sisdb_del, "write", NULL},   // 删除一个数据 数据区没有数据时 清理键值
+    {"drop",      cmd_sisdb_drop, "write", NULL},   // 删除一个表结构数据
+    {"gets",      cmd_sisdb_gets, NULL, NULL},   // 默认 json 格式 get 多个key多个sdb数据 暂时不支持
+    {"bset",      cmd_sisdb_bset, "write", NULL},   // 默认 二进制 格式
+    {"dels",      cmd_sisdb_dels, "write", NULL},   // 删除多个数据
+    {"sub",       cmd_sisdb_sub, "subscribe", NULL},   // 订阅数据
+    {"unsub",     cmd_sisdb_unsub, "unsubscribe", NULL},   // 取消订阅
+    {"subsno",    cmd_sisdb_subsno, "subscribe", NULL},   // 订阅sno数据 {"date":20201010}
     {"unsubsno",  cmd_sisdb_unsubsno, "unsubscribe", NULL},   // 取消订阅sno数据 
 };
 // 共享内存数据库
@@ -63,17 +64,6 @@ void sisdb_table_destroy(void *table_)
     sis_free(table);
 }
 
-static int cb_reader_pub(void *worker_, s_sis_object *in_)
-{
-    s_sisdb_cxt *context = (s_sisdb_cxt *)worker_;
-    
-    sis_object_incr(in_);
-    s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
-    printf("publish: %d\n", netmsg->cid);
-    sis_net_class_send(context->father, netmsg);
-	sis_object_decr(in_);
-	return 0;
-}
 s_sis_json_node *sis_sisdb_make_sdb_node(s_sisdb_cxt *context_)
 {
     s_sis_json_node *jone = sis_json_create_object();
@@ -132,25 +122,27 @@ uint8 _set_sub_info_style(s_sisdb_sub_info *info, const char *in, size_t ilen)
     {
         return SISDB_SUB_TABLE_ALL;
     }
-    char argv[2][128]; 
-    int cmds = sis_str_divide(in, '.', argv[0], argv[1]);
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(in, '.', &keyn, &sdbn);
     if (cmds == 2)
     {
-        if (sis_strcasecmp(argv[0], "*"))
+        if (sis_strcasecmp(keyn, "*"))
         {
-            info->sdbs = sis_sdsnew(argv[1]);
+            info->sdbs = sdbn;
+            sis_sdsfree(keyn);
             return SISDB_SUB_TABLE_SDB;
         }
-        if (sis_strcasecmp(argv[1], "*"))
+        if (sis_strcasecmp(sdbn, "*"))
         {
-            info->keys = sis_sdsnew(argv[0]);
+            info->keys = keyn;
+            sis_sdsfree(sdbn);
             return SISDB_SUB_TABLE_KEY;
         }
 
         s_sis_string_list *klists = sis_string_list_create_w();
-        sis_string_list_load(klists, argv[0], sis_strlen(argv[0]), ",");  
+        sis_string_list_load(klists, keyn, sis_sdslen(keyn), ",");  
         s_sis_string_list *slists = sis_string_list_create_w();
-        sis_string_list_load(slists, argv[1], sis_strlen(argv[1]), ",");  
+        sis_string_list_load(slists, sdbn, sis_sdslen(sdbn), ",");  
         int kcount = sis_string_list_getsize(klists);
         int scount = sis_string_list_getsize(slists);
         info->keys = sis_sdsempty();
@@ -169,9 +161,13 @@ uint8 _set_sub_info_style(s_sisdb_sub_info *info, const char *in, size_t ilen)
         }
         sis_string_list_destroy(klists);
         sis_string_list_destroy(slists);
+
+        sis_sdsfree(keyn);    sis_sdsfree(sdbn);
         return SISDB_SUB_TABLE_MUL;
     }
     info->keys = sis_sdsnewlen(in, ilen);
+    
+    sis_sdsfree(keyn);    sis_sdsfree(sdbn);
     return SISDB_SUB_ONE_MUL;
 } 
 s_sisdb_sub_info *sisdb_sub_info_create(s_sis_net_message *netmsg_)
@@ -184,7 +180,6 @@ s_sisdb_sub_info *sisdb_sub_info_create(s_sis_net_message *netmsg_)
     o->subtype = _set_sub_info_style(o, netmsg_->key, sis_sdslen(netmsg_->key));
     o->netmsgs = sis_pointer_list_create();
     o->netmsgs->vfree = sis_net_message_decr;
-
     return o;
 }
 
@@ -213,6 +208,8 @@ s_sisdb_subsno_info *sisdb_subsno_info_create(s_sisdb_cxt *sisdb_,s_sis_net_mess
     o->sisdb = sisdb_;
     sis_net_message_incr(netmsg_);
     o->netmsg = netmsg_;
+    // 设置请求的格式
+    o->netmsg->rfmt = sisdb_get_format(o->netmsg->val);
     return o;
 }
 void sisdb_subsno_info_destroy(void *info_)
@@ -231,6 +228,7 @@ bool sisdb_init(void *worker_, void *argv_)
     worker->context = context;
 
 	context->name = sis_sdsnew(node->key);
+    context->work_date = 0;
 
     context->keys = sis_map_list_create(sis_sdsfree_call);
 	context->sdbs = sis_map_list_create(sisdb_table_destroy);
@@ -264,13 +262,9 @@ bool sisdb_init(void *worker_, void *argv_)
     context->series = sis_node_list_create(4000000, sizeof(s_sisdb_collect_sno));
     context->collects = sis_map_pointer_create_v(sisdb_collect_destroy);
 
-    context->pub_list = sis_share_list_create("publish", 64*1000*1000);
-    context->pub_reader = sis_share_reader_login(context->pub_list, 
-        SIS_SHARE_FROM_HEAD, context, cb_reader_pub);
-
     context->sub_multiple = sis_map_pointer_create_v(sisdb_sub_info_destroy);
 
-    context->sub_single = sis_map_pointer_create_v(sis_pointer_list_destroy);
+    context->sub_single = sis_map_pointer_create_v(sisdb_sub_info_destroy);
     
     context->subsno_worker = sis_map_pointer_create_v(sisdb_subsno_info_destroy);
     return true;
@@ -279,9 +273,6 @@ void sisdb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
-
-    sis_share_reader_logout(context->pub_list, context->pub_reader);
-    sis_share_list_destroy(context->pub_list);
 
     sis_map_pointer_destroy(context->sub_multiple);
     sis_map_pointer_destroy(context->sub_single);
@@ -293,6 +284,11 @@ void sisdb_uninit(void *worker_)
     
     sis_map_list_destroy(context->keys);
     sis_map_list_destroy(context->sdbs);
+
+    if (context->fast_path)
+    {
+        sis_sdsfree(context->fast_path);
+    }
 
     sis_sdsfree(context->name);
     sis_free(context);
@@ -311,8 +307,10 @@ int cmd_sisdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
-    context->father = argv_;
-    printf("init %p \n", argv_);
+    s_sis_message *msg = (s_sis_message *)argv_;
+    context->socket = sis_message_get(msg, "socket");
+    context->fast_path = sis_sdsdup(sis_message_get_str(msg, "fastpath"));
+    // printf("init %p \n", argv_);
     return SIS_METHOD_OK;
 }
 
@@ -323,21 +321,21 @@ int cmd_sisdb_get(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
-    printf("cmd_sisdb_get: %d %s %s \n", cmds, argv[0], argv[1]);
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(netmsg->key, '.', &keyn, &sdbn);
     s_sis_sds o = NULL;
 
     uint16 format = SISDB_FORMAT_CHARS;
     if (cmds == 1)
     {
         // 单
-        o = sisdb_one_get_sds(context, argv[0], &format, netmsg->val);
+        o = sisdb_one_get_sds(context, keyn, &format, netmsg->val);
     }
     else
     {
         o = sisdb_get_sds(context, netmsg->key, &format, netmsg->val);
     }
+    sis_sdsfree(keyn);    sis_sdsfree(sdbn);
 	if (o)
 	{
         if(format == SISDB_FORMAT_CHARS)
@@ -359,30 +357,43 @@ int cmd_sisdb_set(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
-    printf("cmd_sisdb_set: %d %s %s %s\n", cmds, netmsg->key, argv[0], argv[1]);
     if (!netmsg->val && sis_sdslen(netmsg->val) > 0)
     {
         return SIS_METHOD_ERROR;
     }
     int o = -1;
+
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(netmsg->key, '.', &keyn, &sdbn);
+    // printf("cmd_sisdb_set: %d %s %s %s\n", cmds, netmsg->key, keyn, sdbn);
     if (cmds == 1)
     {
         // 单
-        o = sisdb_one_set(context, argv[0], SISDB_COLLECT_TYPE_CHARS, netmsg->val);
+        o = sisdb_one_set(context, keyn, SISDB_COLLECT_TYPE_CHARS, netmsg->val);
     }
     else
     {
         o = sisdb_set_chars(context, netmsg->key, netmsg->val);
     }
+    sis_sdsfree(keyn);    sis_sdsfree(sdbn);
 	if (!o)
 	{
         sis_net_ans_with_ok(netmsg);
 		return SIS_METHOD_OK;
 	}
-    printf("set rtn : %d\n", o);
+    // printf("set rtn : %d\n", o);
 	return SIS_METHOD_ERROR;
+}
+
+int cmd_sisdb_stop(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sisdb_collect_sno sno;
+    sno.collect = NULL;
+    sno.recno = -1;
+    sis_node_list_push(context->series, &sno);
+    return SIS_METHOD_OK;
 }
 
 int cmd_sisdb_del(void *worker_, void *argv_)
@@ -391,18 +402,18 @@ int cmd_sisdb_del(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
-    printf("cmd_sisdb_del: %d %s %s \n", cmds, argv[0], argv[1]);
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(netmsg->key, '.', &keyn, &sdbn);
     int o = 0;
     if (cmds == 1)
     {
-        o = sisdb_one_del(context, argv[0], netmsg->val);
+        o = sisdb_one_del(context, keyn, netmsg->val);
     }
     else
     {
         o = sisdb_del(context, netmsg->key, netmsg->val);
     }
+    sis_sdsfree(keyn);    sis_sdsfree(sdbn);
     sis_net_ans_with_int(netmsg, o);
     return SIS_METHOD_OK;
 }
@@ -418,18 +429,19 @@ int cmd_sisdb_gets(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
-    printf("cmd_sisdb_gets: %d %s %s \n", cmds, argv[0], argv[1]);
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(netmsg->key, '.', &keyn, &sdbn);
+    // printf("cmd_sisdb_gets: %d %s %s \n", cmds, keyn, sdbn);
     s_sis_sds o = NULL;
     if (cmds == 1)
     {
-        o = sisdb_one_gets_sds(context, argv[0], netmsg->val);
+        o = sisdb_one_gets_sds(context, keyn, netmsg->val);
     }
     else
     {
-        o = sisdb_gets_sds(context, argv[0], argv[1], netmsg->val);
+        o = sisdb_gets_sds(context, keyn, sdbn, netmsg->val);
     }
+    sis_sdsfree(keyn);    sis_sdsfree(sdbn);
 	if (o)
 	{
         sis_net_ans_with_chars(netmsg, o, sis_sdslen(o));
@@ -444,9 +456,9 @@ int cmd_sisdb_bset(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
-    printf("cmd_sisdb_bset: %d %s %s \n", cmds, argv[0], argv[1]);
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(netmsg->key, '.', &keyn, &sdbn);
+    // printf("cmd_sisdb_bset: %d %s %s \n", cmds, keyn, sdbn);
     if (!netmsg->val && sis_sdslen(netmsg->val) > 0)
     {
         return SIS_METHOD_ERROR;
@@ -455,12 +467,13 @@ int cmd_sisdb_bset(void *worker_, void *argv_)
     if (cmds == 1)
     {
         // 单
-        o = sisdb_one_set(context, argv[0], SISDB_COLLECT_TYPE_BYTES, netmsg->val);
+        o = sisdb_one_set(context, keyn, SISDB_COLLECT_TYPE_BYTES, netmsg->val);
     }
     else
     {
         o = sisdb_set_bytes(context, netmsg->key, netmsg->val);
     }
+    sis_sdsfree(keyn);    sis_sdsfree(sdbn);
 	if (!o)
 	{
         sis_net_ans_with_ok(netmsg);
@@ -475,18 +488,19 @@ int cmd_sisdb_dels(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
-    printf("cmd_sisdb_dels: %d %s %s \n", cmds, argv[0], argv[1]);
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(netmsg->key, '.', &keyn, &sdbn);
+    // printf("cmd_sisdb_dels: %d %s %s \n", cmds, keyn, sdbn);
     int o = 0;
     if (cmds == 1)
     {
-        o = sisdb_one_dels(context, argv[0], netmsg->val);
+        o = sisdb_one_dels(context, keyn, netmsg->val);
     }
     else
     {
-        o = sisdb_dels(context, argv[0], argv[1], netmsg->val);
+        o = sisdb_dels(context, keyn, sdbn, netmsg->val);
     }
+    sis_sdsfree(keyn);    sis_sdsfree(sdbn);
     sis_net_ans_with_int(netmsg, o);
     return SIS_METHOD_OK;
 }
@@ -516,11 +530,11 @@ int cmd_sisdb_sub(void *worker_, void *argv_)
     {
         if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
         {
-            o = sisdb_multiple_sub(context, netmsg);
+            o = sisdb_multiple_sub(context, netmsg, false);
         }
         else
         {
-            o = sisdb_one_sub(context, netmsg);        
+            o = sisdb_one_sub(context, netmsg, false);        
         }
     }
     sis_net_ans_with_int(netmsg, o);
@@ -538,15 +552,15 @@ int cmd_sisdb_unsub(void *worker_, void *argv_)
     {
         if (!sis_strcasecmp(netmsg->key, "*")||!sis_strcasecmp(netmsg->key, "*.*"))
         {
-            o = sisdb_unsub_whole(context, netmsg->cid);
+            o = sisdb_unsub_whole(context, netmsg->cid, false);
         }    
         else if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
         {
-            o = sisdb_multiple_unsub(context, netmsg);
+            o = sisdb_multiple_unsub(context, netmsg, false);
         }
         else
         {
-            o = sisdb_one_unsub(context, netmsg);
+            o = sisdb_one_unsub(context, netmsg, false);
         }
     }
     sis_net_ans_with_int(netmsg, o);
@@ -560,10 +574,8 @@ int cmd_sisdb_subsno(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
     int o = 0;
-    if (cmds > 1 && netmsg->key && sis_sdslen(netmsg->key) > 0)
+    if (netmsg->key && strchr(netmsg->key, '.') && sis_sdslen(netmsg->key) > 0)
     {
         if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
         {
@@ -585,10 +597,8 @@ int cmd_sisdb_unsubsno(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
         
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->key, '.', argv[0], argv[1]);
     int o = 0;
-    if (cmds > 1 && netmsg->key && sis_sdslen(netmsg->key) > 0)
+    if (netmsg->key && strchr(netmsg->key, '.') && sis_sdslen(netmsg->key) > 0)
     {
         if (!sis_strcasecmp(netmsg->key, "*.*"))
         {

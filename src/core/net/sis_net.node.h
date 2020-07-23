@@ -25,11 +25,16 @@
 #define SIS_NET_ANS_INT      0x0200  // 有数据 返回一个整数   source + rint 
 #define SIS_NET_ANS_VAL      0x0400  // 有数据 返回一个缓存区  source + rval
 #define SIS_NET_ANS_ARGVS    0x0800  // 有数据 返回多个缓存区  source + argvs
-#define SIS_NET_ANS_NIL      0x1000  // 无数据 返回多个缓存区  source + rint = -1
-#define SIS_NET_ANS_OK       0x2000  // 没有数据 source + rval 为错误字符串
-#define SIS_NET_ANS_ERROR    0x4000  // 没有数据 source + rval 为错误字符串
+#define SIS_NET_ANS_SIGN     0x1000  // 有数据 返回一个信号    source + rint 
 
 #define SIS_NET_INSIDE       0x8000  // 表示该条消息为内部传递指令
+
+#define SIS_NET_ANS_SIGN_NIL         -1  // 数据为空
+#define SIS_NET_ANS_SIGN_OK           0  // 数据正确
+#define SIS_NET_ANS_SIGN_ERROR        1  // 数据错误
+#define SIS_NET_ANS_SIGN_SUB_START    5  // 订阅开始
+#define SIS_NET_ANS_SIGN_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
+#define SIS_NET_ANS_SIGN_SUB_STOP     7  // 订阅结束
 
 // request 方决定网络数据传输方式 是按字节流还是 JSON 字符串
 #define SIS_NET_FORMAT_CHARS   0 
@@ -54,6 +59,7 @@ typedef struct s_sis_net_message {
 
 	int64               rint;      // 应答为整数
 	s_sis_sds	        rval;      // 应答缓存
+	uint16              rfmt;      // 返回数据格式 临时变量
 
 	// 存放字节流数据
 	s_sis_pointer_list *argvs;     //  按顺序获取 s_sis_sds

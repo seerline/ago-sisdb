@@ -24,21 +24,30 @@ html, body, .container {
     <button onclick="send_string()">submit</button>
   </div>
   <div>
+    <div>sdb option</div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600600.day", "val":{"time":20200101,"newp":10050}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600600.day", "val":[20200102,101, 105, 100, 103, 1000, 8000]}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600600.day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.day", "val":{"time":20200102,"newp":10150}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.day"}' onclick="send_command(this)"/>
     <div>---</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_snapshot", "val":{"time":20200101,"newp":80050,"askp1":80800}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
-    <div>---</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.del", "key":"sh600600.day" "val":{"start":0,"stop":-1}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.dels", "key":"*.day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.drop", "key":"day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.gets", "key":"day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.gets", "key":"*.day"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.sub", "key":"sh600600.day"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsub", "key":"sh600600.day"}' onclick="send_command(this)"/>
+    <div>sno option</div>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_snapshot", "val":{"time":20200101,"newp":80050,"askp1":80800}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_transact", "val":{"time":20200101,"newp":80060,"volume":222000}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_transact"}' onclick="send_command(this)"/>
+    <div>---</div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.*"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.*"}' onclick="send_command(this)"/>
+    <div>del option</div>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.del", "key":"sh600600.day", "val":{"search":{"start":0,"stop":-1}}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.dels", "key":"*.day", "val":{"search":{"start":0,"stop":-1}}}' onclick="send_command(this)"/>
+    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.drop", "key":"day"}' onclick="send_command(this)"/> -->
   </div>
   <div>normal command:</div>
   <div>

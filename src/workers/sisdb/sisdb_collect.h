@@ -1,4 +1,4 @@
-
+﻿
 //******************************************************
 // Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
 //*******************************************************
@@ -15,42 +15,42 @@
 #include "sis_dynamic.h"
 
 /////////////////////////////////////////////////////////
-//  ���ݿ���������ģʽ
+//  数据库数据搜索模式
 /////////////////////////////////////////////////////////
-#define SIS_SEARCH_NONE -1  // û�����ݷ�������
-#define SIS_SEARCH_OK    0	// ׼ȷƥ������ݣ�ʱ��һ��
-#define SIS_SEARCH_LEFT  1  // ��Ȼ���������ݣ������ص����ݱ������ѯ�ĸ���һЩ
-#define SIS_SEARCH_RIGHT 2  // ��Ȼ���������ݣ������ص����ݱ������ѯ�ĸ���һЩ
+#define SIS_SEARCH_NONE -1  // 没有数据符合条件
+#define SIS_SEARCH_OK    0	// 准确匹配的数据，时间一致
+#define SIS_SEARCH_LEFT  1  // 虽然发现了数据，但返回的数据比请求查询的更早一些
+#define SIS_SEARCH_RIGHT 2  // 虽然发现了数据，但返回的数据比请求查询的更晚一些
 
-#define SIS_CHECK_LASTTIME_NEW   1   // ����������¼��������ʱ��������һ����¼
-#define SIS_CHECK_LASTTIME_OLD   2   // ��¼��������ʱ��С�����һ����¼
-#define SIS_CHECK_LASTTIME_OK    3   // �������һ����¼
-#define SIS_CHECK_LASTTIME_ERROR 4   // ���󣬲�����
+#define SIS_CHECK_LASTTIME_NEW   1   // 当日新增记录，新来的时间大于最后一条记录
+#define SIS_CHECK_LASTTIME_OLD   2   // 记录，新来的时间小于最后一条记录
+#define SIS_CHECK_LASTTIME_OK    3   // 等于最后一条记录
+#define SIS_CHECK_LASTTIME_ERROR 4   // 错误，不处理
 
 #define SIS_SEARCH_MIN     0x01
 #define SIS_SEARCH_MAX     0x02
 #define SIS_SEARCH_START   0x04
 #define SIS_SEARCH_COUNT   0x08
 #define SIS_SEARCH_OFFSET  0x10
-// #define SIS_UPDATE_MODE_NO     0   // ��������
-// #define SIS_UPDATE_MODE_UPDATE   1   // �޸�ĳ����¼
-// #define SIS_UPDATE_MODE_INSERT   2   // ������ĳ����¼֮ǰ
-// #define SIS_UPDATE_MODE_OK    1   // ����������
+// #define SIS_UPDATE_MODE_NO     0   // 放弃数据
+// #define SIS_UPDATE_MODE_UPDATE   1   // 修改某条记录
+// #define SIS_UPDATE_MODE_INSERT   2   // 插入在某条记录之前
+// #define SIS_UPDATE_MODE_OK    1   // 生产新数据
 
 #pragma pack(push,1)
-// ���ݽṹ�������ʱ�����У��Զ�����ͷβʱ�䣬��ƽ�����ʱ��
+// 根据结构化数组的时间序列，自动生成头尾时间，和平均间隔时间
 typedef struct s_sis_step_index
 {
 	uint64 count;
-	uint64 left; // ��Сʱ��
+	uint64 left; // 最小时间
 	uint64 right;
-	double step; // ���ʱ�䣬ÿ����¼��Լ���ʱ�䣬
+	double step; // 间隔时间，每条记录大约间隔时间，
 } s_sis_step_index;
 
-// ������Ʊ�����ݰ�
-// ʵ���϶�����һ����������ⲿ����ֱ��ͨ��SH600600.DAY���ʵ�collect��
-// ��collect�ṹ�͹����ֱ���Ϊ�����ᣬ��Ψһȷ��������������ȱһ���ɣ�
-// �������������Ŀ���ǿ��ٶ�λĿ�����ݣ�ͬʱ�����������ݣ�
+// 单个股票的数据包
+// 实际上定义了一个立体表，外部访问直接通过SH600600.DAY访问到collect，
+// 而collect结构和归属分别作为两个轴，来唯一确定，这两个属性缺一不可，
+// 设计上这样做的目的是快速定位目标数据，同时舍弃冗余数据，
 // 
 
 #define SISDB_COLLECT_TYPE_TABLE   0   // s_sis_struct_list
@@ -58,30 +58,30 @@ typedef struct s_sis_step_index
 #define SISDB_COLLECT_TYPE_BYTES   2   // s_sis_sds
 #define SISDB_COLLECT_TYPE_LIST    3   // s_sis_list s_sis_sds
 
-// ����TICK���͵����ݱ� �洢��ʽ��ͬ ��һ��nodelist ��Ԫ���� ���+ʱ������+�����б�+�����б� s_struct_list
-// ��ȡ����ʱ���ݲ�ͬ��� �����������б� ����������� ��Ҫ��������һ���߳� 
-// ��ʷ����ֱ�Ӵ� sno �л�ȡ
+// 对于TICK类型的数据表 存储方式不同 是一个nodelist 单元包含 块号+时间区间+索引列表+数据列表 s_struct_list
+// 获取数据时根据不同块号 分批按索引列表 排序后发送数据 需要独立启动一个线程 
+// 历史订阅直接从 sno 中获取
 
 typedef struct s_sisdb_collect
 {
-	uint8                style;  // ��������
-	s_sis_object        *obj;    // ֵ
+	uint8                style;  // 数据类型 SISDB_COLLECT_TYPE_TABLE ...
+	s_sis_object        *obj;    // 值
 
-	s_sis_sds            key;    // key��ֵ
-	s_sisdb_table       *sdb;    // ���ݱ���ָ�룬���Ի���ֶζ���������Ϣ
+	s_sis_sds            name;   // collect的值
+	s_sisdb_table       *sdb;    // 数据表的指针，可以获得字段定义的相关信息
 
 	s_sisdb_cxt         *father;
 	
-	// s_sisdb_sub_info    *sub_info;    // �����ֵ��ָ�� ���޸�collectʱ���Կ��ٷ���
+	// s_sisdb_sub_info    *sub_info;    // 订阅字典的指针 当修改collect时可以快速发布
 
-	s_sis_step_index    *stepinfo;    // ʱ��������������ᱣ��ʱ������key��ÿ����¼��ָ��(�������ڴ�)��
+	s_sis_step_index    *stepinfo;    // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 
 } s_sisdb_collect;
 
 typedef struct s_sisdb_collect_sno
 {
 	s_sisdb_collect   *collect;
-	uint32             recno;    // ��¼��
+	int32              recno;    // 记录号 recno = -1 collect = NULL 表示当日结束
 } s_sisdb_collect_sno;
 
 #pragma pack(pop)
@@ -96,14 +96,13 @@ void sisdb_stepindex_clear(s_sis_step_index *);
 void sisdb_stepindex_rebuild(s_sis_step_index *, uint64 left_, uint64 right_, int count_);
 int sisdb_stepindex_goto(s_sis_step_index *si_, uint64 curr_);
 
-
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sisdb_collect --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
 s_sisdb_collect *sisdb_get_collect(s_sisdb_cxt *sisdb_, const char *key_);
 s_sisdb_table *sisdb_get_table(s_sisdb_cxt *sisdb_, const char *dbname_);
 
-s_sisdb_collect *sisdb_kv_create(uint8 style_, char *in_, size_t ilen_);
+s_sisdb_collect *sisdb_kv_create(uint8 style_, const char *key_, char *in_, size_t ilen_);
 void sisdb_kv_destroy(void *info_);
 
 s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_,const char *key_);
@@ -131,79 +130,79 @@ s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *, int start_, int stop
 s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *, int start_, int count_);
 s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *);
 
-// �õ�������ԭʼ���ݣ�
+// 得到二进制原始数据，
 s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect_, s_sis_json_node *);
 
-s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *);
-// �õ�������������
+s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *, int format_);
+// 得到处理过的数据
 s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int iformat_, s_sis_json_node *);
-// �û������ argv �����Ĺؼ��ֵĶ������£�
-// ���ݸ�ʽ��"format":"json" --> SIS_DSIS_JSON
+// 用户传入的 argv 参数的关键字的定义如下：
+// 数据格式："format":"json" --> SIS_DSIS_JSON
 //						"array" --> SIS_DATA_TYPE_ARRAY
 //						"csv" --> SIS_DATA_TYPE_ARRAY
-//						"bytes" --> SIS_DATA_TYPE_STRUCT  ----> Ĭ��
-// �ֶΣ�   "fields":  "time,close,vol,name" ��ʾһ��4���ֶ�  
+//						"bytes" --> SIS_DATA_TYPE_STRUCT  ----> 默认
+// 字段：   "fields":  "time,close,vol,name" 表示一共4个字段  
 //	
-//                      ��,*---->��ʾȫ���ֶ� Ĭ��ȫ���ֶ�
-// ---------<��������û�б�ʾȫ������>--------
-// ���ݷ�Χ��"search":  min �� start ���⣬min��ʾ����ֵȡ����start ��ʾ����¼��ȡ 
-// 					  min,max ��ʱ������ȡ����
-//						count(��max���⣬����ʾ��󣬸���ʾ��ǰ),
-//						forceΪ 0 ��ʾ��ʵ��ȡ��Ϊ 1 �������ݾ�ȡminǰһ�����ݣ�
-//				    start��stop ����¼��ȡ���� 0��-1-->��ʾȫ������
-//						count(��stop���⣬����ʾ��󣬸���ʾ��ǰ),
-// �õ����й�Ʊ���µ�һ����¼
+//                      空,*---->表示全部字段 默认全部字段
+// ---------<以下区域没有表示全部数据>--------
+// 数据范围："search":  min 和 start 互斥，min表示按数值取数，start 表示按记录号取 
+// 					  min,max 按时序索引取数据
+//						count(和max互斥，正表示向后，负表示向前),
+//						force为 0 表示按实际取，为 1 若无数据就取min前一个数据，
+//				    start，stop 按记录号取数据 0，-1-->表示全部数据
+//						count(和stop互斥，正表示向后，负表示向前),
+// 得到所有股票最新的一条记录
 
-// ȡ�����Ʊ��ϢĬ��ֻ�������һ�����ݼ���
+// 取多个股票信息默认只返回最后一条数据集合
 s_sis_json_node *sisdb_collects_get_last_node(s_sisdb_collect *, s_sis_json_node *);
 
 ///////////////////////////
 //	fromat trans
 ///////////////////////////
-//�������ʱ���Ѷ����ƽṹ����ת����json��ʽ���ݣ�����array�����ݣ�json ����Ҫ���fields�ṹ
+//输出数据时，把二进制结构数据转换成json格式数据，或者array的数据，json 数据要求带fields结构
 s_sis_json_node *sis_collect_get_fields_of_json(s_sisdb_collect *collect_, s_sis_string_list *fields_);
 s_sis_sds sis_collect_get_fields_of_csv(s_sisdb_collect *collect_, s_sis_string_list *fields_);
 
 
-s_sis_sds sisdb_collect_struct_to_sds(s_sisdb_collect *, s_sis_sds in_, s_sis_string_list *fields_);
+s_sis_sds sisdb_collect_struct_to_sds(s_sis_dynamic_db *db_, const char *in_, size_t ilen_, s_sis_string_list *fields_);
 
-s_sis_sds sisdb_collect_struct_to_json_sds(s_sisdb_collect *collect_, s_sis_sds in_,
+s_sis_sds sisdb_collect_struct_to_json_sds(s_sis_dynamic_db *db_, const char *in_, size_t ilen_,
 										   const char *key_, s_sis_string_list *fields_, bool isfields_, bool zip_);
 
-s_sis_sds sisdb_collect_struct_to_array_sds(s_sisdb_collect *, s_sis_sds in_, s_sis_string_list *fields_, bool zip_);
+s_sis_sds sisdb_collect_struct_to_array_sds(s_sis_dynamic_db *db_, const char *in_, size_t ilen_, s_sis_string_list *fields_, bool zip_);
 
-s_sis_sds sisdb_collect_struct_to_csv_sds(s_sisdb_collect *, s_sis_sds in_, s_sis_string_list *fields_, bool isfields_);
-//����json����ʱͨ���ú���ת�ɶ����ƽṹ����
+s_sis_sds sisdb_collect_struct_to_csv_sds(s_sis_dynamic_db *db_, const char *in_, size_t ilen_, s_sis_string_list *fields_, bool isfields_);
+//传入json数据时通过该函数转成二进制结构数据
 s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *, s_sis_sds in_);
 
-//����array����ʱͨ���ú���ת�ɶ����ƽṹ����
+//传入array数据时通过该函数转成二进制结构数据
 s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *, s_sis_sds in_);
 
 ///////////////////////////
 //	delete     ////
 ///////////////////////////
-int sisdb_collect_delete_of_range(s_sisdb_collect *, int start_, int stop_);  // ��λ��ɾ��
-int sisdb_collect_delete_of_count(s_sisdb_collect *, int start_, int count_); // ��λ��ɾ��
+int sisdb_collect_delete_of_range(s_sisdb_collect *, int start_, int stop_);  // 定位后删除
+int sisdb_collect_delete_of_count(s_sisdb_collect *, int start_, int count_); // 定位后删除
 
-int sisdb_collect_delete(s_sisdb_collect  *, s_sis_json_node *jsql); // jsql Ϊjson����
-//ɾ��
-//�û������command�йؼ��ֵĶ������£�
-//���ݷ�Χ��"search":   min �� start ���⣬min��ʾ����ֵȡ����start��ʾ����¼��ȡ 
-// 					  min,max ��ʱ������ȡ����
-//						count(��max���⣬����ʾ��󣬸���ʾ��ǰ),
-//                    start��stop ����¼��ȡ���� 0��-1-->��ʾȫ������
-//						count(��stop���⣬����ʾ��󣬸���ʾ��ǰ),
+int sisdb_collect_delete(s_sisdb_collect  *, s_sis_json_node *jsql); // jsql 为json命令
+//删除
+//用户传入的command中关键字的定义如下：
+//数据范围："search":   min 和 start 互斥，min表示按数值取数，start表示按记录号取 
+// 					  min,max 按时序索引取数据
+//						count(和max互斥，正表示向后，负表示向前),
+//                    start，stop 按记录号取数据 0，-1-->表示全部数据
+//						count(和stop互斥，正表示向后，负表示向前),
 
 ///////////////////////////
 //			set        ////
 ///////////////////////////
-// дͨ��sdb���� ��Ҫ�������ݺϷ���
+// 写通用sdb数据 需要检验数据合法性
 int sisdb_collect_update(s_sisdb_collect *, s_sis_sds in_);
 
-// дsno���� ��ʹ���ݻḲ�� ���ָ�ʽҲҪ��¼��ÿһ�α仯
+// 写sno数据 即使数据会覆盖 此种格式也要记录下每一次变化
 int sisdb_collect_wseries(s_sisdb_collect *, s_sis_sds in_);
 
-// �Ӵ���������д�룬����������У�� ֱ��׷������
+// 从磁盘中整块写入，不逐条进行校验 直接追加数据
 int sisdb_collect_wpush(s_sisdb_collect *, char *in_, size_t ilen_);
 
 #endif /* _SIS_COLLECT_H */

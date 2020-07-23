@@ -26,9 +26,10 @@ void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t 
 	if (!netmsg_->argvs)
 	{
 		netmsg_->argvs = sis_pointer_list_create();
-		netmsg_->argvs->vfree = sis_sdsfree_call;
+		netmsg_->argvs->vfree = sis_object_decr;
 	}
-    sis_pointer_list_push(netmsg_->argvs, sis_sdsnewlen(in_, ilen_));
+    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
+    sis_pointer_list_push(netmsg_->argvs, obj);
 }
 
 void sis_net_ans_with_string(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
@@ -65,9 +66,10 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t 
 	if (!netmsg_->argvs)
 	{
 		netmsg_->argvs = sis_pointer_list_create();
-		netmsg_->argvs->vfree = sis_sdsfree_call;
+		netmsg_->argvs->vfree = sis_object_decr;
 	}
-    sis_pointer_list_push(netmsg_->argvs, sdsnewlen(in_, ilen_));
+    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
+    sis_pointer_list_push(netmsg_->argvs, obj);
 }
 
 void sis_net_ans_with_int(s_sis_net_message *netmsg_, int in_)
@@ -79,20 +81,44 @@ void sis_net_ans_with_int(s_sis_net_message *netmsg_, int in_)
 void sis_net_ans_with_ok(s_sis_net_message *netmsg_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
-    netmsg_->style = SIS_NET_ANS_OK;
+    netmsg_->style = SIS_NET_ANS_SIGN;
+    netmsg_->rint = SIS_NET_ANS_SIGN_OK;
 }
 void sis_net_ans_with_error(s_sis_net_message *netmsg_, char *rval_, size_t vlen_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
-    netmsg_->style = SIS_NET_ANS_ERROR;
+    netmsg_->style = SIS_NET_ANS_SIGN;
+    netmsg_->rint = SIS_NET_ANS_SIGN_ERROR;
     netmsg_->rval = rval_ ? sdsnewlen(rval_, vlen_) : NULL;
 }
-void sis_net_ans_with_null(s_sis_net_message *netmsg_, char *rval_, size_t vlen_)
+void sis_net_ans_with_null(s_sis_net_message *netmsg_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
-    netmsg_->style = SIS_NET_ANS_ERROR;
-    netmsg_->rval = rval_ ? sdsnewlen(rval_, vlen_) : NULL;
+    netmsg_->style = SIS_NET_ANS_SIGN;
+    netmsg_->rint = SIS_NET_ANS_SIGN_NIL;
 }
+void sis_net_ans_with_sub_start(s_sis_net_message *netmsg_, char *info_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_SIGN;
+    netmsg_->rint = SIS_NET_ANS_SIGN_SUB_START;
+    netmsg_->rval = info_ ? sdsnew(info_) : NULL;
+}
+void sis_net_ans_with_sub_wait(s_sis_net_message *netmsg_, char *info_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_SIGN;
+    netmsg_->rint = SIS_NET_ANS_SIGN_SUB_WAIT;
+    netmsg_->rval = info_ ? sdsnew(info_) : NULL;
+}
+void sis_net_ans_with_sub_stop(s_sis_net_message *netmsg_, char *info_)
+{
+    netmsg_->format = SIS_NET_FORMAT_CHARS;
+    netmsg_->style = SIS_NET_ANS_SIGN;
+    netmsg_->rint = SIS_NET_ANS_SIGN_SUB_STOP;
+    netmsg_->rval = info_ ? sdsnew(info_) : NULL;
+}
+
 // int sis_net_send_ask(s_sis_net_class *net_, s_sis_net_message *msg)
 // {
 //     if (!msg->style)

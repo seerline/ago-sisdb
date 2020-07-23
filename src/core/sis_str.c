@@ -161,6 +161,7 @@ int sis_str_divide(const char *in_, char ch_, char *one_, char *two_)
 	one_[index] = 0;
 	return 1;
 }
+
 const char *sis_str_replace(const char *in_, char ic_, char oc_)
 {
 	char *ptr = (char *)in_;

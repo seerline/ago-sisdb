@@ -43,7 +43,7 @@ char * sis_object_getchar(void *);
 #define SIS_OBJ_GET_CHAR(v) sis_object_getchar(v)
 
 #define SIS_OBJ_SDS(v) (v->style == SIS_OBJECT_SDS ? (s_sis_sds)(v->ptr) : NULL)
-#define SIS_OBJ_LIST(v) (v->style == SIS_OBJECT_SDS ? (s_sis_struct_list *)(v->ptr) : NULL)
+#define SIS_OBJ_LIST(v) (v->style == SIS_OBJECT_LIST ? (s_sis_struct_list *)(v->ptr) : NULL)
 #define SIS_OBJ_MEMORY(v) (v->style == SIS_OBJECT_MEMORY ? (s_sis_memory *)(v->ptr) : NULL)
 #define SIS_OBJ_NETMSG(v) (v->style == SIS_OBJECT_NETMSG ? (s_sis_net_message *)(v->ptr) : NULL)
  

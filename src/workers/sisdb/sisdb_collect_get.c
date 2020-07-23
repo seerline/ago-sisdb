@@ -506,7 +506,7 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 }
 
 // 为保证最快速度，尽量不加参数
-s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_)
+s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_, int format_)
 {
 	int start = 0;
 	int count = SIS_OBJ_LIST(collect_->obj)->count;
@@ -519,12 +519,17 @@ s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_)
 	// printf("%d,%d\n",start,count);
 	s_sis_sds out = sisdb_collect_get_of_count_sds(collect_, start, count);
 
+	// 最后转数据格式
+	if (format_ == SISDB_FORMAT_BYTES)
+	{
+		return out;
+	}
 	if (!out)
 	{
 		return NULL;
 	}
-	// 最后转数据格式
-	s_sis_sds other = sisdb_collect_struct_to_json_sds(collect_, out, key_, collect_->sdb->fields, true, true);
+
+	s_sis_sds other = sisdb_collect_struct_to_json_sds(collect_->sdb->db, out, sis_sdslen(out), key_, collect_->sdb->fields, false, true);
 
 	sis_sdsfree(out);
 	return other;
@@ -541,7 +546,7 @@ s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int
 	}
 
 	const char *fields = NULL;
-	if (sis_json_cmp_child_node(node_, "fields"))
+	if (node_ && sis_json_cmp_child_node(node_, "fields"))
 	{
 		fields = sis_json_get_str(node_, "fields");
 	}
@@ -559,23 +564,23 @@ s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int
 	case SISDB_FORMAT_BYTES:
 		if (!sisdb_field_is_whole(fields))
 		{
-			other = sisdb_collect_struct_to_sds(collect_, out, field_list);
+			other = sisdb_collect_struct_to_sds(collect_->sdb->db, out, sis_sdslen(out), field_list);
 			sis_sdsfree(out);
 			out = other;
 		}
 		break;
 	case SISDB_FORMAT_JSON:
-		other = sisdb_collect_struct_to_json_sds(collect_, out, key_, field_list, true, true);
+		other = sisdb_collect_struct_to_json_sds(collect_->sdb->db, out, sis_sdslen(out), key_, field_list, true, true);
 		sis_sdsfree(out);
 		out = other;
 		break;
 	case SISDB_FORMAT_ARRAY:
-		other = sisdb_collect_struct_to_array_sds(collect_, out, field_list, true);
+		other = sisdb_collect_struct_to_array_sds(collect_->sdb->db, out, sis_sdslen(out), field_list, true);
 		sis_sdsfree(out);
 		out = other;
 		break;
 	case SISDB_FORMAT_CSV:
-		other = sisdb_collect_struct_to_csv_sds(collect_, out, field_list, false);
+		other = sisdb_collect_struct_to_csv_sds(collect_->sdb->db, out, sis_sdslen(out), field_list, false);
 		sis_sdsfree(out);
 		out = other;
 		break;
@@ -600,9 +605,13 @@ s_sis_json_node *sisdb_collects_get_last_node(s_sisdb_collect *collect_, s_sis_j
 	}
 
 	const char *fields = NULL;
-	if (sis_json_cmp_child_node(node_, "fields"))
+	if (node_ && sis_json_cmp_child_node(node_, "fields"))
 	{
 		fields = sis_json_get_str(node_, "fields");
+	}
+	else
+	{
+		fields = "*";
 	}
 
 	s_sis_string_list *field_list = collect_->sdb->fields; //取得全部的字段定义

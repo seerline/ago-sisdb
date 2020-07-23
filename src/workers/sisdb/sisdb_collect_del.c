@@ -43,6 +43,7 @@ int sisdb_collect_delete_of_count(s_sisdb_collect *collect_, int start_, int cou
 
 int sisdb_collect_delete(s_sisdb_collect  *collect_, s_sis_json_node *jsql)
 {
+	// printf("%s: %d\n", __func__, SIS_OBJ_LIST(collect_->obj)->count);
 	s_sis_json_node *search = sis_json_cmp_child_node(jsql, "search");
 	if (!search)
 	{

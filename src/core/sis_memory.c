@@ -290,6 +290,10 @@ size_t sis_memory_readfile(s_sis_memory *m_, s_sis_file_handle fp_, size_t len_)
 
 size_t sis_memory_read(s_sis_memory *m_, s_sis_handle fp_, size_t len_)
 {
+	if (fp_ < 0)
+	{
+		return 0;
+	}
 	char *mem = (char *)sis_malloc(len_ + 1);
 	size_t bytes = sis_read(fp_, mem, len_);
 	if (bytes <= 0)

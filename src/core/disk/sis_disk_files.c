@@ -72,7 +72,8 @@ void sis_files_close(s_sis_files *cls_)
             unit->fp = -1;
         }
     }
-    sis_struct_list_clear(cls_->lists);
+    // lists 在初始化中设置 所以这里不能清除
+    // sis_struct_list_clear(cls_->lists);
 }
 
 void sis_files_init(s_sis_files *cls_, char *fn_)
@@ -91,7 +92,7 @@ void sis_files_init(s_sis_files *cls_, char *fn_)
             sis_seek(fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);  
             sis_read(fp, (char *)&tail, sizeof(s_sis_disk_main_tail));
             count = tail.count;
-            // LOG(3)("init files [%s] %d count = %d\n", cls_->cur_name, tail.hid, count);
+            LOG(3)("init files [%s] %d count = %d\n", cls_->cur_name, tail.hid, count);
             sis_close(fp);      
         }
     }
@@ -195,6 +196,7 @@ int sis_files_delete(s_sis_files *cls_)
     for (int  i = 0; i < cls_->lists->count; i++)
     {
         s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, i);
+        LOG(8)("delete file %s\n", unit->fn);
         sis_file_delete(unit->fn);
     }
     return cls_->lists->count;
@@ -202,7 +204,7 @@ int sis_files_delete(s_sis_files *cls_)
 int sis_files_open(s_sis_files *cls_, int access_)
 {
     cls_->access = access_;
-
+    LOG(3)("sis_files_open count = %d \n", cls_->lists->count);
     switch (cls_->access)
     {
     case SIS_DISK_ACCESS_CREATE:
@@ -242,10 +244,12 @@ int sis_files_open(s_sis_files *cls_, int access_)
                 if (o)
                 {
                     LOG(3)("open rdonly fail. [%d]\n", o);
+                    return -5;
                 }
             }      
             if (cls_->lists->count < 1)
             {
+                LOG(3)("open fail. count = %d \n", cls_->lists->count);
                 return -3;
             }   
             cls_->cur_unit = 0;   
@@ -322,9 +326,12 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     
     if (wcatch_) 
     { 
-        LOG(8)("%s %s ",wcatch_->key ? SIS_OBJ_SDS(wcatch_->key) : "N", wcatch_->sdb ? SIS_OBJ_SDS(wcatch_->sdb) : "N");
+        printf("%s %s ",wcatch_->key ? SIS_OBJ_SDS(wcatch_->key) : "N", wcatch_->sdb ? SIS_OBJ_SDS(wcatch_->sdb) : "N");
     }
-    LOG(8)("hid=%d, %p fidx = %d size = %zu\n", hid_, unit, cls_->cur_unit, wcatch_ ? sis_memory_get_size(wcatch_->memory) : 0);
+    printf("hid=%d, %p fidx = %d size = %zu\n", hid_, unit, cls_->cur_unit, wcatch_ ? sis_memory_get_size(wcatch_->memory) : 0);
+
+    // 定位写入的位置
+    sis_seek(unit->fp, unit->offset, SEEK_SET);
 
     s_sis_disk_head head;
     head.fin = 1;
@@ -496,6 +503,7 @@ size_t sis_files_read(s_sis_files *cls_, int fidx_, size_t offset_, size_t size_
     s_sis_disk_head  head;   
 
     s_sis_memory    *memory = sis_memory_create();
+
     sis_seek(unit->fp, offset_, SEEK_SET);
     size_t bytes = sis_memory_read(memory, unit->fp, size_);
     if (bytes == size_)
@@ -510,6 +518,8 @@ size_t sis_files_read(s_sis_files *cls_, int fidx_, size_t offset_, size_t size_
         //结果放在 wcatch_->memory 中
         size = sis_files_uncompress(cls_, &head, sis_memory(memory), size, out_);
     }
-    sis_memory_destroy(memory);    
+    sis_memory_destroy(memory);  
+    // 这里移动文件指针 效率低
+    // sis_seek(unit->fp, unit->offset, SEEK_SET);
     return size;
 }

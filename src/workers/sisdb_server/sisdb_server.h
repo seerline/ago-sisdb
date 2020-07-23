@@ -41,7 +41,7 @@ typedef struct s_sisdb_catch
 	int  last_day;  // > 0 表示加载最后几年的数据 0 表示全部加载
 	int  last_min;  // > 0 表示加载最后几天的分钟线 0 表示不加载历史数据
 	int  last_sec;  // > 0 表示加载最后几天的秒线 0 表示不加载历史数据
-	int  last_sno;  // > 0 表示加载最后几天数据 0 表示只保留当日 不从历史数据加载 只从aof加载 
+	int  last_sno;  // > 0 表示加载最后几天数据 0 表示只保留当日 不从历史数据加载 只从log加载 
 } s_sisdb_catch;
 
 typedef struct s_sisdb_userinfo
@@ -69,7 +69,7 @@ typedef struct s_sisdb_server_cxt
 
 	s_sis_share_reader *reader_recv; // 读取发送队列
 
-	s_sis_share_reader *reader_wlog; // 读取发送队列 - 只有写动做会记录 wlog 
+	// s_sis_share_reader *reader_wlog; // 读取发送队列 - 只有写动做会记录 wlog 
 	s_sis_method       *wlog_method; // 默认传入数据的方法
 	s_sis_worker       *wlog_save;   // 实时缓存存储类 对每条指令都记录在盘 save 无误后清除 
 	s_sis_mutex_t       wlog_lock;   // wlog & save & pack 互斥  
@@ -93,8 +93,8 @@ typedef struct s_sisdb_server_cxt
 
 	bool                switch_wget;  // 设置后所有 get 会同时存盘
 
-	s_sisdb_catch       catch_cfg;
-	s_sis_map_list     *datasets;    // 数据集合 s_sis_worker s_sis_db 分为不同目录存储 
+	s_sisdb_catch       catch_cfg;    // 数据加载配置 
+	s_sis_map_list     *datasets;     // 数据集合 s_sis_worker s_sis_db 分为不同目录存储 
 
 	s_sis_net_class    *socket;      // 服务监听器 s_sis_net_server
 

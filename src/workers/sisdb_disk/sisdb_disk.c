@@ -88,9 +88,38 @@ void sisdb_disk_method_uninit(void *worker_)
 
 s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
 {
+    // int nums = 0;
+    // s_sis_sds msg = sis_sdsempty();
+    // msg = sis_sdscat(msg, "{");
+    // {
+    //     s_sis_dict_entry *de;
+    //     s_sis_dict_iter *di = sis_dict_get_iter(cxt->collects);
+    //     while ((de = sis_dict_next(di)) != NULL)
+    //     {
+    //         s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+    //         if (collect->style == SISDB_COLLECT_TYPE_TABLE)
+    //         {
+    //             char keyn[128], sdbn[128]; 
+    //             int cmds = sis_str_divide(collect->name, '.', keyn, sdbn);
+    //             if (cmds == 2)
+    //             {
+    //                 if (nums > 0)
+    //                 {
+    //                     msg = sis_sdscat(msg, ",");
+    //                 }
+    //                 nums++;
+    //                 msg = sis_sdscatfmt(msg, "\"%s\"", keyn);
+    //             }                
+    //         }
+    //     }
+    //     sis_dict_iter_free(di);
+    // }  
+    // msg = sis_sdscat(msg, "}");
+    // printf("keys = %s\n", msg);
+    // return msg;    
     int nums = 0;
-    int count = sis_map_list_getsize(cxt->keys);
     s_sis_sds msg = sis_sdsempty();
+    int count = sis_map_list_getsize(cxt->keys);
     msg = sis_sdscat(msg, "{");
     for(int i = 0; i < count; i++)
     {
@@ -137,9 +166,13 @@ s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt, int style)
 
 int _sisdb_set_keys(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
 {
-    s_sis_json_handle *injson = sis_json_load(in_, ilen_);
+    char *in = sis_malloc(ilen_ + 1);
+    memmove(in, in_, ilen_);
+    in[ilen_] = 0;
+    s_sis_json_handle *injson = sis_json_load(in, ilen_);
     if (!injson)
     {
+        sis_free(in);
         sis_json_close(injson);
         return 0;
     }
@@ -150,15 +183,20 @@ int _sisdb_set_keys(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
         sis_map_list_set(cxt->keys, innode->key, key);
         innode = sis_json_next_node(innode);
     }
+    sis_free(in);
     sis_json_close(injson);
     return  sis_map_list_getsize(cxt->keys);    
 }
 // 设置结构体
 int _sisdb_set_sdbs(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
 {
-    s_sis_json_handle *injson = sis_json_load(in_, ilen_);
+    char *in = sis_malloc(ilen_ + 1);
+    memmove(in, in_, ilen_);
+    in[ilen_] = 0;
+    s_sis_json_handle *injson = sis_json_load(in, ilen_);
     if (!injson)
     {
+        sis_free(in);
         sis_json_close(injson);
         return 0;
     }
@@ -172,13 +210,14 @@ int _sisdb_set_sdbs(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
         }  
         innode = sis_json_next_node(innode);
     }
+    sis_free(in);
     sis_json_close(injson);    
     return  sis_map_list_getsize(cxt->sdbs);    
 }
 
 static void cb_key(void *worker_, void *key_, size_t size) 
 {
-    // printf("%s : %s\n", __func__, (char *)key_);
+    printf("%s : %s\n", __func__, (char *)key_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
     _sisdb_set_keys(sisdb, key_, size);
 }
@@ -190,8 +229,9 @@ static void cb_sdb(void *worker_, void *sdb_, size_t size)
     _sisdb_set_sdbs(sisdb, sdb_, size);
 }
 
-static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
+static void cb_read_sdb(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
 {
+    printf("load cb_read : %s %s.\n", key_, sdb_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
     if (sdb_)
     {
@@ -208,22 +248,97 @@ static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_obj
                 return ;
             }    
         }
+        int start = SIS_OBJ_LIST(collect->obj)->count;
         sisdb_collect_wpush(collect, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        if (collect->sdb->style == SISDB_TB_STYLE_SNO)
+        {
+            int stop = SIS_OBJ_LIST(collect->obj)->count - 1;
+            s_sisdb_collect_sno sno;
+            sno.collect = collect;
+            for (int i = start; i <= stop; i++)
+            {
+                sno.recno = i;
+                sis_node_list_push(collect->father->series, &sno);
+            }
+        }
     }
     else
     {
         // 写any
         uint8 style = (uint8)sis_memory_get_byte(SIS_OBJ_MEMORY(obj_), 1);
-        s_sisdb_collect *info = sisdb_kv_create(style, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        s_sisdb_collect *info = sisdb_kv_create(style, key_, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
         sis_map_pointer_set(sisdb->collects, key_, info);
     }
 
 } 
+int _sisdb_disk_load(const char *pathname, bool issno, s_sisdb_cxt *sisdb, s_sisdb_catch *config)
+{
+    s_sis_disk_class *sdbfile = sis_disk_class_create();  
+    if (issno)
+    {
+        char snoname[32];
+        if (sisdb->work_date == 0)
+        {
+            sis_llutoa(sis_time_get_idate(0), snoname, 32, 10);
+        }
+        else
+        {
+            sis_llutoa(sisdb->work_date, snoname, 32, 10);
+        }
+        
+        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SNO, pathname, snoname);
+    }
+    else
+    {
+        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
+    }
+    int ro = sis_disk_file_read_start(sdbfile);
+    if (ro != SIS_DISK_CMD_OK)
+    {
+        sis_disk_class_destroy(sdbfile);
+        // 文件不存在也认为正确
+        return SIS_METHOD_OK;
+    }
+    s_sis_disk_callback *callback = SIS_MALLOC(s_sis_disk_callback, callback);
+    callback->source = sisdb;
+    callback->cb_begin = NULL;
+    callback->cb_key = cb_key;
+    callback->cb_sdb = cb_sdb;
+    callback->cb_read = cb_read_sdb;
+    callback->cb_end = NULL;
+
+    s_sis_disk_reader *reader = sis_disk_reader_create(callback);
+    sis_disk_reader_set_key(reader, "*");
+    sis_disk_reader_set_sdb(reader, "*");
+    if (issno)
+    {
+        if (config->last_sno > 0)
+        {
+            // 加载历史的数据
+            // 不支持 只支持当日数据加载
+        }
+    }
+    else
+    {
+        if (config->last_day > 0)
+        {
+            // 设置加载时间
+        }
+    }
+    // sub 是一条一条的输出
+    sis_disk_file_read_sub(sdbfile, reader);
+
+    sis_disk_reader_destroy(reader);    
+    sis_free(callback);
+    sis_disk_file_read_stop(sdbfile);
+    sis_disk_class_destroy(sdbfile);
+    return SIS_METHOD_OK;
+}
 
 int cmd_sisdb_disk_load(void *worker_, void *argv_)
 {
     s_sis_message *msg = (s_sis_message *)argv_;
-
+    LOG(5)("load disk ...\n");
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)sis_message_get(msg, "sisdb");
     if (!sisdb)
     {
@@ -241,43 +356,23 @@ int cmd_sisdb_disk_load(void *worker_, void *argv_)
 
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_disk_cxt *context = (s_sisdb_disk_cxt *)worker->context;
+    char pathname[255];
+    sis_sprintf(pathname, 255, "%s/%s/", context->work_path, sisdb->name);
 
+    ///////////////////////////////////////
     // 先读 sno 数据
-    if (config.last_sno > 0)
-    {
-
-    }
-    // 再读sdb数据  
-    s_sis_disk_class *sdbfile = sis_disk_class_create();  
-    sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->name);
-    int ro = sis_disk_file_read_start(sdbfile);
-    if (ro < SIS_DISK_CMD_NO_IGNORE )
+    ///////////////////////////////////////
+    if (_sisdb_disk_load(pathname, true, sisdb, &config) != SIS_METHOD_OK)
     {
         return SIS_METHOD_ERROR;
     }
-    s_sis_disk_callback *callback = SIS_MALLOC(s_sis_disk_callback, callback);
-    callback->source = sisdb;
-    callback->cb_begin = NULL;
-    callback->cb_key = cb_key;
-    callback->cb_sdb = cb_sdb;
-    callback->cb_read = cb_read;
-    callback->cb_end = NULL;
-
-    s_sis_disk_reader *reader = sis_disk_reader_create(callback);
-    sis_disk_reader_set_key(reader, "*");
-    sis_disk_reader_set_sdb(reader, "*");
-    if (config.last_day > 0)
+    ///////////////////////////////////////
+    // 再读sdb数据  
+    ///////////////////////////////////////
+    if (_sisdb_disk_load(pathname, false, sisdb, &config) != SIS_METHOD_OK)
     {
-
+        return SIS_METHOD_ERROR;
     }
-
-    // sub 是一条一条的输出
-    sis_disk_file_read_sub(sdbfile, reader);
-
-    sis_disk_reader_destroy(reader);    
-    sis_free(callback);
-    sis_disk_file_read_stop(sdbfile);
-    sis_disk_class_destroy(sdbfile);
 
     return SIS_METHOD_OK;    
 }
@@ -294,70 +389,87 @@ int cmd_sisdb_disk_save(void *worker_, void *argv_)
 
     int work_date = sis_message_get_int(msg, "workdate");
     // 先写 sno 数据
-    s_sis_disk_class *snofile = sis_disk_class_create();
-    char snoname[32];
-    sis_llutoa(work_date, snoname, 32, 10);
-    sis_disk_class_init(snofile, SIS_DISK_TYPE_SNO, context->work_path, snoname);
-    {
-        s_sis_sds keys = _sisdb_get_keys(sisdb);
-        sis_disk_class_set_key(snofile, keys, sis_sdslen(keys));
-        s_sis_sds sdbs = _sisdb_get_sdbs(sisdb, SISDB_TB_STYLE_SNO);
-        sis_disk_class_set_sdb(snofile, sdbs, sis_sdslen(sdbs));
-        sis_sdsfree(keys);
-        sis_sdsfree(sdbs);
-    }
-    sis_disk_file_write_start(snofile, SIS_DISK_ACCESS_CREATE);
-    
+    char pathname[255];
+    sis_sprintf(pathname, 255, "%s/%s/", context->work_path, sisdb->name);
     int count = sis_node_list_get_size(sisdb->series);
-    for (int i = 0; i < count; i++)
+    if (count > 0)
     {
-        s_sisdb_collect_sno *sno = (s_sisdb_collect_sno *)sis_node_list_get(sisdb->series, i);        
-        sis_disk_file_write_sdb(snofile, sno->collect->key, sno->collect->sdb->db->name, 
-            sis_struct_list_get(SIS_OBJ_LIST(sno->collect->obj), sno->recno) , sno->collect->sdb->db->size);
+        s_sis_disk_class *snofile = sis_disk_class_create();
+        char snoname[32];
+        sis_llutoa(work_date, snoname, 32, 10);
+        sis_disk_class_init(snofile, SIS_DISK_TYPE_SNO, pathname, snoname);
+        // 必须全部重写 对内存有要求
+        sis_disk_file_delete(snofile);
+        sis_disk_file_write_start(snofile);
+
+        {
+            s_sis_sds keys = _sisdb_get_keys(sisdb);
+            sis_disk_class_set_key(snofile, true, keys, sis_sdslen(keys));
+            s_sis_sds sdbs = _sisdb_get_sdbs(sisdb, SISDB_TB_STYLE_SNO);
+            sis_disk_class_set_sdb(snofile, true, sdbs, sis_sdslen(sdbs));
+            sis_sdsfree(keys);
+            sis_sdsfree(sdbs);
+        }
+
+        char keyn[128], sdbn[128]; 
+        for (int i = 0; i < count; i++)
+        {
+            s_sisdb_collect_sno *sno = (s_sisdb_collect_sno *)sis_node_list_get(sisdb->series, i);  
+            sis_str_divide(sno->collect->name, '.', keyn, sdbn);      
+            sis_disk_file_write_sdb(snofile, keyn, sno->collect->sdb->db->name, 
+                sis_struct_list_get(SIS_OBJ_LIST(sno->collect->obj), sno->recno) , sno->collect->sdb->db->size);
+        }
+        
+        sis_disk_file_write_stop(snofile);
+        sis_disk_class_destroy(snofile);
     }
-    
-    sis_disk_file_write_stop(snofile);
-    sis_disk_class_destroy(snofile);
 
     // 再写sdb数据
-    s_sis_disk_class *sdbfile = sis_disk_class_create();
-    sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->name);
+    if (sis_map_pointer_getsize(sisdb->collects) > 0)
     {
-        s_sis_sds keys = _sisdb_get_keys(sisdb);
-        sis_disk_class_set_key(snofile, keys, sis_sdslen(keys));
-        s_sis_sds sdbs = _sisdb_get_sdbs(sisdb, SISDB_TB_STYLE_SDB);
-        sis_disk_class_set_sdb(snofile, sdbs, sis_sdslen(sdbs));
-        sis_sdsfree(keys);
-        sis_sdsfree(sdbs);
-    }
-    sis_disk_file_write_start(sdbfile, SIS_DISK_ACCESS_APPEND);
-    // 写入自由和结构键值
-    {
-        s_sis_memory *memory = sis_memory_create();
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb->collects);
-        while ((de = sis_dict_next(di)) != NULL)
+        s_sis_disk_class *sdbfile = sis_disk_class_create();
+        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
+        // 不能删除老文件的信息
+        sis_disk_file_write_start(sdbfile);
         {
-            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (collect->style == SISDB_COLLECT_TYPE_TABLE)
-            {
-                sis_disk_file_write_sdb(sdbfile, collect->key, collect->sdb->db->name, 
-                    SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-            }
-            else 
-            if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
-            {
-                sis_memory_clear(memory);
-                sis_memory_cat_byte(memory, collect->style, 1);
-                sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-                sis_disk_file_write_any(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
-            }
+            s_sis_sds keys = _sisdb_get_keys(sisdb);
+            sis_disk_class_set_key(sdbfile, true, keys, sis_sdslen(keys));
+            s_sis_sds sdbs = _sisdb_get_sdbs(sisdb, SISDB_TB_STYLE_SDB);
+            sis_disk_class_set_sdb(sdbfile, true, sdbs, sis_sdslen(sdbs));
+            sis_sdsfree(keys);
+            sis_sdsfree(sdbs);
         }
-        sis_dict_iter_free(di);
-        sis_memory_destroy(memory);
+
+        // 写入自由和结构键值
+        {
+            char keyn[128], sdbn[128]; 
+            s_sis_memory *memory = sis_memory_create();
+            s_sis_dict_entry *de;
+            s_sis_dict_iter *di = sis_dict_get_iter(sisdb->collects);
+            while ((de = sis_dict_next(di)) != NULL)
+            {
+                s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+                sis_str_divide(collect->name, '.', keyn, sdbn); 
+                if (collect->style == SISDB_COLLECT_TYPE_TABLE)
+                {
+                    sis_disk_file_write_sdb(sdbfile, keyn, collect->sdb->db->name, 
+                        SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+                }
+                else 
+                if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
+                {
+                    sis_memory_clear(memory);
+                    sis_memory_cat_byte(memory, collect->style, 1);
+                    sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+                    sis_disk_file_write_any(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
+                }
+            }
+            sis_dict_iter_free(di);
+            sis_memory_destroy(memory);
+        }
+        sis_disk_file_write_stop(sdbfile);
+        sis_disk_class_destroy(sdbfile);
     }
-    sis_disk_file_write_stop(sdbfile);
-    sis_disk_class_destroy(sdbfile);
 
     return SIS_METHOD_OK;
 }
@@ -372,21 +484,24 @@ int cmd_sisdb_disk_pack(void *worker_, void *argv_)
     }
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_disk_cxt *context = (s_sisdb_disk_cxt *)worker->context;
+
+    char pathname[255];
+    sis_sprintf(pathname, 255, "%s/%s/", context->work_path, sisdb->name);
     // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
     s_sis_disk_class *srcfile = sis_disk_class_create();
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->name);
+    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
     sis_disk_file_move(srcfile, context->safe_path);
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, sisdb->name);
+    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
 
     s_sis_disk_class *desfile = sis_disk_class_create();
-    sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->name);
+    sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
 
     size_t size = sis_disk_file_pack(srcfile, desfile);
 
     if (size == 0)
     {
         sis_disk_file_delete(desfile);
-        sis_disk_file_move(srcfile, context->work_path);
+        sis_disk_file_move(srcfile, pathname);
     }   
     sis_disk_class_destroy(desfile);
     sis_disk_class_destroy(srcfile);

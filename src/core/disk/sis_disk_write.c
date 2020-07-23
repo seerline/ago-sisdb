@@ -15,7 +15,7 @@ size_t sis_disk_write_work(s_sis_disk_class *cls_, int hid_, s_sis_disk_wcatch *
     if (wcatch_ && cls_->work_fps->main_head.index)
     {
         s_sis_disk_index *node = sis_disk_index_get(cls_->index_infos, wcatch_->key, wcatch_->sdb);        
-        // printf("%s %d \n ",SIS_OBJ_SDS(wcatch_->key), hid_);
+        printf("write : %s %d \n ",SIS_OBJ_SDS(wcatch_->key), hid_);
         wcatch_->winfo.active++;
         sis_struct_list_push(node->index, &wcatch_->winfo); // 写完盘后增加一条索引记录
     }
@@ -28,13 +28,15 @@ size_t sis_disk_write_work(s_sis_disk_class *cls_, int hid_, s_sis_disk_wcatch *
 size_t sis_disk_file_write_stream(s_sis_disk_class *cls_, void *in_, size_t ilen_)
 {
     size_t size = 0;
+    
     if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_STREAM)
     {
         s_sis_disk_wcatch *wcatch = cls_->src_wcatch;
         sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
         if (sis_memory_get_size(wcatch->memory) > cls_->work_fps->max_page_size)
         {
-            size = sis_disk_write_work(cls_, SIS_DISK_HID_STREAM, wcatch);
+            size = sis_files_write(cls_->work_fps, SIS_DISK_HID_STREAM, wcatch);
+            // printf("wlog %d\n", size);
             sis_disk_wcatch_clear(wcatch);
         }
     }
@@ -114,8 +116,8 @@ size_t sis_disk_file_write_sdb_sno(s_sis_disk_class *cls_,
         // msec_t stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
         // wcatch->winfo.stop = sis_max(wcatch->winfo.stop, stop);
 
-        wcatch->winfo.kdict = key->units->count - 1;
-        wcatch->winfo.sdict = sdb->units->count - 1;
+        wcatch->winfo.kdict = key->units->count;
+        wcatch->winfo.sdict = sdb->units->count;
         wcatch->winfo.ipage = cls_->sno_pages;
 
         int count = ilen_ / unit->db->size;
@@ -178,8 +180,8 @@ size_t sis_disk_file_write_sdb_one(s_sis_disk_class *cls_,
         wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
         // printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
 
-        wcatch->winfo.kdict = key->units->count - 1;
-        wcatch->winfo.sdict = sdb->units->count - 1;
+        wcatch->winfo.kdict = key->units->count;
+        wcatch->winfo.sdict = sdb->units->count;
 
         // 这里可以判断新的块和老的块是否有冲突 甚至老的和新的数据结构不同也可以在这里处理
         sis_write_sdb_merge(cls_, wcatch);
@@ -239,8 +241,8 @@ size_t _sis_disk_file_write_kdb(s_sis_disk_class *cls_,
         wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
         // printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
 
-        wcatch->winfo.kdict = -1;
-        wcatch->winfo.sdict = sdb_->units->count - 1;
+        wcatch->winfo.kdict = 0;
+        wcatch->winfo.sdict = sdb_->units->count;
 
         sis_write_sdb_merge(cls_, wcatch);
         SET_MOMORY_STR(wcatch->memory, key_, sis_strlen((char *)key_));
@@ -259,8 +261,8 @@ size_t _sis_disk_file_write_key(s_sis_disk_class *cls_, s_sis_disk_dict *key_, c
 {
     size_t size = 0;
     s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key_->name, NULL);
-    wcatch->winfo.kdict = key_->units->count - 1;
-    wcatch->winfo.sdict = -1;
+    wcatch->winfo.kdict = key_->units->count;
+    wcatch->winfo.sdict = 0;
 
     sis_write_sdb_merge(cls_, wcatch);
     sis_memory_cat_ssize(wcatch->memory, key_->index);
@@ -276,8 +278,8 @@ size_t _sis_disk_file_write_any(s_sis_disk_class *cls_, const char *key_, const 
     s_sis_object *key = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(key_));
     
     s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key, NULL);
-    wcatch->winfo.kdict = -1;
-    wcatch->winfo.sdict = -1;
+    wcatch->winfo.kdict = 0;
+    wcatch->winfo.sdict = 0;
     sis_write_sdb_merge(cls_, wcatch);
     SET_MOMORY_STR(wcatch->memory, key_, sis_strlen((char *)key_));
     SET_MOMORY_STR(wcatch->memory, in_, ilen_);
@@ -302,6 +304,15 @@ size_t sis_disk_file_write_sdbi(s_sis_disk_class *cls_,
     } 
     return size;    
 }
+int sis_disk_class_add_key(s_sis_disk_class *cls_, const char *key_)
+{
+    s_sis_sds msg = sis_sdsempty();
+    msg = sis_sdscatfmt(msg, "{\"%s\"}", key_);
+    int o = sis_disk_class_set_key(cls_, true, msg, sis_sdslen(msg));
+    sis_sdsfree(msg);
+    return o;
+}
+
 size_t sis_disk_file_write_sdb(s_sis_disk_class *cls_,
                                 const char *key_, const char *sdb_, void *in_, size_t ilen_)
 {
@@ -319,12 +330,8 @@ size_t sis_disk_file_write_sdb(s_sis_disk_class *cls_,
     if (!key && key_)
     {
         // 增加新的key
-        s_sis_sds msg = sis_sdsempty();
-        msg = sis_sdscatfmt(msg, "{\"%s\"}", key_);
-        sis_disk_class_set_key(cls_, msg, sis_sdslen(msg));
-        sis_disk_file_write_key_dict(cls_);
+        sis_disk_class_add_key(cls_, key_);
         key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
-        sis_sdsfree(msg);
     }
     s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_get(cls_->sdbs, sdb_);
     // if (!sis_strcasecmp(key_, "SZ002979")||!sis_strcasecmp(key_, "SZ002980"))
@@ -375,10 +382,7 @@ size_t sis_disk_file_write_key(s_sis_disk_class *cls_,
     if (!key && key_)
     {
         // 增加新的key
-        s_sis_sds msg = sis_sdsempty();
-        msg = sis_sdscatfmt(msg, "{\"%s\"}", key_);
-        sis_disk_class_set_key(cls_, msg, sis_sdslen(msg));
-        sis_disk_file_write_key_dict(cls_);
+        sis_disk_class_add_key(cls_, key_);
         key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
     }
     if (key)
@@ -422,6 +426,7 @@ size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_)
             for(int k = 0; k < info->units->count; k++)
             {
                 s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);
+                // LOG(1)("w writed = %s %d\n", SIS_OBJ_GET_CHAR(info->name), unit->writed);
                 if (unit->writed)
                 {
                     continue;
@@ -472,6 +477,7 @@ size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_)
             for(int k = 0; k < info->units->count; k++)
             {
                 s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);
+                // LOG(1)("w writed = %s %d\n", SIS_OBJ_GET_CHAR(info->name), unit->writed);
                 if (unit->writed)
                 {
                     continue;
@@ -570,10 +576,9 @@ size_t sis_disk_file_write_index(s_sis_disk_class *cls_)
         {
             s_sis_disk_index_unit *unit = (s_sis_disk_index_unit *)sis_struct_list_get(node->index, k);
             sis_memory_cat_byte(memory, unit->active, 1);
-            
-            sis_memory_cat_ssize(memory, unit->kdict);
-            sis_memory_cat_ssize(memory, unit->sdict);
-            sis_memory_cat_ssize(memory, unit->fidx);
+            sis_memory_cat_byte(memory, unit->kdict, 1);
+            sis_memory_cat_byte(memory, unit->sdict, 1);
+            sis_memory_cat_byte(memory, unit->fidx, 1);
             sis_memory_cat_ssize(memory, unit->offset);
             sis_memory_cat_ssize(memory, unit->size);
             sis_memory_cat_ssize(memory, unit->start);
@@ -654,7 +659,8 @@ size_t sis_disk_file_write_surplus(s_sis_disk_class *cls_)
 
 void sis_disk_file_delete(s_sis_disk_class *cls_)
 {
-    sis_files_delete(cls_->work_fps);
+    int count = sis_files_delete(cls_->work_fps);
+    LOG(5)("delete file count = %d.\n", count);
 }
 
 void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
@@ -668,15 +674,8 @@ void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
         sis_file_rename(unit->fn, newfn);
     }
 }
-// 检查文件是否有效
-int sis_disk_file_valid(s_sis_disk_class *cls_)
+int sis_disk_file_valid_idx(s_sis_disk_class *cls_)
 {
-    if (!sis_file_exists(cls_->work_fps->cur_name))
-    {
-        LOG(5)
-        ("file no exists.[%s]\n", cls_->work_fps->cur_name);
-        return SIS_DISK_CMD_NO_EXISTS;
-    }
     if (cls_->work_fps->main_head.index)
     {
         if (!sis_file_exists(cls_->index_fps->cur_name))
@@ -685,7 +684,14 @@ int sis_disk_file_valid(s_sis_disk_class *cls_)
             ("idxfile no exists.[%s]\n", cls_->index_fps->cur_name);
             return SIS_DISK_CMD_NO_EXISTS_IDX;
         }
+        return SIS_DISK_CMD_OK;
     }
+    return SIS_DISK_CMD_NO_IDX;
+}
+
+// 检查文件是否有效
+int sis_disk_file_valid(s_sis_disk_class *cls_)
+{
     // 通常判断work和index的尾部是否一样 一样表示完整 否则
     // 检查work file 是否完整 如果不完整就设置最后一个块的位置 并重建索引
     // 如果work file 完整 就检查索引文件是否完整 不完整就重建索引
@@ -693,18 +699,18 @@ int sis_disk_file_valid(s_sis_disk_class *cls_)
     return SIS_DISK_CMD_OK;
 }
 
-int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_)
+int sis_disk_file_write_start(s_sis_disk_class *cls_)
 {
     if (!cls_->isinit)
     {
         return -10;
     }
-    if (access_ != SIS_DISK_ACCESS_APPEND && 
-        access_ != SIS_DISK_ACCESS_CREATE)
+    int access = SIS_DISK_ACCESS_APPEND;
+    if (!sis_file_exists(cls_->work_fps->cur_name))
     {
-        return -1;
+        access = SIS_DISK_ACCESS_CREATE;
     }
-    if (access_ == SIS_DISK_ACCESS_CREATE)
+    if (access == SIS_DISK_ACCESS_CREATE)
     {
         // 以从新创建新文件的方式打开文件 如果以前有文件直接删除创建新的
         if (sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_CREATE))
@@ -718,7 +724,8 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_)
     {
         // 以在文件后面追加数据的方式打开文件
         // 对已经存在的文件进行合法性检查 如果文件不完整 就打开失败 由外部程序来处理异常，这样相对安全
-        if (sis_disk_file_valid(cls_))
+        int vo = sis_disk_file_valid(cls_);
+        if ( vo != SIS_DISK_CMD_OK)
         {
             LOG(5)
             ("open is no valid.[%s]\n", cls_->work_fps->cur_name);
@@ -729,8 +736,8 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_)
             LOG(5)
             ("open file fail.[%s]\n", cls_->work_fps->cur_name);
             return -3;
-        }
-        if (cls_->work_fps->main_head.index)
+        }    
+        if (cls_->work_fps->main_head.index && sis_disk_file_valid_idx(cls_) == SIS_DISK_CMD_OK)
         {
             sis_map_list_clear(cls_->index_infos);
             if (sis_files_open(cls_->index_fps, SIS_DISK_ACCESS_RDONLY))
@@ -747,13 +754,9 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_, int access_)
         }        
     } 
     cls_->status = SIS_DISK_STATUS_OPENED;
-    // 无论是新文件还是 对老文件追加数据 都需要重新写一份字典 避免数据混乱
+
     // 打开已有文件会先加载字典 写字典表如果发现和加载的字典表一样就不重复写入
-    if (sis_map_list_getsize(cls_->keys) > 0 || sis_map_list_getsize(cls_->sdbs) > 0)
-    {
-        sis_disk_file_write_key_dict(cls_);
-        sis_disk_file_write_sdb_dict(cls_);
-    }
+
     cls_->sno_size = 0;   // 当前块的总大小
     cls_->sno_series = 0; // 当前块的序号 每个新的page重新计数
 
@@ -770,8 +773,6 @@ int sis_disk_file_write_stop(s_sis_disk_class *cls_)
     // 根据文件类型写索引，并关闭文件
     sis_disk_file_write_surplus(cls_);
 
-    sis_files_close(cls_->work_fps);
-
     if (cls_->work_fps->main_head.index)
     {
         cls_->index_fps->main_head.workers = cls_->work_fps->lists->count;
@@ -784,12 +785,15 @@ int sis_disk_file_write_stop(s_sis_disk_class *cls_)
         if (sis_files_open(cls_->index_fps, SIS_DISK_ACCESS_CREATE))
         {
             LOG(5)
-            ("open idxfile fail.[%s]\n", cls_->index_fps->cur_name);
+            ("open idxfile fail.[%s] %d\n", cls_->index_fps->cur_name, cls_->index_fps->main_head.workers);
             return -2;
         }
         sis_disk_file_write_index(cls_);
         sis_files_close(cls_->index_fps);
     }
+    // 必须等索引写好才关闭工作句柄
+    sis_files_close(cls_->work_fps);
+
     sis_disk_class_clear(cls_);
     cls_->status = SIS_DISK_STATUS_CLOSED;
     return 0;

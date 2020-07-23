@@ -10,6 +10,7 @@ void _sis_message_unit_free(void *unit_)
     switch (unit->style)
     {
     case SIS_MESSGE_TYPE_SDS:
+        printf("free msg :%p\n", unit->value);
         sis_sdsfree((s_sis_sds)unit->value);
         break;
     case SIS_MESSGE_TYPE_STRLIST:
@@ -59,7 +60,7 @@ void sis_message_set_bool(s_sis_message *msg_, const char* key_, bool in_)
     s_sis_message_unit *unit = SIS_MALLOC(s_sis_message_unit, unit);
     unit->style = SIS_MESSGE_TYPE_BOOL;
     unit->value = NULL;
-    if (in_) unit->value = (void *)1;
+    if (in_) {unit->value = (void *)1;}
     sis_map_pointer_set(msg_->maps, key_, unit);
 }
 void sis_message_set_double(s_sis_message *msg_, const char* key_, double in_)

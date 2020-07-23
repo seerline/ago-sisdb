@@ -19,6 +19,9 @@ typedef struct s_sisdb_wlog_cxt
 	s_sis_sds           work_path;
 
 	s_sis_map_pointer  *datasets;  // 每个数据集一个文件	
+
+	void   *cb_source;
+	sis_method_define   *cb_method;
 }s_sisdb_wlog_cxt;
 
 s_sisdb_wlog_unit *sisdb_wlog_unit_create(s_sisdb_wlog_cxt *cxt_, const char *);
@@ -35,6 +38,7 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_);
 int cmd_sisdb_wlog_write(void *worker_, void *argv_);
 // 数据全部处理完后清理内存
 int cmd_sisdb_wlog_clear(void *worker_, void *argv_);
-
+// 检查是否有新的数据需要写入
+int cmd_sisdb_wlog_check(void *worker_, void *argv_);
 
 #endif

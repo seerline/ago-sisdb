@@ -69,7 +69,7 @@
 #define SISDB_SUB_ONE_MUL       0   // 订阅指定的多个单键值
 #define SISDB_SUB_ONE_ALL       1   // 订阅所有的单键
 
-#define SISDB_SUB_TABLE_ONE       4   // 订阅指定的一个sdb键值 订阅sno时有用
+// #define SISDB_SUB_TABLE_ONE       4   // 订阅指定的一个sdb键值 订阅sno时有用
 #define SISDB_SUB_TABLE_MUL       5   // 订阅指定的多个sdb键值
 #define SISDB_SUB_TABLE_KEY       6   // 订阅匹配的key的所有结构数据
 #define SISDB_SUB_TABLE_SDB       7   // 订阅匹配的sdb的所有结构数据
@@ -84,15 +84,18 @@ typedef struct s_sisdb_subsno_info
 {
 	bool                ismul;
 	volatile int        status;
+	date_t              subdate;
 	struct s_sisdb_cxt *sisdb;
 	s_sis_thread        thread_cxt;
+
 	s_sis_net_message  *netmsg;
 }s_sisdb_subsno_info;
 
 typedef struct s_sisdb_sub_info
 {
+	bool                  issno;     // 是否序列值订阅
+	uint8                 subformat; // 订阅数据格式
 	uint8                 subtype;   // 订阅类型
-	s_sis_sds             snokey;    // SISDB_SUB_TABLE_ONE 单键值订阅
 	s_sis_sds             keys;      // SISDB_SUB_ONE_MUL SISDB_SUB_TABLE_MUL SISDB_SUB_TABLE_KEY 时有值
 	s_sis_sds             sdbs;      // SISDB_SUB_TABLE_SDB 时有值
 	s_sis_pointer_list   *netmsgs;    // s_sis_net_message
@@ -115,6 +118,7 @@ typedef struct s_sisdb_cxt
 	int                 status;      // 工作状态
 
 	date_t              work_date;   // 当前工作日期
+	s_sis_sds           fast_path;   // 存储路径
 	s_sis_sds           name;        // 数据库名字 sisdb
 
 	// 下面数据永不清理
@@ -126,18 +130,14 @@ typedef struct s_sisdb_cxt
 
 	s_sis_node_list    *series;      // 专门提供给序列数据的列表 s_sisdb_collect_sno
 	
-	// 用户订阅后登记到 sub_single 中, 先把内存中数据发布到 pub_list 由其他线程 pub_reader 处理数据发送给客户
-	// 当key数据更新后 如果 key 被订阅 就写入 pub_list 中,也由 pub_reader 处理数据
-	// 发布的信息汇总到这个列表 回调后再 根据 s_sisdb_sub_info 一一发送信息
-	void               *father;     // sisdb server
-	s_sis_share_list   *pub_list;    
+	void               *socket;      // sisdb server
 	// 发布信息的读者
 	s_sis_share_reader *pub_reader;  
 	// 多个 client 订阅的列表 需要一一对应发送
 	// 以 key 为索引的 s_sisdb_sub_info 同一key可能有多个用户订阅
-	s_sis_map_pointer   *sub_multiple; // s_sisdb_sub_info 
+	s_sis_map_pointer  *sub_multiple; // s_sisdb_sub_info 
 	// 
-	s_sis_map_pointer   *sub_single;   // s_sis_pointer_list -> s_sis_net_message 
+	s_sis_map_pointer  *sub_single;   // s_sisdb_sub_info
 	// 根据source和cid生成的key 线程池 处理历史数据 处理完后根据需求转入 sub_single 中
 	s_sis_map_pointer  *subsno_worker;  // s_sisdb_subsno_info 的列表
 
@@ -160,6 +160,8 @@ int cmd_sisdb_init(void *worker_, void *argv_);
 
 int cmd_sisdb_get(void *worker_, void *argv_);
 int cmd_sisdb_set(void *worker_, void *argv_);
+
+int cmd_sisdb_stop(void *worker_, void *argv_);
 int cmd_sisdb_del(void *worker_, void *argv_);
 int cmd_sisdb_drop(void *worker_, void *argv_);
 

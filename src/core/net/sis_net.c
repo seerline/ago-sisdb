@@ -140,7 +140,7 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 static int cb_sis_reader_send(void *cxt_, s_sis_object *in_)
 {
 	// 从队列中来 往网络端口去
-	printf("reader read +++ %p.\n", in_);
+	// printf("reader read +++ %p.\n", in_);
 
 	if (in_ == NULL)
 	{

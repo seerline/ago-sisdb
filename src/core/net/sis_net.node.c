@@ -87,8 +87,8 @@ size_t _sis_net_message_list_size(s_sis_pointer_list *list_)
 		size += list_->count * sizeof(void *);
 		for (int i = 0; i < list_->count; i++)
 		{
-			s_sis_sds val = (s_sis_sds)((s_sis_object *)sis_pointer_list_get(list_, i))->ptr;
-			size += sis_sdslen(val);
+			s_sis_object *obj = (s_sis_object *)sis_pointer_list_get(list_, i);
+			size += SIS_OBJ_GET_SIZE(obj);
 		}
 	}
 	return size;
@@ -190,28 +190,29 @@ bool sis_net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 		}
 		if (in_->style & SIS_NET_ASK_VAL && in_->val)
 		{
-			sis_json_object_set_string(node, "val", in_->val, sis_sdslen(in_->val));
+			sis_json_object_set_jstr(node, "val", in_->val, sis_sdslen(in_->val));
 		}
     }
     else
-    {
-		if (in_->style & SIS_NET_ANS_VAL && in_->rval)
-		{
-			sis_json_object_set_string(node, "reply", in_->rval, sis_sdslen(in_->rval)); 
-		}       
+    {       
 		if (in_->style & SIS_NET_ANS_INT)
 		{
 			sis_json_object_set_int(node, "reply", in_->rint); 
 		}       
-		if (in_->style & SIS_NET_ANS_OK)
+		else if (in_->style & SIS_NET_ANS_SIGN)
 		{
-			sis_json_object_set_string(node, "reply", "OK", 2); 
-		}       
-		if (in_->style & SIS_NET_ANS_ERROR && in_->rval)
+			sis_json_object_set_int(node, "sign", in_->rint); 
+			if (in_->rval)
+			{
+				sis_json_object_set_string(node, "val", in_->rval, sis_sdslen(in_->rval)); 
+			}			
+		} 
+		else if (in_->style & SIS_NET_ANS_VAL && in_->rval)
 		{
-			sis_json_object_set_string(node, "reply", "ERROR", 5); 
-			sis_json_object_set_string(node, "message", in_->rval, sis_sdslen(in_->rval)); 
-		}       	
+			sis_json_object_set_string(node, "reply", in_->rval, sis_sdslen(in_->rval)); 
+			// sis_json_object_set_jstr(node, "reply", in_->rval, sis_sdslen(in_->rval)); 
+		}
+		      
     }
 	printf(":::%d %d %s \n%s \n%s \n%s \n%s \n", in_->style, (int)in_->rint,
 			in_->source? in_->source : "nil",
@@ -256,12 +257,23 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
     s_sis_net_message *mess = (s_sis_net_message *)out_;
 
     size_t size = sis_memory_get_size(in_);
+	sis_memory(in_)[size] = 0;
     s_sis_json_handle *handle = sis_json_load(sis_memory(in_), size);
     if (!handle)
     {
         LOG(5)("json parse error.\n");
         return false;
     }
+    s_sis_json_node *sign = sis_json_cmp_child_node(handle->node, "sign");
+	if (sign)
+	{
+		// 信号
+		mess->style = SIS_NET_ANS_SIGN;
+		mess->rint = atoll(sign->value);  // SIS_NET_ANS_SIGN_NIL
+		mess->rval = _sis_json_node_get_sds(handle->node, "val");  
+		sis_json_close(handle);
+		return true;
+	}
     s_sis_json_node *reply = sis_json_cmp_child_node(handle->node, "reply");
     if (reply)
     {
@@ -272,20 +284,8 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 		}
 		else if (reply->type == SIS_JSON_STRING)
 		{
-			if (!sis_strcasecmp(reply->value, "OK"))
-			{
-				mess->style = SIS_NET_ANS_OK;
-			}
-			else if (!sis_strcasecmp(reply->value, "ERROR"))
-			{
-				mess->style = SIS_NET_ANS_ERROR;
-				mess->rval = _sis_json_node_get_sds(handle->node, "message");  
-			}
-			else
-			{
-				mess->style = SIS_NET_ANS_VAL;
-				mess->rval = sis_sdsnew(reply->value);
-			}
+			mess->style = SIS_NET_ANS_VAL;
+			mess->rval = sis_sdsnew(reply->value);
 		}
 		else if (reply->type == SIS_JSON_ARRAY || reply->type == SIS_JSON_OBJECT)
 		{
@@ -297,9 +297,9 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 
 			sis_free(str);
 		}		
-        printf(":::%d %d %s \n%s \n", mess->style, (int)mess->rint,
-                mess->source? mess->source : "nil",
-                mess->rval ? mess->rval : "nil");
+        // printf(":::%d %d %s \n%s \n", mess->style, (int)mess->rint,
+        //         mess->source? mess->source : "nil",
+        //         mess->rval ? mess->rval : "nil");
     }
     else
     {

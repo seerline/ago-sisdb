@@ -169,6 +169,7 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 		return 0;
 	}
 	s_sisdb_table *tb = collect_->sdb;
+
 	// 先判断是否可以直接插入
 	if ((tb->db->field_solely->count == 0 && !tb->db->field_mindex) ||
 		(SIS_OBJ_LIST(collect_->obj)->count < 1))
@@ -217,6 +218,10 @@ int sisdb_collect_wseries(s_sisdb_collect *collect_, s_sis_sds in_)
 		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->sdb->db->size, ilen);
 		return 0;
 	}
+	// if (!collect_->obj)
+	// {
+	// 	collect_->obj = sis_object_create(SIS_OBJECT_LIST, sis_struct_list_create(collect_->sdb->db->size));
+	// }
 	// 应该写入一个队列中
 	int start = SIS_OBJ_LIST(collect_->obj)->count;
 	sis_struct_list_pushs(SIS_OBJ_LIST(collect_->obj), in_, count);
