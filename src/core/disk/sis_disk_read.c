@@ -1033,6 +1033,26 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     // sdb 因为有废弃的数据 所以只能通过索引去读取数据
     // 如果索引丢弃 原则是后面的key覆盖前面的key
         {
+            if (callback->cb_key)
+            {
+                s_sis_sds msg = sis_sdsempty();
+                msg = sis_disk_file_get_keys(cls_, false, msg);
+                if (sis_sdslen(msg) > 2) 
+                {
+                    callback->cb_key(callback->source, msg, sis_sdslen(msg));
+                }
+                sis_sdsfree(msg);
+            }
+            if (callback->cb_sdb)
+            {
+                s_sis_sds msg = sis_sdsempty();
+                msg = sis_disk_file_get_sdbs(cls_, false, msg);
+                if (sis_sdslen(msg) > 2) 
+                {
+                    callback->cb_sdb(callback->source, msg, sis_sdslen(msg));
+                }
+                sis_sdsfree(msg);                
+            }
             sis_disk_read_sub_sdb(cls_, reader_);  
         }
         break;

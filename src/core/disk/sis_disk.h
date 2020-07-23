@@ -552,6 +552,9 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
 ///////////////////////////
 //  write
 ///////////////////////////
+s_sis_sds sis_disk_file_get_keys(s_sis_disk_class *cls_, bool onlyincr_, s_sis_sds msg_);
+s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_, s_sis_sds msg_);
+
 size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_);
 size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_);
 

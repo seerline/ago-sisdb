@@ -487,20 +487,21 @@ int sis_disk_class_set_sdb(s_sis_disk_class *cls_, bool iswrite_, const char *in
 
 static void cb_key(void *worker_, void *key_, size_t size) 
 {
-    // printf("%s : %s\n", __func__, (char *)key_);
+    printf("pack : %s : %s\n", __func__, (char *)key_);
     s_sis_disk_class *wfile = (s_sis_disk_class *)worker_; 
     sis_disk_class_set_key(wfile, true, key_, size);
 }
 
 static void cb_sdb(void *worker_, void *sdb_, size_t size)  
 {
-    // printf("%s : %s\n", __func__, (char *)sdb_);
+    printf("pack : %s : %s\n", __func__, (char *)sdb_);
     s_sis_disk_class *wfile = (s_sis_disk_class *)worker_; 
     sis_disk_class_set_sdb(wfile, true, sdb_, size);
 }
 
 static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
 {
+    printf("pack : %s : %s %s\n", __func__, (char *)key_, (char *)sdb_);
     s_sis_disk_class *wfile = (s_sis_disk_class *)worker_; 
     if (sdb_)
     {
@@ -542,7 +543,7 @@ size_t sis_disk_file_pack(s_sis_disk_class *src_, s_sis_disk_class *des_)
     return 0;
 }
 
-#if 1
+#if 0
 
 int __nums = 0;
 size_t __size = 0;
@@ -898,7 +899,14 @@ void rewrite_sdb(s_sis_disk_class *rwf)
     // printf("write end. [%zu], read 2:\n", size);
 
 }
-int main()
+void pack_sdb(s_sis_disk_class *src)
+{
+    s_sis_disk_class *des = sis_disk_class_create(SIS_DISK_TYPE_SDB ,"dbs", "20200101");  
+    sis_disk_class_init(des, SIS_DISK_TYPE_SDB, "debug1", "db");
+    sis_disk_file_pack(src, des);
+    sis_disk_class_destroy(des);
+}
+int main(int argc, char **argv)
 {
     sis_log_open(NULL, 10, 0);
     safe_memory_start();
@@ -922,12 +930,13 @@ int main()
     s_sis_disk_class *rwf = sis_disk_class_create(SIS_DISK_TYPE_SDB ,"dbs", "20200101");  
     sis_disk_class_init(rwf, SIS_DISK_TYPE_SDB, "debug", "db");
     // 测试写入后再写出错问题
-    rewrite_sdb(rwf);
+    // rewrite_sdb(rwf);
+    // pack_sdb(rwf);
     // write_sdb(rwf, keys, sdbs);  // sdb
     // write_sdb(rwf, NULL, sdbs);  // kdb
     // write_sdb(rwf, keys, NULL);  // key
     // write_sdb(rwf, NULL, NULL);  // any
-    // read_of_sub(rwf);
+    read_of_sub(rwf);
     sis_disk_class_destroy(rwf);
     
     safe_memory_stop();

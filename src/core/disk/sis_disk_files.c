@@ -329,7 +329,10 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
         printf("%s %s ",wcatch_->key ? SIS_OBJ_SDS(wcatch_->key) : "N", wcatch_->sdb ? SIS_OBJ_SDS(wcatch_->sdb) : "N");
     }
     printf("hid=%d, %p fidx = %d size = %zu\n", hid_, unit, cls_->cur_unit, wcatch_ ? sis_memory_get_size(wcatch_->memory) : 0);
-
+    if (!unit->fp)
+    {
+        return 0;
+    }
     // 定位写入的位置
     sis_seek(unit->fp, unit->offset, SEEK_SET);
 
