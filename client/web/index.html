@@ -40,6 +40,10 @@ html, body, .container {
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_transact", "val":{"time":20200101,"newp":80060,"volume":222000}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_transact"}' onclick="send_command(this)"/>
     <div>---</div>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"csv"}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"array"}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"json"}}' onclick="send_command(this)"/>
+    <div>---</div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.*"}' onclick="send_command(this)"/>

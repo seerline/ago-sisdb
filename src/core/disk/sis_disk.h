@@ -599,7 +599,7 @@ size_t cb_sis_disk_file_read_index(void *cls_, s_sis_disk_head *, s_sis_object *
 int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_);
 
 // 直接获取数据 需要索引 只能获取单一key的数据 可指定时间段 k1 db1
-int sis_disk_file_read_get(s_sis_disk_class *cls_, s_sis_disk_reader *reader_);
+s_sis_object *sis_disk_file_read_get_obj(s_sis_disk_class *cls_, s_sis_disk_reader *reader_);
 
 ///////////////////////////
 //  pack

@@ -134,6 +134,10 @@ s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *);
 s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect_, s_sis_json_node *);
 
 s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *, int format_);
+
+#define sisdb_field_is_whole(f) (!f || !sis_strncmp(f, "*", 1))
+// 得到格式化的数据
+s_sis_sds sisdb_get_chars_format_sds(s_sisdb_table *tb_, const char *key_, int iformat_, const char *in_, size_t ilen_, const char *fields_);
 // 得到处理过的数据
 s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int iformat_, s_sis_json_node *);
 // 用户传入的 argv 参数的关键字的定义如下：

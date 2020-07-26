@@ -1,7 +1,6 @@
 bin/*
-db/
-deps/
 db*/
+deps/
 o/
 out/
 log/

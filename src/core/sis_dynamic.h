@@ -154,7 +154,9 @@ inline uint64 _sis_field_get_uint(s_sis_dynamic_field *unit_, const char *val_, 
 	uint16 *v16;
 	uint32 *v32;
 	uint64 *v64;
-
+	// char info[128];
+	// sis_sprintf(info, 128, "%s %d %d %d %d",unit_->name, unit_->offset, unit_->len, unit_->count, index_);
+	// sis_out_binary(info, val_ + unit_->offset, 16);
 	switch (unit_->len)
 	{
 	case 1:

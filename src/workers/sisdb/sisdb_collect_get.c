@@ -508,6 +508,10 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 // 为保证最快速度，尽量不加参数
 s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_, int format_)
 {
+	if (!collect_)
+	{
+		return NULL;
+	}
 	int start = 0;
 	int count = SIS_OBJ_LIST(collect_->obj)->count;
 
@@ -535,61 +539,74 @@ s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_, 
 	return other;
 }
 
-#define sisdb_field_is_whole(f) (!f || !sis_strncmp(f, "*", 1))
-
-s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int iformat_, s_sis_json_node *node_)
+s_sis_sds sisdb_get_chars_format_sds(s_sisdb_table *tb_, const char *key_, int iformat_, const char *in_, size_t ilen_, const char *fields_)
 {
-	s_sis_sds out = sisdb_collect_get_original_sds(collect_, node_);
-	if (!out)
-	{
-		return NULL;
-	}
-
-	const char *fields = NULL;
-	if (node_ && sis_json_cmp_child_node(node_, "fields"))
-	{
-		fields = sis_json_get_str(node_, "fields");
-	}
-
-	s_sis_string_list *field_list = collect_->sdb->fields; //取得全部的字段定义
-	if (!sisdb_field_is_whole(fields))
+	s_sis_string_list *field_list = tb_->fields; //取得全部的字段定义
+	bool iswhole = sisdb_field_is_whole(fields_);
+	if (!iswhole)
 	{
 		field_list = sis_string_list_create_w();
-		sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
+		sis_string_list_load(field_list, fields_, sis_strlen(fields_), ",");
 	}
 
 	s_sis_sds other = NULL;
 	switch (iformat_)
 	{
-	case SISDB_FORMAT_BYTES:
-		if (!sisdb_field_is_whole(fields))
-		{
-			other = sisdb_collect_struct_to_sds(collect_->sdb->db, out, sis_sdslen(out), field_list);
-			sis_sdsfree(out);
-			out = other;
-		}
-		break;
+	// case SISDB_FORMAT_BYTES:
+	// 	if (!iswhole)
+	// 	{
+	// 		other = sisdb_collect_struct_to_sds(tb_->db, in_, ilen_, field_list);
+	// 		sis_sdsfree(src_);
+	// 		src_ = other;
+	// 	}
+	// 	break;
 	case SISDB_FORMAT_JSON:
-		other = sisdb_collect_struct_to_json_sds(collect_->sdb->db, out, sis_sdslen(out), key_, field_list, true, true);
-		sis_sdsfree(out);
-		out = other;
+		other = sisdb_collect_struct_to_json_sds(tb_->db, in_, ilen_, key_, field_list, fields_ ? true : false, true);
 		break;
 	case SISDB_FORMAT_ARRAY:
-		other = sisdb_collect_struct_to_array_sds(collect_->sdb->db, out, sis_sdslen(out), field_list, true);
-		sis_sdsfree(out);
-		out = other;
+		other = sisdb_collect_struct_to_array_sds(tb_->db, in_, ilen_, field_list, true);
 		break;
 	case SISDB_FORMAT_CSV:
-		other = sisdb_collect_struct_to_csv_sds(collect_->sdb->db, out, sis_sdslen(out), field_list, false);
-		sis_sdsfree(out);
-		out = other;
+		other = sisdb_collect_struct_to_csv_sds(tb_->db, in_, ilen_, field_list, fields_ ? true : false);
 		break;
 	}
-	if (!sisdb_field_is_whole(fields))
+	if (!iswhole)
 	{
 		sis_string_list_destroy(field_list);
 	}
-	return out;
+	return other;
+}
+s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int iformat_, s_sis_json_node *node_)
+{
+	if (!collect_)
+	{
+		return NULL;
+	}
+	s_sis_sds out = sisdb_collect_get_original_sds(collect_, node_);
+	if (!out)
+	{
+		return NULL;
+	}
+	const char *fields = NULL;
+	if (node_ && sis_json_cmp_child_node(node_, "fields"))
+	{
+		fields = sis_json_get_str(node_, "fields");
+	}
+	if (iformat_ == SISDB_FORMAT_BYTES)
+	{
+		bool iswhole = sisdb_field_is_whole(fields);
+		if (iswhole)
+		{
+			return out;
+		}
+		s_sis_string_list *field_list = sis_string_list_create_w();
+		sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
+		s_sis_sds other = sisdb_collect_struct_to_sds(collect_->sdb->db, out, sis_sdslen(out), field_list);
+		sis_sdsfree(out);
+		sis_string_list_destroy(field_list);
+		return other;
+	}
+	return sisdb_get_chars_format_sds(collect_->sdb, key_, iformat_, out, sis_sdslen(out), fields);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

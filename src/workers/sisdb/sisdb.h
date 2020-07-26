@@ -159,19 +159,31 @@ void  sisdb_method_init(void *);
 void  sisdb_method_uninit(void *);
 
 int cmd_sisdb_init(void *worker_, void *argv_);
-
+// 主要的获取数据接口
+// 不带参数表示从内存中快速获取完整数据
+// 带 snodate 参数 表示内存找不到就去磁盘找对应数据
+// 带 search 参数 表示获取指定时间段的数据
+// 带 fields 参数 表示返回数据按指定字段排列
 int cmd_sisdb_get(void *worker_, void *argv_);
+// 以json数据写入数据
 int cmd_sisdb_set(void *worker_, void *argv_);
 
+// 设置sno的结束标记 
 int cmd_sisdb_stop(void *worker_, void *argv_);
+// 删除某个key的数据
 int cmd_sisdb_del(void *worker_, void *argv_);
+// 如果数据为空就清除key
 int cmd_sisdb_drop(void *worker_, void *argv_);
 
+// 得到多股票和多表的最后一条数据 仅仅读取内存中的数据
 int cmd_sisdb_gets(void *worker_, void *argv_);
+// 二进制数据写入
 int cmd_sisdb_bset(void *worker_, void *argv_);
+// 删除多个数据
 int cmd_sisdb_dels(void *worker_, void *argv_);
 // 订阅表的最新数据 历史数据用get获取
 int cmd_sisdb_sub(void *worker_, void *argv_);
+// 取消订阅
 int cmd_sisdb_unsub(void *worker_, void *argv_);
 
 // 订阅sno的数据 读取数据会开一个线程来处理历史数据 历史数据发送完毕线程销毁

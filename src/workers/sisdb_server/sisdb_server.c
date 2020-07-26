@@ -463,11 +463,11 @@ void sisdb_server_working(void *worker_)
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     // 这里要判断是否新的一天 如果是就存盘
     // 存盘后如果检测到是周五 就执行pack工作
-    if (context->work_date == 0)
-    {
-        context->work_date = sis_time_get_idate(0);
-    }
-    else
+    // if (context->work_date == 0)
+    // {
+    //     context->work_date = sis_time_get_idate(0);
+    // }
+    // else
     {
         int minute = sis_time_get_iminute(0);
         // 最后一分钟就开始处理数据

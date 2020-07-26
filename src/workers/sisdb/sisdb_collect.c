@@ -277,16 +277,29 @@ s_sis_sds sisdb_collect_struct_to_json_sds(s_sis_dynamic_db *db_, const char *in
 
 	s_sis_json_node *jone = sis_json_create_object();
 	
-	// if (isfields_)
-	// {
-	// 	s_sis_json_node *jfields = sis_json_create_object();
-	// 	for (int i = 0; i < fnums; i++)
-	// 	{
-	// 		s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(db_->fields, sis_string_list_get(fields_, i));
-	// 		sis_json_object_add_uint(jfields, inunit->name, i);
-	// 	}
-	// 	sis_json_object_add_node(jone, "fields", jfields);
-	// }
+	if (isfields_)
+	{
+		s_sis_json_node *jfields = sis_json_create_object();
+		for (int i = 0; i < fnums; i++)
+		{
+			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(db_->fields, sis_string_list_get(fields_, i));
+			if (inunit->count > 1)
+			{
+				for (int k = 0; k < inunit->count; k++)
+				{
+					char fname[64];
+					sis_sprintf(fname, 64, "%s%d", inunit->name, k);
+					sis_json_object_add_uint(jfields, fname, i);
+				}
+			}
+			else
+			{
+				sis_json_object_add_uint(jfields, inunit->name, i);
+			}
+			
+		}
+		sis_json_object_add_node(jone, "fields", jfields);
+	}
 
 	s_sis_json_node *jtwo = sis_json_create_array();
 	const char *val = in_;
@@ -344,7 +357,19 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sis_dynamic_db *db_, const char *in_
 		for (int i = 0; i < fnums; i++)
 		{
 			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(db_->fields, sis_string_list_get(fields_, i));
-			o = sis_csv_make_str(o, inunit->name, sis_sdslen(inunit->name));
+			if (inunit->count > 1)
+			{
+				for (int k = 0; k < inunit->count; k++)
+				{
+					char fname[64];
+					sis_sprintf(fname, 64, "%s%d", inunit->name, k);
+					o = sis_csv_make_str(o, fname, sis_strlen(fname));
+				}
+			}
+			else
+			{
+				o = sis_csv_make_str(o, inunit->name, sis_sdslen(inunit->name));
+			}
 		}
 		o = sis_csv_make_end(o);
 	}
@@ -358,7 +383,6 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sis_dynamic_db *db_, const char *in_
 		{
 			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(db_->fields, sis_string_list_get(fields_, i));
 			o = sis_dynamic_field_to_csv(o, inunit, val);
-			val += db_->size;
 		}
 		o = sis_csv_make_end(o);
 		val += db_->size;

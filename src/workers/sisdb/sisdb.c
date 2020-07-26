@@ -228,7 +228,8 @@ bool sisdb_init(void *worker_, void *argv_)
     worker->context = context;
 
 	context->name = sis_sdsnew(node->key);
-    context->work_date = 0;
+    // context->work_date = 0;
+    context->work_date = sis_time_get_idate(0);
 
     context->keys = sis_map_list_create(sis_sdsfree_call);
 	context->sdbs = sis_map_list_create(sisdb_table_destroy);
@@ -333,7 +334,19 @@ int cmd_sisdb_get(void *worker_, void *argv_)
     }
     else
     {
-        o = sisdb_get_sds(context, netmsg->key, &format, netmsg->val);
+        s_sisdb_table *tb = sis_map_list_get(context->sdbs, sdbn);
+        if (tb)
+        {
+            printf("tb->style = %s %d\n", sdbn, tb->style);
+            if (tb->style == SISDB_TB_STYLE_SNO)
+            {
+                o = sisdb_get_sno_sds(context, netmsg->key, &format, netmsg->val);
+            }
+            else
+            {
+                o = sisdb_get_sds(context, netmsg->key, &format, netmsg->val);
+            }
+        }
     }
     sis_sdsfree(keyn);    sis_sdsfree(sdbn);
 	if (o)

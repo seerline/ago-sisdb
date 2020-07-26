@@ -138,7 +138,7 @@ int sisdb_one_set(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds
     s_sisdb_collect *collect = sisdb_kv_create(style_, key_, argv_, sis_sdslen(argv_));
     sis_map_pointer_set(sisdb_->collects, key_, collect);
     // 这里处理订阅
-    sisdb_make_sub_message(sisdb_, collect, style_, argv_, sis_sdslen(argv_));
+    sisdb_make_sub_message(sisdb_, collect, style_, argv_);
     return 0;
 }
 
@@ -198,20 +198,129 @@ s_sis_sds sisdb_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, 
 	        s_sis_json_handle *handle = sis_json_load(argv_, sis_sdslen(argv_));
             if (handle)
             {
-                int iformat = sis_from_node_get_format(handle->node, SISDB_FORMAT_CHARS);
+                int iformat = sis_from_node_get_format(handle->node, SISDB_FORMAT_JSON);
                 *format_ = iformat & SISDB_FORMAT_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
                 o = sisdb_collect_get_sds(collect, key_, iformat, handle->node);           
                 sis_json_close(handle);
             }
             else
             {
-                o = sisdb_collect_get_sds(collect, key_, SISDB_FORMAT_CHARS, NULL);  
+                *format_ = SISDB_FORMAT_CHARS;
+                o = sisdb_collect_fastget_sds(collect, key_, SISDB_FORMAT_CHARS);
             }
             
         } 
     }
     return o;
 }
+// 从磁盘中获取数据
+s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int iformat_, int workdate_, s_sis_json_node *node_)
+{
+    char fn[32];
+    sis_llutoa(workdate_, fn, 32, 10);
+    char work_path[512];
+    sis_sprintf(work_path, 512, "%s%s/", sisdb_->fast_path, sisdb_->name);
+    s_sis_disk_class *read_class = sis_disk_class_create(); 
+    if (sis_disk_class_init(read_class, SIS_DISK_TYPE_SNO, work_path, fn) 
+        || sis_disk_file_read_start(read_class))
+    {
+        sis_disk_class_destroy(read_class);
+        return NULL;
+    }
+    s_sis_sds keyn = NULL; s_sis_sds sdbn = NULL; 
+    int cmds = sis_str_divide_sds(key_, '.', &keyn, &sdbn);
+    if (cmds < 2)
+    {
+        sis_disk_class_destroy(read_class);
+        return NULL;
+    }
+    s_sisdb_table *tb = sis_map_list_get(sisdb_->sdbs, sdbn);
+
+    s_sis_disk_reader *reader = sis_disk_reader_create(NULL);
+    // reader->issub = 0;
+    // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "null");
+    sis_disk_reader_set_sdb(reader, sdbn);
+    sis_disk_reader_set_key(reader, keyn); 
+    sis_sdsfree(keyn); sis_sdsfree(sdbn);
+
+    // sub 是一条一条的输出
+    // get 是所有符合条件的一次性输出
+    s_sis_object *obj = sis_disk_file_read_get_obj(read_class, reader);
+
+    sis_disk_reader_destroy(reader);
+
+    sis_disk_file_read_stop(read_class);
+    sis_disk_class_destroy(read_class); 
+
+    if (obj)
+    {
+        sis_object_destroy(obj);
+        const char *fields = NULL;
+        if (node_ && sis_json_cmp_child_node(node_, "fields"))
+        {
+            fields = sis_json_get_str(node_, "fields");
+        }
+        // printf("iformat_ = %x\n", iformat_);
+        // sis_out_binary("sno", o, sis_sdslen(o));
+        if (iformat_ == SISDB_FORMAT_BYTES)
+        {
+            bool iswhole = sisdb_field_is_whole(fields);
+            if (iswhole)
+            {
+                return sis_sdsnewlen(SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
+            }
+            s_sis_string_list *field_list = sis_string_list_create_w();
+            sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
+            s_sis_sds other = sisdb_collect_struct_to_sds(tb->db, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), field_list);
+            sis_string_list_destroy(field_list);
+            return other;
+        }
+        return sisdb_get_chars_format_sds(tb, key_, iformat_, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), fields);
+    }
+    return NULL;
+}
+
+// 获取sno的数据
+s_sis_sds sisdb_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)
+{
+    s_sis_sds o = NULL;    
+    s_sisdb_collect *collect = sisdb_get_collect(sisdb_, key_);  
+    if (!argv_)
+    {
+        *format_ = SISDB_FORMAT_CHARS;
+        o = sisdb_collect_fastget_sds(collect, key_, SISDB_FORMAT_CHARS);
+    }
+    else
+    {
+        s_sis_json_handle *handle = sis_json_load(argv_, sis_sdslen(argv_));
+        if (handle)
+        {
+            // 带参数 
+            int iformat = sis_from_node_get_format(handle->node, SISDB_FORMAT_JSON);
+            *format_ = iformat & SISDB_FORMAT_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
+            // 找 date 字段  
+            int workdate = sis_json_get_int(handle->node, "date", sisdb_->work_date);
+            printf("----- %d %d\n", workdate, sisdb_->work_date);
+            if (workdate < sisdb_->work_date)
+            {
+                // 从磁盘中获取数据
+                o = sisdb_disk_get_sno_sds(sisdb_, key_, iformat, workdate, handle->node); 
+            }
+            else
+            {
+                o = sisdb_collect_get_sds(collect, key_, iformat, handle->node);                          
+            }
+            sis_json_close(handle);
+        }
+        else
+        {
+            *format_ = SISDB_FORMAT_CHARS;
+            o = sisdb_collect_fastget_sds(collect, key_, SISDB_FORMAT_CHARS);
+        }        
+    } 
+    return o;
+} 
+
 int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char *keys_, const char *sdbs_)
 {
     sis_string_list_clear(list_);
@@ -383,7 +492,7 @@ int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
         return -5;
     }
     // 这里处理订阅
-    sisdb_make_sub_message(sisdb_, collect, SISDB_COLLECT_TYPE_BYTES, value_, sis_sdslen(value_));
+    sisdb_make_sub_message(sisdb_, collect, SISDB_COLLECT_TYPE_BYTES, value_);
 
     return 0;
 }
@@ -436,7 +545,7 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
         return -5;
     }
     // 这里处理订阅
-    sisdb_make_sub_message(sisdb_, collect, SISDB_COLLECT_TYPE_BYTES, bytes, sis_sdslen(bytes));
+    sisdb_make_sub_message(sisdb_, collect, SISDB_COLLECT_TYPE_BYTES, bytes);
 
     sis_sdsfree(bytes);
     return 0;
@@ -450,12 +559,12 @@ int sisdb_get_format(s_sis_sds argv_)
     s_sis_json_handle *handle = argv_ ? sis_json_load(argv_, sis_sdslen(argv_)) : NULL;
     if (handle)
     {
-        iformat = sis_from_node_get_format(handle->node, SISDB_FORMAT_CHARS);
+        iformat = sis_from_node_get_format(handle->node, SISDB_FORMAT_JSON);
         sis_json_close(handle);
     }
     return iformat;
 }
-void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_collect *collect_, uint8 style_, s_sis_sds in_, size_t ilen_)
+void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_collect *collect_, uint8 style_, const char *in_, size_t ilen_)
 {
     // 赋新值
     s_sis_net_message *newinfo = sis_net_message_create();
@@ -463,16 +572,14 @@ void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_co
     newinfo->source = sis_sdsdup(info_->source);
     newinfo->key = sis_sdsdup(collect_->name);
 
-    int format = info_->rfmt & SISDB_FORMAT_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
-    if(format == SISDB_FORMAT_CHARS)
+    if(info_->rfmt & SISDB_FORMAT_CHARS)
     {
         if(style_ == SISDB_COLLECT_TYPE_BYTES)
         {
             if(collect_->sdb)
             {
                 // 只有数据表才能转格式
-                s_sis_sds out = sisdb_collect_struct_to_json_sds(collect_->sdb->db, 
-                    in_, ilen_, collect_->name, collect_->sdb->fields, false, true);
+                s_sis_sds out = sisdb_get_chars_format_sds(collect_->sdb, collect_->name, info_->rfmt, in_, ilen_, NULL);
                 sis_net_ans_with_chars(newinfo, out, sis_sdslen(out));
                 sis_sdsfree(out); 
             }
@@ -480,24 +587,24 @@ void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_co
             {
                 // 返回数据类型不正确
                 // sis_net_ans_with_error(newinfo, "datatype error.", 15);
-                sis_net_ans_with_bytes(newinfo, in_, sis_sdslen(in_));
+                sis_net_ans_with_bytes(newinfo, in_, ilen_);
             }
         }
         else
         {
-            sis_net_ans_with_chars(newinfo, in_, sis_sdslen(in_));
+            sis_net_ans_with_chars(newinfo, in_, ilen_);
         }         
     }
     else
     {
         if(style_ == SISDB_COLLECT_TYPE_BYTES)
         {
-            sis_net_ans_with_bytes(newinfo, in_, sis_sdslen(in_));
+            sis_net_ans_with_bytes(newinfo, in_, ilen_);
         }
         else
         {
             // 转二进制
-            sis_net_ans_with_bytes(newinfo, in_, sis_sdslen(in_));
+            sis_net_ans_with_bytes(newinfo, in_, ilen_);
         }         
     }
 
@@ -505,7 +612,7 @@ void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_co
     sis_net_message_destroy(newinfo); 
 }
 
-void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, s_sisdb_collect *collect_, uint8 style_, s_sis_sds in_, size_t ilen_)
+void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, s_sisdb_collect *collect_, uint8 style_, s_sis_sds in_)
 {
     // 先处理单键值订阅
     {
@@ -516,9 +623,8 @@ void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, s_sisdb_collect *collect_, uint
             for (int i = 0; i < sublist->netmsgs->count; i++)
             {
                 s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-                // info->rfmt = sisdb_get_format(info->val);
                 // printf("sublist one: %d  %s  format = %d\n", sublist->netmsgs->count, info->key, info->rfmt);
-                _send_sub_message(sisdb_, info, collect_, style_, in_, ilen_);
+                _send_sub_message(sisdb_, info, collect_, style_, in_, sis_sdslen(in_));
             }
         }
     }
@@ -584,7 +690,7 @@ void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, s_sisdb_collect *collect_, uint
                 {
                     s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
                     // printf("sublist sdb: %d  %s  format = %d\n", sublist->netmsgs->count, info->key, info->rfmt);
-                    _send_sub_message(sisdb_, info, collect_, style_, in_, ilen_);
+                    _send_sub_message(sisdb_, info, collect_, style_, in_, sis_sdslen(in_));
                 }
             }
         }
@@ -783,12 +889,11 @@ static void cb_read(void *src, const char *key_, const char *sdb_, s_sis_object 
     newinfo->key = sis_sdsnew(key_);
     newinfo->key = sis_sdscatfmt(newinfo->key, ".%s", sdb_);
 
-    int format = info->netmsg->rfmt & SISDB_FORMAT_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
-    if(format == SISDB_FORMAT_CHARS)
+    if(info->netmsg->rfmt & SISDB_FORMAT_CHARS)
     {
         s_sisdb_table *tb = sis_map_list_get(info->sisdb->sdbs, sdb_);
-        s_sis_sds out = sisdb_collect_struct_to_json_sds(tb->db, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_),
-            newinfo->key, tb->fields, false, true);
+        s_sis_sds out = sisdb_get_chars_format_sds(tb, newinfo->key, info->netmsg->rfmt, 
+                SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_), NULL);
         sis_net_ans_with_chars(newinfo, out, sis_sdslen(out));
         sis_sdsfree(out); 
     }
