@@ -25,7 +25,7 @@ html, body, .container {
   </div>
   <div>
     <div>sdb option</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600600.day", "val":{"time":20200101,"newp":10050}}' onclick="send_command(this)"/>
+    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600600.day", "val":{"time":20200101,"newp":10050}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600600.day", "val":[20200102,101, 105, 100, 103, 1000, 8000]}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600600.day"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.day", "val":{"time":20200102,"newp":10150}}' onclick="send_command(this)"/>
@@ -39,22 +39,22 @@ html, body, .container {
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_transact", "val":{"time":20200101,"newp":80060,"volume":222000}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_transact"}' onclick="send_command(this)"/>
-    <div>---</div>
+    <div>---</div> -->
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"SH600745.stk_snapshot","val":{"date":20200407,"format":"csv"}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"csv"}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"array"}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"json"}}' onclick="send_command(this)"/>
     <div>---</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
+    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.*"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.*"}' onclick="send_command(this)"/>
     <div>del option</div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.del", "key":"sh600600.day", "val":{"search":{"start":0,"stop":-1}}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.dels", "key":"*.day", "val":{"search":{"start":0,"stop":-1}}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.dels", "key":"*.day", "val":{"search":{"start":0,"stop":-1}}}' onclick="send_command(this)"/> -->
     <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.drop", "key":"day"}' onclick="send_command(this)"/> -->
   </div>
-  <div>normal command:</div>
+  <!-- <div>normal command:</div>
   <div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"key1", "val":"my is key1."}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"key1"}' onclick="send_command(this)"/>
@@ -62,14 +62,14 @@ html, body, .container {
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.dels", "key":"*"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.sub", "key":"key1"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsub", "key":"key1"}' onclick="send_command(this)"/>
-  </div>
+  </div> -->
   <div>system command:</div>
   <div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"auth", "key":"guest", "val":"guest1234"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"show"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"save"}' onclick="send_command(this)"/>
+    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"save"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"pack"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"call"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"call"}' onclick="send_command(this)"/> -->
   </div>
   <div id='recv-msg'></div>
 </body>
