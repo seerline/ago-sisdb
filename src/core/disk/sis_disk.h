@@ -1,6 +1,7 @@
 ﻿#ifndef _SIS_DISK_H
 #define _SIS_DISK_H
 
+#include "os_fork.h"
 #include "sis_memory.h"
 #include "sis_dynamic.h"
 #include "sis_obj.h"

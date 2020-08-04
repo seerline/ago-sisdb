@@ -57,7 +57,8 @@ typedef struct s_sis_url {
     uint8     protocol;    // 通讯协议 -- 默认为 0 tcp 协议     
 	uint8     compress;    // 压缩方式 默认不压缩
 	uint8     crypt;       // 加密方式 默认不加密   
-	char      ip[128];     // ip地址 
+	char      ip4[16];      // ip地址 
+	char      name[128];   // 域名地址 
     int       port;        // 端口号
     // bool      auth;        // 是否需要用户验证 放在外层实际业务中处理
     // char      username[128];    // username 
@@ -176,12 +177,17 @@ typedef struct s_sis_net_class {
 } s_sis_net_class;
 
 #pragma pack(pop)
+
+bool sis_net_is_ip4(const char *ip_);
+
 /////////////////////////////////////////////////////////////
 // s_sis_url define 
 /////////////////////////////////////////////////////////////
 
 s_sis_url *sis_url_create(); 
 void sis_url_destroy(void *);
+
+void sis_url_set_ip4(s_sis_url *, const char *ip_);
 
 void sis_url_clone(s_sis_url *scr_, s_sis_url *des_);
 void sis_url_set(s_sis_url *, const char *key, char *val);

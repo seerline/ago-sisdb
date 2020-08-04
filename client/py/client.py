@@ -1,33 +1,74 @@
-import asyncio
-import websockets
+import sys
+import time
+import ctypes
+import platform
 
-# 向服务器端认证，用户名密码通过才能退出循环
-async def auth_system(websocket):
-    while True:
-        cred_text = input("please enter your username and password: ")
-        await websocket.send(cred_text)
-        response_str = await websocket.recv()
-        print(f"{response_str}")
-        # if "congratulation" in response_str:
-        return True
+sysstr = platform.system()
+if(sysstr =="Windows"):
+	print ("load windows lib....")
+	sisdb_client = ctypes.cdll.LoadLibrary("../api_sisdb/lib/api_sisdb.dll")
+elif(sysstr == "Linux"):
+	print ("load linux lib....")
+	sisdb_client = ctypes.cdll.LoadLibrary("../api_sisdb/lib/api_sisdb.so")
+elif(sysstr == "Darwin"):
+    print ("load apple lib....")
+    sisdb_client = ctypes.cdll.LoadLibrary("../api_sisdb/lib/api_sisdb.dylib")
+else:
+	print ("other system ! exit")
+	sys.exit(0)
 
-# 向服务器端发送认证后的消息
-async def send_msg(websocket):
-    while True:
-        _text = input("please enter your context: ")
-        if _text == "exit":
-            print(f'you have enter "exit", goodbye')
-            await websocket.close(reason="user exit")
-            return False
-        await websocket.send(_text)
-        recv_text = await websocket.recv()
-        print(f"{recv_text}")
+def cb_sub_command(source, value):
+    print("cb_sub_command : %s" % value.decode())
+    return 0
 
-# 客户端主逻辑
-async def main_logic():
-    async with websockets.connect('ws://127.0.0.1:7329') as websocket:
-        await auth_system(websocket)
+def cb_sub_start(source, value):
+    print("cb_sub_start : %s" % value.decode())
+    return 0
 
-        await send_msg(websocket)
+def cb_sub_stop(source, value):
+    print("cb_sub_stop : %s" % value.decode())
+    return 0
 
-asyncio.get_event_loop().run_until_complete(main_logic())
+def cb_stk_snapshot(source, value):
+    print("cb_stk_snapshot : %s" % value.decode())
+    return 0
+
+def cb_idx_snapshot(source, value):
+    print("cb_idx_snapshot : %s" % value.decode())
+    return 0
+
+def cb_stk_transact(source, value):
+    print("cb_stk_transact : %s" % value.decode())
+    return 0
+
+CMPFUNC = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_char_p) 
+_cb_sub_command  = CMPFUNC(cb_sub_command)
+_cb_sub_start    = CMPFUNC(cb_sub_start)
+_cb_sub_stop     = CMPFUNC(cb_sub_stop)
+_cb_stk_snapshot = CMPFUNC(cb_stk_snapshot)
+_cb_idx_snapshot = CMPFUNC(cb_idx_snapshot)
+_cb_stk_transact = CMPFUNC(cb_stk_transact)
+
+handle = sisdb_client.api_sisdb_client_create(b"woan2007.ticp.io", 7329, b"", b"");
+# handle = sisdb_client.api_sisdb_client_create(b"223.166.74.203", 7329, b"", b"");
+# handle = sisdb_client.api_sisdb_client_create(b"192.168.3.118", 7329, b"", b"");
+print("handle : ", handle);
+
+
+sisdb_client.api_sisdb_command_ask(handle, 
+    b"sdb.get", 
+    b"sh600601.stk_snapshot", 
+    b"{\"date\":20200204,\"format\":\"csv\"}",
+    _cb_stk_snapshot);
+
+# sisdb_client.api_sisdb_command_ask(handle, 
+#     b"show", 
+#     b"", 
+#     b"",
+#     _cb_stk_command);
+
+for i in range(1,100):
+	time.sleep(1)
+	pass
+
+sisdb_client.api_sisdb_client_destroy(handle);

@@ -166,33 +166,38 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s
 
     return 0;
 }
-
-// 拆包
-int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_memory *out_)
+// 拆包前判断数据是否完整
+int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
 {
-    sis_memory_clear(out_);
     s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)sis_memory(in_), sis_memory_get_size(in_), 0);
     
     int count = 0;
     int isbreak = true;
     int start = sis_memory_get_address(in_);
-    // printf("==1==  %d - %d\n", offset, sis_memory_get_size(ws_->buffer));
+    // printf("==1==  %d - %d\n", start, sis_memory_get_size(in_));
     while (1)
     {
         if (sis_memory_get_size(in_) < 2)
         {
             break;
         }
+        // sis_out_binary("unpack", sis_memory(in_), 32);//sis_memory_get_size(in_));
+
         head_->fin = sis_bitstream_get(stream, 1);
         sis_bitstream_get(stream, 3);
         if (count == 0)
         {
             head_->opcode = sis_bitstream_get(stream, 4);
         }
+        else
+        {
+            // 后续包 opcode = 0 无效 但仍然要移动指针
+            sis_bitstream_get(stream, 4);
+        }
         head_->mask = sis_bitstream_get(stream, 1);
         head_->length = sis_bitstream_get(stream, 7);
 
-        // printf("==2.1==  %d - %d\n",head_->length, sis_memory_get_size(in_));
+        // printf("==2.1== fin = %d  %d\n", head_->fin, head_->length);
         sis_memory_move(in_, 2);
         if (head_->length == 126)
         {
@@ -210,7 +215,7 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
             head_->length = sis_bitstream_get(stream, 64);
             sis_memory_move(in_, 8);
         }
-        // printf("==2.2==  %d - %d\n",head_->length, sis_memory_get_size(in_));
+        // printf("==2.2== fin = %d  %d\n", head_->fin, head_->length);
         if (head_->mask == 1)
         {
             if (sis_memory_get_size(in_) < 4)
@@ -223,7 +228,95 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
             head_->maskkey[3] = sis_bitstream_get(stream, 8);
             sis_memory_move(in_, 4);
         }
-        // printf("==2.3==  %d - %d\n",head_->length, sis_memory_get_size(ws_->buffer));
+        // printf("==2.3== fin = %d  %d\n", head_->fin, sis_memory_get_size(in_));
+        if (sis_memory_get_size(in_) < head_->length)
+        {
+            break;
+        }
+        sis_bitstream_move(stream, head_->length);
+        sis_memory_move(in_, head_->length);
+        if (head_->fin == 1)
+        {
+            // 数据包完整 退出
+            isbreak = false;
+            break;            
+        }
+        count++;
+    }
+    sis_bitstream_destroy(stream);
+    // 退回上次的设置
+    sis_memory_jumpto(in_, start);
+    if (isbreak)
+    {
+        return 0;
+    }
+    
+    return 1;
+}
+// 拆包
+int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_memory *out_)
+{
+    sis_memory_clear(out_);
+    s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)sis_memory(in_), sis_memory_get_size(in_), 0);
+    
+    int count = 0;
+    int isbreak = true;
+    int start = sis_memory_get_address(in_);
+    // printf("==1==  %d - %d\n", start, sis_memory_get_size(in_));
+    while (1)
+    {
+        if (sis_memory_get_size(in_) < 2)
+        {
+            break;
+        }
+        // sis_out_binary("unpack", sis_memory(in_), 32);//sis_memory_get_size(in_));
+
+        head_->fin = sis_bitstream_get(stream, 1);
+        sis_bitstream_get(stream, 3);
+        if (count == 0)
+        {
+            head_->opcode = sis_bitstream_get(stream, 4);
+        }
+        else
+        {
+            // 后续包 opcode = 0 无效 但仍然要移动指针
+            sis_bitstream_get(stream, 4);
+        }
+        head_->mask = sis_bitstream_get(stream, 1);
+        head_->length = sis_bitstream_get(stream, 7);
+
+        // printf("==2.1== fin = %d  %d\n", head_->fin, head_->length);
+        sis_memory_move(in_, 2);
+        if (head_->length == 126)
+        {
+            if (sis_memory_get_size(in_) < 2)
+            {
+                break;
+            }    
+            head_->length = sis_bitstream_get(stream, 16);
+            sis_memory_move(in_, 2);
+        }
+        if (head_->length == 127)
+        {
+            if (sis_memory_get_size(in_) < 8)
+            {    break;}
+            head_->length = sis_bitstream_get(stream, 64);
+            sis_memory_move(in_, 8);
+        }
+        // printf("==2.2== fin = %d  %d\n", head_->fin, head_->length);
+        if (head_->mask == 1)
+        {
+            if (sis_memory_get_size(in_) < 4)
+            {    
+                break;
+            }
+            head_->maskkey[0] = sis_bitstream_get(stream, 8);
+            head_->maskkey[1] = sis_bitstream_get(stream, 8);
+            head_->maskkey[2] = sis_bitstream_get(stream, 8);
+            head_->maskkey[3] = sis_bitstream_get(stream, 8);
+            sis_memory_move(in_, 4);
+        }
+        // printf("==2.3== fin = %d  %d\n", head_->fin, sis_memory_get_size(in_));
         if (sis_memory_get_size(in_) < head_->length)
         {
             break;
@@ -238,10 +331,15 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
                 ptr[i] = ptr[i] ^ head_->maskkey[i % 4];
             }
         }
-        // printf("==2.8==  %d - %d -- stream : %d\n", offset, sis_memory_get_size(ws_->buffer),
+        // printf("==2.8==  %d - %d -- stream : %d\n", head_->fin, sis_memory_get_size(in_),
         //         sis_bitstream_getbytelen(stream));
+
         sis_bitstream_move(stream, head_->length);
         sis_memory_move(in_, head_->length);
+
+        // printf("==2.9==  %d - %d -- stream : %d\n", head_->fin, sis_memory_get_size(in_),
+        //         sis_bitstream_getbytelen(stream));
+
         if (head_->fin == 1)
         {
             // 数据包完整 退出
@@ -253,12 +351,17 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
     sis_bitstream_destroy(stream);
     if (isbreak)
     {
-        // printf("==||==  %d - %d\n", offset, sis_memory_get_size(ws_->buffer));
+        // printf("==||==  %d - %d\n", head_->fin, sis_memory_get_size(in_));
         // 没有成功解析就退回上次的设置
         sis_memory_clear(out_);
         sis_memory_jumpto(in_, start);
         return 0;
     }
+    else
+    {
+        
+    }
+    
     return 1;
 }
 
@@ -277,9 +380,16 @@ int sis_net_pack_ws(s_sis_memory *in_, s_sis_memory_info *info, s_sis_memory *ou
 }
 int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory *out_)
 {
-    s_sis_ws_header wshead;
+    s_sis_ws_header wshead = {0};
+
+    if (!sis_net_unpack_ws_check(&wshead, in_))
+    {
+        // 没有成功解析 等待下一个数据包
+        return 0;
+    }
     if (!sis_net_unpack_ws_message(&wshead, in_, out_))
     {
+        // 没有成功解析 应该合并数据
         return 0;
     }
     if (wshead.opcode == 1)

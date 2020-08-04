@@ -6,6 +6,7 @@
 #include <sis_list.h>
 #include <sis_time.h>
 #include <os_types.h>
+#include <os_net.h>
 #include <sis_malloc.h>
 #include <sis_str.h>
 #include <sis_obj.h>

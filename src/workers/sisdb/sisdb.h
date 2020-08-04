@@ -1,4 +1,4 @@
-#ifndef _SISDB_H
+﻿#ifndef _SISDB_H
 #define _SISDB_H
 
 #include "sis_method.h"

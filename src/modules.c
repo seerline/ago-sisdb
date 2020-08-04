@@ -1,25 +1,13 @@
-#include <sis_modules.h>
+﻿#include <sis_modules.h>
 
-extern s_sis_modules sis_modules_memdb;
-extern s_sis_modules sis_modules_sisdb;
-extern s_sis_modules sis_modules_sisdb_disk;
-extern s_sis_modules sis_modules_sisdb_server;
-extern s_sis_modules sis_modules_sisdb_wlog;
+extern s_sis_modules sis_modules_sisdb_client;
 
 s_sis_modules *__modules[] = {
-    &sis_modules_memdb,
-    &sis_modules_sisdb,
-    &sis_modules_sisdb_disk,
-    &sis_modules_sisdb_server,
-    &sis_modules_sisdb_wlog,
+    &sis_modules_sisdb_client,
     0
   };
 
 const char *__modules_name[] = {
-    "memdb",
-    "sisdb",
-    "sisdb_disk",
-    "sisdb_server",
-    "sisdb_wlog",
+    "sisdb_client",
     0
   };

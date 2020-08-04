@@ -382,7 +382,11 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sis_dynamic_db *db_, const char *in_
 		for (int i = 0; i < fnums; i++)
 		{
 			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(db_->fields, sis_string_list_get(fields_, i));
-			o = sis_dynamic_field_to_csv(o, inunit, val);
+
+			// printf("fnums=%d %d %p %zu\n", fnums, sis_map_list_getsize(db_->fields), val, ilen_);
+			// sis_out_binary("val", val, db_->size * 2);
+			// printf("inunit=%p  %s\n", inunit, sis_string_list_get(fields_, i));
+			o = sis_dynamic_field_to_csv(o, inunit, val);			
 		}
 		o = sis_csv_make_end(o);
 		val += db_->size;

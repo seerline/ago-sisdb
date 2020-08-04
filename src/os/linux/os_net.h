@@ -17,11 +17,15 @@
 #include <unistd.h>        //read,write
 #include <netdb.h>         //gethostbyname
 
+#include <os_str.h>         //gethostbyname
+
 #define SIS_NET_MAX_SEND_LEN   32*1024
 #define SIS_NET_MAX_RECV_LEN   32*1024
 
 void sis_socket_init();
 void sis_socket_uninit();
+
+int sis_socket_getip4(const char *name_, char *ip_, size_t ilen_);
 
 #define sis_net_recv(a,b,c,d) read(a,b,c)
 #define sis_net_send(a,b,c,d) write(a,b,c)

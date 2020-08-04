@@ -3,6 +3,20 @@
 #include <sis_net.rds.h>
 #include <sis_net.h>
 #include <sis_net.node.h>
+
+bool sis_net_is_ip4(const char *ip_)
+{
+	int size = sis_strlen(ip_);
+	int ilen = 0;
+	const char *ptr = ip_;
+	while (*ptr && strchr(".0123456789", (unsigned char)*ptr))
+	{
+		ptr++;
+		ilen++;
+	}
+	return ilen >= size;
+}
+
 //////////////////////////
 // s_sis_url
 //////////////////////////
@@ -29,7 +43,8 @@ void sis_url_clone(s_sis_url *src_, s_sis_url *des_)
 	des_->protocol = src_->protocol;
 	des_->compress = src_->compress;
 	des_->crypt = src_->crypt;
-	sis_strcpy(des_->ip, 128, src_->ip);
+	sis_strcpy(des_->ip4, 16, src_->ip4);
+	sis_strcpy(des_->name, 128, src_->name);
 	des_->port = src_->port;
 	// sis_strcpy(des_->username, 128, src_->username);
 	// sis_strcpy(des_->password, 128, src_->password);
@@ -55,6 +70,23 @@ char *sis_url_get(s_sis_url *url_, const char *key)
 {
 	return (char *)sis_map_sds_get(url_->dict, key);
 }
+void sis_url_set_ip4(s_sis_url *url_, const char *ip_)
+{
+	if (!ip_)
+	{
+		return ;
+	}
+	if (sis_net_is_ip4(ip_))
+	{
+		sis_strcpy(url_->ip4, 16, ip_);
+	}
+	else
+	{
+		sis_strcpy(url_->name, 128, ip_);
+		sis_socket_getip4(ip_, url_->ip4, 16);
+	}
+}
+
 bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 {
     if (!node_) 
@@ -98,11 +130,11 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 		const char *str = sis_json_get_str(node_, "ip");
 		if (str)
 		{
-			sis_strcpy(url_->ip, 128, str);
+			sis_url_set_ip4(url_, str);
 		}
 		else
 		{
-			sis_strcpy(url_->ip, 128, "0.0.0.0");
+			sis_strcpy(url_->ip4, 16, "0.0.0.0");
 		}
 	}
 	url_->port = sis_json_get_int(node_, "port", 7329);
@@ -298,14 +330,14 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 		o->server = sis_socket_server_create();
 		o->server->source = o;
 		o->server->port = o->url->port;
-		sis_strcpy(o->server->ip, 128, o->url->ip);
+		sis_strcpy(o->server->ip, 128, o->url->ip4);
 	}
 	else
 	{
 		o->client = sis_socket_client_create();
 		o->client->source = o;
 		o->client->port = o->url->port;
-		sis_strcpy(o->client->ip, 128, o->url->ip);
+		sis_strcpy(o->client->ip, 128, o->url->ip4);
 	}
 
 	o->ready_recv_cxts = sis_share_list_create("", 16*1000*1000);
@@ -724,7 +756,7 @@ bool sis_net_class_open(s_sis_net_class *cls_)
 	{
 		cls_->client->source = cls_;
 		cls_->client->port = cls_->url->port;
-		sis_strcpy(cls_->client->ip, 128, cls_->url->ip);
+		sis_strcpy(cls_->client->ip, 128, cls_->url->ip4);
 
 		sis_socket_client_set_cb(cls_->client, cb_client_connected, cb_client_disconnect);
 
@@ -747,7 +779,7 @@ void sis_net_class_close(s_sis_net_class *cls_)
 		sis_socket_client_close(cls_->client);
 	}
 }
-
+// 未连接时也需要设置
 int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_reply cb_)
 {
 	char key[32];
@@ -795,7 +827,10 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 	char key[32];
 	sis_llutoa(mess_->cid, key, 32, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
-	sis_share_list_push(cxt->ready_send_cxts, obj);
+	if (cxt)
+	{
+		sis_share_list_push(cxt->ready_send_cxts, obj);
+	}
 	sis_object_destroy(obj);
 	return 0;
 }
@@ -813,6 +848,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 	int rtn = call->slot_net_unpack(in_, &info, inmemptr);
 	if (rtn == 0)
 	{
+		// 数据不完整 拼接数据
 		sis_memory_destroy(inmemptr);
 		return 0;
 	} 
@@ -971,7 +1007,7 @@ static void _cb_connected(void *handle_, int sid)
 	{		
 		s_sis_net_message *msg = sis_net_message_create();
 	    msg->cid = sid;
-		// sis_net_ask_with_string(msg, "set", "myname", "ding", 4);
+		// sis_net_ask_with_chars(msg, "set", "myname", "ding", 4);
 		sis_net_ask_with_bytes(msg, "set", "myname", "ding", 4);
 
 		int rtn = sis_net_class_send(socket, msg);

@@ -2,7 +2,7 @@
 #ifndef _OS_FILE_H
 #define _OS_FILE_H
 
-#include <sis_os.h>
+// #include <sis_os.h>
 #include <os_str.h>
 
 #define SIS_PATH_LEN 1024
@@ -41,7 +41,7 @@ extern "C" {
 void sis_file_fixpath(char *in_);
 
 s_sis_handle sis_open(const char *fn_, int mode_, int access_);
-int64 sis_seek(s_sis_handle fp_, int64 offset_, int set_);
+long long sis_seek(s_sis_handle fp_, long long offset_, int set_);
 #define sis_close(a) close(a)
 
 int sis_getpos(s_sis_handle fp_, size_t *offset_);

@@ -887,7 +887,7 @@ size_t sis_disk_file_read_of_index(s_sis_disk_class *cls_, uint8 hid_, s_sis_dis
 size_t sis_disk_file_rget_of_index(s_sis_disk_class *cls_, uint8 hid_, s_sis_disk_index_unit *iunit_, s_sis_memory *inmem_, s_sis_object *obj_)
 {
     // 根据hid不同写入不同的数据到obj
-    printf("+++ %d %zu\n", hid_, iunit_->offset);
+    printf("+++ %d %zu | %zu %zu\n", hid_, iunit_->offset, iunit_->size, sis_memory_get_size(inmem_));
     switch (hid_)
     {
     case SIS_DISK_HID_MSG_SNO: // 只有一个key + 可能多条数据
@@ -1004,7 +1004,7 @@ s_sis_object *sis_disk_read_get_obj(s_sis_disk_class *cls_, s_sis_disk_reader *r
     for (int k = 0; k < idxinfo->index->count; k++)
     {
         s_sis_disk_index_unit *unit = sis_struct_list_get(idxinfo->index, k);
-        // printf("%s | %d %d %d %d\n",__func__, reader_->search_sno.start, reader_->search_sno.stop, unit->start, unit->stop);
+        printf("%s %d | %d %d %d %d\n",__func__, idxinfo->index->count, (int)reader_->search_sno.start, (int)reader_->search_sno.stop, (int)unit->start, (int)unit->stop);
         s_sis_msec_pair search;
         int style = sis_disk_get_idx_style(cls_, SIS_OBJ_GET_CHAR(idxinfo->sdb), unit);
         sis_disk_reader_get_stime(reader_, style, &search);

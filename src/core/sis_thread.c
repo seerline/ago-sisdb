@@ -28,7 +28,7 @@ s_sis_wait_handle sis_wait_malloc()
 }
 s_sis_wait *sis_wait_get(s_sis_wait_handle id_)
 {
-	if (id_>=0&&id_<SIS_MAX_WAIT)
+	if (id_ >= 0 && id_ < SIS_MAX_WAIT)
 	{
 		return &__sys_wait_pool[id_];
 	}

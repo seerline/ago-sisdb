@@ -20,6 +20,10 @@ inline int sis_strcpy(char *out_, size_t olen_, const char *in_)
 {
 	if (!in_ || !out_)
 	{
+		if (out_) 
+		{
+			out_[0] = 0;
+		}
 		return 0;
 	}
 	size_t len = strlen(in_);

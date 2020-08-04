@@ -148,7 +148,7 @@ inline int sis_sprintf(char *str, size_t mlen_, const char *fmt_, ...)
 	sis_free(fmt);
     return strlen(str);
 }
-inline size_t sis_strlen(char *str_)
+inline size_t sis_strlen(const char *str_)
 {
 	return str_ ? strlen(str_) : 0;
 }

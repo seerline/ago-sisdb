@@ -3,7 +3,7 @@
 #include <sis_malloc.h>
 #include <sis_net.node.h>
 
-void sis_net_ask_with_string(s_sis_net_message *netmsg_, 
+void sis_net_ask_with_chars(s_sis_net_message *netmsg_, 
     char *cmd_, char *key_, char *val_, size_t vlen_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;

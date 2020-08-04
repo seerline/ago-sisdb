@@ -948,7 +948,7 @@ void _thread_connect(void* arg)
 	{
 		return ;
 	}
-
+	
 	// LOG(5)("client connect thread run. [%d]\n", client->connect_status);
 	uv_run(client->loop, UV_RUN_DEFAULT); // (uv_run_mode)status;
 	// 必须关闭 否则再次（200次）初始化时会失败

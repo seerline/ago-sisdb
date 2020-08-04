@@ -1,18 +1,19 @@
 ﻿#ifndef _OS_THREAD_H
 #define _OS_THREAD_H
 
-#include <sis_os.h>
+// #include <sis_os.h>
 #include <os_time.h>
 #include <minwinbase.h>
 
 // 超过时间才返回该值，如果强制退出不返回该值
 #define SIS_ETIMEDOUT ETIMEDOUT  // 60
 // 线程常量定义
+typedef void *(_stdcall SIS_THREAD_START_ROUTINE)(void *);
 #define  SIS_THREAD_PROC unsigned int _stdcall
 
 // 线程类型定义
-typedef void *(_stdcall SIS_THREAD_START_ROUTINE)(void *);
 typedef CRITICAL_SECTION s_sis_mutex_t;
+//typedef pthread_cond_t s_sis_cond_t;
 typedef HANDLE s_sis_thread_id_t;
 
 #define sis_thread_mutex_destroy(m) DeleteCriticalSection(m)
@@ -29,6 +30,13 @@ typedef struct s_sis_thread {
 	void 					 *argv;
 } s_sis_thread;
 
+typedef struct s_sis_wait {
+	bool          used;
+	HANDLE        semaphore;
+	int           count;
+	s_sis_mutex_t mutex;
+} s_sis_wait;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,20 +51,8 @@ void sis_thread_clear(s_sis_thread *thread);
 s_sis_thread_id_t sis_thread_self(); 
 // 杀死
 void sis_thread_kill(s_sis_thread_id_t thread);
-#ifdef __cplusplus
-}
-#endif
 
-typedef struct s_sis_wait {
-	bool          used;
-	HANDLE        semaphore;
-	int           count;
-	s_sis_mutex_t mutex;
-} s_sis_wait;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+/////////////////////////////
 
 int  sis_mutex_create(s_sis_mutex_t *m);
 void sis_mutex_destroy(s_sis_mutex_t *m);

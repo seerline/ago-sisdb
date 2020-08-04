@@ -29,30 +29,15 @@
 #include <sys/stat.h> 
 #include <stdint.h>
 
-#include <os_file.h>
-#include <os_fork.h>
 #include <os_malloc.h>
-// #include <os_net.h>
-#include <os_str.h>
-#include <os_thread.h>
-#include <os_time.h>
 #include <os_types.h>
 
-/*#include <winsock2.h>
-#include <process.h>
-#include <direct.h>
-#include <io.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <tchar.h>
-#include <atltime.h>
-#include <fcntl.h>
-#include <string>
-#include <cctype>
-#include <ctime>
-#include <vector>
-#include <map>
-#include <parser.h>*/
+// #include <os_file.h>
+// #include <os_fork.h>
+// #include <os_net.h>
+// #include <os_str.h>
+// #include <os_thread.h>
+// #include <os_time.h>
 
 #define CLR_RED    ""
 #define CLR_GREEN  ""

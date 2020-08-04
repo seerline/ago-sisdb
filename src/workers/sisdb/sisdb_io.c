@@ -254,14 +254,13 @@ s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int ifor
 
     if (obj)
     {
-        sis_object_destroy(obj);
         const char *fields = NULL;
         if (node_ && sis_json_cmp_child_node(node_, "fields"))
         {
             fields = sis_json_get_str(node_, "fields");
         }
-        // printf("iformat_ = %x\n", iformat_);
-        // sis_out_binary("sno", o, sis_sdslen(o));
+        // printf(" %s iformat_ = %x %d\n", key_, iformat_, obj->style);
+        // sis_out_binary("sno", SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
         if (iformat_ == SISDB_FORMAT_BYTES)
         {
             bool iswhole = sisdb_field_is_whole(fields);
@@ -275,7 +274,9 @@ s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int ifor
             sis_string_list_destroy(field_list);
             return other;
         }
-        return sisdb_get_chars_format_sds(tb, key_, iformat_, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), fields);
+        s_sis_sds o = sisdb_get_chars_format_sds(tb, key_, iformat_, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), fields);
+        sis_object_destroy(obj);
+        return o;
     }
     return NULL;
 }
@@ -299,7 +300,7 @@ s_sis_sds sisdb_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *forma
             int iformat = sis_from_node_get_format(handle->node, SISDB_FORMAT_JSON);
             *format_ = iformat & SISDB_FORMAT_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
             // 找 date 字段  
-            int workdate = sis_json_get_int(handle->node, "date", sisdb_->work_date);
+            date_t workdate = sis_json_get_int(handle->node, "date", sisdb_->work_date);
             printf("----- %d %d\n", workdate, sisdb_->work_date);
             if (workdate < sisdb_->work_date)
             {
