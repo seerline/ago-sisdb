@@ -96,29 +96,32 @@ bool sisdb_server_init(void *worker_, void *argv_)
     if (authnode)
     {
         context->user_auth = sis_map_pointer_create_v(sis_free_call);
+        context->user_access = sis_map_int_create();
         s_sis_json_node *next = sis_json_first_node(authnode);
         while(next)
         {
             s_sisdb_userinfo *userinfo = SIS_MALLOC(s_sisdb_userinfo, userinfo);
-            userinfo->access = sis_json_get_int(next, "auth", 0xFF);
+            const char *access = sis_json_get_str(next,"access");
+            userinfo->access = SISDB_USER_ACCESS_READ;
+            if (!sis_strcasecmp(access, "write"))
+            {
+                userinfo->access = SISDB_USER_ACCESS_WRITE;
+            }
+            if (!sis_strcasecmp(access, "admin"))
+            {
+                userinfo->access = SISDB_USER_ACCESS_ADMIN;
+            }
             sis_strcpy(userinfo->username, 32, sis_json_get_str(next,"username"));
             sis_strcpy(userinfo->password, 32, sis_json_get_str(next,"password"));
             if (!userinfo->username[0])
             {
                 sis_strcpy(userinfo->username, 32, "guest");
-                userinfo->access = 0;  // 可读
                 // 如果不设置用户名就默认 guest 登录
             }
             sis_map_pointer_set(context->user_auth, userinfo->username, userinfo);
             next = next->next;
         } 
-        context->logined = false; 
-    }
-    else
-    {
-        context->logined = true;
-    }
-    
+    }    
 
     s_sis_json_node *dsnode = sis_json_cmp_child_node(node, "datasets");
     if (dsnode)
@@ -214,6 +217,7 @@ void sisdb_server_uninit(void *worker_)
     }
     if (context->user_auth)
     {
+        sis_map_int_destroy(context->user_access);
         sis_map_pointer_destroy(context->user_auth);
     }
 
@@ -386,6 +390,36 @@ void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
 // 	sis_object_decr(in_);
 // 	return 0;
 // }
+// 返回值 -1 为没有权限
+int sisdb_server_get_access(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
+{
+    if (!context->user_auth)
+    {
+        return SISDB_USER_ACCESS_ADMIN;
+    }
+    char userid[16];   
+    sis_lldtoa(netmsg->cid, userid, 16, 10);
+    return sis_map_int_get(context->user_access, userid);
+}
+bool sisdb_method_access(s_sis_method *method, int access)
+{
+    if (!method->access || (access == SISDB_USER_ACCESS_ADMIN))
+    {
+        return true;
+    }
+    if (access == SISDB_USER_ACCESS_WRITE && 
+        sis_str_subcmp_strict("admin",  method->access, ',') >= 0)
+    {
+        return false;
+    }
+    if (access == SISDB_USER_ACCESS_READ)
+        // (sis_str_subcmp_strict("write",  method->access, ',') < 0 ||
+        //  sis_str_subcmp_strict("admin",  method->access, ',') < 0))
+    {
+        return false;
+    }
+    return true;
+}
 static int cb_reader_recv(void *worker_, s_sis_object *in_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -393,7 +427,8 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     sis_object_incr(in_);
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
 
-    if (context->user_auth && !context->logined && sis_strcasecmp("auth", netmsg->cmd))
+    int access = sisdb_server_get_access(context, netmsg);
+    if ( access < 0 && sis_strcasecmp("auth", netmsg->cmd))
     {
         sis_net_ans_with_error(netmsg, "no auth.", 8);
         sis_net_class_send(context->socket, netmsg);
@@ -401,6 +436,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     else
     {
         // 先写log再处理
+        bool make = true; 
         char argv[2][128]; 
         int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
         if (cmds == 2)
@@ -409,18 +445,50 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
             if (service)
             {
                 s_sis_method *method = sis_worker_get_method(service, argv[1]);
-                if (method && sis_str_subcmp_strict("write",  method->access, ',') >= 0)
+                if (!method)
                 {
-                    // printf("wlog: %s %s\n", netmsg->key, netmsg->cmd);
-                    // 只记录写盘的数据
-                    sis_mutex_lock(&context->wlog_lock);
-                    context->wlog_method->proc(context->wlog_save, netmsg);
-                    sis_mutex_unlock(&context->wlog_lock);
+                    make = false;
+                }
+                else
+                {
+                    if (!sisdb_method_access(method, access))
+                    {
+                        // 当前用户是否有权限
+                        make = false;
+                    }
+                    else
+                    {
+                        // 指令是否为写入
+                        if (sis_str_subcmp_strict("write",  method->access, ',') >= 0)
+                        {
+                            // printf("wlog: %s %s\n", netmsg->key, netmsg->cmd);
+                            // 只记录写盘的数据
+                            sis_mutex_lock(&context->wlog_lock);
+                            context->wlog_method->proc(context->wlog_save, netmsg);
+                            sis_mutex_unlock(&context->wlog_lock);
+                        }
+                    }
                 }
             }
+            else
+            {
+                make = false;
+            }
         }
-        // 写完log开始处理
-        sisdb_server_send_service(worker, netmsg);
+        else
+        {
+            s_sis_method *method = sis_worker_get_method(worker, netmsg->cmd);
+            if (!method || !sisdb_method_access(method, access))
+            {
+                make = false;
+            }
+        }
+        
+        if (make)
+        {
+            // 写完log开始处理
+            sisdb_server_send_service(worker, netmsg);
+        }
     }
 
 	sis_object_decr(in_);
@@ -444,9 +512,10 @@ static int cb_reader_convert(void *worker_, s_sis_object *in_)
         return 0;
     }
     sis_object_incr(in_);
-    if (!context->user_auth || context->logined)
+    int access = sisdb_server_get_access(context, netmsg);
+    if (access == SISDB_USER_ACCESS_ADMIN)  
+    // 只有超级用户权限  发出的指令才能进行数据转移
     {
-        // 判断是否需要转数据需要就传数据 并取得返回值
         // 把返回值重新写入队列 供大家使用
         sisdb_convert_working(context, netmsg);
     }
@@ -520,7 +589,11 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
     }
     else
     {
-        context->logined = true;
+        // 登录成功
+        char userid[16];   
+        sis_lldtoa(netmsg->cid, userid, 16, 10);
+        sis_map_int_set(context->user_access, userid, uinfo->access);
+
         if (sis_map_list_getsize(context->datasets) > 0)
         {
             sis_net_ans_with_ok(netmsg);

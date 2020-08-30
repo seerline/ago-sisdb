@@ -364,7 +364,38 @@ int sis_time_get_itime_from_str(char *time) //"12:30:38" => 123038
 
 	return out;
 }
+int sis_time_get_iyear_from_str(const char *in_, char bc_)
+{
+	int len = strlen(in_);
 
+	int start = 0;
+	
+	while(bc_ && start < len && in_[start] != bc_)
+	{
+		start++;
+	}
+	if(start + 4 > len)
+	{
+		return 0;
+	}
+	for (int i = start; i < 4; i++)
+	{
+		if (!isdigit(in_[i]))
+		{
+			return 0;
+		}
+	}
+	int year; 
+
+	int i = start;
+
+	year = in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+	year = 10 * year + in_[i++] - '0';
+
+	return year;
+}
 //"xxx-20150212.xxx" => 20150212
 int sis_time_get_idate_from_str(const char *in_, char bc_)
 {

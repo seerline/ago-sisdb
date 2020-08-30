@@ -18,27 +18,33 @@ else:
 	sys.exit(0)
 
 def cb_sub_command(source, value):
-    print("cb_sub_command : %s" % value.decode())
+    if not value is None:
+        print("cb_sub_command : %s" % value.decode())
     return 0
 
 def cb_sub_start(source, value):
-    print("cb_sub_start : %s" % value.decode())
+    if not value is None:
+        print("cb_sub_start : %s" % value.decode())
     return 0
 
 def cb_sub_stop(source, value):
-    print("cb_sub_stop : %s" % value.decode())
+    if not value is None:
+        print("cb_sub_stop : %s" % value.decode())
     return 0
 
 def cb_stk_snapshot(source, value):
-    print("cb_stk_snapshot : %s" % value.decode())
+    if not value is None:
+        print("cb_stk_snapshot : %s" % value.decode())
     return 0
 
 def cb_idx_snapshot(source, value):
-    print("cb_idx_snapshot : %s" % value.decode())
+    if not value is None:
+        print("cb_idx_snapshot : %s" % value.decode())
     return 0
 
 def cb_stk_transact(source, value):
-    print("cb_stk_transact : %s" % value.decode())
+    if not value is None:
+        print("cb_stk_transact : %s" % value.decode())
     return 0
 
 CMPFUNC = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_char_p) 
@@ -49,16 +55,18 @@ _cb_stk_snapshot = CMPFUNC(cb_stk_snapshot)
 _cb_idx_snapshot = CMPFUNC(cb_idx_snapshot)
 _cb_stk_transact = CMPFUNC(cb_stk_transact)
 
-handle = sisdb_client.api_sisdb_client_create(b"woan2007.ticp.io", 7329, b"", b"");
+# handle = sisdb_client.api_sisdb_client_create(b"woan2007.ticp.io", 7329, b"", b"");
 # handle = sisdb_client.api_sisdb_client_create(b"223.166.74.203", 7329, b"", b"");
-# handle = sisdb_client.api_sisdb_client_create(b"192.168.3.118", 7329, b"", b"");
+handle = sisdb_client.api_sisdb_client_create(b"192.168.3.118", 7329, b"", b"");
 print("handle : ", handle);
 
-
+stock = "*.stk_snapshot"
 sisdb_client.api_sisdb_command_ask(handle, 
     b"sdb.get", 
-    b"sh600601.stk_snapshot", 
-    b"{\"date\":20200204,\"format\":\"csv\"}",
+    stock.encode(), 
+    # b"{\"date\":20200702,\"format\":\"csv\"}",
+    b"{\"date\":20200511,\"format\":\"csv\"}",
+    # b"{\"date\":20200801,\"format\":\"csv\"}",
     _cb_stk_snapshot);
 
 # sisdb_client.api_sisdb_command_ask(handle, 

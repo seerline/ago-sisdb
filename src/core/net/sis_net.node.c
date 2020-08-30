@@ -214,16 +214,20 @@ bool sis_net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 		}
 		      
     }
-	printf(":::%d %d %s \n%s \n%s \n%s \n%s \n", in_->style, (int)in_->rint,
+	// printf(":::%d %d %s \n%s \n%s \n%s \n%s \n", 
+	printf(":::%d %d %s \n%s \n%s \n%s \n", 
+			in_->style, 
+			(int)in_->rint,
 			in_->source? in_->source : "nil",
 			in_->cmd ? in_->cmd : "nil",
 			in_->key? in_->key : "nil",
-			in_->val? in_->val : "nil",
-			in_->rval? in_->rval : "nil");
+			in_->val? in_->val : "nil"
+			// ,in_->rval? in_->rval : "nil"
+			);
 
     size_t len = 0;
     char *str = sis_json_output_zip(node, &len);
-    printf("sis_net_encoded_json [%d]: %d %s\n",in_->style, (int)len, str);
+    // printf("sis_net_encoded_json [%d]: %d %s\n",in_->style, (int)len, str);
     sis_memory_cat(out_, str, len);
     sis_free(str);
     sis_json_delete_node(node);

@@ -119,6 +119,8 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
     if (context->status == SIS_CLI_STATUS_WORK)
     {
         s_sisdb_client_ask *ask = sisdb_client_ask_get(context, msg_->source);
+        // 清理上次的错误信息
+        sis_sdsfree(context->info);
         if (ask && msg_->style & SIS_NET_ANS_MSG)
         {
             if (msg_->style & SIS_NET_ANS_INT)
@@ -126,6 +128,8 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
                 if(ask->cb_reply)
                 {
                     char info[32];
+                    // info[0] = '=';
+                    // sis_llutoa(msg_->rint, &info[1], 31, 10);
                     sis_llutoa(msg_->rint, info, 32, 10);
                     ask->cb_reply(ask->cb_source, info);
                 }
@@ -138,6 +142,9 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
             {
                 if(ask->cb_reply)
                 {
+                    // s_sis_sds reply = sis_sdsnew(":");
+                    // reply = sis_sdscat(reply, msg_->rval);
+                    // ask->cb_reply(ask->cb_source, reply);
                     ask->cb_reply(ask->cb_source, msg_->rval);
                 }                
             }
@@ -188,23 +195,33 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
                     if(ask->cb_reply)
                     {
                         // 其他返回NULL
+                        // s_sis_sds reply = sis_sdsnew("+");
+                        // reply = sis_sdscat(reply, msg_->rval);
+                        // ask->cb_reply(ask->cb_source, reply);
+
+                        context->info = sis_sdsnew("OK");
+                        ask->cb_reply(ask->cb_source, NULL);
+                        // 返回 NULL 表示可不理会返回值 需要错误信息调用函数
+
+                    }        
+                    break;
+                case SIS_NET_ANS_SIGN_NIL:
+                    if(ask->cb_reply)
+                    {
+                        // 其他返回NULL
+                        context->info = sis_sdsnew("NIL");
                         ask->cb_reply(ask->cb_source, NULL);
                         // 返回 NULL 表示可不理会返回值 需要错误信息调用函数
                     }        
                     break;
-                case SIS_NET_ANS_SIGN_NIL:
                 case SIS_NET_ANS_SIGN_ERROR:
                 default:
                     if(ask->cb_reply)
                     {
                         // 其他返回NULL
+                        context->info = sis_sdsdup(msg_->rval);
                         ask->cb_reply(ask->cb_source, NULL);
                         // 返回 NULL 表示可不理会返回值 需要错误信息调用函数
-                        if (context->info)
-                        {
-                            sis_sdsfree(context->info);
-                        }
-                        context->info = sis_sdsdup(msg_->rval);
                     }        
                     break;
                 }
@@ -318,7 +335,6 @@ s_sisdb_client_ask *sisdb_client_ask_new(s_sisdb_client_cxt *context,
     bool          issub)
 {
     s_sisdb_client_ask *ask = sisdb_client_ask_create(cmd_, key_, val_, cb_source_, cb_sub_start, cb_sub_realtime, cb_sub_stop, cb_reply);
-    ask->issub = issub;
     context->ask_sno = (context->ask_sno + 1 ) % 0xFFFFFFFF;
     sis_llutoa(context->ask_sno, ask->source, 16, 10);
     ask->issub = issub;

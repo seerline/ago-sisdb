@@ -35,9 +35,9 @@
 #define SISDB_ACCESS_PUBLISH    2   // 发布信息权限
 #define SISDB_ACCESS_ADMIN      7   // 超级用户 全部权限
 
-#define SISDB_ACCESS_SREAD       "read"
-#define SISDB_ACCESS_SWRITE      "write"
-#define SISDB_ACCESS_SADMIN      "admin"
+#define SISDB_ACCESS_SREAD       "read"   // read
+#define SISDB_ACCESS_SWRITE      "write"  // set sets
+#define SISDB_ACCESS_SADMIN      "admin"  // del pack save 
 
 /////////////////////////////////////////////////////////
 //  数据格是定义 

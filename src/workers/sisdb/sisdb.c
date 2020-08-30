@@ -17,14 +17,14 @@ struct s_sis_method sisdb_methods[] = {
     {"set",       cmd_sisdb_set, "write", NULL},   // 默认 json 格式
     {"stop",      cmd_sisdb_stop, "write", NULL},   // sno 当日数据完毕
     {"del",       cmd_sisdb_del, "write", NULL},   // 删除一个数据 数据区没有数据时 清理键值
-    {"drop",      cmd_sisdb_drop, "write", NULL},   // 删除一个表结构数据
+    {"drop",      cmd_sisdb_drop, "write,admin", NULL},   // 删除一个表结构数据
     {"gets",      cmd_sisdb_gets, NULL, NULL},   // 默认 json 格式 get 多个key多个sdb数据 暂时不支持
     {"bset",      cmd_sisdb_bset, "write", NULL},   // 默认 二进制 格式
-    {"dels",      cmd_sisdb_dels, "write", NULL},   // 删除多个数据
-    {"sub",       cmd_sisdb_sub, "subscribe", NULL},   // 订阅数据
-    {"unsub",     cmd_sisdb_unsub, "unsubscribe", NULL},   // 取消订阅
-    {"subsno",    cmd_sisdb_subsno, "subscribe", NULL},   // 订阅sno数据 {"date":20201010}
-    {"unsubsno",  cmd_sisdb_unsubsno, "unsubscribe", NULL},   // 取消订阅sno数据 
+    {"dels",      cmd_sisdb_dels, "write,admin", NULL},   // 删除多个数据
+    {"sub",       cmd_sisdb_sub, NULL, NULL},   // 订阅数据
+    {"unsub",     cmd_sisdb_unsub, NULL, NULL},   // 取消订阅
+    {"subsno",    cmd_sisdb_subsno, NULL, NULL},   // 订阅sno数据 {"date":20201010}
+    {"unsubsno",  cmd_sisdb_unsubsno, NULL, NULL},   // 取消订阅sno数据 
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb = {

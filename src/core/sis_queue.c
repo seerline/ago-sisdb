@@ -261,6 +261,81 @@ bool sis_share_reader_work(s_sis_share_reader *reader_, sis_share_reader_working
 /////////////////////////////////////////////////
 s_sis_share_node *sis_share_list_pop(s_sis_share_list *cls_);
 
+// void *_thread_watcher(void *argv_)
+// {
+//     s_sis_share_reader *reader = (s_sis_share_reader *)argv_;
+//     s_sis_share_list *share = reader->slist;
+
+//     reader->notice_wait = sis_wait_malloc();
+//     s_sis_wait *wait = sis_wait_get(reader->notice_wait);
+
+//     sis_thread_wait_start(wait);
+//     while (reader->work_status != SIS_SHARE_STATUS_EXIT)
+//     {
+//         // 这里的save_wait比较特殊,数据满也会即时处理
+//         // sis_thread_wait_notice(wait); // 通知立即处理
+//         if (sis_thread_wait_sleep_msec(wait, 3000) != SIS_ETIMEDOUT)
+//         {
+//             if (reader->work_status == SIS_SHARE_STATUS_EXIT)
+//             {
+//                 break;
+//             }
+//             // 是被通知进来的 所有这里向所有wait通知
+//         }
+        
+//         if (reader->work_status != SIS_SHARE_STATUS_WORK)
+//         {
+//             continue;
+//         }
+//         // 不管什么情况这里都会读取数据
+//         // 求出share->cursize 如果大于 maxsize 就
+
+//         if (reader->cursor == NULL)
+//         {
+//             // 第一次 得到开始的位置
+//             s_sis_share_node *node = share->head->next;
+//             if (node)
+//             {
+//                 share->cursize = SIS_OBJ_GET_SIZE(node->value);
+//                 reader->cursor = node;
+//             }
+//         }
+//         if (reader->cursor)
+//         {
+//             while(reader->cursor->next)   
+//             {
+//                 s_sis_share_node *node = reader->cursor->next;
+//                 if (node)
+//                 {
+//                     share->cursize += SIS_OBJ_GET_SIZE(node->value);
+//                     reader->cursor = node;
+//                 }
+//             } 
+//         }
+//         // 大于尺寸
+//         while(share->cursize > share->maxsize && share->maxsize > 0)
+//         {
+//             s_sis_share_node *node = sis_share_list_pop(share);
+//             if (node)
+//             {
+//                 // printf("node= %zu  %zu\n", SIS_OBJ_GET_SIZE(node->value), share->cursize);
+//                 share->cursize -= SIS_OBJ_GET_SIZE(node->value);
+//             }
+//             else
+//             {
+//                 // printf("node= %p\n", node);
+//                 break;
+//             }
+            
+//         }
+//     }
+//     sis_thread_wait_stop(wait);
+//     sis_wait_free(reader->notice_wait);
+//     sis_thread_finish(&reader->work_thread);
+//     reader->work_status = SIS_SHARE_STATUS_NONE;
+//     return NULL;
+// }
+
 void *_thread_watcher(void *argv_)
 {
     s_sis_share_reader *reader = (s_sis_share_reader *)argv_;
@@ -288,7 +363,7 @@ void *_thread_watcher(void *argv_)
             continue;
         }
         // 不管什么情况这里都会读取数据
-        // 求出share->cursize 如果大于 maxsize 就
+        // 只要没有被使用就清除
 
         if (reader->cursor == NULL)
         {
@@ -296,7 +371,6 @@ void *_thread_watcher(void *argv_)
             s_sis_share_node *node = share->head->next;
             if (node)
             {
-                share->cursize = SIS_OBJ_GET_SIZE(node->value);
                 reader->cursor = node;
             }
         }
@@ -304,28 +378,22 @@ void *_thread_watcher(void *argv_)
         {
             while(reader->cursor->next)   
             {
-                s_sis_share_node *node = reader->cursor->next;
-                if (node)
+                bool isuse = false;
+                for (int i = 0; i < share->reader->count; i++)
                 {
-                    share->cursize += SIS_OBJ_GET_SIZE(node->value);
-                    reader->cursor = node;
+                    s_sis_share_reader *other = (s_sis_share_reader *)sis_pointer_list_get(share->reader, i);
+                    if (other->cursor == reader->cursor)
+                    {
+                        isuse = true;
+                    }
                 }
+                if (isuse)
+                {
+                    break;
+                }
+                reader->cursor = reader->cursor->next;
+                sis_share_list_pop(share);
             } 
-        }
-        while(share->cursize > share->maxsize && share->maxsize > 0)
-        {
-            s_sis_share_node *node = sis_share_list_pop(share);
-            if (node)
-            {
-                // printf("node= %zu  %zu\n", SIS_OBJ_GET_SIZE(node->value), share->cursize);
-                share->cursize -= SIS_OBJ_GET_SIZE(node->value);
-            }
-            else
-            {
-                // printf("node= %p\n", node);
-                break;
-            }
-            
         }
     }
     sis_thread_wait_stop(wait);
@@ -334,7 +402,6 @@ void *_thread_watcher(void *argv_)
     reader->work_status = SIS_SHARE_STATUS_NONE;
     return NULL;
 }
-
 s_sis_share_list *sis_share_list_create(const char *key_, size_t limit_)
 {
     s_sis_share_list *o = SIS_MALLOC(s_sis_share_list, o);
@@ -535,20 +602,12 @@ s_sis_object *sis_share_reader_next(s_sis_share_reader *reader_)
     if (reader_->work_status != SIS_SHARE_STATUS_WAIT)
     {
         return NULL;
-        // if (reader_->cursor->next)
-        // {
-        //     reader_->work_status = SIS_SHARE_STATUS_WORK;
-        //     sis_thread_wait_notice(sis_wait_get(reader_->notice_wait));
-        // }
-        // else
-        // {
-        //     reader_->work_status = SIS_SHARE_STATUS_WORK;
-        // }
     }
     s_sis_object *o = NULL;
-    if (reader_->cursor->next)
+    s_sis_share_node *node = reader_->cursor->next;
+    if (node)
     {
-        s_sis_share_node *node = reader_->cursor->next;
+        // s_sis_share_node *node = reader_->cursor->next;
         o = node->value;
         if (reader_->cb)
         {

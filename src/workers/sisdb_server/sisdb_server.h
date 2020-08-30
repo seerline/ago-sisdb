@@ -44,11 +44,16 @@ typedef struct s_sisdb_catch
 	int  last_sno;  // > 0 表示加载最后几天数据 0 表示只保留当日 不从历史数据加载 只从log加载 
 } s_sisdb_catch;
 
-typedef struct s_sisdb_userinfo
+#define SISDB_USER_ACCESS_READ   1
+#define SISDB_USER_ACCESS_WRITE  2  // set
+#define SISDB_USER_ACCESS_DROP   4  // drop
+#define SISDB_USER_ACCESS_ADMIN  7  
+
+typedef struct s_sisdb_userauth
 {
 	char username[32];
 	char password[32];
-	int  access;       // 权限 
+	int8 access;       // 权限 
 } s_sisdb_userinfo;
 
 typedef struct s_sisdb_convert
@@ -85,12 +90,11 @@ typedef struct s_sisdb_server_cxt
 	// style 设置为 0 表示不被 wlog 处理
 	s_sis_map_pointer  *converts;       // 需要转换的表 (dataset+table) s_sis_pointer_list * --> s_sisdb_convert
 
-	s_sis_map_pointer  *user_auth;   // 用户账号密码 s_sisdb_userinfo
+	s_sis_map_pointer  *user_auth;    // 用户账号密码 s_sisdb_userinfo 索引为 username
+	s_sis_map_int      *user_access;  // 用户权限信息 access 索引为 cid
 
 	s_sis_message      *message;     // 消息传递
 	
-	bool                logined;     // 是否已经登录     
-
 	bool                switch_wget;  // 设置后所有 get 会同时存盘
 
 	s_sisdb_catch       catch_cfg;    // 数据加载配置 

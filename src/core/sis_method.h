@@ -27,7 +27,7 @@ typedef int (sis_method_define)(void *, void *);
 typedef struct s_sis_method {
     const char *name;     // 方法的名字
 	int (*proc)(void *, void *);
-    const char *access;   // 方法属于的类别，相当于命名空间 subscribe append zip 等
+    const char *access;   // 方法属于的权限，相当于命名空间 read write admin 等
 	const char *explain;  // 方法的说明
 }s_sis_method;
 

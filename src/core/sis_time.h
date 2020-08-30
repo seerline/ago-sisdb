@@ -41,6 +41,7 @@ void sis_time_format_datetime_longstr(char * out_, size_t olen_, int idate_, int
 
 int sis_time_get_minute_from_shortstr(char* in_);//"12:30" => 1230
 int sis_time_get_itime_from_str(char* in_);//"12:30:38" => 123038
+int sis_time_get_iyear_from_str(const char* in_, char bc_);//"xxx-20150212.xxx" => 2015
 int sis_time_get_idate_from_str(const char* in_, char bc_);//"xxx-20150212.xxx" => 20150212
 int sis_time_get_idate_from_shstr(const char* in_);//"2015-02-12" => 20150212
 int sis_time_get_time_from_longstr(const char* , int* , int* ); //"2015-10-20 12:30:38" => 20151020,123038

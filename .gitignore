@@ -26,4 +26,4 @@ win/
 x64/
 !bin/*.conf
 !bin/Makefile
-
+!bin/sisdb

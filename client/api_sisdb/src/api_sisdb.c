@@ -117,6 +117,30 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_ask(
 	return API_REPLY_ERR;
 }
 
+_API_SISDB_DLLEXPORT_ int api_sisdb_get_info(
+	int           id_,             // 句柄
+	char          reply[128]       // 返回的错误信息
+)
+{
+	s_sis_worker* worker = sis_pointer_list_get(_api_session_list, id_);
+	if (!worker)
+	{
+		return API_REPLY_ERR;
+	}
+	s_sisdb_client_cxt *context = worker->context;
+
+	if (!context->info)
+	{
+		return API_REPLY_OK;
+	}
+	sis_strcpy(reply, 128, context->info);
+	if (!sis_strcasecmp(context->info, "OK"))
+	{
+		return API_REPLY_OK;
+	}
+	return API_REPLY_ERR;
+}
+
 _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
 	int           id_,             // 句柄
 	const char   *cmd_,            // 请求的参数
@@ -189,7 +213,7 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
 	return API_REPLY_ERR;
 }
 
-#if 1
+#if 0
 
 int cb_read1(void *source, void *argv)
 {
