@@ -101,43 +101,22 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_ask(
 	s_sisdb_client_cxt *context = worker->context;
 	s_sisdb_client_ask *ask = sisdb_client_ask_new( 
 		context,
-		cmd_, key_, val_, 
+		cmd_, 
+		key_, 
+		(void *)val_, 
+		sis_strlen(val_),
 		NULL, 
 		NULL,
 		NULL,
 		NULL,
 		cb_reply,
 		false);
-
-	if (cmd_sisdb_client_send(worker, ask) == SIS_METHOD_OK)
+	
+	if (cmd_sisdb_client_send_cb(worker, ask) == SIS_METHOD_OK)
 	{
 		return API_REPLY_OK;
 	}
 	// 不是订阅的收到响应就自动删除
-	return API_REPLY_ERR;
-}
-
-_API_SISDB_DLLEXPORT_ int api_sisdb_get_info(
-	int           id_,             // 句柄
-	char          reply[128]       // 返回的错误信息
-)
-{
-	s_sis_worker* worker = sis_pointer_list_get(_api_session_list, id_);
-	if (!worker)
-	{
-		return API_REPLY_ERR;
-	}
-	s_sisdb_client_cxt *context = worker->context;
-
-	if (!context->info)
-	{
-		return API_REPLY_OK;
-	}
-	sis_strcpy(reply, 128, context->info);
-	if (!sis_strcasecmp(context->info, "OK"))
-	{
-		return API_REPLY_OK;
-	}
 	return API_REPLY_ERR;
 }
 
@@ -151,7 +130,7 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
     void   *cb_sub_start,        // 回调开始
 	void   *cb_sub_realtime,     // 订阅进入实时状态
 	void   *cb_sub_stop,         // 订阅结束 自动取消订阅
-	void   *cb_reply            // 回调的数据
+	void   *cb_reply             // 回调的数据
 )
 {
 	s_sis_worker* worker = sis_pointer_list_get(_api_session_list, id_);
@@ -176,7 +155,10 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
 		sisdb_client_ask_unsub(context, cmd_, key_);
 		s_sisdb_client_ask *ask = sisdb_client_ask_new(
 			context,
-			cmd_, key_, val_, 
+			cmd_, 
+			key_, 
+			(void *)val_, 
+			sis_strlen(val_),
 			cb_source_, 
 			cb_sub_start, 
 			cb_sub_realtime,
@@ -185,7 +167,7 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
 			false);
 		// 不是订阅的收到响应就自动删除 ask
 		// 发给server 取消订阅
-		if (cmd_sisdb_client_send(worker, ask) == SIS_METHOD_OK)
+		if (cmd_sisdb_client_send_cb(worker, ask) == SIS_METHOD_OK)
 		{			
 			return API_REPLY_OK;
 		}
@@ -198,14 +180,17 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
 		}
 		s_sisdb_client_ask *ask = sisdb_client_ask_new(
 			context,
-			cmd_, key_, val_, 
+			cmd_, 
+			key_, 
+			(void *)val_, 
+			sis_strlen(val_),
 			cb_source_, 
 			cb_sub_start, 
 			cb_sub_realtime,
 			cb_sub_stop,
 			cb_reply,
 			true);
-		if (cmd_sisdb_client_send(worker, ask) == SIS_METHOD_OK)
+		if (cmd_sisdb_client_send_cb(worker, ask) == SIS_METHOD_OK)
 		{
 			return API_REPLY_OK;
 		}		
@@ -213,20 +198,61 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
 	return API_REPLY_ERR;
 }
 
-#if 0
+#if 1
 
 int cb_read1(void *source, void *argv)
 {
-	printf("%s\n", argv ? (char *)argv : "nil");
+	printf("%s %d\n", argv ? (char *)argv : "nil", strlen((char *)argv + 1));
+
+	s_sis_json_handle *h = sis_json_load((char *)argv + 1,strlen((char *)argv) -1);
+	if (!h) {return -1;}
+
+	int iii=1;
+	sis_json_show(h->node,&iii);
+	sis_json_close(h);
+
 	return 0;
+}
+
+int ask_sisdb(int id_)
+{
+	s_sis_worker* worker = sis_pointer_list_get(_api_session_list, id_);
+	if (!worker)
+	{
+		return API_REPLY_ERR;
+	}
+	s_sis_message *msg = sis_message_create();
+	sis_message_set(msg, "cmd", "sdb.set", NULL);
+	sis_message_set(msg, "key", "key1", NULL);
+	sis_message_set(msg, "val", "my is dzd.", NULL);
+	sis_message_set_int(msg, "vlen", 10);
+
+	int o = cmd_sisdb_client_ask_chars(worker, msg);
+
+	if (o == SIS_METHOD_OK)
+	{
+		printf("OK : %s\n", sis_message_get_str(msg,"reply"));
+	}
+	else
+	{
+		printf("NO : %s\n",sis_message_get_str(msg,"info"));
+	}
+	// 不是订阅的收到响应就自动删除
+	sis_message_destroy(msg);
+	return API_REPLY_OK;
 }
 int main()
 {
-	int no = api_sisdb_client_create("woan2007.ticp.io", 7329, "", ""); 
-	// int no = api_sisdb_client_create("192.168.3.118", 7329, "", ""); 
+	// int no = api_sisdb_client_create("woan2007.ticp.io", 7329, "", ""); 
+	int no = api_sisdb_client_create("192.168.3.118", 7329, "aaa", "aaa"); 
 
 	// api_sisdb_command_ask(no, "show", NULL, NULL, cb_read1);
-	api_sisdb_command_ask(no, "sdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"csv\"}", cb_read1);
+	// api_sisdb_command_ask(no, "sdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"chars\"}", cb_read1);
+	// 订阅有问题
+	api_sisdb_command_sub(no, "sdb.subsno", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"chars\"}", 
+		NULL, cb_read1, cb_read1, cb_read1, cb_read1);
+	// ask_sisdb(no);
+
 
 	while(1)
 	{

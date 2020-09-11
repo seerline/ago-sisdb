@@ -162,7 +162,7 @@ sis_method_define *sis_message_get_method(s_sis_message *msg_, const char *key_)
     }
     return NULL;
 }
-// 用户自定义结构体 如果 sis_free_define = NULL 默认调用 sis_free
+// 用户自定义结构体 如果 sis_free_define = NULL 不释放
 void *sis_message_get(s_sis_message *msg_, const char *key_)
 {
     s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->maps, key_);

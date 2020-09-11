@@ -7,7 +7,9 @@ void sis_net_ask_with_chars(s_sis_net_message *netmsg_,
     char *cmd_, char *key_, char *val_, size_t vlen_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
-    netmsg_->style = SIS_NET_ASK_NORMAL;
+    netmsg_->style |= cmd_ ? SIS_NET_ASK_CMD: 0;
+    netmsg_->style |= key_ ? SIS_NET_ASK_KEY: 0;
+    netmsg_->style |= val_ ? SIS_NET_ASK_VAL: 0;
     netmsg_->cmd = cmd_ ? sdsnew(cmd_) : NULL;
     netmsg_->key = key_ ? sdsnew(key_) : NULL;
     netmsg_->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
@@ -16,7 +18,9 @@ void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
     char *cmd_, char *key_, char *val_, size_t vlen_)
 {
     netmsg_->format = SIS_NET_FORMAT_BYTES;
-    netmsg_->style = SIS_NET_ASK_NORMAL;
+    netmsg_->style |= cmd_ ? SIS_NET_ASK_CMD: 0;
+    netmsg_->style |= key_ ? SIS_NET_ASK_KEY: 0;
+    netmsg_->style |= val_ ? SIS_NET_ASK_VAL: 0;
     netmsg_->cmd = cmd_ ? sdsnew(cmd_) : NULL;
     netmsg_->key = key_ ? sdsnew(key_) : NULL;
     netmsg_->val = val_ ? sdsnewlen(val_, vlen_) : NULL;
@@ -28,6 +32,7 @@ void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t 
 		netmsg_->argvs = sis_pointer_list_create();
 		netmsg_->argvs->vfree = sis_object_decr;
 	}
+    netmsg_->style |= SIS_NET_ASK_ARGVS;
     s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
     sis_pointer_list_push(netmsg_->argvs, obj);
 }

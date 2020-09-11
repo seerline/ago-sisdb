@@ -28,9 +28,7 @@ typedef struct s_sis_json_node
 typedef struct s_sis_json_handle
 {
 	const char * error;      // 指向错误的地址
-	// bool   readonly;   // 读写模式，只读就从content
-	// char  *content;    // 文件内容，只读模式下使用的映射
-	// size_t position;   // 当前位置，临时变量，只读解析时用 
+	char  *content;    // json内容
 	struct s_sis_json_node *node;
 } s_sis_json_handle; //专门提供给读json的快速结构体
 

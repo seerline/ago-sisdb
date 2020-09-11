@@ -46,7 +46,7 @@ void sis_message_set_double(s_sis_message *, const char*, double);
 void sis_message_set_str(s_sis_message *, const char*, char*, size_t );
 // void sis_message_set_strlist(s_sis_message *, const char*, s_sis_string_list *);
 void sis_message_set_method(s_sis_message *, const char*, sis_method_define *);
-// 用户自定义结构体 如果 sis_free_define = NULL 默认调用 sis_free
+// 用户自定义结构体 如果 sis_free_define = NULL 不释放
 void sis_message_set(s_sis_message *, const char*, void *, sis_free_define *);
 
 int64 sis_message_get_int(s_sis_message *, const char*);
@@ -55,7 +55,7 @@ double sis_message_get_double(s_sis_message *, const char*);
 s_sis_sds sis_message_get_str(s_sis_message *, const char*);
 // s_sis_string_list *sis_message_get_strlist(s_sis_message *, const char*);
 sis_method_define *sis_message_get_method(s_sis_message *, const char*);
-// 用户自定义结构体 如果 sis_free_define = NULL 默认调用 sis_free
+// 用户自定义结构体 如果 sis_free_define = NULL 不释放
 void *sis_message_get(s_sis_message *, const char*);
 
 #ifdef __cplusplus

@@ -115,76 +115,19 @@ SET(CMAKE_C_FLAGS_DEBUG "${SHOBJ_CFLAGS}")
 SET(CMAKE_CXX_FLAGS_DEBUG "${SHOBJ_CXXFLAGS}")
 
 ######################生成可执行文件文件##########################
-# SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../)
-# # 一旦设置下面的属性,在任何环境下生成的可执行文件都将直接放在你所设置的目录 
-# # SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin)
-# # SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin)
-# #设置需要链接的库目录
-# LINK_DIRECTORIES(
-# 	${SISLIB_PATH}../sdk/libuv/lib
-# 	${SISLIB_PATH}../sdk/snappy/lib
-# 	# ${CMAKE_SOURCE_DIR}/../../../linux/lib/python3.5
-#     )
-# #设置所有需要链接的库名到 LIBRARIES 环境变量
-# MESSAGE(STATUS "LIBRARIES : ${LIBFILE_LIST}")
-
-# IF(MSVC)
-# 	SET(LIBRARIES
-#         # python35
-#         uv 
-#         snappy64
-#         # uv_a.lib
-#         # snappy_a.lib
-# 	)
-# ELSE()
-# 	SET(LIBRARIES libuv.a libsnappy.a pthread stdc++
-# 		# ${MY_LIB_PATH}python3.5/libboost_python3.a
-# 		# ${MY_LIB_PATH}libboost.a
-# 	)
-# ENDIF()
-# # SET(LIBRARIES uv snappy pthread stdc++)
-# #生成可执行文件
-# ADD_EXECUTABLE(${PROJECT_NAME} ${SRC_LIST})
-
-# #把LIBRARIES链接到输出文件中
-# TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES})
-
-######################生成静态链接库文件##########################
-# 设置输出库文件目录
-IF(MSVC)
-    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ../../lib/)
-    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ../../lib/)
-ELSE()
-    SET(LIBRARY_OUTPUT_PATH ../../lib/) 
-ENDIF()
-
-#设置链接库目录
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../)
+# 一旦设置下面的属性,在任何环境下生成的可执行文件都将直接放在你所设置的目录 
+# SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin)
+# SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin)
+#设置需要链接的库目录
 LINK_DIRECTORIES(
 	${SISLIB_PATH}../sdk/libuv/lib
 	${SISLIB_PATH}../sdk/snappy/lib
 	# ${CMAKE_SOURCE_DIR}/../../../linux/lib/python3.5
     )
+#设置所有需要链接的库名到 LIBRARIES 环境变量
+MESSAGE(STATUS "LIBRARIES : ${LIBFILE_LIST}")
 
-# 生成动态库
-ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})
-
-# 生成静态库目标
-# SET(STATIC_NAME ${PROJECT_NAME})
-# ADD_LIBRARY(${PROJECT_NAME} STATIC ${SRC_LIST})
-# IF(MSVC AND MSVC_STATIC_RUNTIME)     
-#     foreach(var 
-#         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-#         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
-#     )
-#     IF(${var} MATCHES "/MD")
-#         string(REGEX REPLACE "/MD" "/MT" ${var} "${${var}}")
-#     ENDIF()
-#     endforeach()
-# ENDIF()
-
-
-# SET(MY_LIB_PATH ${CMAKE_SOURCE_DIR}/../../../linux/lib/)  
-#设置链接库的环境变量
 IF(MSVC)
 	SET(LIBRARIES
         # python35
@@ -194,23 +137,80 @@ IF(MSVC)
         # snappy_a.lib
 	)
 ELSE()
-    # SET(LIBRARIES pthread
 	SET(LIBRARIES libuv.a libsnappy.a pthread stdc++
 		# ${MY_LIB_PATH}python3.5/libboost_python3.a
 		# ${MY_LIB_PATH}libboost.a
 	)
 ENDIF()
+# SET(LIBRARIES uv snappy pthread stdc++)
+#生成可执行文件
+ADD_EXECUTABLE(${PROJECT_NAME} ${SRC_LIST})
 
-# 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
-# 去除目标生成的Lib前缀
-SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES PREFIX "")
-# 去除目标生成的.so前缀
-#SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES SUFFIX "")
+#把LIBRARIES链接到输出文件中
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES})
 
-IF(MSVC)
-SET_TARGET_PROPERTIES( ${PROJECT_NAME} PROPERTIES SUFFIX ".dll")
-ENDIF()
+######################生成静态链接库文件##########################
+# 设置输出库文件目录
+# IF(MSVC)
+#     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ../../lib/)
+#     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ../../lib/)
+# ELSE()
+#     SET(LIBRARY_OUTPUT_PATH ../../lib/) 
+# ENDIF()
+
+# #设置链接库目录
+# LINK_DIRECTORIES(
+# 	${SISLIB_PATH}../sdk/libuv/lib
+# 	${SISLIB_PATH}../sdk/snappy/lib
+# 	# ${CMAKE_SOURCE_DIR}/../../../linux/lib/python3.5
+#     )
+
+# # 生成动态库
+# ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRC_LIST})
+
+# # 生成静态库目标
+# # SET(STATIC_NAME ${PROJECT_NAME})
+# # ADD_LIBRARY(${PROJECT_NAME} STATIC ${SRC_LIST})
+# # IF(MSVC AND MSVC_STATIC_RUNTIME)     
+# #     foreach(var 
+# #         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+# #         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+# #     )
+# #     IF(${var} MATCHES "/MD")
+# #         string(REGEX REPLACE "/MD" "/MT" ${var} "${${var}}")
+# #     ENDIF()
+# #     endforeach()
+# # ENDIF()
+
+
+# # SET(MY_LIB_PATH ${CMAKE_SOURCE_DIR}/../../../linux/lib/)  
+# #设置链接库的环境变量
+# IF(MSVC)
+# 	SET(LIBRARIES
+#         # python35
+#         uv 
+#         snappy64
+#         # uv_a.lib
+#         # snappy_a.lib
+# 	)
+# ELSE()
+#     # SET(LIBRARIES pthread
+# 	SET(LIBRARIES libuv.a libsnappy.a pthread stdc++
+# 		# ${MY_LIB_PATH}python3.5/libboost_python3.a
+# 		# ${MY_LIB_PATH}libboost.a
+# 	)
+# ENDIF()
+
+# # 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
+# TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
+# # 去除目标生成的Lib前缀
+# SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES PREFIX "")
+# # 去除目标生成的.so前缀
+# #SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES SUFFIX "")
+
+# IF(MSVC)
+# SET_TARGET_PROPERTIES( ${PROJECT_NAME} PROPERTIES SUFFIX ".dll")
+# ENDIF()
 
 ###########################################################
 

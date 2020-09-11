@@ -56,5 +56,7 @@ s_sis_modules *sis_get_worker_slot(const char *);
 #define SERVER_FAST_EXIT do { if(sis_get_server()->status == SIS_SERVER_STATUS_CLOSE) break; } while(0);
 // 发生一个异步请求时，需要堵塞的位置，需要判断程序是否结束以便快速退出
 #define SIS_LONG_WAIT(_a_) do { while(!(_a_)) { sis_sleep(30); if(sis_get_server()->status == SIS_SERVER_STATUS_CLOSE) break; }} while(0);
+// 
+#define SIS_WAIT_TIME(_a_,_t_) do { int _wt_ = _t_; while(!(_a_)) { _wt_-=3; sis_sleep(3); if(_wt_ < 0) break; }} while(0);
 
 #endif

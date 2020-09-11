@@ -328,6 +328,7 @@ typedef struct s_sis_disk_wcatch {
 
 typedef struct s_sis_disk_reader {
     uint8                issub;
+    uint8                isone;  // 是否一次性输出
 ////////// ask  //////////
     s_sis_msec_pair      search_int;
 

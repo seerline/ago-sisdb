@@ -27,21 +27,9 @@ inline int64 sis_zoom10(int n)  // 3 ==> 1000
 	return o;
 };
 
-// inline int sis_sqrt10(int n)  // 1000 ==> 3  -1000 ==> -3
-// {
-// 	int rtn = 0;
-// 	while (1)
-// 	{
-// 		n = (int)(n / 10);
-// 		if (n >= 1) { rtn++; }
-// 		else { break; }
-// 	}
-// 	return rtn;
-// };
-
 inline uint32 sis_sqrt10(uint64 v) 
 {
-  uint32 rtn = 1;
+  uint32 rtn = 0;
   for (;;) 
   {
     if (v < 10) return rtn;

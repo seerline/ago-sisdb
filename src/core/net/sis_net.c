@@ -489,7 +489,13 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			s_sis_net_message *mess = sis_net_message_create();
 			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
 			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
-			printf("recv decoded rtn.[%d] size = %zu\n", rtn, sis_memory_get_size(cxt->recv_buffer));
+			// printf("recv decoded rtn.[%d] size = %zu\n", rtn, sis_memory_get_size(cxt->recv_buffer));
+            printf("recv mess: [%d] %x : %s %s %s\n %s\n", mess->cid, mess->style, 
+                mess->cmd ? mess->cmd : "nil",
+                mess->key ? mess->key : "nil",
+                mess->val ? mess->val : "nil",
+                mess->rval ? mess->rval : "nil");
+
 			if (rtn == 1)
 			{
 				mess->cid = sid_;
@@ -524,10 +530,10 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	}	
 	printf("server send to [%d] client. %p %d %d \n", sid_, cxt, 0, status_);	
 }
-int __count = 0;
+// int __count = 0;
 static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen_)
 {
-	// printf("client recv from [%d] server : %d:||%s\n", sid_, (int)ilen_, in_);
+	printf("client recv from [%d] server : %d:||%s\n", sid_, (int)ilen_, in_);
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
 	if (!cxt)
@@ -562,10 +568,10 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			s_sis_net_message *mess = sis_net_message_create();
 			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
 			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
-			printf("recv decoded rtn.[%d]  %zu size = %zu\n", rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
+			// printf("recv decoded rtn.[%d]  %zu size = %zu\n", rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
 			if (rtn == 1)
 			{
-				printf("count= %d size= %zu\n", __count++, SIS_OBJ_GET_SIZE(obj));
+				// printf("count= %d size= %zu\n", __count++, SIS_OBJ_GET_SIZE(obj));
 				mess->cid = sid_;
 				sis_share_list_push(cls->ready_recv_cxts, obj);
 			}			
@@ -976,9 +982,9 @@ void cb_recv(void *sock_, s_sis_net_message *msg)
 	if (msg->style & SIS_NET_ASK_MSG)
 	{
 		printf("recv query: [%d] %d : %s %s %s [++%d++]\n", msg->cid, __sno, 
-			msg->cmd ? msg->cmd : "null",
-			msg->key ? msg->key : "null",
-			msg->val ? msg->val : "null",
+			msg->cmd ? msg->cmd : "nil",
+			msg->key ? msg->key : "nil",
+			msg->val ? msg->val : "nil",
 			(int)sis_map_pointer_getsize(socket->cxts));
 		s_sis_sds reply = sis_sdsempty();
 		reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
@@ -994,7 +1000,7 @@ void cb_recv(void *sock_, s_sis_net_message *msg)
 	}
 	else
 	{
-		printf("recv msg: [%d] %d : %s\n", msg->cid, msg->style, msg->rval ? msg->rval : "null");
+		printf("recv msg: [%d] %d : %s\n", msg->cid, msg->style, msg->rval ? msg->rval : "nil");
 	}
 	
 }

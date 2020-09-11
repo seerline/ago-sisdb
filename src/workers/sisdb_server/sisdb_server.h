@@ -141,5 +141,27 @@ int cmd_sisdb_server_pack(void *worker_, void *argv_);
 int cmd_sisdb_server_call(void *worker_, void *argv_);
 int cmd_sisdb_server_wget(void *worker_, void *argv_);
 
+// ***  这里的数据不存盘 ***//
+// 为应对数据分发的功能，在server层支持订阅数据 发布数据 的功能 数据内容为二进制流具体解析sisdb不管
+// sisdb仅仅作为一个中间通讯组件使用
+// snew 注册一个无锁队列
+// snew shl2  -1   最小限制 默认值 满足最慢的订阅者
+// snew shl2   0   不设限制  
+// snew shl2  xxx  指定最大数据容量
+int cmd_sisdb_server_snew(void *worker_, void *argv_);
+// kpub shl2  数据流写入无锁队列中 
+int cmd_sisdb_server_spub(void *worker_, void *argv_);
+// 对指定的无锁队列增加订阅者
+// ksub shl2  默认从最新的数据开始订阅
+// ksub shl2  0 从最开始订阅
+// ksub shl2  xxx 从某个时间开始订阅 *不支持*
+int cmd_sisdb_server_ssub(void *worker_, void *argv_);
+// kdel shl2  0 数据清理  客户端订阅清理 all 全部清理
+int cmd_sisdb_server_sdel(void *worker_, void *argv_);
+// 需要保留的数据key
+int cmd_sisdb_server_sget(void *worker_, void *argv_);
+// 
+int cmd_sisdb_server_sset(void *worker_, void *argv_);
+
 
 #endif

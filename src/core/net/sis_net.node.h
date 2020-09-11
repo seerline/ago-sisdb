@@ -32,6 +32,7 @@
 #define SIS_NET_ANS_SIGN_NIL         -1  // 数据为空
 #define SIS_NET_ANS_SIGN_OK           0  // 数据正确
 #define SIS_NET_ANS_SIGN_ERROR        1  // 数据错误
+#define SIS_NET_ANS_SIGN_NOAUTH       2  // 未登录验证
 #define SIS_NET_ANS_SIGN_SUB_START    5  // 订阅开始
 #define SIS_NET_ANS_SIGN_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
 #define SIS_NET_ANS_SIGN_SUB_STOP     7  // 订阅结束

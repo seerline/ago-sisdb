@@ -37,7 +37,10 @@ _API_SISDB_DLLEXPORT_ void api_sisdb_client_destroy(int id_);
 
 // 发送请求并返回数据 堵塞知道数据返回
 // 仅对非订阅的命令有效
-// cb_reply 返回的参数 == NULL 通过 api_sisdb_get_info 获取错误信息
+// cb_reply 返回的参数 
+// : 正常的数据
+// + 正确 无数据
+// - 错误 后面是错误信息
 
 _API_SISDB_DLLEXPORT_ int api_sisdb_command_ask(
 	int           id_,             // 句柄
@@ -45,15 +48,6 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_ask(
 	const char   *key_,            // 请求的key
 	const char   *val_,            // 请求的参数
 	void         *cb_reply         // 回调的数据
-);
-
-// OK  
-// NIL
-// 其他错误信息
-
-_API_SISDB_DLLEXPORT_ int api_sisdb_get_info(
-	int           id_,             // 句柄
-	char    reply_[128]            // 错误的信息
 );
 
 // 发送请求并通过回调返回数据 立即返回 
@@ -68,7 +62,7 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
     void   *cb_sub_start,        // 订阅开始
 	void   *cb_sub_realtime,     // 订阅进入实时状态
 	void   *cb_sub_stop,         // 订阅结束 自动取消订阅
-	void   *cb_dict_reply        // 回调的数据
+	void   *cb_reply             // 回调的数据
 );
 
 #ifdef __cplusplus

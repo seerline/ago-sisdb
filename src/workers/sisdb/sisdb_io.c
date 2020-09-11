@@ -238,7 +238,7 @@ s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int ifor
 
     s_sis_disk_reader *reader = sis_disk_reader_create(NULL);
     // reader->issub = 0;
-    // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "null");
+    // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
     sis_disk_reader_set_sdb(reader, sdbn);
     sis_disk_reader_set_key(reader, keyn); 
     sis_sdsfree(keyn); sis_sdsfree(sdbn);
@@ -1066,7 +1066,7 @@ void *_thread_publish_history(void *argv_)
     callback->cb_end = cb_end;
 
     s_sis_disk_reader *reader = sis_disk_reader_create(callback);
-    // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "null");
+    // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
 
     sis_disk_reader_set_sdb(reader, sdbn);
     sis_disk_reader_set_key(reader, keyn);
@@ -1076,7 +1076,7 @@ void *_thread_publish_history(void *argv_)
     // sub 是一条一条的输出
     sis_disk_file_read_sub(read_class, reader);
     // get 是所有符合条件的一次性输出
-    // sis_disk_file_read_get(rwf, reader);
+    // sis_disk_file_read_get(read_class, reader);
     sis_disk_reader_destroy(reader);
 
     sis_free(callback);
@@ -1134,6 +1134,7 @@ int _start_subsno_worker(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_, date_t
 int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
     s_sis_json_handle *handle = netmsg_->val ? sis_json_load(netmsg_->val, sis_sdslen(netmsg_->val)) : NULL;
+    int out = 1;
     if (!handle)
     {
         return sisdb_one_sub(sisdb_, netmsg_, true);
@@ -1144,21 +1145,26 @@ int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
     if ((subdate == 0 || subdate == sisdb_->work_date) && start == -1)
     {
         // 从尾部开始
-        return sisdb_one_sub(sisdb_, netmsg_, true);
+        out = sisdb_one_sub(sisdb_, netmsg_, true);
+        goto _exit_;
     }
     else
     {
         if (_start_subsno_worker(sisdb_, netmsg_, subdate, false))
         {
-            return 0;
+            out = 0;
+            goto _exit_;
         }
     }
-    return 1; 
+_exit_:
+    sis_json_close(handle);
+    return out; 
 }
 
 int sisdb_multiple_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
     s_sis_json_handle *handle = netmsg_->val ? sis_json_load(netmsg_->val, sis_sdslen(netmsg_->val)) : NULL;
+    int out = 1;
     if (!handle)
     {
         return sisdb_multiple_sub(sisdb_, netmsg_, true);
@@ -1169,16 +1175,20 @@ int sisdb_multiple_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
     if ((subdate == 0 || subdate == sisdb_->work_date) && start == -1)
     {
         // 从尾部开始
-        return sisdb_multiple_sub(sisdb_, netmsg_, true);
+        out = sisdb_multiple_sub(sisdb_, netmsg_, true);
+        goto _exit_;
     }
     else
     {
         if (_start_subsno_worker(sisdb_, netmsg_, subdate, true))
         {
-            return 0;
+            out = 0;
+            goto _exit_;
         }
     }
-    return 1; 
+_exit_:
+    sis_json_close(handle);
+    return out; 
 }
 
 int sisdb_unsubsno_whole(s_sisdb_cxt *sisdb_, int cid_)

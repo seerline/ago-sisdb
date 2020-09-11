@@ -22,6 +22,7 @@ void *_service_work_thread(void *argv_)
     worker->status = SIS_SERVER_STATUS_INITED;
     while (sis_service_thread_working(service_thread))
     {
+        // printf(".....%d \n", worker->status);
         if (sis_service_thread_execute(service_thread) && worker->status != SIS_SERVER_STATUS_CLOSE)
         {
 			// printf("work = %p mode = %d\n", worker, service_thread->work_mode);

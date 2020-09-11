@@ -405,13 +405,12 @@ int sis_disk_class_set_key(s_sis_disk_class *cls_, bool iswrite_, const char *in
     if (!injson)
     {
         sis_free(in);
-        sis_json_close(injson);
         return 0;
     }
     s_sis_json_node *innode = sis_json_first_node(injson->node); 
     while (innode)
     {   
-        // printf("%s\n",innode->key ? innode->key : "null");
+        // printf("%s\n",innode->key ? innode->key : "nil");
         s_sis_disk_dict *info = sis_map_list_get(cls_->keys, innode->key);
         if (!info)
         {
@@ -448,7 +447,6 @@ int sis_disk_class_set_sdb(s_sis_disk_class *cls_, bool iswrite_, const char *in
     if (!injson)
     {
         sis_free(in);
-        sis_json_close(injson);
         return 0;
     }
    s_sis_json_node *innode = sis_json_first_node(injson->node); 
@@ -519,9 +517,16 @@ size_t sis_disk_file_pack(s_sis_disk_class *src_, s_sis_disk_class *des_)
 {
     // 开始新文件
     sis_disk_file_delete(des_);
-    sis_disk_file_write_start(des_);
+    if (sis_disk_file_write_start(des_))
+    {
+        return 0;
+    }
 
-    sis_disk_file_read_start(src_);
+    if (sis_disk_file_read_start(src_))
+    {
+        return 0;
+    }
+
     s_sis_disk_callback *callback = SIS_MALLOC(s_sis_disk_callback, callback);
     callback->source = des_;
     callback->cb_begin = NULL;
@@ -534,6 +539,7 @@ size_t sis_disk_file_pack(s_sis_disk_class *src_, s_sis_disk_class *des_)
     sis_disk_reader_set_key(reader, "*");
     sis_disk_reader_set_sdb(reader, "*");
 
+    reader->isone = 1; // 一次性输出
     // sub 是一条一条的输出
     sis_disk_file_read_sub(src_, reader);
 
@@ -542,7 +548,7 @@ size_t sis_disk_file_pack(s_sis_disk_class *src_, s_sis_disk_class *des_)
     sis_disk_file_read_stop(src_);
 
     sis_disk_file_write_stop(des_);
-    return 0;
+    return 1;
 }
 
 #if 0

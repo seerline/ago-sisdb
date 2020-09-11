@@ -10,9 +10,13 @@ typedef struct s_sisdb_client_ask {
 	char       source[16];     // 数据来源标识
 
     bool       issub;          // 是否订阅
+    int8       format;         // 字节还是字符
+
 	s_sis_sds  cmd;            // 请求的参数
 	s_sis_sds  key;            // 请求的key
 	s_sis_sds  val;            // 请求的val
+
+	s_sis_sds  reply;          // 返回的数据
 
     void              *cb_source;
     sis_method_define *cb_sub_start;
@@ -42,7 +46,6 @@ typedef struct s_sisdb_client_cxt
 
     uint32 ask_sno;      // 请求序列号    
 
-    s_sis_sds               info;  // 返回的错误信息
 	// 订阅的数据列表
     s_sis_map_pointer      *asks;   // 订阅的信息 断线后需要重新发送订阅信息 以key为索引 s_sisdb_client_ask
 
@@ -56,7 +59,8 @@ void  sisdb_client_method_uninit(void *);
 s_sisdb_client_ask *sisdb_client_ask_create(
     const char   *cmd_,            // 请求的参数
 	const char   *key_,            // 请求的key
-	const char   *val_,            // 请求的参数
+	void         *val_,            // 请求的参数
+    size_t        vlen_,
 	void         *cb_source_,          // 回调传送对象
     void         *cb_sub_start,        // 回调开始
 	void         *cb_sub_realtime,     // 订阅进入实时状态
@@ -70,7 +74,8 @@ void sisdb_client_ask_destroy(void *);
 s_sisdb_client_ask *sisdb_client_ask_new(s_sisdb_client_cxt *context, 
     const char   *cmd_,            // 请求的参数
 	const char   *key_,                // 请求的key
-	const char   *val_,                // 请求的参数
+	void         *val_,            // 请求的参数
+    size_t        vlen_,
 	void         *cb_source_,          // 回调传送对象
     void         *cb_sub_start,        // 回调开始
 	void         *cb_sub_realtime,     // 订阅进入实时状态
@@ -96,6 +101,10 @@ bool sisdb_client_ask_sub_exists(
     const char   *key_         // 来源信息
 );
 
-int cmd_sisdb_client_send(void *worker_, void *argv_);
+// fast query
+int cmd_sisdb_client_send_cb(void *worker_, void *argv_);
+// slow query
+int cmd_sisdb_client_ask_chars(void *worker_, void *argv_);
+int cmd_sisdb_client_ask_bytes(void *worker_, void *argv_);
 
 #endif

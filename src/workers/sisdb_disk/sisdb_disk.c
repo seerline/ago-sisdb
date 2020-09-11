@@ -173,7 +173,6 @@ int _sisdb_set_keys(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
     if (!injson)
     {
         sis_free(in);
-        sis_json_close(injson);
         return 0;
     }
     s_sis_json_node *innode = sis_json_first_node(injson->node); 
@@ -197,10 +196,12 @@ int _sisdb_set_sdbs(s_sisdb_cxt *cxt, bool issno_, const char *in_, size_t ilen_
     if (!injson)
     {
         sis_free(in);
-        sis_json_close(injson);
         return 0;
     }
-   s_sis_json_node *innode = sis_json_first_node(injson->node); 
+	// int iii=1;
+	// sis_json_show(injson->node,&iii);
+
+    s_sis_json_node *innode = sis_json_first_node(injson->node); 
     while (innode)
     {
         s_sisdb_table *table = sisdb_table_create(innode);
@@ -215,27 +216,27 @@ int _sisdb_set_sdbs(s_sisdb_cxt *cxt, bool issno_, const char *in_, size_t ilen_
 
 static void cb_key(void *worker_, void *key_, size_t size) 
 {
-    printf("%s : %s\n", __func__, (char *)key_);
+    printf("key %s : %s\n", __func__, (char *)key_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
     _sisdb_set_keys(sisdb, key_, size);
 }
 
 static void cb_sdb(void *worker_, void *sdb_, size_t size)  
 {
-    printf("%s : %s\n", __func__, (char *)sdb_);
+    printf("sdb %s : %s\n", __func__, (char *)sdb_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
     _sisdb_set_sdbs(sisdb, false, sdb_, size);
 }
 
 static void cb_sdb_sno(void *worker_, void *sdb_, size_t size)  
 {
-    printf("%s : %s\n", __func__, (char *)sdb_);
+    printf("sno %s : %s\n", __func__, (char *)sdb_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
     _sisdb_set_sdbs(sisdb, true, sdb_, size);
 }
 static void cb_read_sdb(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
 {
-    printf("load cb_read : %s %s.\n", key_, sdb_);
+    // printf("load cb_read : %s %s.\n", key_, sdb_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
     if (sdb_)
     {
@@ -339,7 +340,7 @@ int _sisdb_disk_load(const char *pathname, bool issno, s_sisdb_cxt *sisdb, s_sis
             // 设置加载时间
         }
     }
-    // sub 是一条一条的输出
+    reader->isone = 1; // 设置为一次性输出
     sis_disk_file_read_sub(sdbfile, reader);
 
     sis_disk_reader_destroy(reader);    
@@ -505,7 +506,7 @@ int cmd_sisdb_disk_pack(void *worker_, void *argv_)
     s_sis_disk_class *srcfile = sis_disk_class_create();
     sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
     sis_disk_file_move(srcfile, context->safe_path);
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);
+    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, sisdb->name);
 
     s_sis_disk_class *desfile = sis_disk_class_create();
     sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, pathname, sisdb->name);

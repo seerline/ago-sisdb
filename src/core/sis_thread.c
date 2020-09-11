@@ -148,9 +148,13 @@ bool sis_service_thread_execute(s_sis_service_thread *task_)
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
 	{
+		if (!task_->isfirst)
+		{
+			task_->isfirst = true;
+			return true;
+		}	
 		// printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
 		if (sis_thread_wait_sleep_msec(wait, task_->work_gap.delay) == SIS_ETIMEDOUT)
-		// if (sis_thread_wait_sleep(wait, task_->work_gap.delay) == SIS_ETIMEDOUT)
 		{
 			// printf("delay 1 = %d\n", task_->work_gap.delay);
 			if (task_->work_gap.start == task_->work_gap.stop)
@@ -169,7 +173,7 @@ bool sis_service_thread_execute(s_sis_service_thread *task_)
 			// printf("delay = %d\n", task_->work_gap.delay);
 		}
 	}
-	else
+	else // SIS_WORK_MODE_PLANS
 	{
 		if (!task_->isfirst)
 		{
@@ -282,7 +286,7 @@ void *_plan_task_example(void *argv_)
 	// sis_thread_wait_start(&task->wait);
 	sis_thread_wait_create(&__thread_wait__);
 	sis_thread_wait_start(&__thread_wait__);
-	sis_out_binary("alone: ",(const char *)&__thread_wait__,sizeof(s_sis_wait));
+	// sis_out_binary("alone: ",(const char *)&__thread_wait__,sizeof(s_sis_wait));
 
 	// sis_thread_wait_create(&test_wait->wait);
 	// sis_thread_wait_start(&test_wait->wait);

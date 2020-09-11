@@ -17,6 +17,39 @@ static const char *skip(const char *in_)
 
 static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *value_);
 
+static const char *_sis_match_string(const char *start)
+{
+	int ismatch = 0;
+	const char *ptr = start;
+	while (*ptr)
+	{
+		if (*ptr != '\"')
+		{
+			ptr++;
+		}
+		else
+		{
+			ismatch = (ismatch + 1) % 2;
+			if (ismatch == 0)
+			{
+				ptr++;
+				continue;
+			}
+			const char *ago = ptr + 1;
+			ago = skip(ago);
+			if (*ago && *ago != ',' && *ago != '}' && *ago != ']')
+			{
+				ptr = ago + 1;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+	return ptr;
+}
+
 static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *str_)
 {
 	if (*str_ != '\"')
@@ -24,36 +57,44 @@ static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node
 		handle_->error = str_;
 		return 0;
 	}
-	int len = 0;
-	const char *ptr = str_ + 1;
-	while (*ptr != '\"' && *ptr)
+	const char *ptr = str_ + 1;	
+	// int len = 0;
+	// while (*ptr != '\"' && *ptr)
+	// {
+	// 	ptr++;
+	// 	len++;
+	// }
+	// if (!*ptr)
+	// {
+	// 	handle_->error = str_;
+	// 	return 0;
+	// }
+	// char *out = sis_strdup(str_ + 1, len);
+
+	// 引号中如果嵌套引号 判断第二个引号后面是否 , 或者 } 如果是就结束 否则就继续往下面找
+	if (!node_->key)
 	{
-		ptr++;
-		len++;
+		while (*ptr != '\"' && *ptr)
+		{
+			ptr++;
+		}
+	}
+	else
+	{
+		ptr = _sis_match_string(ptr);
 	}
 	if (!*ptr)
 	{
 		handle_->error = str_;
 		return 0;
 	}
-	char *out = sis_strdup(str_ + 1, len);
+	char *out = sis_strdup(str_ + 1, ptr - str_ - 1);
 
 	ptr++;
 
 	if (!node_->key)
 	{
 		node_->key = out;
-		// while (*ptr && *ptr != ':')
-		// {
-		// 	ptr++;
-		// }
-		// if (!*ptr)
-		// {
-		// 	handle_->error = str_;
-		// 	return 0;
-		// }
-		// ptr++;
-		// ptr = skip(_sis_parse_value(handle_, node_, skip(ptr)));
 		// 增加','判断是为了处理value为空的情况
 		while (*ptr && *ptr != ':'&& *ptr != ',')
 		{
@@ -143,6 +184,7 @@ static const char *_sis_parse_array(s_sis_json_handle *handle_, s_sis_json_node 
 			handle_->error = value_;
 			return 0;
 		}
+		// value_ = skip(value_);
 		if (*value_ == ']') // 只有这里才能退出
 		{
 			return value_ + 1;
@@ -274,9 +316,21 @@ void sis_json_close(s_sis_json_handle *handle_)
 		return;
 	}
 	sis_json_delete_node(handle_->node);
+	sis_free(handle_->content);
 	sis_free(handle_);
 }
-
+void _sis_replace_json(char *in_, size_t size_)
+{
+	for (size_t i = 0; i < size_ - 1; i++)
+	{
+		if (in_[i] == '\\' && in_[i + 1] == '\"')
+		{
+			in_[i] = '\"'; 
+			in_[i + 1] = ' '; 
+			i++;
+		}
+	}
+}
 s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 {
 	if (!content_ || len_ <= 0)
@@ -292,16 +346,20 @@ s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 		return NULL;
 	}
 	struct s_sis_json_handle *handle = (s_sis_json_handle *)sis_malloc(sizeof(s_sis_json_handle));
-	if (!handle)
-	{
-		return NULL;
-	}
 	memset(handle, 0, sizeof(s_sis_json_handle));
-	if (!_sis_json_parse(handle, content_))
+
+	handle->content = (char *)sis_malloc(len_ + 1);
+	memmove(handle->content, content_, len_);
+	handle->content[len_] = 0;
+	// 修改
+	_sis_replace_json(handle->content, len_);
+	// printf(":::: %s \n", handle->content);
+
+	if (!_sis_json_parse(handle, handle->content))
 	{
-		printf("fail : %s \n", content_);
+		// printf("fail : %s \n", handle_->content);
 		int len = 0;
-		handle->error = sis_str_getline(handle->error, &len, content_, len_);
+		handle->error = sis_str_getline(handle->error, &len, handle->content, len_);
 		LOG(3)("json parse fail : %.*s \n", len, handle->error);
 		
 		sis_json_close(handle);
@@ -1402,7 +1460,8 @@ int main1()
 
 	return 0;
 }
-int main()
+// 测试多键
+int main5()
 {
 	safe_memory_start();
 	const char *command = "{\"key1\",\"key2\"}";
@@ -1411,6 +1470,39 @@ int main()
 
 	int iii=1;
 	sis_json_show(h->node,&iii);
+	sis_json_close(h);
+	safe_memory_stop();
+	return 0;
+
+}
+// 测试嵌套
+int main()
+{
+	safe_memory_start();
+	// const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":12345}}\"}";
+	const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":[\"d1\",\"d2\",33]}}\",\"key2\":[\"d1\\\",\"d2\",33]}";
+	s_sis_json_handle *h = sis_json_load(command,strlen(command));
+	if (!h) {return -1;}
+
+	printf("%x, %x, %x, %x, %x, %x,| %s\n",'\\','\b','\f','\n','\r','\t', command);
+	int iii=1;
+	sis_json_show(h->node,&iii);
+	
+	size_t len;
+	char *str = sis_json_output_zip(h->node, &len);
+	printf("out: %s\n", str);
+
+	sis_json_close(h);
+
+	h = sis_json_load(str,strlen(str));
+	{
+		if (!h) {return -1;}
+
+		int iii=1;
+		sis_json_show(h->node,&iii);
+
+	}
+	sis_free(str);
 	sis_json_close(h);
 	safe_memory_stop();
 	return 0;

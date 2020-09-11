@@ -247,7 +247,7 @@ int sisdb_collect_wpush(s_sisdb_collect *collect_, char *in_, size_t ilen_)
 	}
 	int count = (int)(ilen_ / collect_->sdb->db->size);
 	//这里应该判断数据完整性
-	printf("%s %s %d %p\n", collect_->name, collect_->sdb->db->name, collect_->sdb->db->size, collect_->sdb->db);
+	printf("wpush %s %s %d %p %d\n", collect_->name, collect_->sdb->db->name, collect_->sdb->db->size, collect_->sdb->db, count);
 	if (count * collect_->sdb->db->size != ilen_)
 	{
 		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->sdb->db->size, ilen_);

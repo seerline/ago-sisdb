@@ -98,7 +98,7 @@ static void cb_read_stream(void *source_, const char *key_, const char *sdb_, s_
     if (context->cb_method)
     {
         s_sis_net_message *netmsg = sis_net_message_create();
-        sis_out_binary("wlog read", SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        // sis_out_binary("wlog read", SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
         sis_net_decoded_normal(SIS_OBJ_MEMORY(obj_), netmsg);
         context->cb_method(context->cb_source, netmsg);
         sis_net_message_destroy(netmsg);

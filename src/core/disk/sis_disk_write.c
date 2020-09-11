@@ -337,7 +337,7 @@ size_t sis_disk_file_write_sdb(s_sis_disk_class *cls_,
     // if (!sis_strcasecmp(key_, "SZ002979")||!sis_strcasecmp(key_, "SZ002980"))
     // {
     //     int index = sis_map_list_get_index(cls_->keys, key_);
-    //     printf("check : %d %s %s %s\n", index, key_, sdb_, sdb ? SIS_OBJ_SDS(sdb->name) : "null");
+    //     printf("check : %d %s %s %s\n", index, key_, sdb_, sdb ? SIS_OBJ_SDS(sdb->name) : "nil");
     // }
     if (key && sdb)
     {
@@ -680,13 +680,24 @@ void sis_disk_file_delete(s_sis_disk_class *cls_)
 
 void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
 {
+    char fn[255];
     char newfn[255];
     for (int  i = 0; i < cls_->work_fps->lists->count; i++)
     {
         s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->work_fps->lists, i);
-        sis_file_getname(unit->fn, newfn, 255);
-        sis_sprintf(newfn, 255, "%s/%s/%s", path_, cls_->midpath , newfn);
+        sis_file_getname(unit->fn, fn, 255);
+        sis_sprintf(newfn, 255, "%s/%s/%s", path_, cls_->midpath , fn);
         sis_file_rename(unit->fn, newfn);
+    }
+    if (cls_->work_fps->main_head.index)
+    {
+        for (int  i = 0; i < cls_->index_fps->lists->count; i++)
+        {
+            s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->index_fps->lists, i);
+            sis_file_getname(unit->fn, fn, 255);
+            sis_sprintf(newfn, 255, "%s/%s/%s", path_, cls_->midpath , fn);
+            sis_file_rename(unit->fn, newfn);
+        }
     }
 }
 int sis_disk_file_valid_idx(s_sis_disk_class *cls_)

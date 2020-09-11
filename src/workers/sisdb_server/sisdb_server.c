@@ -12,12 +12,19 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_server_methods[] = {
-    {"auth",  cmd_sisdb_server_auth, NULL, NULL},   // 用户登录
-    {"show",  cmd_sisdb_server_show, NULL, NULL},   // 显示有多少数据集
-    {"save",  cmd_sisdb_server_save, "write,admin", NULL},   // 手动存盘
-    {"pack",  cmd_sisdb_server_pack, "write,admin", NULL},   // 手动清理磁盘旧的数据
-    {"call",  cmd_sisdb_server_call, NULL, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
-    {"wget",  cmd_sisdb_server_wget, NULL, NULL},   // get 后是否写log文件 方便查看信息
+    {"auth",     cmd_sisdb_server_auth, NULL, NULL},   // 用户登录
+    {"show",     cmd_sisdb_server_show, NULL, NULL},   // 显示有多少数据集
+    {"save",     cmd_sisdb_server_save, "write,admin", NULL},   // 手动存盘
+    {"pack",     cmd_sisdb_server_pack, "write,admin", NULL},   // 手动清理磁盘旧的数据
+    {"call",     cmd_sisdb_server_call, NULL, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
+    {"wget",     cmd_sisdb_server_wget, NULL, NULL},   // get 后是否写log文件 方便查看信息
+//  下面的数据流不存盘 只转发
+    {"snew",     cmd_sisdb_server_snew, "write,admin", NULL},   // 注册数据流 
+    {"spub",     cmd_sisdb_server_spub, "write,admin", NULL},   // 发布数据流
+    {"ssub",     cmd_sisdb_server_ssub, "write,admin", NULL},   // 订阅数据流 
+    {"sget",     cmd_sisdb_server_sget, "write,admin", NULL},   // 得到key的属性
+    {"sset",     cmd_sisdb_server_sset, "write,admin", NULL},   // 设置key的属性
+    {"sdel",     cmd_sisdb_server_sdel, "write,admin", NULL},   // 删除订阅的key
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_server = {
@@ -251,10 +258,10 @@ static void cb_recv(void *worker_, s_sis_net_message *msg)
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 	
     printf("recv query: [%d] %d : %s %s %s\n %s\n", msg->cid, msg->style, 
-        msg->cmd ? msg->cmd : "null",
-        msg->key ? msg->key : "null",
-        msg->val ? msg->val : "null",
-        msg->rval ? msg->rval : "null");
+        msg->cmd ? msg->cmd : "nil",
+        msg->key ? msg->key : "nil",
+        msg->val ? msg->val : "nil",
+        msg->rval ? msg->rval : "nil");
 
     sis_net_message_incr(msg);
     s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, msg);
@@ -756,6 +763,7 @@ int _sisdb_server_pack(s_sisdb_server_cxt *context)
             oks++;
         }
     }
+    sis_message_destroy(msg);
     return oks;
 }
 int cmd_sisdb_server_pack(void *worker_, void *argv_)
@@ -784,3 +792,66 @@ int cmd_sisdb_server_wget(void *worker_, void *argv_)
     context->switch_wget = !context->switch_wget;
     return SIS_METHOD_OK;
 }
+
+int cmd_sisdb_server_snew(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    sis_net_ans_with_ok(netmsg); 
+
+    return SIS_METHOD_OK;
+}
+
+int cmd_sisdb_server_spub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    sis_net_ans_with_ok(netmsg); 
+
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_server_ssub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    sis_net_ans_with_ok(netmsg); 
+
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_server_sdel(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    sis_net_ans_with_ok(netmsg); 
+
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_server_sget(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    sis_net_ans_with_ok(netmsg); 
+
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_server_sset(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    sis_net_ans_with_ok(netmsg); 
+
+    return SIS_METHOD_OK;
+}
+

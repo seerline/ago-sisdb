@@ -180,7 +180,7 @@ int  sis_disk_get_idx_style(s_sis_disk_class *cls_,const char *sdb_, s_sis_disk_
 //                 s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, info);
 //                 if (node)
 //                 {
-//                     printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", info);
+//                     printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "nil", info);
 //                     sis_pointer_list_push(list_, node);
 //                 }
 //             }
@@ -191,7 +191,7 @@ int  sis_disk_get_idx_style(s_sis_disk_class *cls_,const char *sdb_, s_sis_disk_
 //             s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, sis_string_list_get(keys, i));
 //             if (node)
 //             {
-//             // printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", sis_string_list_get(keys, i));
+//             // printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "nil", sis_string_list_get(keys, i));
 //                 sis_pointer_list_push(list_, node);
 //             }            
 //         }
@@ -268,7 +268,7 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
                 s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, info);
                 if (node)
                 {
-                    printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", info);
+                    printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "nil", info);
                     sis_pointer_list_push(list_, node);
                 }
             }
@@ -279,7 +279,7 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
             s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, sis_string_list_get(keys, i));
             if (node)
             {
-            // printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "null", sis_string_list_get(keys, i));
+            // printf("%s : %s\n",node? SIS_OBJ_SDS(node->key) : "nil", sis_string_list_get(keys, i));
                 sis_pointer_list_push(list_, node);
             }            
         }
@@ -733,19 +733,33 @@ int _sis_disk_read_hid_sdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
     {
         unit = sis_disk_dict_last(sdb); 
     }
-    while (sis_memory_get_size(memory) >= unit->db->size)
+    if (cls_->reader->isone)
     {
-        count++;
         s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
-        sis_memory_cat(SIS_OBJ_MEMORY(obj), sis_memory(memory), unit->db->size);
-        sis_memory_move(memory, unit->db->size);
+        sis_memory_cat(SIS_OBJ_MEMORY(obj), sis_memory(memory), sis_memory_get_size(memory));
         if (callback && callback->cb_read)
         {
             callback->cb_read(callback->source,
                 SIS_OBJ_SDS(key->name), SIS_OBJ_SDS(sdb->name), obj);
         }            
         sis_object_destroy(obj);
-    }     
+    }
+    else
+    {
+        while (sis_memory_get_size(memory) >= unit->db->size)
+        {
+            count++;
+            s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
+            sis_memory_cat(SIS_OBJ_MEMORY(obj), sis_memory(memory), unit->db->size);
+            sis_memory_move(memory, unit->db->size);
+            if (callback && callback->cb_read)
+            {
+                callback->cb_read(callback->source,
+                    SIS_OBJ_SDS(key->name), SIS_OBJ_SDS(sdb->name), obj);
+            }            
+            sis_object_destroy(obj);
+        }          
+    }
     return count;
 }
 int _sis_disk_read_hid_kdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_, s_sis_memory *inmem_)
@@ -776,18 +790,32 @@ int _sis_disk_read_hid_kdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
         unit = sis_disk_dict_last(sdb); 
     }
 
-    while (sis_memory_get_size(memory) >= unit->db->size)
+    if (cls_->reader->isone)
     {
-        count++;
         s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
-        sis_memory_cat(SIS_OBJ_MEMORY(obj), sis_memory(memory), unit->db->size);
-        sis_memory_move(memory, unit->db->size);
+        sis_memory_cat(SIS_OBJ_MEMORY(obj), sis_memory(memory), sis_memory_get_size(memory));
         if (callback && callback->cb_read)
         {
             callback->cb_read(callback->source,
-                                key, SIS_OBJ_SDS(sdb->name), obj);
-        }
+                key, SIS_OBJ_SDS(sdb->name), obj);
+        }            
         sis_object_destroy(obj);
+    }
+    else
+    {
+        while (sis_memory_get_size(memory) >= unit->db->size)
+        {
+            count++;
+            s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
+            sis_memory_cat(SIS_OBJ_MEMORY(obj), sis_memory(memory), unit->db->size);
+            sis_memory_move(memory, unit->db->size);
+            if (callback && callback->cb_read)
+            {
+                callback->cb_read(callback->source,
+                                    key, SIS_OBJ_SDS(sdb->name), obj);
+            }
+            sis_object_destroy(obj);
+        }
     }
     sis_sdsfree(key); 
     return count;
@@ -945,7 +973,7 @@ int sis_disk_read_sub_sdb(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
                 int style = sis_disk_get_idx_style(cls_, SIS_OBJ_GET_CHAR(idxinfo->sdb), unit);
                 sis_disk_reader_get_stime(reader_, style, &search);
 
-                // printf("%d | %d %d %d %d\n",iswhole, reader_->start, reader_->stop, unit->start, unit->stop);
+                // printf(" %d %d %d %d\n", search.start, search.stop, unit->start, unit->stop);
                 if (sis_msec_pair_whole(&search) || 
                     (unit->stop == 0 && unit->start == 0) ||
                     sis_is_mixed(search.start, search.stop, unit->start, unit->stop) )

@@ -209,6 +209,7 @@ extern "C" {
 	dictEntry *dictNext(dictIterator *iter);
 	void dictReleaseIterator(dictIterator *iter);
 	dictEntry *dictGetRandomKey(dict *d);
+    dictEntry *dictGetFairRandomKey(dict *d);
 	unsigned int dictGetSomeKeys(dict *d, dictEntry **des, unsigned int count);
 	void dictGetStats(char *buf, size_t bufsize, dict *d);
 	uint64_t dictGenHashFunction(const void *key, int len);
