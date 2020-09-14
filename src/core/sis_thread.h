@@ -13,6 +13,11 @@ s_sis_wait_handle sis_wait_malloc();
 s_sis_wait *sis_wait_get(s_sis_wait_handle id_);
 void sis_wait_free(s_sis_wait_handle id_);
 
+// 下面是启动一个等待 和结束一个等待
+void sis_wait_start(s_sis_wait_handle *handle_);
+void sis_wait_stop(s_sis_wait_handle handle_);
+
+
 // 多读一写锁定义
 typedef struct s_sis_mutex_rw {
 	s_sis_mutex_t mutex_s;

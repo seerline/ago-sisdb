@@ -64,7 +64,8 @@ s_sis_thread_id_t sis_thread_self();
 #endif
 
 typedef struct s_sis_wait {
-	bool          used;  // 是否正在使用
+	unsigned char status; // 0 正常 1 退出
+	bool          used;   // 是否正在使用
 	s_sis_cond_t  cond;  
 	s_sis_mutex_t mutex;
 } s_sis_wait;
@@ -85,6 +86,7 @@ int  sis_mutex_create(s_sis_mutex_t *mutex_);
 
 void sis_thread_wait_create(s_sis_wait *wait_);
 void sis_thread_wait_destroy(s_sis_wait *wait_);
+void sis_thread_wait_init(s_sis_wait *wait_);
 void sis_thread_wait_kill(s_sis_wait *wait_);
 void sis_thread_wait_notice(s_sis_wait *wait_);
 

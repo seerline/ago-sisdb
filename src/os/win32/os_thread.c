@@ -109,8 +109,6 @@ int  sis_mutex_trylock(s_sis_mutex_t *m, void *n)
 
 void sis_thread_wait_create(s_sis_wait *wait_)
 {
-	wait_->used = 1;
-	wait_->count = 0;
 	wait_->semaphore = CreateSemaphoreA (NULL, 0, 0xFFFFFFFF, NULL);
 	sis_mutex_create(&wait_->mutex);
 }
@@ -119,6 +117,12 @@ void sis_thread_wait_destroy(s_sis_wait *wait_)
 {
 	CloseHandle(wait_->semaphore);
 	sis_mutex_destroy(&wait_->mutex);
+}
+void sis_thread_wait_init(s_sis_wait *wait_)
+{
+	wait_->used = true;
+	wait_->status = 0;
+	wait_->count = 0;
 }
 void sis_thread_wait_kill(s_sis_wait *wait_)
 {

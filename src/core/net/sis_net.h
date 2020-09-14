@@ -78,7 +78,7 @@ typedef struct s_sis_memory_info {
 	unsigned char is_compress : 1;  // 数据是否被压缩
 	unsigned char is_crypt : 1;     // 数据是否被加密 
 	unsigned char is_crc16 : 1;     // 是否有crc16校验 如果有去前面取16个字节用于校验
-	unsigned char other : 4;     // 是否有crc16校验 如果有去前面取16个字节用于校验
+	unsigned char other : 4;     // 备用
 } s_sis_memory_info;
 
 // 序列化和反序列化 程序内部的数据和网络通讯协议互转

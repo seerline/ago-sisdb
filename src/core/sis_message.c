@@ -103,7 +103,13 @@ void sis_message_set(s_sis_message *msg_, const char *key_, void *in_, sis_free_
     unit->value = in_;
     unit->free = free_;
     sis_map_pointer_set(msg_->maps, key_, unit);
-}    
+}   
+
+bool sis_message_exist(s_sis_message *msg_, const char *key_)
+{
+    return sis_map_pointer_get(msg_->maps, key_) ? true : false;
+}
+
 int64 sis_message_get_int(s_sis_message *msg_, const char *key_)
 {
     s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->maps, key_);

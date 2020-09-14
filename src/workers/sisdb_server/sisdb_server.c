@@ -634,7 +634,7 @@ int cmd_sisdb_server_show(void *worker_, void *argv_)
     size_t len;
     char *str = sis_json_output_zip(jone, &len);
 
-    sis_net_ans_with_string(netmsg, str, len);
+    sis_net_ans_with_chars(netmsg, str, len);
 
     sis_free(str);
     sis_json_delete_node(jone);

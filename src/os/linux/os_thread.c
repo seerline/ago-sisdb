@@ -163,6 +163,16 @@ void sis_thread_wait_create(s_sis_wait *wait_)
 	// pthread_mutexattr_settype(&attr, SIS_PTHREAD_MUTEX_TIMED_NP);
 	// pthread_mutex_init(&wait_->mutex, &attr);
 }
+void sis_thread_wait_destroy(s_sis_wait *wait_)
+{
+	pthread_cond_destroy(&wait_->cond);
+	pthread_mutex_destroy(&wait_->mutex);
+}
+void sis_thread_wait_init(s_sis_wait *wait_)
+{
+	wait_->used = true;
+	wait_->status = 0;
+}
 void sis_thread_wait_notice(s_sis_wait *wait_)
 {
 	pthread_mutex_lock(&wait_->mutex);
@@ -176,11 +186,6 @@ void sis_thread_wait_kill(s_sis_wait *wait_)
 	// pthread_cond_signal(&wait_.cond);
 	pthread_cond_broadcast(&wait_->cond);
 	pthread_mutex_unlock(&wait_->mutex);
-}
-void sis_thread_wait_destroy(s_sis_wait *wait_)
-{
-	pthread_cond_destroy(&wait_->cond);
-	pthread_mutex_destroy(&wait_->mutex);
 }
 
 #if 0

@@ -296,7 +296,14 @@ static int cb_sis_reader_recv(void *cls_, s_sis_object *in_)
 	// 从队列中来 往上层用户而去
 	s_sis_net_class *cls = (s_sis_net_class *)cls_;
 
-	printf("reader recv. %d \n", SIS_OBJ_NETMSG(in_)->cid);
+	// printf("reader recv. %d \n", SIS_OBJ_NETMSG(in_)->cid);
+	// s_sis_net_message *mess = SIS_OBJ_NETMSG(in_);
+	// printf("recv mess: [%d] %x : %s %s %s\n %s\n", mess->cid, mess->style, 
+	// 	mess->cmd ? mess->cmd : "nil",
+	// 	mess->key ? mess->key : "nil",
+	// 	mess->val ? mess->val : "nil",
+	// 	mess->rval ? mess->rval : "nil");
+
 	char key[16];
 	sis_llutoa(SIS_OBJ_NETMSG(in_)->cid, key, 16, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
@@ -533,7 +540,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 // int __count = 0;
 static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen_)
 {
-	printf("client recv from [%d] server : %d:||%s\n", sid_, (int)ilen_, in_);
+	// printf("client recv from [%d] server : %d:||%s\n", sid_, (int)ilen_, in_);
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
 	if (!cxt)
@@ -569,6 +576,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
 			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
 			// printf("recv decoded rtn.[%d]  %zu size = %zu\n", rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
+
 			if (rtn == 1)
 			{
 				// printf("count= %d size= %zu\n", __count++, SIS_OBJ_GET_SIZE(obj));
@@ -979,7 +987,7 @@ void exithandle(int sig)
 void cb_recv(void *sock_, s_sis_net_message *msg)
 {
 	s_sis_net_class *socket = (s_sis_net_class *)sock_;
-	if (msg->style & SIS_NET_ASK_MSG)
+	if (msg->style & SIS_NET_ASK)
 	{
 		printf("recv query: [%d] %d : %s %s %s [++%d++]\n", msg->cid, __sno, 
 			msg->cmd ? msg->cmd : "nil",
@@ -989,7 +997,7 @@ void cb_recv(void *sock_, s_sis_net_message *msg)
 		s_sis_sds reply = sis_sdsempty();
 		reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
 		
-		// sis_net_ans_with_string(msg, reply, sis_sdslen(reply));
+		// sis_net_ans_with_chars(msg, reply, sis_sdslen(reply));
 		sis_net_ans_with_bytes(msg, reply);
 		// sis_sleep(3000);
 		sis_net_class_send(socket, msg);

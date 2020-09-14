@@ -6,6 +6,8 @@
 #include "sis_list.h"
 #include "sis_map.h"
 
+typedef int (sis_reply_define)(void *, int , void *, void *);
+
 typedef struct s_sisdb_client_ask {
 	char       source[16];     // 数据来源标识
 
@@ -16,14 +18,12 @@ typedef struct s_sisdb_client_ask {
 	s_sis_sds  key;            // 请求的key
 	s_sis_sds  val;            // 请求的val
 
-	s_sis_sds  reply;          // 返回的数据
-
     void              *cb_source;
     sis_method_define *cb_sub_start;
     sis_method_define *cb_sub_realtime;
     sis_method_define *cb_sub_stop;
 
-	sis_method_define *cb_reply;  // 回调的数据
+	sis_reply_define  *cb_reply;  // 回调的数据 (void *source, int rid, void *key, void *val);
 }s_sisdb_client_ask;
 
 #define SIS_CLI_STATUS_INIT  0   // 初始化完成
@@ -43,6 +43,8 @@ typedef struct s_sisdb_client_cxt
     bool auth;
 	char username[32]; 
 	char password[32];
+
+    s_sis_wait_handle   wait;
 
     uint32 ask_sno;      // 请求序列号    
 
@@ -106,5 +108,9 @@ int cmd_sisdb_client_send_cb(void *worker_, void *argv_);
 // slow query
 int cmd_sisdb_client_ask_chars(void *worker_, void *argv_);
 int cmd_sisdb_client_ask_bytes(void *worker_, void *argv_);
+// fast query
+int cmd_sisdb_client_ask_chars_wait(void *worker_, void *argv_);
+int cmd_sisdb_client_ask_bytes_wait(void *worker_, void *argv_);
+
 
 #endif

@@ -132,27 +132,20 @@ client.ws.onmessage = function (message) {
   
     if (client.wait.commands[sign] !== undefined) {
       let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
-      if (msg.sign !== undefined)
+      if (msg.rcmd !== undefined)
       {
-        if (msg.val)
+        if (msg.rval)
         {
-          client.wait.replys = msg.sign + ':' + msg.val;
+          client.wait.replys = msg.rcmd + ':' + msg.rval;
         }
         else
         {
-          client.wait.replys = msg.sign;
+          client.wait.replys = msg.rcmd;
         }
       }
       else
       {
-        if (msg.reply === 'ERROR')
-        {
-          client.wait.replys = msg.message;
-        }
-        else
-        {
-          client.wait.replys = msg.reply;
-        }  
+        client.wait.replys = 'ERROR';
       }
     }
     if (client.wait.multiple)

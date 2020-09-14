@@ -35,12 +35,8 @@ _API_SISDB_DLLEXPORT_ int  api_sisdb_client_create(
 // 销毁指定实例
 _API_SISDB_DLLEXPORT_ void api_sisdb_client_destroy(int id_);  
 
-// 发送请求并返回数据 堵塞知道数据返回
+// 发送请求并返回数据 堵塞到数据返回
 // 仅对非订阅的命令有效
-// cb_reply 返回的参数 
-// : 正常的数据
-// + 正确 无数据
-// - 错误 后面是错误信息
 
 _API_SISDB_DLLEXPORT_ int api_sisdb_command_ask(
 	int           id_,             // 句柄

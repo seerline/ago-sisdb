@@ -9,7 +9,6 @@ s_sis_memory *sis_memory_create()
 	m->size = 0;
 	m->maxsize = 255;
 	m->offset = 0;
-
 	return m;
 }
 void sis_memory_destroy(s_sis_memory *m_)

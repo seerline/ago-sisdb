@@ -20,7 +20,7 @@ s_sis_wait_handle sis_wait_malloc()
 	{
 		if (!__sys_wait_pool[i].used)
 		{
-			__sys_wait_pool[i].used = true;
+			sis_thread_wait_init(&__sys_wait_pool[i]);
 			return i;
 		}
 	}	
@@ -41,6 +41,48 @@ void sis_wait_free(s_sis_wait_handle id_)
 		__sys_wait_pool[id_].used = false;
 	}
 }
+
+void sis_wait_start(s_sis_wait_handle *handle_)
+{
+	*handle_ = sis_wait_malloc();
+	s_sis_wait *wait = sis_wait_get(*handle_);
+	sis_thread_wait_start(wait);
+    while (!wait->status)
+    {
+		// SIGNAL_EXIT_FAST		
+        if (sis_thread_wait_sleep_msec(wait, 5000) != SIS_ETIMEDOUT)
+        {
+			printf("exit %d\n",wait->status);
+			break;
+        }
+		else
+		{
+			printf("wait %d %d\n",wait->status, sis_get_signal());
+		}
+    }	
+	sis_thread_wait_stop(wait);
+	sis_wait_free(*handle_);
+	*handle_ = -1;
+}
+void sis_wait_stop(s_sis_wait_handle handle_)
+{
+	s_sis_wait *wait = sis_wait_get(handle_);
+	if(wait)
+	{
+		wait->status = 1;
+		sis_thread_wait_notice(wait);
+	}
+}
+// void sis_wait_stop(s_sis_wait_handle *handle_)
+// {
+// 	s_sis_wait *wait = NULL;
+// 	while(!wait)
+// 	{
+// 		wait = sis_wait_get(*handle_);
+// 		wait->status = 1;
+// 		sis_thread_wait_notice(wait);
+// 	}
+// }
 
 ////////////////////////
 // 多读一写锁定义
@@ -257,7 +299,48 @@ void sis_service_thread_destroy(s_sis_service_thread *task_)
 	sis_free(task_);
 	LOG(5)("plan_task end.\n");
 }
+#if 0
+#include <signal.h>
+#include <stdio.h>
 
+s_sis_wait_handle __wait = -1;
+
+int __exit = 0;
+
+void *_plan_task_example(void *argv_)
+{
+	while(!__exit)
+	{
+		sis_sleep(15000);
+		sis_wait_stop(__wait);
+	}
+	return NULL;
+}
+
+void exithandle(int sig)
+{
+	printf("exit .ok . \n");
+	__exit = 1;
+}
+
+s_sis_thread ta ;
+
+int main()
+{
+	sis_thread_create(_plan_task_example, NULL, &ta);
+
+	signal(SIGINT, exithandle);
+
+	int i = 0;
+	while(!__exit)
+	{
+		i++;
+		printf("---- start %d\n", i);
+		sis_wait_start(&__wait);
+		printf("----- stop %d\n", i);
+	}
+}
+#endif
 #if 0
 #include <signal.h>
 #include <stdio.h>

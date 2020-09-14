@@ -246,7 +246,7 @@ s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int ifor
     // sub 是一条一条的输出
     // get 是所有符合条件的一次性输出
     s_sis_object *obj = sis_disk_file_read_get_obj(read_class, reader);
-
+    printf("obj = %p\n",obj);
     sis_disk_reader_destroy(reader);
 
     sis_disk_file_read_stop(read_class);
@@ -266,7 +266,9 @@ s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int ifor
             bool iswhole = sisdb_field_is_whole(fields);
             if (iswhole)
             {
-                return sis_sdsnewlen(SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
+                s_sis_sds o = sis_sdsnewlen(SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
+                sis_object_destroy(obj);
+                return o;
             }
             s_sis_string_list *field_list = sis_string_list_create_w();
             sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
