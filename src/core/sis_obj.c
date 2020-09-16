@@ -24,7 +24,7 @@ s_sis_object *sis_object_incr(s_sis_object *obj_)
 void sis_object_decr(void *obj_) 
 {
     s_sis_object *obj = (s_sis_object *)obj_;
-    if (!obj)
+    if (!obj || !obj->ptr)
     {
         return ;
     }

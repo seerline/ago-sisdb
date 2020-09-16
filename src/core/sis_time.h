@@ -66,7 +66,7 @@ typedef struct s_sis_msec_pair{
 	msec_t	stop; 
 }s_sis_msec_pair;
 
-inline bool sis_msec_pair_whole(s_sis_msec_pair *mp_)
+static inline bool sis_msec_pair_whole(s_sis_msec_pair *mp_)
 {
 	return (mp_->stop < mp_->start || (mp_->stop == 0 && mp_->start == 0));
 }

@@ -50,13 +50,13 @@ static inline void int64_to_zint32(int64 u, zint32 *z){
 	}
 	z->base = (int)u;	
 };
-inline uint32 zint32_out_uint32(zint32 in_)
+static inline uint32 zint32_out_uint32(zint32 in_)
 {
 	uint32 *u = (uint32*)&in_;
 	return *u;
 };
 
-inline void uint32_out_zint32(uint32 dw, zint32 *z)
+static inline void uint32_out_zint32(uint32 dw, zint32 *z)
 {
 	uint32* p = (uint32*)z;
 	*p = dw;

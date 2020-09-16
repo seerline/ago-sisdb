@@ -12,12 +12,12 @@ static char encoding_table[] = {
 };
 static int mod_table[] = {0, 2, 1};
 
-inline const unsigned int rol(const unsigned int value, const unsigned int steps)
+static inline const unsigned int rol(const unsigned int value, const unsigned int steps)
 {
   return ((value << steps) | (value >> (32 - steps)));
 }
 
-inline void clearWBuffert(unsigned int* buffert)
+static inline void clearWBuffert(unsigned int* buffert)
 {
   int pos = 0;
   for (pos = 16; --pos >= 0;)

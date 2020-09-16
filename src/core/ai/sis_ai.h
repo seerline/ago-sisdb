@@ -167,7 +167,7 @@ int8 sis_ai_factor_drift(int n, double *ins, int level);
 int8 sis_ai_factor_drift_pair(int n, double *asks, double *bids, int level);
 
 // 返回值根据level级别 比如返回FACTOR_BAGUA_000 实际返回为1000 如果小于1000就表示特征值未达标 
-inline int sis_ai_factor(int n, double ins[], int level)
+static inline int sis_ai_factor(int n, double ins[], int level)
 {
     if (level > n)
     {
@@ -201,7 +201,7 @@ inline int sis_ai_factor(int n, double ins[], int level)
     return o;
 }
 
-inline int sis_ai_factor_pair(int n, double asks[], double bids[])
+static inline int sis_ai_factor_pair(int n, double asks[], double bids[])
 {
     if (n < 3)
     {
@@ -221,7 +221,7 @@ inline int sis_ai_factor_pair(int n, double asks[], double bids[])
     }
     return o + 1000;
 }
-inline int sis_ai_factor_bagua(int n, double ins[], int level)
+static inline int sis_ai_factor_bagua(int n, double ins[], int level)
 {
     if (level > n)
     {
@@ -256,7 +256,7 @@ inline int sis_ai_factor_bagua(int n, double ins[], int level)
 }
 
 // 转 1011 --> 3
-inline int sis_ai_factor_get_bagua(int in, int level)
+static inline int sis_ai_factor_get_bagua(int in, int level)
 {
     int min = sis_zoom10(level);
     if (in < min)

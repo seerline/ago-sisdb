@@ -19,7 +19,7 @@
 //限制返回值a在某个区域内
 #define  sis_between(a,min,max)    (((a) < (min)) ? (min) : (((a) > (max)) ? (max) : (a)))
 
-inline int64 sis_zoom10(int n)  // 3 ==> 1000
+static inline int64 sis_zoom10(int n)  // 3 ==> 1000
 {
 	int64 o = 1;
 	int len = (n > 15) ? 15 : n;
@@ -27,7 +27,7 @@ inline int64 sis_zoom10(int n)  // 3 ==> 1000
 	return o;
 };
 
-inline uint32 sis_sqrt10(uint64 v) 
+static inline uint32 sis_sqrt10(uint64 v) 
 {
   uint32 rtn = 0;
   for (;;) 
@@ -41,7 +41,7 @@ inline uint32 sis_sqrt10(uint64 v)
   }
 }
 
-inline bool sis_isbetween(int value_, int min_, int max_)
+static inline bool sis_isbetween(int value_, int min_, int max_)
 {
 	int min = min_;
 	int max = max_;
@@ -56,7 +56,7 @@ inline bool sis_isbetween(int value_, int min_, int max_)
 }
 
 // 大于基准值的个数
-inline int sis_inside_up(double div_, int count, double in[])
+static inline int sis_inside_up(double div_, int count, double in[])
 {
 	int o = 0;
 	for(int i =0 ;i < count; i++)
@@ -69,7 +69,7 @@ inline int sis_inside_up(double div_, int count, double in[])
 	return o;
 }
 // 小于基准值的个数
-inline int sis_inside_dn(double div_, int count, double in[])
+static inline int sis_inside_dn(double div_, int count, double in[])
 {
 	int o = 0;
 	for(int i =0 ;i < count; i++)
@@ -83,7 +83,7 @@ inline int sis_inside_dn(double div_, int count, double in[])
 }
 
 // 大于基准值的个数
-inline int sis_inside_upi(int div_, int count, int in[])
+static inline int sis_inside_upi(int div_, int count, int in[])
 {
 	int o = 0;
 	for(int i =0 ;i < count; i++)
@@ -96,7 +96,7 @@ inline int sis_inside_upi(int div_, int count, int in[])
 	return o;
 }
 // 小于基准值的个数
-inline int sis_inside_dni(int div_, int min, int count, int in[])
+static inline int sis_inside_dni(int div_, int min, int count, int in[])
 {
 	int o = 0;
 	for(int i =0 ;i < count; i++)
@@ -109,7 +109,7 @@ inline int sis_inside_dni(int div_, int min, int count, int in[])
 	}
 	return o;
 }
-inline int sis_bits_get_valid(uint64 in_)
+static inline int sis_bits_get_valid(uint64 in_)
 {
 	int o = 0;
 	uint64 v = 1;
@@ -122,7 +122,7 @@ inline int sis_bits_get_valid(uint64 in_)
 	}
 	return o;
 }
-inline int sis_bits_check(uint64 in_, int index_)
+static inline int sis_bits_check(uint64 in_, int index_)
 {
 	if (index_ < 0 || index_ > 63) 
 	{
@@ -131,7 +131,7 @@ inline int sis_bits_check(uint64 in_, int index_)
 	uint64 v = 1;
 	return ((v << index_) & in_) ? 1 : 0;
 }
-inline uint64 sis_bits_set(int count_)
+static inline uint64 sis_bits_set(int count_)
 {
 	if (count_ < 0 || count_ > 63) 
 	{
@@ -145,7 +145,7 @@ inline uint64 sis_bits_set(int count_)
 	}
 	return o;
 }
-inline uint64 sis_bits_dec(uint64 in_, int index_)
+static inline uint64 sis_bits_dec(uint64 in_, int index_)
 {
 	if (index_ < 0 || index_ > 63) 
 	{
@@ -161,7 +161,7 @@ inline uint64 sis_bits_dec(uint64 in_, int index_)
 }
 
 // 两组数是否相交 > 最小的 0.382
-inline int sis_is_mixed(double min1, double max1, double min2, double max2)
+static inline int sis_is_mixed(double min1, double max1, double min2, double max2)
 {
 	if (min1 >= max2 || min2 >= max1)
 	{
@@ -177,11 +177,11 @@ inline int sis_is_mixed(double min1, double max1, double min2, double max2)
 	return 0;
 }
 
-inline void sis_init_random()
+static inline void sis_init_random()
 {
 	srand((unsigned)time(NULL));
 }
-inline int sis_int_random(int min, int max)
+static inline int sis_int_random(int min, int max)
 {
 	int mid;
 	if(min > max)
@@ -198,7 +198,7 @@ inline int sis_int_random(int min, int max)
 	mid = rand() % mid + min;
 	return mid;
 }
-inline double sis_double_random(double min_, double max_)
+static inline double sis_double_random(double min_, double max_)
 {
 	int min = (int)(min_ * 1000);
 	int max = (int)(max_ * 1000);

@@ -16,7 +16,7 @@
 
 #define sis_vsnprintf vsnprintf
 
-inline int sis_strcpy(char *out_, size_t olen_, const char *in_)
+static inline int sis_strcpy(char *out_, size_t olen_, const char *in_)
 {
 	if (!in_ || !out_)
 	{
@@ -36,7 +36,7 @@ inline int sis_strcpy(char *out_, size_t olen_, const char *in_)
 	return (int)len;
 }
 
-inline int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_)
+static inline int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_)
 {
 	if (!in_ || !out_ || ilen_ <= 0)
 	{
@@ -49,7 +49,7 @@ inline int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_)
 	return (int)len;
 }
 
-inline void sis_trim(char *s)
+static inline void sis_trim(char *s)
 {
 	int i, len;
 	len = (int)strlen(s);
@@ -80,12 +80,12 @@ inline void sis_trim(char *s)
 	}
 }
 
-inline size_t sis_strlen(const char *str_)
+static inline size_t sis_strlen(const char *str_)
 {
 	return str_ ? strlen(str_) : 0;
 }
 
-inline int sis_lldtoa(long long val_, char *buf_, size_t ilen_, unsigned radix_)
+static inline int sis_lldtoa(long long val_, char *buf_, size_t ilen_, unsigned radix_)
 {
 	char *p;		 /*   pointer   to   traverse   string   */
 	char *firstdig;  /*   pointer   to   first   digit   */
@@ -134,7 +134,7 @@ inline int sis_lldtoa(long long val_, char *buf_, size_t ilen_, unsigned radix_)
 	return 0;
 }
 
-inline int sis_llutoa(unsigned long long val_, char *buf_, size_t ilen_, unsigned radix_)
+static inline int sis_llutoa(unsigned long long val_, char *buf_, size_t ilen_, unsigned radix_)
 {
 	char *p;		 /*   pointer   to   traverse   string   */
 	char *firstdig;  /*   pointer   to   first   digit   */

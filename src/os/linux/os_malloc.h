@@ -11,8 +11,8 @@
 #define sis_realloc  realloc
 #define sis_free free
 
-inline void safe_memory_start(){};
-inline void safe_memory_stop(){};
+static inline void safe_memory_start(){};
+static inline void safe_memory_stop(){};
 
 #define SIS_MALLOC(__type__,__val__) (__type__ *)sis_malloc(sizeof(__type__)); \
     memset(__val__, 0, sizeof(__type__));
@@ -43,7 +43,7 @@ extern s_sis_mutex_t  __memory_mutex;
 void safe_memory_start();
 void safe_memory_stop();
 
-inline void safe_memory_newnode(void *__p__,unsigned int size_, int line_,const char *func_)
+static inline void safe_memory_newnode(void *__p__,unsigned int size_, int line_,const char *func_)
 {
     sis_mutex_lock(&__memory_mutex);
     s_memory_node *__n = (s_memory_node *)__p__; 
@@ -63,7 +63,7 @@ inline void safe_memory_newnode(void *__p__,unsigned int size_, int line_,const 
     } 
     sis_mutex_unlock(&__memory_mutex);    
 }   
-inline void safe_memory_freenode(void *__p__)
+static inline void safe_memory_freenode(void *__p__)
 {   
     sis_mutex_lock(&__memory_mutex);
     s_memory_node *__n = (s_memory_node *)__p__; 

@@ -147,7 +147,7 @@ typedef struct s_sis_dynamic_convert {
 
 #pragma pack(pop)
 
-inline uint64 _sis_field_get_uint(s_sis_dynamic_field *unit_, const char *val_, int index_)
+static inline uint64 _sis_field_get_uint(s_sis_dynamic_field *unit_, const char *val_, int index_)
 {
 	uint64  o = 0;
 	uint8  *v8;
@@ -180,7 +180,7 @@ inline uint64 _sis_field_get_uint(s_sis_dynamic_field *unit_, const char *val_, 
 	}
 	return o;
 }
-inline int64 _sis_field_get_int(s_sis_dynamic_field *unit_, const char *val_, int index_)
+static inline int64 _sis_field_get_int(s_sis_dynamic_field *unit_, const char *val_, int index_)
 {
 	int64  o = 0;
 	int8  *v8;
@@ -211,7 +211,7 @@ inline int64 _sis_field_get_int(s_sis_dynamic_field *unit_, const char *val_, in
 	}
 	return o;
 }
-inline double _sis_field_get_float(s_sis_dynamic_field *unit_, const char *val_, int index_)
+static inline double _sis_field_get_float(s_sis_dynamic_field *unit_, const char *val_, int index_)
 {
 	double   o = 0.0;
 	float32 *f32;
@@ -232,7 +232,7 @@ inline double _sis_field_get_float(s_sis_dynamic_field *unit_, const char *val_,
 	return o;
 }
 
-inline double _sis_field_get_price(s_sis_dynamic_field *unit_, const char *val_, int index_)
+static inline double _sis_field_get_price(s_sis_dynamic_field *unit_, const char *val_, int index_)
 {
 	double   o = 0.0;
 	int32 *v32;
@@ -253,7 +253,7 @@ inline double _sis_field_get_price(s_sis_dynamic_field *unit_, const char *val_,
 	}
 	return o;
 }
-inline void _sis_field_set_uint(s_sis_dynamic_field *unit_, char *val_, uint64 v64_, int index_)
+static inline void _sis_field_set_uint(s_sis_dynamic_field *unit_, char *val_, uint64 v64_, int index_)
 {
 	uint8   v8 = 0;
 	uint16 v16 = 0;
@@ -282,7 +282,7 @@ inline void _sis_field_set_uint(s_sis_dynamic_field *unit_, char *val_, uint64 v
 	}	
 }
 
-inline void _sis_field_set_int(s_sis_dynamic_field *unit_, char *val_, int64 v64_, int index_)
+static inline void _sis_field_set_int(s_sis_dynamic_field *unit_, char *val_, int64 v64_, int index_)
 {
 	int8   v8 = 0;
 	int16 v16 = 0;
@@ -312,7 +312,7 @@ inline void _sis_field_set_int(s_sis_dynamic_field *unit_, char *val_, int64 v64
 	}	
 }
 
-inline void _sis_field_set_float(s_sis_dynamic_field *unit_, char *val_, double f64_, int index_)
+static inline void _sis_field_set_float(s_sis_dynamic_field *unit_, char *val_, double f64_, int index_)
 {
 	float32 f32 = 0.0;
 	float64 f64 = 0.0;
@@ -329,7 +329,7 @@ inline void _sis_field_set_float(s_sis_dynamic_field *unit_, char *val_, double 
 		break;
 	}
 }
-inline void _sis_field_set_price(s_sis_dynamic_field *unit_, char *val_, double f64_, int index_)
+static inline void _sis_field_set_price(s_sis_dynamic_field *unit_, char *val_, double f64_, int index_)
 {
 	int32 v32 = 0;
 	int64 v64 = 0;
@@ -348,7 +348,7 @@ inline void _sis_field_set_price(s_sis_dynamic_field *unit_, char *val_, double 
 	}
 
 }
-inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_field *field_, const char *val_)
+static inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_field *field_, const char *val_)
 {
 	if(field_) 
 	{
@@ -388,7 +388,7 @@ inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_field *fi
 	return in_;
 }
 
-inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynamic_field *field_, const char *val_)
+static inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynamic_field *field_, const char *val_)
 {
 	if(field_) 
 	{
@@ -427,7 +427,7 @@ inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynamic_field
 	}
 }
 // index_ 表示为当前字段的第几个 默认为 0 必须保证 out足够大
-inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynamic_field *field_, int index_,
+static inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynamic_field *field_, int index_,
 			char *key_, s_sis_json_node *innode_)
 {
 

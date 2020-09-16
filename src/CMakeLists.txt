@@ -17,7 +17,9 @@ ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Windows")
     MESSAGE(STATUS "current platform: Windows")
 ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     MESSAGE(STATUS "current platform: Darwin")
-    SET(SHOBJ_CFLAGS -Wall -dynamic -fno-common -g -ggdb -std=gnu99 -O2)
+    # SET(SHOBJ_CFLAGS "-Wall -dynamic -fno-common -g -glldb -std=c11 -O2")
+    # SET(SHOBJ_CFLAGS "-Wall -fPIC -Wextra -Werror -fno-exceptions -fno-rtti  -std=c++11") 
+    SET(SHOBJ_CFLAGS "-Wall -dynamic -fno-common -g -ggdb -std=c11") 
 ELSE ()
     MESSAGE(FATAL_ERROR "other platform: ${CMAKE_SYSTEM_NAME}, error!")
 ENDIF ()
@@ -132,7 +134,11 @@ ENDFUNCTION(FIND_SRCHEAD)
 
 # depth search .a
 FUNCTION(FIND_SRCLIB SEARCH_PATH SRC_PATHS SRC_FILES)
-    LIST(APPEND FILETYPE "${SEARCH_PATH}/*.a")
+    IF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        LIST(APPEND FILETYPE "${SEARCH_PATH}/*mac.a")
+    ELSE ()
+        LIST(APPEND FILETYPE "${SEARCH_PATH}/*.a")
+    ENDIF ()
     FILE(GLOB_RECURSE FILE_LIST ${FILETYPE}) 
 
     FOREACH(FILE_N ${FILE_LIST})
@@ -218,7 +224,7 @@ MESSAGE("LIBS FILES:" ${LIBFILE_LIST})
 
 ########################设置编译类型和参数#####################
 #输出信息
-MESSAGE(STATUS "FLAGS : $ENV{CFLAGS} , ${PROJECT_NAME}")
+MESSAGE(STATUS "FLAGS : $ENV{CFLAGS} , ${SHOBJ_CFLAGS} ${PROJECT_NAME}")
 
 # 指定编译类型为 DEBUG
 SET(CMAKE_BUILD_TYPE DEBUG) 
