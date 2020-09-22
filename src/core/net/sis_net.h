@@ -13,7 +13,7 @@
 #include <sis_json.h>
 #include <sis_queue.h>
 #include <sis_message.h>
-#include <sis_compress.h>
+#include <sis_snappy.h>
 #include <sis_crypt.h>
 // 网络协议版本号
 #define SIS_NET_VERSION        1   

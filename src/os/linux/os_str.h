@@ -16,6 +16,8 @@
 
 #define sis_vsnprintf vsnprintf
 
+char *sis_strcat(char *out_, size_t *olen_, const char *in_);
+
 static inline int sis_strcpy(char *out_, size_t olen_, const char *in_)
 {
 	if (!in_ || !out_)

@@ -9,8 +9,8 @@ int memdb_min(void *worker_, void *argv_);
 int memdb_max(void *worker_, void *argv_);
 
 struct s_sis_method memdb_methods[] = {
-  {"min",    memdb_min, NULL, NULL},
-  {"max",    memdb_max, NULL, NULL},
+  {"min",    memdb_min, 0, NULL},
+  {"max",    memdb_max, 0, NULL},
 };
 // 共享内存数据库 不落盘
 s_sis_modules sis_modules_memdb = {

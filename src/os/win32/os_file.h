@@ -77,6 +77,12 @@ void sis_file_delete(const char *fn_);
 void sis_path_complete(char *path_,int maxlen_);
 bool sis_path_mkdir(const char *path_);
 
+#define SIS_FINDALL  0
+#define SIS_FINDPATH 1
+#define SIS_FINDFILE 2
+
+char *sis_path_get_files(const char *path_, int mode_);
+
 #ifdef __cplusplus
 }
 #endif

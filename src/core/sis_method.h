@@ -24,10 +24,15 @@ typedef int (sis_method_define)(void *, void *);
 #define SIS_INT_TO_VOID(n)  ((void *)(uint64)n)
 #define SIS_VOID_TO_INT(v)  ((int)(uint64)v)
 
+#define SIS_METHOD_ACCESS_NONE    0
+#define SIS_METHOD_ACCESS_READ    1  // 1
+#define SIS_METHOD_ACCESS_WRITE   3  // 11
+#define SIS_METHOD_ACCESS_ADMIN   7  // 111
+
 typedef struct s_sis_method {
     const char *name;     // 方法的名字
 	int (*proc)(void *, void *);
-    const char *access;   // 方法属于的权限，相当于命名空间 read write admin 等
+    int access;   // 方法属于的权限，相当于命名空间 read write admin 等
 	const char *explain;  // 方法的说明
 }s_sis_method;
 

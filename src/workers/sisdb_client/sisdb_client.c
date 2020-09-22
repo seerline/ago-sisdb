@@ -13,11 +13,11 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_client_methods[] = {
-    {"send-cb", cmd_sisdb_client_send_cb, NULL, NULL},      // 以回调方式得到数据
-    {"ask-chars-fast", cmd_sisdb_client_ask_chars, NULL, NULL},  // 不堵塞
-    {"ask-bytes-fast", cmd_sisdb_client_ask_bytes, NULL, NULL},  // 不堵塞
-    {"ask-chars", cmd_sisdb_client_ask_chars_wait, NULL, NULL},  // 堵塞直到数据返回
-    {"ask-bytes", cmd_sisdb_client_ask_bytes_wait, NULL, NULL},  // 堵塞直到数据返回
+    {"send-cb", cmd_sisdb_client_send_cb, 0, NULL},      // 以回调方式得到数据
+    {"ask-chars-fast", cmd_sisdb_client_ask_chars, 0, NULL},  // 不堵塞
+    {"ask-bytes-fast", cmd_sisdb_client_ask_bytes, 0, NULL},  // 不堵塞
+    {"ask-chars", cmd_sisdb_client_ask_chars_wait, 0, NULL},  // 堵塞直到数据返回
+    {"ask-bytes", cmd_sisdb_client_ask_bytes_wait, 0, NULL},  // 堵塞直到数据返回
 };
 // 通用文件存取接口
 s_sis_modules sis_modules_sisdb_client = {

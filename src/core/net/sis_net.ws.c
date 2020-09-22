@@ -105,63 +105,63 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s
     for (int i = 0; i < count; i++)
     {
         size_t size = insize > MAX_SEND_BUFF ? MAX_SEND_BUFF : insize;
-        s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)sis_memory(out_), size + 4, 0);
+        s_sis_bits_stream *stream = sis_bits_stream_create((uint8 *)sis_memory(out_), size + 4);
         if (i == count - 1)
         {
-            sis_bitstream_put(stream, 1, 1); // fin
+            sis_bits_stream_put(stream, 1, 1); // fin
         }
         else
         {
-            sis_bitstream_put(stream, 0, 1); // fin
+            sis_bits_stream_put(stream, 0, 1); // fin
         }
-        sis_bitstream_put(stream, 0, 3); // rsv
+        sis_bits_stream_put(stream, 0, 3); // rsv
         if (count > 0 && i > 0)
         {
-            sis_bitstream_put(stream, 0, 4); // opcode
+            sis_bits_stream_put(stream, 0, 4); // opcode
         }
         else
         {
             if (!isstr_)
             {
-                sis_bitstream_put(stream, 2, 4); // opcode  1 - text 2 - binary
+                sis_bits_stream_put(stream, 2, 4); // opcode  1 - text 2 - binary
             }
             else
             {
-                sis_bitstream_put(stream, 1, 4); // opcode  1 - text 2 - binary
+                sis_bits_stream_put(stream, 1, 4); // opcode  1 - text 2 - binary
             }           
         }
-        sis_bitstream_put(stream, 0, 1); // mask
-        // printf("len= %d\n", sis_bitstream_getbytelen(stream));
+        sis_bits_stream_put(stream, 0, 1); // mask
+        // printf("len= %d\n", sis_bits_stream_getbytes(stream));
         if (size < 126)
         {
-            sis_bitstream_put(stream, size, 7);
+            sis_bits_stream_put(stream, size, 7);
         }
         else
         {
-            sis_bitstream_put(stream, 126, 7);
-            sis_bitstream_put(stream, size, 16);
+            sis_bits_stream_put(stream, 126, 7);
+            sis_bits_stream_put(stream, size, 16);
         }
         if (i == count - 1 && info)
         {
-            sis_bitstream_put_buffer(stream, inptr, size - sizeof(s_sis_memory_info));
-            sis_bitstream_put_buffer(stream, (char *)info, sizeof(s_sis_memory_info));
+            sis_bits_stream_put_buffer(stream, inptr, size - sizeof(s_sis_memory_info));
+            sis_bits_stream_put_buffer(stream, (char *)info, sizeof(s_sis_memory_info));
         }
         else
         {
-            sis_bitstream_put_buffer(stream, inptr, size);
+            sis_bits_stream_put_buffer(stream, inptr, size);
         }
         inptr += size;
         insize -= size;
 
-        int cursor = sis_bitstream_getbytelen(stream);
+        int cursor = sis_bits_stream_getbytes(stream);
         sis_memory_set_size(out_, cursor);
         sis_memory_move(out_, cursor);
-        printf("1 == [%d : %d] %zu\n",i, cursor, sis_memory_get_size(out_));
-        sis_bitstream_destroy(stream);
+        // printf("1 == [%d : %d] %zu\n",i, cursor, sis_memory_get_size(out_));
+        sis_bits_stream_destroy(stream);
     }
     // 回到起点
     sis_memory_jumpto(out_, 0);
-    printf("2 == %zu\n",sis_memory_get_size(out_));
+    // printf("2 == %zu\n",sis_memory_get_size(out_));
     // sis_out_binary("pack", sis_memory(out_), sis_memory_get_size(out_));
 
     return 0;
@@ -169,7 +169,7 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s
 // 拆包前判断数据是否完整
 int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
 {
-    s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)sis_memory(in_), sis_memory_get_size(in_), 0);
+    s_sis_bits_stream *stream = sis_bits_stream_create((uint8 *)sis_memory(in_), sis_memory_get_size(in_));
     
     int count = 0;
     int isbreak = true;
@@ -183,19 +183,19 @@ int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
         }
         // sis_out_binary("unpack", sis_memory(in_), 32);//sis_memory_get_size(in_));
 
-        head_->fin = sis_bitstream_get(stream, 1);
-        sis_bitstream_get(stream, 3);
+        head_->fin = sis_bits_stream_get(stream, 1);
+        sis_bits_stream_get(stream, 3);
         if (count == 0)
         {
-            head_->opcode = sis_bitstream_get(stream, 4);
+            head_->opcode = sis_bits_stream_get(stream, 4);
         }
         else
         {
             // 后续包 opcode = 0 无效 但仍然要移动指针
-            sis_bitstream_get(stream, 4);
+            sis_bits_stream_get(stream, 4);
         }
-        head_->mask = sis_bitstream_get(stream, 1);
-        head_->length = sis_bitstream_get(stream, 7);
+        head_->mask = sis_bits_stream_get(stream, 1);
+        head_->length = sis_bits_stream_get(stream, 7);
 
         // printf("==2.1== fin = %d  %d\n", head_->fin, head_->length);
         sis_memory_move(in_, 2);
@@ -205,14 +205,14 @@ int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
             {
                 break;
             }    
-            head_->length = sis_bitstream_get(stream, 16);
+            head_->length = sis_bits_stream_get(stream, 16);
             sis_memory_move(in_, 2);
         }
         if (head_->length == 127)
         {
             if (sis_memory_get_size(in_) < 8)
             {    break;}
-            head_->length = sis_bitstream_get(stream, 64);
+            head_->length = sis_bits_stream_get(stream, 64);
             sis_memory_move(in_, 8);
         }
         // printf("==2.2== fin = %d  %d\n", head_->fin, head_->length);
@@ -222,10 +222,10 @@ int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
             {    
                 break;
             }
-            head_->maskkey[0] = sis_bitstream_get(stream, 8);
-            head_->maskkey[1] = sis_bitstream_get(stream, 8);
-            head_->maskkey[2] = sis_bitstream_get(stream, 8);
-            head_->maskkey[3] = sis_bitstream_get(stream, 8);
+            head_->maskkey[0] = sis_bits_stream_get(stream, 8);
+            head_->maskkey[1] = sis_bits_stream_get(stream, 8);
+            head_->maskkey[2] = sis_bits_stream_get(stream, 8);
+            head_->maskkey[3] = sis_bits_stream_get(stream, 8);
             sis_memory_move(in_, 4);
         }
         // printf("==2.3== fin = %d  %d\n", head_->fin, sis_memory_get_size(in_));
@@ -233,7 +233,7 @@ int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
         {
             break;
         }
-        sis_bitstream_move(stream, head_->length);
+        sis_bits_stream_move_bytes(stream, head_->length);
         sis_memory_move(in_, head_->length);
         if (head_->fin == 1)
         {
@@ -243,7 +243,7 @@ int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
         }
         count++;
     }
-    sis_bitstream_destroy(stream);
+    sis_bits_stream_destroy(stream);
     // 退回上次的设置
     sis_memory_jumpto(in_, start);
     if (isbreak)
@@ -257,7 +257,7 @@ int sis_net_unpack_ws_check(s_sis_ws_header *head_, s_sis_memory *in_)
 int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_memory *out_)
 {
     sis_memory_clear(out_);
-    s_sis_bit_stream *stream = sis_bitstream_create((uint8 *)sis_memory(in_), sis_memory_get_size(in_), 0);
+    s_sis_bits_stream *stream = sis_bits_stream_create((uint8 *)sis_memory(in_), sis_memory_get_size(in_));
     
     int count = 0;
     int isbreak = true;
@@ -271,19 +271,19 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
         }
         // sis_out_binary("unpack", sis_memory(in_), 32);//sis_memory_get_size(in_));
 
-        head_->fin = sis_bitstream_get(stream, 1);
-        sis_bitstream_get(stream, 3);
+        head_->fin = sis_bits_stream_get(stream, 1);
+        sis_bits_stream_get(stream, 3);
         if (count == 0)
         {
-            head_->opcode = sis_bitstream_get(stream, 4);
+            head_->opcode = sis_bits_stream_get(stream, 4);
         }
         else
         {
             // 后续包 opcode = 0 无效 但仍然要移动指针
-            sis_bitstream_get(stream, 4);
+            sis_bits_stream_get(stream, 4);
         }
-        head_->mask = sis_bitstream_get(stream, 1);
-        head_->length = sis_bitstream_get(stream, 7);
+        head_->mask = sis_bits_stream_get(stream, 1);
+        head_->length = sis_bits_stream_get(stream, 7);
 
         // printf("==2.1== fin = %d  %d\n", head_->fin, head_->length);
         sis_memory_move(in_, 2);
@@ -293,14 +293,14 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
             {
                 break;
             }    
-            head_->length = sis_bitstream_get(stream, 16);
+            head_->length = sis_bits_stream_get(stream, 16);
             sis_memory_move(in_, 2);
         }
         if (head_->length == 127)
         {
             if (sis_memory_get_size(in_) < 8)
             {    break;}
-            head_->length = sis_bitstream_get(stream, 64);
+            head_->length = sis_bits_stream_get(stream, 64);
             sis_memory_move(in_, 8);
         }
         // printf("==2.2== fin = %d  %d\n", head_->fin, head_->length);
@@ -310,10 +310,10 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
             {    
                 break;
             }
-            head_->maskkey[0] = sis_bitstream_get(stream, 8);
-            head_->maskkey[1] = sis_bitstream_get(stream, 8);
-            head_->maskkey[2] = sis_bitstream_get(stream, 8);
-            head_->maskkey[3] = sis_bitstream_get(stream, 8);
+            head_->maskkey[0] = sis_bits_stream_get(stream, 8);
+            head_->maskkey[1] = sis_bits_stream_get(stream, 8);
+            head_->maskkey[2] = sis_bits_stream_get(stream, 8);
+            head_->maskkey[3] = sis_bits_stream_get(stream, 8);
             sis_memory_move(in_, 4);
         }
         // printf("==2.3== fin = %d  %d\n", head_->fin, sis_memory_get_size(in_));
@@ -332,16 +332,16 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
             }
         }
         // printf("==2.8==  %d - %d -- stream : %d\n", head_->fin, sis_memory_get_size(in_),
-        //         sis_bitstream_getbytelen(stream));
+        //         sis_bits_stream_getbytes(stream));
 
-        sis_bitstream_move(stream, head_->length);
+        sis_bits_stream_move_bytes(stream, head_->length);
         sis_memory_move(in_, head_->length);
 
         // printf("==2.9==  %d -[%d] %d || %zu -> %zu stream : %d\n", head_->fin, count, 
         //         head_->length,
         //         sis_memory_get_size(in_),
         //         sis_memory_get_size(out_),
-        //         sis_bitstream_getbytelen(stream));
+        //         sis_bits_stream_getbytes(stream));
 
         if (head_->fin == 1)
         {
@@ -351,7 +351,7 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
         }
         count++;
     }
-    sis_bitstream_destroy(stream);
+    sis_bits_stream_destroy(stream);
     if (isbreak)
     {
         // printf("==||==  %d - %d\n", head_->fin, sis_memory_get_size(in_));
@@ -362,7 +362,7 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
     }
     else
     {
-        
+
     }
     
     return 1;

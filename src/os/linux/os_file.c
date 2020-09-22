@@ -1,5 +1,8 @@
 ﻿
 #include <os_file.h>
+#include <dirent.h>
+#include <fnmatch.h>
+#include <sys/stat.h>
 
 void sis_file_fixpath(char *in_)
 {
@@ -162,6 +165,7 @@ void sis_file_getpath(const char *fn_, char *out_, int olen_)
 		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(out_, olen_, fn_, i + 1);
+			out_[i + 1] = 0;	
 			return;
 		}
 	}
@@ -169,17 +173,19 @@ void sis_file_getpath(const char *fn_, char *out_, int olen_)
 void sis_file_getname(const char *fn_, char *out_, int olen_)
 {
 	sis_file_fixpath((char *)fn_);
+
 	int i, len = (int)strlen(fn_);
 	for (i = len - 1; i > 0; i--)
 	{
 		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
-			sis_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);
-			
+			sis_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);	
+			out_[len - i - 1] = 0;		
 			return;
 		}
 	}
 	sis_strncpy(out_, olen_, fn_, len);
+	out_[len] = 0;
 }
 bool sis_file_exists(const char *fn_)
 {
@@ -268,6 +274,105 @@ void sis_path_complete(char *path_, int maxlen_)
 		}
 	}
 }
+#define FNM_FILE_NAME (1 << 0)
+#define FNM_CASEFOLD  (1 << 4)
+
+char *sis_path_get_files(const char *path_, int mode_)
+{
+	char fname[255];
+	strcpy(fname, path_);
+	sis_file_fixpath(fname);
+
+	char path[255];
+	char findname[255];
+	char filename[255];
+	sis_file_getpath(fname, path, 255);
+	sis_file_getname(fname, findname, 255);
+	if (sis_strlen(findname) < 1)
+	{
+		findname[0] = '*';
+		findname[1] = 0;
+	}
+
+	size_t size = 0;
+	char *o = NULL;
+	DIR *dirp = NULL;
+	struct dirent *direntp = NULL;
+	struct stat statbuf;
+	if ((dirp = opendir(path)) != NULL)
+	{
+		while ((direntp = readdir(dirp)))
+		{
+			// printf("%s  %s\n",findname, direntp->d_name);
+			if (!fnmatch(findname, direntp->d_name, FNM_FILE_NAME | FNM_CASEFOLD | FNM_PERIOD))
+			{
+				sprintf(filename, "%s%s", path, direntp->d_name);
+				if (stat(filename, &statbuf) == -1)
+				{	
+					continue;
+				}
+				// printf("%s :: %x\n",filename, (int)statbuf.st_mode);
+				if (((mode_ == SIS_FINDPATH) && S_ISDIR(statbuf.st_mode)) ||
+					((mode_ == SIS_FINDFILE) && S_ISREG(statbuf.st_mode)) ||
+					(mode_ == SIS_FINDALL))
+				{
+					if (o)
+					{
+						o = sis_strcat(o, &size, ":");
+					}
+					o = sis_strcat(o, &size, direntp->d_name);
+				}
+
+			}
+		}
+	}
+	closedir(dirp);
+	return o;
+}
+
+void sis_path_del_files(char *path_)
+{
+	char fname[255];
+	strcpy(fname, path_);
+	sis_file_fixpath(fname);
+
+	char path[255];
+	char findname[255];
+	char filename[255];
+	sis_file_getpath(fname, path, 255);
+	sis_file_getname(fname, findname, 255);
+	if (sis_strlen(findname) < 1)
+	{
+		findname[0] = '*';
+		findname[1] = 0;
+	}
+	printf("%s\n",path_);
+	DIR *dirp = NULL;
+	struct dirent *direntp = NULL;
+	struct stat statbuf;
+	if ((dirp = opendir(path)) != NULL)
+	{
+		while ((direntp = readdir(dirp)))
+		{
+			printf("%s  %s\n",findname, direntp->d_name);
+			if (!fnmatch(findname, direntp->d_name, FNM_FILE_NAME | FNM_CASEFOLD | FNM_PERIOD))
+			{
+				sprintf(filename, "%s%s", path, direntp->d_name);
+				if (stat(filename, &statbuf) == -1)
+				{	
+					continue;
+				}
+				printf("%s\n",filename);
+				remove(filename);
+			}
+		}
+	}
+	closedir(dirp);
+	if (findname[0] == '*' && findname[1] == 0)
+	{
+		remove(path_);
+	}
+}
 
 // #include <fnmatch.h>
 
@@ -328,103 +433,4 @@ void sis_path_complete(char *path_, int maxlen_)
 // 	return fileinfo.size();
 // }
 
-// int get_path_filelist(char *FindName, c_list_string *FileList)
 
-// {
-
-// 	if (FileList == NULL) return 0;
-
-// 	char fname[255];
-
-// 	strcpy(fname, FindName);
-
-// 	translate_dir(fname);
-
-// 	char path[255], findname[255], filename[255];
-
-// 	get_file_path(fname, path);
-
-// 	get_file_name(fname, findname);
-
-// 	DIR *dirp = NULL;
-
-// 	struct dirent *direntp = NULL;
-
-// 	struct stat statbuf;
-
-// 	if ((dirp = opendir(path)) != NULL)
-
-// 	{
-
-// 		while ((direntp = readdir(dirp)))
-
-// 		{
-
-// 			if (!fnmatch(findname, direntp->d_name, FNM_FILE_NAME | FNM_CASEFOLD | FNM_PERIOD))
-
-// 			{
-
-// 				sprintf(filename, "%s%s", path, direntp->d_name);
-
-// 				if (stat(filename, &statbuf) == -1) continue;
-
-// 				FileList->add(direntp->d_name, strlen(direntp->d_name));
-
-// 			}
-
-// 		}
-
-// 	}
-
-// 	closedir(dirp);
-
-// 	return FileList->getsize();
-
-// }
-
-// void clear_path_file(char *Path)
-
-// {
-
-// 	char fname[255];
-
-// 	strcpy(fname, Path);
-
-// 	translate_dir(fname);
-// 	char filename[255];
-
-// 	DIR *dirp = NULL;
-
-// 	struct dirent *direntp = NULL;
-
-// 	struct stat statbuf;
-
-// 	if ((dirp = opendir(fname)) != NULL)
-
-// 	{
-
-// 		while ((direntp = readdir(dirp)))
-
-// 		{
-
-// 			if (!fnmatch("*.*", direntp->d_name, FNM_FILE_NAME | FNM_CASEFOLD | FNM_PERIOD))
-
-// 			{
-
-// 				sprintf(filename, "%s%s", Path, direntp->d_name);
-
-// 				if (stat(filename, &statbuf) == -1) continue;
-
-// 				//LOG(1)("%s\n",filename);
-
-// 				remove(filename);
-
-// 			}
-
-// 		}
-
-// 	}
-
-// 	closedir(dirp);
-
-// }

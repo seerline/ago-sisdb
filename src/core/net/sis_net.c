@@ -455,7 +455,7 @@ int sis_ws_match_hand_ans(s_sis_net_class *cls, s_sis_net_context *cxt)
 
 static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen_)
 {
-	printf("server recv from [%d] client : %d:||%s\n", sid_, (int)ilen_, in_);	
+	// printf("server recv from [%d] client : %d:||%s\n", sid_, (int)ilen_, in_);	
 
 	// sis_out_binary("recv", in_, ilen_);
 

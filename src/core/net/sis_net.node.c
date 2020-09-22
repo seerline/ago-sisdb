@@ -264,7 +264,7 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	{
 		// 应答包
 		mess->style = SIS_NET_RCMD;
-		mess->rcmd = atoll(rcmd->value); 	
+		mess->rcmd = rcmd->value ? atoll(rcmd->value) : 0; 	
         mess->rval = _sis_json_node_get_sds(handle->node, "rval");    
 		mess->style = mess->rval ? (mess->style | SIS_NET_VAL) : mess->style;
 	}
@@ -279,7 +279,7 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	mess->style = mess->cmd ? (mess->style | SIS_NET_CMD) : mess->style;
 	mess->key = _sis_json_node_get_sds(handle->node, "key");
 	mess->style = mess->key ? (mess->style | SIS_NET_KEY) : mess->style;
-	printf(":::%d %s \n%s \n%s \n%s \n", mess->style,
+	printf(":::%x %s \n%s \n%s \n%s \n", mess->style,
 			mess->source? mess->source : "nil",
 			mess->cmd ? mess->cmd : "nil",
 			mess->key? mess->key : "nil",

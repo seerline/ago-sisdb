@@ -12,9 +12,9 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_disk_methods[] = {
-    {"load", cmd_sisdb_disk_load, NULL, NULL},  // json 格式
-    {"save", cmd_sisdb_disk_save, NULL, NULL},  // json 格式
-    {"pack", cmd_sisdb_disk_pack, NULL, NULL},  // json 格式
+    {"load", cmd_sisdb_disk_load, 0, NULL},  // json 格式
+    {"save", cmd_sisdb_disk_save, 0, NULL},  // json 格式
+    {"pack", cmd_sisdb_disk_pack, 0, NULL},  // json 格式
 };
 // 通用文件存取接口
 s_sis_modules sis_modules_sisdb_disk = {

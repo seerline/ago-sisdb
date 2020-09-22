@@ -41,6 +41,7 @@ size_t sis_memory_readfile(s_sis_memory *, s_sis_file_handle, size_t);
 size_t sis_memory_read(s_sis_memory *, s_sis_handle, size_t);
 
 size_t sis_memory_get_size(s_sis_memory *);
+size_t sis_memory_get_freesize(s_sis_memory *);
 
 void sis_memory_set_size(s_sis_memory *m_, size_t len_);
 size_t sis_memory_get_maxsize(s_sis_memory *m_);

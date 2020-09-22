@@ -20,6 +20,8 @@
 typedef struct s_sis_worker {
 	int                     status;        // 当前的工作状态
 
+	int                     style;         // 工作者的类型 0 - normal 1 - python
+
     s_sis_sds               classname;     // 归属类名
 
     s_sis_sds               workername;

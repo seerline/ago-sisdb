@@ -129,6 +129,7 @@ void sis_file_getpath(const char *fn_, char *out_, int olen_)
 		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(out_, olen_, fn_, i + 1);
+			out_[i + 1] = 0;
 			return;
 		}
 	}
@@ -142,10 +143,12 @@ void sis_file_getname(const char *fn_, char *out_, int olen_)
 		if (fn_[i] == SIS_PATH_SEPARATOR)
 		{
 			sis_strncpy(out_, olen_, fn_ + i + 1, len - i - 1);
+			out_[len - i - 1] = 0;
 			return;
 		}
 	}
 	sis_strncpy(out_, olen_, fn_, len);
+	out_[len] = 0;
 }
 bool sis_file_exists(const char *fn_)
 {
@@ -236,6 +239,48 @@ void sis_path_complete(char *path_, int maxlen_)
 	}
 }
 
+char *sis_path_get_files(const char *path_, int mode_)
+{
+	char fname[255];
+	strcpy(fname, path_);
+	sis_file_fixpath(fname);
+
+	char path[255];
+	char findname[255];
+	char filename[255];
+	sis_file_getpath(fname, path, 255);
+	sis_file_getname(fname, findname, 255);
+	if (sis_strlen(findname) < 1)
+	{
+		findname[0] = '*';
+		findname[1] = 0;
+	}
+
+	size_t size = 0;
+	char *o = NULL;
+
+	HANDLE done;
+	BOOL rtn = FALSE;
+	WIN32_FIND_DATA f;
+	done = FindFirstFile((fname), &f);
+	rtn = (done != INVALID_HANDLE_VALUE);
+	while (rtn)
+	{
+		// if (((mode_ == SIS_FINDPATH) && S_ISDIR(statbuf.st_mode)) ||
+		// 	((mode_ == SIS_FINDFILE) && S_ISREG(statbuf.st_mode)) ||
+		// 	(mode_ == SIS_FINDALL))
+		{
+			if (o)
+			{
+				o = sis_strcat(o, &size, ":");
+			}
+			o = sis_strcat(o, &size, df.cFileName);
+		}
+		rtn = FindNextFile(done, &f);
+	}
+	FindClose(done);
+	return o;
+}
 // int	limit_path_filecount(char *FindName, int limit)
 // {
 // 	list_filetimeinfo fileinfo;

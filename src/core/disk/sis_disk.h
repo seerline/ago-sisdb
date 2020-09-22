@@ -8,7 +8,7 @@
 #include "sis_file.h"
 #include "sis_math.h"
 #include "sis_time.h"
-#include "sis_compress.h"
+#include "sis_snappy.h"
 
 #define SIS_DISK_SDB_VER   3    // 数据结构版本
 

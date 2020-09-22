@@ -1064,7 +1064,7 @@ static void cb_client_write_after(uv_write_t *requst, int status)
 	}
 	if (client->write_buffer.base) 
 	{
-		printf("infs 2 = %d\n",((s_sis_object *)client->write_buffer.base)->refs);
+		// printf("infs 2 = %d\n",((s_sis_object *)client->write_buffer.base)->refs);
 		sis_object_decr((s_sis_object *)client->write_buffer.base);
 		client->write_buffer.base = NULL;
 		client->write_buffer.len = 0;
@@ -1085,7 +1085,7 @@ bool sis_socket_client_send(s_sis_socket_client *client_, s_sis_object *in_)
 	sis_object_incr(in_);
 	
 	client_->write_buffer.base = (char *)in_;
-	printf("infs 1 = %d\n",((s_sis_object *)client_->write_buffer.base)->refs);
+	// printf("infs 1 = %d\n",((s_sis_object *)client_->write_buffer.base)->refs);
 
 	client_->write_buffer.len = SIS_OBJ_GET_SIZE(in_);
 

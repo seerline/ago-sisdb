@@ -12,7 +12,7 @@
 #include "sis_log.h"
 #include "sis_str.h"
 #include <sis_json.h>
-#include <sis_bitstream.h>
+#include <sis_bits.h>
 
 // 数据体结构定义
 typedef  struct s_sis_ws_header {

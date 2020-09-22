@@ -11,10 +11,10 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_wlog_methods[] = {
-    {"read",  cmd_sisdb_wlog_read, NULL, NULL},   
-    {"write", cmd_sisdb_wlog_write, NULL, NULL},  
-    {"clear", cmd_sisdb_wlog_clear, NULL, NULL},  
-    {"check", cmd_sisdb_wlog_check, NULL, NULL},  
+    {"read",  cmd_sisdb_wlog_read, 0, NULL},   
+    {"write", cmd_sisdb_wlog_write, 0, NULL},  
+    {"clear", cmd_sisdb_wlog_clear, 0, NULL},  
+    {"check", cmd_sisdb_wlog_check, 0, NULL},  
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_wlog = {

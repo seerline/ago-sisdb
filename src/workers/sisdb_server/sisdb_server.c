@@ -12,19 +12,19 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_server_methods[] = {
-    {"auth",     cmd_sisdb_server_auth, NULL, NULL},   // 用户登录
-    {"show",     cmd_sisdb_server_show, NULL, NULL},   // 显示有多少数据集
-    {"save",     cmd_sisdb_server_save, "write,admin", NULL},   // 手动存盘
-    {"pack",     cmd_sisdb_server_pack, "write,admin", NULL},   // 手动清理磁盘旧的数据
-    {"call",     cmd_sisdb_server_call, NULL, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
-    {"wget",     cmd_sisdb_server_wget, NULL, NULL},   // get 后是否写log文件 方便查看信息
+    {"auth",     cmd_sisdb_server_auth, SIS_METHOD_ACCESS_READ, NULL},   // 用户登录
+    {"show",     cmd_sisdb_server_show, SIS_METHOD_ACCESS_READ, NULL},   // 显示有多少数据集
+    {"save",     cmd_sisdb_server_save, SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动存盘
+    {"pack",     cmd_sisdb_server_pack, SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动清理磁盘旧的数据
+    {"call",     cmd_sisdb_server_call, SIS_METHOD_ACCESS_READ, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
+    {"wget",     cmd_sisdb_server_wget, SIS_METHOD_ACCESS_READ, NULL},   // get 后是否写log文件 方便查看信息
 //  下面的数据流不存盘 只转发
-    {"snew",     cmd_sisdb_server_snew, "write,admin", NULL},   // 注册数据流 
-    {"spub",     cmd_sisdb_server_spub, "write,admin", NULL},   // 发布数据流
-    {"ssub",     cmd_sisdb_server_ssub, "write,admin", NULL},   // 订阅数据流 
-    {"sget",     cmd_sisdb_server_sget, "write,admin", NULL},   // 得到key的属性
-    {"sset",     cmd_sisdb_server_sset, "write,admin", NULL},   // 设置key的属性
-    {"sdel",     cmd_sisdb_server_sdel, "write,admin", NULL},   // 删除订阅的key
+    {"snew",     cmd_sisdb_server_snew, SIS_METHOD_ACCESS_ADMIN, NULL},   // 注册数据流 
+    {"spub",     cmd_sisdb_server_spub, SIS_METHOD_ACCESS_ADMIN, NULL},   // 发布数据流
+    {"ssub",     cmd_sisdb_server_ssub, SIS_METHOD_ACCESS_ADMIN, NULL},   // 订阅数据流 
+    {"sget",     cmd_sisdb_server_sget, SIS_METHOD_ACCESS_ADMIN, NULL},   // 得到key的属性
+    {"sset",     cmd_sisdb_server_sset, SIS_METHOD_ACCESS_ADMIN, NULL},   // 设置key的属性
+    {"sdel",     cmd_sisdb_server_sdel, SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除订阅的key
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_server = {
@@ -109,14 +109,14 @@ bool sisdb_server_init(void *worker_, void *argv_)
         {
             s_sisdb_userinfo *userinfo = SIS_MALLOC(s_sisdb_userinfo, userinfo);
             const char *access = sis_json_get_str(next,"access");
-            userinfo->access = SISDB_USER_ACCESS_READ;
+            userinfo->access = SIS_METHOD_ACCESS_READ;
             if (!sis_strcasecmp(access, "write"))
             {
-                userinfo->access = SISDB_USER_ACCESS_WRITE;
+                userinfo->access = SIS_METHOD_ACCESS_WRITE;
             }
             if (!sis_strcasecmp(access, "admin"))
             {
-                userinfo->access = SISDB_USER_ACCESS_ADMIN;
+                userinfo->access = SIS_METHOD_ACCESS_ADMIN;
             }
             sis_strcpy(userinfo->username, 32, sis_json_get_str(next,"username"));
             sis_strcpy(userinfo->password, 32, sis_json_get_str(next,"password"));
@@ -384,7 +384,7 @@ void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
 //     if (service)
 //     {
 //         s_sis_method *method = sis_worker_get_method(service, argv[1]);
-//         if (method && sis_str_subcmp_strict("write",  method->access, ',') >= 0)
+//         if (method && method->access == SIS_METHOD_ACCESS_WRITE)
 //         {
 //             printf("wlog: %s %s\n", netmsg->key, netmsg->cmd);
 
@@ -402,7 +402,7 @@ int sisdb_server_get_access(s_sisdb_server_cxt *context, s_sis_net_message *netm
 {
     if (!context->user_auth)
     {
-        return SISDB_USER_ACCESS_ADMIN;
+        return SIS_METHOD_ACCESS_ADMIN;
     }
     char userid[16];   
     sis_lldtoa(netmsg->cid, userid, 16, 10);
@@ -410,18 +410,18 @@ int sisdb_server_get_access(s_sisdb_server_cxt *context, s_sis_net_message *netm
 }
 bool sisdb_method_access(s_sis_method *method, int access)
 {
-    if (!method->access || (access == SISDB_USER_ACCESS_ADMIN))
+    if (!method->access || (access == SIS_METHOD_ACCESS_ADMIN))
     {
         return true;
     }
-    if (access == SISDB_USER_ACCESS_WRITE && 
-        sis_str_subcmp_strict("admin",  method->access, ',') >= 0)
+    if (access == SIS_METHOD_ACCESS_WRITE && 
+        method->access == SIS_METHOD_ACCESS_ADMIN)
     {
         return false;
     }
-    if (access == SISDB_USER_ACCESS_READ)
-        // (sis_str_subcmp_strict("write",  method->access, ',') < 0 ||
-        //  sis_str_subcmp_strict("admin",  method->access, ',') < 0))
+    if (access == SIS_METHOD_ACCESS_READ &&
+        (method->access == SIS_METHOD_ACCESS_ADMIN ||
+         method->access == SIS_METHOD_ACCESS_WRITE))
     {
         return false;
     }
@@ -466,7 +466,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
                     else
                     {
                         // 指令是否为写入
-                        if (sis_str_subcmp_strict("write",  method->access, ',') >= 0)
+                        if (method->access == SIS_METHOD_ACCESS_WRITE)
                         {
                             // printf("wlog: %s %s\n", netmsg->key, netmsg->cmd);
                             // 只记录写盘的数据
@@ -520,7 +520,7 @@ static int cb_reader_convert(void *worker_, s_sis_object *in_)
     }
     sis_object_incr(in_);
     int access = sisdb_server_get_access(context, netmsg);
-    if (access == SISDB_USER_ACCESS_ADMIN)  
+    if (access == SIS_METHOD_ACCESS_ADMIN)   
     // 只有超级用户权限  发出的指令才能进行数据转移
     {
         // 把返回值重新写入队列 供大家使用

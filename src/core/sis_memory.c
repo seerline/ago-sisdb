@@ -317,6 +317,12 @@ size_t sis_memory_get_size(s_sis_memory *m_)
 {
 	return (m_->size - m_->offset);
 }
+// 得到当前可写的剩余空间
+size_t sis_memory_get_freesize(s_sis_memory *m_)
+{
+	return (m_->maxsize - m_->size);
+}
+
 void sis_memory_set_size(s_sis_memory *m_, size_t len_)
 {
 	// printf("set size :%zu -- %zu\n", len_, m_->offset);

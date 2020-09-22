@@ -97,7 +97,7 @@ size_t sis_file_size(s_sis_file_handle fp_);
 size_t sis_file_read(s_sis_file_handle fp_, char *in_, size_t len_);
 size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_);
 
-void  sis_file_getpath(const char *fn_, char *out_, int olen_);
+void sis_file_getpath(const char *fn_, char *out_, int olen_);
 void sis_file_getname(const char *fn_, char *out_, int olen_);
 
 bool sis_file_exists(const char *fn_);
@@ -109,6 +109,14 @@ void sis_file_delete(const char *fn_);
 
 void sis_path_complete(char *path_,int maxlen_);
 bool sis_path_mkdir(const char *path_);
+
+#define SIS_FINDALL  0
+#define SIS_FINDPATH 1
+#define SIS_FINDFILE 2
+
+char *sis_path_get_files(const char *path_, int mode_);
+void sis_path_del_files(char *path_);
+
 #ifdef __cplusplus
 }
 #endif

@@ -18,7 +18,7 @@ unsigned long long sis_time_get_now_msec()
 {
 	struct timeval tv;
 	struct timezone tz;
-	sis_time_get_day(&tv, &tz);
+	gettimeofday(&tv, &tz);
 	return ((unsigned long long)tv.tv_sec) * 1000 + tv.tv_usec / 1000;
 }
 
