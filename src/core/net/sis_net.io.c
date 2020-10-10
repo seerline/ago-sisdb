@@ -79,7 +79,7 @@ void sis_net_ans_with_int(s_sis_net_message *netmsg_, int in_)
 {
     netmsg_->format = SIS_NET_FORMAT_CHARS;
     char rint[32];
-    sis_llutoa(in_, rint, 32, 10);
+    sis_lldtoa(in_, rint, 32, 10);
     netmsg_->rval = sis_sdsnew(rint);
     netmsg_->style = SIS_NET_RCMD | SIS_NET_VAL;
     netmsg_->rcmd = SIS_NET_ANS_OK;
@@ -96,6 +96,7 @@ void sis_net_ans_with_error(s_sis_net_message *netmsg_, char *rval_, size_t vlen
     netmsg_->style = SIS_NET_RCMD;
     netmsg_->rcmd = SIS_NET_ANS_ERROR;
     netmsg_->rval = rval_ ? sis_sdsnewlen(rval_, vlen_) : NULL;
+    netmsg_->style |= netmsg_->rval ? SIS_NET_VAL: 0;
 }
 void sis_net_ans_with_null(s_sis_net_message *netmsg_)
 {
@@ -109,6 +110,7 @@ void sis_net_ans_with_sub_start(s_sis_net_message *netmsg_, char *info_)
     netmsg_->style = SIS_NET_RCMD;
     netmsg_->rcmd = SIS_NET_ANS_SUB_START;
     netmsg_->rval = info_ ? sis_sdsnew(info_) : NULL;
+    netmsg_->style |= netmsg_->rval ? SIS_NET_VAL: 0;
 }
 void sis_net_ans_with_sub_wait(s_sis_net_message *netmsg_, char *info_)
 {
@@ -116,6 +118,7 @@ void sis_net_ans_with_sub_wait(s_sis_net_message *netmsg_, char *info_)
     netmsg_->style = SIS_NET_RCMD;
     netmsg_->rcmd = SIS_NET_ANS_SUB_WAIT;
     netmsg_->rval = info_ ? sis_sdsnew(info_) : NULL;
+    netmsg_->style |= netmsg_->rval ? SIS_NET_VAL: 0;
 }
 void sis_net_ans_with_sub_stop(s_sis_net_message *netmsg_, char *info_)
 {
@@ -123,6 +126,7 @@ void sis_net_ans_with_sub_stop(s_sis_net_message *netmsg_, char *info_)
     netmsg_->style = SIS_NET_RCMD;
     netmsg_->rcmd = SIS_NET_ANS_SUB_STOP;
     netmsg_->rval = info_ ? sis_sdsnew(info_) : NULL;
+    netmsg_->style |= netmsg_->rval ? SIS_NET_VAL: 0;
 }
 
 // int sis_net_send_ask(s_sis_net_class *net_, s_sis_net_message *msg)

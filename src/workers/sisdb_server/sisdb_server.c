@@ -18,13 +18,11 @@ struct s_sis_method sisdb_server_methods[] = {
     {"pack",     cmd_sisdb_server_pack, SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动清理磁盘旧的数据
     {"call",     cmd_sisdb_server_call, SIS_METHOD_ACCESS_READ, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
     {"wget",     cmd_sisdb_server_wget, SIS_METHOD_ACCESS_READ, NULL},   // get 后是否写log文件 方便查看信息
-//  下面的数据流不存盘 只转发
-    {"snew",     cmd_sisdb_server_snew, SIS_METHOD_ACCESS_ADMIN, NULL},   // 注册数据流 
+//  结构化数据流传输 下面的数据流不存盘 只转发且为全量转发
+    {"snew",     cmd_sisdb_server_snew, SIS_METHOD_ACCESS_ADMIN, NULL},   // 注册一个数据流,必须传入key和sdb的字典 
     {"spub",     cmd_sisdb_server_spub, SIS_METHOD_ACCESS_ADMIN, NULL},   // 发布数据流
     {"ssub",     cmd_sisdb_server_ssub, SIS_METHOD_ACCESS_ADMIN, NULL},   // 订阅数据流 
-    {"sget",     cmd_sisdb_server_sget, SIS_METHOD_ACCESS_ADMIN, NULL},   // 得到key的属性
-    {"sset",     cmd_sisdb_server_sset, SIS_METHOD_ACCESS_ADMIN, NULL},   // 设置key的属性
-    {"sdel",     cmd_sisdb_server_sdel, SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除订阅的key
+    {"sdel",     cmd_sisdb_server_sdel, SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除数据流 
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_server = {
@@ -564,7 +562,15 @@ void sisdb_server_working(void *worker_)
             context->work_date = sis_time_get_idate(0);
             // 这步开始时 wlog 已经被清空 
             _sisdb_server_load(context);
-
+            // 全部处理完成 修改 数据集的时间
+            int count = sis_map_list_getsize(context->datasets);
+            for (int i = 0; i < count; i++)
+            {
+                s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);                
+                s_sisdb_cxt *cxt = service->context;
+                cxt->work_date = context->work_date;
+            }
+            
             sis_mutex_unlock(&context->wlog_lock);
         }
     }  
@@ -834,24 +840,3 @@ int cmd_sisdb_server_sdel(void *worker_, void *argv_)
 
     return SIS_METHOD_OK;
 }
-int cmd_sisdb_server_sget(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-    sis_net_ans_with_ok(netmsg); 
-
-    return SIS_METHOD_OK;
-}
-int cmd_sisdb_server_sset(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-    sis_net_ans_with_ok(netmsg); 
-
-    return SIS_METHOD_OK;
-}
-

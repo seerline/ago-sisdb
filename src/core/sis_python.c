@@ -2,10 +2,32 @@
 #include <sis_python.h>
 #include <sis_file.h>
 
+static int __init_pyscripe = 0;
+
+void sis_py_init()
+{
+	if (!__init_pyscripe)
+	{
+		Py_Initialize();
+		__init_pyscripe = 1;
+	}
+}
+void sis_py_uninit()
+{
+	if (__init_pyscripe)
+	{
+		Py_Finalize();
+		__init_pyscripe = 0;
+	}
+}
+bool sis_py_isinit()
+{
+	return (__init_pyscripe == 1);
+}
 s_sis_sds sis_py_execute_sds(const char *workpath_, const char *pyname_, const char *func_, const char *argv_)
 {
 	s_sis_sds o = NULL;
-	sis_py_init();
+	// sis_py_init();
 	sis_py_simple_string("import sys");
 	char workpath[255];
 	sis_sprintf(workpath, 255, "sys.path.append('%s')", workpath_);
@@ -27,7 +49,7 @@ s_sis_sds sis_py_execute_sds(const char *workpath_, const char *pyname_, const c
 	o = sis_sdsnew(reply);
 
 fail:
-	sis_py_uninit();
+	// sis_py_uninit();
 	// 删除中间目录
 	sis_sprintf(workpath, 255, "%s/__pycache__/", workpath_);
 	sis_path_del_files(workpath);
@@ -158,16 +180,7 @@ static s_sis_py_method __merge_methods[] =
 ////////////////////
 // s_sis_pyscript_unit
 ////////////////////
-void sis_pyscript_unit_init(s_sis_pyscript_unit *unit_)
-{
-	sis_py_init();
-	sis_py_simple_string("import sys");
-	sis_py_simple_string(unit_->workcmd);
-}
-void sis_pyscript_unit_uninit(s_sis_pyscript_unit *unit_)
-{
-	sis_py_uninit();
-}
+
 s_sis_pyscript_unit *sis_pyscript_unit_create(const char *workpath_, const char *workname_)
 {
 	s_sis_pyscript_unit *o = SIS_MALLOC(s_sis_pyscript_unit, o);
@@ -176,40 +189,45 @@ s_sis_pyscript_unit *sis_pyscript_unit_create(const char *workpath_, const char 
 	o->workcmd = sis_sdsempty();
 	o->workcmd = sis_sdscatfmt(o->workcmd, "sys.path.append('%s%s')", workpath_, workname_);
 
-	sis_pyscript_unit_init(o);
+	// sis_py_init();
+	sis_py_simple_string("import sys");
+	sis_py_simple_string(o->workcmd);
 
 	char str[255];
-	s_sis_py_obj *pmodule = sis_py_import_module(workname_);
-	if (!pmodule) goto fail;
-	s_sis_py_obj *pdict = sis_py_get_dict(pmodule);
-	if (!pdict) goto fail;
+	o->pmodule = sis_py_import_module(workname_);
+	if (!o->pmodule) goto fail;
+	o->pdict = sis_py_get_dict(o->pmodule);
+	if (!o->pdict) goto fail;
 	sis_sprintf(str, 255, "sis_%s_init", workname_);
-	s_sis_py_obj *pinit = sis_py_get_func_of_dict(pdict, str);
-	if (!pinit) goto fail;
+	o->pinit = sis_py_get_func_of_dict(o->pdict, str);
+	if (!o->pinit) goto fail;
 	sis_sprintf(str, 255, "sis_%s_uninit", workname_);
-	s_sis_py_obj *puninit = sis_py_get_func_of_dict(pdict, str);
-	if (!puninit) goto fail;
+	o->puninit = sis_py_get_func_of_dict(o->pdict, str);
+	if (!o->puninit) goto fail;
 
 	s_sis_py_method *cur;
 	for (cur = __merge_methods; cur->ml_name != NULL; cur++) 
 	{
 		s_sis_py_obj *pfunc = sis_py_new_func(cur, NULL);
-		sis_py_set_func_to_dict(pdict, cur->ml_name, pfunc);
+		sis_py_set_func_to_dict(o->pdict, cur->ml_name, pfunc);
 		SIS_PY_DECREF(pfunc);
 	}
-	s_sis_py_obj *init_args = sis_py_get_args("(K,s)", (uint64)o, "{}"); // L->int64 K->uint64
-	s_sis_py_obj *init_result = sis_py_run_func(pinit, init_args);
-	// 加载所有的方法
-    int ok = 0;
-    sis_py_parse_args(init_result, "i", &ok);
-	printf("c: %d %p, %p %p\n", ok, o, init_args, init_result);
+
+	SIS_PY_INCREF(o->pmodule);
+	SIS_PY_INCREF(o->pdict);
+	SIS_PY_INCREF(o->pinit);
+	SIS_PY_INCREF(o->puninit);
+	// s_sis_py_obj *init_args = sis_py_get_args("(K,s)", (uint64)o, "{}"); // L->int64 K->uint64
+	// s_sis_py_obj *init_result = sis_py_run_func(pinit, init_args);
+	// // 加载所有的方法
+    // int ok = 0;
+    // sis_py_parse_args(init_result, "i", &ok);
+	// printf("c: %d %p, %p %p\n", ok, o, init_args, init_result);
 
 	LOG(5)("install script %s ok.\n", workname_);
-	sis_pyscript_unit_uninit(o);
 	return o;	
 fail:
 	LOG(5)("install script %s fail.\n", workname_);
-	sis_pyscript_unit_uninit(o);
 	sis_pyscript_unit_destroy(o);
 	return NULL;	
 }
@@ -220,6 +238,12 @@ void sis_pyscript_unit_destroy(void *unit_)
 	sis_sdsfree(unit->workname);
 	sis_sdsfree(unit->workcmd);
 	// 删除所有的方法
+
+	SIS_PY_DECREF(unit->pmodule);
+	SIS_PY_DECREF(unit->pdict);
+	SIS_PY_DECREF(unit->pinit);
+	SIS_PY_DECREF(unit->puninit);
+	// sis_py_uninit();
 	sis_free(unit);
 }
 ////////////////////
@@ -250,12 +274,43 @@ int sis_pyscript_unit_load(s_sis_map_pointer *map_, const char *workpath_)
 	return sis_map_pointer_getsize(map_);
 }
 
-#if 1
+#if 0
+void *thread_pop(void *arg)
+{
+	int count = 30000;
+    s_sis_map_pointer *map = (s_sis_map_pointer *)arg;
+
+    while(count)
+    {
+		s_sis_pyscript_unit *unit = (s_sis_pyscript_unit *)sis_map_pointer_get(map, "demo_method");
+		if (unit)
+		{
+			s_sis_py_obj *init_args = sis_py_get_args("(K,s)", (uint64)unit, "{}"); // L->int64 K->uint64
+			s_sis_py_obj *init_result = sis_py_run_func(unit->pinit, init_args);
+			// 加载所有的方法
+			int ok = 0;
+			sis_py_parse_args(init_result, "i", &ok);
+			printf("c: [%d] %d %p, %p %p\n", count, ok, unit, init_args, init_result);
+		}
+		count--;
+        sis_sleep(1);
+    }
+    return NULL;
+}
+
 int main()
 {
+	sis_py_init();
 	s_sis_map_pointer *map = sis_map_pointer_create_v(sis_pyscript_unit_destroy);
 	int count = sis_pyscript_unit_load(map, "../pyscript/");
+
+	pthread_t read;
+	pthread_create(&read, NULL, thread_pop, map);
+
+	pthread_join(read, NULL);
+
 	sis_map_pointer_destroy(map);
+	sis_py_uninit();
 	return 0;
 }
 int main1()

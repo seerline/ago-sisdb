@@ -137,26 +137,26 @@ int cmd_sisdb_server_call(void *worker_, void *argv_);
 int cmd_sisdb_server_wget(void *worker_, void *argv_);
 
 // ***  这里的数据不存盘 ***//
-// 为应对数据分发的功能，在server层支持订阅数据 发布数据 的功能 数据内容为二进制流具体解析sisdb不管
-// sisdb仅仅作为一个中间通讯组件使用
-// snew 注册一个无锁队列
-// snew shl2  -1   最小限制 默认值 满足最慢的订阅者
-// snew shl2   0   不设限制  
-// snew shl2  xxx  指定最大数据容量
+// 数据采用结构化数据压缩方式，实时压缩，放入无锁发送队列中 
+// 每10ms打一个包或者数据量超过16K(减少拆包和拼包的动作)一个包,
+// 为相关压缩必须保证包的顺序 当时间为整10分钟时重新压缩 保证最差能取到最近 10 分钟数据
+// sisdb 仅仅作为一个中间通讯组件使用
+// snew name {参数} 
+//     注册一个无锁队列
+//     (必要参数) keys : ,,,,,
+//     (必要参数) sdbs : {}
 int cmd_sisdb_server_snew(void *worker_, void *argv_);
-// kpub shl2  数据流写入无锁队列中 
+// kpub name  数据流写入无锁队列中 
 int cmd_sisdb_server_spub(void *worker_, void *argv_);
 // 对指定的无锁队列增加订阅者
-// ksub shl2  默认从最新的数据开始订阅
-// ksub shl2  0 从最开始订阅
-// ksub shl2  xxx 从某个时间开始订阅 *不支持*
+// ssub name {}
+// 默认从最新的具备完备数据的数据包开始订阅 seat : 0
+// seat : 1 从最开始订阅 
+// 订阅后首先收到 skey ssdb 然后如果有 spub 的数据就持续的收到 并会收到缓存为空的信息
 int cmd_sisdb_server_ssub(void *worker_, void *argv_);
-// kdel shl2  0 数据清理  客户端订阅清理 all 全部清理
+// sdel name {}
+// 默认仅仅做数据清理  clear:0 清理数据 clear:1 客户端订阅清理 clear:2 全部清理
 int cmd_sisdb_server_sdel(void *worker_, void *argv_);
-// 需要保留的数据key
-int cmd_sisdb_server_sget(void *worker_, void *argv_);
-// 
-int cmd_sisdb_server_sset(void *worker_, void *argv_);
 
 
 #endif

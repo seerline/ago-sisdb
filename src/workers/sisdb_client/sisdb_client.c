@@ -13,7 +13,6 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_client_methods[] = {
-    {"send-cb", cmd_sisdb_client_send_cb, 0, NULL},      // 以回调方式得到数据
     {"ask-chars-fast", cmd_sisdb_client_ask_chars, 0, NULL},  // 不堵塞
     {"ask-bytes-fast", cmd_sisdb_client_ask_bytes, 0, NULL},  // 不堵塞
     {"ask-chars", cmd_sisdb_client_ask_chars_wait, 0, NULL},  // 堵塞直到数据返回
@@ -409,17 +408,17 @@ bool sisdb_client_ask_sub_exists(
     return exists;
 }
 
-int cmd_sisdb_client_send_cb(void *worker_, void *argv_)
+int cmd_sisdb_client_send_cb(void *worker_, s_sisdb_client_ask *ask_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_client_cxt *context = (s_sisdb_client_cxt *)worker->context;
 
     // printf("=== %s %d\n",__func__, context->status);
-    if (!argv_ || context->status != SIS_CLI_STATUS_WORK)
+    if (!ask_ || context->status != SIS_CLI_STATUS_WORK)
     {
         return SIS_METHOD_ERROR;
     }
-    s_sisdb_client_ask *ask = (s_sisdb_client_ask *)argv_;
+    s_sisdb_client_ask *ask = (s_sisdb_client_ask *)ask_;
 
     ask->format = SIS_NET_FORMAT_CHARS;
     sisdb_client_send_ask(context, ask);
@@ -570,8 +569,8 @@ int cmd_sisdb_client_ask_bytes(void *worker_, void *argv_)
 
     s_sisdb_client_ask *ask = sisdb_client_ask_new( 
 		context,
-		(const char *)sis_message_get(msg, "cmd"), 
-		(const char *)sis_message_get(msg, "key"), 
+		(const char *)sis_message_get_str(msg, "cmd"), 
+		(const char *)sis_message_get_str(msg, "key"), 
 		sis_message_get(msg, "val"), 
         sis_message_get_int(msg, "vlen"), 
 		msg, 

@@ -47,7 +47,8 @@ void safe_memory_stop()
         unsigned char *ptr = (unsigned char *)node + MEMORY_NODE_SIZE;
         printf("[%4d] %p [%d] func:%s, lines:%d :: ", i++,
                ptr, node->size, node->info, node->line);
-        if (!safe_memory_cmp(node->info, "sis_strdup"))
+        if (!safe_memory_cmp(node->info, "sis_strdup")||
+            !safe_memory_cmp(node->info, "sdsnewlen"))
         {
             printf("%s", ptr);
         }

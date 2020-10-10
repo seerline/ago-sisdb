@@ -22,9 +22,6 @@
 #define s_sis_py_obj       PyObject
 #define s_sis_py_method    PyMethodDef
 
-#define sis_py_init        Py_Initialize
-#define sis_py_uninit      Py_Finalize
-
 #define sis_py_new         PyObject_Malloc
 #define sis_py_free        PyObject_Free
 // 直接运行python文本代码
@@ -73,8 +70,16 @@ typedef struct s_sis_pyscript_unit
 	s_sis_sds          workcmd;
 	s_sis_message     *message;
 	s_sis_map_pointer *methods;
+	s_sis_py_obj      *pmodule;
+	s_sis_py_obj      *pdict;
+	s_sis_py_obj      *pinit;
+	s_sis_py_obj      *puninit;
+
 }s_sis_pyscript_unit;
 
+void sis_py_init();
+void sis_py_uninit();
+bool sis_py_isinit();
 // 独立执行一段python代码 返回一段字符串
 // 文件名 函数名 参数(json格式字符串)
 s_sis_sds sis_py_execute_sds(const char *workpath_, const char *pyname_, const char *func_, const char *argv_);

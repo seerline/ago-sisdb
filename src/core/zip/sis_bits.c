@@ -577,7 +577,7 @@ int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_)
     s_sis_struct_unit *unit = SIS_MALLOC(s_sis_struct_unit, unit);
     unit->sdb = db_;
     unit->offset = s_->sdbsize;
-    s_->sdbsize += db_->size;
+    s_->sdbsize += (db_->size + 1);
     sis_pointer_list_push(s_->units, unit);
     return s_->units->count - 1;
 }
@@ -586,7 +586,13 @@ int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_)
     s_->max_keys = keynum_;
     return keynum_;
 }
-
+void sis_bits_struct_flush(s_sis_bits_stream *s_)
+{
+    if (s_->inited == 1)
+    {
+        memset(s_->ago_memory, 0, s_->max_keys * s_->sdbsize);
+    }    
+}
 void _sis_bits_struct_init(s_sis_bits_stream *s_)
 {
     if (s_->inited == 0)
@@ -672,9 +678,11 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
     {
         return -2;
     }
-    char *memory = (char *)buffer;
+    char *memory = (char *)&buffer[1];
     int count = ilen_ / unit->sdb->size;
+    // sis_out_binary("buffer", (char *)buffer, unit->sdb->size + 1);
 
+    sis_bits_stream_put(s_, buffer[0] == 0 ? 0 : 1, 1);
     // printf("[%d %d] %s \n",kid_, sid_, unit->sdb->name);
     sis_bits_stream_put_uint(s_, kid_);
     // sis_out_binary("1", sis_memory(s_->cur_stream), sis_bits_stream_getbytes(s_));
@@ -698,6 +706,7 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
             // printf("[%d:%d] %d -- %d\n", k, i, sis_bits_stream_getbytes(s_),s_->bit_currpos);
 		}
         memmove(memory, in, unit->sdb->size);
+        buffer[0] = 1;
         // sis_out_binary("in", in, unit->sdb->size);
         // sis_out_binary("memory", memory, unit->sdb->size);
 		in += unit->sdb->size;
@@ -705,7 +714,7 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
     return 0;
 }
 
-static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_, 
+static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
     const char *memory_, s_sis_dynamic_field *infield_, 
     char *in_)
 {
@@ -716,7 +725,7 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_INT:
             {
                 _sis_field_set_int(infield_, in_, 
-                    sis_bits_stream_get_incr_int(s_, _sis_field_get_int(infield_, memory_, index)),
+                    sis_bits_stream_get_incr_int(s_, memory_ ? _sis_field_get_int(infield_, memory_, index) : 0),
                     index);
             }
             break;
@@ -727,7 +736,7 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_UINT:
             {
                 _sis_field_set_uint(infield_, in_, 
-                    sis_bits_stream_get_incr_int(s_, _sis_field_get_uint(infield_, memory_, index)),
+                    sis_bits_stream_get_incr_int(s_, memory_ ? _sis_field_get_uint(infield_, memory_, index) : 0),
                     index);
             }
             break;
@@ -735,15 +744,23 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_PRICE:
             {
                 _sis_field_set_float(infield_, in_, 
-                    sis_bits_stream_get_incr_float(s_, _sis_field_get_float(infield_, memory_, index), infield_->dot),
+                    sis_bits_stream_get_incr_float(s_, memory_ ? _sis_field_get_float(infield_, memory_, index) : 0.0, infield_->dot),
                     index);
             }
             break;
         case SIS_DYNAMIC_TYPE_CHAR:
             {
-                sis_bits_stream_get_incr_chars(s_, 
-                    in_ + infield_->offset + index * infield_->len, infield_->len,
-                    (char *)memory_ + infield_->offset + index * infield_->len, infield_->len);
+                if (memory_)
+                {
+                    sis_bits_stream_get_incr_chars(s_, 
+                        in_ + infield_->offset + index * infield_->len, infield_->len,
+                        (char *)memory_ + infield_->offset + index * infield_->len, infield_->len);
+                }
+                else
+                {
+                    sis_bits_stream_get_chars(s_, 
+                        in_ + infield_->offset + index * infield_->len, infield_->len);
+                }               
             }
             break;
         default:
@@ -762,17 +779,24 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_d
     while(s_->bit_currpos < s_->bit_maxsize)
     {        
         sis_bits_stream_savepos(s_);
+        int zip = sis_bits_stream_get(s_, 1);
+        if(!zip)
+        {
+            printf("...\n");
+        }
         int kid = sis_bits_stream_get_uint(s_);
         int sid = sis_bits_stream_get_uint(s_);
         int count = sis_bits_stream_get_nums(s_);
 
         s_sis_struct_unit *unit = (s_sis_struct_unit *)sis_pointer_list_get(s_->units, sid);
-        char *memory = (char *)_sis_bits_struct_get_ago(s_, kid, unit);
-        if (!memory)
+
+        uint8 *buffer = _sis_bits_struct_get_ago(s_, kid, unit);
+        if (!buffer)
         {
             sis_bits_stream_restore(s_);
             return -1;
         }
+        char *memory = (char *)&buffer[1];
         int fnums = sis_map_list_getsize(unit->sdb->fields);
         size_t size = unit->sdb->size * count;
         char *unzip = (char *)sis_calloc(size);
@@ -786,7 +810,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_d
                 {
                     continue;
                 }
-                _sis_bits_struct_decode_one(s_, memory, infield, in);
+                _sis_bits_struct_decode_one(s_, zip == 0 ? NULL : memory, infield, in);
             }
             // sis_out_binary("mm", memory, unit->sdb->size);
             // sis_out_binary("ii", in, unit->sdb->size);
@@ -916,7 +940,7 @@ int cb_sis_decode(void *src, int kid,int sid, char *in, size_t ilen)
     s_sis_struct_unit *unit=(s_sis_struct_unit *)sis_pointer_list_get(zip->units, sid);
 
     s_sis_sds out = sis_dynamic_db_to_array_sds(unit->sdb, unit->sdb->name, in, ilen);
-    printf("%s = \n%s\n", unit->sdb->name, out);
+    printf("%s = %s\n", unit->sdb->name, out);
     sis_sdsfree(out);
 
     return 0;
@@ -938,12 +962,12 @@ int main()
     int tick_nums = sizeof(ticks) / sizeof(_tick_);
     {
         s_sis_sds in = sis_dynamic_db_to_array_sds(snap, "snap", &snaps[0], snap_nums * sizeof(_snap_));
-        printf("snap = \n%s\n", in);
+        printf("%s\n", in);
         sis_sdsfree(in);
     } 
     {
         s_sis_sds in = sis_dynamic_db_to_array_sds(tick, "tick", &ticks[0], tick_nums* sizeof(_tick_));
-        printf("tick = \n%s\n", in);
+        printf("%s\n", in);
         sis_sdsfree(in);
     }
     // 压缩
@@ -963,20 +987,22 @@ int main()
     
     printf("[%d,%d] %p %p nums : %d %d\n", snapidx, tickidx, snap, tick, snap_nums, tick_nums);
     printf("start: %lld\n", sis_time_get_now_msec());
-    int zipnnums = 1;//*1000;
+    int zipnnums = 2;//*1000;
     for (int k = 0; k < zipnnums; k++)
-    for (int i = 0; i < sis_max(snap_nums, tick_nums); i++)
-    // for (int i = 0; i < 2; i++)
     {
-        if (i < snap_nums)
+        for (int i = 0; i < sis_max(snap_nums, tick_nums); i++)
         {
-            sis_bits_struct_encode(zip, 0, snapidx, &snaps[i], sizeof(_snap_));
+            if (i < snap_nums)
+            {
+                sis_bits_struct_encode(zip, 0, snapidx, &snaps[i], sizeof(_snap_));
+            }
+            if (i < tick_nums)
+            {
+                // sis_out_binary("in tick", (const char *)&ticks[i], sizeof(_tick_));
+                sis_bits_struct_encode(zip, 1, tickidx, &ticks[i], sizeof(_tick_));
+            }
         }
-        if (i < tick_nums)
-        {
-            // sis_out_binary("in tick", (const char *)&ticks[i], sizeof(_tick_));
-            sis_bits_struct_encode(zip, 3, tickidx, &ticks[i], sizeof(_tick_));
-        }
+        sis_bits_struct_flush(zip);
     }
     // sis_bits_struct_encode(zip, 3, tickidx, &ticks[1], 5*sizeof(_tick_));
     // 77700000 --> 24962531

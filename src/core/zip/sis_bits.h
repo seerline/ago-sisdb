@@ -141,6 +141,8 @@ int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen
 ////////////////////////////
 int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_);
 int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_);
+// 重新开始压缩
+void sis_bits_struct_flush(s_sis_bits_stream *s_);
 
 int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_, size_t ilen_);
 int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_decode *);

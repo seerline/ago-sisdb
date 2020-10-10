@@ -104,7 +104,7 @@ bool sisdb_client_ask_sub_exists(
 );
 
 // fast query
-int cmd_sisdb_client_send_cb(void *worker_, void *argv_);
+int cmd_sisdb_client_send_cb(void *worker_, s_sisdb_client_ask *ask_);
 // slow query
 int cmd_sisdb_client_ask_chars(void *worker_, void *argv_);
 int cmd_sisdb_client_ask_bytes(void *worker_, void *argv_);
