@@ -74,6 +74,10 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t 
     netmsg_->style = SIS_NET_RCMD | SIS_NET_ARGVS;
     netmsg_->style |= netmsg_->key ? SIS_NET_KEY: 0;
 }
+void sis_net_ans_with_noreply(s_sis_net_message *netmsg_)
+{
+    netmsg_->style = SIS_NET_INSIDE;
+}
 
 void sis_net_ans_with_int(s_sis_net_message *netmsg_, int in_)
 {

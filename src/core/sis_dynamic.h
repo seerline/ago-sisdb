@@ -498,6 +498,8 @@ void sis_dynamic_db_destroy(void *db_);
 s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_);
 
 s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
+// 比较两个表的结构 一样返回 true
+bool sis_dynamic_dbinfo_same(s_sis_dynamic_db *db1_, s_sis_dynamic_db *db2_);
 
 s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_);
 // 从db转为json格式数据结构

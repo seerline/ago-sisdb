@@ -583,7 +583,7 @@ int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_)
 }
 int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_)
 {
-    s_->max_keys = keynum_;
+    s_->max_keynum = keynum_;
     return keynum_;
 }
 
@@ -598,7 +598,7 @@ void sis_bits_struct_flush(s_sis_bits_stream *s_)
 {
     if (s_->inited == 1)
     {
-        memset(s_->ago_memory, 0, s_->max_keys * s_->sdbsize);
+        memset(s_->ago_memory, 0, s_->max_keynum * s_->sdbsize);
     }    
 }
 void _sis_bits_struct_init(s_sis_bits_stream *s_)
@@ -609,14 +609,14 @@ void _sis_bits_struct_init(s_sis_bits_stream *s_)
         {
             sis_free(s_->ago_memory);
         }  
-        s_->ago_memory = (uint8 *)sis_malloc(s_->max_keys * s_->sdbsize);
-        memset(s_->ago_memory, 0, s_->max_keys * s_->sdbsize);
+        s_->ago_memory = (uint8 *)sis_malloc(s_->max_keynum * s_->sdbsize);
+        memset(s_->ago_memory, 0, s_->max_keynum * s_->sdbsize);
         s_->inited = 1;
     }    
 }
 uint8 *_sis_bits_struct_get_ago(s_sis_bits_stream *s_, int kid_, s_sis_struct_unit *unit_)
 {
-    if (unit_ && kid_ < s_->max_keys)
+    if (unit_ && kid_ < s_->max_keynum)
     {
         return s_->ago_memory + kid_ * s_->sdbsize + unit_->offset;
     }

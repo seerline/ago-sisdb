@@ -110,6 +110,7 @@ typedef struct s_sis_share_reader
 typedef struct s_sis_share_list {
     s_sis_sds            name;     // 链表名字 一般通过该名字来隔离
 
+    int                  zeromsec; // 0 表示不返回NULL >0 表示返回NULL值
     s_sis_share_node    *head;
     s_sis_share_node    *tail;
     s_sis_mutex_t        headlock;
@@ -158,6 +159,8 @@ void sis_share_list_destroy(s_sis_share_list *);
 
 // 广播写入入口 读是依靠回调实现 
 int  sis_share_list_push(s_sis_share_list *, s_sis_object *value_);
+
+void sis_share_list_zero(s_sis_share_list *, int);
 
 // 写入缓存数据 读取是依靠get按索引获取
 int  sis_share_list_catch_set(s_sis_share_list *, char *key_, s_sis_object *value_);

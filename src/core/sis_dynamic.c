@@ -253,6 +253,28 @@ s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
 	in_ = sis_sdscat(in_, "}}");
 	return in_;
 }
+bool sis_dynamic_dbinfo_same(s_sis_dynamic_db *db1_, s_sis_dynamic_db *db2_)
+{
+	int fnums = sis_map_list_getsize(db1_->fields);
+	if(fnums != sis_map_list_getsize(db2_->fields))	
+	{
+		return false;
+	}
+	for (int i = 0; i < fnums; i++)
+	{
+		s_sis_dynamic_field *unit1 = (s_sis_dynamic_field *)sis_map_list_geti(db1_->fields, i);
+		s_sis_dynamic_field *unit2 = (s_sis_dynamic_field *)sis_map_list_geti(db2_->fields, i);
+		if(!unit1||!unit2) 
+		{
+			return false;
+		}
+		if (memcmp(unit1, unit2, sizeof(s_sis_dynamic_field)))
+		{
+			return false;
+		}
+	}
+	return true;
+}
 
 s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_)
 {

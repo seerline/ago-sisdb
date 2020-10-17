@@ -40,12 +40,12 @@ s_sis_disk_index_unit *sis_disk_index_get_unit(s_sis_disk_index *cls_, int index
 // s_sis_disk_dict
 ////////////////////////////////////////////////////////
 
-s_sis_disk_dict *sis_disk_dict_create(s_sis_json_node *node_, bool iswrite_, s_sis_dynamic_db * db_)
+s_sis_disk_dict *sis_disk_dict_create(const char *name_, bool iswrite_, s_sis_dynamic_db *db_)
 {
     s_sis_disk_dict *o = SIS_MALLOC(s_sis_disk_dict, o);
-    o->name = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(node_->key));
+    o->name = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(name_));
     o->units = sis_pointer_list_create();
-    sis_disk_dict_set(o, iswrite_, node_, db_); // 
+    sis_disk_dict_set(o, iswrite_, db_); // 
     return o;
 }
 void sis_disk_dict_destroy(void *in_)
@@ -66,7 +66,6 @@ void sis_disk_dict_clear_units(s_sis_disk_dict *dict_)
         {
             sis_dynamic_db_destroy(unit->db);
         }
-        sis_sdsfree(unit->attr);
         sis_free(unit);
     }
     sis_pointer_list_clear(dict_->units);
@@ -81,30 +80,23 @@ s_sis_disk_dict_unit *sis_disk_dict_get(s_sis_disk_dict *dict_, int index_)
     return (s_sis_disk_dict_unit *)sis_pointer_list_get(dict_->units, index_);
 }
 
-int sis_disk_dict_set(s_sis_disk_dict *dict_, bool iswrite_, s_sis_json_node *node_, s_sis_dynamic_db * db_)
+int sis_disk_dict_set(s_sis_disk_dict *dict_, bool iswrite_, s_sis_dynamic_db * db_)
 {
     bool isnew = true;
-    s_sis_sds attr = NULL;
-    if (node_->type == SIS_JSON_NULL)
+    if (!db_)
     {
         s_sis_disk_dict_unit *last = (s_sis_disk_dict_unit *)sis_pointer_list_get(dict_->units, dict_->units->count - 1);
-        if (last && !last->attr)
+        if (last)
         {
             isnew = false;
         }
     }
     else
     {
-        size_t size;
-        char *str = sis_json_output_zip(node_, &size);
-        attr = sis_sdsnewlen(str, size);
-        sis_free(str);
-
         s_sis_disk_dict_unit *last = (s_sis_disk_dict_unit *)sis_pointer_list_get(dict_->units, dict_->units->count - 1);
-        if (last && !sis_strncasecmp(attr, last->attr, sis_sdslen(last->attr)))
+        if (last && sis_dynamic_dbinfo_same(last->db, db_))
         {
             isnew = false;
-            sis_sdsfree(attr);
         }
     }
     if (isnew)
@@ -112,7 +104,6 @@ int sis_disk_dict_set(s_sis_disk_dict *dict_, bool iswrite_, s_sis_json_node *no
         s_sis_disk_dict_unit *unit = SIS_MALLOC(s_sis_disk_dict_unit, unit);
         unit->writed = iswrite_ ? 0 : 1;  // 0 才会写盘
         // LOG(1)("r writed = %s %d %d\n", node_->key, unit->writed, iswrite_);
-        unit->attr = attr;
         unit->db = db_;
         sis_pointer_list_push(dict_->units, unit);
         return dict_->units->count;
@@ -391,41 +382,31 @@ const char *sis_disk_class_get_sdbn(s_sis_disk_class *cls_, int sdbi_)
 {
     return SIS_OBJ_SDS(((s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, sdbi_))->name);
 }
-
+// newkeys 
 int sis_disk_class_set_key(s_sis_disk_class *cls_, bool iswrite_, const char *in_, size_t ilen_)
 {
     if (!in_ || ilen_ < 2)
     {
         return 0;
     }
-    char *in = sis_malloc(ilen_ + 1);
-    memmove(in, in_, ilen_);
-    in[ilen_] = 0;
-    s_sis_json_handle *injson = sis_json_load(in, ilen_);
-    if (!injson)
+    s_sis_string_list *klist = sis_string_list_create();
+    sis_string_list_load(klist, in_, ilen_, ",");
+    int count = sis_string_list_getsize(klist);
+    for (int i = 0; i < count; i++)
     {
-        sis_free(in);
-        return 0;
-    }
-    s_sis_json_node *innode = sis_json_first_node(injson->node); 
-    while (innode)
-    {   
-        // printf("%s\n",innode->key ? innode->key : "nil");
-        s_sis_disk_dict *info = sis_map_list_get(cls_->keys, innode->key);
+        const char *key = sis_string_list_get(klist, i);
+        s_sis_disk_dict *info = sis_map_list_get(cls_->keys, key);
         if (!info)
         {
-            info = sis_disk_dict_create(innode, iswrite_, NULL);
-            info->index = sis_map_list_set(cls_->keys, innode->key, info);
+            info = sis_disk_dict_create(key, iswrite_, NULL);
+            info->index = sis_map_list_set(cls_->keys, key, info);
         }
         else
         {
-            sis_disk_dict_set(info, iswrite_, innode, NULL);
+            sis_disk_dict_set(info, iswrite_, NULL);
         }
-        innode = sis_json_next_node(innode);
     }
-    sis_free(in);
-    sis_json_close(injson);
-    
+    sis_string_list_destroy(klist);
     if (iswrite_)
     {
         sis_disk_file_write_key_dict(cls_);
@@ -440,13 +421,9 @@ int sis_disk_class_set_sdb(s_sis_disk_class *cls_, bool iswrite_, const char *in
     {
         return 0;
     }
-    char *in = sis_malloc(ilen_ + 1);
-    memmove(in, in_, ilen_);
-    in[ilen_] = 0;
-    s_sis_json_handle *injson = sis_json_load(in, ilen_);
+    s_sis_json_handle *injson = sis_json_load(in_, ilen_);
     if (!injson)
     {
-        sis_free(in);
         return 0;
     }
    s_sis_json_node *innode = sis_json_first_node(injson->node); 
@@ -458,17 +435,16 @@ int sis_disk_class_set_sdb(s_sis_disk_class *cls_, bool iswrite_, const char *in
             s_sis_disk_dict *info = sis_map_list_get(cls_->sdbs, innode->key);
             if (!info)
             {
-                info = sis_disk_dict_create(innode, iswrite_, sdb);
+                info = sis_disk_dict_create(innode->key, iswrite_, sdb);
                 info->index = sis_map_list_set(cls_->sdbs, innode->key, info);
             }
             else
             {
-                sis_disk_dict_set(info, iswrite_, innode, sdb);
+                sis_disk_dict_set(info, iswrite_, sdb);
             }
         }  
         innode = sis_json_next_node(innode);
     }
-    sis_free(in);
     sis_json_close(injson);
     // for (int i = 0; i < cls_->sdbs->list->count; i++)
     // {

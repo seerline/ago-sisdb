@@ -90,7 +90,6 @@ s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
 {
     int nums = 0;
     s_sis_sds msg = sis_sdsempty();
-    msg = sis_sdscat(msg, "{");
     {
         s_sis_dict_entry *de;
         s_sis_dict_iter *di = sis_dict_get_iter(cxt->collects);
@@ -108,32 +107,14 @@ s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
                         msg = sis_sdscat(msg, ",");
                     }
                     nums++;
-                    msg = sis_sdscatfmt(msg, "\"%s\"", keyn);
+                    msg = sis_sdscatfmt(msg, "%s", keyn);
                 }                
             }
         }
         sis_dict_iter_free(di);
     }  
-    msg = sis_sdscat(msg, "}");
     printf("keys = %s\n", msg);
     return msg;    
-    // int nums = 0;
-    // s_sis_sds msg = sis_sdsempty();
-    // int count = sis_map_list_getsize(cxt->keys);
-    // msg = sis_sdscat(msg, "{");
-    // for(int i = 0; i < count; i++)
-    // {
-    //     s_sis_sds key = (s_sis_sds)sis_map_list_geti(cxt->keys, i);
-    //     if (nums > 0)
-    //     {
-    //         msg = sis_sdscat(msg, ",");
-    //     }
-    //     nums++;
-    //     msg = sis_sdscatfmt(msg, "\"%S\"", key);
-    // }
-    // msg = sis_sdscat(msg, "}");
-    // printf("keys = %s\n", msg);
-    // return msg;
 }
 
 s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt, int style)
@@ -148,9 +129,7 @@ s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt, int style)
             {
                 continue;
             }
-            s_sis_json_node *jone = sis_dynamic_dbinfo_to_json(sdb->db);
-            sis_json_object_add_node(sdbs_node, sdb->db->name, jone);
-            sis_json_delete_node(jone);
+            sis_json_object_add_node(sdbs_node, sdb->db->name, sis_dynamic_dbinfo_to_json(sdb->db));
         }
     }
     s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
@@ -185,18 +164,11 @@ int _sisdb_set_keys(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
 // 设置结构体
 int _sisdb_set_sdbs(s_sisdb_cxt *cxt, bool issno_, const char *in_, size_t ilen_)
 {
-    char *in = sis_malloc(ilen_ + 1);
-    memmove(in, in_, ilen_);
-    in[ilen_] = 0;
-    s_sis_json_handle *injson = sis_json_load(in, ilen_);
+    s_sis_json_handle *injson = sis_json_load(in_, ilen_);
     if (!injson)
     {
-        sis_free(in);
         return 0;
     }
-	// int iii=1;
-	// sis_json_show(injson->node,&iii);
-
     s_sis_json_node *innode = sis_json_first_node(injson->node); 
     while (innode)
     {
@@ -205,7 +177,6 @@ int _sisdb_set_sdbs(s_sisdb_cxt *cxt, bool issno_, const char *in_, size_t ilen_
         sis_map_list_set(cxt->sdbs, innode->key, table);
         innode = sis_json_next_node(innode);
     }
-    sis_free(in);
     sis_json_close(injson);    
     return  sis_map_list_getsize(cxt->sdbs);    
 }

@@ -14,6 +14,8 @@ void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
 
 void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_);
 
+void sis_net_ans_with_noreply(s_sis_net_message *);
+
 void sis_net_ans_with_int(s_sis_net_message *, int in_);
 void sis_net_ans_with_ok(s_sis_net_message *);
 void sis_net_ans_with_error(s_sis_net_message *, char *rval_, size_t vlen_);

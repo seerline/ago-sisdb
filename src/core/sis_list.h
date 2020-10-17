@@ -243,8 +243,7 @@ typedef struct s_sis_string_list {
 extern "C" {
 #endif
 
-s_sis_string_list *sis_string_list_create_r(); //只读
-s_sis_string_list *sis_string_list_create_w(); //读写
+s_sis_string_list *sis_string_list_create(); //读写
 void sis_string_list_destroy(void *list_);
 void sis_string_list_clear(s_sis_string_list *list_);
 

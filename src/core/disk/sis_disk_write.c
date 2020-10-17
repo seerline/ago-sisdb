@@ -307,7 +307,7 @@ size_t sis_disk_file_write_sdbi(s_sis_disk_class *cls_,
 int sis_disk_class_add_key(s_sis_disk_class *cls_, const char *key_)
 {
     s_sis_sds msg = sis_sdsempty();
-    msg = sis_sdscatfmt(msg, "{\"%s\"}", key_);
+    msg = sis_sdscatfmt(msg, "%s", key_);
     int o = sis_disk_class_set_key(cls_, true, msg, sis_sdslen(msg));
     sis_sdsfree(msg);
     return o;
@@ -410,15 +410,16 @@ size_t sis_disk_file_write_any(s_sis_disk_class *cls_,
     }
     return size;
 }
-s_sis_sds sis_disk_file_get_keys(s_sis_disk_class *cls_, bool onlyincr_, s_sis_sds msg_)
+// newkeys
+s_sis_sds sis_disk_file_get_keys(s_sis_disk_class *cls_, bool onlyincr_)
 {
+    s_sis_sds msg = sis_sdsempty();
     int nums = 0;
     {
-        msg_ = sis_sdscat(msg_, "{");
-        for(int i = 0; i < sis_map_list_getsize(cls_->keys); i++)
+        int count = sis_map_list_getsize(cls_->keys);
+        for(int i = 0; i < count; i++)
         {
             s_sis_disk_dict *info = (s_sis_disk_dict *)sis_map_list_geti(cls_->keys, i);
-
             for(int k = 0; k < info->units->count; k++)
             {
                 s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);
@@ -429,33 +430,28 @@ s_sis_sds sis_disk_file_get_keys(s_sis_disk_class *cls_, bool onlyincr_, s_sis_s
                 }
                 if (nums > 0)
                 {
-                    msg_ = sis_sdscat(msg_, ",");
+                    msg = sis_sdscatfmt(msg, ",%s", SIS_OBJ_SDS(info->name));
+                }
+                else
+                {
+                    msg = sis_sdscatfmt(msg, "%s", SIS_OBJ_SDS(info->name));
                 }
                 nums++;
                 if (onlyincr_) 
                 {
                     unit->writed = 1;
-                }
-                if (unit->attr)
-                {
-                    msg_ = sis_sdscatfmt(msg_, "\"%S\":%S", SIS_OBJ_SDS(info->name), unit->attr);
-                }
-                else
-                {
-                    msg_ = sis_sdscatfmt(msg_, "\"%S\"", SIS_OBJ_SDS(info->name));
-                }       
+                }      
             }
         }
-        msg_ = sis_sdscat(msg_, "}");
     }
-    return msg_;
+    return msg;
 }
 size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_)
 {
     size_t size = 0;
     // 写 键表
     s_sis_sds msg = sis_sdsempty();
-    msg = sis_disk_file_get_keys(cls_, true, msg);
+    msg = sis_disk_file_get_keys(cls_, true);
     if (sis_sdslen(msg) > 2)
     {
         s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_KEY));
@@ -469,52 +465,41 @@ size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_)
 
     return size;
 }
-s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_, s_sis_sds msg_)
+s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_)
 {
-    int nums = 0;
+    int count = sis_map_list_getsize(cls_->sdbs);
+    s_sis_json_node *sdbs_node = sis_json_create_object();
     {
-        msg_ = sis_sdscat(msg_, "{");
-        for(int i = 0; i < sis_map_list_getsize(cls_->sdbs); i++)
+        for(int i = 0; i < count; i++)
         {
             s_sis_disk_dict *info = (s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, i);
-
+            // printf("+++++ %d %d %s\n",count, info->units->count, SIS_OBJ_SDS(info->name));
             for(int k = 0; k < info->units->count; k++)
             {
                 s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);
-                // LOG(1)("w writed = %s %d\n", SIS_OBJ_GET_CHAR(info->name), unit->writed);
+                // LOG(1)("w writed = %s %d %d\n", SIS_OBJ_GET_CHAR(info->name), unit->writed, unit->db->size);
                 if (onlyincr_ && unit->writed)
                 {
                     continue;
                 }
-                if (nums > 0)
-                {
-                    msg_ = sis_sdscat(msg_, ",");
-                }
-                nums++;
                 if (onlyincr_) 
                 {
                     unit->writed = 1;
                 }
-                if (unit->attr)
-                {
-                    msg_ = sis_sdscatfmt(msg_, "\"%S\":%S", SIS_OBJ_SDS(info->name), unit->attr);
-                }
-                else
-                {
-                    msg_ = sis_sdscatfmt(msg_, "\"%S\"", SIS_OBJ_SDS(info->name));
-                }       
+                sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(info->name), sis_dynamic_dbinfo_to_json(unit->db));
             }
         }
-        msg_ = sis_sdscat(msg_, "}");
     }
-    return msg_;
+    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
+    // printf("sdbs = %s\n", msg);
+    sis_json_delete_node(sdbs_node);
+    return msg;
 }
 
 size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_)
 {
     size_t size = 0;
-    s_sis_sds msg = sis_sdsempty();
-    msg = sis_disk_file_get_sdbs(cls_, true, msg);
+    s_sis_sds msg = sis_disk_file_get_sdbs(cls_, true);
     if (sis_sdslen(msg) > 2)
     {
         s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_SDB));

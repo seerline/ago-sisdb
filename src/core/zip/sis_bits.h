@@ -68,7 +68,7 @@ typedef struct s_sis_bits_stream{
 	uint8                 inited;       // 是否初始化为结构体存储
 	s_sis_pointer_list   *units;        // 数据结构说明 s_sis_struct_unit
 	uint32                sdbsize;     // 结构体大小
-	uint32                max_keys;    // 最大key的数量 超出不处理
+	uint32                max_keynum;    // 最大key的数量 超出不处理
 	uint8                *ago_memory;  // 前值数据缓存 大小为 keycount * sdbcount * sdbsize               
 	// 数据格式 : kid + sid + count + 数据区
 }s_sis_bits_stream;

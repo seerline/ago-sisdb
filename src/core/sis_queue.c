@@ -454,6 +454,10 @@ void sis_share_list_destroy(s_sis_share_list *obj_)
     sis_share_node_destroy(obj_->tail);
     sis_free(obj_);
 }
+void sis_share_list_zero(s_sis_share_list *cls_, int gapmsec_)
+{
+    cls_->zeromsec = gapmsec_;
+}
 
 int  sis_share_list_push(s_sis_share_list *cls_, s_sis_object *value_)
 {
@@ -536,7 +540,9 @@ void *_thread_user_reader(void *argv_)
         // printf("reader start.....\n");
         // 这里的save_wait比较特殊,数据满也会即时处理
         // sis_thread_wait_notice(wait); // 通知立即处理
-        if (sis_thread_wait_sleep_msec(wait, 1000) != SIS_ETIMEDOUT)
+        int gapmsec = share->zeromsec > 0 ? share->zeromsec > 0 : 1000;
+        bool surpass_waittime = false;
+        if (sis_thread_wait_sleep_msec(wait, gapmsec) != SIS_ETIMEDOUT)
         {
             if (reader->work_status == SIS_SHARE_STATUS_EXIT)
             {
@@ -544,6 +550,12 @@ void *_thread_user_reader(void *argv_)
             }
             // printf("reader notice.\n");
         }
+        else
+        {
+            // printf("timeout exit\n");
+            surpass_waittime = true;
+        }
+        
         if (reader->work_status != SIS_SHARE_STATUS_WORK)
         {
             continue;
@@ -555,11 +567,18 @@ void *_thread_user_reader(void *argv_)
             if (reader->from == SIS_SHARE_FROM_HEAD)
             {
                 s_sis_share_node *node = share->head->next;
-                if (node && reader->cb)
+                if (node)
                 {
                     reader->work_status = SIS_SHARE_STATUS_WAIT;
                     reader->cb(reader->cbobj, node->value);
                 }
+                else
+                {
+                    if (!surpass_waittime)
+                    {
+                        reader->cb(reader->cbobj, NULL);
+                    }
+                }               
                 reader->cursor = node;
             }
             else
@@ -580,6 +599,13 @@ void *_thread_user_reader(void *argv_)
                 }
                 reader->cursor = node;
             }
+            else
+            {
+                if (!surpass_waittime)
+                {
+                    reader->cb(reader->cbobj, NULL);
+                }
+            }               
             continue;
         }
     }

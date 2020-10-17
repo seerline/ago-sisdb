@@ -68,7 +68,7 @@ s_sis_sds sisdb_one_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds a
     }
     else
     {
-        s_sis_string_list *klist = sis_string_list_create_w();
+        s_sis_string_list *klist = sis_string_list_create();
         sis_string_list_load(klist, keys_, sis_strlen(keys_), ",");
 
         int count = sis_string_list_getsize(klist);
@@ -119,7 +119,7 @@ int sisdb_one_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
     }
     else
     {
-        s_sis_string_list *klist = sis_string_list_create_w();
+        s_sis_string_list *klist = sis_string_list_create();
         sis_string_list_load(klist, keys_, sis_strlen(keys_), ",");
 
         int count = sis_string_list_getsize(klist);
@@ -246,7 +246,7 @@ s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int ifor
 
     s_sis_disk_reader *reader = sis_disk_reader_create(NULL);
     // reader->issub = 0;
-    // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
+    // printf("%s| %s | %s\n", context->read_cb->sub_keys, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
     sis_disk_reader_set_sdb(reader, sdbn);
     sis_disk_reader_set_key(reader, keyn); 
     sis_sdsfree(keyn); sis_sdsfree(sdbn);
@@ -278,7 +278,7 @@ s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int ifor
                 sis_object_destroy(obj);
                 return o;
             }
-            s_sis_string_list *field_list = sis_string_list_create_w();
+            s_sis_string_list *field_list = sis_string_list_create();
             sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
             s_sis_sds other = sisdb_collect_struct_to_sds(tb->db, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), field_list);
             sis_string_list_destroy(field_list);
@@ -364,7 +364,7 @@ int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char 
     }
     else
     {
-        s_sis_string_list *slists = sis_string_list_create_w();
+        s_sis_string_list *slists = sis_string_list_create();
         if (!sis_strcasecmp(sdbs_, "*"))
         {
             int count = sis_map_list_getsize(sisdb_->sdbs);
@@ -379,7 +379,7 @@ int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char 
             sis_string_list_load(slists, sdbs_, sis_strlen(sdbs_), ",");  
         }
 
-        s_sis_string_list *klists = sis_string_list_create_w();
+        s_sis_string_list *klists = sis_string_list_create();
         sis_string_list_load(klists, keys_, sis_strlen(keys_), ",");  
         int kcount = sis_string_list_getsize(klists);
         int scount = sis_string_list_getsize(slists);
@@ -401,7 +401,7 @@ int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char 
 // 多键取值只返回字符串 并且只返回最后一条记录
 s_sis_sds sisdb_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_,const  char *sdbs_, s_sis_sds argv_)
 {
-    s_sis_string_list *collects = sis_string_list_create_w();
+    s_sis_string_list *collects = sis_string_list_create();
 
     int count = _sisdb_get_filter(sisdb_, collects, keys_, sdbs_);
 
@@ -462,7 +462,7 @@ int sisdb_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
 }
 int sisdb_dels(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_sds argv_)
 {
-    s_sis_string_list *collects = sis_string_list_create_w();
+    s_sis_string_list *collects = sis_string_list_create();
     int count = _sisdb_get_filter(sisdb_, collects, keys_, sdbs_);
     for (int i = 0; i < count; i++)
     {
@@ -1076,7 +1076,7 @@ void *_thread_publish_history(void *argv_)
     callback->cb_end = cb_end;
 
     s_sis_disk_reader *reader = sis_disk_reader_create(callback);
-    // printf("%s| %s | %s\n", context->read_cb->sub_codes, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
+    // printf("%s| %s | %s\n", context->read_cb->sub_keys, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
 
     sis_disk_reader_set_sdb(reader, sdbn);
     sis_disk_reader_set_key(reader, keyn);

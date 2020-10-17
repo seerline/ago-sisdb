@@ -48,7 +48,7 @@ s_sisdb_table *sisdb_table_create(s_sis_json_node *node_)
     }
     s_sisdb_table *o = SIS_MALLOC(s_sisdb_table, o);
     o->db = db;
-    o->fields = sis_string_list_create_w();
+    o->fields = sis_string_list_create();
     for (int i = 0; i < sis_map_list_getsize(db->fields); i++)
     {
         s_sis_dynamic_field *field = (s_sis_dynamic_field *)sis_map_list_geti(db->fields, i);
@@ -139,9 +139,9 @@ uint8 _set_sub_info_style(s_sisdb_sub_info *info, const char *in, size_t ilen)
             return SISDB_SUB_TABLE_KEY;
         }
 
-        s_sis_string_list *klists = sis_string_list_create_w();
+        s_sis_string_list *klists = sis_string_list_create();
         sis_string_list_load(klists, keyn, sis_sdslen(keyn), ",");  
-        s_sis_string_list *slists = sis_string_list_create_w();
+        s_sis_string_list *slists = sis_string_list_create();
         sis_string_list_load(slists, sdbn, sis_sdslen(sdbn), ",");  
         int kcount = sis_string_list_getsize(klists);
         int scount = sis_string_list_getsize(slists);

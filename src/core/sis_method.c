@@ -495,7 +495,7 @@ void *demo_f31(void *c, s_sis_json_node *node_)
 #else
 void *demo_f1(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"1",1);
 	sis_string_list_push(list,"2",1);
 	sis_string_list_push(list,"3",1);
@@ -510,7 +510,7 @@ void *demo_f1(void *c, s_sis_json_node *node_)
 	printf("i am demo_f1\n");	return list; }
 void *demo_f2(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"7",1);
 	s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)c);
 	printf("[ %s ] ", sss);
@@ -518,7 +518,7 @@ void *demo_f2(void *c, s_sis_json_node *node_)
 	printf("i am demo_f2\n");	return list; }
 void *demo_f3(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"8",1);
 	sis_string_list_push(list,"9",1);
 	s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)c);
@@ -527,7 +527,7 @@ void *demo_f3(void *c, s_sis_json_node *node_)
 	printf("i am demo_f3\n");	return list; }
 void *demo_f11(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"4",1);
 	sis_string_list_push(list,"5",1);
 	s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)c);
@@ -536,14 +536,14 @@ void *demo_f11(void *c, s_sis_json_node *node_)
 	printf("i am demo_f11\n");	return list; }
 void *demo_f12(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"1",1);
 	sis_string_list_push(list,"2",1);
 	sis_string_list_push(list,"3",1);
 	printf("i am demo_f12\n");	return list; }
 void *demo_f121(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"1",1);
 	s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)c);
 	printf("[ %s ] ", sss);
@@ -551,7 +551,7 @@ void *demo_f121(void *c, s_sis_json_node *node_)
 	printf("i am demo_f121\n");	return list; }
 void *demo_f122(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"3",1);
 	s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)c);
 	printf("[ %s ] ", sss);
@@ -559,7 +559,7 @@ void *demo_f122(void *c, s_sis_json_node *node_)
 	printf("i am demo_f122\n");	return list; }
 void *demo_f31(void *c, s_sis_json_node *node_)
 {	
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_push(list,"9",1);
 	s_sis_sds sss = sis_string_list_sds((s_sis_string_list *)c);
 	printf("[ %s ] ", sss);
@@ -602,7 +602,7 @@ void demo_free(void *val)
 }
 void *demo_malloc()
 {
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	return list;
 }
 static struct s_sis_method _sis_method_table[] = {
@@ -683,7 +683,7 @@ int main()
 
 	const char *src = "1,2,3,4,5,6,7,8,9,0";
 	
-	class->obj = sis_string_list_create_w();
+	class->obj = sis_string_list_create();
 	sis_string_list_load(class->obj, src, strlen(src),",");
 
 	///////////////

@@ -102,9 +102,7 @@ typedef struct s_zipdb_cxt
 	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_zipdb_table 包括
 
-	s_sis_thread        write_thread;  
 	s_sis_mutex_t       write_lock;  
-	s_sis_wait_handle   notice_wait;  // 信号量
 
 	s_sis_share_list   *inputs;    // 传入的数据链 s_zipdb_bits
 	s_sis_share_reader *in_reader;  // 读取发送队列 等待上一个读取结束的读者

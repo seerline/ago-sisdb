@@ -205,8 +205,7 @@ bool sis_net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 			sis_json_object_set_string(node, "rval", in_->rval, sis_sdslen(in_->rval)); 
 		}		
 	}
-	// printf(":::%d %d %s \n%s \n%s \n%s \n%s \n", 
-	printf(":::%d %d %s \n%s \n%s \n%s \n", 
+	printf("sis_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n", 
 			in_->style, 
 			(int)in_->rcmd,
 			in_->source? in_->source : "nil",
@@ -279,7 +278,7 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	mess->style = mess->cmd ? (mess->style | SIS_NET_CMD) : mess->style;
 	mess->key = _sis_json_node_get_sds(handle->node, "key");
 	mess->style = mess->key ? (mess->style | SIS_NET_KEY) : mess->style;
-	printf(":::%x %s \n%s \n%s \n%s \n", mess->style,
+	printf("sis_net_decoded_chars:%x %s \n%s \n%s \n%s \n", mess->style,
 			mess->source? mess->source : "nil",
 			mess->cmd ? mess->cmd : "nil",
 			mess->key? mess->key : "nil",

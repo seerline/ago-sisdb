@@ -264,7 +264,6 @@ typedef struct s_sis_disk_callback {
 //////////////////////////////////////////////////////
 typedef struct s_sis_disk_dict_unit {
     uint8              writed; // 是否已经写盘
-	s_sis_sds          attr;   // 属性字符串 用于比较属性是否相同 若没有属性为NULL
 	s_sis_dynamic_db  *db;     // 如果是数据结构 表示结构的长度 若没有为NULL
 }s_sis_disk_dict_unit;
 
@@ -429,7 +428,7 @@ s_sis_disk_index_unit *sis_disk_index_get_unit(s_sis_disk_index *cls_, int index
 ///////////////////////////
 //  s_sis_disk_dict
 ///////////////////////////
-s_sis_disk_dict *sis_disk_dict_create(s_sis_json_node *node_, bool iswrite_, s_sis_dynamic_db * db_);
+s_sis_disk_dict *sis_disk_dict_create(const char *name_, bool iswrite_, s_sis_dynamic_db * db_);
 void sis_disk_dict_destroy(void *in_);
 
 void sis_disk_dict_clear_units(s_sis_disk_dict *dict_);
@@ -437,7 +436,7 @@ void sis_disk_dict_clear_units(s_sis_disk_dict *dict_);
 s_sis_disk_dict_unit *sis_disk_dict_last(s_sis_disk_dict *);
 s_sis_disk_dict_unit *sis_disk_dict_get(s_sis_disk_dict *, int);
 // 传递一个 dict 单元 返回值 = 0 表示没有新增 1.n表示新增
-int sis_disk_dict_set(s_sis_disk_dict *, bool iswrite_, s_sis_json_node *node_, s_sis_dynamic_db * db_); 
+int sis_disk_dict_set(s_sis_disk_dict *, bool iswrite_, s_sis_dynamic_db * db_); 
 
 ///////////////////////////
 //  s_sis_disk_rcatch
@@ -554,8 +553,8 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
 ///////////////////////////
 //  write
 ///////////////////////////
-s_sis_sds sis_disk_file_get_keys(s_sis_disk_class *cls_, bool onlyincr_, s_sis_sds msg_);
-s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_, s_sis_sds msg_);
+s_sis_sds sis_disk_file_get_keys(s_sis_disk_class *cls_, bool onlyincr_);
+s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_);
 
 size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_);
 size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_);

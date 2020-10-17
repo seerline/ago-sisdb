@@ -28,7 +28,7 @@ int _sis_file_csv_parse(s_sis_file_csv *csv_)
 		while (offset)
 		{
 			// printf("offset=%d %d %d %d\n", (int)offset, (int)buffer->offset, (int)buffer->size, (int)buffer->maxsize);
-			s_sis_string_list *str = sis_string_list_create_r();
+			s_sis_string_list *str = sis_string_list_create();
 			sis_string_list_load(str, sis_memory(buffer), offset, csv_->sign);
 			if (sis_string_list_getsize(str) > 0)
 			{

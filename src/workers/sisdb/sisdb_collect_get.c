@@ -545,7 +545,7 @@ s_sis_sds sisdb_get_chars_format_sds(s_sisdb_table *tb_, const char *key_, int i
 	bool iswhole = sisdb_field_is_whole(fields_);
 	if (!iswhole)
 	{
-		field_list = sis_string_list_create_w();
+		field_list = sis_string_list_create();
 		sis_string_list_load(field_list, fields_, sis_strlen(fields_), ",");
 	}
 
@@ -599,7 +599,7 @@ s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int
 		{
 			return out;
 		}
-		s_sis_string_list *field_list = sis_string_list_create_w();
+		s_sis_string_list *field_list = sis_string_list_create();
 		sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
 		s_sis_sds other = sisdb_collect_struct_to_sds(collect_->sdb->db, out, sis_sdslen(out), field_list);
 		sis_sdsfree(out);
@@ -634,7 +634,7 @@ s_sis_json_node *sisdb_collects_get_last_node(s_sisdb_collect *collect_, s_sis_j
 	s_sis_string_list *field_list = collect_->sdb->fields; //取得全部的字段定义
 	if (!sisdb_field_is_whole(fields))
 	{
-		field_list = sis_string_list_create_w();
+		field_list = sis_string_list_create();
 		sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
 	}
 

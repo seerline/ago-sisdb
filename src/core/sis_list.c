@@ -1031,16 +1031,7 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_)
 //  存储不定长字符串的列表，
 ///////////////////////////////////////////////////////////////////////////
 
-s_sis_string_list *sis_string_list_create_r() //只读
-{
-	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
-	memset(l, 0, sizeof(s_sis_string_list));
-	l->strlist = sis_pointer_list_create();
-	l->permissions = STRING_LIST_RD;
-	return l;
-}
-
-s_sis_string_list *sis_string_list_create_w() //读写
+s_sis_string_list *sis_string_list_create() //读写
 {
 	s_sis_string_list *l = (s_sis_string_list *)sis_malloc(sizeof(s_sis_string_list));
 	memset(l, 0, sizeof(s_sis_string_list));
@@ -1344,7 +1335,7 @@ int main1(void) {
 	return 0;
 }
 int main(void) {
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_insert(list, 0, "1", 1);
 	sis_string_list_push(list,  "2", 1);
 	sis_string_list_push(list,  "3", 1);
@@ -1357,14 +1348,14 @@ int main(void) {
 	sis_string_list_destroy(list);
 
 	const char *src = "1,2,3,4,5,6,7,8,9,0";
-	s_sis_string_list *list = sis_string_list_create_w();
+	s_sis_string_list *list = sis_string_list_create();
 	sis_string_list_load(list, src, strlen(src),",");
 
 	class->in = list;
-	class->out = sis_string_list_create_w();
+	class->out = sis_string_list_create();
 	//////////////
 	// const char *des = "1,3,5,7,9,11";
-	// s_sis_string_list *deslist = sis_string_list_create_w();
+	// s_sis_string_list *deslist = sis_string_list_create();
 	// sis_string_list_load(deslist, des, strlen(des),",");
 
 	// sis_string_list_clone(class->in, class->out);

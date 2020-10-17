@@ -647,7 +647,7 @@ static int cb_sisdb_wlog_load(void *worker_, void *argv_)
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker_;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    printf(":::%d %s \n%s \n%s \n%s \n", netmsg->style,
+    printf("cb_sisdb_wlog_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
             netmsg->source? netmsg->source : "nil",
             netmsg->cmd ?   netmsg->cmd : "nil",
             netmsg->key?    netmsg->key : "nil",
