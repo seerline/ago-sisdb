@@ -378,7 +378,7 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 	sis_share_list_destroy(cls->ready_recv_cxts);
 
 	sis_map_pointer_destroy(cls->cxts);
-
+	LOG(5)("net_class exit .\n");
 	sis_free(cls);
 }
 

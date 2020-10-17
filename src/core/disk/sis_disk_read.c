@@ -1264,6 +1264,7 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
         }
         else
         {
+            _disk_file_call_dict(cls_, callback);
             sis_disk_read_sub_sno(cls_, reader_);  
         }
         break;

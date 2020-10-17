@@ -113,7 +113,7 @@ s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 	o->style = SISDB_COLLECT_TYPE_TABLE;
 	o->name = sis_sdsnew(key_);
 	
-	sis_map_list_set(sisdb_->keys, code, sis_sdsnew(code));
+	// sis_map_list_set(sisdb_->keys, code, sis_sdsnew(code)); ssssss
 
 	o->father = sisdb_;
 	o->sdb = sdb;

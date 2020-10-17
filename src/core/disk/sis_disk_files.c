@@ -480,7 +480,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                 }
                 if (head.hid != SIS_DISK_HID_NONE)
                 {
-                    printf("read----: %d \n", head.hid);
+                    // printf("read----: %d \n", head.hid);
                     s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
                     if (sis_files_uncompress(cls_, &head, sis_memory(memory), size, SIS_OBJ_MEMORY(obj)) > 0)
                     {

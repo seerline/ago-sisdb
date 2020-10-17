@@ -47,7 +47,9 @@
 // #define SISDB_FORMAT_SDBS    0x0002   // 后面开始为数据 count + keylen+key + sdblen+sdb + ssize + 二进制数据
 // #define SISDB_FORMAT_KEY     0x0004   // 后面开始为数据 keylen+key + ssize + 二进制数据
 // #define SISDB_FORMAT_KEYS    0x0008   // 后面开始为数据 count + keylen+key + ssize + 二进制数据
-#define SISDB_FORMAT_STRUCT  0x0001   // 结构数据  
+#define SISDB_FORMAT_STRUCT  0x0001   // 结构化原始数据
+#define SISDB_FORMAT_BITZIP  0x0002   // 相关压缩数据  
+#define SISDB_FORMAT_BUFFER  0x0004   // 二进制数据流  
 
 #define SISDB_FORMAT_BYTES   0x00FF   // 二进制数据流  
 // 下面必须都是可见字符
@@ -122,14 +124,13 @@ typedef struct s_sisdb_cxt
 	s_sis_sds           name;        // 数据库名字 sisdb
 
 	// 下面数据永不清理
-	s_sis_map_list     *keys;        // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;        // sdb 的结构字典表 s_sisdb_table 包括
 	// 下面数据可能定时清理
 	s_sis_map_pointer  *collects;    // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
 									 // SH600600.DAY 
 
 	s_sis_node_list    *series;      // 专门提供给序列数据的列表 s_sisdb_collect_sno
-	
+
 	void               *socket;      // sisdb server
 	// 发布信息的读者
 	s_sis_share_reader *pub_reader;  

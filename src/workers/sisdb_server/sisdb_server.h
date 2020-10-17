@@ -90,7 +90,7 @@ typedef struct s_sisdb_server_cxt
 
 	s_sis_message      *message;     // 消息传递
 	
-	bool                switch_wget;  // 设置后所有 get 会同时存盘
+	bool                switch_wget;  // 设置后所有 get 会同时存盘 方便检查导出数据到文件
 
 	s_sisdb_catch       catch_cfg;    // 数据加载配置 
 	s_sis_map_list     *datasets;     // 数据集合 s_sis_worker s_sis_db 分为不同目录存储 
@@ -135,28 +135,6 @@ int cmd_sisdb_server_save(void *worker_, void *argv_);
 int cmd_sisdb_server_pack(void *worker_, void *argv_);
 int cmd_sisdb_server_call(void *worker_, void *argv_);
 int cmd_sisdb_server_wget(void *worker_, void *argv_);
-
-// ***  这里的数据不存盘 ***//
-// 数据采用结构化数据压缩方式，实时压缩，放入无锁发送队列中 
-// 每10ms打一个包或者数据量超过16K(减少拆包和拼包的动作)一个包,
-// 为相关压缩必须保证包的顺序 当时间为整10分钟时重新压缩 保证最差能取到最近 10 分钟数据
-// sisdb 仅仅作为一个中间通讯组件使用
-// snew name {参数} 
-//     注册一个无锁队列
-//     (必要参数) keys : ,,,,,
-//     (必要参数) sdbs : {}
-int cmd_sisdb_server_snew(void *worker_, void *argv_);
-// kpub name  数据流写入无锁队列中 
-int cmd_sisdb_server_spub(void *worker_, void *argv_);
-// 对指定的无锁队列增加订阅者
-// ssub name {}
-// 默认从最新的具备完备数据的数据包开始订阅 seat : 0
-// seat : 1 从最开始订阅 
-// 订阅后首先收到 skey ssdb 然后如果有 spub 的数据就持续的收到 并会收到缓存为空的信息
-int cmd_sisdb_server_ssub(void *worker_, void *argv_);
-// sdel name {}
-// 默认仅仅做数据清理  clear:0 清理数据 clear:1 客户端订阅清理 clear:2 全部清理
-int cmd_sisdb_server_sdel(void *worker_, void *argv_);
 
 
 #endif

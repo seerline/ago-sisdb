@@ -1,6 +1,17 @@
 ﻿#include <sis_str.h>
 #include <sis_map.h>
 
+bool sis_str_isnumber(const char *in_, size_t ilen_)
+{
+    for (int i = 0; i < ilen_; i++)
+    {
+        if (in_[i] < '0' || in_[i] > '9')
+        {
+            return false;
+        }
+    }
+    return true;
+}
 // 以第一个字符串为长度，进行比较
 int sis_strcase_match(const char *son_, const char *source_)
 {
@@ -631,7 +642,7 @@ int main()
     const char *url = source_; 
     url = sis_str_parse(url, "://", s1, 64);
     url = sis_str_parse(url, ":", s2, 64);
-    port = atoi(url);
+    port = sis_atoll(url);
 	printf("auth: %s  %s  %d\n", s1, s2, port);
 
     const char *auth = substr_; 

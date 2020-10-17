@@ -409,14 +409,18 @@ s_sis_share_list *sis_share_list_create(const char *key_, size_t limit_)
     o->cursize = 0;
     o->maxsize = limit_;
 
-    o->watcher = sis_share_reader_create(o, 0, NULL, NULL);
-    if (!sis_share_reader_work(o->watcher, _thread_watcher))
+    if (o->maxsize > 0)
     {
-        sis_share_reader_destroy(o->watcher);
-        sis_free(o);
-        return NULL;
+        // 不限制数据大小
+        o->watcher = sis_share_reader_create(o, 0, NULL, NULL);
+        if (!sis_share_reader_work(o->watcher, _thread_watcher))
+        {
+            sis_share_reader_destroy(o->watcher);
+            sis_free(o);
+            return NULL;
+        }
+        o->watcher->work_status = SIS_SHARE_STATUS_WORK;
     }
-    o->watcher->work_status = SIS_SHARE_STATUS_WORK;
 
     s_sis_share_node *node = sis_share_node_create(NULL);
 
@@ -437,7 +441,10 @@ s_sis_share_list *sis_share_list_create(const char *key_, size_t limit_)
 void sis_share_list_destroy(s_sis_share_list *obj_)
 {
     sis_pointer_list_destroy(obj_->reader);
-    sis_share_reader_destroy(obj_->watcher);
+    if (obj_->maxsize > 0)
+    {
+        sis_share_reader_destroy(obj_->watcher);
+    }
 
     sis_sdsfree(obj_->name);
     while (obj_->count > 0)

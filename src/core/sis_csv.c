@@ -97,7 +97,7 @@ int64 sis_file_csv_get_int(s_sis_file_csv *csv_, int idx_, int field, int64 defa
 	{
 		return 0;
 	}
-	return atoll(sis_string_list_get(record, field));
+	return sis_atoll(sis_string_list_get(record, field));
 }
 double sis_file_csv_get_double(s_sis_file_csv *csv_, int idx_, int field, double defaultvalue_)
 {

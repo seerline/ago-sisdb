@@ -231,7 +231,6 @@ bool sisdb_init(void *worker_, void *argv_)
     // context->work_date = 0;
     context->work_date = sis_time_get_idate(0);
 
-    context->keys = sis_map_list_create(sis_sdsfree_call);
 	context->sdbs = sis_map_list_create(sisdb_table_destroy);
     {
         s_sis_json_node *snnode = sis_json_cmp_child_node(node, "snos");
@@ -283,7 +282,6 @@ void sisdb_uninit(void *worker_)
     sis_map_pointer_destroy(context->collects);
     sis_node_list_destroy(context->series);
     
-    sis_map_list_destroy(context->keys);
     sis_map_list_destroy(context->sdbs);
 
     if (context->fast_path)

@@ -86,7 +86,7 @@ typedef struct s_sis_bits_stream{
 s_sis_bits_stream *sis_bits_stream_create(uint8 *in_, size_t ilen_);
 void sis_bits_stream_destroy(s_sis_bits_stream *);
 void sis_bits_stream_clear(s_sis_bits_stream *);
-
+// 得到数据的字节长度
 size_t sis_bits_stream_getbytes(s_sis_bits_stream *s_);
 
 void sis_bits_stream_checkin(s_sis_bits_stream *s_, int bits_);
@@ -141,18 +141,15 @@ int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen
 ////////////////////////////
 int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_);
 int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_);
+
+// 关联一个新的数据区 不改变unit和agomemory
+void sis_bits_struct_link(s_sis_bits_stream *s_, uint8 *in_, size_t ilen_);
 // 重新开始压缩
 void sis_bits_struct_flush(s_sis_bits_stream *s_);
 
 int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_, size_t ilen_);
 int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_decode *);
 
-
-// int sis_snappy_struct(char *in_, size_t ilen_, s_sis_memory *out_);
-// int sis_snappy_unstruct(char *in_, size_t ilen_, s_sis_memory *out_);
-
-// bool sis_net_snappy_struct(s_sis_memory *in_, s_sis_memory *out_);
-// bool sis_net_snappy_unstruct(s_sis_memory *in_, s_sis_memory *out_);
 
 
 #endif

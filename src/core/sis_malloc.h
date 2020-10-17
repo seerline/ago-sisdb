@@ -13,8 +13,16 @@
 
 typedef void sis_free_define(void *);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void sis_free_call(void *);
 
 void sis_sdsfree_call(void *);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //_SIS_MALLOC_H

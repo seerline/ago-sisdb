@@ -1,6 +1,6 @@
 ﻿
 //******************************************************
-// Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
+// Copyright (C) 2018, Coollyer <48707400@qq.com>
 //*******************************************************
 
 #ifndef _SISDB_COLLECT_H

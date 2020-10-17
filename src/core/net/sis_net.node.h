@@ -79,7 +79,7 @@ typedef struct s_sis_net_message {
 	uint16              rfmt;      // 返回数据格式 临时变量
 
 	// 存放字节流数据
-	s_sis_pointer_list *argvs;     //  按顺序获取 s_sis_sds
+	s_sis_pointer_list *argvs;     //  按顺序获取 s_sis_sds 
 
 } s_sis_net_message;
 

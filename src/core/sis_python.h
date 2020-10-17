@@ -77,6 +77,10 @@ typedef struct s_sis_pyscript_unit
 
 }s_sis_pyscript_unit;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void sis_py_init();
 void sis_py_uninit();
 bool sis_py_isinit();
@@ -92,6 +96,10 @@ s_sis_pyscript_unit *sis_pyscript_unit_create(const char *workpath_, const char 
 void sis_pyscript_unit_destroy(void *);
 
 int sis_pyscript_unit_load(s_sis_map_pointer *map_, const char *workpath_);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

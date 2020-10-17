@@ -586,6 +586,14 @@ int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_)
     s_->max_keys = keynum_;
     return keynum_;
 }
+
+void sis_bits_struct_link(s_sis_bits_stream *s_, uint8 *in_, size_t ilen_)
+{
+    s_->cur_stream = in_;
+    s_->bit_maxsize = ilen_ * 8;
+    s_->bit_currpos = 0;
+    s_->bit_savepos = 0;
+}
 void sis_bits_struct_flush(s_sis_bits_stream *s_)
 {
     if (s_->inited == 1)

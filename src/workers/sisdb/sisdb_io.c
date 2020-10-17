@@ -155,11 +155,18 @@ int sis_from_node_get_format(s_sis_json_node *node_, int default_)
         char ch = node->value[0];
         switch (ch)
         {
-        case 's':  // struct
+        case 'z':  // bitzip "zip"
+        case 'Z':
+            o = SISDB_FORMAT_BITZIP;
+            break;
+        case 's':  // struct 
         case 'S':
+            o = SISDB_FORMAT_STRUCT;
+            break;
         case 'b':  // bytes
         case 'B':
-            o = SISDB_FORMAT_BYTES;
+            // o = SISDB_FORMAT_BYTES;
+            o = SISDB_FORMAT_BUFFER;
             break;
         case 'j':
         case 'J':
@@ -174,6 +181,7 @@ int sis_from_node_get_format(s_sis_json_node *node_, int default_)
             o = SISDB_FORMAT_CSV;
             break;        
         default:
+            o = SISDB_FORMAT_STRING;
             break;
         }    
 	}

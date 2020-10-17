@@ -8,6 +8,8 @@
 //#define vsnprintf(a,b,c,d) vsnprintf_s(a,b,c,NULL,d) 
 #define vsnprintf _vsnprintf
 
+#define sis_atoll atoll
+
 inline char *sis_strsep(char **string_, const char *sub)
 {
     char *s;

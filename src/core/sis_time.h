@@ -6,6 +6,10 @@
 #include <sis_os.h>
 #include <os_time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int sis_time_get_iyear(time_t ttime); //2015
 int sis_time_get_imonth(time_t ttime); //201510
 int sis_time_get_idate(time_t ttime); //20151012
@@ -46,6 +50,10 @@ int sis_time_get_idate_from_str(const char* in_, char bc_);//"xxx-20150212.xxx" 
 int sis_time_get_idate_from_shstr(const char* in_);//"2015-02-12" => 20150212
 int sis_time_get_time_from_longstr(const char* , int* , int* ); //"2015-10-20 12:30:38" => 20151020,123038
 int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:38.110" => 20151020,123038
+
+#ifdef __cplusplus
+}
+#endif
 
 // 适用于短暂等待
 #define SIS_WAIT(_a_) do{ while(!(_a_)) { sis_sleep(300); }} while(0)

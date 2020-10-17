@@ -22,7 +22,7 @@ typedef struct s_sis_memory {
 extern "C" {
 #endif
 s_sis_memory *sis_memory_create();   
-void sis_memory_destroy(s_sis_memory *);
+void sis_memory_destroy(void *);
 
 void sis_memory_clone(s_sis_memory *src_, s_sis_memory *des_);
 

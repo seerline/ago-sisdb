@@ -11,13 +11,14 @@ s_sis_memory *sis_memory_create()
 	m->offset = 0;
 	return m;
 }
-void sis_memory_destroy(s_sis_memory *m_)
+void sis_memory_destroy(void *m_)
 {
-	if (m_->buffer)
+	s_sis_memory *m = (s_sis_memory *)m_;
+	if (m->buffer)
 	{
-		sis_free(m_->buffer);
+		sis_free(m->buffer);
 	}
-	sis_free(m_);
+	sis_free(m);
 }
 void sis_memory_clone(s_sis_memory *src_, s_sis_memory *des_)
 {

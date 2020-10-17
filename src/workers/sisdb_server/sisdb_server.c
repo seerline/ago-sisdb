@@ -14,15 +14,10 @@
 struct s_sis_method sisdb_server_methods[] = {
     {"auth",     cmd_sisdb_server_auth, SIS_METHOD_ACCESS_READ, NULL},   // 用户登录
     {"show",     cmd_sisdb_server_show, SIS_METHOD_ACCESS_READ, NULL},   // 显示有多少数据集
-    {"save",     cmd_sisdb_server_save, SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动存盘
-    {"pack",     cmd_sisdb_server_pack, SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动清理磁盘旧的数据
+    {"save",     cmd_sisdb_server_save, SIS_METHOD_ACCESS_ADMIN, NULL},  // 手动存盘
+    {"pack",     cmd_sisdb_server_pack, SIS_METHOD_ACCESS_ADMIN, NULL},  // 手动清理磁盘旧的数据
     {"call",     cmd_sisdb_server_call, SIS_METHOD_ACCESS_READ, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
     {"wget",     cmd_sisdb_server_wget, SIS_METHOD_ACCESS_READ, NULL},   // get 后是否写log文件 方便查看信息
-//  结构化数据流传输 下面的数据流不存盘 只转发且为全量转发
-    {"snew",     cmd_sisdb_server_snew, SIS_METHOD_ACCESS_ADMIN, NULL},   // 注册一个数据流,必须传入key和sdb的字典 
-    {"spub",     cmd_sisdb_server_spub, SIS_METHOD_ACCESS_ADMIN, NULL},   // 发布数据流
-    {"ssub",     cmd_sisdb_server_ssub, SIS_METHOD_ACCESS_ADMIN, NULL},   // 订阅数据流 
-    {"sdel",     cmd_sisdb_server_sdel, SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除数据流 
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_server = {
@@ -545,7 +540,7 @@ void sisdb_server_working(void *worker_)
     {
         int minute = sis_time_get_iminute(0);
         // 最后一分钟就开始处理数据
-        if (minute >= 2359)
+        if (minute >= 2358)
         {
             sis_mutex_lock(&context->wlog_lock);
             _sisdb_server_save(context, context->work_date);
@@ -570,7 +565,6 @@ void sisdb_server_working(void *worker_)
                 s_sisdb_cxt *cxt = service->context;
                 cxt->work_date = context->work_date;
             }
-            
             sis_mutex_unlock(&context->wlog_lock);
         }
     }  
@@ -648,7 +642,7 @@ int cmd_sisdb_server_show(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 
 }
-int cb_sisdb_wlog_load(void *worker_, void *argv_)
+static int cb_sisdb_wlog_load(void *worker_, void *argv_)
 {
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker_;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
@@ -745,7 +739,7 @@ int cmd_sisdb_server_save(void *worker_, void *argv_)
     int workdate = context->work_date;
     if (netmsg->key)
     {
-        workdate = atoll(netmsg->key);
+        workdate = sis_atoll(netmsg->key);
     }
 
     sis_mutex_lock(&context->wlog_lock);
@@ -799,44 +793,44 @@ int cmd_sisdb_server_wget(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_server_snew(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+// int cmd_sisdb_server_snew(void *worker_, void *argv_)
+// {
+//     s_sis_worker *worker = (s_sis_worker *)worker_; 
+//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    sis_net_ans_with_ok(netmsg); 
+//     sis_net_ans_with_ok(netmsg); 
 
-    return SIS_METHOD_OK;
-}
+//     return SIS_METHOD_OK;
+// }
 
-int cmd_sisdb_server_spub(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+// int cmd_sisdb_server_spub(void *worker_, void *argv_)
+// {
+//     s_sis_worker *worker = (s_sis_worker *)worker_; 
+//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    sis_net_ans_with_ok(netmsg); 
+//     sis_net_ans_with_ok(netmsg); 
 
-    return SIS_METHOD_OK;
-}
-int cmd_sisdb_server_ssub(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+//     return SIS_METHOD_OK;
+// }
+// int cmd_sisdb_server_ssub(void *worker_, void *argv_)
+// {
+//     s_sis_worker *worker = (s_sis_worker *)worker_; 
+//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    sis_net_ans_with_ok(netmsg); 
+//     sis_net_ans_with_ok(netmsg); 
 
-    return SIS_METHOD_OK;
-}
-int cmd_sisdb_server_sdel(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+//     return SIS_METHOD_OK;
+// }
+// int cmd_sisdb_server_sdel(void *worker_, void *argv_)
+// {
+//     s_sis_worker *worker = (s_sis_worker *)worker_; 
+//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    sis_net_ans_with_ok(netmsg); 
+//     sis_net_ans_with_ok(netmsg); 
 
-    return SIS_METHOD_OK;
-}
+//     return SIS_METHOD_OK;
+// }

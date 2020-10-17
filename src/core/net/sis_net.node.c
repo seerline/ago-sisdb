@@ -264,7 +264,7 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	{
 		// 应答包
 		mess->style = SIS_NET_RCMD;
-		mess->rcmd = rcmd->value ? atoll(rcmd->value) : 0; 	
+		mess->rcmd = rcmd->value ? sis_atoll(rcmd->value) : 0; 	
         mess->rval = _sis_json_node_get_sds(handle->node, "rval");    
 		mess->style = mess->rval ? (mess->style | SIS_NET_VAL) : mess->style;
 	}

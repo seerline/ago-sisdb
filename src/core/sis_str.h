@@ -40,6 +40,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+bool sis_str_isnumber(const char *in,size_t ilen);
+
 // 以第一个字符串为长度，从头开始进行比较
 int sis_strcase_match(const char *son_, const char *source_);
 

@@ -120,7 +120,7 @@ int64 sis_file_dbf_get_int(s_sis_file_dbf *dbf_, int index, const char *key_, in
 	}
 	char val[32];
 	sis_strncpy(val, 32, buffer+field->offset, field->len);
-	return atoll(val);
+	return sis_atoll(val);
 }
 double sis_file_dbf_get_double(s_sis_file_dbf *dbf_, int index, const char *key_, double defaultvalue_)
 {

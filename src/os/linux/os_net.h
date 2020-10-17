@@ -22,6 +22,10 @@
 #define SIS_NET_MAX_SEND_LEN   32*1024
 #define SIS_NET_MAX_RECV_LEN   32*1024
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void sis_socket_init();
 void sis_socket_uninit();
 
@@ -32,6 +36,9 @@ int sis_socket_getip4(const char *name_, char *ip_, size_t ilen_);
 
 #define sis_net_close close
 
+#ifdef __cplusplus
+}
+#endif
 
 //    web-socket 头定义
 //    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1

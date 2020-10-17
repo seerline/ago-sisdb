@@ -1278,8 +1278,7 @@ int64 sis_json_get_int(s_sis_json_node *root_, const char *key_, int64 defaultva
 	s_sis_json_node *c = sis_json_find_node(root_, key_);
 	if (c)
 	{
-		// return atoi(c->value);
-		return atoll(c->value);
+		return sis_atoll(c->value);
 	}
 	return defaultvalue_;
 }

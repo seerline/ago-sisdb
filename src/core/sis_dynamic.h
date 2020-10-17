@@ -501,7 +501,7 @@ s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
 
 s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_);
 // 从db转为json格式数据结构
-s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
+// s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
 
 // 获得当前缓存的时间
 msec_t sis_dynamic_db_get_time(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_);

@@ -1,6 +1,6 @@
 ﻿
 //******************************************************
-// Copyright (C) 2018, Martin <seerlinecoin@gmail.com>
+// Copyright (C) 2018, Coollyer <48707400@qq.com>
 //*******************************************************
 
 #ifndef _SISDB_IO_H
@@ -29,6 +29,8 @@ int sisdb_one_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_);
 
 // 得到参数中是字符串还是字节流
 int sisdb_get_format(s_sis_sds argv_);
+// 得到格式
+int sis_from_node_get_format(s_sis_json_node *node_, int default_);
 // 以下为结构化数据的IO
 // 没有date字段 就只返回内存中的对应数据 
 // (未支持,可能返回数据过多)如果参数中有 workdate:20200101 字段就表示内存有取内存 内存没有取磁盘 全部没有才返回空

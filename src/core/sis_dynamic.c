@@ -195,7 +195,7 @@ s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_
 	{
 		return NULL;
 	}
-	*index_ = (int)atoll(argv[1]);
+	*index_ = (int)sis_atoll(argv[1]);
 	return field;
 }
 
@@ -310,19 +310,19 @@ s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_)
 	return jone;
 }
 
-s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
-{
-	s_sis_json_node *jone = sis_dynamic_dbinfo_to_json(db_);
+// s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
+// {
+// 	s_sis_json_node *jone = sis_dynamic_dbinfo_to_json(db_);
 
-	char *str;
-	size_t olen;
-	str = sis_json_output_zip(jone, &olen);
-	// printf("jone = %s\n", str);
-	in_ = sis_sdscatlen(in_, str, olen);
-	sis_free(str);
-	sis_json_delete_node(jone);
-	return in_;
-}
+// 	char *str;
+// 	size_t olen;
+// 	str = sis_json_output_zip(jone, &olen);
+// 	// printf("jone = %s\n", str);
+// 	in_ = sis_sdscatlen(in_, str, olen);
+// 	sis_free(str);
+// 	sis_json_delete_node(jone);
+// 	return in_;
+// }
 msec_t sis_dynamic_db_get_time(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_)
 {
 	if (!db_->field_time || !in_ || ilen_ % db_->size || ( index_ + 1 ) * db_->size > ilen_)
@@ -1297,7 +1297,6 @@ int main()
 
 	sis_free(out_info);
 	sis_dynamic_convert_destroy(convert);
-	// sis_dynamic_dbinfo_to_json_sds(outdb, out);
 
 	sis_dynamic_db_destroy(indb);
 	sis_dynamic_db_destroy(outdb);

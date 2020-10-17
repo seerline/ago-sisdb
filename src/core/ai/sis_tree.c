@@ -1116,8 +1116,7 @@
 // 	s_sis_tree_node *c = sis_tree_find_node(root_, key_);
 // 	if (c)
 // 	{
-// 		// return atoi(c->value);
-// 		return atoll(c->value);
+// 		return sis_atoll(c->value);
 // 	}
 // 	return defaultvalue_;
 // }
