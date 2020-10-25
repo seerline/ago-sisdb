@@ -10,10 +10,11 @@
 #include "sis_math.h"
 #include "sis_malloc.h"
 
-#include "sis_queue.h"
+#include "sis_list.def.h"
 #include "sis_json.h"
 #include "sis_dynamic.h"
 #include "sis_bits.h"
+#include "sis_obj.h"
 
 #define ZIPMEM_MAXSIZE (16*1024)
 
@@ -48,10 +49,16 @@ typedef struct s_zipdb_bits
 	uint8   data[0];    
 } s_zipdb_bits;
 
-typedef int (cb_zipdb_onebyone)(void *, int ,int, void *, size_t );
-typedef int (cb_zipdb_bits)(void *, s_zipdb_bits *);
-typedef int (cb_zipdb_sub_info)(void *, int);
-typedef int (cb_zipdb_init_info)(void *, const char*, size_t );
+// 仅仅解压 有数据就回调
+typedef struct s_unzipdb_reader
+{
+	void                 *cb_source;
+	cb_sis_struct_decode *cb_read;
+	s_sis_bits_stream    *cur_sbits;   // 当前指向缓存的位操作类
+	s_sis_map_list       *keys;     // key 的结构字典表 s_sis_sds
+	s_sis_map_list       *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
+
+} s_unzipdb_reader;
 
 typedef struct s_zipdb_reader
 {
@@ -60,26 +67,32 @@ typedef struct s_zipdb_reader
 	// 以下两个回调互斥
 	void *zipdb_worker;     // 来源对象
 
-	bool  isbitzip;                  // 是否返回压缩块
 	bool  ishead;                    // 是否从头发送
+	bool  isinit;                    // 0 刚刚订阅 1 正常订阅 
 
-	// s_sis_share_reader *reader;
+	s_sis_unlock_reader *reader;      // 每个读者一个订阅者
+	// 当读者需要解压后的数据 使用下面2个
+	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取
+	s_unzipdb_reader   *unzip_reader;   // 用于解压的位操作类
 
-	cb_zipdb_bits      *cb_bits;
-	cb_zipdb_onebyone  *cb_onebyone;
+	// 当读者需要压缩的数据 使用下面1个 
+	sis_method_define  *cb_zipbits;       // s_zipdb_bits
 
-    cb_zipdb_sub_info  *cb_sub_start;
-    cb_zipdb_sub_info  *cb_sub_realtime;
-    cb_zipdb_sub_info  *cb_sub_stop;
+    sis_method_define  *cb_sub_start;    // char *
+    sis_method_define  *cb_sub_realtime; // char *
+    sis_method_define  *cb_sub_stop;     // char *
 
-	cb_zipdb_init_info *cb_init_keys;
-	cb_zipdb_init_info *cb_init_sdbs;
+	sis_method_define  *cb_dict_keys;   // json char *
+	sis_method_define  *cb_dict_sdbs;   // char *
 
 } s_zipdb_reader;
 
 // 来源数据只管写盘 只有key, sdb有的才会保存数据
 // 读取数据的人会接收到压缩的 out_bitzips 如果接收者订阅了全部就直接发送数据出去
 //          否则就把数据解压，然后写入自己的 s_zipdb_cxt 再通过读者回调发送数据
+
+#define MAP_ZIPDB_BITS(v) ((s_zipdb_bits *)sis_memory(v->ptr))
+
 typedef struct s_zipdb_cxt
 {
 	int      work_status;  // 当前工作状态
@@ -87,12 +100,12 @@ typedef struct s_zipdb_cxt
 	bool     inited;    // 是否已经初始化
 	bool     stoped;    // 是否已经结束
 
-	int       gapmsec;   // 超过多长时间生成新的块 毫秒
-	int       initmsec;  // 超过多长重新初始化 秒
-	int       maxsize;   // 超过多少尺寸生成新的块
+	int      gapmsec;   // 超过多长时间生成新的块 毫秒
+	int      initmsec;  // 超过多长重新初始化 秒
+	int      maxsize;   // 超过多少尺寸生成新的块
 
-	msec_t    work_msec; // 
-	int       work_date; // 工作日期
+	msec_t   work_msec; // 
+	int      work_date; // 工作日期
 
 	s_sis_sds           work_path;
 	size_t              page_size;
@@ -100,23 +113,23 @@ typedef struct s_zipdb_cxt
 	s_sis_sds           work_keys; // 工作keys
 	s_sis_sds           work_sdbs; // 工作sdbs
 	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
-	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_zipdb_table 包括
+	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
 
-	s_sis_mutex_t       write_lock;  
+	s_sis_unlock_list   *inputs;    // 传入的数据链 s_zipdb_bits
+	s_sis_unlock_reader *in_reader;  // 读取发送队列 等待上一个读取结束的读者
 
-	s_sis_share_list   *inputs;    // 传入的数据链 s_zipdb_bits
-	s_sis_share_reader *in_reader;  // 读取发送队列 等待上一个读取结束的读者
+	s_sis_bits_stream  *cur_sbits;   // 当前指向缓存的位操作类
 
-	// s_sis_share_list   *outputs;      // 传入的数据链 s_zipdb_bits
-	s_zipdb_bits       *cur_memory;   // 当前用于写数据的缓存 
-	s_sis_bits_stream  *cur_bitzip;   // 当前指向缓存的位操作类
+	s_sis_object       *cur_object;   // s_zipdb_bits -> 映射为memory 当前用于写数据的缓存 
+	s_sis_object       *last_object;  // 最近一个其实数据包的指针
+	// 这个outputs需要设置为无限容量
+	s_sis_unlock_list   *outputs;  // 输出的数据链 s_zipdb_bits -> 映射为 memory 每10分钟一个新的压缩数据块
+	s_sis_pointer_list  *reader;   // 读者列表 s_zipdb_reader
 
-	s_sis_pointer_list *out_bitzips;   // s_zipdb_bits 的输出数据链 每10分钟一个压缩数据块
-
-	s_sis_pointer_list *reader;   // 读者列表 s_zipdb_reader
 } s_zipdb_cxt;
 
 #pragma pack(pop)
+
 
 bool  zipdb_init(void *, void *);
 void  zipdb_uninit(void *);
@@ -157,9 +170,18 @@ int cmd_zipdb_wsno(void *worker_, void *argv_);
 int cmd_zipdb_rsno(void *worker_, void *argv_);
 
 //////////////////////////////////////////////////////////////////
+//------------------------s_unzipdb_reader -----------------------//
+//////////////////////////////////////////////////////////////////
+s_unzipdb_reader *unzipdb_reader_create(void *cb_source, cb_sis_struct_decode *cb_read_);
+void unzipdb_reader_destroy(s_unzipdb_reader *);
+
+void unzipdb_reader_set_keys(s_unzipdb_reader *, s_sis_sds );
+void unzipdb_reader_set_sdbs(s_unzipdb_reader *, s_sis_sds );
+void unzipdb_reader_set_bits(s_unzipdb_reader *, s_zipdb_bits *);
+
+//////////////////////////////////////////////////////////////////
 //------------------------s_zipdb_reader -----------------------//
 //////////////////////////////////////////////////////////////////
-
 s_zipdb_reader *zipdb_reader_create();
 void zipdb_reader_destroy(void *);
 

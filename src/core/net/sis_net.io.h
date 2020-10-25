@@ -20,9 +20,9 @@ void sis_net_ans_with_int(s_sis_net_message *, int in_);
 void sis_net_ans_with_ok(s_sis_net_message *);
 void sis_net_ans_with_error(s_sis_net_message *, char *rval_, size_t vlen_);
 void sis_net_ans_with_null(s_sis_net_message *);
-void sis_net_ans_with_sub_start(s_sis_net_message *, char *info_);
-void sis_net_ans_with_sub_wait(s_sis_net_message *,  char *info_);
-void sis_net_ans_with_sub_stop(s_sis_net_message *,  char *info_);
+void sis_net_ans_with_sub_start(s_sis_net_message *, const char *info_);
+void sis_net_ans_with_sub_wait(s_sis_net_message *,  const char *info_);
+void sis_net_ans_with_sub_stop(s_sis_net_message *,  const char *info_);
 
 // in_被吸入
 void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);

@@ -39,8 +39,8 @@ void sis_object_decr(void *o);
 size_t sis_object_getsize(void *);
 char * sis_object_getchar(void *);
 
-#define SIS_OBJ_GET_SIZE(v) sis_object_getsize(v)
-#define SIS_OBJ_GET_CHAR(v) sis_object_getchar(v)
+#define SIS_OBJ_GET_SIZE(v) (v ? sis_object_getsize(v) : 0)
+#define SIS_OBJ_GET_CHAR(v) (v ? sis_object_getchar(v) : NULL)
 
 #define SIS_OBJ_SDS(v) (v->style == SIS_OBJECT_SDS ? (s_sis_sds)(v->ptr) : NULL)
 #define SIS_OBJ_LIST(v) (v->style == SIS_OBJECT_LIST ? (s_sis_struct_list *)(v->ptr) : NULL)

@@ -65,9 +65,10 @@ bool sisdb_server_init(void *worker_, void *argv_)
 
     context->level = sis_json_get_int(node, "level", 10);
 
-    context->recv_list = sis_share_list_create("system", 64*1000*1000);
-    context->reader_recv = sis_share_reader_login(context->recv_list, 
-        SIS_SHARE_FROM_HEAD, worker, cb_reader_recv);
+    context->recv_list = sis_unlock_list_create(4*1024*1024);
+    context->reader_recv = sis_unlock_reader_create(context->recv_list, 
+        SIS_UNLOCK_READER_HEAD, worker, cb_reader_recv, NULL);
+    sis_unlock_reader_open(context->reader_recv);
 
     s_sis_json_node *wlognode = sis_json_cmp_child_node(node, "wlog-save");
     if (wlognode)
@@ -77,8 +78,6 @@ bool sisdb_server_init(void *worker_, void *argv_)
         {
             context->wlog_save = service;  // 根据是否为空判断是订阅还是自动执行
             context->wlog_method = sis_worker_get_method(context->wlog_save, "write");
-            // context->reader_wlog = sis_share_reader_login(context->recv_list, 
-            //     SIS_SHARE_FROM_HEAD, worker, cb_reader_wlog);
         }     
     }
 
@@ -147,8 +146,9 @@ bool sisdb_server_init(void *worker_, void *argv_)
 
         sisdb_convert_init(context, cvnode);
 
-        context->reader_convert = sis_share_reader_login(context->recv_list, 
-            SIS_SHARE_FROM_HEAD, worker, cb_reader_convert);
+        context->reader_convert = sis_unlock_reader_create(context->recv_list, 
+            SIS_UNLOCK_READER_HEAD, worker, cb_reader_convert, NULL);
+        sis_unlock_reader_open(context->reader_convert);
     }
 
     // context->message = sis_message_create();
@@ -228,18 +228,17 @@ void sisdb_server_uninit(void *worker_)
 
     if (context->wlog_save)
     {
-    	// sis_share_reader_logout(context->recv_list, context->reader_wlog);
         sis_worker_destroy(context->wlog_save);
     }
 
     if (context->converts)
     {
-    	sis_share_reader_logout(context->recv_list, context->reader_convert);
+    	sis_unlock_reader_close(context->reader_convert);
         sis_map_pointer_destroy(context->converts);
     }
 
-	sis_share_reader_logout(context->recv_list, context->reader_recv);
-    sis_share_list_destroy(context->recv_list);
+	sis_unlock_reader_close(context->reader_recv);
+    sis_unlock_list_destroy(context->recv_list);
 
     sis_free(context);
     worker->context = NULL;
@@ -258,7 +257,7 @@ static void cb_recv(void *worker_, s_sis_net_message *msg)
 
     sis_net_message_incr(msg);
     s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, msg);
-    sis_share_list_push(context->recv_list, obj);
+    sis_unlock_list_push(context->recv_list, obj);
 	sis_object_destroy(obj);
 	
 }

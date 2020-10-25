@@ -344,7 +344,7 @@ int sis_str_subcmp_strict(const char *sub, const char *s, char c)
 	}
 	if (i > pos)
 	{ //strncmp
-		if (!sis_strncasecmp(sub, &s[pos], i - pos)&&sublen==i - pos)
+		if (!sis_strncasecmp(sub, &s[pos], i - pos)&&sublen ==i - pos)
 		{
 			return count;
 		}

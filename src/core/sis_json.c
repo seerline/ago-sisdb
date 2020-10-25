@@ -19,11 +19,12 @@ static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node 
 
 static const char *_sis_match_string(const char *start)
 {
+	// 处理引号中有引号的问题
 	int ismatch = 0;
 	const char *ptr = start;
 	while (*ptr)
 	{
-		if (*ptr != '\"')
+		if (*ptr != '\"') 
 		{
 			ptr++;
 		}
@@ -321,13 +322,23 @@ void sis_json_close(s_sis_json_handle *handle_)
 }
 void _sis_replace_json(char *in_, size_t size_)
 {
+	int match = 0;
 	for (size_t i = 0; i < size_ - 1; i++)
 	{
 		if (in_[i] == '\\' && in_[i + 1] == '\"')
 		{
-			in_[i] = '\"'; 
-			in_[i + 1] = ' '; 
-			i++;
+			if (match == 0)
+			{
+				in_[i] = ' '; 
+				in_[i + 1] = '\"'; 
+			}
+			else
+			{
+				in_[i] = '\"'; 
+				in_[i + 1] = ' '; 
+			}
+			i++;				
+			match = (match + 1) % 2;
 		}
 	}
 }

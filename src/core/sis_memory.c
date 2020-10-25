@@ -11,6 +11,15 @@ s_sis_memory *sis_memory_create()
 	m->offset = 0;
 	return m;
 }
+s_sis_memory *sis_memory_create_size(size_t size_)
+{
+	s_sis_memory *m = (s_sis_memory *)sis_malloc(sizeof(s_sis_memory));
+	m->buffer = (char *)sis_malloc(size_ + 1);
+	m->size = 0;
+	m->maxsize = size_ + 1;
+	m->offset = 0;
+	return m;
+}
 void sis_memory_destroy(void *m_)
 {
 	s_sis_memory *m = (s_sis_memory *)m_;
@@ -155,6 +164,14 @@ int64 sis_memory_get_byte(s_sis_memory *m_, int bytes_)
 		return o;
 	}
 	return 0;
+}
+size_t sis_memory_getpos(s_sis_memory *m_)
+{
+	return m_->offset;
+}
+void   sis_memory_setpos(s_sis_memory *m_, size_t offset_)
+{
+	m_->offset = offset_;
 }
 
 size_t sis_memory_cat_ssize(s_sis_memory *s_, size_t in_)

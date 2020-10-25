@@ -219,6 +219,8 @@ bool sis_net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
     char *str = sis_json_output_zip(node, &len);
     // printf("sis_net_encoded_json [%d]: %d %s\n",in_->style, (int)len, str);
     sis_memory_cat(out_, str, len);
+	// ??? 这里转换后会把本来没有 \" 的 转换成 
+	// sis_out_binary("encode", sstr,  len);
     sis_free(str);
     sis_json_delete_node(node);
     
@@ -235,10 +237,13 @@ s_sis_sds _sis_json_node_get_sds(s_sis_json_node *node_, const char *key_)
     }
     if (node->type == SIS_JSON_INT || node->type == SIS_JSON_DOUBLE || node->type == SIS_JSON_STRING)
     {
+		// printf("%s : %s\n",key_, node->value);
         o = sis_sdsnew(node->value);
     }
     else if (node->type == SIS_JSON_ARRAY || node->type == SIS_JSON_OBJECT)
     {
+		// int iii = 1;
+		// sis_json_show(node, &iii);
 		size_t len = 0;
 		char *str = sis_json_output_zip(node, &len);
 		o = sis_sdsnewlen(str, len);
@@ -249,9 +254,9 @@ s_sis_sds _sis_json_node_get_sds(s_sis_json_node *node_, const char *key_)
 bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 {
     s_sis_net_message *mess = (s_sis_net_message *)out_;
-
     size_t size = sis_memory_get_size(in_);
 	sis_memory(in_)[size] = 0;
+	// sis_out_binary("---",sis_memory(in_), size);
     s_sis_json_handle *handle = sis_json_load(sis_memory(in_), size);
     if (!handle)
     {

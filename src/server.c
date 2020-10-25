@@ -86,7 +86,8 @@ bool _server_open()
 		sis_cat_fixed_path(conf_path, sis_json_get_str(lognode, "path"),
 						   _server.log_path, SIS_PATH_LEN);
 		// printf("%s == %s\n",conf_path, _server.log_path);
-		_server.log_screen = sis_json_get_bool(lognode, "screen", false);
+		_server.log_screen = _server.work_mode & SERVER_WORK_MODE_DEBUG;
+		// _server.log_screen = sis_json_get_bool(lognode, "screen", false);
 		_server.log_level = sis_json_get_int(lognode, "level", 5);
 		_server.log_size = sis_json_get_int(lognode, "maxsize", 10) * 1024 * 1024;
 	}
@@ -150,11 +151,12 @@ void _server_help()
 	printf("		-d           : debug mode run. \n");
 	printf("		-h           : help. \n");
 }
-#if 1
+#if 0
+#include "sis_python.h"
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 255, "%s.conf", argv[0]);
-
+		
 	int c = 1;
 	while (c < argc)
 	{
@@ -212,6 +214,8 @@ int main(int argc, char *argv[])
 	sis_signal(SIGTERM, _sig_kill);
 	sis_sigignore(SIGPIPE);
 
+	// 初始化多线程python
+	sis_py_init();
 	//  创建工作者
 	_server.workers = sis_map_pointer_create_v(sis_worker_destroy);
 	int workers = _server_open_workers();
@@ -231,7 +235,8 @@ int main(int argc, char *argv[])
 		printf("no active worker.\n");		
 	}
 	sis_map_pointer_destroy(_server.workers);
-
+	// 释放多线程python
+	sis_py_uninit();
 	// 释放插件
 	sis_map_pointer_destroy(_server.modules);
 

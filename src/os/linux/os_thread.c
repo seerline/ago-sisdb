@@ -2,6 +2,25 @@
 #include <os_thread.h>
 #include <os_malloc.h>
 
+// int _now_cpu_index = 0;
+
+// int sis_thread_auto_cpu(s_sis_thread *thread_)  
+// {  
+// 	int cpus = sysconf(_SC_NPROCESSORS_CONF);
+//     cpu_set_t mask;  
+//     CPU_ZERO(&mask);  
+//     CPU_SET(_now_cpu_index, &mask);  
+// 	_now_cpu_index = (_now_cpu_index + 1) % cpus;
+  
+//     // printf("thread %u, i = %d\n", pthread_self(), i);  
+//     if(-1 == pthread_setaffinity_np(thread_->thread_id ,sizeof(cpu_set_t), &mask))  
+//     {  
+//         printf("pthread_setaffinity_np fail.\n");  
+//         return -1;  
+//     }  
+//     return 0;  
+// }  
+ 
 bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread *thread_)
 {
 	s_sis_thread_id_t result = 0;
@@ -34,6 +53,7 @@ bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread 
 	thread_->worker = func_;
 	thread_->thread_id = result;
 	thread_->working = true;
+	// sis_thread_auto_cpu(thread_);
 	return true;	
 }
 void sis_thread_finish(s_sis_thread *thread_)

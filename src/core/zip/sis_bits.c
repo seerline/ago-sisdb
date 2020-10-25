@@ -777,21 +777,21 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
     }
 }
 // 用回调来返回数据
-int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_decode *cb_read_)
+int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {
     if (!cb_read_)
     {
-        return 0;
+        return -1;
     }
     _sis_bits_struct_init(s_);
     while(s_->bit_currpos < s_->bit_maxsize)
     {        
         sis_bits_stream_savepos(s_);
         int zip = sis_bits_stream_get(s_, 1);
-        if(!zip)
-        {
-            printf("...\n");
-        }
+        // if(!zip)
+        // {
+        //     printf("...\n");
+        // }
         int kid = sis_bits_stream_get_uint(s_);
         int sid = sis_bits_stream_get_uint(s_);
         int count = sis_bits_stream_get_nums(s_);
@@ -802,7 +802,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_d
         if (!buffer)
         {
             sis_bits_stream_restore(s_);
-            return -1;
+            return -2;
         }
         char *memory = (char *)&buffer[1];
         int fnums = sis_map_list_getsize(unit->sdb->fields);
@@ -825,7 +825,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_d
             memmove(memory, in, unit->sdb->size);
             in += unit->sdb->size;
         }
-        cb_read_(source_ ?  source_ : s_, kid, sid, unzip, size);
+        cb_read_(cb_source_ ?  cb_source_ : s_, kid, sid, unzip, size);
         sis_free(unzip);
     }
     return 0;

@@ -11,10 +11,11 @@
 #include <sis_thread.h>
 #include <sis_map.h>
 #include <sis_json.h>
-#include <sis_queue.h>
 #include <sis_message.h>
 #include <sis_snappy.h>
 #include <sis_crypt.h>
+
+#include "sis_list.def.h"
 // 网络协议版本号
 #define SIS_NET_VERSION        1   
 
@@ -122,8 +123,8 @@ typedef struct s_sis_net_context {
 	s_sis_memory      *recv_buffer; // 接收数据的残余缓存
 
 	void                 *father;   // s_sis_net_class *的指针
-	s_sis_share_list     *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
-	s_sis_share_reader   *reader_send;  // 读取发送队列 等待上一个读取结束的读者
+	s_sis_unlock_list    *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
+	s_sis_unlock_reader  *reader_send;  // 读取发送队列 等待上一个读取结束的读者
 
 	s_sis_net_slot    *slots;     // 根据协议对接不同功能函数	
 
@@ -161,14 +162,12 @@ typedef struct s_sis_net_class {
 	// 刚出队列的数据 等待处理成功后释放 
 	// s_sis_object         *after_recv_cxt;  // 当前接收到的数据 等待处理成功后删除 s_sis_net_message 
 	// 可能在一个数据包中有多个请求 一次解析逐个放入队列 
-	s_sis_share_list     *ready_recv_cxts; // 接收到的数据  s_sis_net_message - s_sis_object
-	s_sis_share_reader   *reader_recv;  // 读取接收队列
+	s_sis_unlock_list     *ready_recv_cxts; // 接收到的数据  s_sis_net_message - s_sis_object
+	s_sis_unlock_reader   *reader_recv;  // 读取接收队列
 
 	// 当前正在发送的信息 刚出队列的 发送成功后释放
 	// s_sis_object         *after_send_cxt;  // 已经发送的数据 等待发送成功后删除 s_sis_memory
 	// 发送队列自行释放内存
-	// s_sis_share_list     *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
-	// s_sis_share_reader   *reader_send;  // 读取发送队列
 
 	void                 *cb_source;     // 回调句柄
 	cb_socket_connect     cb_connected;  // 链接成功

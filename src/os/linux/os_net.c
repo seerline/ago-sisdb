@@ -1,17 +1,23 @@
 
 #include <os_net.h>
 
+static int __init_socket = 0;
+
 void sis_socket_init()
 {
-	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGPIPE, &sa, 0);
+	if (!__init_socket)
+	{
+		struct sigaction sa;
+		sa.sa_handler = SIG_IGN;
+		sigemptyset(&sa.sa_mask);
+		sa.sa_flags = 0;
+		sigaction(SIGPIPE, &sa, 0);
+		__init_socket = 1;
+	}
 }
 void sis_socket_uninit()
 {
-
+	
 }
 
 int sis_socket_getip4(const char *name_, char *ip_, size_t ilen_)

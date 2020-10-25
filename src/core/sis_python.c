@@ -6,17 +6,27 @@ static int __init_pyscripe = 0;
 
 void sis_py_init()
 {
+	// printf("thread = %s %p\n",__func__, pthread_self());
 	if (!__init_pyscripe)
 	{
 		Py_Initialize();
+		if ( !Py_IsInitialized() ) //检测是否初始化成功
+		{
+			return;
+		}
+		// threads launched after everything is ok
+		// PyEval_InitThreads();     //开启多线程支持
+		// PyEval_ReleaseThread(PyThreadState_Get()); 
 		__init_pyscripe = 1;
 	}
 }
 void sis_py_uninit()
 {
+	// printf("thread = %s %p\n",__func__, pthread_self());
 	if (__init_pyscripe)
 	{
-		Py_Finalize();
+		PyGILState_Ensure(); 
+		Py_Finalize();     
 		__init_pyscripe = 0;
 	}
 }
@@ -24,37 +34,141 @@ bool sis_py_isinit()
 {
 	return (__init_pyscripe == 1);
 }
-s_sis_sds sis_py_execute_sds(const char *workpath_, const char *pyname_, const char *func_, const char *argv_)
+// 
+s_sis_py_obj *sis_py_mthread_create(const char *workpath_, const char *pyname_)
 {
-	s_sis_sds o = NULL;
-	// sis_py_init();
+	// printf("thread = %s %p\n",__func__, pthread_self());
 	sis_py_simple_string("import sys");
 	char workpath[255];
 	sis_sprintf(workpath, 255, "sys.path.append('%s')", workpath_);
 	sis_py_simple_string(workpath);
-
 	s_sis_py_obj *pmodule = sis_py_import_module(pyname_);
-	if (!pmodule) goto fail;
-	s_sis_py_obj *pdict = sis_py_get_dict(pmodule);
+	if (pmodule) SIS_PY_INCREF(pmodule);
+
+	LOG(5)("load python module %s = %p\n", pyname_, pmodule);
+	PyEval_InitThreads();     //开启多线程支持
+	PyThreadState *nstate = PyThreadState_Get();
+	if (nstate) PyEval_ReleaseThread(nstate); 
+	// PyEval_ThreadsInitialized
+	LOG(5)("load python module %s ok\n", pyname_);
+
+	return pmodule;
+}
+void sis_py_mthread_destroy(s_sis_py_obj *obj_)
+{
+	if (obj_)
+	{
+		SIS_PY_DECREF(obj_);
+	}
+}
+
+s_sis_sds sis_py_mthread_exec(s_sis_py_obj *obj_, const char *func_, const char *argv_)
+{
+	if (!obj_)
+	{
+		return NULL;
+	}
+	// printf("thread = %s %p\n",__func__, pthread_self());
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
+
+	s_sis_sds o = NULL;
+
+	s_sis_py_obj *pdict = NULL;
+	s_sis_py_obj *pfunc = NULL;
+	s_sis_py_obj *pargs = NULL;
+	s_sis_py_obj *preply = NULL;
+
+	pdict = sis_py_get_dict(obj_);
 	if (!pdict) goto fail;
-	s_sis_py_obj *pfunc = sis_py_get_func_of_dict(pdict, func_);
+	pfunc = sis_py_get_func_of_dict(pdict, func_);
 	if (!pfunc) goto fail;
 
-	s_sis_py_obj *pargs = sis_py_get_args("(s)", argv_); 
+	pargs = sis_py_get_args("(s)", argv_); 
 	// s_sis_py_obj *pargs = sis_py_get_args("(i)", 1000); 
-	s_sis_py_obj *preply = sis_py_run_func(pfunc, pargs);
+	preply = sis_py_run_func(pfunc, pargs);
 
     char  *reply;
     sis_py_parse_args(preply, "s", &reply);
 	o = sis_sdsnew(reply);
-
+	
 fail:
-	// sis_py_uninit();
+	if (!pdict) SIS_PY_DECREF(pdict);
+	if (!pfunc) SIS_PY_DECREF(pfunc);
+	if (!pargs) SIS_PY_DECREF(pargs);
+	if (!preply) SIS_PY_DECREF(preply);
 	// 删除中间目录
-	sis_sprintf(workpath, 255, "%s/__pycache__/", workpath_);
-	sis_path_del_files(workpath);
+	// sis_sprintf(workpath, 255, "%s/__pycache__/", workpath_);
+	// sis_path_del_files(workpath);
+	PyGILState_Release(gstate);
 	return o;
 }
+// 方法2 ：
+// 采用下面的后加载 sis_py_import_module 的方式有如下问题
+// py中不能有 import 否则会异常 所以先把这种方法注释掉
+// void sis_py_init()
+// {
+// 	printf("thread = %s %p\n",__func__, pthread_self());
+// 	if (!__init_pyscripe)
+// 	{
+// 		Py_Initialize();
+// 		if ( !Py_IsInitialized() ) //检测是否初始化成功
+// 		{
+// 			return;
+// 		}
+// 		// threads launched after everything is ok
+// 		PyEval_InitThreads();     //开启多线程支持
+// 		PyEval_ReleaseThread(PyThreadState_Get()); 
+// 		__init_pyscripe = 1;
+// 	}
+// }
+// s_sis_sds sis_py_execute_sds(const char *workpath_, const char *pyname_, const char *func_, const char *argv_)
+// {
+// 	printf("thread = %s %p\n",__func__, pthread_self());
+// 	PyGILState_STATE gstate;
+// 	gstate = PyGILState_Ensure();
+
+// 	s_sis_sds o = NULL;
+// 	// printf("__init_pyscripe = %d\n", __init_pyscripe);
+// 	// sis_py_simple_string("print('my is pigger')");
+// 	sis_py_simple_string("import sys");
+// 	char workpath[255];
+// 	sis_sprintf(workpath, 255, "sys.path.append('%s')", workpath_);
+// 	sis_py_simple_string(workpath);
+
+// 	s_sis_py_obj *pmodule = NULL;
+// 	s_sis_py_obj *pdict = NULL;
+// 	s_sis_py_obj *pfunc = NULL;
+// 	s_sis_py_obj *pargs = NULL;
+// 	s_sis_py_obj *preply = NULL;
+
+// 	pmodule = sis_py_import_module(pyname_);
+// 	if (!pmodule) goto fail;
+// 	pdict = sis_py_get_dict(pmodule);
+// 	if (!pdict) goto fail;
+// 	pfunc = sis_py_get_func_of_dict(pdict, func_);
+// 	if (!pfunc) goto fail;
+
+// 	pargs = sis_py_get_args("(s)", argv_); 
+// 	// s_sis_py_obj *pargs = sis_py_get_args("(i)", 1000); 
+// 	preply = sis_py_run_func(pfunc, pargs);
+
+//     char  *reply;
+//     sis_py_parse_args(preply, "s", &reply);
+// 	o = sis_sdsnew(reply);
+
+// fail:
+// 	if (!pmodule) SIS_PY_DECREF(pmodule);
+// 	if (!pdict) SIS_PY_DECREF(pdict);
+// 	if (!pfunc) SIS_PY_DECREF(pfunc);
+// 	if (!pargs) SIS_PY_DECREF(pargs);
+// 	if (!preply) SIS_PY_DECREF(preply);
+// 	// 删除中间目录
+// 	// sis_sprintf(workpath, 255, "%s/__pycache__/", workpath_);
+// 	// sis_path_del_files(workpath);
+// 	PyGILState_Release(gstate);
+// 	return o;
+// }
 ////////////////////
 // s_sis_py_method
 ////////////////////
@@ -189,7 +303,6 @@ s_sis_pyscript_unit *sis_pyscript_unit_create(const char *workpath_, const char 
 	o->workcmd = sis_sdsempty();
 	o->workcmd = sis_sdscatfmt(o->workcmd, "sys.path.append('%s%s')", workpath_, workname_);
 
-	// sis_py_init();
 	sis_py_simple_string("import sys");
 	sis_py_simple_string(o->workcmd);
 
@@ -243,7 +356,6 @@ void sis_pyscript_unit_destroy(void *unit_)
 	SIS_PY_DECREF(unit->pdict);
 	SIS_PY_DECREF(unit->pinit);
 	SIS_PY_DECREF(unit->puninit);
-	// sis_py_uninit();
 	sis_free(unit);
 }
 ////////////////////
@@ -298,12 +410,12 @@ void *thread_pop(void *arg)
     return NULL;
 }
 
-int main()
+int main1()
 {
 	sis_py_init();
 	s_sis_map_pointer *map = sis_map_pointer_create_v(sis_pyscript_unit_destroy);
 	int count = sis_pyscript_unit_load(map, "../pyscript/");
-
+	printf("count= %d\n",count);
 	pthread_t read;
 	pthread_create(&read, NULL, thread_pop, map);
 
@@ -313,10 +425,11 @@ int main()
 	sis_py_uninit();
 	return 0;
 }
-int main1()
+int main()
 {
 	s_sis_sds str = sis_py_execute_sds(
 		"../pyscript/",
+		// "./",
 		"api_web",
 		"web_api_get",
 		"{\"url\":\"https://api.wmcloud.com/data/v1/api/master/getSecID.json?assetClass=E&exchangeCD=XSHE,XSHG\",\"headers\":{\"Authorization\":\"Bearer c03ed0c0ce9e78106ae10d87f627696477d85bd4a2069312f8c898522c32f3d8\"}}");

@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 #include "sis_net.node.h"
-#include "sis_queue.h"
+#include "sis_list.def.h"
 #include "sis_dynamic.h"
 
 // 四个时间尺度的数据表 同名字段会传递只能由大到小
@@ -133,7 +133,7 @@ typedef struct s_sisdb_cxt
 
 	void               *socket;      // sisdb server
 	// 发布信息的读者
-	s_sis_share_reader *pub_reader;  
+	s_sis_unlock_reader *pub_reader;  
 	// 多个 client 订阅的列表 需要一一对应发送
 	// 以 key 为索引的 s_sisdb_sub_info 同一key可能有多个用户订阅
 	s_sis_map_pointer  *sub_multiple; // s_sisdb_sub_info 

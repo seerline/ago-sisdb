@@ -1,4 +1,5 @@
 ﻿#include "os_fork.h"
+#include "os_file.h"
 
 int __work_signal = SIS_SIGNAL_WORK;
 
@@ -40,10 +41,24 @@ int sis_fork_process()
 void sis_sigignore(int sign_)
 {
 	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;//设定接受到指定信号后的动作为忽略
+	sa.sa_handler = SIG_IGN; //设定接受到指定信号后的动作为忽略
 	sa.sa_flags = 0;
-	if (sigemptyset(&sa.sa_mask) == -1 ||   //初始化信号集为空
-		sigaction(sign_, &sa, 0) == -1) {   //屏蔽SIGPIPE信号
+	if (sigemptyset(&sa.sa_mask) == -1 || //初始化信号集为空
+		sigaction(sign_, &sa, 0) == -1)
+	{ //屏蔽SIGPIPE信号
 		printf("failed to ignore SIGPIPE; sigaction");
 	}
 }
+
+// size_t sis_init_cpu()
+// {
+// 	return 1;
+// }
+// int sis_set_cpu(int id_, size_t cpus, cpu_set_t *mask)
+// {
+// 	return 0;
+// }
+// int sis_get_cpu(int id_, size_t cpus, cpu_set_t *mask)
+// {
+// 	return 0;
+// }

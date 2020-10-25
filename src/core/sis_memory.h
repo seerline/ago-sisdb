@@ -21,7 +21,9 @@ typedef struct s_sis_memory {
 #ifdef __cplusplus
 extern "C" {
 #endif
-s_sis_memory *sis_memory_create();   
+s_sis_memory *sis_memory_create();  
+s_sis_memory *sis_memory_create_size(size_t size_);
+
 void sis_memory_destroy(void *);
 
 void sis_memory_clone(s_sis_memory *src_, s_sis_memory *des_);
@@ -68,6 +70,9 @@ size_t sis_memory_get_address(s_sis_memory *);
 
 size_t sis_memory_cat_byte(s_sis_memory *m_, int64 in_, int bytes_);
 int64 sis_memory_get_byte(s_sis_memory *m_, int bytes_);
+
+size_t sis_memory_getpos(s_sis_memory *m_);
+void   sis_memory_setpos(s_sis_memory *m_,size_t);
 
 size_t sis_memory_cat_ssize(s_sis_memory *s_, size_t in_);
 // 返回实际的长度

@@ -109,7 +109,7 @@ void sis_mutex_rw_lock_r(s_sis_mutex_rw *mutex_)
 		if (mutex_->try_write_b || mutex_->writes_i > 0)
 		{
 			sis_mutex_unlock(&mutex_->mutex_s);
-			sis_sleep(50);
+			sis_sleep(10);
 			continue;
 		}
 		assert(mutex_->reads_i >= 0);
@@ -118,6 +118,22 @@ void sis_mutex_rw_lock_r(s_sis_mutex_rw *mutex_)
 		break;
 	}
 }
+// 返回 0 表示加锁成功
+int sis_mutex_rw_try_lock_r(s_sis_mutex_rw *mutex_)
+{
+	assert(mutex_);
+	sis_mutex_lock(&mutex_->mutex_s);
+	if (mutex_->try_write_b || mutex_->writes_i > 0)
+	{
+		sis_mutex_unlock(&mutex_->mutex_s);
+		return 1;
+	}
+	assert(mutex_->reads_i >= 0);
+	++mutex_->reads_i;
+	sis_mutex_unlock(&mutex_->mutex_s);
+	return 0;
+}
+
 void sis_mutex_rw_unlock_r(s_sis_mutex_rw *mutex_)
 {
 	assert(mutex_);
@@ -125,6 +141,21 @@ void sis_mutex_rw_unlock_r(s_sis_mutex_rw *mutex_)
 	--mutex_->reads_i;
 	assert(mutex_->reads_i >= 0);
 	sis_mutex_unlock(&mutex_->mutex_s);
+}
+int sis_mutex_rw_try_lock_w(s_sis_mutex_rw *mutex_)
+{
+	sis_mutex_lock(&mutex_->mutex_s);
+	mutex_->try_write_b = true;
+	if (mutex_->reads_i > 0 || mutex_->writes_i > 0)
+	{
+		sis_mutex_unlock(&mutex_->mutex_s);
+		return 1;
+	}
+	mutex_->try_write_b = false;
+	assert(mutex_->writes_i >= 0);
+	++mutex_->writes_i;
+	sis_mutex_unlock(&mutex_->mutex_s);
+	return 0;
 }
 void sis_mutex_rw_lock_w(s_sis_mutex_rw *mutex_)
 {
@@ -135,7 +166,7 @@ void sis_mutex_rw_lock_w(s_sis_mutex_rw *mutex_)
 		if (mutex_->reads_i > 0 || mutex_->writes_i > 0)
 		{
 			sis_mutex_unlock(&mutex_->mutex_s);
-			sis_sleep(50);
+			sis_sleep(10);
 			continue;
 		}
 		mutex_->try_write_b = false;

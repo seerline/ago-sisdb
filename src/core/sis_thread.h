@@ -33,6 +33,9 @@ void sis_mutex_rw_unlock_r(s_sis_mutex_rw *mutex_);
 void sis_mutex_rw_lock_w(s_sis_mutex_rw *mutex_);
 void sis_mutex_rw_unlock_w(s_sis_mutex_rw *mutex_);
 
+// 返回 0 表示加锁成功
+int sis_mutex_rw_try_lock_w(s_sis_mutex_rw *mutex_);
+int sis_mutex_rw_try_lock_r(s_sis_mutex_rw *mutex_);
 
 ////////////////////////
 // 线程任务定义

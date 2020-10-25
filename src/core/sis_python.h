@@ -84,9 +84,18 @@ extern "C" {
 void sis_py_init();
 void sis_py_uninit();
 bool sis_py_isinit();
+
+// 由于python支持多线程很繁琐只能通过下面三个函数来操作
+// **重要** 必须在主线程中调用 加载所有需要的py脚本
+s_sis_py_obj *sis_py_mthread_create(const char *workpath_, const char *pyname_);
+// **重要** 必须在主线程中调用
+void sis_py_mthread_destroy(s_sis_py_obj *obj_);
+// **重要** 必须在子线程中调用
+s_sis_sds sis_py_mthread_exec(s_sis_py_obj *obj_, const char *func_, const char *argv_);
+
 // 独立执行一段python代码 返回一段字符串
 // 文件名 函数名 参数(json格式字符串)
-s_sis_sds sis_py_execute_sds(const char *workpath_, const char *pyname_, const char *func_, const char *argv_);
+// s_sis_sds sis_py_execute_sds(const char *workpath_, const char *pyname_, const char *func_, const char *argv_);
 
 ////////////////////
 // s_sis_pyscript_unit

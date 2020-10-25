@@ -11,10 +11,7 @@ extern s_sis_modules sis_modules_macd;
 extern s_sis_modules sis_modules_sign_money;
 extern s_sis_modules sis_modules_sign_mp;
 extern s_sis_modules sis_modules_sign_newp;
-extern s_sis_modules sis_modules_market_api_wb;
-extern s_sis_modules sis_modules_market_api_wbtop;
 extern s_sis_modules sis_modules_market_collect;
-extern s_sis_modules sis_modules_market_file2;
 extern s_sis_modules sis_modules_market_link;
 extern s_sis_modules sis_modules_market_rfile;
 extern s_sis_modules sis_modules_market_server;
@@ -52,10 +49,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_sign_money,
     &sis_modules_sign_mp,
     &sis_modules_sign_newp,
-    &sis_modules_market_api_wb,
-    &sis_modules_market_api_wbtop,
     &sis_modules_market_collect,
-    &sis_modules_market_file2,
     &sis_modules_market_link,
     &sis_modules_market_rfile,
     &sis_modules_market_server,
@@ -95,10 +89,7 @@ const char *__modules_name[] = {
     "sign_money",
     "sign_mp",
     "sign_newp",
-    "market_api_wb",
-    "market_api_wbtop",
     "market_collect",
-    "market_file2",
     "market_link",
     "market_rfile",
     "market_server",

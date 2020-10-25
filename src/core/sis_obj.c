@@ -15,7 +15,8 @@ s_sis_object *sis_object_incr(s_sis_object *obj_)
 {
     if (obj_ && obj_->refs != SIS_OBJECT_MAX_REFS) 
     {
-        obj_->refs++;
+        // obj_->refs++;
+        ADDF(&(obj_->refs), 1);
         return obj_;
     }
     return NULL;
@@ -39,7 +40,12 @@ void sis_object_decr(void *obj_)
                 sis_sdsfree(obj->ptr); 
             }
             break;
-            case SIS_OBJECT_MEMORY: sis_memory_destroy(obj->ptr); break;
+            case SIS_OBJECT_MEMORY: 
+            {
+                // printf("free [%p]\n",obj);
+                sis_memory_destroy(obj->ptr); 
+                break;
+            }
             case SIS_OBJECT_NETMSG: sis_net_message_destroy(obj->ptr); break;
             case SIS_OBJECT_LIST: sis_struct_list_destroy(obj->ptr); break;
             case SIS_OBJECT_NODES: sis_list_destroy(obj->ptr); break;
@@ -49,7 +55,8 @@ void sis_object_decr(void *obj_)
     } 
     else 
     {
-        obj->refs--;
+        SUBF(&(obj->refs), 1);
+        // obj->refs--;
     }
 }
 size_t sis_object_getsize(void *obj)
@@ -100,7 +107,7 @@ char * sis_object_getchar(void *obj)
         default: 
             {
                 ptr = (char *)(obj_->ptr); 
-                LOG(5)("unknown object type"); 
+                LOG(5)("unknown object type.\n"); 
             }
             break;
     }

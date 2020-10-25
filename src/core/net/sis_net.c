@@ -214,10 +214,10 @@ s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 	o->recv_buffer = sis_memory_create();
 	o->slots = SIS_MALLOC(s_sis_net_slot, o->slots);
 	// 初始化过程全部用 json 交互
-	o->ready_send_cxts = sis_share_list_create("", 16*1000*1000);
-    o->reader_send = sis_share_reader_open(o->ready_send_cxts, o, cb_sis_reader_send);
-	// sis_share_reader_login(o->ready_send_cxts, SIS_SHARE_FROM_HEAD, o, cb_sis_reader_send);
-
+	o->ready_send_cxts = sis_unlock_list_create(4*1024*1024);
+    o->reader_send = sis_unlock_reader_create(o->ready_send_cxts, 
+		SIS_UNLOCK_READER_WAIT | SIS_UNLOCK_READER_TAIL, o, cb_sis_reader_send, NULL);
+	sis_unlock_reader_open(o->reader_send);
 	return o;
 } 
 
@@ -225,9 +225,8 @@ void sis_net_context_destroy(void *cxt_)
 {
 	s_sis_net_context *cxt = (s_sis_net_context *)cxt_;
 
-	// sis_share_reader_logout(cxt->ready_send_cxts, cxt->reader_send);
-	sis_share_reader_close(cxt->ready_send_cxts, cxt->reader_send);
-	sis_share_list_destroy(cxt->ready_send_cxts);
+	sis_unlock_reader_close(cxt->reader_send);
+	sis_unlock_list_destroy(cxt->ready_send_cxts);
 
 	sis_memory_destroy(cxt->recv_buffer);
 	sis_free(cxt->slots);
@@ -347,8 +346,10 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 		sis_strcpy(o->client->ip, 128, o->url->ip4);
 	}
 
-	o->ready_recv_cxts = sis_share_list_create("", 16*1000*1000);
-    o->reader_recv = sis_share_reader_login(o->ready_recv_cxts, SIS_SHARE_FROM_HEAD, o, cb_sis_reader_recv);
+	o->ready_recv_cxts = sis_unlock_list_create(4*1024*1024);
+    o->reader_recv = sis_unlock_reader_create(o->ready_recv_cxts, 
+		SIS_UNLOCK_READER_HEAD, o, cb_sis_reader_recv, NULL);
+	sis_unlock_reader_open(o->reader_recv);
 
 	o->cxts = sis_map_pointer_create_v(sis_net_context_destroy);
 
@@ -374,8 +375,8 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 	}
 	sis_url_destroy(cls->url);
 
-	sis_share_reader_logout(cls->ready_recv_cxts, cls->reader_recv);
-	sis_share_list_destroy(cls->ready_recv_cxts);
+	sis_unlock_reader_close(cls->reader_recv);
+	sis_unlock_list_destroy(cls->ready_recv_cxts);
 
 	sis_map_pointer_destroy(cls->cxts);
 	LOG(5)("net_class exit .\n");
@@ -506,7 +507,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			if (rtn == 1)
 			{
 				mess->cid = sid_;
-				sis_share_list_push(cls->ready_recv_cxts, obj);
+				sis_unlock_list_push(cls->ready_recv_cxts, obj);
 			}
 			else if (rtn == 0)
 			{
@@ -533,7 +534,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (cxt)
 	{
-		sis_share_reader_next(cxt->reader_send);
+		sis_unlock_reader_next(cxt->reader_send);
 	}	
 	printf("server send to [%d] client. %p %d %d \n", sid_, cxt, 0, status_);	
 }
@@ -581,7 +582,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			{
 				// printf("count= %d size= %zu\n", __count++, SIS_OBJ_GET_SIZE(obj));
 				mess->cid = sid_;
-				sis_share_list_push(cls->ready_recv_cxts, obj);
+				sis_unlock_list_push(cls->ready_recv_cxts, obj);
 			}			
 			else if (rtn == 0)
 			{
@@ -609,7 +610,7 @@ static void cb_client_send_after(void* handle_, int sid_, int status_)
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
 	if (cxt)
 	{
-		sis_share_reader_next(cxt->reader_send);
+		sis_unlock_reader_next(cxt->reader_send);
 	}
 	printf("client send to server. %p [%d]\n", cxt, status_);	
 	if (status_)
@@ -844,7 +845,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
 	if (cxt)
 	{
-		sis_share_list_push(cxt->ready_send_cxts, obj);
+		sis_unlock_list_push(cxt->ready_send_cxts, obj);
 	}
 	sis_object_destroy(obj);
 	return 0;

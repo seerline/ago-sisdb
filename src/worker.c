@@ -189,7 +189,7 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
             sis_worker_destroy(worker);
             return NULL;
         }
-        printf("worker service_thread create. %d\n", worker->service_thread->work_mode);
+        LOG(5)("worker service_thread create. %d\n", worker->service_thread->work_mode);
         if (!sis_service_thread_start(worker->service_thread, _service_work_thread, worker))
         {
             LOG(3)("can't start service_thread\n");
@@ -270,7 +270,6 @@ void sis_worker_destroy(void *worker_)
     sis_sdsfree(worker->workername);
 
     sis_sdsfree(worker->classname);
-
     sis_free(worker);
 }
 
@@ -387,10 +386,12 @@ s_sis_worker *sis_worker_search(const char *workname_)
     return worker;
 }
 
-// 通知worker去执行 working 仅仅用于通知模式
+// 通知worker去执行 working 
 void sis_worker_notice(s_sis_worker *worker_)
 {
-    if (worker_ && worker_->service_thread && worker_->service_thread->work_mode == SIS_WORK_MODE_NOTICE)
+    // printf("====== %p\n", worker_->service_thread);
+    // if (worker_ && worker_->service_thread && worker_->service_thread->work_mode == SIS_WORK_MODE_NOTICE)
+    if (worker_ && worker_->service_thread)
     {
         sis_service_thread_wait_notice(worker_->service_thread);
     }

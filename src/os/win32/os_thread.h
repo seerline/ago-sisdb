@@ -74,6 +74,25 @@ int   sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_);
 void  sis_thread_wait_start(s_sis_wait *wait_);
 void  sis_thread_wait_stop(s_sis_wait *wait_);
 
+
+#ifdef __cplusplus
+}
+#endif
+
+#include <wdm.h>
+typedef int s_sis_unlock_mutex;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// https://docs.microsoft.com/zh-cn/windows/win32/sync/synchronization-functions?redirectedfrom=MSDN#interlocked_functions
+// #define BCAS InterlockedCompareExchangePointer
+// #define VCAS(a,b,c) InterlockedCompareExchange(a,c,b)
+// #define ADDF InterlockedExchangeAdd
+// #define SUBF InterlockedExchangeSub
+// #define ANDF InterlockedExchangeAnd
+
 #ifdef __cplusplus
 }
 #endif
