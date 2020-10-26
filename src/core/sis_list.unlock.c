@@ -117,7 +117,7 @@ void sis_unlock_queue_push(s_sis_unlock_queue *queue_, s_sis_object *obj_)
     {
         cur_tail_idx = queue_->tail_idx;
         cur_tail_flag = queue_->flags + cur_tail_idx;
-        //    sis_sleep(1);
+        sis_sleep(1);
     }
     // 两个入队线程之间的同步
     // 取模操作可以优化
@@ -148,7 +148,7 @@ s_sis_object *sis_unlock_queue_pop(s_sis_unlock_queue *queue_)
         {
             cur_head_idx = queue_->head_idx;
             cur_head_flag = queue_->flags + cur_head_idx;
-            //    sis_sleep(1);
+            sis_sleep(1);
         }
         // 取模操作可以优化
         int new_head_idx = (cur_head_idx + 1) % queue_->size;
@@ -346,7 +346,7 @@ void sis_unlock_reader_zero(s_sis_unlock_reader *reader_, int zeromsec_)
 void _unlock_reader_sendsave(s_sis_unlock_reader *reader_, s_sis_object *obj_);
 bool sis_unlock_reader_open(s_sis_unlock_reader *reader_)
 {
-    // 发送历史数据
+    // 发送历史数据 
     _unlock_reader_sendsave(reader_, NULL);
     // 设置工作状态
     reader_->work_status = SIS_UNLOCK_STATUS_WORK;
@@ -810,8 +810,8 @@ int main()
             {
                 sis_sleep(1);
             }
-            sis_unlock_reader_close(read[i]);
             printf("save %d  sendsave = %d count= %d\n", read[i]->work_queue->count, read[i]->sendsave, sharedb->objs->count);
+            sis_unlock_reader_close(read[i]);
             printf("recv %d : %d\n", i, read_pops[i]);
         }
         // 不延时居然会有内存不释放 ??? 奇怪了

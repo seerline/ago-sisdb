@@ -1,6 +1,6 @@
 ﻿
 
-#define MAKE_UNLOCK_LIST
+// #define MAKE_UNLOCK_LIST
 
 #ifdef MAKE_UNLOCK_LIST
 #define _SIS_LIST_LOCK_H

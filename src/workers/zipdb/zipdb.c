@@ -159,6 +159,7 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		if (outmem->size > 1)
 		{
 			// printf("null ..... %lld\n", sis_time_get_now_msec());
+			// printf("push 0 outmem->size = %d\n", outmem->size);
 			sis_unlock_list_push(zipdb->outputs, obj);
 			sis_object_decr(zipdb->cur_object);
 			zipdb->cur_object = _zipdb_new_data(zipdb, zipdb->work_msec);
@@ -177,11 +178,11 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		sis_bits_struct_encode(zipdb->cur_sbits, kidx, sidx, sis_memory(inmem), sis_memory_get_size(inmem));
 		sis_memory_setpos(inmem, offset);
 		// sis_mutex_unlock(&zipdb->write_lock);
-		outmem->size = sis_bits_stream_getbytes(zipdb->cur_sbits);
-		// printf("cur_object->size  = %d\n", cur_object->size);
+		outmem->size = sis_bits_struct_getsize(zipdb->cur_sbits);
 		//  数据如果超过一定数量就直接发送
 		if (outmem->size > zipdb->maxsize - 256)
 		{
+			// printf("push 1 outmem->size  = %d num= %d\n", outmem->size, sis_bits_struct_get_bags(zipdb->cur_sbits, false));
 			sis_unlock_list_push(zipdb->outputs, obj);
 			sis_object_decr(zipdb->cur_object);
 			zipdb->cur_object = _zipdb_new_data(zipdb, zipdb->work_msec);
@@ -407,6 +408,7 @@ int _zipdb_write_bits(s_zipdb_cxt *zipdb_, s_zipdb_bits *in_)
 	// 直接写入
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(sizeof(s_zipdb_bits) + in_->size));
 	memmove(MAP_ZIPDB_BITS(obj), in_, sizeof(s_zipdb_bits) + in_->size);
+	// printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
 	sis_unlock_list_push(zipdb_->outputs, obj);
 	return 0;
 }
@@ -421,6 +423,7 @@ int cmd_zipdb_ipub(void *worker_, void *argv_)
 	// 	s_v3_stk_snapshot *input = (s_v3_stk_snapshot *)in->data;
 	// 	printf("cmd_zipdb_ipub: %d %d %d time = %lld\n",in->kidx, in->sidx, in->size, sis_time_get_itime(input->time/1000));
 	// }
+	// printf("---1 %d %d\n", in->kidx, in->sidx);
     if (_zipdb_write(context, in->kidx, in->sidx, in->data, in->size) >= 0)
     {
         return SIS_METHOD_OK;
@@ -616,10 +619,11 @@ void unzipdb_reader_set_bits(s_unzipdb_reader *unzipdb_, s_zipdb_bits *in_)
 		sis_bits_struct_link(unzipdb_->cur_sbits, in_->data, in_->size);
 	}
 	// 开始解压 并回调
-	if(sis_bits_struct_decode(unzipdb_->cur_sbits, unzipdb_->cb_source, unzipdb_->cb_read))
+	if(sis_bits_struct_decode(unzipdb_->cur_sbits, unzipdb_->cb_source, unzipdb_->cb_read) == 0)
 	{
 		LOG(5)("unzip fail.\n");
 	}
+	// printf("---\n");
 }
 
 ///////////////////////////////////////////////////////////////////////////

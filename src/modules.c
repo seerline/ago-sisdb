@@ -21,6 +21,7 @@ extern s_sis_modules sis_modules_net_rs;
 extern s_sis_modules sis_modules_net_vpn;
 extern s_sis_modules sis_modules_net_ws;
 extern s_sis_modules sis_modules_source_datayes;
+extern s_sis_modules sis_modules_source_demo;
 extern s_sis_modules sis_modules_source_server;
 extern s_sis_modules sis_modules_trade_api_wb;
 extern s_sis_modules sis_modules_trade_drive_easy;
@@ -59,6 +60,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_net_vpn,
     &sis_modules_net_ws,
     &sis_modules_source_datayes,
+    &sis_modules_source_demo,
     &sis_modules_source_server,
     &sis_modules_trade_api_wb,
     &sis_modules_trade_drive_easy,
@@ -99,6 +101,7 @@ const char *__modules_name[] = {
     "net_vpn",
     "net_ws",
     "source_datayes",
+    "source_demo",
     "source_server",
     "trade_api_wb",
     "trade_drive_easy",

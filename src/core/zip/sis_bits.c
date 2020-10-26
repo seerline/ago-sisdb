@@ -39,6 +39,8 @@ void sis_bits_stream_clear(s_sis_bits_stream *s_)
     s_->bit_maxsize = 0;
     s_->bit_savepos = 0;
     s_->sdbsize = 0;
+    s_->bags = 0;
+    s_->bags_bytes = 0;
     if (s_->units)
     {
         sis_pointer_list_clear(s_->units);
@@ -59,14 +61,14 @@ size_t sis_bits_stream_getbytes(s_sis_bits_stream *s_)
 int sis_bits_stream_moveto(s_sis_bits_stream *s_, int bitpos_)	
 {
     s_->bit_currpos = bitpos_;
-    if (s_->bit_currpos < 0)
-    {
-        s_->bit_currpos = 0;
-    }
-    else if (s_->bit_currpos > s_->bit_maxsize)
-    {
-        s_->bit_currpos = s_->bit_maxsize;
-    }
+    // if (s_->bit_currpos < 0)
+    // {
+    //     s_->bit_currpos = 0;
+    // }
+    // else if (s_->bit_currpos > s_->bit_maxsize)
+    // {
+    //     s_->bit_currpos = s_->bit_maxsize;
+    // }
     return s_->bit_currpos;
 }
 //移动内部指针bits_位,可以为负，返回新的位置
@@ -172,7 +174,7 @@ int sis_bits_stream_put_buffer(s_sis_bits_stream *s_, char *in_, size_t bytes_)
 	}
 	return (int)bytes_  * 8;
 }
-int sis_bits_stream_put_nums(s_sis_bits_stream *s_, uint32 in_)
+int sis_bits_stream_put_count(s_sis_bits_stream *s_, uint32 in_)
 {
 // 索引整数 正整数 1 - 0xFFFF
 // 0 --> 0 + 1
@@ -413,7 +415,7 @@ int sis_bits_stream_put_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen
 }
 
 // 短正整数
-int sis_bits_stream_get_nums(s_sis_bits_stream *s_)
+int sis_bits_stream_get_count(s_sis_bits_stream *s_)
 {
 // 索引整数 正整数 1 - 0xFFFF
 // 0 --> 0 + 1
@@ -586,13 +588,54 @@ int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_)
     s_->max_keynum = keynum_;
     return keynum_;
 }
-
+int  sis_bits_struct_get_bags(s_sis_bits_stream *s_, bool isread_)
+{
+    sis_bits_stream_savepos(s_);
+    int count = 0;
+    // printf("1.1 = %d  %d %d\n",s_->bit_currpos, s_->bit_maxsize, sis_bits_stream_getbytes(s_));
+    if (isread_)
+    {
+        sis_bits_stream_moveto(s_, s_->bit_maxsize - 16);
+        count = sis_bits_stream_get(s_, 32);
+    }
+    else
+    {
+        int offset =  (8 - (s_->bit_currpos % 8)) % 8;   
+        if (offset)
+        {
+            sis_bits_stream_move(s_, offset);
+        }
+        count = sis_bits_stream_get(s_, 32);
+    }
+    sis_bits_stream_restore(s_);
+    s_->bags= count;
+    return count;
+}
+void sis_bits_struct_set_bags(s_sis_bits_stream *s_)
+{
+    sis_bits_stream_savepos(s_);
+    // printf("3.1 = %d  %d\n",s_->bit_currpos, s_->bit_maxsize);
+    int offset =  (8 - (s_->bit_currpos % 8)) % 8;   
+    if (offset)
+    {
+        sis_bits_stream_move(s_, offset);
+    }
+    sis_bits_stream_put(s_, s_->bags, 32);
+    s_->bags_bytes = 4;
+    sis_bits_stream_restore(s_);
+}
+size_t sis_bits_struct_getsize(s_sis_bits_stream *s_)
+{
+	return (s_->bit_currpos + 7) / 8 + s_->bags_bytes;
+}
 void sis_bits_struct_link(s_sis_bits_stream *s_, uint8 *in_, size_t ilen_)
 {
     s_->cur_stream = in_;
     s_->bit_maxsize = ilen_ * 8;
     s_->bit_currpos = 0;
     s_->bit_savepos = 0;
+    s_->bags = 0;
+    s_->bags_bytes = 0;
 }
 void sis_bits_struct_flush(s_sis_bits_stream *s_)
 {
@@ -680,11 +723,11 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
     uint8 *buffer = _sis_bits_struct_get_ago(s_, kid_, unit);
     if (!buffer)
     {
-        return -1;
+        return 0;
     }
     if (ilen_ % unit->sdb->size)
     {
-        return -2;
+        return 0;
     }
     char *memory = (char *)&buffer[1];
     int count = ilen_ / unit->sdb->size;
@@ -693,11 +736,11 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
     sis_bits_stream_put(s_, buffer[0] == 0 ? 0 : 1, 1);
     // printf("[%d %d] %s \n",kid_, sid_, unit->sdb->name);
     sis_bits_stream_put_uint(s_, kid_);
-    // sis_out_binary("1", sis_memory(s_->cur_stream), sis_bits_stream_getbytes(s_));
+    // sis_out_binary("1", sis_memory(s_->cur_stream), sis_bits_struct_getsize(s_));
     sis_bits_stream_put_uint(s_, sid_);
-    // sis_out_binary("2", sis_memory(s_->cur_stream), sis_bits_stream_getbytes(s_));
-    sis_bits_stream_put_nums(s_, count);
-    // sis_out_binary("3", sis_memory(s_->cur_stream), sis_bits_stream_getbytes(s_));
+    // sis_out_binary("2", sis_memory(s_->cur_stream), sis_bits_struct_getsize(s_));
+    sis_bits_stream_put_count(s_, count);
+    // sis_out_binary("3", sis_memory(s_->cur_stream), sis_bits_struct_getsize(s_));
 
 	int fnums = sis_map_list_getsize(unit->sdb->fields);
     const char *in = (const char *)in_;
@@ -711,7 +754,7 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
                 continue;
             }
 			_sis_bits_struct_encode_one(s_, memory, infield, in);
-            // printf("[%d:%d] %d -- %d\n", k, i, sis_bits_stream_getbytes(s_),s_->bit_currpos);
+            // printf("[%d:%d] %d -- %d\n", k, i, sis_bits_struct_getsize(s_),s_->bit_currpos);
 		}
         memmove(memory, in, unit->sdb->size);
         buffer[0] = 1;
@@ -719,7 +762,11 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
         // sis_out_binary("memory", memory, unit->sdb->size);
 		in += unit->sdb->size;
 	}
-    return 0;
+    s_->bags++;
+    // printf("encode nums= %d bytes %d\n", s_->bags, sis_bits_stream_getbytes(s_));
+    sis_bits_struct_set_bags(s_);
+    // printf("encode nums= %d bytes %d\n", s_->bags, sis_bits_stream_getbytes(s_));
+    return 1;
 }
 
 static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
@@ -776,39 +823,60 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
         }
     }
 }
+void _unzip_unit_free(s_sis_struct_list *list)
+{
+    for (int i = 0; i < list->count; i++)
+    {
+        s_unzip_unit *unit = (s_unzip_unit *)sis_struct_list_get(list, i);
+        sis_free(unit->data);
+    }
+    sis_struct_list_destroy(list);
+}
 // 用回调来返回数据
 int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {
     if (!cb_read_)
     {
-        return -1;
+        return 0;
     }
     _sis_bits_struct_init(s_);
-    while(s_->bit_currpos < s_->bit_maxsize)
+    // 去尾部取标志位
+    int nums = sis_bits_struct_get_bags(s_, true);
+    printf("decode nums= %d\n", nums);
+    if (nums < 1)
+    {
+        return 0;
+    }    
+    sis_bits_stream_savepos(s_);
+    s_sis_struct_list *list = sis_struct_list_create(sizeof(s_unzip_unit));
+    sis_struct_list_set_size(list, nums);
+    
+    while (list->count < nums)
     {        
-        sis_bits_stream_savepos(s_);
         int zip = sis_bits_stream_get(s_, 1);
         // if(!zip)
         // {
         //     printf("...\n");
         // }
-        int kid = sis_bits_stream_get_uint(s_);
-        int sid = sis_bits_stream_get_uint(s_);
-        int count = sis_bits_stream_get_nums(s_);
+        s_unzip_unit unzip;
+        unzip.kidx = sis_bits_stream_get_uint(s_);
+        unzip.sidx = sis_bits_stream_get_uint(s_);
+        int count = sis_bits_stream_get_count(s_);
 
-        s_sis_struct_unit *unit = (s_sis_struct_unit *)sis_pointer_list_get(s_->units, sid);
-
-        uint8 *buffer = _sis_bits_struct_get_ago(s_, kid, unit);
+        s_sis_struct_unit *unit = (s_sis_struct_unit *)sis_pointer_list_get(s_->units, unzip.sidx);
+        uint8 *buffer = _sis_bits_struct_get_ago(s_, unzip.kidx, unit);
         if (!buffer)
         {
+            // 如果解析失败
+            _unzip_unit_free(list);
             sis_bits_stream_restore(s_);
-            return -2;
+            return 0;
         }
         char *memory = (char *)&buffer[1];
         int fnums = sis_map_list_getsize(unit->sdb->fields);
-        size_t size = unit->sdb->size * count;
-        char *unzip = (char *)sis_calloc(size);
-        char *in = unzip;
+        unzip.size = unit->sdb->size * count;
+        unzip.data = (char *)sis_calloc(unzip.size);
+        char *in = unzip.data;
         for (int k = 0; k < count; k++)
         {
             for (int i = 0; i < fnums; i++)
@@ -825,10 +893,17 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
             memmove(memory, in, unit->sdb->size);
             in += unit->sdb->size;
         }
-        cb_read_(cb_source_ ?  cb_source_ : s_, kid, sid, unzip, size);
-        sis_free(unzip);
+        sis_struct_list_push(list, &unzip);
     }
-    return 0;
+    // printf("count=%d\n", list->count);
+    for (int i = 0; i < list->count; i++)
+    {
+        s_unzip_unit *punzip = (s_unzip_unit *)sis_struct_list_get(list, i);    
+        cb_read_(cb_source_ ?  cb_source_ : s_, punzip->kidx, punzip->sidx, punzip->data, punzip->size);
+    }
+    _unzip_unit_free(list);
+    sis_bits_stream_restore(s_);
+    return nums;
 }
 
 // int sis_snappy_struct(char *in_, size_t ilen_, s_sis_memory *out_)
@@ -1015,9 +1090,9 @@ int main()
     // sis_bits_struct_encode(zip, 3, tickidx, &ticks[1], 5*sizeof(_tick_));
     // 77700000 --> 24962531
     // 77700000 --> 23587531
-    sis_memory_set_size(out, sis_bits_stream_getbytes(zip));
-    printf("stop: %lld\n", sis_time_get_now_msec());
-    size_t size = sis_bits_stream_getbytes(zip);
+    sis_memory_set_size(out, sis_bits_struct_getsize(zip));
+    printf("stop: %lld %d\n", sis_time_get_now_msec(), sis_bits_stream_getbytes(zip));
+    size_t size = sis_bits_struct_getsize(zip);
     printf("zip : from %d --> %d %d\n", 
         zipnnums * (int)(snap_nums * sizeof(_snap_) + tick_nums* sizeof(_tick_) + 8 * (snap_nums + tick_nums)), 
         (int)size, (int)sis_memory_get_size(out));

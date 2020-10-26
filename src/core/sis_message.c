@@ -10,7 +10,7 @@ void _sis_message_unit_free(void *unit_)
     switch (unit->style)
     {
     case SIS_MESSGE_TYPE_SDS:
-        printf("free msg :%p\n", unit->value);
+        // printf("free msg :%p\n", unit->value);
         sis_sdsfree((s_sis_sds)unit->value);
         break;
     case SIS_MESSGE_TYPE_STRLIST:

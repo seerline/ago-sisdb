@@ -120,13 +120,13 @@ typedef struct s_sis_unlock_list {
 
     s_sis_unlock_queue  *work_queue; // 工作队列
 
-    s_sis_mutex_rw       userslock;  // 读者列表管理的锁  
+    s_sis_mutex_t        userslock;  // 读者列表管理的锁  
     s_sis_pointer_list  *users;      // 读者列表 s_sis_unlock_reader 操作时 用 userslock 这个锁来处理
 
     s_sis_unlock_reader *watcher;    // 守护线程 处理数据发布和保存历史数据
  
     int                  save_mode;  // 保存历史数据
-    s_sis_mutex_rw       objslock;   // 历史数据列表管理的锁  
+    s_sis_mutex_t        objslock;   // 历史数据列表管理的锁  
     s_sis_pointer_list  *objs;       // 历史数据列表 s_sis_object 操作时 用 objslock 这个锁来处理
     // 为避免历史数据积累 用户读过的数据定期删除 除非是约定保留全部数据的列表
     size_t               cursize;    // 数据总的长度 由 watcher 统计

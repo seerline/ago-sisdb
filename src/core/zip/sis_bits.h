@@ -50,6 +50,13 @@ typedef int (cb_sis_struct_decode)(void *, int ,int , char *, size_t);
 
 #pragma pack(push,1)
 
+typedef struct s_unzip_unit
+{
+	uint32  kidx;
+	uint16  sidx;
+	uint16  size;
+	char   *data;    
+} s_unzip_unit;
 // // 一个数据结构的定义
 typedef struct s_sis_struct_unit{
 	uint32               offset;
@@ -71,6 +78,10 @@ typedef struct s_sis_bits_stream{
 	uint32                max_keynum;    // 最大key的数量 超出不处理
 	uint8                *ago_memory;  // 前值数据缓存 大小为 keycount * sdbcount * sdbsize               
 	// 数据格式 : kid + sid + count + 数据区
+	uint32                bags;         // 当前压缩的包数量
+	uint32                bags_curpos;  // 数量的位置 必须取模8后 实际长度会大一些 4 位
+	// 最后一个字节如果 <= 250 表示实际长度 251 再向前取两位 252 再向前取4位....
+	uint8                 bags_bytes;  // 数量长度 字节
 }s_sis_bits_stream;
 
 #pragma pack(pop)
@@ -109,7 +120,7 @@ int sis_bits_stream_put_buffer(s_sis_bits_stream *s_, char *in_, size_t bytes_);
 
 // 以下的都要求能够自解析
 // 记录数
-int sis_bits_stream_put_nums(s_sis_bits_stream *s_, uint32 in_);
+int sis_bits_stream_put_count(s_sis_bits_stream *s_, uint32 in_);
 // 短正整数
 int sis_bits_stream_put_uint(s_sis_bits_stream *s_, uint32 in_);
 // 带符号长整数
@@ -123,7 +134,7 @@ int sis_bits_stream_put_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_);
 int sis_bits_stream_put_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_, char *ago_, size_t alen_);
 
 // 记录数
-int sis_bits_stream_get_nums(s_sis_bits_stream *s_);
+int sis_bits_stream_get_count(s_sis_bits_stream *s_);
 // 短正整数
 uint32 sis_bits_stream_get_uint(s_sis_bits_stream *s_);
 // 带符号长整数
@@ -142,12 +153,21 @@ int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen
 int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_);
 int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_);
 
+// isread_ == true 从maxpos取值 false 其他就从curpos取值
+int  sis_bits_struct_get_bags(s_sis_bits_stream *s_, bool isread_);
+// 写在当前位置curpos处
+void sis_bits_struct_set_bags(s_sis_bits_stream *s_);
+// 得到数据的字节长度 结构化压缩会保存当前压缩包的数量 因此必须用这个函数才能获得实际的长度 否则在解压时会报错
+size_t sis_bits_struct_getsize(s_sis_bits_stream *s_);
+
 // 关联一个新的数据区 不改变unit和agomemory
 void sis_bits_struct_link(s_sis_bits_stream *s_, uint8 *in_, size_t ilen_);
 // 重新开始压缩
 void sis_bits_struct_flush(s_sis_bits_stream *s_);
 
+// 返回成功压缩的数量（包数量，不是记录数量）
 int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_, size_t ilen_);
+// 返回成功解压的数量（包数量，不是记录数量）
 int sis_bits_struct_decode(s_sis_bits_stream *s_, void *source_, cb_sis_struct_decode *);
 
 

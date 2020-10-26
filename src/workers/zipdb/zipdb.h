@@ -53,7 +53,7 @@ typedef struct s_zipdb_bits
 typedef struct s_unzipdb_reader
 {
 	void                 *cb_source;
-	cb_sis_struct_decode *cb_read;
+	cb_sis_struct_decode *cb_read;     // 按结构返回数据
 	s_sis_bits_stream    *cur_sbits;   // 当前指向缓存的位操作类
 	s_sis_map_list       *keys;     // key 的结构字典表 s_sis_sds
 	s_sis_map_list       *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
@@ -65,10 +65,10 @@ typedef struct s_zipdb_reader
 	int        cid;
 	s_sis_sds  source;
 	// 以下两个回调互斥
-	void *zipdb_worker;     // 来源对象
+	void      *zipdb_worker;          // 来源对象
 
-	bool  ishead;                    // 是否从头发送
-	bool  isinit;                    // 0 刚刚订阅 1 正常订阅 
+	bool       ishead;                // 是否从头发送
+	bool       isinit;                // 0 刚刚订阅 1 正常订阅 
 
 	s_sis_unlock_reader *reader;      // 每个读者一个订阅者
 	// 当读者需要解压后的数据 使用下面2个
