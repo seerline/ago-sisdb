@@ -14,9 +14,6 @@
 // 定义一个快速队列 环形数组无锁队列
 // 不能在队列中释放 obj,申请和释放都必须是外部控制
 /////////////////////////////////////////////////
-// 本来1M 5个读者 达到了本机1秒 远机 6秒
-// 莫名其妙就升到了 本机6秒 远机19秒
-// 明天再查那里问题 先用lock
 #pragma pack(push,1)
 
 // 队列结点
@@ -24,6 +21,21 @@ typedef struct s_sis_unlock_node {
     s_sis_object             *obj;    // 数据区
     struct s_sis_unlock_node *next;
 } s_sis_unlock_node;
+
+// 无锁队列
+// typedef struct s_sis_unlock_queue {
+//     int                rnums; // 可读元素个数
+//     s_sis_unlock_node *rhead;
+//     s_sis_unlock_node *rtail;
+
+//     int                wnums; // 可写元素个数
+//     s_sis_unlock_node *whead;
+//     s_sis_unlock_node *wtail;
+
+//     int                count;
+//     s_sis_unlock_mutex rlock;  // 读锁 锁定后可在 rnodes 增加元素
+//     s_sis_unlock_mutex wlock;  // 读锁 锁定后可在 wnodes 增加元素
+// } s_sis_unlock_queue;
 
 // 无锁队列
 typedef struct s_sis_unlock_queue {
@@ -36,7 +48,6 @@ typedef struct s_sis_unlock_queue {
     int                tail_idx; 
     s_sis_unlock_mutex growlock; // 需要增长数组时使用
 } s_sis_unlock_queue;
-
 #pragma pack(pop)
 
 #ifdef __cplusplus

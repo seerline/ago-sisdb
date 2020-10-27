@@ -1,7 +1,7 @@
 ﻿
 
-#define MAKE_LOCK_LIST
-// #define MAKE_UNLOCK_LIST
+// #define MAKE_LOCK_LIST
+#define MAKE_UNLOCK_LIST
 // #define MAKE_OK_LIST
 
 #ifdef MAKE_UNLOCK_LIST

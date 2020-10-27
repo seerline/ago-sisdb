@@ -169,7 +169,7 @@ static inline void sis_unlock_mutex_lock(s_sis_unlock_mutex *um_)
 {
     while(!BCAS(&(*um_), 0, 1))
     {
-        sis_sleep(1);
+        // sis_sleep(0);
     }
 }
 
@@ -177,7 +177,7 @@ static inline void sis_unlock_mutex_unlock(s_sis_unlock_mutex *um_)
 {
     while(!BCAS(&(*um_), 1, 0))
     {
-        sis_sleep(1);
+        // sis_sleep(0);
     }
 }
 // 0 Ëø×¡
