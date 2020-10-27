@@ -2,7 +2,7 @@
 #include "sis_list.def.h"
 #include "sis_list.lock.h"
 
-#ifndef MAKE_UNLOCK_LIST
+#ifdef MAKE_LOCK_LIST
 
 /////////////////////////////////////////////////
 //  s_sis_unlock_node
@@ -57,7 +57,8 @@ void sis_unlock_queue_push(s_sis_unlock_queue *queue_, s_sis_object *obj_)
     sis_mutex_lock(&queue_->lock);
     queue_->tail->next = new_node;
     queue_->tail = new_node;
-    ADDF(&(queue_->count), 1);
+    queue_->count++;
+    // ADDF(&(queue_->count), 1);
     sis_mutex_unlock(&queue_->lock);
 }
 // 返回的数据 需要 sis_object_decr 释放 
@@ -76,7 +77,8 @@ s_sis_object *sis_unlock_queue_pop(s_sis_unlock_queue *queue_)
     }
     if (obj)
     {
-        SUBF(&(queue_->count), 1);
+        queue_->count--;  // cost 438 us
+        // SUBF(&(queue_->count), 1); // cost 2978 us
     }
     sis_mutex_unlock(&queue_->lock);
     return obj;
@@ -125,7 +127,7 @@ void *_thread_reader(void *argv_)
                     {
                         reader->cb_realtime(reader->cb_source);
                     }
-                    reader->isrealtime = true;
+                    reader->isrealtime = 1;
                 }  
                 if (surpass_waittime && (reader->work_mode & SIS_UNLOCK_READER_ZERO))
                 {

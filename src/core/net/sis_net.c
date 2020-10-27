@@ -536,7 +536,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	{
 		sis_unlock_reader_next(cxt->reader_send);
 	}	
-	printf("server send to [%d] client. %p %d %d \n", sid_, cxt, 0, status_);	
+	printf("server send to [%d] client. %p %d | %d \n", sid_, cxt, status_, 0);	
 }
 // int __count = 0;
 static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen_)

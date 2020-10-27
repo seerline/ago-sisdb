@@ -2,7 +2,7 @@
 #ifndef _OS_MALLOC_H
 #define _OS_MALLOC_H
 
-#define __RELEASE__
+// #define __RELEASE__
 
 #ifdef __RELEASE__ 
 

@@ -1,5 +1,5 @@
 ﻿
-#ifndef MAKE_UNLOCK_LIST
+#ifdef MAKE_LOCK_LIST
 
 #ifndef _SIS_LIST_LOCK_H
 #define _SIS_LIST_LOCK_H
@@ -10,10 +10,8 @@
 #include "sis_map.h"
 #include "sis_obj.h"
 
-// 实际上是处理一进一出的读写模式
-
 /////////////////////////////////////////////////
-// s_sis_queue
+// 实际上是处理一进一出的读写模式
 // 定义一个快速队列
 // 不能在队列中释放 obj,申请和释放都必须是外部控制
 /////////////////////////////////////////////////

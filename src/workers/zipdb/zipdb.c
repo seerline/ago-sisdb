@@ -639,7 +639,10 @@ void zipdb_reader_destroy(void *reader_)
 {
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
 	// s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
-	sis_unlock_reader_close(reader->reader);
+	if (reader->reader)
+	{
+		sis_unlock_reader_close(reader->reader);
+	}
 	sis_sdsfree(reader->source);
 	sis_free(reader);
 }

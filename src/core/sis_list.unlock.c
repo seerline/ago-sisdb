@@ -117,7 +117,7 @@ void sis_unlock_queue_push(s_sis_unlock_queue *queue_, s_sis_object *obj_)
     {
         cur_tail_idx = queue_->tail_idx;
         cur_tail_flag = queue_->flags + cur_tail_idx;
-        sis_sleep(1);
+        // sis_sleep(0);
     }
     // 两个入队线程之间的同步
     // 取模操作可以优化
@@ -148,7 +148,7 @@ s_sis_object *sis_unlock_queue_pop(s_sis_unlock_queue *queue_)
         {
             cur_head_idx = queue_->head_idx;
             cur_head_flag = queue_->flags + cur_head_idx;
-            sis_sleep(1);
+            // sis_sleep(0);
         }
         // 取模操作可以优化
         int new_head_idx = (cur_head_idx + 1) % queue_->size;
@@ -177,41 +177,10 @@ void *_thread_reader(void *argv_)
     msec_t agotime = sis_time_get_now_msec();
     while (reader->work_status != SIS_UNLOCK_STATUS_EXIT)
     {
-        // 这里的比较特殊,即使没有数据时间超过也会返回
-        int used = 0;
-        if(!sis_unlock_mutex_try_unlock(&reader->notice))
+        if (reader->work_status == SIS_UNLOCK_STATUS_WORK)
         {
-            used = 1;
-            // 有数据
-        }
-        if (reader->work_status == SIS_UNLOCK_STATUS_EXIT)
-        {
-            break;
-        }
-        if (reader->work_status != SIS_UNLOCK_STATUS_WORK)
-        {
-            sis_sleep(1);
-            continue;
-        }  
-        if (used == 0)
-        {
-            if (reader->work_mode & SIS_UNLOCK_READER_ZERO)
-            {
-                msec_t nowtime = sis_time_get_now_msec();
-                if ((nowtime - agotime) > reader->zeromsec)
-                {
-                    used = 2;
-                }
-            }
-            if (used == 0)
-            {
-                sis_sleep(1);
-                continue;
-            }
-        }
-        s_sis_object *obj = sis_unlock_queue_pop(reader->work_queue);
-        if (obj)
-        {
+            s_sis_object *obj = sis_unlock_queue_pop(reader->work_queue);
+            bool isnewdata = obj ? true : false;
             while(obj)
             {
                 if (reader->cb_recv)
@@ -222,33 +191,38 @@ void *_thread_reader(void *argv_)
                 sis_object_decr(obj);
                 obj = sis_unlock_queue_pop(reader->work_queue);
             }
-            if (reader->work_mode & SIS_UNLOCK_READER_ZERO)
+            if (isnewdata && reader->work_mode & SIS_UNLOCK_READER_ZERO)
             {
                 agotime = sis_time_get_now_msec();
             }
-        }
-        if (!obj)
-        {
-            // 如果读完发送标志
-            if ((reader->work_mode & SIS_UNLOCK_READER_HEAD) && reader->isrealtime == 0)
+            // if (!obj)
             {
-                // 只发一次
-                if (reader->cb_realtime)
+                // 如果读完发送标志
+                if ((reader->work_mode & SIS_UNLOCK_READER_HEAD) && reader->isrealtime == 0)
                 {
-                    reader->cb_realtime(reader->cb_source);
-                }
-                reader->isrealtime = 1;
-            }  
-            if (used == 2 && reader->work_mode & SIS_UNLOCK_READER_ZERO)
-            {
-                msec_t nowtime = sis_time_get_now_msec();
-                if ((nowtime - agotime) > reader->zeromsec)
+                    // 只发一次
+                    if (reader->cb_realtime)
+                    {
+                        reader->cb_realtime(reader->cb_source);
+                    }
+                    reader->isrealtime = 1;
+                }  
+                if (!isnewdata && (reader->work_mode & SIS_UNLOCK_READER_ZERO))
                 {
-                    reader->cb_recv(reader->cb_source, NULL);
-                    agotime = nowtime;
+                    msec_t nowtime = sis_time_get_now_msec();
+                    if ((nowtime - agotime) > reader->zeromsec)
+                    {
+                        reader->cb_recv(reader->cb_source, NULL);
+                        agotime = nowtime;
+                    }
                 }
             }
         }
+        if(!sis_unlock_mutex_try_unlock(&reader->notice))
+        {
+            continue;
+        }
+        sis_sleep(3);
     }
     sis_thread_finish(&reader->work_thread);
     reader->work_status = SIS_UNLOCK_STATUS_NONE;
@@ -261,33 +235,26 @@ static void *_thread_reader_wait(void *argv_)
 
     while (reader->work_status != SIS_UNLOCK_STATUS_EXIT)
     {
-        bool used = false;
+        if (reader->work_status == SIS_UNLOCK_STATUS_WORK)
+        {
+            // 只有工作状态才会读取数据
+            s_sis_object *obj = sis_unlock_queue_pop(reader->work_queue);
+            if (obj)
+            {
+                reader->work_status = SIS_UNLOCK_STATUS_WAIT;
+                if (reader->cb_recv)
+                {
+                    reader->cb_recv(reader->cb_source, obj);
+                }
+                reader->cursor = obj;
+                sis_object_decr(obj);
+            }
+        }
         if(!sis_unlock_mutex_try_unlock(&reader->notice))
         {
-            used = true;
-            // 有数据
-        }
-        if (reader->work_status == SIS_UNLOCK_STATUS_EXIT)
-        {
-            break;
-        }
-        if (!used || reader->work_status != SIS_UNLOCK_STATUS_WORK)
-        {
-            sis_sleep(1);
             continue;
         }
-        // 不管什么情况这里都会读取数据
-        s_sis_object *obj = sis_unlock_queue_pop(reader->work_queue);
-        if (obj)
-        {
-            reader->work_status = SIS_UNLOCK_STATUS_WAIT;
-            if (reader->cb_recv)
-            {
-                reader->cb_recv(reader->cb_source, obj);
-            }
-            reader->cursor = obj;
-            sis_object_decr(obj);
-        }  
+        sis_sleep(3);
     }
     sis_thread_finish(&reader->work_thread);
     reader->work_status = SIS_UNLOCK_STATUS_NONE;
@@ -454,57 +421,50 @@ static void *_thread_watcher(void *argv_)
 
     while (reader->work_status != SIS_UNLOCK_STATUS_EXIT)
     {
-        bool used = false;
-        if(!sis_unlock_mutex_try_unlock(&ullist->watcher->notice))
+        if (reader->work_status == SIS_UNLOCK_STATUS_WORK)
         {
-            used = true;
-            // 有数据
-        }
-        if (reader->work_status == SIS_UNLOCK_STATUS_EXIT)
-        {
-            break;
-        }
-        if (!used || reader->work_status != SIS_UNLOCK_STATUS_WORK)
-        {
-            sis_sleep(1);
-            continue;
-        }
-        s_sis_object *obj = sis_unlock_queue_pop(ullist->work_queue);
-        // 把得到的数据传送到读者的队列中
-        if (obj)
-        {
-            while (obj)
+            s_sis_object *obj = sis_unlock_queue_pop(ullist->work_queue);
+            if (obj)
+            {
+                while (obj)
+                {
+                    sis_unlock_mutex_lock(&ullist->userslock);
+                    for (int i = 0; i < ullist->users->count; i++)
+                    {
+                        s_sis_unlock_reader *other = (s_sis_unlock_reader *)sis_pointer_list_get(ullist->users, i);
+                        // 这里需要再次处理历史数据 否则可能会漏掉数据
+                        _unlock_reader_sendsave(other, obj);
+                    }
+                    sis_unlock_mutex_unlock(&ullist->userslock);
+                    if (ullist->save_mode != SIS_UNLOCK_SAVE_NONE)
+                    {
+                        if (reader->cb_recv)
+                        {
+                            reader->cb_recv(reader->cb_source, obj);
+                        }
+                    }
+                    sis_object_decr(obj);
+                    obj = sis_unlock_queue_pop(ullist->work_queue);
+                }
+            }
+            else
             {
                 sis_unlock_mutex_lock(&ullist->userslock);
                 for (int i = 0; i < ullist->users->count; i++)
                 {
                     s_sis_unlock_reader *other = (s_sis_unlock_reader *)sis_pointer_list_get(ullist->users, i);
                     // 这里需要再次处理历史数据 否则可能会漏掉数据
-                    _unlock_reader_sendsave(other, obj);
+                    _unlock_reader_sendsave(other, NULL);
                 }
-                sis_unlock_mutex_unlock(&ullist->userslock);
-                if (ullist->save_mode != SIS_UNLOCK_SAVE_NONE)
-                {
-                    if (reader->cb_recv)
-                    {
-                        reader->cb_recv(reader->cb_source, obj);
-                    }
-                }
-                sis_object_decr(obj);
-                obj = sis_unlock_queue_pop(ullist->work_queue);
+                sis_unlock_mutex_unlock(&ullist->userslock);            
             }
         }
-        else
+        // 把得到的数据传送到读者的队列中
+        if(!sis_unlock_mutex_try_unlock(&ullist->watcher->notice))
         {
-            sis_unlock_mutex_lock(&ullist->userslock);
-            for (int i = 0; i < ullist->users->count; i++)
-            {
-                s_sis_unlock_reader *other = (s_sis_unlock_reader *)sis_pointer_list_get(ullist->users, i);
-                // 这里需要再次处理历史数据 否则可能会漏掉数据
-                _unlock_reader_sendsave(other, NULL);
-            }
-            sis_unlock_mutex_unlock(&ullist->userslock);            
+            continue;
         }
+        sis_sleep(3);
     }
     sis_thread_finish(&reader->work_thread);
     reader->work_status = SIS_UNLOCK_STATUS_NONE;
@@ -574,7 +534,7 @@ s_sis_unlock_list *sis_unlock_list_create(size_t maxsize_)
     
     o->work_queue = sis_unlock_queue_create();
 
-    if (maxsize_ == 0)
+    if (maxsize_ == 0 || maxsize_ == 2)
     {
         o->save_mode = SIS_UNLOCK_SAVE_ALL;
     }
@@ -604,13 +564,16 @@ s_sis_unlock_list *sis_unlock_list_create(size_t maxsize_)
     o->users = sis_pointer_list_create();
     o->users->vfree = sis_unlock_reader_destroy;
 
-    o->watcher = sis_unlock_reader_create(o, SIS_UNLOCK_READER_HEAD, NULL, cb_watcher_recv, NULL);
-    o->watcher->work_status = SIS_UNLOCK_STATUS_WORK;
-    if (!sis_thread_create(_thread_watcher, o->watcher, &o->watcher->work_thread))
+    if (maxsize_ != 2)
     {
-        LOG(1)("can't start watcher thread.\n");
-        sis_unlock_list_destroy(o);
-        return NULL;
+        o->watcher = sis_unlock_reader_create(o, SIS_UNLOCK_READER_HEAD, NULL, cb_watcher_recv, NULL);
+        o->watcher->work_status = SIS_UNLOCK_STATUS_WORK;
+        if (!sis_thread_create(_thread_watcher, o->watcher, &o->watcher->work_thread))
+        {
+            LOG(1)("can't start watcher thread.\n");
+            sis_unlock_list_destroy(o);
+            return NULL;
+        }
     }
     return o;
 }
@@ -663,6 +626,8 @@ void sis_unlock_list_clear(s_sis_unlock_list *ullist_)
     sis_unlock_mutex_unlock(&ullist_->objslock);
 }
 
+#endif
+
 #if 1
 
 int nums = 100;
@@ -699,6 +664,8 @@ static void *thread_push(void *arg)
 }
 int reader_id = 0;
 int read_pops[10] ={0};
+s_sis_unlock_list *sharedb;
+
 static int cb_recv(void *src, s_sis_object *obj)
 {
     s_sis_memory *mem = SIS_OBJ_MEMORY(obj);
@@ -710,8 +677,78 @@ static int cb_recv(void *src, s_sis_object *obj)
     // sis_sleep(1);
     return 0;
 }
-
+s_sis_unlock_queue *read_queue[10];
+static void *thread_pop(void *arg)
+{
+    int index= (int)arg;
+    printf("index= %d\n", index);
+    s_sis_unlock_queue *reader = read_queue[index];
+    while (read_pops[index] < maxnums)
+    {
+        s_sis_object *obj = sis_unlock_queue_pop(reader);        
+        while (obj)
+        {
+            pops++;
+            read_pops[index]++;
+            // ADDF(&pops, 1);
+            // ADDF(&read_pops[index], 1);
+            sis_object_decr(obj);
+            obj = sis_unlock_queue_pop(reader); 
+        }
+        sis_sleep(10);
+    }  
+    return NULL;  
+}
 int main()
+{
+    // 测试 s_sis_unlock_mutex 的cpu占用
+    s_sis_unlock_mutex   objslock = 0;
+    // while (sis_unlock_mutex_try_unlock(&objslock))
+    // {
+    //     sis_sleep(1);
+    // } 
+    // 测试 ADDF SUBF 的耗时
+    {
+        msec_t start = sis_time_get_now_msec();
+        int number = 0;
+        for (int i = 0; i < 1000000; i++)
+        {
+            ADDF(&number, 1);
+            SUBF(&number, 1);
+        }
+        printf("cost %llu us\n", sis_time_get_now_msec() - start);
+    }
+    {    
+        s_sis_mutex_t lock;
+        sis_mutex_init(&lock, NULL);
+        msec_t start = sis_time_get_now_msec();
+        int number = 0;
+        for (int i = 0; i < 1000000; i++)
+        {
+            sis_mutex_lock(&lock);
+            // ADDF(&number, 1);
+            // SUBF(&number, 1);
+            number++;
+            number--;
+            sis_mutex_unlock(&lock);
+        }
+        printf("cost %llu us\n", sis_time_get_now_msec() - start);
+    }
+    // 测试 BCAS 的耗时
+    {
+        msec_t start = sis_time_get_now_msec();
+        int number = 0;
+        for (int i = 0; i < 1000000; i++)
+        {
+            // printf("%d\n", BCAS(&number, 0, 1));
+            BCAS(&number, 0, 1);
+            BCAS(&number, 1, 0);
+        }
+        printf("cost %llu us\n", sis_time_get_now_msec() - start);
+    }
+    return 0;
+}
+int main1()
 {
     safe_memory_start();
 
@@ -742,10 +779,17 @@ int main()
         printf("cost %llu us\n", sis_time_get_now_msec() - start);
     }
     // { // test list
-    //     s_sis_unlock_list *sharedb = sis_unlock_list_create(0);
-    //     msec_t start = sis_time_get_now_msec();
+    //     sharedb = sis_unlock_list_create(2);
     //     int inums = 0;
     //     int onums = 0;
+    //     int reader = 5;
+    //     pthread_t           read[10];
+    //     for (int i = 0; i < reader; i++)
+    //     {
+    //         read_queue[i] = sis_unlock_queue_create();
+    //         pthread_create(&read[i],NULL,thread_pop,(void*)i);
+    //     }
+    //     msec_t start = sis_time_get_now_msec();
     //     while(inums < maxnums)
     //     {
     //         inums++;
@@ -756,20 +800,49 @@ int main()
     //         // // printf("队列插入元素：%d %d\n", inums, sharedb->work_queue->count);
     //         sis_object_destroy(obj);  
     //         // 这里必须注释掉watch的工作
-    //         obj = sis_unlock_queue_pop(sharedb->work_queue);        
-    //         if (obj)
+    //         // s_sis_memory *omem = SIS_OBJ_MEMORY(obj);
+    //         // int32 *data = (int32 *)sis_memory(omem);
+    //         // // printf("队列输出元素：------ %d ||  %d\n", *data, ADDF(&onums, 1));
+    //         // sis_object_destroy(obj); 
+    //     }   
+    //     printf("cost 1 %llu us\n", sis_time_get_now_msec() - start);         
+    //     s_sis_object *obj = sis_unlock_queue_pop(sharedb->work_queue);        
+    //     while (obj)
+    //     {
+    //         for (int i = 0; i < reader; i++)
     //         {
-    //             s_sis_memory *omem = SIS_OBJ_MEMORY(obj);
-    //             int32 *data = (int32 *)sis_memory(omem);
-    //             // printf("队列输出元素：------ %d ||  %d\n", *data, ADDF(&onums, 1));
-    //             sis_object_destroy(obj); 
+    //             sis_unlock_queue_push(read_queue[i], obj);
     //         }
+    //         // s_sis_memory *omem = SIS_OBJ_MEMORY(obj);
+    //         // int32 *data = (int32 *)sis_memory(omem);
+    //         // printf("队列输出元素：------ %d ||  %d\n", *data, ADDF(&onums, 1));
+    //         sis_object_destroy(obj); 
+    //         obj = sis_unlock_queue_pop(sharedb->work_queue); 
+    //     }
+    //     printf("cost 2 %llu us\n", sis_time_get_now_msec() - start);
+    //     for(int i = 0; i < reader; i++)
+    //     {
+    //         pthread_join(read[i], NULL);
+    //     }
+    //     // for (int i = 0; i < reader; i++)
+    //     // {
+    //     //     s_sis_object *readerobj = sis_unlock_queue_pop(read_queue[i]);
+    //     //     while (readerobj)
+    //     //     {
+    //     //         sis_object_destroy(readerobj); 
+    //     //         readerobj = sis_unlock_queue_pop(read_queue[i]);
+    //     //     }           
+    //     // }
+    //     printf("cost 3 %llu us\n", sis_time_get_now_msec() - start);
+    //     for (int i = 0; i < reader; i++)
+    //     {
+    //         sis_unlock_queue_destroy(read_queue[i]);
     //     }
     //     sis_unlock_list_destroy(sharedb);
-    //     printf("cost %llu us\n", sis_time_get_now_msec() - start);
+    //     printf("cost 4 %llu us\n", sis_time_get_now_msec() - start);
     // }
     { // test thread & list
-        s_sis_unlock_list *sharedb = sis_unlock_list_create(0);
+        sharedb = sis_unlock_list_create(0);
 
         pthread_t            write[10];
         s_sis_unlock_reader *read[10];
@@ -819,8 +892,7 @@ int main()
         // printf("sharedb->work_queue %d \n", sharedb->work_queue->count);
         sis_unlock_list_destroy(sharedb);
 
-        printf("cost %llu us , %d ==> %d\n", sis_time_get_now_msec() - start, series, pops);
-        
+        printf("cost %llu us , %d ==> %d\n", sis_time_get_now_msec() - start, series, pops);  
     }
 
     safe_memory_stop();
@@ -828,4 +900,4 @@ int main()
 }
 #endif
 
-#endif
+
