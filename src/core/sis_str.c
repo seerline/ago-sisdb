@@ -1,5 +1,6 @@
 ﻿#include <sis_str.h>
 #include <sis_map.h>
+#include <sis_sds.h>
 
 bool sis_str_isnumber(const char *in_, size_t ilen_)
 {
@@ -172,7 +173,34 @@ int sis_str_divide(const char *in_, char ch_, char *one_, char *two_)
 	one_[index] = 0;
 	return 1;
 }
-
+int sis_str_divide_sds(const char *in_, char ch_, s_sis_sds *one_,  s_sis_sds *two_)
+{
+    const char *start = in_;
+	const char *ptr = in_;
+    int count = 0;
+	while (ptr && *ptr)
+	{
+		if (*ptr == ch_)
+		{
+            *one_ = count > 0 ? sis_sdsnewlen(start, count) : NULL;
+			ptr++;
+			start = ptr;
+            count = 0;
+			while (*ptr)
+			{
+				ptr++;
+                count++;
+                
+			}
+            *two_ = count > 0 ? sis_sdsnewlen(start, count) : NULL;
+			return 2;
+		}
+		ptr++;
+        count++;
+	}
+    *one_ = count > 0 ? sis_sdsnewlen(start, count) : NULL;
+	return 1;
+}
 const char *sis_str_replace(const char *in_, char ic_, char oc_)
 {
 	char *ptr = (char *)in_;

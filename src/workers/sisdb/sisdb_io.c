@@ -7,35 +7,6 @@
 #include "sisdb_collect.h"
 #include "sis_disk.h"
 
-int sis_str_divide_sds(const char *in_, char ch_, s_sis_sds *one_,  s_sis_sds *two_)
-{
-    const char *start = in_;
-	const char *ptr = in_;
-    int count = 0;
-	while (ptr && *ptr)
-	{
-		if (*ptr == ch_)
-		{
-            *one_ = count > 0 ? sis_sdsnewlen(start, count) : NULL;
-			ptr++;
-			start = ptr;
-            count = 0;
-			while (*ptr)
-			{
-				ptr++;
-                count++;
-                
-			}
-            *two_ = count > 0 ? sis_sdsnewlen(start, count) : NULL;
-			return 2;
-		}
-		ptr++;
-        count++;
-	}
-    *one_ = count > 0 ? sis_sdsnewlen(start, count) : NULL;
-	return 1;
-}
-
 s_sis_sds sisdb_one_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)
 {
     s_sis_sds o = NULL;

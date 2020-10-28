@@ -70,6 +70,10 @@ typedef struct s_zipdb_reader
 	bool       ishead;                // 是否从头发送
 	bool       isinit;                // 0 刚刚订阅 1 正常订阅 
 
+	int        sub_date;              // 订阅日期 如果为历史就启动一个线程专门处理 历史默认为从头发送
+	s_sis_sds  sub_keys;              // 订阅股票
+	s_sis_sds  sub_sdbs;              // 订阅数据
+
 	s_sis_unlock_reader *reader;      // 每个读者一个订阅者
 	// 当读者需要解压后的数据 使用下面2个
 	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取

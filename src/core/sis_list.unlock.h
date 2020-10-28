@@ -18,36 +18,51 @@
 
 // 队列结点
 typedef struct s_sis_unlock_node {
+    int                       refs;   // 是否被引用
     s_sis_object             *obj;    // 数据区
     struct s_sis_unlock_node *next;
 } s_sis_unlock_node;
 
-// 无锁队列
+/////////////////////////////////////////////////
+//  单任务的链表
+/////////////////////////////////////////////////
 // typedef struct s_sis_unlock_queue {
-//     int                rnums; // 可读元素个数
-//     s_sis_unlock_node *rhead;
-//     s_sis_unlock_node *rtail;
-
-//     int                wnums; // 可写元素个数
-//     s_sis_unlock_node *whead;
-//     s_sis_unlock_node *wtail;
-
-//     int                count;
-//     s_sis_unlock_mutex rlock;  // 读锁 锁定后可在 rnodes 增加元素
-//     s_sis_unlock_mutex wlock;  // 读锁 锁定后可在 wnodes 增加元素
+//     s_sis_unlock_node *head;
+//     s_sis_unlock_node *tail;
+//     int                count; // 实际元素个数
 // } s_sis_unlock_queue;
 
-// 无锁队列
+/////////////////////////////////////////////////
+//  主备缓存 自增的无锁队列
+/////////////////////////////////////////////////
+
 typedef struct s_sis_unlock_queue {
-    s_sis_unlock_node *array;
-    char              *flags; // 标记位，标记某个位置的元素是否被占用
-    // 0：空节点；1：已被申请，正在写入 2：已经写入，可以弹出;3,正在弹出操作;
-    int                count; // 实际元素个数
-    int                size;  // 环形数组大小
-    int                head_idx; 
-    int                tail_idx; 
-    s_sis_unlock_mutex growlock; // 需要增长数组时使用
+    int                rnums; // 可读元素个数
+    s_sis_unlock_node *rhead;
+    s_sis_unlock_node *rtail;
+
+    int                wnums; // 可写元素个数
+    s_sis_unlock_node *whead;
+    s_sis_unlock_node *wtail;
+
+    s_sis_unlock_mutex rlock;  // 读锁 锁定后可在 rnodes 增加元素
+    s_sis_unlock_mutex wlock;  // 读锁 锁定后可在 wnodes 增加元素
 } s_sis_unlock_queue;
+
+/////////////////////////////////////////////////
+//  环形数组的无锁队列 缺点是队列过多无法处理
+/////////////////////////////////////////////////
+// typedef struct s_sis_unlock_queue {
+//     s_sis_unlock_node *array;
+//     char              *flags; // 标记位，标记某个位置的元素是否被占用
+//     // 0：空节点；1：已被申请，正在写入 2：已经写入，可以弹出;3,正在弹出操作;
+//     int                count; // 实际元素个数
+//     int                size;  // 环形数组大小
+//     int                head_idx; 
+//     int                tail_idx; 
+//     s_sis_unlock_mutex growlock; // 需要增长数组时使用
+// } s_sis_unlock_queue;
+
 #pragma pack(pop)
 
 #ifdef __cplusplus

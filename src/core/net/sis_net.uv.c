@@ -337,6 +337,7 @@ void _thread_server_run(void* arg)
 	LOG(5)("server thread start. [%p]\n", server);
 	uv_run(server->loop, UV_RUN_DEFAULT);
 	uv_loop_close(server->loop);
+	// 这里有时不能退出
 	LOG(5)("server thread stop. [%d]\n", server->isinit);
 }
 bool _sis_socket_server_run(s_sis_socket_server *sock_)

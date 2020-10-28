@@ -29,9 +29,18 @@ void sis_object_decr(void *obj_)
     {
         return ;
     }
-    if (obj->refs == 1) 
+    unsigned int refs = obj->refs; 
+    unsigned int newrefs = refs - 1; 
+    while(!BCAS(&(obj->refs), refs, newrefs))
     {
-        
+        refs = obj->refs;
+        newrefs = refs - 1;
+        sis_sleep(1);
+    }
+    // SUBF(&(obj->refs), 1);
+    // printf("%d %d %p \n", refs, obj->refs, obj);
+    if (refs == 1)
+    {        
         switch(obj->style) 
         {
             case SIS_OBJECT_SDS: 
@@ -49,15 +58,16 @@ void sis_object_decr(void *obj_)
             case SIS_OBJECT_NETMSG: sis_net_message_destroy(obj->ptr); break;
             case SIS_OBJECT_LIST: sis_struct_list_destroy(obj->ptr); break;
             case SIS_OBJECT_NODES: sis_list_destroy(obj->ptr); break;
-            default: LOG(5)("unknown object type"); break;
+            case SIS_OBJECT_INT : break;
+            default: LOG(5)("unknown object type.\n"); break;
         }
         sis_free(obj);
-    } 
-    else 
-    {
-        SUBF(&(obj->refs), 1);
-        // obj->refs--;
     }
+    // else
+    // {
+    //     SUBF(&(obj->refs), 1);
+    // }
+    
 }
 size_t sis_object_getsize(void *obj)
 {
@@ -86,7 +96,8 @@ size_t sis_object_getsize(void *obj)
                 }
             }
             break;
-        default: LOG(5)("unknown object type"); break;
+        case SIS_OBJECT_INT : break;
+        default: LOG(5)("unknown object type\n"); break;
     }
     return size;
 }
@@ -104,11 +115,13 @@ char * sis_object_getchar(void *obj)
                 ptr = (char *)sis_struct_list_first(list);
             }
             break;
+        case SIS_OBJECT_INT : break;
         default: 
             {
                 ptr = (char *)(obj_->ptr); 
                 LOG(5)("unknown object type.\n"); 
             }
+
             break;
     }
     return ptr;

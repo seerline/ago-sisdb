@@ -18,8 +18,6 @@
 
 // #define SISDB_COM_LAST  "{\"search\":{\"start\":-1,\"count\":1}}"
 
-int sis_str_divide_sds(const char *in_, char ch_, s_sis_sds *one_,  s_sis_sds *two_);
-
 //  非结构化数据IO
 s_sis_sds sisdb_one_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_);
 s_sis_sds sisdb_one_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_);

@@ -238,21 +238,16 @@ void zipdb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_zipdb_cxt *zipdb = (s_zipdb_cxt *)worker->context;
-
 	sis_sdsfree(zipdb->work_path);
 	sis_sdsfree(zipdb->work_keys);
 	sis_sdsfree(zipdb->work_sdbs);
-
     sis_map_list_destroy(zipdb->keys); 
     sis_map_list_destroy(zipdb->sdbs);
-
 	sis_unlock_reader_close(zipdb->in_reader);
 	sis_unlock_list_destroy(zipdb->inputs);
 
 	sis_object_decr(zipdb->cur_object);
-
 	sis_bits_stream_destroy(zipdb->cur_sbits);
-
 	sis_pointer_list_destroy(zipdb->reader);
 	sis_unlock_list_destroy(zipdb->outputs);
 	sis_free(zipdb);
@@ -473,7 +468,7 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
 		reader->source = sis_sdsdup(source);
 	}
     reader->zipdb_worker = worker;
-    reader->ishead = sis_message_get_bool(msg, "head");
+    reader->ishead = sis_message_get_bool(msg, "ishead");
 	printf("reader->ishead = %d\n", reader->ishead);
     reader->cb_zipbits     = sis_message_get_method(msg, "cb_zipbits");
 

@@ -13,6 +13,7 @@
 // 定义一个网络数据的结构，减少内存拷贝，方便数据传递，增加程序阅读性
 #pragma pack(push,1)
 
+#define SIS_OBJECT_INT     0xFF  // 整数 测试时使用
 #define SIS_OBJECT_SDS     0  // 字符串
 #define SIS_OBJECT_MEMORY  1  // sis_memory 结构体的指针
 #define SIS_OBJECT_LIST    2  // sis_struct_list 结构体的指针
@@ -21,7 +22,7 @@
 
 typedef struct s_sis_object {
     unsigned char  style;
-    volatile unsigned int   refs;  // 引用数 一般为1, 最大嵌套不超过 SIS_OBJECT_MAX_REFS 超过返回空
+    unsigned int   refs;  // 引用数 一般为1, 最大嵌套不超过 SIS_OBJECT_MAX_REFS 超过返回空
     void          *ptr;
 } s_sis_object;
 

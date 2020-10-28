@@ -151,7 +151,7 @@ void _server_help()
 	printf("		-d           : debug mode run. \n");
 	printf("		-h           : help. \n");
 }
-#if 0
+#if 1
 #include "sis_python.h"
 int main(int argc, char *argv[])
 {
