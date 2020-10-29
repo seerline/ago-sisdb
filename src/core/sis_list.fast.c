@@ -245,6 +245,10 @@ void *_thread_reader(void *argv_)
             if (reader->cursor)
             {
                 s_sis_unlock_node *next = sis_unlock_queue_next(ullist->work_queue, reader->cursor);
+                // if (surpass_waittime)
+                // {
+                //     printf("next = %p\n", next); 
+                // }
                 if (next)
                 {
                     while(next)   
@@ -283,9 +287,15 @@ void *_thread_reader(void *argv_)
         }
         if (sis_thread_wait_sleep_msec(wait, waitmsec) == SIS_ETIMEDOUT)
         {
-            // printf("timeout exit. %d\n", waitmsec);
+            // printf("timeout exit. %d %p\n", waitmsec, reader);
             surpass_waittime = reader->isrealtime ? true : false;
         }
+        else
+        {
+            // printf("notice exit. %d\n", waitmsec);
+            // 有数据来
+            surpass_waittime = false;
+        }       
     }
     sis_thread_wait_stop(wait);
     sis_thread_finish(&reader->work_thread);
@@ -311,6 +321,7 @@ static void *_thread_reader_wait(void *argv_)
                 if (reader->work_mode & SIS_UNLOCK_READER_HEAD)
                 {
                     s_sis_unlock_node *next = sis_unlock_queue_head_next(ullist->work_queue);
+                    // printf("reader->work_status 1.2 = %p %p\n", reader->cursor, next);
                     if (next)
                     {
                         reader->work_status = SIS_UNLOCK_STATUS_WAIT;
@@ -326,6 +337,7 @@ static void *_thread_reader_wait(void *argv_)
             else
             {
                 s_sis_unlock_node *next = sis_unlock_queue_next(ullist->work_queue, reader->cursor);
+                // printf("reader->work_status 1.1 = %p %p\n", reader->cursor, next);
                 if (next)
                 {
                     reader->work_status = SIS_UNLOCK_STATUS_WAIT;
@@ -334,7 +346,8 @@ static void *_thread_reader_wait(void *argv_)
                 }         
             }
         }
-        if (sis_thread_wait_sleep_msec(wait, 300) != SIS_ETIMEDOUT)
+        // printf("reader->work_status 1 = %d\n", reader->work_status);
+        if (sis_thread_wait_sleep_msec(wait, 10) != SIS_ETIMEDOUT)
         {
             // printf("reader notice.\n");
         }
@@ -431,6 +444,7 @@ bool sis_unlock_reader_open(s_sis_unlock_reader *reader_)
 // 有新消息就先回调 然后由用户控制读下一条信息 next返回为空时重新激活线程的执行 
 void sis_unlock_reader_next(s_sis_unlock_reader *reader_)
 {
+    // printf("reader->work_status 2.1 = %d\n", reader_->work_status);
     if (!(reader_->work_mode & SIS_UNLOCK_READER_WAIT))
     {
         return ;
@@ -440,19 +454,23 @@ void sis_unlock_reader_next(s_sis_unlock_reader *reader_)
         return ;
     }
     s_sis_unlock_list *ullist = (s_sis_unlock_list *)reader_->father;
+    s_sis_object *o = NULL;
     s_sis_unlock_node *next = sis_unlock_queue_next(ullist->work_queue, reader_->cursor);
     if (next)
     {
+        o = next->obj;
         if (reader_->cb_recv)
         {
-            reader_->cb_recv(reader_->cb_source, next->obj);
+            reader_->cb_recv(reader_->cb_source, o);
         }
         reader_->cursor = next;
     }
-    else  // 读到队尾
+    if(!o)  // 读到队尾
     {  
         reader_->work_status = SIS_UNLOCK_STATUS_WORK;
+        sis_thread_wait_notice(sis_wait_get(reader_->notice_wait));
     }
+    // printf("reader->work_status 2.2 = %d\n", reader_->work_status);
 }
 void sis_unlock_reader_close(s_sis_unlock_reader *reader_)
 {

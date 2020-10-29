@@ -51,7 +51,7 @@ void sis_unlock_node_destroy(s_sis_unlock_node *);
 /////////////////////////////////////////////////
 //  s_sis_unlock_queue
 /////////////////////////////////////////////////
-// **** 注意 这个队列只能单进单出 **** //
+// **** 注意 这个队列只能单进多出 **** //
 s_sis_unlock_queue *sis_unlock_queue_create();
 void sis_unlock_queue_destroy(s_sis_unlock_queue *queue_);
 

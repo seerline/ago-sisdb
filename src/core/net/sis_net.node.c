@@ -347,6 +347,7 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 				s_sis_object *obj = sis_pointer_list_get(in_->argvs, i);
 				sis_memory_cat_ssize(out_, SIS_OBJ_GET_SIZE(obj));
 				sis_memory_cat(out_, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+				// sis_out_binary("encode", SIS_OBJ_GET_CHAR(obj), 16);
 			}
 		}
 	}
@@ -415,6 +416,7 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
 			sis_memory_move(in_, size);
 			s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, val);
 			sis_net_message_write_argv(mess, obj);
+			// sis_out_binary("decode", val, 16);
 			sis_object_destroy(obj);
 		}
 	}

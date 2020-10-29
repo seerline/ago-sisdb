@@ -842,7 +842,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
     _sis_bits_struct_init(s_);
     // 去尾部取标志位
     int nums = sis_bits_struct_get_bags(s_, true);
-    printf("decode nums= %d\n", nums);
+    // printf("decode nums= %d\n", nums);
     if (nums < 1)
     {
         return 0;

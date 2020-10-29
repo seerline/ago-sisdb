@@ -19,14 +19,25 @@ void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
     char *cmd_, char *key_, char *val_, size_t vlen_)
 {
     netmsg_->format = SIS_NET_FORMAT_BYTES;
-    netmsg_->style = SIS_NET_ASK;
+    netmsg_->style = SIS_NET_ASK | SIS_NET_ARGVS;
     netmsg_->style |= cmd_ ? SIS_NET_CMD: 0;
     netmsg_->style |= key_ ? SIS_NET_KEY: 0;
-    netmsg_->style |= val_ ? SIS_NET_VAL: 0;
     netmsg_->cmd = cmd_ ? sis_sdsnew(cmd_) : NULL;
     netmsg_->key = key_ ? sis_sdsnew(key_) : NULL;
-    netmsg_->val = val_ ? sis_sdsnewlen(val_, vlen_) : NULL;
+
+    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(val_, vlen_));
+	if (!netmsg_->argvs)
+	{
+		netmsg_->argvs = sis_pointer_list_create();
+		netmsg_->argvs->vfree = sis_object_decr;
+	}
+    else
+    {
+        sis_pointer_list_clear(netmsg_->argvs);
+    }   
+    sis_pointer_list_push(netmsg_->argvs, obj);    
 }
+// 只增加数据 不清理
 void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
 	if (!netmsg_->argvs)
@@ -34,7 +45,7 @@ void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t 
 		netmsg_->argvs = sis_pointer_list_create();
 		netmsg_->argvs->vfree = sis_object_decr;
 	}
-    netmsg_->style |= SIS_NET_ASK | SIS_NET_ARGVS;
+    netmsg_->style = SIS_NET_ASK | SIS_NET_ARGVS;
     s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
     sis_pointer_list_push(netmsg_->argvs, obj);
 }
@@ -60,8 +71,29 @@ void sis_net_ans_with_chars(s_sis_net_message *netmsg_, const char *in_, size_t 
 
 void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
-    // 二进制数据流
     netmsg_->format = SIS_NET_FORMAT_BYTES;
+    netmsg_->rcmd = SIS_NET_ANS_OK;
+    netmsg_->style = SIS_NET_RCMD | SIS_NET_ARGVS;
+    netmsg_->style |= netmsg_->key ? SIS_NET_KEY: 0;
+    // 可能in来源于argvs 所以先拷贝
+    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
+	if (!netmsg_->argvs)
+	{
+		netmsg_->argvs = sis_pointer_list_create();
+		netmsg_->argvs->vfree = sis_object_decr;
+	}
+    else
+    {
+        sis_pointer_list_clear(netmsg_->argvs);
+    }
+    sis_pointer_list_push(netmsg_->argvs, obj);
+}
+void sis_net_ans_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
+{
+    netmsg_->format = SIS_NET_FORMAT_BYTES;
+    netmsg_->rcmd = SIS_NET_ANS_OK;
+    netmsg_->style = SIS_NET_RCMD | SIS_NET_ARGVS;
+    netmsg_->style |= netmsg_->key ? SIS_NET_KEY: 0;
 	if (!netmsg_->argvs)
 	{
 		netmsg_->argvs = sis_pointer_list_create();
@@ -69,10 +101,6 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t 
 	}
     s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
     sis_pointer_list_push(netmsg_->argvs, obj);
-
-    netmsg_->rcmd = SIS_NET_ANS_OK;
-    netmsg_->style = SIS_NET_RCMD | SIS_NET_ARGVS;
-    netmsg_->style |= netmsg_->key ? SIS_NET_KEY: 0;
 }
 void sis_net_ans_with_noreply(s_sis_net_message *netmsg_)
 {

@@ -110,6 +110,17 @@ typedef struct s_sis_net_slot {
 
 void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 protocol);
 
+/////////////////////////////////////////////////
+//  s_sis_net_queue
+/////////////////////////////////////////////////
+typedef struct s_sis_net_queue {
+    volatile int       busy;  // 返回的数据是否已经处理
+    s_sis_mutex_t      lock;  
+    volatile int       count;
+    s_sis_unlock_node *head;
+    s_sis_unlock_node *tail;
+} s_sis_net_queue;
+
 // 收到消息后的回调 s_sis_net_message - 
 typedef void (*cb_net_reply)(void *, s_sis_net_message *);
 
@@ -122,10 +133,10 @@ typedef struct s_sis_net_context {
 	// 网络收到的内容 脱壳 解压 解密 后放入recv_buffer 解析后把完整的数据包 放入主队列 剩余数据保留等待下次收到数据
 	s_sis_memory      *recv_buffer; // 接收数据的残余缓存
 
-	void                 *father;   // s_sis_net_class *的指针
-	s_sis_unlock_list    *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
-	s_sis_unlock_reader  *reader_send;  // 读取发送队列 等待上一个读取结束的读者
-
+	void              *father;   // s_sis_net_class *的指针
+	// s_sis_unlock_list    *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
+	// s_sis_unlock_reader  *reader_send;  // 读取发送队列 等待上一个读取结束的读者
+	s_sis_net_queue   *send_cxts; 
 	s_sis_net_slot    *slots;     // 根据协议对接不同功能函数	
 
 	void              *cb_source;    // 回调句柄
@@ -142,6 +153,7 @@ typedef struct s_sis_net_context {
 //			reader_send 收到发送数据 打包完成后 直接写入网络
 //          外层只用跟 s_sis_net_message 进行交互 其他全部由 class 处理
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 typedef struct s_sis_net_class {
 	s_sis_url            *url;      // 本机需要监听的ip地址
@@ -175,9 +187,22 @@ typedef struct s_sis_net_class {
 
 } s_sis_net_class;
 
+
 #pragma pack(pop)
 
 bool sis_net_is_ip4(const char *ip_);
+
+/////////////////////////////////////////////////
+//  s_sis_net_queue
+/////////////////////////////////////////////////
+// **** 注意 这个队列可以多进多出 **** //
+s_sis_net_queue *sis_net_queue_create();
+void sis_net_queue_destroy(s_sis_net_queue *queue_);
+// busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
+s_sis_object *sis_net_queue_push(s_sis_net_queue *queue_, s_sis_object *obj_);
+// 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 busy = 1 返回值需要 sis_object_decr 释放 
+// pop只在上次发送回调时调用
+s_sis_object *sis_net_queue_pop(s_sis_net_queue *queue_);
 
 /////////////////////////////////////////////////////////////
 // s_sis_url define 

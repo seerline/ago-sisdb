@@ -424,7 +424,7 @@ static void cb_server_read_after(uv_stream_t *handle, ssize_t nread, const uv_bu
 		sis_socket_server_delete(server, session->session_id);//连接断开，关闭客户端
 		return;
 	}
-	LOG(5)("recv .%d. %p %p\n", (int)nread, session, session->cb_recv_after);
+	// LOG(5)("recv .%d. %p %p\n", (int)nread, session, session->cb_recv_after);
 	if (nread > 0 && session->cb_recv_after) 
 	{
 		buffer->base[nread] = 0;
@@ -671,10 +671,9 @@ void _thread_reconnect(void* arg)
 {
 	s_sis_socket_client *client = (s_sis_socket_client*)arg;
 
-	sis_sleep(3000);
-
 	LOG(5)("client reconnect thread start. [%p]\n", client);
 	client->reconnect_status = SIS_UV_CONNECT_WORK;
+	
 	int count = 0;
 	while (!(client->reconnect_status == SIS_UV_CONNECT_EXIT))
 	{

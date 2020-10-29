@@ -27,6 +27,8 @@
 // 线程类型定义
 typedef void * (SIS_THREAD_START_ROUTINE)(void *); 
 typedef pthread_mutex_t s_sis_mutex_t;
+typedef pthread_rwlock_t s_sis_rwlock_t;
+
 typedef pthread_cond_t s_sis_cond_t;
 typedef pthread_t s_sis_thread_id_t;
 
@@ -91,6 +93,18 @@ int  sis_mutex_create(s_sis_mutex_t *mutex_);
 #define sis_mutex_init    	pthread_mutex_init
 // 返回 0 表示锁成功
 #define sis_mutex_trylock   pthread_mutex_trylock
+
+int  sis_rwlock_init(s_sis_rwlock_t *rwlock_);
+#define sis_rwlock_destroy 	  pthread_rwlock_destroy
+#define sis_rwlock_lock_r     pthread_rwlock_rdlock
+#define sis_rwlock_lock_w     pthread_rwlock_wrlock
+#define sis_rwlock_unlock  	  pthread_rwlock_unlock
+// 返回 0 表示锁成功
+#define sis_mutex_trylock_r   pthread_rwlock_tryrdlock
+#define sis_mutex_trylock_w   pthread_rwlock_trywrlock
+
+int sis_mutex_wait_lock_r(s_sis_rwlock_t *rwlock_, int msec_);
+int sis_mutex_wait_lock_w(s_sis_rwlock_t *rwlock_, int msec_);
 
 void sis_thread_wait_create(s_sis_wait *wait_);
 void sis_thread_wait_destroy(s_sis_wait *wait_);

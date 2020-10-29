@@ -66,7 +66,6 @@ typedef struct s_sisdb_server_cxt
 	uint32              work_date;    // 序列存储的起始日
 
 	s_sis_unlock_list   *recv_list;   // 所有收到的数据放队列中 供多线程分享任务
-
 	s_sis_unlock_reader *reader_recv; // 读取发送队列
 
 	s_sis_method       *wlog_method; // 默认传入数据的方法

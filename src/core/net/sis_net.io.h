@@ -26,7 +26,9 @@ void sis_net_ans_with_sub_stop(s_sis_net_message *,  const char *info_);
 
 // in_被吸入
 void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);
+// *** 这个函数需要检查
 void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
+void sis_net_ans_with_argvs(s_sis_net_message *, const char *in_, size_t ilen_);
 
 // #define SIS_NET_METHOD_SYSTEM   "system"   // 基础的函数
 // #define SIS_NET_METHOD_PUBLIC   "public"   // 实际启动服务时注册的函数

@@ -107,7 +107,7 @@ static int cb_output_reader(void *reader_, s_sis_object *in_)
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
 	s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(in_);
-	printf("cb_output_reader %d\n", memory->size);
+	// printf("cb_output_reader %d\n", memory->size);
 	if (!reader->isinit)
 	{
 		if (!memory->init)
@@ -173,7 +173,7 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		if (outmem->size > 1)
 		{
 			// printf("null ..... %lld\n", sis_time_get_now_msec());
-			printf("push 0 outmem->size = %d\n", outmem->size);
+			// printf("push 0 outmem->size = %d\n", outmem->size);
 			sis_unlock_list_push(zipdb->outputs, obj);
 			sis_object_decr(zipdb->cur_object);
 			zipdb->cur_object = _zipdb_new_data(zipdb, 0);
@@ -219,7 +219,7 @@ bool zipdb_init(void *worker_, void *argv_)
 	context->initsize = 4*1024*1024;  // 4M 大约20秒 单只股票一天所有数据也足够一次传完
 	context->calcsize = 0; 
 
-	context->gapmsec = 30; // 21;
+	context->gapmsec = sis_json_get_int(node, "gapmsec", 30);//45); // 21;
 	context->maxsize = ZIPMEM_MAXSIZE;
 
 	// sis_mutex_init(&(context->write_lock), NULL);
@@ -235,6 +235,7 @@ bool zipdb_init(void *worker_, void *argv_)
 		context, cb_input_reader, NULL);
 	sis_unlock_reader_zero(context->in_reader, context->gapmsec);
 	sis_unlock_reader_open(context->in_reader);
+	printf("context->in_reader = %p\n", context->in_reader);
 
     context->keys = sis_map_list_create(sis_sdsfree_call); 
 	context->sdbs = sis_map_list_create(sis_dynamic_db_destroy);
@@ -770,6 +771,8 @@ int zipdb_sub_start(s_zipdb_reader *reader)
 		reader->reader = sis_unlock_reader_create(zipdb->outputs, 
 			SIS_UNLOCK_READER_HEAD, reader, cb_output_reader, cb_output_realtime);
 		sis_unlock_reader_open(reader->reader);	
+		printf("reader->reader = %p\n", reader->reader);
+
 	}
     return 0;
 }
