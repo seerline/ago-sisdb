@@ -10,7 +10,7 @@
 #include "sis_math.h"
 #include "sis_malloc.h"
 
-#include "sis_list.def.h"
+#include "sis_list.ctrl.h"
 #include "sis_json.h"
 #include "sis_dynamic.h"
 #include "sis_bits.h"
@@ -105,14 +105,20 @@ typedef struct s_zipdb_cxt
 	bool     stoped;    // 是否已经结束
 
 	int      gapmsec;   // 超过多长时间生成新的块 毫秒
-	int      initmsec;  // 超过多长重新初始化 秒
+	// int      initmsec;  // 超过多长重新初始化 秒
+
+	int      initsize;  // 超过多大数据重新初始化 字节
+	int      calcsize;  // 当前累计字节数 字节
+
 	int      maxsize;   // 超过多少尺寸生成新的块
 
-	msec_t   work_msec; // 
+	// msec_t   work_msec; // 
 	int      work_date; // 工作日期
 
-	s_sis_sds           work_path;
-	size_t              page_size;
+	s_sis_worker       *service_wlog;        // 当前使用的写log类
+	s_sis_method       *wlog_method;
+	s_sis_worker       *service_wfile;       // 当前使用的写文件类
+	s_sis_worker       *service_rfile;       // 当前使用的读文件类
 
 	s_sis_sds           work_keys; // 工作keys
 	s_sis_sds           work_sdbs; // 工作sdbs

@@ -1,8 +1,8 @@
 ﻿
-#include "sis_list.def.h"
+#include "sis_list.ctrl.h"
 #include "sis_list.lock.h"
 
-#ifdef MAKE_LOCK_LIST
+#ifdef MAKE_LIST_LOCK
 
 /////////////////////////////////////////////////
 //  s_sis_unlock_node

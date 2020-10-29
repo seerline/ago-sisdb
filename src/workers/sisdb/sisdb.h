@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 #include "sis_net.node.h"
-#include "sis_list.def.h"
+#include "sis_list.ctrl.h"
 #include "sis_dynamic.h"
 
 // 四个时间尺度的数据表 同名字段会传递只能由大到小

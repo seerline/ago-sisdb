@@ -15,7 +15,7 @@
 #include <sis_snappy.h>
 #include <sis_crypt.h>
 
-#include "sis_list.def.h"
+#include "sis_list.ctrl.h"
 // 网络协议版本号
 #define SIS_NET_VERSION        1   
 

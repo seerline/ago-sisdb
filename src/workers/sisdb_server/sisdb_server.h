@@ -2,7 +2,7 @@
 #define _SISDB_SERVER_H
 
 #include "sis_method.h"
-#include "sis_list.def.h"
+#include "sis_list.ctrl.h"
 #include "sis_net.h"
 #include "sis_net.io.h"
 #include "sis_message.h"

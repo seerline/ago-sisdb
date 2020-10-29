@@ -1,5 +1,5 @@
 ﻿
-#ifdef MAKE_LOCK_LIST
+#ifdef MAKE_LIST_LOCK
 
 #ifndef _SIS_LIST_LOCK_H
 #define _SIS_LIST_LOCK_H
@@ -156,8 +156,6 @@ bool sis_unlock_reader_open(s_sis_unlock_reader *);
 void sis_unlock_reader_next(s_sis_unlock_reader *reader_);
 // 注销一个读者
 void sis_unlock_reader_close(s_sis_unlock_reader *reader_);
-// 设置该值后 即使没有数据 到时间也会返回一个NULL数据
-void sis_unlock_reader_zero(s_sis_unlock_reader *reader_, int);
 
 /////////////////////////////////////////////////
 //  s_sis_unlock_list

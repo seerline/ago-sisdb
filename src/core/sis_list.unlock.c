@@ -1,8 +1,8 @@
 ﻿
-#include "sis_list.def.h"
+#include "sis_list.ctrl.h"
 #include "sis_list.unlock.h"
 
-#ifdef MAKE_UNLOCK_LIST
+#ifdef MAKE_LIST_UNLOCK
 
 /////////////////////////////////////////////////
 //  s_sis_unlock_node
@@ -77,7 +77,7 @@ void sis_unlock_node_destroy(s_sis_unlock_node *node_)
 //  由下次读取时再合并数据
 //  单进单出 1M  261 ms
 //  1进5出  1M  1673 -1687 ms
-//  1进5类出  1M 1975 - 3800
+//  1进5类出  1M 1975 - 3800 |||| 隔天测试 时间变为 25150
 /////////////////////////////////////////////////
 s_sis_unlock_queue *sis_unlock_queue_create()
 {
@@ -795,6 +795,8 @@ int maxnums = 1000000;//*1000;
 volatile int series = 0;
 volatile int pops = 0;
 int exit__ = 0; 
+int reader_id = 0;
+int read_pops[10] ={0};
 
 static void *thread_push(void *arg)
 {
@@ -812,6 +814,8 @@ static void *thread_push(void *arg)
             s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)series);
             sis_unlock_list_push(share, obj); 
             // printf("队列插入元素：%d %d\n", series, share->work_queue->count);
+            if ((series % 100) == 0)
+                printf("%d %d| %d %d %d\n", share->work_queue->rnums, share->work_queue->wnums, read_pops[0], read_pops[1], read_pops[2]);
             sis_object_destroy(obj);
             // sis_sleep(10);
         }
@@ -820,8 +824,6 @@ static void *thread_push(void *arg)
     }
     return NULL;
 }
-int reader_id = 0;
-int read_pops[10] ={0};
 
 static int cb_recv(void *src, s_sis_object *obj)
 {
@@ -920,67 +922,67 @@ int main()
     //     sis_unlock_queue_destroy(queue);
     //     printf("cost %llu us\n", sis_time_get_now_msec() - start);
     // }
-    { // test list
-        s_sis_unlock_queue *input = sis_unlock_queue_create();
-        int inums = 0;
-        int reader = 5;
-        pops = 0;
-        pthread_t   read[10];
-        for (int i = 0; i < reader; i++)
-        {
-            read_queue[i] = sis_unlock_queue_create();
-            pthread_create(&read[i],NULL,thread_pop,(void*)i);
-        }
-        msec_t start = sis_time_get_now_msec();
-        while(inums < maxnums)
-        {
-            inums++;
-            s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)inums);
-            sis_unlock_queue_push(input, obj); 
-            // printf("队列插入元素：%d %d\n", inums, input->count);
-            sis_object_destroy(obj);  
-        }   
-        printf("cost 1 %llu us\n", sis_time_get_now_msec() - start);         
-        s_sis_object *obj = sis_unlock_queue_pop(input);        
-        while (obj)
-        {
-            for (int i = 0; i < reader; i++)
-            {
-                sis_unlock_queue_push(read_queue[i], obj);
-            }
-            sis_object_destroy(obj); 
-            obj = sis_unlock_queue_pop(input); 
-        }
-        printf("cost 2 %llu us\n", sis_time_get_now_msec() - start);
-        for(int i = 0; i < reader; i++)
-        {
-            printf("out 1 [%d] = %d -- %d + %d\n", i, read_pops[i], read_queue[i]->rnums, read_queue[i]->wnums);
-        }
+    // { // test list
+    //     s_sis_unlock_queue *input = sis_unlock_queue_create();
+    //     int inums = 0;
+    //     int reader = 5;
+    //     pops = 0;
+    //     pthread_t   read[10];
+    //     for (int i = 0; i < reader; i++)
+    //     {
+    //         read_queue[i] = sis_unlock_queue_create();
+    //         pthread_create(&read[i],NULL,thread_pop,(void*)i);
+    //     }
+    //     msec_t start = sis_time_get_now_msec();
+    //     while(inums < maxnums)
+    //     {
+    //         inums++;
+    //         s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)inums);
+    //         sis_unlock_queue_push(input, obj); 
+    //         // printf("队列插入元素：%d %d\n", inums, input->count);
+    //         sis_object_destroy(obj);  
+    //     }   
+    //     printf("cost 1 %llu us\n", sis_time_get_now_msec() - start);         
+    //     s_sis_object *obj = sis_unlock_queue_pop(input);        
+    //     while (obj)
+    //     {
+    //         for (int i = 0; i < reader; i++)
+    //         {
+    //             sis_unlock_queue_push(read_queue[i], obj);
+    //         }
+    //         sis_object_destroy(obj); 
+    //         obj = sis_unlock_queue_pop(input); 
+    //     }
+    //     printf("cost 2 %llu us\n", sis_time_get_now_msec() - start);
+    //     for(int i = 0; i < reader; i++)
+    //     {
+    //         printf("out 1 [%d] = %d -- %d + %d\n", i, read_pops[i], read_queue[i]->rnums, read_queue[i]->wnums);
+    //     }
         
-        for(int i = 0; i < reader; i++)
-        {
-            pthread_join(read[i], NULL);
-            printf("out 2 [%d] = %d -- %d + %d\n", i, read_pops[i], read_queue[i]->rnums, read_queue[i]->wnums);
-        }
-        // for (int i = 0; i < reader; i++)
-        // {
-        //     s_sis_object *readerobj = sis_unlock_queue_pop(read_queue[i]);
-        //     while (readerobj)
-        //     {
-        //         ADDF(&pops, 1);
-        //         sis_object_destroy(readerobj); 
-        //         readerobj = sis_unlock_queue_pop(read_queue[i]);
-        //     }           
-        // }
-        printf("cost 3 %llu us %d\n", sis_time_get_now_msec() - start, pops);
-        for (int i = 0; i < reader; i++)
-        {
-            sis_unlock_queue_destroy(read_queue[i]);
-        }
-        printf("cost 4 %llu us\n", sis_time_get_now_msec() - start);
-        sis_unlock_queue_destroy(input);
-        printf("cost 5 %llu us\n", sis_time_get_now_msec() - start);
-    }
+    //     for(int i = 0; i < reader; i++)
+    //     {
+    //         pthread_join(read[i], NULL);
+    //         printf("out 2 [%d] = %d -- %d + %d\n", i, read_pops[i], read_queue[i]->rnums, read_queue[i]->wnums);
+    //     }
+    //     // for (int i = 0; i < reader; i++)
+    //     // {
+    //     //     s_sis_object *readerobj = sis_unlock_queue_pop(read_queue[i]);
+    //     //     while (readerobj)
+    //     //     {
+    //     //         ADDF(&pops, 1);
+    //     //         sis_object_destroy(readerobj); 
+    //     //         readerobj = sis_unlock_queue_pop(read_queue[i]);
+    //     //     }           
+    //     // }
+    //     printf("cost 3 %llu us %d\n", sis_time_get_now_msec() - start, pops);
+    //     for (int i = 0; i < reader; i++)
+    //     {
+    //         sis_unlock_queue_destroy(read_queue[i]);
+    //     }
+    //     printf("cost 4 %llu us\n", sis_time_get_now_msec() - start);
+    //     sis_unlock_queue_destroy(input);
+    //     printf("cost 5 %llu us\n", sis_time_get_now_msec() - start);
+    // }
     { // test thread & list
         s_sis_unlock_list *sharedb = sis_unlock_list_create(0);
 
@@ -1001,7 +1003,7 @@ int main()
             // read[i] = sis_unlock_reader_create(sharedb, SIS_UNLOCK_READER_TAIL, NULL, cb_recv, NULL);
             read[i]->zeromsec = i;
             sis_unlock_reader_open(read[i]);
-            printf("read %d sendsave = %d\n", sharedb->users->count, read[i]->sendsave);
+            printf("read %d \n", sharedb->users->count);
         }
         // 所有写和读都建设好再开始发送数据
         // sis_sleep(100);
@@ -1017,6 +1019,7 @@ int main()
         {
             pthread_join(write[i], NULL);
         }
+
         printf("cost push %llu us , %d ==> %d\n", sis_time_get_now_msec() - start, series, pops);  
         for(int i = 0; i < reader; i++)
         {
@@ -1025,9 +1028,8 @@ int main()
             {
                 sis_sleep(1);
             }
-            printf("save %d  sendsave = %d %d count= %d\n", 
-                read[i]->work_queue->rnums + read[i]->work_queue->wnums, 
-                read[i]->sendsave, read_pops[i], sharedb->objs->count);
+            printf("recv %d count= %d\n", 
+                read_pops[i], sharedb->work_queue->rnums);
             sis_unlock_reader_close(read[i]);
             printf("recv %d : %d\n", i, read_pops[i]);
         }

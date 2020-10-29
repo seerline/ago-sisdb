@@ -46,28 +46,42 @@ s_sis_modules sis_modules_zipdb = {
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_zipdb_cxt --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
-s_sis_object *_zipdb_new_data(s_zipdb_cxt *zipdb, msec_t agomsec)
+s_sis_object *_zipdb_new_data(s_zipdb_cxt *zipdb, int isinit)
 {
 	size_t size = zipdb->maxsize + 256; // 这里应该取最长的结构体长度
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size + sizeof(s_zipdb_bits)));
 
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(obj);
-	msec_t nowmsec = sis_time_get_now_msec();
 
-	if (nowmsec - agomsec > zipdb->initmsec)
+	if (isinit || zipdb->calcsize > zipdb->initsize)
 	{
 		memory->init = 1;
 		zipdb->last_object = obj;
-		zipdb->work_msec = nowmsec;
+		zipdb->calcsize = size;
 		sis_bits_struct_flush(zipdb->cur_sbits);
-		sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
+		sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);				
 	}
 	else
 	{
 		memory->init = 0;
-		zipdb->work_msec = agomsec;
+		zipdb->calcsize += size;
 		sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
-	}
+	}	
+	// msec_t nowmsec = sis_time_get_now_msec();
+	// if (nowmsec - agomsec > zipdb->initmsec)
+	// {
+	// 	memory->init = 1;
+	// 	zipdb->last_object = obj;
+	// 	zipdb->work_msec = nowmsec;
+	// 	sis_bits_struct_flush(zipdb->cur_sbits);
+	// 	sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
+	// }
+	// else
+	// {
+	// 	memory->init = 0;
+	// 	zipdb->work_msec = agomsec;
+	// 	sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
+	// }
 	memory->size = 0;
 	memset(memory->data, 0, size);
 	return obj;
@@ -77,7 +91,7 @@ s_sis_object *_zipdb_get_data(s_zipdb_cxt *zipdb)
 {
 	if (!zipdb->cur_object)
 	{
-		zipdb->cur_object = _zipdb_new_data(zipdb, 0);
+		zipdb->cur_object = _zipdb_new_data(zipdb, 1);
 	}
 	return zipdb->cur_object;
 }
@@ -159,10 +173,10 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		if (outmem->size > 1)
 		{
 			// printf("null ..... %lld\n", sis_time_get_now_msec());
-			// printf("push 0 outmem->size = %d\n", outmem->size);
+			printf("push 0 outmem->size = %d\n", outmem->size);
 			sis_unlock_list_push(zipdb->outputs, obj);
 			sis_object_decr(zipdb->cur_object);
-			zipdb->cur_object = _zipdb_new_data(zipdb, zipdb->work_msec);
+			zipdb->cur_object = _zipdb_new_data(zipdb, 0);
 		}
 	}
 	else
@@ -185,7 +199,7 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 			// printf("push 1 outmem->size  = %d num= %d\n", outmem->size, sis_bits_struct_get_bags(zipdb->cur_sbits, false));
 			sis_unlock_list_push(zipdb->outputs, obj);
 			sis_object_decr(zipdb->cur_object);
-			zipdb->cur_object = _zipdb_new_data(zipdb, zipdb->work_msec);
+			zipdb->cur_object = _zipdb_new_data(zipdb, 0);
 		}
 	}
 	return 0;
@@ -201,20 +215,17 @@ bool zipdb_init(void *worker_, void *argv_)
 
     context->work_date = sis_time_get_idate(0);
 
-	context->initmsec = 600*1000;
-	context->gapmsec = 2000; // 21;
+	// context->initmsec = 600*1000;
+	context->initsize = 4*1024*1024;  // 4M 大约20秒 单只股票一天所有数据也足够一次传完
+	context->calcsize = 0; 
+
+	context->gapmsec = 30; // 21;
 	context->maxsize = ZIPMEM_MAXSIZE;
 
 	// sis_mutex_init(&(context->write_lock), NULL);
  
- 	const char *wpath = sis_json_get_str(node,"work-path");
-	if (wpath)
-	{
-		context->work_path = sis_sdsnew(wpath);  // 根据是否为空判断是否处理log
-	}
-	context->page_size = sis_json_get_int(node, "page-size", 500) * 1000000;
-
 	context->outputs = sis_unlock_list_create(0);
+	printf("context->outputs = %p\n", context->outputs);
 	context->cur_sbits = sis_bits_stream_create(NULL, 0);
 
 	// 最大数据不超过 256M
@@ -232,13 +243,56 @@ bool zipdb_init(void *worker_, void *argv_)
 	context->reader = sis_pointer_list_create();
 	context->reader->vfree = zipdb_reader_destroy;
 
+    s_sis_json_node *wlognode = sis_json_cmp_child_node(node, "wlog");
+    if (wlognode)
+    {
+        s_sis_worker *service = sis_worker_create(worker, wlognode);
+        if (service)
+        {
+            context->service_wlog = service; 
+			context->wlog_method = sis_worker_get_method(context->service_wlog, "write");
+        }     
+    }
+    s_sis_json_node *wfilenode = sis_json_cmp_child_node(node, "wfile");
+    if (wfilenode)
+    {
+        s_sis_worker *service = sis_worker_create(worker, wfilenode);
+        if (service)
+        {
+            context->service_wfile = service; 
+        }     
+    }
+    s_sis_json_node *rfilenode = sis_json_cmp_child_node(node, "rfile");
+    if (rfilenode)
+    {
+        s_sis_worker *service = sis_worker_create(worker, rfilenode);
+        if (service)
+        {
+            context->service_rfile = service; 
+        }     
+    }
     return true;
 }
 void zipdb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_zipdb_cxt *zipdb = (s_zipdb_cxt *)worker->context;
-	sis_sdsfree(zipdb->work_path);
+
+    if (zipdb->service_wlog)
+    {
+        sis_worker_destroy(zipdb->service_wlog);
+		zipdb->service_wlog = NULL;
+    }
+    if (zipdb->service_wfile)
+    {
+        sis_worker_destroy(zipdb->service_wfile);
+		zipdb->service_wfile = NULL;
+    }
+    if (zipdb->service_rfile)
+    {
+        sis_worker_destroy(zipdb->service_rfile);
+		zipdb->service_rfile = NULL;
+    }
 	sis_sdsfree(zipdb->work_keys);
 	sis_sdsfree(zipdb->work_sdbs);
     sis_map_list_destroy(zipdb->keys); 
@@ -389,7 +443,7 @@ int _zipdb_write(s_zipdb_cxt *zipdb_, int kidx_, int sidx_, void *in_, size_t il
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
 
 	sis_unlock_list_push(zipdb_->inputs, obj);
-
+	
 	sis_object_destroy(obj);
 	return 1;
 }
@@ -403,7 +457,7 @@ int _zipdb_write_bits(s_zipdb_cxt *zipdb_, s_zipdb_bits *in_)
 	// 直接写入
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(sizeof(s_zipdb_bits) + in_->size));
 	memmove(MAP_ZIPDB_BITS(obj), in_, sizeof(s_zipdb_bits) + in_->size);
-	// printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
+	printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
 	sis_unlock_list_push(zipdb_->outputs, obj);
 	return 0;
 }
@@ -468,7 +522,7 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
 		reader->source = sis_sdsdup(source);
 	}
     reader->zipdb_worker = worker;
-    reader->ishead = sis_message_get_bool(msg, "ishead");
+    reader->ishead = sis_message_get_int(msg, "ishead");
 	printf("reader->ishead = %d\n", reader->ishead);
     reader->cb_zipbits     = sis_message_get_method(msg, "cb_zipbits");
 
@@ -500,10 +554,10 @@ int cmd_zipdb_unsub(void *worker_, void *argv_)
 }
 void _zipdb_clear_data(s_zipdb_cxt *context)
 {
-	context->last_object = NULL;
-	sis_object_decr(context->cur_object);
-	context->cur_object = NULL;
-	sis_unlock_list_clear(context->outputs);
+	// context->last_object = NULL;
+	// sis_object_decr(context->cur_object);
+	// context->cur_object = NULL;
+	// sis_unlock_list_clear(context->outputs);
 }
 int cmd_zipdb_clear(void *worker_, void *argv_)
 {
@@ -530,14 +584,35 @@ int cmd_zipdb_clear(void *worker_, void *argv_)
 	
 int cmd_zipdb_wlog(void *worker_, void *argv_)
 {
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
+	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+	
+	context->wlog_method->proc(context->service_wlog, netmsg);
+
 	return SIS_METHOD_OK;
 }
 int cmd_zipdb_rlog(void *worker_, void *argv_)
 {
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
+	// s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+	return SIS_METHOD_OK;
+	s_sis_message *msg = sis_message_create();
+	sis_message_set(msg, "zipdb", worker, NULL);
+	sis_message_set(msg, "source", context, NULL);
+	// sis_message_set_method(msg, "cb_recv", cb_zipdb_wlog_load);
+	if (sis_worker_command(context->service_wlog, "rlog", msg) != SIS_METHOD_OK)
+	{
+		sis_message_destroy(msg);
+		return SIS_METHOD_ERROR;
+	}
+	sis_message_destroy(msg);
 	return SIS_METHOD_OK;
 }
 int cmd_zipdb_wsno(void *worker_, void *argv_)
 {
+	// 从log中获取数据后直接写盘
 	return SIS_METHOD_OK;
 }
 int cmd_zipdb_rsno(void *worker_, void *argv_)
@@ -679,7 +754,7 @@ int zipdb_sub_start(s_zipdb_reader *reader)
 		sis_llutoa(zipdb->work_date, sub_date, 32, 10);
 		reader->cb_sub_start(reader, sub_date);
 	}
-	LOG(5)("sub start : count = %d inited = %d stoped = %d\n", zipdb->outputs->objs->count, zipdb->inited, zipdb->stoped);
+	LOG(5)("sub start : count = %d inited = %d stoped = %d\n", zipdb->outputs->work_queue->rnums, zipdb->inited, zipdb->stoped);
 	if(zipdb->inited)
 	{
 		if (reader->cb_dict_keys)
