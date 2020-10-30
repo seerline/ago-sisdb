@@ -11,7 +11,6 @@
 #include "sis_obj.h"
 
 /////////////////////////////////////////////////
-// 定义一个快速队列 环形数组无锁队列
 // 不能在队列中释放 obj,申请和释放都必须是外部控制
 /////////////////////////////////////////////////
 #pragma pack(push,1)
@@ -22,6 +21,11 @@ typedef struct s_sis_unlock_node {
     struct s_sis_unlock_node *next;
 } s_sis_unlock_node;
 
+/////////////////////////////////////////////////
+// *** 注意 这是一个单写多读的队列 多写时不能保证顺序  //
+/////////////////////////////////////////////////
+// #define UNLOCK_QUEUE
+#ifdef UNLOCK_QUEUE
 typedef struct s_sis_unlock_queue {
     int                rnums; // 可读元素个数
     s_sis_unlock_node *rhead;
@@ -34,7 +38,15 @@ typedef struct s_sis_unlock_queue {
     int                rlock;  // 读锁 锁定后可在 rnodes 增加元素
     int                wlock;  // 读锁 锁定后可在 wnodes 增加元素
 } s_sis_unlock_queue;
+#else
+typedef struct s_sis_unlock_queue {
+    int                rnums;  // 可读元素个数
+    s_sis_unlock_node *rhead;
+    s_sis_unlock_node *rtail;
 
+    s_sis_rwlock_t     rlock;  
+} s_sis_unlock_queue;
+#endif
 #pragma pack(pop)
 
 #ifdef __cplusplus
@@ -51,7 +63,7 @@ void sis_unlock_node_destroy(s_sis_unlock_node *);
 /////////////////////////////////////////////////
 //  s_sis_unlock_queue
 /////////////////////////////////////////////////
-// **** 注意 这个队列只能单进多出 **** //
+// *** 注意 这是一个单写多读的队列 多写时不能保证顺序  //
 s_sis_unlock_queue *sis_unlock_queue_create();
 void sis_unlock_queue_destroy(s_sis_unlock_queue *queue_);
 
@@ -112,7 +124,7 @@ typedef struct s_sis_unlock_reader
     s_sis_thread               work_thread;  // 工作线程
 } s_sis_unlock_reader;
 
-// 多写多读的共享数据链表类
+// *** 注意 这是一个单写多读的服务队列 多写时不能保证写入和出栈顺序  //
 // 每个读者自己启动一个线程 当收到数据后 复制数据到每个读者
 // 主动开启一个守护线程 相当于一个读者 用来保存历史数据 如果有客户请求从头开始就可以从存储中获取数据 ***加锁***
 typedef struct s_sis_unlock_list {

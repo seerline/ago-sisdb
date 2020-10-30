@@ -131,7 +131,8 @@ typedef struct s_sis_net_context {
 	s_sis_url          rurl;    // 客户端的相关信息
 
 	// 网络收到的内容 脱壳 解压 解密 后放入recv_buffer 解析后把完整的数据包 放入主队列 剩余数据保留等待下次收到数据
-	s_sis_memory      *recv_buffer; // 接收数据的残余缓存
+	s_sis_memory      *recv_buffer;   // 接收数据的残余缓存
+	s_sis_memory      *unpack_memory; // 接收数据如果为不完整的包就把数据放这里 等待数据全部收完再拷贝给处理数据
 
 	void              *father;   // s_sis_net_class *的指针
 	// s_sis_unlock_list    *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object

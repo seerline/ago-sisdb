@@ -251,10 +251,10 @@ int sis_mutex_create(s_sis_mutex_t *mutex_)
 
 int  sis_rwlock_init(s_sis_rwlock_t *rwlock_)
 {
-	pthread_rwlockattr_t attr;
-	pthread_rwlockattr_init(&attr);
+	// pthread_rwlockattr_t attr;
+	// pthread_rwlockattr_init(&attr);
 	// pthread_rwlockattr_settype(&attr, SIS_PTHREAD_MUTEX_RECURSIVE);
-	return pthread_rwlock_init(rwlock_, &attr);
+	return pthread_rwlock_init(rwlock_, NULL);
 
 }
 

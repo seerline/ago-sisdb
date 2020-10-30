@@ -788,7 +788,7 @@ void sis_unlock_list_clear(s_sis_unlock_list *ullist_)
 
 #endif
 
-#if 0
+#if 1
 
 int nums = 100;
 int maxnums = 1000000;//*1000;
@@ -814,8 +814,9 @@ static void *thread_push(void *arg)
             s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)series);
             sis_unlock_list_push(share, obj); 
             // printf("队列插入元素：%d %d\n", series, share->work_queue->count);
-            if ((series % 100) == 0)
-                printf("%d %d| %d %d %d\n", share->work_queue->rnums, share->work_queue->wnums, read_pops[0], read_pops[1], read_pops[2]);
+            // if ((series % 100) == 0)
+            // if (share->work_queue->wnums > 0)
+            //     printf("%d %d| %d %d %d\n", share->work_queue->rnums, share->work_queue->wnums, read_pops[0], read_pops[1], read_pops[2]);
             sis_object_destroy(obj);
             // sis_sleep(10);
         }

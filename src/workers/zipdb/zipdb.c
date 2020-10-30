@@ -160,10 +160,34 @@ static int cb_output_realtime(void *reader_)
 	
 	return 0;
 }
-
+// int _zip_nums = 0;
+// int _unzip_nums = 0;
+// msec_t _zip_msec = 0;
+// msec_t _unzip_msec = 0;
+// 测试不压缩和压缩的速度一致
 // 把队列数据写入压缩流中 可堵塞
 static int cb_input_reader(void *zipdb_, s_sis_object *in_)
-{
+{	
+	// if (_unzip_nums <= 2000000)
+	// {
+	// 	if (_unzip_nums % 1000000 == 0)
+	// 	{
+	// 		if (_unzip_nums > 0) printf("unzip cost : %d %d\n", _unzip_nums, sis_time_get_now_msec() - _unzip_msec);
+	// 		_unzip_msec = sis_time_get_now_msec();
+	// 	}
+	// 	_unzip_nums++;
+	// 	return 0;
+	// }
+	// if (_zip_nums <= 2000000)
+	// {
+	// 	if (_zip_nums % 1000000 == 0)
+	// 	{
+	// 		if (_zip_nums > 0) printf("zip cost : %d %d\n", _zip_nums, sis_time_get_now_msec() - _zip_msec);
+	// 		_zip_msec = sis_time_get_now_msec();
+	// 	}
+	// 	_zip_nums++;
+	// }
+
 	s_zipdb_cxt *zipdb = (s_zipdb_cxt *)zipdb_;
 	
 	s_sis_object *obj = _zipdb_get_data(zipdb);
@@ -458,7 +482,7 @@ int _zipdb_write_bits(s_zipdb_cxt *zipdb_, s_zipdb_bits *in_)
 	// 直接写入
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(sizeof(s_zipdb_bits) + in_->size));
 	memmove(MAP_ZIPDB_BITS(obj), in_, sizeof(s_zipdb_bits) + in_->size);
-	printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
+	// printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
 	sis_unlock_list_push(zipdb_->outputs, obj);
 	return 0;
 }
@@ -682,6 +706,7 @@ void unzipdb_reader_set_bits(s_unzipdb_reader *unzipdb_, s_zipdb_bits *in_)
 {
 	if (in_->init == 1)
 	{
+		// 这里memset时报过错
 		sis_bits_struct_flush(unzipdb_->cur_sbits);
 		sis_bits_struct_link(unzipdb_->cur_sbits, in_->data, in_->size);	
 	}

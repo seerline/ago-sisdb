@@ -39,6 +39,8 @@ void sis_unlock_node_destroy(s_sis_unlock_node *node_)
 //  1进5出  1M  1673 -1687 ms
 //  1进5类出  1M 1975 - 3800
 /////////////////////////////////////////////////
+
+#ifdef UNLOCK_QUEUE 
 s_sis_unlock_queue *sis_unlock_queue_create()
 {
     s_sis_unlock_queue *o = SIS_MALLOC(s_sis_unlock_queue, o);
@@ -93,88 +95,74 @@ static inline s_sis_unlock_node *sis_unlock_queue_tail(s_sis_unlock_queue *queue
 }
 static inline void sis_unlock_queue_merge(s_sis_unlock_queue *queue_)
 {
-    if (BCAS(&queue_->wlock, 0, 1)) 
+    if (queue_->wnums > 0)
     {
-        // 锁写成功 不成功就不合并
-        // printf("pop w ok. rnums = %d wnums = %d\n", queue_->rnums,queue_->wnums);
-        if (queue_->wnums > 0) // 有数据
-        {
-            while (!BCAS(&queue_->rlock, 0, 1))
-            {
-                sis_sleep(1);
-            }
-            queue_->rtail->next = queue_->whead->next;
-            queue_->rtail = queue_->wtail;
-            queue_->rnums += queue_->wnums;
-            queue_->whead->next = NULL;
-            queue_->wtail = queue_->whead;
-            queue_->wnums = 0;
-            SUBF(&queue_->rlock, 1);
-        }
-        SUBF(&queue_->wlock, 1);
+        queue_->rtail->next = queue_->whead->next;
+        queue_->rtail = queue_->wtail;
+        queue_->rnums += queue_->wnums;
+        queue_->whead->next = NULL;
+        queue_->wtail = queue_->whead;
+        queue_->wnums = 0;
     }
 }
-// static inline void sis_unlock_queue_merge(s_sis_unlock_queue *queue_)
-// {
-//     if (queue_->wnums > 0) 
-//     {
-//         if (BCAS(&queue_->wlock, 0, 1, &queue_->rlock, 0, 1)) 
-//         {
-//             // 锁写成功 不成功就不合并
-//             queue_->rtail->next = queue_->whead->next;
-//             queue_->rtail = queue_->wtail;
-//             queue_->rnums += queue_->wnums;
-//             SUBF(&queue_->rlock, 1);
-//             queue_->whead->next = NULL;
-//             queue_->wtail = queue_->whead;
-//             queue_->wnums = 0;
-//             SUBF(&queue_->wlock, 1);
-//             // SUBF(&queue_->rlock, 1);
-//         }
-//     }
-// }
-// static inline s_sis_unlock_node *sis_unlock_queue_next(s_sis_unlock_queue *queue_, s_sis_unlock_node *node_)
-// {
-//     // 这里如果不尝试合并 就会当没有新数据时永远无法合并
-//     sis_unlock_queue_merge(queue_);
-//     s_sis_unlock_node *node = NULL;
-//     if (BCAS(&queue_->rlock, 0, 1))
-//     {
-//         node = node_->next;
-//         SUBF(&queue_->rlock, 1);
-//     }
-//     return node;      
-// }
+// 只有在可读数据没有时 才去合并 否则会影响push的速度
+// 返回的数据 需要 sis_object_decr 释放 
 static inline s_sis_unlock_node *sis_unlock_queue_next(s_sis_unlock_queue *queue_, s_sis_unlock_node *node_)
 {
-    // 这里如果不尝试合并 就会当没有新数据时永远无法合并
-    sis_unlock_queue_merge(queue_);
     s_sis_unlock_node *node = NULL;
-    while (!BCAS(&queue_->rlock, 0, 1))
+    // 这里如果不尝试合并 就会当没有新数据时永远无法合并
+    if (queue_->wnums > 0 && BCAS(&queue_->wlock, 0, 1)) 
     {
+        // 锁写成功 合并
+        while (!BCAS(&queue_->rlock, 0, 1))
+        {
+            printf("next rlock 1 %d\n", queue_->rlock);
+            sis_sleep(1);
+        }
+        sis_unlock_queue_merge(queue_);
+        node = node_->next;
+        SUBF(&queue_->rlock, 1);
+        SUBF(&queue_->wlock, 1);
     }
-    node = node_->next;
-    SUBF(&queue_->rlock, 1);
+    else
+    {
+        while (!BCAS(&queue_->rlock, 0, 1))
+        {
+            printf("next rlock 2 %d\n", queue_->rlock);
+            sis_sleep(1);
+        }
+        // 下面代码容易造成死锁
+        // if (queue_->rnums == 0 && queue_->wnums > 0)
+        // {
+        //     while (!BCAS(&queue_->wlock, 0, 1))
+        //     {
+        //         sis_sleep(1);
+        //     }
+        //     sis_unlock_queue_merge(queue_);   
+        //     SUBF(&queue_->wlock, 1);         
+        // }
+        node = node_->next;
+        SUBF(&queue_->rlock, 1);        
+    } 
     return node;      
 }
 void sis_unlock_queue_push(s_sis_unlock_queue *queue_, s_sis_object *obj_)
 {  
     s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-    if (BCAS(&queue_->rlock, 0, 1))  // 如果可用 设置为正在写
+    if (queue_->wnums == 0 && BCAS(&queue_->rlock, 0, 1))  // 如果可用 设置为正在写
     {
         queue_->rtail->next = new_node;
         queue_->rtail = new_node;
-        queue_->rnums++;
+        queue_->rnums++;            
         SUBF(&queue_->rlock, 1);       
-        // ADDF(&queue_->count, 1);
     }
     else
     {
         // 优先保证写入队列忙式等待
         while (!BCAS(&queue_->wlock, 0, 1))
         {
-            // printf("wait wlock %d\n", queue_->wlock);
-            sis_sleep(1);
+            printf("push wlock %d\n", queue_->wlock);
+            sis_sleep(0);
         }
         queue_->wtail->next = new_node;
         queue_->wtail = new_node;
@@ -184,17 +172,20 @@ void sis_unlock_queue_push(s_sis_unlock_queue *queue_, s_sis_object *obj_)
         // ADDF(&queue_->count, 1);
     }
 }
+// 只有在可读数据没有时 才去合并 否则会影响push的速度
 // 返回的数据 需要 sis_object_decr 释放 
 s_sis_object *sis_unlock_queue_pop(s_sis_unlock_queue *queue_)
 {  
-    s_sis_object *obj = NULL;
-    sis_unlock_queue_merge(queue_);
+    s_sis_object *obj = NULL;    
+    if (queue_->wnums > 0 && BCAS(&queue_->wlock, 0, 1)) 
     {
-        // 锁备区不成功 就不合并 忙式等读权利
+        // 锁写成功 
         while (!BCAS(&queue_->rlock, 0, 1))
         {
+            // printf("pop rlock 1 %d\n", queue_->rlock);
             sis_sleep(1);
         }
+        sis_unlock_queue_merge(queue_);
         s_sis_unlock_node *ago_head = queue_->rhead;
         // printf("pop r ok %p %p\n", ago_head, ago_head->next);
         if (ago_head->next)
@@ -205,11 +196,121 @@ s_sis_object *sis_unlock_queue_pop(s_sis_unlock_queue *queue_)
             queue_->rnums--;
             sis_unlock_node_destroy(ago_head);
         }
-        SUBF(&queue_->rlock, 1);
+        SUBF(&queue_->rlock, 1);  
+        SUBF(&queue_->wlock, 1);
+    }
+    else
+    {
+        // 先锁读队列 
+        while (!BCAS(&queue_->rlock, 0, 1))
+        {
+            // printf("pop rlock 2 %d\n", queue_->rlock);
+            sis_sleep(1);
+        }
+        // 下面代码容易造成死锁
+        // if (queue_->rnums == 0 && queue_->wnums > 0)
+        // {
+        //     while (!BCAS(&queue_->wlock, 0, 1))
+        //     {
+        //         sis_sleep(1);
+        //     }
+        //     sis_unlock_queue_merge(queue_);   
+        //     SUBF(&queue_->wlock, 1);         
+        // }
+        s_sis_unlock_node *ago_head = queue_->rhead;
+        // printf("pop r ok %p %p\n", ago_head, ago_head->next);
+        if (ago_head->next)
+        {
+            obj = ago_head->next->obj;
+            ago_head->next->obj = NULL;
+            queue_->rhead = ago_head->next;
+            queue_->rnums--;
+            sis_unlock_node_destroy(ago_head);
+        }
+        SUBF(&queue_->rlock, 1);        
     }
     return obj;
 }
-
+#else
+s_sis_unlock_queue *sis_unlock_queue_create()
+{
+    s_sis_unlock_queue *o = SIS_MALLOC(s_sis_unlock_queue, o);
+    o->rhead = sis_unlock_node_create(NULL);
+    o->rtail = o->rhead;
+    sis_rwlock_init(&o->rlock);
+    return  o;
+}
+void sis_unlock_queue_destroy(s_sis_unlock_queue *queue_)
+{
+    while (queue_->rnums > 0)
+    {
+        s_sis_object *obj = sis_unlock_queue_pop(queue_);
+        sis_object_decr(obj);
+    }
+    sis_unlock_node_destroy(queue_->rtail);
+    sis_rwlock_destroy(&queue_->rlock);
+    sis_free(queue_);
+}
+static inline s_sis_unlock_node *sis_unlock_queue_head(s_sis_unlock_queue *queue_)
+{
+    s_sis_unlock_node *node = NULL;
+    sis_rwlock_lock_r(&queue_->rlock);
+    node = queue_->rhead;
+    sis_rwlock_unlock(&queue_->rlock);
+    return node;
+}
+static inline s_sis_unlock_node *sis_unlock_queue_head_next(s_sis_unlock_queue *queue_)
+{
+    s_sis_unlock_node *node = NULL;
+    sis_rwlock_lock_r(&queue_->rlock);
+    node = queue_->rhead->next;
+    sis_rwlock_unlock(&queue_->rlock);
+    return node;
+}
+static inline s_sis_unlock_node *sis_unlock_queue_tail(s_sis_unlock_queue *queue_)
+{
+    s_sis_unlock_node *node = NULL;
+    sis_rwlock_lock_r(&queue_->rlock);
+    node = queue_->rtail;
+    sis_rwlock_unlock(&queue_->rlock);
+    return node;    
+}
+// 返回的数据 需要 sis_object_decr 释放 
+static inline s_sis_unlock_node *sis_unlock_queue_next(s_sis_unlock_queue *queue_, s_sis_unlock_node *node_)
+{
+    s_sis_unlock_node *node = NULL;
+    sis_rwlock_lock_r(&queue_->rlock);
+    node = node_->next;
+    sis_rwlock_unlock(&queue_->rlock);
+    return node;      
+}
+void sis_unlock_queue_push(s_sis_unlock_queue *queue_, s_sis_object *obj_)
+{  
+    s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+    sis_rwlock_lock_w(&queue_->rlock);
+    queue_->rtail->next = new_node;
+    queue_->rtail = new_node;
+    queue_->rnums++;            
+    sis_rwlock_unlock(&queue_->rlock);
+}
+// 返回的数据 需要 sis_object_decr 释放 
+s_sis_object *sis_unlock_queue_pop(s_sis_unlock_queue *queue_)
+{  
+    s_sis_object *obj = NULL;    
+    sis_rwlock_lock_w(&queue_->rlock);
+    s_sis_unlock_node *head = queue_->rhead;
+    if (head->next)
+    {
+        obj = head->next->obj;
+        head->next->obj = NULL;
+        queue_->rhead = head->next;
+        queue_->rnums--;
+        sis_unlock_node_destroy(head);
+    }         
+    sis_rwlock_unlock(&queue_->rlock);
+    return obj;
+}
+#endif
 /////////////////////////////////////////////////
 //  s_sis_unlock_reader
 /////////////////////////////////////////////////
