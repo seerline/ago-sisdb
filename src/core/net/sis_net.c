@@ -17,80 +17,6 @@ bool sis_net_is_ip4(const char *ip_)
 	return ilen >= size;
 }
 
-/////////////////////////////////////////////////
-//  s_sis_net_queue
-/////////////////////////////////////////////////
-
-s_sis_net_queue *sis_net_queue_create()
-{
-    s_sis_net_queue *o = SIS_MALLOC(s_sis_net_queue, o);
-    o->head = sis_unlock_node_create(NULL);
-    o->tail = o->head;
-    o->count = 0;
-	o->busy = 0;
-    sis_mutex_init(&o->lock, NULL);
-    return  o;
-}
-void sis_net_queue_destroy(s_sis_net_queue *queue_)
-{
-    while (queue_->count > 0)
-    {
-        s_sis_object *obj = sis_net_queue_pop(queue_);
-        sis_object_decr(obj);
-    }
-    sis_unlock_node_destroy(queue_->tail);
-    sis_free(queue_);
-}
-// busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
-s_sis_object *sis_net_queue_push(s_sis_net_queue *queue_, s_sis_object *obj_)
-{  
-	s_sis_object *obj = NULL;
-    sis_mutex_lock(&queue_->lock);
-	if (!queue_->busy)
-	{
-		queue_->busy = 1;
-		obj = obj_;
-	}
-	else
-	{
-		s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-		queue_->tail->next = new_node;
-		queue_->tail = new_node;
-		queue_->count++;
-	}
-    sis_mutex_unlock(&queue_->lock);
-	return obj;
-}
-// 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
-// pop只在上次发送回调时调用
-s_sis_object *sis_net_queue_pop(s_sis_net_queue *queue_)
-{  
-    s_sis_object *obj = NULL;
-    sis_mutex_lock(&queue_->lock);
-	if (queue_->count == 0)
-	{
-		// 只有count为0 并且再次调用pop才设置busy=0
-		queue_->busy = 0;
-	}
-	else
-	{
-	    s_sis_unlock_node *head = queue_->head;
-		if (head->next)
-		{
-			obj = head->next->obj;
-			queue_->head = head->next;
-			sis_unlock_node_destroy(head);
-		}
-		if (obj)
-		{
-			queue_->count--; 
-			queue_->busy = 1;
-			// 只要有数据被提取出 就设置busy=1
-		}
-	}
-    sis_mutex_unlock(&queue_->lock);
-    return obj;
-}
 //////////////////////////
 // s_sis_url
 //////////////////////////
@@ -287,7 +213,7 @@ s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 	o->recv_buffer = sis_memory_create();
 	o->slots = SIS_MALLOC(s_sis_net_slot, o->slots);
 	// 初始化过程全部用 json 交互
-	o->send_cxts = sis_net_queue_create();
+	o->send_cxts = sis_wait_queue_create();
 	return o;
 } 
 
@@ -295,7 +221,7 @@ void sis_net_context_destroy(void *cxt_)
 {
 	s_sis_net_context *cxt = (s_sis_net_context *)cxt_;
 
-	sis_net_queue_destroy(cxt->send_cxts);
+	sis_wait_queue_destroy(cxt->send_cxts);
 
 	sis_memory_destroy(cxt->recv_buffer);
 	if(cxt->unpack_memory)
@@ -420,10 +346,10 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 		sis_strcpy(o->client->ip, 128, o->url->ip4);
 	}
 
-	o->ready_recv_cxts = sis_unlock_list_create(4*1024*1024);
-    o->reader_recv = sis_unlock_reader_create(o->ready_recv_cxts, 
+	o->ready_recv_cxts = sis_lock_list_create(4*1024*1024);
+    o->reader_recv = sis_lock_reader_create(o->ready_recv_cxts, 
 		SIS_UNLOCK_READER_HEAD, o, cb_sis_reader_recv, NULL);
-	sis_unlock_reader_open(o->reader_recv);
+	sis_lock_reader_open(o->reader_recv);
 
 	o->cxts = sis_map_pointer_create_v(sis_net_context_destroy);
 
@@ -449,8 +375,8 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 	}
 	sis_url_destroy(cls->url);
 
-	sis_unlock_reader_close(cls->reader_recv);
-	sis_unlock_list_destroy(cls->ready_recv_cxts);
+	sis_lock_reader_close(cls->reader_recv);
+	sis_lock_list_destroy(cls->ready_recv_cxts);
 
 	sis_map_pointer_destroy(cls->cxts);
 	LOG(5)("net_class exit .\n");
@@ -581,7 +507,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			if (rtn == 1)
 			{
 				mess->cid = sid_;
-				sis_unlock_list_push(cls->ready_recv_cxts, obj);
+				sis_lock_list_push(cls->ready_recv_cxts, obj);
 			}
 			else if (rtn == 0)
 			{
@@ -617,7 +543,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 			_send_msec = sis_time_get_now_msec();
 		}
 		_send_nums++;
-		s_sis_object *send_obj = sis_net_queue_pop(cxt->send_cxts);
+		s_sis_object *send_obj = sis_wait_queue_pop(cxt->send_cxts);
 		if (send_obj)
 		{
 			cb_sis_reader_send(cxt, send_obj);
@@ -628,7 +554,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 		// 	printf("no data. %d\n", cxt->send_cxts->busy);
 		// }
 		
-		// sis_unlock_reader_next(cxt->reader_send);
+		// sis_lock_reader_next(cxt->reader_send);
 	}	
 	// printf("server send to [%d] client. %p %d | %d \n", sid_, cxt, status_, 0);	
 }
@@ -676,7 +602,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			{
 				// printf("count= %d size= %zu\n", __count++, SIS_OBJ_GET_SIZE(obj));
 				mess->cid = sid_;
-				sis_unlock_list_push(cls->ready_recv_cxts, obj);
+				sis_lock_list_push(cls->ready_recv_cxts, obj);
 			}			
 			else if (rtn == 0)
 			{
@@ -710,13 +636,13 @@ static void cb_client_send_after(void* handle_, int sid_, int status_)
 			_send_msec = sis_time_get_now_msec();
 		}
 		_send_nums++;
-		s_sis_object *send_obj = sis_net_queue_pop(cxt->send_cxts);
+		s_sis_object *send_obj = sis_wait_queue_pop(cxt->send_cxts);
 		if (send_obj)
 		{
 			cb_sis_reader_send(cxt, send_obj);
 			sis_object_decr(send_obj);
 		}
-		// sis_unlock_reader_next(cxt->reader_send);
+		// sis_lock_reader_next(cxt->reader_send);
 	}
 	// printf("client send to server. %p [%d]\n", cxt, status_);	
 	if (status_)
@@ -952,7 +878,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
 	if (cxt)
 	{
-		s_sis_object *send_obj = sis_net_queue_push(cxt->send_cxts, obj);
+		s_sis_object *send_obj = sis_wait_queue_push(cxt->send_cxts, obj);
 		if (send_obj)
 		{
 			cb_sis_reader_send(cxt, send_obj);

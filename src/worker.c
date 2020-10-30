@@ -260,7 +260,7 @@ void sis_worker_destroy(void *worker_)
         }
         sis_methods_destroy(worker->methods);
     }
-    if(worker->status & SIS_SERVER_STATUS_MAIN_INIT)
+    // if(worker->status & SIS_SERVER_STATUS_MAIN_INIT)
     {
         if (worker->slots && worker->slots->uninit)
         {

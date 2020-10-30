@@ -48,7 +48,7 @@ s_sis_modules sis_modules_zipdb = {
 ///////////////////////////////////////////////////////////////////////////
 s_sis_object *_zipdb_new_data(s_zipdb_cxt *zipdb, int isinit)
 {
-	size_t size = zipdb->maxsize + 256; // 这里应该取最长的结构体长度
+	size_t size = zipdb->zip_size + 256; // 这里应该取最长的结构体长度
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size + sizeof(s_zipdb_bits)));
 
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(obj);
@@ -198,7 +198,7 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		{
 			// printf("null ..... %lld\n", sis_time_get_now_msec());
 			// printf("push 0 outmem->size = %d\n", outmem->size);
-			sis_unlock_list_push(zipdb->outputs, obj);
+			sis_lock_list_push(zipdb->outputs, obj);
 			sis_object_decr(zipdb->cur_object);
 			zipdb->cur_object = _zipdb_new_data(zipdb, 0);
 		}
@@ -218,10 +218,10 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		// sis_mutex_unlock(&zipdb->write_lock);
 		outmem->size = sis_bits_struct_getsize(zipdb->cur_sbits);
 		//  数据如果超过一定数量就直接发送
-		if (outmem->size > zipdb->maxsize - 256)
+		if (outmem->size > zipdb->zip_size - 256)
 		{
 			// printf("push 1 outmem->size  = %d num= %d\n", outmem->size, sis_bits_struct_get_bags(zipdb->cur_sbits, false));
-			sis_unlock_list_push(zipdb->outputs, obj);
+			sis_lock_list_push(zipdb->outputs, obj);
 			sis_object_decr(zipdb->cur_object);
 			zipdb->cur_object = _zipdb_new_data(zipdb, 0);
 		}
@@ -244,21 +244,35 @@ bool zipdb_init(void *worker_, void *argv_)
 	context->calcsize = 0; 
 
 	context->gapmsec = sis_json_get_int(node, "gapmsec", 30);//45); // 21;
-	context->maxsize = ZIPMEM_MAXSIZE;
+	context->zip_size = ZIPMEM_MAXSIZE;
+
+    s_sis_json_node *catchnode = sis_json_cmp_child_node(node, "catch-size");
+    if (catchnode)
+    {
+        context->catch_size = sis_json_get_int(node,"catch-size", 1);
+        if (context->catch_size > 0)
+        {
+            context->catch_size *= 1024*1024;
+        }
+    }
+    else
+    {
+        context->catch_size = 1; // 不保留
+    }
 
 	// sis_mutex_init(&(context->write_lock), NULL);
  
-	context->outputs = sis_unlock_list_create(0);
+	context->outputs = sis_lock_list_create(context->catch_size);
 	printf("context->outputs = %p\n", context->outputs);
 	context->cur_sbits = sis_bits_stream_create(NULL, 0);
 
 	// 最大数据不超过 256M
-	context->inputs = sis_unlock_list_create(4*1024*1024);	
-	context->in_reader = sis_unlock_reader_create(context->inputs, 
+	context->inputs = sis_lock_list_create(4*1024*1024);	
+	context->in_reader = sis_lock_reader_create(context->inputs, 
 		SIS_UNLOCK_READER_HEAD | SIS_UNLOCK_READER_ZERO, 
 		context, cb_input_reader, NULL);
-	sis_unlock_reader_zero(context->in_reader, context->gapmsec);
-	sis_unlock_reader_open(context->in_reader);
+	sis_lock_reader_zero(context->in_reader, context->gapmsec);
+	sis_lock_reader_open(context->in_reader);
 	printf("context->in_reader = %p\n", context->in_reader);
 
     context->keys = sis_map_list_create(sis_sdsfree_call); 
@@ -322,13 +336,13 @@ void zipdb_uninit(void *worker_)
 	sis_sdsfree(zipdb->work_sdbs);
     sis_map_list_destroy(zipdb->keys); 
     sis_map_list_destroy(zipdb->sdbs);
-	sis_unlock_reader_close(zipdb->in_reader);
-	sis_unlock_list_destroy(zipdb->inputs);
+	sis_lock_reader_close(zipdb->in_reader);
+	sis_lock_list_destroy(zipdb->inputs);
 
 	sis_object_decr(zipdb->cur_object);
 	sis_bits_stream_destroy(zipdb->cur_sbits);
 	sis_pointer_list_destroy(zipdb->reader);
-	sis_unlock_list_destroy(zipdb->outputs);
+	sis_lock_list_destroy(zipdb->outputs);
 	sis_free(zipdb);
 }
 
@@ -467,7 +481,7 @@ int _zipdb_write(s_zipdb_cxt *zipdb_, int kidx_, int sidx_, void *in_, size_t il
 	sis_memory_cat(memory, (char *)in_, ilen_);	
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
 
-	sis_unlock_list_push(zipdb_->inputs, obj);
+	sis_lock_list_push(zipdb_->inputs, obj);
 	
 	sis_object_destroy(obj);
 	return 1;
@@ -483,7 +497,7 @@ int _zipdb_write_bits(s_zipdb_cxt *zipdb_, s_zipdb_bits *in_)
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(sizeof(s_zipdb_bits) + in_->size));
 	memmove(MAP_ZIPDB_BITS(obj), in_, sizeof(s_zipdb_bits) + in_->size);
 	// printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
-	sis_unlock_list_push(zipdb_->outputs, obj);
+	sis_lock_list_push(zipdb_->outputs, obj);
 	return 0;
 }
 // #include "stk_struct.v0.h"
@@ -579,10 +593,10 @@ int cmd_zipdb_unsub(void *worker_, void *argv_)
 }
 void _zipdb_clear_data(s_zipdb_cxt *context)
 {
-	// context->last_object = NULL;
-	// sis_object_decr(context->cur_object);
-	// context->cur_object = NULL;
-	// sis_unlock_list_clear(context->outputs);
+	context->last_object = NULL;
+	sis_object_decr(context->cur_object);
+	context->cur_object = NULL;
+	sis_lock_list_clear(context->outputs);
 }
 int cmd_zipdb_clear(void *worker_, void *argv_)
 {
@@ -737,7 +751,7 @@ void zipdb_reader_destroy(void *reader_)
 	// s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
 	if (reader->reader)
 	{
-		sis_unlock_reader_close(reader->reader);
+		sis_lock_reader_close(reader->reader);
 	}
 	sis_sdsfree(reader->source);
 	sis_free(reader);
@@ -793,9 +807,9 @@ int zipdb_sub_start(s_zipdb_reader *reader)
 		}
 		// 新加入的订阅者 先发送订阅开始 再发送最后一个初始块后续所有数据 
 		reader->isinit = false;
-		reader->reader = sis_unlock_reader_create(zipdb->outputs, 
+		reader->reader = sis_lock_reader_create(zipdb->outputs, 
 			SIS_UNLOCK_READER_HEAD, reader, cb_output_reader, cb_output_realtime);
-		sis_unlock_reader_open(reader->reader);	
+		sis_lock_reader_open(reader->reader);	
 		printf("reader->reader = %p\n", reader->reader);
 
 	}

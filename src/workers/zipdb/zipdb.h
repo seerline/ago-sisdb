@@ -10,7 +10,7 @@
 #include "sis_math.h"
 #include "sis_malloc.h"
 
-#include "sis_list.ctrl.h"
+#include "sis_list.lock.h"
 #include "sis_json.h"
 #include "sis_dynamic.h"
 #include "sis_bits.h"
@@ -74,7 +74,7 @@ typedef struct s_zipdb_reader
 	s_sis_sds  sub_keys;              // 订阅股票
 	s_sis_sds  sub_sdbs;              // 订阅数据
 
-	s_sis_unlock_reader *reader;      // 每个读者一个订阅者
+	s_sis_lock_reader *reader;      // 每个读者一个订阅者
 	// 当读者需要解压后的数据 使用下面2个
 	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取
 	s_unzipdb_reader   *unzip_reader;   // 用于解压的位操作类
@@ -110,7 +110,9 @@ typedef struct s_zipdb_cxt
 	int      initsize;  // 超过多大数据重新初始化 字节
 	int      calcsize;  // 当前累计字节数 字节
 
-	int      maxsize;   // 超过多少尺寸生成新的块
+	int      zip_size;   // 单个数据块的大小
+
+	uint64   catch_size;  // 缓存数据保留最大的尺寸
 
 	// msec_t   work_msec; // 
 	int      work_date; // 工作日期
@@ -125,15 +127,15 @@ typedef struct s_zipdb_cxt
 	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
 
-	s_sis_unlock_list   *inputs;    // 传入的数据链 s_zipdb_bits
-	s_sis_unlock_reader *in_reader;  // 读取发送队列 等待上一个读取结束的读者
+	s_sis_lock_list   *inputs;    // 传入的数据链 s_zipdb_bits
+	s_sis_lock_reader *in_reader;  // 读取发送队列 等待上一个读取结束的读者
 
 	s_sis_bits_stream  *cur_sbits;   // 当前指向缓存的位操作类
 
 	s_sis_object       *cur_object;   // s_zipdb_bits -> 映射为memory 当前用于写数据的缓存 
 	s_sis_object       *last_object;  // 最近一个其实数据包的指针
 	// 这个outputs需要设置为无限容量
-	s_sis_unlock_list   *outputs;  // 输出的数据链 s_zipdb_bits -> 映射为 memory 每10分钟一个新的压缩数据块
+	s_sis_lock_list   *outputs;  // 输出的数据链 s_zipdb_bits -> 映射为 memory 每10分钟一个新的压缩数据块
 	s_sis_pointer_list  *reader;   // 读者列表 s_zipdb_reader
 
 } s_zipdb_cxt;

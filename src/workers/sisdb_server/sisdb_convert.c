@@ -109,7 +109,7 @@ int sisdb_convert_working(s_sisdb_server_cxt *server_, s_sis_net_message *netmsg
         newmsg->val = sis_sdsnewlen(out, size);
         // 向上层队列发送信息
         s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newmsg);
-        sis_unlock_list_push(context->recv_list, obj);
+        sis_lock_list_push(context->recv_list, obj);
         sis_object_destroy(obj);
     }
     return SIS_METHOD_OK;

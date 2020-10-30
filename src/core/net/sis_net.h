@@ -15,7 +15,7 @@
 #include <sis_snappy.h>
 #include <sis_crypt.h>
 
-#include "sis_list.ctrl.h"
+#include "sis_list.lock.h"
 // 网络协议版本号
 #define SIS_NET_VERSION        1   
 
@@ -110,17 +110,6 @@ typedef struct s_sis_net_slot {
 
 void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 protocol);
 
-/////////////////////////////////////////////////
-//  s_sis_net_queue
-/////////////////////////////////////////////////
-typedef struct s_sis_net_queue {
-    volatile int       busy;  // 返回的数据是否已经处理
-    s_sis_mutex_t      lock;  
-    volatile int       count;
-    s_sis_unlock_node *head;
-    s_sis_unlock_node *tail;
-} s_sis_net_queue;
-
 // 收到消息后的回调 s_sis_net_message - 
 typedef void (*cb_net_reply)(void *, s_sis_net_message *);
 
@@ -135,9 +124,9 @@ typedef struct s_sis_net_context {
 	s_sis_memory      *unpack_memory; // 接收数据如果为不完整的包就把数据放这里 等待数据全部收完再拷贝给处理数据
 
 	void              *father;   // s_sis_net_class *的指针
-	// s_sis_unlock_list    *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
-	// s_sis_unlock_reader  *reader_send;  // 读取发送队列 等待上一个读取结束的读者
-	s_sis_net_queue   *send_cxts; 
+	// s_sis_lock_list    *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
+	// s_sis_lock_reader  *reader_send;  // 读取发送队列 等待上一个读取结束的读者
+	s_sis_wait_queue   *send_cxts; 
 	s_sis_net_slot    *slots;     // 根据协议对接不同功能函数	
 
 	void              *cb_source;    // 回调句柄
@@ -175,8 +164,8 @@ typedef struct s_sis_net_class {
 	// 刚出队列的数据 等待处理成功后释放 
 	// s_sis_object         *after_recv_cxt;  // 当前接收到的数据 等待处理成功后删除 s_sis_net_message 
 	// 可能在一个数据包中有多个请求 一次解析逐个放入队列 
-	s_sis_unlock_list     *ready_recv_cxts; // 接收到的数据  s_sis_net_message - s_sis_object
-	s_sis_unlock_reader   *reader_recv;  // 读取接收队列
+	s_sis_lock_list     *ready_recv_cxts; // 接收到的数据  s_sis_net_message - s_sis_object
+	s_sis_lock_reader   *reader_recv;  // 读取接收队列
 
 	// 当前正在发送的信息 刚出队列的 发送成功后释放
 	// s_sis_object         *after_send_cxt;  // 已经发送的数据 等待发送成功后删除 s_sis_memory
@@ -193,17 +182,6 @@ typedef struct s_sis_net_class {
 
 bool sis_net_is_ip4(const char *ip_);
 
-/////////////////////////////////////////////////
-//  s_sis_net_queue
-/////////////////////////////////////////////////
-// **** 注意 这个队列可以多进多出 **** //
-s_sis_net_queue *sis_net_queue_create();
-void sis_net_queue_destroy(s_sis_net_queue *queue_);
-// busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
-s_sis_object *sis_net_queue_push(s_sis_net_queue *queue_, s_sis_object *obj_);
-// 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 busy = 1 返回值需要 sis_object_decr 释放 
-// pop只在上次发送回调时调用
-s_sis_object *sis_net_queue_pop(s_sis_net_queue *queue_);
 
 /////////////////////////////////////////////////////////////
 // s_sis_url define 
