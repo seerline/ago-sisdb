@@ -122,6 +122,77 @@ s_sis_object *sis_lock_queue_pop(s_sis_lock_queue *queue_)
 //  s_sis_wait_queue
 /////////////////////////////////////////////////
 
+// s_sis_wait_queue *sis_wait_queue_create()
+// {
+//     s_sis_wait_queue *o = SIS_MALLOC(s_sis_wait_queue, o);
+//     o->head = sis_unlock_node_create(NULL);
+//     o->tail = o->head;
+//     o->count = 0;
+// 	o->busy = 0;
+//     sis_mutex_init(&o->lock, NULL);
+//     return  o;
+// }
+// void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
+// {
+//     while (queue_->count > 0)
+//     {
+//         s_sis_object *obj = sis_wait_queue_pop(queue_);
+//         sis_object_decr(obj);
+//     }
+//     sis_unlock_node_destroy(queue_->tail);
+//     sis_free(queue_);
+// }
+// // busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
+// s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
+// {  
+// 	s_sis_object *obj = NULL;
+//     sis_mutex_lock(&queue_->lock);
+// 	if (!queue_->busy)
+// 	{
+// 		queue_->busy = 1;
+// 		obj = obj_;
+// 	}
+// 	else
+// 	{
+// 		s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+// 		queue_->tail->next = new_node;
+// 		queue_->tail = new_node;
+// 		queue_->count++;
+// 	}
+//     sis_mutex_unlock(&queue_->lock);
+// 	return obj;
+// }
+// // 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
+// // pop只在上次发送回调时调用
+// s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_)
+// {  
+//     s_sis_object *obj = NULL;
+//     sis_mutex_lock(&queue_->lock);
+// 	if (queue_->count == 0)
+// 	{
+// 		// 只有count为0 并且再次调用pop才设置busy=0
+// 		queue_->busy = 0;
+// 	}
+// 	else
+// 	{
+// 	    s_sis_unlock_node *head = queue_->head;
+// 		if (head->next)
+// 		{
+// 			obj = head->next->obj;
+// 			queue_->head = head->next;
+// 			sis_unlock_node_destroy(head);
+// 		}
+// 		if (obj)
+// 		{
+// 			queue_->count--; 
+// 			queue_->busy = 1;
+// 			// 只要有数据被提取出 就设置busy=1
+// 		}
+// 	}
+//     sis_mutex_unlock(&queue_->lock);
+//     return obj;
+// }
+
 s_sis_wait_queue *sis_wait_queue_create()
 {
     s_sis_wait_queue *o = SIS_MALLOC(s_sis_wait_queue, o);
@@ -129,7 +200,7 @@ s_sis_wait_queue *sis_wait_queue_create()
     o->tail = o->head;
     o->count = 0;
 	o->busy = 0;
-    sis_mutex_init(&o->lock, NULL);
+    sis_unlock_mutex_init(&o->lock, 0);
     return  o;
 }
 void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
@@ -146,20 +217,31 @@ void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
 s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
 {  
 	s_sis_object *obj = NULL;
-    sis_mutex_lock(&queue_->lock);
-	if (!queue_->busy)
-	{
-		queue_->busy = 1;
-		obj = obj_;
-	}
-	else
-	{
-		s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-		queue_->tail->next = new_node;
-		queue_->tail = new_node;
-		queue_->count++;
-	}
-    sis_mutex_unlock(&queue_->lock);
+    if(queue_->busy == 0)
+    {
+        queue_->busy = 1;
+        obj = obj_;
+    }
+    else
+    {
+        if (queue_->count > 1)
+        {
+            s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+            queue_->tail->next = new_node;
+            queue_->tail = new_node;
+            queue_->count++;
+        }
+        else
+        {
+
+            sis_unlock_mutex_lock(&queue_->lock);
+            s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+            queue_->tail->next = new_node;
+            queue_->tail = new_node;
+            queue_->count++;
+            sis_unlock_mutex_unlock(&queue_->lock);
+        }
+    }
 	return obj;
 }
 // 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
@@ -167,29 +249,48 @@ s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
 s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_)
 {  
     s_sis_object *obj = NULL;
-    sis_mutex_lock(&queue_->lock);
-	if (queue_->count == 0)
-	{
-		// 只有count为0 并且再次调用pop才设置busy=0
-		queue_->busy = 0;
-	}
-	else
-	{
-	    s_sis_unlock_node *head = queue_->head;
-		if (head->next)
-		{
-			obj = head->next->obj;
-			queue_->head = head->next;
-			sis_unlock_node_destroy(head);
-		}
-		if (obj)
-		{
-			queue_->count--; 
-			queue_->busy = 1;
-			// 只要有数据被提取出 就设置busy=1
-		}
-	}
-    sis_mutex_unlock(&queue_->lock);
+    if (queue_->count > 1)
+    {
+        s_sis_unlock_node *head = queue_->head;
+        if (head->next)
+        {
+            obj = head->next->obj;
+            queue_->head = head->next;
+            sis_unlock_node_destroy(head);
+        }
+        if (obj)
+        {
+            queue_->count--; 
+            queue_->busy = 1;
+            // 只要有数据被提取出 就设置busy=1
+        }
+    }
+    else
+    {
+        sis_unlock_mutex_lock(&queue_->lock);
+        if (queue_->count == 0)
+        {
+            // 只有count为0 并且再次调用pop才设置busy=0
+            queue_->busy = 0;
+        }
+        else
+        {
+            s_sis_unlock_node *head = queue_->head;
+            if (head->next)
+            {
+                obj = head->next->obj;
+                queue_->head = head->next;
+                sis_unlock_node_destroy(head);
+            }
+            if (obj)
+            {
+                queue_->count--; 
+                queue_->busy = 1;
+                // 只要有数据被提取出 就设置busy=1
+            }
+        }
+        sis_unlock_mutex_unlock(&queue_->lock);
+    }
     return obj;
 }
 /////////////////////////////////////////////////
@@ -403,8 +504,9 @@ static void *_thread_watcher(void *argv_)
                 }
                 sis_rwlock_unlock(&ullist->userslock); 
             }
-            // 通知行情后等待一会儿 方便其他用户先处理
-            // sis_sleep(100);
+            // 只有超过3秒才去处理数据清理
+            // sis_sleep(10);
+            // continue;
         }
         if (reader->work_status == SIS_UNLOCK_STATUS_EXIT)
         {

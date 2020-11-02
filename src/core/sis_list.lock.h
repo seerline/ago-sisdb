@@ -20,24 +20,35 @@ typedef struct s_sis_unlock_node {
 } s_sis_unlock_node;
 
 /////////////////////////////////////////////////
-// s_sis_lock_queue  //
+// s_sis_lock_queue  
+// 队列采用了读写锁 CPU占用高 慎用
 /////////////////////////////////////////////////
 typedef struct s_sis_lock_queue {
     int                rnums;  // 可读元素个数
     s_sis_unlock_node *rhead;
     s_sis_unlock_node *rtail;
 
-    s_sis_rwlock_t     rlock;  
+    s_sis_rwlock_t     rlock;   // cpu占用相对较高 不用理会
 } s_sis_lock_queue;
 
 /////////////////////////////////////////////////
 //  s_sis_wait_queue
 //  这是一个等待式队列 除非busy = 0 才能提取数据
 /////////////////////////////////////////////////
+// 这个队列会造成写入和读取不均匀 但是CPU占用少
+// typedef struct s_sis_wait_queue {
+//     volatile int       busy;  // 返回的数据是否已经处理
+//     s_sis_mutex_t      lock;  
+//     volatile int       count;
+//     s_sis_unlock_node *head;
+//     s_sis_unlock_node *tail;
+// } s_sis_wait_queue;
+
+// 一写一读 最安全高效
 typedef struct s_sis_wait_queue {
     volatile int       busy;  // 返回的数据是否已经处理
-    s_sis_mutex_t      lock;  
-    volatile int       count;
+    s_sis_unlock_mutex lock;  
+    volatile int       count; // > 1 就不加锁
     s_sis_unlock_node *head;
     s_sis_unlock_node *tail;
 } s_sis_wait_queue;

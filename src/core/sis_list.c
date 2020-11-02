@@ -1026,6 +1026,170 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_)
 	}
 	return 0;
 }
+
+
+///////////////////////////////////////////////////////////////////////////
+//----------------------s_sis_index_list --------------------------------//
+//  以整数为索引 存储指针的列表
+//  如果有wait就说明释放index需要等待一个超时
+///////////////////////////////////////////////////////////////////////////
+s_sis_index_list *sis_index_list_create(int count_)
+{
+	s_sis_index_list *o = (s_sis_index_list *)sis_malloc(sizeof(s_sis_index_list));
+	o->count = count_ < 1024 ? 1024 : count_;
+	o->used = sis_malloc(o->count);
+	memset(o->used, 0 ,o->count);
+	o->stop_sec = sis_malloc(sizeof(fsec_t) * o->count);
+	memset(o->stop_sec, 0 ,sizeof(fsec_t) * o->count);
+	o->buffer = sis_malloc(sizeof(void *) * o->count);
+	memset(o->buffer, 0 ,sizeof(void *) * o->count);
+	o->vfree = NULL;
+	return o;
+}
+void sis_index_list_destroy(s_sis_index_list *list_)
+{
+	sis_index_list_clear(list_);
+	sis_free(list_->used);
+	sis_free(list_->buffer);
+	sis_free(list_->stop_sec);
+	sis_free(list_);
+}
+void sis_index_list_clear(s_sis_index_list *list_)
+{
+	char **ptr = (char **)list_->buffer;
+	fsec_t *stop_sec = (fsec_t *)list_->stop_sec;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->vfree && ptr[i])
+		{
+			list_->vfree(ptr[i]);
+			ptr[i] = NULL;
+		}
+		list_->used[i] = 0;
+		stop_sec[i] = 0;
+	}
+	list_->count = 0;
+}
+int sis_index_list_set(s_sis_index_list *list_, int index_, void *in_)
+{
+	if (index_ < 0 || index_ >= list_->count)
+	{
+		return -1;
+	}
+	sis_index_list_del(list_, index_);
+	char **ptr = (char **)list_->buffer;
+	ptr[index_] = (char *)in_;
+	list_->used[index_] = 1;
+	return index_;
+}
+int sis_index_list_new(s_sis_index_list *list_)
+{
+	// 先检查超时的
+    if(list_->wait_sec > 0)
+	{
+		fsec_t *stop_sec = (fsec_t *)list_->stop_sec;
+		fsec_t now_sec = sis_time_get_now();
+		for (int i = 0; i < list_->count; i++)
+		{
+			if (list_->used[i] == 2 && (now_sec - stop_sec[i]) > list_->wait_sec)
+			{
+				list_->used[i] = 0;
+			}
+		}
+	}
+	int index = -1;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->used[i] == 0)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index;
+}
+void *sis_index_list_get(s_sis_index_list *list_, int index_)
+{
+	if (index_ < 0 || index_ >= list_->count)
+	{
+		return NULL;
+	}	
+	if (list_->used[index_] != 1)
+	{
+		return NULL;
+	}
+	char **ptr = (char **)list_->buffer;
+	return ptr[index_];;
+}
+int sis_index_list_first(s_sis_index_list *list_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->used[i] == 1)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index;
+}
+int sis_index_list_next(s_sis_index_list *list_, int index_)
+{
+	int index = -1;
+	for (int i = index_ + 1; i < list_->count; i++)
+	{
+		if (list_->used[i] == 1)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index;
+}
+bool sis_index_list_isnone(s_sis_index_list *list_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->used[i] == 1)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index == -1 ? true : false;	
+}
+
+int sis_index_list_del(s_sis_index_list *list_, int index_)
+{
+	if (index_ < 0 || index_ >= list_->count)
+	{
+		return -1;
+	}	
+	if (list_->used[index_] != 1)
+	{
+		return -1;
+	}
+	char **ptr = (char **)list_->buffer;
+	if (list_->vfree && ptr[index_])
+	{
+		list_->vfree(ptr[index_]);
+		ptr[index_] = NULL;
+	}
+	if (list_->wait_sec > 0)
+	{
+		fsec_t *stop_sec = (fsec_t *)list_->stop_sec;
+		stop_sec[index_] = sis_time_get_now();
+		list_->used[index_] = 2;
+	}
+	else
+	{
+		list_->used[index_] = 0;
+	}
+	return index_;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_string_list --------------------------------//
 //  存储不定长字符串的列表，

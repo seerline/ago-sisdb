@@ -74,7 +74,7 @@ typedef struct s_zipdb_reader
 	s_sis_sds  sub_keys;              // 订阅股票
 	s_sis_sds  sub_sdbs;              // 订阅数据
 
-	s_sis_lock_reader *reader;      // 每个读者一个订阅者
+	s_sis_lock_reader  *reader;      // 每个读者一个订阅者
 	// 当读者需要解压后的数据 使用下面2个
 	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取
 	s_unzipdb_reader   *unzip_reader;   // 用于解压的位操作类
@@ -104,7 +104,7 @@ typedef struct s_zipdb_cxt
 	bool     inited;    // 是否已经初始化
 	bool     stoped;    // 是否已经结束
 
-	int      gapmsec;   // 超过多长时间生成新的块 毫秒
+	int      wait_msec;   // 超过多长时间生成新的块 毫秒
 	// int      initmsec;  // 超过多长重新初始化 秒
 
 	int      initsize;  // 超过多大数据重新初始化 字节
@@ -127,16 +127,16 @@ typedef struct s_zipdb_cxt
 	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
 
-	s_sis_lock_list   *inputs;    // 传入的数据链 s_zipdb_bits
-	s_sis_lock_reader *in_reader;  // 读取发送队列 等待上一个读取结束的读者
+	s_sis_lock_list    *inputs;    // 传入的数据链 s_zipdb_bits
+	s_sis_lock_reader  *in_reader;  // 读取发送队列 等待上一个读取结束的读者
 
 	s_sis_bits_stream  *cur_sbits;   // 当前指向缓存的位操作类
 
 	s_sis_object       *cur_object;   // s_zipdb_bits -> 映射为memory 当前用于写数据的缓存 
 	s_sis_object       *last_object;  // 最近一个其实数据包的指针
 	// 这个outputs需要设置为无限容量
-	s_sis_lock_list   *outputs;  // 输出的数据链 s_zipdb_bits -> 映射为 memory 每10分钟一个新的压缩数据块
-	s_sis_pointer_list  *reader;   // 读者列表 s_zipdb_reader
+	s_sis_lock_list    *outputs;  // 输出的数据链 s_zipdb_bits -> 映射为 memory 每10分钟一个新的压缩数据块
+	s_sis_pointer_list *readeres;   // 读者列表 s_zipdb_reader
 
 } s_zipdb_cxt;
 
@@ -197,11 +197,12 @@ void unzipdb_reader_set_bits(s_unzipdb_reader *, s_zipdb_bits *);
 s_zipdb_reader *zipdb_reader_create();
 void zipdb_reader_destroy(void *);
 
-// 增加一个数据的读者
-int zipdb_add_reader(s_zipdb_cxt *, s_zipdb_reader *);
-// 删除和cid一致的读者
-int zipdb_del_reader(s_zipdb_cxt *, int);
-
 int zipdb_sub_start(s_zipdb_reader *reader);
+int zipdb_sub_stop(s_zipdb_reader *reader);
+
+int zipdb_add_reader(s_zipdb_reader *reader_);
+// 清理指定的reader
+int zipdb_move_reader(s_zipdb_cxt *, int);
+
 
 #endif /* _SISDB_SNO_H */

@@ -27,8 +27,6 @@ struct s_sis_socket_server;
 typedef struct s_sis_socket_session
 {
 	int session_id;   //会话id,惟一
-	bool used;		  // 是否可用 关闭后设置为 0 超过600秒后可以重新使用
-	fsec_t stop_time; // 关闭时的时间
 
 	uv_tcp_t *uvhandle;	    //客户端句柄
 	uv_buf_t  read_buffer;  // 接受数据的 buffer 有真实的数据区
@@ -36,7 +34,7 @@ typedef struct s_sis_socket_session
 	
 
 	uv_async_t write_async;
-	uv_write_t write_req;
+	uv_write_t write_req;   // 写时请求
 
 	struct s_sis_socket_server *server; //服务器句柄(保存是因为某些回调函数需要到)
 
@@ -50,11 +48,11 @@ typedef struct s_sis_socket_server
 	uv_loop_t *loop;
 	uv_tcp_t server_handle;			  //服务器链接
 	uv_thread_t server_thread_handle; // server 线程句柄
-
+	
 	bool isinit; // 是否已初始化，用于 close 函数中判断
+	bool isexit;
 
-	int recover_delay;			  // 客户端断开后 session资源释放的延时 默认300秒 数量过大时每次减半 最小不低于 3
-	s_sis_pointer_list *sessions; // 子客户端链接 s_sis_socket_session
+	s_sis_index_list *sessions; // 子客户端链接 s_sis_socket_session
 
 	char ip[128];
 	int port;
