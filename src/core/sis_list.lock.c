@@ -121,6 +121,139 @@ s_sis_object *sis_lock_queue_pop(s_sis_lock_queue *queue_)
 /////////////////////////////////////////////////
 //  s_sis_wait_queue
 /////////////////////////////////////////////////
+s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_)
+{  
+    s_sis_object *obj = NULL;
+	if (queue_->count > 0)
+	{
+	    s_sis_unlock_node *head = queue_->head;
+		if (head->next)
+		{
+			obj = head->next->obj;
+			queue_->head = head->next;
+			queue_->count--; 
+			sis_unlock_node_destroy(head);
+		}
+	}
+    return obj;
+}
+
+void *_thread_wait_reader(void *argv_)
+{
+    s_sis_wait_queue *wqueue = (s_sis_wait_queue *)argv_;
+    s_sis_wait *wait = sis_wait_get(wqueue->notice_wait);
+    sis_thread_wait_start(wait);
+    wqueue->work_status = SIS_UNLOCK_STATUS_WORK;
+    while (wqueue->work_status != SIS_UNLOCK_STATUS_EXIT)
+    {
+        // s_sis_object *obj = NULL;
+        sis_mutex_lock(&wqueue->lock);
+        if (!wqueue->busy)
+        {
+            s_sis_object *obj = sis_wait_queue_pop(wqueue);
+            if (obj)
+            {
+                wqueue->busy = 1;
+                if (wqueue->cb_reader)
+                {
+                    wqueue->cb_reader(wqueue->cb_source, obj);
+                }
+                sis_object_decr(obj);
+            }
+        }
+        sis_mutex_unlock(&wqueue->lock);
+        if (sis_thread_wait_sleep_msec(wait, 300) == SIS_ETIMEDOUT)
+        {
+            // printf("timeout exit. %d %p\n", waitmsec, reader);
+        }
+        else
+        {
+            // printf("notice exit. %d\n", waitmsec);
+        }       
+    }
+    sis_thread_wait_stop(wait);
+    sis_thread_finish(&wqueue->work_thread);
+    wqueue->work_status = SIS_UNLOCK_STATUS_NONE;
+    return NULL;
+}
+
+s_sis_wait_queue *sis_wait_queue_create(void *cb_source_, cb_lock_reader *cb_reader_)
+{
+    s_sis_wait_queue *o = SIS_MALLOC(s_sis_wait_queue, o);
+    o->head = sis_unlock_node_create(NULL);
+    o->tail = o->head;
+    o->count = 0;
+	o->busy = 0;
+    o->cb_source = cb_source_ ? cb_source_ : o;
+    o->cb_reader = cb_reader_;
+    sis_mutex_init(&o->lock, NULL);
+    o->notice_wait = sis_wait_malloc();
+    
+    // 最后再启动线程 顺序不能变 不然数据会等待
+    if (!sis_thread_create(_thread_wait_reader, o, &o->work_thread))
+    {
+        LOG(1)("can't start reader thread.\n");
+        sis_wait_queue_destroy(o);
+        return false;
+    }
+    return  o;
+}
+void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
+{
+    queue_->work_status = SIS_UNLOCK_STATUS_EXIT;
+    // 通知退出
+    sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+    while (queue_->work_status != SIS_UNLOCK_STATUS_NONE)
+    {
+        sis_sleep(10);
+    }
+    sis_wait_free(queue_->notice_wait);
+    sis_mutex_lock(&queue_->lock);
+    while (queue_->count > 0)
+    {
+        s_sis_object *obj = sis_wait_queue_pop(queue_);
+        sis_object_decr(obj);
+    }
+    printf("=== clear wait. %d\n", queue_->count);
+    sis_mutex_unlock(&queue_->lock);
+    sis_unlock_node_destroy(queue_->tail);
+    sis_free(queue_);
+}
+// busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
+s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
+{  
+    s_sis_object *obj = NULL;
+    sis_mutex_lock(&queue_->lock);
+    if (!queue_->busy && queue_->count == 0)
+    {
+        obj = obj_; 
+        queue_->busy = 1;
+        sis_mutex_unlock(&queue_->lock);
+    }
+    else
+    {
+        s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+        queue_->tail->next = new_node;
+        queue_->tail = new_node;
+        queue_->count++;
+        sis_mutex_unlock(&queue_->lock);
+        sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+    }
+	return obj;
+}
+// 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
+// pop只在上次发送回调时调用
+
+void sis_wait_queue_set_busy(s_sis_wait_queue *queue_, int isbusy_)
+{
+    sis_mutex_lock(&queue_->lock);
+    queue_->busy = isbusy_;
+    sis_mutex_unlock(&queue_->lock);
+    if (isbusy_ == 0)
+    {
+        sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+    }
+}
 
 // s_sis_wait_queue *sis_wait_queue_create()
 // {
@@ -129,7 +262,7 @@ s_sis_object *sis_lock_queue_pop(s_sis_lock_queue *queue_)
 //     o->tail = o->head;
 //     o->count = 0;
 // 	o->busy = 0;
-//     sis_mutex_init(&o->lock, NULL);
+//     sis_unlock_mutex_init(&o->lock, 0);
 //     return  o;
 // }
 // void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
@@ -146,20 +279,31 @@ s_sis_object *sis_lock_queue_pop(s_sis_lock_queue *queue_)
 // s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
 // {  
 // 	s_sis_object *obj = NULL;
-//     sis_mutex_lock(&queue_->lock);
-// 	if (!queue_->busy)
-// 	{
-// 		queue_->busy = 1;
-// 		obj = obj_;
-// 	}
-// 	else
-// 	{
-// 		s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-// 		queue_->tail->next = new_node;
-// 		queue_->tail = new_node;
-// 		queue_->count++;
-// 	}
-//     sis_mutex_unlock(&queue_->lock);
+//     if(queue_->busy == 0)
+//     {
+//         queue_->busy = 1;
+//         obj = obj_;
+//     }
+//     else
+//     {
+//         if (queue_->count > 1)
+//         {
+//             s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+//             queue_->tail->next = new_node;
+//             queue_->tail = new_node;
+//             queue_->count++;
+//         }
+//         else
+//         {
+
+//             sis_unlock_mutex_lock(&queue_->lock);
+//             s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+//             queue_->tail->next = new_node;
+//             queue_->tail = new_node;
+//             queue_->count++;
+//             sis_unlock_mutex_unlock(&queue_->lock);
+//         }
+//     }
 // 	return obj;
 // }
 // // 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
@@ -167,132 +311,50 @@ s_sis_object *sis_lock_queue_pop(s_sis_lock_queue *queue_)
 // s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_)
 // {  
 //     s_sis_object *obj = NULL;
-//     sis_mutex_lock(&queue_->lock);
-// 	if (queue_->count == 0)
-// 	{
-// 		// 只有count为0 并且再次调用pop才设置busy=0
-// 		queue_->busy = 0;
-// 	}
-// 	else
-// 	{
-// 	    s_sis_unlock_node *head = queue_->head;
-// 		if (head->next)
-// 		{
-// 			obj = head->next->obj;
-// 			queue_->head = head->next;
-// 			sis_unlock_node_destroy(head);
-// 		}
-// 		if (obj)
-// 		{
-// 			queue_->count--; 
-// 			queue_->busy = 1;
-// 			// 只要有数据被提取出 就设置busy=1
-// 		}
-// 	}
-//     sis_mutex_unlock(&queue_->lock);
+//     if (queue_->count > 1)
+//     {
+//         s_sis_unlock_node *head = queue_->head;
+//         if (head->next)
+//         {
+//             obj = head->next->obj;
+//             queue_->head = head->next;
+//             sis_unlock_node_destroy(head);
+//         }
+//         if (obj)
+//         {
+//             queue_->count--; 
+//             queue_->busy = 1;
+//             // 只要有数据被提取出 就设置busy=1
+//         }
+//     }
+//     else
+//     {
+//         sis_unlock_mutex_lock(&queue_->lock);
+//         if (queue_->count == 0)
+//         {
+//             // 只有count为0 并且再次调用pop才设置busy=0
+//             queue_->busy = 0;
+//         }
+//         else
+//         {
+//             s_sis_unlock_node *head = queue_->head;
+//             if (head->next)
+//             {
+//                 obj = head->next->obj;
+//                 queue_->head = head->next;
+//                 sis_unlock_node_destroy(head);
+//             }
+//             if (obj)
+//             {
+//                 queue_->count--; 
+//                 queue_->busy = 1;
+//                 // 只要有数据被提取出 就设置busy=1
+//             }
+//         }
+//         sis_unlock_mutex_unlock(&queue_->lock);
+//     }
 //     return obj;
 // }
-
-s_sis_wait_queue *sis_wait_queue_create()
-{
-    s_sis_wait_queue *o = SIS_MALLOC(s_sis_wait_queue, o);
-    o->head = sis_unlock_node_create(NULL);
-    o->tail = o->head;
-    o->count = 0;
-	o->busy = 0;
-    sis_unlock_mutex_init(&o->lock, 0);
-    return  o;
-}
-void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
-{
-    while (queue_->count > 0)
-    {
-        s_sis_object *obj = sis_wait_queue_pop(queue_);
-        sis_object_decr(obj);
-    }
-    sis_unlock_node_destroy(queue_->tail);
-    sis_free(queue_);
-}
-// busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
-s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
-{  
-	s_sis_object *obj = NULL;
-    if(queue_->busy == 0)
-    {
-        queue_->busy = 1;
-        obj = obj_;
-    }
-    else
-    {
-        if (queue_->count > 1)
-        {
-            s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-            queue_->tail->next = new_node;
-            queue_->tail = new_node;
-            queue_->count++;
-        }
-        else
-        {
-
-            sis_unlock_mutex_lock(&queue_->lock);
-            s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-            queue_->tail->next = new_node;
-            queue_->tail = new_node;
-            queue_->count++;
-            sis_unlock_mutex_unlock(&queue_->lock);
-        }
-    }
-	return obj;
-}
-// 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
-// pop只在上次发送回调时调用
-s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_)
-{  
-    s_sis_object *obj = NULL;
-    if (queue_->count > 1)
-    {
-        s_sis_unlock_node *head = queue_->head;
-        if (head->next)
-        {
-            obj = head->next->obj;
-            queue_->head = head->next;
-            sis_unlock_node_destroy(head);
-        }
-        if (obj)
-        {
-            queue_->count--; 
-            queue_->busy = 1;
-            // 只要有数据被提取出 就设置busy=1
-        }
-    }
-    else
-    {
-        sis_unlock_mutex_lock(&queue_->lock);
-        if (queue_->count == 0)
-        {
-            // 只有count为0 并且再次调用pop才设置busy=0
-            queue_->busy = 0;
-        }
-        else
-        {
-            s_sis_unlock_node *head = queue_->head;
-            if (head->next)
-            {
-                obj = head->next->obj;
-                queue_->head = head->next;
-                sis_unlock_node_destroy(head);
-            }
-            if (obj)
-            {
-                queue_->count--; 
-                queue_->busy = 1;
-                // 只要有数据被提取出 就设置busy=1
-            }
-        }
-        sis_unlock_mutex_unlock(&queue_->lock);
-    }
-    return obj;
-}
 /////////////////////////////////////////////////
 //  s_sis_lock_reader
 /////////////////////////////////////////////////

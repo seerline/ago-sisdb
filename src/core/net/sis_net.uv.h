@@ -17,6 +17,8 @@ typedef void (*cb_socket_connect)(void *, int sid_); // 客户端永远sid == 0 
 typedef void (*cb_socket_recv_after)(void *, int sid_, char *in_, size_t ilen_);
 typedef void (*cb_socket_send_after)(void *, int sid_, int status);
 
+void sis_socket_close_handle(uv_handle_t *handle_, uv_close_cb close_cb_);
+
 /////////////////////////////////////////////////////////////
 // s_sis_socket_server define 
 /////////////////////////////////////////////////////////////
@@ -26,13 +28,12 @@ struct s_sis_socket_server;
 // 用于服务器的会话单元
 typedef struct s_sis_socket_session
 {
-	int session_id;   //会话id,惟一
+	int sid;   //会话 
 
-	uv_tcp_t *uvhandle;	    //客户端句柄
+	uv_tcp_t *work_handle;	    //客户端句柄
 	uv_buf_t  read_buffer;  // 接受数据的 buffer 有真实的数据区
 	uv_buf_t  write_buffer; // 写数据的 buffer 没有真实的数据区 直接使用传入的数据缓存指针
 	
-
 	uv_async_t write_async;
 	uv_write_t write_req;   // 写时请求
 
@@ -56,10 +57,8 @@ typedef struct s_sis_socket_server
 
 	char ip[128];
 	int port;
-	unsigned int delay;		// 保持连接的延时
-	unsigned char nodelay;  // 是否设置为不延时发送
-	unsigned char keeplive; // 是否检查链接保持
-	void *source;			// 回调时作为第一个参数传出
+
+	void *cb_source;			// 回调时作为第一个参数传出
 
 	cb_socket_connect cb_connected_s2c;  // 新连接处理回调
 	cb_socket_connect cb_disconnect_s2c; // 新连接处理回调
@@ -100,9 +99,9 @@ void sis_socket_server_set_cb(s_sis_socket_server *,
 
 typedef struct s_sis_socket_client
 {
-	uv_loop_t *loop;
-	uv_tcp_t client_handle;			   // 客户端句柄
-	uv_thread_t connect_thread_handle; // 线程句柄
+	uv_loop_t    *loop;
+	uv_tcp_t     client_handle;			   // 客户端句柄
+	uv_thread_t  client_thread_handle; // 线程句柄
 	uv_connect_t connect_req;		   // 连接时请求 主要传递当前类
 
 	uv_buf_t read_buffer;  // 接受数据的 buffer 有真实的数据区
@@ -111,21 +110,18 @@ typedef struct s_sis_socket_client
 	uv_async_t write_async;
 	uv_write_t write_req;  // 写时请求
 
-	int connect_status; // 连接状态
+	int work_status; // 连接状态
 
-	int reconnect_status; // 连接状态
+	int keep_connect_status; // 连接状态
 	// 千万不要用uv的时间片 是因为退出时 uv_run 会异常
-	uv_thread_t reconnect_thread_handle; //  断开重新连接的线程句柄
+	uv_thread_t keep_connect_thread_handle; //  断开重新连接的线程句柄
 
 	bool isinit; // 是否已初始化，用于 close 函数中判断
 	bool isexit; // 避免多次进入
 
-	char ip[128];
-	int port;
-	unsigned int delay;					 // 保持连接的延时
-	unsigned char nodelay;				 // 是否设置为不延时发送
-	unsigned char keeplive;				 // 是否检查链接保持
-	void *source;						 // 回调时作为第一个参数传出
+	char  ip[128];
+	int   port;
+	void *cb_source;						 // 回调时作为第一个参数传出
 	cb_socket_connect cb_connected_c2s;  // 链接成功
 	cb_socket_connect cb_disconnect_c2s; // 链接断开
 
@@ -141,8 +137,6 @@ void sis_socket_client_close(s_sis_socket_client *);
 
 bool sis_socket_client_open(s_sis_socket_client *);
 bool sis_socket_client_open6(s_sis_socket_client *);
-
-void sis_socket_client_delete(s_sis_socket_client *);
 
 void sis_socket_client_set_cb(s_sis_socket_client *,
 							  cb_socket_connect cb_connected_,

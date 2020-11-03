@@ -8,6 +8,12 @@
 #include "sis_map.h"
 #include "sis_obj.h"
 
+// 返回数据的回调函数类型定义 obj = NULL 表示超时无数据回调
+typedef int (cb_lock_reader)(void *, s_sis_object *);
+// 针对从头开始的读者 表示累计的数据已经发送完毕 仅仅发送一次
+typedef int (cb_lock_reader_realtime)(void *);
+
+
 /////////////////////////////////////////////////
 // 不能在队列中释放 obj,申请和释放都必须是外部控制
 /////////////////////////////////////////////////
@@ -36,22 +42,27 @@ typedef struct s_sis_lock_queue {
 //  这是一个等待式队列 除非busy = 0 才能提取数据
 /////////////////////////////////////////////////
 // 这个队列会造成写入和读取不均匀 但是CPU占用少
+typedef struct s_sis_wait_queue {
+    volatile int       busy;  // 返回的数据是否已经处理
+    s_sis_mutex_t      lock;  
+    int                count;
+    s_sis_unlock_node *head;
+    s_sis_unlock_node *tail;
+    void              *cb_source;
+    cb_lock_reader    *cb_reader;
+    int                work_status;
+    s_sis_wait_handle  notice_wait;  // 信号量
+    s_sis_thread       work_thread;  // 工作线程
+} s_sis_wait_queue;
+
+// // 一写一读 最安全高效
 // typedef struct s_sis_wait_queue {
 //     volatile int       busy;  // 返回的数据是否已经处理
-//     s_sis_mutex_t      lock;  
-//     volatile int       count;
+//     s_sis_unlock_mutex lock;  
+//     volatile int       count; // > 1 就不加锁
 //     s_sis_unlock_node *head;
 //     s_sis_unlock_node *tail;
 // } s_sis_wait_queue;
-
-// 一写一读 最安全高效
-typedef struct s_sis_wait_queue {
-    volatile int       busy;  // 返回的数据是否已经处理
-    s_sis_unlock_mutex lock;  
-    volatile int       count; // > 1 就不加锁
-    s_sis_unlock_node *head;
-    s_sis_unlock_node *tail;
-} s_sis_wait_queue;
 
 #pragma pack(pop)
 
@@ -81,13 +92,16 @@ s_sis_object *sis_lock_queue_pop(s_sis_lock_queue *queue_);
 //  s_sis_wait_queue
 /////////////////////////////////////////////////
 // **** 注意 这个队列可以多进多出 **** //
-s_sis_wait_queue *sis_wait_queue_create();
+s_sis_wait_queue *sis_wait_queue_create(void *, cb_lock_reader *);
 void sis_wait_queue_destroy(s_sis_wait_queue *queue_);
 // busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
 s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_);
 // 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 busy = 1 返回值需要 sis_object_decr 释放 
-// pop只在上次发送回调时调用
-s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_);
+// pop只在内部使用 
+// s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_);
+// 前次数据处理完后 设置 busy 队列会从线程获取下一个数据通过回调返回
+// 返回上次弹出的obj
+void sis_wait_queue_set_busy(s_sis_wait_queue *queue_, int );
 
 #ifdef __cplusplus
 }
@@ -111,11 +125,6 @@ s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_);
 // 支持多个订阅者获取数据,每个订阅者都有自己的读取位置
 // 数据提取出来处理完毕就删除
 /////////////////////////////////////////////////
-
-// 返回数据的回调函数类型定义 obj = NULL 表示超时无数据回调
-typedef int (cb_lock_reader)(void *, s_sis_object *);
-// 针对从头开始的读者 表示累计的数据已经发送完毕 仅仅发送一次
-typedef int (cb_lock_reader_realtime)(void *);
 
 // 读者不需要释放 只需要注册和启动
 typedef struct s_sis_lock_reader

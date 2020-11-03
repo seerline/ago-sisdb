@@ -44,10 +44,11 @@
 #define SIS_NET_DISCONNECT  	(1)  // 连接断开的状态 
 #define SIS_NET_CONNECTED    	(2)  // 连接已建立 - 由于底层已经处理了自动重连 这里就只有两个状态 
 #define SIS_NET_HANDING  		(3)  // 握手交换数据中 ws 需要握手
-#define SIS_NET_LOGINFAIL		(4)  // 未通过登录校验 断开连接 不再自动连接
-#define SIS_NET_WORKING  		(5)  // 正常工作状态 可以发送数据了 此时已经处理完底层交互
-#define SIS_NET_STOPCONNECT  	(8)  // 用户关闭 不再发起连接
-#define SIS_NET_EXIT		    (9)  // 准备退出，通知线程结束工作 结束后 SIS_NET_NONE
+#define SIS_NET_HANDANS  		(4)  // 服务端收到握手 并回复信息期间
+#define SIS_NET_LOGINFAIL		(5)  // 未通过登录校验 断开连接 不再自动连接
+#define SIS_NET_WORKING  		(6)  // 正常工作状态 可以发送数据了 此时已经处理完底层交互
+#define SIS_NET_STOPCONNECT  	(7)  // 用户关闭 不再发起连接
+#define SIS_NET_EXIT		    (8)  // 准备退出，通知线程结束工作 结束后 SIS_NET_NONE
 
 #pragma pack(push,1)
 // 从配置文件中获取的数据
