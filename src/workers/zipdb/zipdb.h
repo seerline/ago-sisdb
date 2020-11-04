@@ -74,7 +74,7 @@ typedef struct s_zipdb_reader
 	s_sis_sds  sub_keys;              // 订阅股票
 	s_sis_sds  sub_sdbs;              // 订阅数据
 
-	s_sis_lock_reader  *reader;      // 每个读者一个订阅者
+	s_sis_lock_reader  *reader;       // 每个读者一个订阅者
 	// 当读者需要解压后的数据 使用下面2个
 	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取
 	s_unzipdb_reader   *unzip_reader;   // 用于解压的位操作类
@@ -127,8 +127,7 @@ typedef struct s_zipdb_cxt
 	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
 
-	s_sis_lock_list    *inputs;    // 传入的数据链 s_zipdb_bits
-	s_sis_lock_reader  *in_reader;  // 读取发送队列 等待上一个读取结束的读者
+	s_sis_fast_queue   *inputs;    // 传入的数据链 s_zipdb_bits
 
 	s_sis_bits_stream  *cur_sbits;   // 当前指向缓存的位操作类
 

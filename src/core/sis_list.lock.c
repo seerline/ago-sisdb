@@ -146,22 +146,25 @@ void *_thread_wait_reader(void *argv_)
     wqueue->work_status = SIS_UNLOCK_STATUS_WORK;
     while (wqueue->work_status != SIS_UNLOCK_STATUS_EXIT)
     {
-        // s_sis_object *obj = NULL;
+        s_sis_object *obj = NULL;
         sis_mutex_lock(&wqueue->lock);
         if (!wqueue->busy)
         {
-            s_sis_object *obj = sis_wait_queue_pop(wqueue);
+            obj = sis_wait_queue_pop(wqueue);
             if (obj)
             {
                 wqueue->busy = 1;
-                if (wqueue->cb_reader)
-                {
-                    wqueue->cb_reader(wqueue->cb_source, obj);
-                }
-                sis_object_decr(obj);
             }
         }
         sis_mutex_unlock(&wqueue->lock);
+        if (obj)
+        {
+            if (wqueue->cb_reader)
+            {
+                wqueue->cb_reader(wqueue->cb_source, obj);
+            }
+            sis_object_decr(obj);
+        }
         if (sis_thread_wait_sleep_msec(wait, 300) == SIS_ETIMEDOUT)
         {
             // printf("timeout exit. %d %p\n", waitmsec, reader);
@@ -214,7 +217,7 @@ void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
         s_sis_object *obj = sis_wait_queue_pop(queue_);
         sis_object_decr(obj);
     }
-    printf("=== clear wait. %d\n", queue_->count);
+    // printf("=== clear wait. %d\n", queue_->count);
     sis_mutex_unlock(&queue_->lock);
     sis_unlock_node_destroy(queue_->tail);
     sis_free(queue_);
@@ -237,7 +240,7 @@ s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
         queue_->tail = new_node;
         queue_->count++;
         sis_mutex_unlock(&queue_->lock);
-        sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+        // sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
     }
 	return obj;
 }
@@ -256,6 +259,7 @@ void sis_wait_queue_set_busy(s_sis_wait_queue *queue_, int isbusy_)
 }
 /////////////////////////////////////////////////
 //  s_sis_fast_queue
+// 好处是比较稳定 如果读者处理速度慢 不会影响写入的速度
 /////////////////////////////////////////////////
 
 int _fast_queue_move(s_sis_fast_queue *queue_)
@@ -270,7 +274,7 @@ int _fast_queue_move(s_sis_fast_queue *queue_)
     queue_->whead->next = NULL;
     queue_->wtail = queue_->whead;
     queue_->wnums = 0;
-    printf("move ok %p %p %p %d %d\n", queue_->rtail, queue_->whead->next, queue_->wtail, queue_->rnums, queue_->wnums);
+    // printf("move ok %p %p %p %d %d\n", queue_->rtail, queue_->whead->next, queue_->wtail, queue_->rnums, queue_->wnums);
     return queue_->wnums;
 }
 void *_thread_fast_reader(void *argv_)
@@ -638,7 +642,7 @@ static void *_thread_watcher(void *argv_)
             }
             // 只有超过3秒才去处理数据清理
             // sis_sleep(10);
-            continue;
+            // continue; // 不能要 否则内存不能释放
         }
         if (reader->work_status == SIS_UNLOCK_STATUS_EXIT)
         {
@@ -671,7 +675,7 @@ static void *_thread_watcher(void *argv_)
                     {
                         // 销毁一个大家都不用的数据
                         s_sis_object *obj = sis_lock_queue_pop(ullist->work_queue);
-                        sis_object_decr(obj);   
+                        sis_object_decr(obj); 
                     }
                     else // SIS_UNLOCK_SAVE_SIZE
                     {
@@ -722,7 +726,7 @@ s_sis_lock_list *sis_lock_list_create(size_t maxsize_)
 
     o->users = sis_pointer_list_create();
     o->users->vfree = sis_lock_reader_destroy;
-
+    
     {
         o->watcher = sis_lock_reader_create(o, SIS_UNLOCK_READER_HEAD, NULL, NULL, NULL);
         o->watcher->work_status = SIS_UNLOCK_STATUS_WORK;
@@ -771,7 +775,7 @@ void sis_lock_list_clear(s_sis_lock_list *ullist_)
     ullist_->cursize = 0;
 }
 
-#if 1
+#if 0
 
 int maxnums = 1000*1000;
 volatile int series = 0;
@@ -1035,7 +1039,6 @@ int main()
             sis_lock_reader_close(read[i]);
             printf("recv %d : %d\n", i, read_pops[i]);
         }
-        // 不延时居然会有内存不释放 ??? 奇怪了
         // sis_sleep(100);
         // printf("sharedb->work_queue %d \n", sharedb->work_queue->count);
         printf("cost pop %llu us , %d ==> %d\n", sis_time_get_now_msec() - start, series, pops);  

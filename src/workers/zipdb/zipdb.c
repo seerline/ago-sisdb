@@ -42,7 +42,8 @@ s_sis_modules sis_modules_zipdb = {
 //////////////////////////////////////////////////////////////////
 //------------------------zipdb --------------------------------//
 //////////////////////////////////////////////////////////////////
-
+// ??? 2级转发会拉低 1级转发的速度 好好查查 是哪里影响的
+// 顶级 无订阅者时内存不能缩小 应该每3秒清理一下
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_zipdb_cxt --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
@@ -52,7 +53,6 @@ s_sis_object *_zipdb_new_data(s_zipdb_cxt *zipdb, int isinit)
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size + sizeof(s_zipdb_bits)));
 
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(obj);
-
 	if (isinit || zipdb->calcsize > zipdb->initsize)
 	{
 		memory->init = 1;
@@ -67,21 +67,6 @@ s_sis_object *_zipdb_new_data(s_zipdb_cxt *zipdb, int isinit)
 		zipdb->calcsize += size;
 		sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
 	}	
-	// msec_t nowmsec = sis_time_get_now_msec();
-	// if (nowmsec - agomsec > zipdb->initmsec)
-	// {
-	// 	memory->init = 1;
-	// 	zipdb->last_object = obj;
-	// 	zipdb->work_msec = nowmsec;
-	// 	sis_bits_struct_flush(zipdb->cur_sbits);
-	// 	sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
-	// }
-	// else
-	// {
-	// 	memory->init = 0;
-	// 	zipdb->work_msec = agomsec;
-	// 	sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
-	// }
 	memory->size = 0;
 	memset(memory->data, 0, size);
 	return obj;
@@ -101,7 +86,10 @@ static int cb_output_reader(void *reader_, s_sis_object *in_)
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
 	s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(in_);
-	// printf("cb_output_reader %d\n", memory->size);
+
+	// printf("cb_output_reader %d %d | %d %d | %p %p\n", reader->isinit, reader->ishead, 
+	// 	memory->init, memory->size,
+	// 	zipdb->last_object , in_);
 	if (!reader->isinit)
 	{
 		if (!memory->init)
@@ -118,6 +106,10 @@ static int cb_output_reader(void *reader_, s_sis_object *in_)
 		}
 		else
 		{
+	printf("cb_output_reader %d %d | %d %d | %p %p\n", reader->isinit, reader->ishead, 
+		memory->init, memory->size,
+		zipdb->last_object , in_);
+
 			// 当前包是最新的起始包 就开始发送数据
 			if (zipdb->last_object == in_)
 			{
@@ -163,9 +155,9 @@ static int cb_output_realtime(void *reader_)
 	
 	return 0;
 }
-// int _zip_nums = 0;
+int _zip_nums = 0;
 // int _unzip_nums = 0;
-// msec_t _zip_msec = 0;
+msec_t _zip_msec = 0;
 // msec_t _unzip_msec = 0;
 // 测试不压缩和压缩的速度一致
 // 把队列数据写入压缩流中 堵塞
@@ -182,15 +174,7 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 	// 	_unzip_nums++;
 	// 	return 0;
 	// }
-	// if (_zip_nums <= 2000000)
-	// {
-	// 	if (_zip_nums % 100000 == 0)
-	// 	{
-	// 		if (_zip_nums > 0) printf("zip cost : %d %d\n", _zip_nums, sis_time_get_now_msec() - _zip_msec);
-	// 		_zip_msec = sis_time_get_now_msec();
-	// 	}
-	// 	_zip_nums++;
-	// }
+	bool isnew = false;
 	s_zipdb_cxt *zipdb = (s_zipdb_cxt *)zipdb_;
 	
 	s_sis_object *obj = _zipdb_get_data(zipdb);
@@ -202,6 +186,8 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 			// printf("null ..... %lld\n", sis_time_get_now_msec());
 			// printf("push 0 outmem->size = %d\n", outmem->size);
 			sis_lock_list_push(zipdb->outputs, obj);
+			isnew = true;
+			_zip_nums++;
 			sis_object_decr(zipdb->cur_object);
 			zipdb->cur_object = _zipdb_new_data(zipdb, 0);
 		}
@@ -225,8 +211,22 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		{
 			// printf("push 1 outmem->size  = %d num= %d\n", outmem->size, sis_bits_struct_get_bags(zipdb->cur_sbits, false));
 			sis_lock_list_push(zipdb->outputs, obj);
+			isnew = true;
 			sis_object_decr(zipdb->cur_object);
 			zipdb->cur_object = _zipdb_new_data(zipdb, 0);
+		}
+	}
+	if (isnew)
+	{
+		if (_zip_nums == 0)
+		{
+			_zip_msec = sis_time_get_now_msec();
+		}
+		_zip_nums++;
+		if (_zip_nums % 1000 == 0)
+		{
+			printf("zip cost : %lld recs: %d\n", sis_time_get_now_msec() - _zip_msec, _zip_nums);
+			_zip_msec = sis_time_get_now_msec();
 		}
 	}
 	return 0;
@@ -252,7 +252,7 @@ bool zipdb_init(void *worker_, void *argv_)
     s_sis_json_node *catchnode = sis_json_cmp_child_node(node, "catch-size");
     if (catchnode)
     {
-        context->catch_size = sis_json_get_int(node,"catch-size", 1);
+        context->catch_size = sis_json_get_int(node,"catch-size", 0);
         if (context->catch_size > 0)
         {
             context->catch_size *= 1024*1024;
@@ -266,18 +266,11 @@ bool zipdb_init(void *worker_, void *argv_)
 	// sis_mutex_init(&(context->write_lock), NULL);
  
 	context->outputs = sis_lock_list_create(context->catch_size);
-	printf("context->outputs = %p\n", context->outputs);
+	printf("context->outputs save = %d\n", context->outputs->save_mode);
 	context->cur_sbits = sis_bits_stream_create(NULL, 0);
 
 	// 最大数据不超过 256M
-	context->inputs = sis_lock_list_create(32*1024*1024);
-	context->in_reader = sis_lock_reader_create(context->inputs, 
-		SIS_UNLOCK_READER_HEAD, 
-		// context, NULL, NULL);
-		context, cb_input_reader, NULL);
-	sis_lock_reader_zero(context->in_reader, context->wait_msec);
-	sis_lock_reader_open(context->in_reader);
-	printf("context->in_reader = %p\n", context->in_reader);
+	context->inputs = sis_fast_queue_create(context, cb_input_reader, 30, context->wait_msec);
 
     context->keys = sis_map_list_create(sis_sdsfree_call); 
 	context->sdbs = sis_map_list_create(sis_dynamic_db_destroy);
@@ -341,7 +334,7 @@ void zipdb_uninit(void *worker_)
     sis_map_list_destroy(zipdb->keys); 
     sis_map_list_destroy(zipdb->sdbs);
 
-	sis_lock_list_destroy(zipdb->inputs);
+	sis_fast_queue_destroy(zipdb->inputs);
 
 	sis_object_decr(zipdb->cur_object);
 	sis_bits_stream_destroy(zipdb->cur_sbits);
@@ -485,8 +478,8 @@ int _zipdb_write(s_zipdb_cxt *zipdb_, int kidx_, int sidx_, void *in_, size_t il
 	sis_memory_cat_byte(memory, sidx_, 2);
 	sis_memory_cat(memory, (char *)in_, ilen_);	
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
-	// 大批量插入时 速度不够快
-	sis_lock_list_push(zipdb_->inputs, obj);
+	
+	sis_fast_queue_push(zipdb_->inputs, obj);
 	
 	sis_object_destroy(obj);
 	return 1;
@@ -494,13 +487,19 @@ int _zipdb_write(s_zipdb_cxt *zipdb_, int kidx_, int sidx_, void *in_, size_t il
 
 int _zipdb_write_bits(s_zipdb_cxt *zipdb_, s_zipdb_bits *in_)
 {
+	// printf("_zipdb_write_bits = %d %d\n", zipdb_->inited , zipdb_->stoped);
 	if (!zipdb_->inited || zipdb_->stoped)
 	{
 		return -1;
 	}
 	// 直接写入
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(sizeof(s_zipdb_bits) + in_->size));
-	memmove(MAP_ZIPDB_BITS(obj), in_, sizeof(s_zipdb_bits) + in_->size);
+	s_zipdb_bits *memory = MAP_ZIPDB_BITS(obj);
+	if (memory->init == 1)
+	{
+		zipdb_->last_object = obj;
+	}
+	memmove(memory, in_, sizeof(s_zipdb_bits) + in_->size);
 	// printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
 	sis_lock_list_push(zipdb_->outputs, obj);
 	sis_object_destroy(obj);
@@ -722,6 +721,7 @@ void unzipdb_reader_set_sdbs(s_unzipdb_reader *unzipdb_, s_sis_sds in_)
 	sis_json_close(injson);
 }
 int _unzip_nums = 0;
+msec_t _unzip_msec = 0;
 int _unzip_recs = 0;
 msec_t _unzip_usec = 0;
 
@@ -745,13 +745,18 @@ void unzipdb_reader_set_bits(s_unzipdb_reader *unzipdb_, s_zipdb_bits *in_)
 	{
 		LOG(5)("unzip fail.\n");
 	}
+	if (_unzip_nums == 0)
+	{
+		_unzip_msec = sis_time_get_now_msec();
+	}
 	_unzip_recs+=nums;
 	_unzip_nums++;
 	_unzip_usec+= (sis_time_get_now_usec() - _start_usec);
-	if (_unzip_nums % 100 == 0)
+	if (_unzip_nums % 1000 == 0)
 	{
-		printf("unzip cost : %lld. [%d] recs : %d\n", _unzip_usec, _unzip_nums, _unzip_recs);
-		_unzip_nums = 0;
+		printf("unzip cost : %lld. [%d] msec : %lld recs : %d\n", _unzip_usec, _unzip_nums, 
+			sis_time_get_now_msec() - _unzip_msec, _unzip_recs);
+		_unzip_msec = sis_time_get_now_msec();
 		_unzip_usec = 0;
 	}
 }
