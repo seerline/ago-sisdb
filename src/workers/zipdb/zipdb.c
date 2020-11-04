@@ -270,9 +270,10 @@ bool zipdb_init(void *worker_, void *argv_)
 	context->cur_sbits = sis_bits_stream_create(NULL, 0);
 
 	// 最大数据不超过 256M
-	context->inputs = sis_lock_list_create(32*1024*1024);	
+	context->inputs = sis_lock_list_create(32*1024*1024);
 	context->in_reader = sis_lock_reader_create(context->inputs, 
-		SIS_UNLOCK_READER_HEAD | SIS_UNLOCK_READER_ZERO, 
+		SIS_UNLOCK_READER_HEAD, 
+		// context, NULL, NULL);
 		context, cb_input_reader, NULL);
 	sis_lock_reader_zero(context->in_reader, context->wait_msec);
 	sis_lock_reader_open(context->in_reader);
@@ -484,7 +485,7 @@ int _zipdb_write(s_zipdb_cxt *zipdb_, int kidx_, int sidx_, void *in_, size_t il
 	sis_memory_cat_byte(memory, sidx_, 2);
 	sis_memory_cat(memory, (char *)in_, ilen_);	
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
-
+	// 大批量插入时 速度不够快
 	sis_lock_list_push(zipdb_->inputs, obj);
 	
 	sis_object_destroy(obj);
@@ -720,6 +721,9 @@ void unzipdb_reader_set_sdbs(s_unzipdb_reader *unzipdb_, s_sis_sds in_)
 	}
 	sis_json_close(injson);
 }
+int _unzip_nums = 0;
+int _unzip_recs = 0;
+msec_t _unzip_usec = 0;
 
 void unzipdb_reader_set_bits(s_unzipdb_reader *unzipdb_, s_zipdb_bits *in_)
 {
@@ -733,12 +737,23 @@ void unzipdb_reader_set_bits(s_unzipdb_reader *unzipdb_, s_zipdb_bits *in_)
 	{
 		sis_bits_struct_link(unzipdb_->cur_sbits, in_->data, in_->size);
 	}
+	msec_t _start_usec = sis_time_get_now_usec();
 	// 开始解压 并回调
-	if(sis_bits_struct_decode(unzipdb_->cur_sbits, unzipdb_->cb_source, unzipdb_->cb_read) == 0)
+	// int nums = sis_bits_struct_decode(unzipdb_->cur_sbits, NULL, NULL);
+	int nums = sis_bits_struct_decode(unzipdb_->cur_sbits, unzipdb_->cb_source, unzipdb_->cb_read);
+	if (nums == 0)
 	{
 		LOG(5)("unzip fail.\n");
 	}
-	// printf("---\n");
+	_unzip_recs+=nums;
+	_unzip_nums++;
+	_unzip_usec+= (sis_time_get_now_usec() - _start_usec);
+	if (_unzip_nums % 100 == 0)
+	{
+		printf("unzip cost : %lld. [%d] recs : %d\n", _unzip_usec, _unzip_nums, _unzip_recs);
+		_unzip_nums = 0;
+		_unzip_usec = 0;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////

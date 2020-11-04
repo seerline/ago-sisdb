@@ -22,6 +22,13 @@ unsigned long long sis_time_get_now_msec()
 	return ((unsigned long long)tv.tv_sec) * 1000 + tv.tv_usec / 1000;
 }
 
+unsigned long long sis_time_get_now_usec()
+{
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	return ((unsigned long long)tv.tv_sec) * 1000000 + tv.tv_usec;
+}
 void sis_time_check(time_t tt, struct tm *ptm)
 {
 	if (tt == 0)

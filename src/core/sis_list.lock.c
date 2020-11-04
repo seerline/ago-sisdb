@@ -254,107 +254,174 @@ void sis_wait_queue_set_busy(s_sis_wait_queue *queue_, int isbusy_)
         sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
     }
 }
+/////////////////////////////////////////////////
+//  s_sis_fast_queue
+/////////////////////////////////////////////////
 
-// s_sis_wait_queue *sis_wait_queue_create()
-// {
-//     s_sis_wait_queue *o = SIS_MALLOC(s_sis_wait_queue, o);
-//     o->head = sis_unlock_node_create(NULL);
-//     o->tail = o->head;
-//     o->count = 0;
-// 	o->busy = 0;
-//     sis_unlock_mutex_init(&o->lock, 0);
-//     return  o;
-// }
-// void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
-// {
-//     while (queue_->count > 0)
-//     {
-//         s_sis_object *obj = sis_wait_queue_pop(queue_);
-//         sis_object_decr(obj);
-//     }
-//     sis_unlock_node_destroy(queue_->tail);
-//     sis_free(queue_);
-// }
-// // busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
-// s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
-// {  
-// 	s_sis_object *obj = NULL;
-//     if(queue_->busy == 0)
-//     {
-//         queue_->busy = 1;
-//         obj = obj_;
-//     }
-//     else
-//     {
-//         if (queue_->count > 1)
-//         {
-//             s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-//             queue_->tail->next = new_node;
-//             queue_->tail = new_node;
-//             queue_->count++;
-//         }
-//         else
-//         {
+int _fast_queue_move(s_sis_fast_queue *queue_)
+{
+    if (queue_->wnums < 1)
+    {
+        return 0;
+    }
+    queue_->rtail->next = queue_->whead->next;
+    queue_->rtail = queue_->wtail;
+    queue_->rnums += queue_->wnums;
+    queue_->whead->next = NULL;
+    queue_->wtail = queue_->whead;
+    queue_->wnums = 0;
+    printf("move ok %p %p %p %d %d\n", queue_->rtail, queue_->whead->next, queue_->wtail, queue_->rnums, queue_->wnums);
+    return queue_->wnums;
+}
+void *_thread_fast_reader(void *argv_)
+{
+    s_sis_fast_queue *wqueue = (s_sis_fast_queue *)argv_;
+    s_sis_wait *wait = sis_wait_get(wqueue->notice_wait);
+    sis_thread_wait_start(wait);
 
-//             sis_unlock_mutex_lock(&queue_->lock);
-//             s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
-//             queue_->tail->next = new_node;
-//             queue_->tail = new_node;
-//             queue_->count++;
-//             sis_unlock_mutex_unlock(&queue_->lock);
-//         }
-//     }
-// 	return obj;
-// }
-// // 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
-// // pop只在上次发送回调时调用
-// s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_)
-// {  
-//     s_sis_object *obj = NULL;
-//     if (queue_->count > 1)
-//     {
-//         s_sis_unlock_node *head = queue_->head;
-//         if (head->next)
-//         {
-//             obj = head->next->obj;
-//             queue_->head = head->next;
-//             sis_unlock_node_destroy(head);
-//         }
-//         if (obj)
-//         {
-//             queue_->count--; 
-//             queue_->busy = 1;
-//             // 只要有数据被提取出 就设置busy=1
-//         }
-//     }
-//     else
-//     {
-//         sis_unlock_mutex_lock(&queue_->lock);
-//         if (queue_->count == 0)
-//         {
-//             // 只有count为0 并且再次调用pop才设置busy=0
-//             queue_->busy = 0;
-//         }
-//         else
-//         {
-//             s_sis_unlock_node *head = queue_->head;
-//             if (head->next)
-//             {
-//                 obj = head->next->obj;
-//                 queue_->head = head->next;
-//                 sis_unlock_node_destroy(head);
-//             }
-//             if (obj)
-//             {
-//                 queue_->count--; 
-//                 queue_->busy = 1;
-//                 // 只要有数据被提取出 就设置busy=1
-//             }
-//         }
-//         sis_unlock_mutex_unlock(&queue_->lock);
-//     }
-//     return obj;
-// }
+    int waitmsec = wqueue->wait_msec == 0 ? 1000 : wqueue->wait_msec;
+    if (wqueue->zero_msec)
+    {
+        waitmsec = wqueue->zero_msec;
+    }
+    wqueue->work_status = SIS_UNLOCK_STATUS_WORK;
+    bool surpass_waittime = false;
+    while (wqueue->work_status != SIS_UNLOCK_STATUS_EXIT)
+    {
+        // s_sis_object *obj = NULL;
+        if (!sis_mutex_trylock(&wqueue->wlock))
+        {
+            // 如果锁住
+            _fast_queue_move(wqueue);
+            sis_mutex_unlock(&wqueue->wlock);
+        }
+        // 读不用加锁
+        s_sis_unlock_node *node = wqueue->rhead;
+        if (node->next)
+        {
+            while (node->next)
+            {
+                s_sis_unlock_node *new_head = node->next;
+                if (wqueue->cb_reader)
+                {
+                    wqueue->cb_reader(wqueue->cb_source, new_head->obj);
+                }
+                sis_object_decr(new_head->obj);
+                sis_unlock_node_destroy(node);
+                wqueue->rnums--;
+                wqueue->rhead = new_head;
+                node = new_head;
+            }
+        }
+        else
+        {
+            if (surpass_waittime && wqueue->zero_msec)
+            {
+                wqueue->cb_reader(wqueue->cb_source, NULL);
+            }
+        }
+        
+        if (sis_thread_wait_sleep_msec(wait, waitmsec) == SIS_ETIMEDOUT)
+        {
+            // printf("timeout exit. %d %p\n", waitmsec, reader);
+            surpass_waittime = true;
+        } 
+        else
+        {
+            surpass_waittime = false;
+        }            
+    }
+    sis_thread_wait_stop(wait);
+    sis_thread_finish(&wqueue->work_thread);
+    wqueue->work_status = SIS_UNLOCK_STATUS_NONE;
+    return NULL;
+}
+
+s_sis_fast_queue *sis_fast_queue_create(
+    void *cb_source_, cb_lock_reader *cb_reader_,
+    int wait_msec_, int zero_msec_)
+{
+    s_sis_fast_queue *o = SIS_MALLOC(s_sis_fast_queue, o);
+    o->rhead = sis_unlock_node_create(NULL);
+    o->rtail = o->rhead;
+    o->rnums = 0;
+
+    o->whead = sis_unlock_node_create(NULL);
+    o->wtail = o->whead;
+    o->wnums = 0;
+    sis_mutex_init(&o->wlock, NULL);
+
+    o->cb_source = cb_source_ ? cb_source_ : o;
+    o->cb_reader = cb_reader_;
+    o->notice_wait = sis_wait_malloc();
+
+    o->wago_msec = 0;
+    o->wait_msec = wait_msec_ > 1000 ? 1000 : wait_msec_;   
+    o->zero_msec = zero_msec_;   
+
+    // 最后再启动线程 顺序不能变 不然数据会等待
+    if (!sis_thread_create(_thread_fast_reader, o, &o->work_thread))
+    {
+        LOG(1)("can't start reader thread.\n");
+        sis_fast_queue_destroy(o);
+        return false;
+    }
+    return  o;
+}
+void sis_fast_queue_destroy(s_sis_fast_queue *queue_)
+{
+    queue_->work_status = SIS_UNLOCK_STATUS_EXIT;
+    // 通知退出
+    sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+    while (queue_->work_status != SIS_UNLOCK_STATUS_NONE)
+    {
+        sis_sleep(10);
+    }
+    sis_wait_free(queue_->notice_wait);
+    sis_mutex_lock(&queue_->wlock);
+    _fast_queue_move(queue_); // 从w迁移到r
+    sis_mutex_unlock(&queue_->wlock);
+
+    // 此时没有人在读 直接清理所有 rhead
+    s_sis_unlock_node *node = queue_->rhead;
+    while (node->next)
+    {
+        s_sis_unlock_node *new_head = node->next;
+        sis_object_decr(new_head->obj);
+        sis_unlock_node_destroy(node);
+        node = new_head;
+        queue_->rnums--;
+    }
+    
+    sis_unlock_node_destroy(queue_->rtail);
+    sis_unlock_node_destroy(queue_->wtail);
+    sis_free(queue_);
+}
+
+// busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
+int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_)
+{  
+    s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
+    sis_mutex_lock(&queue_->wlock);
+    queue_->wtail->next = new_node;
+    queue_->wtail = new_node;
+    queue_->wnums++;
+    sis_mutex_unlock(&queue_->wlock);
+    // if (queue_->wait_msec == 0)
+    // {
+    //     sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+    // }
+    // else
+    // {
+    //     msec_t now_msec = sis_time_get_now_msec();
+    //     if (now_msec - queue_->wago_msec > queue_->wait_msec / 3) 
+    //     {
+    //         sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+    //         queue_->wago_msec = now_msec;
+    //     }        
+    // }    
+	return 1;
+}
 /////////////////////////////////////////////////
 //  s_sis_lock_reader
 /////////////////////////////////////////////////
@@ -405,6 +472,7 @@ void *_thread_reader(void *argv_)
                         // printf("next = %p\n", next); 
                         if (next->obj)
                         {
+                            if (reader->cb_recv)
                             reader->cb_recv(reader->cb_source, next->obj);
                         }
                         reader->cursor = next;
@@ -415,6 +483,7 @@ void *_thread_reader(void *argv_)
                 {
                     if (surpass_waittime && (reader->work_mode & SIS_UNLOCK_READER_ZERO))
                     {
+                        if (reader->cb_recv)
                         reader->cb_recv(reader->cb_source, NULL);
                     }
                 }               
@@ -527,6 +596,7 @@ void sis_lock_reader_close(s_sis_lock_reader *reader_)
 
 /////////////////////////////////////////////////
 //  s_sis_lock_list
+//  单进单出 1秒 1M条记录
 /////////////////////////////////////////////////
 bool _unlock_check_user_cursor(s_sis_lock_list *ullist, s_sis_unlock_node *node)
 {
@@ -568,7 +638,7 @@ static void *_thread_watcher(void *argv_)
             }
             // 只有超过3秒才去处理数据清理
             // sis_sleep(10);
-            // continue;
+            continue;
         }
         if (reader->work_status == SIS_UNLOCK_STATUS_EXIT)
         {
@@ -701,10 +771,9 @@ void sis_lock_list_clear(s_sis_lock_list *ullist_)
     ullist_->cursize = 0;
 }
 
-#if 0
+#if 1
 
-int nums = 100;
-int maxnums = 1000000;//*1000;
+int maxnums = 1000*1000;
 volatile int series = 0;
 volatile int pops = 0;
 int exit__ = 0; 
@@ -718,27 +787,40 @@ static void *thread_push(void *arg)
     {
         sis_sleep(1);
     }
-    // sis_sleep(300);
-    // while(nums--)
+    series = 0;
+    while(series < maxnums)
     {
-        while(series < maxnums)
-        {
-            series++;
-            s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)series);
-            sis_lock_list_push(share, obj); 
-            // printf("队列插入元素：%d %d\n", series, share->work_queue->count);
-            // if ((series % 100) == 0)
-            // if (share->work_queue->wnums > 0)
-            //     printf("%d %d| %d %d %d\n", share->work_queue->rnums, share->work_queue->wnums, read_pops[0], read_pops[1], read_pops[2]);
-            sis_object_destroy(obj);
-            // sis_sleep(10);
-        }
-        // series = 0;
-        // sis_sleep(3000);
+        series++;
+        s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)series);
+        sis_lock_list_push(share, obj); 
+        // printf("队列插入元素：%d %d\n", series, share->work_queue->count);
+        // if ((series % 100) == 0)
+        // if (share->work_queue->wnums > 0)
+        //     printf("%d %d| %d %d %d\n", share->work_queue->rnums, share->work_queue->wnums, read_pops[0], read_pops[1], read_pops[2]);
+        sis_object_destroy(obj);
+        // sis_sleep(10);
     }
     return NULL;
 }
 
+static void *thread_fast_push(void *arg)
+{
+    s_sis_fast_queue *queue = (s_sis_fast_queue *)arg;
+    while(exit__ == 0)
+    {
+        sis_sleep(1);
+    }
+    series = 0;
+    while(series < maxnums)
+    {
+        series++;
+        s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)series);
+        sis_fast_queue_push(queue, obj); 
+        // printf("队列插入元素：%d %d\n", series, share->work_queue->count);
+        sis_object_destroy(obj);
+    }
+    return NULL;
+}
 static int cb_recv(void *src, s_sis_object *obj)
 {
     s_sis_lock_reader *reader = (s_sis_lock_reader *)src;
@@ -746,6 +828,13 @@ static int cb_recv(void *src, s_sis_object *obj)
     ADDF(&read_pops[reader->zeromsec], 1);
     // printf("队列输出元素：------÷ %s : %d ||  %d\n", reader->sign, (int)obj->ptr, ADDF(&pops, 1));
     // sis_sleep(1);
+    return 0;
+}
+static int cb_fast_recv(void *src, s_sis_object *obj)
+{
+    ADDF(&pops, 1);
+    // printf("队列输出元素：------÷ %s : %d ||  %d\n", reader->sign, (int)obj->ptr, ADDF(&pops, 1));
+    if(pops%100==0) sis_sleep(1);
     return 0;
 }
 s_sis_lock_queue *read_queue[10];
@@ -771,37 +860,37 @@ static void *thread_pop(void *arg)
     return NULL;  
 }
 
-int main()
+int main1()
 {
     safe_memory_start();
 
-    // { // test queue
-    //     s_sis_lock_queue *queue = sis_lock_queue_create();
-    //     msec_t start = sis_time_get_now_msec();
-    //     int inums = 0;
-    //     int onums = 0;
-    //     while(inums < maxnums)
-    //     {
-    //         inums++;
-    //         s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)inums);
-    //         sis_lock_queue_push(queue, obj); 
-    //         // printf("队列插入元素：%d %d\n", inums, queue->count);
-    //         sis_object_destroy(obj);  
-    //     }
-    //     printf("cost %llu us\n", sis_time_get_now_msec() - start);
-    //     while(onums < maxnums)
-    //     {
-    //         s_sis_object *obj = sis_lock_queue_pop(queue);        
-    //         if (obj)
-    //         {
-    //             onums++;
-    //             // printf("队列输出元素：------ %d ||  %d\n", (int)(obj->ptr), ADDF(&onums, 1));
-    //             sis_object_destroy(obj); 
-    //         }
-    //     }
-    //     sis_lock_queue_destroy(queue);
-    //     printf("cost %llu us\n", sis_time_get_now_msec() - start);
-    // }
+    { // test queue
+        s_sis_lock_queue *queue = sis_lock_queue_create();
+        msec_t start = sis_time_get_now_msec();
+        int inums = 0;
+        int onums = 0;
+        while(inums < maxnums)
+        {
+            inums++;
+            s_sis_object *obj = sis_object_create(SIS_OBJECT_INT, (void *)inums);
+            sis_lock_queue_push(queue, obj); 
+            // printf("队列插入元素：%d %d\n", inums, queue->count);
+            sis_object_destroy(obj);  
+        }
+        printf("cost %llu us\n", sis_time_get_now_msec() - start);
+        while(onums < maxnums)
+        {
+            s_sis_object *obj = sis_lock_queue_pop(queue);        
+            if (obj)
+            {
+                onums++;
+                // printf("队列输出元素：------ %d ||  %d\n", (int)(obj->ptr), ADDF(&onums, 1));
+                sis_object_destroy(obj); 
+            }
+        }
+        sis_lock_queue_destroy(queue);
+        printf("cost %llu us\n", sis_time_get_now_msec() - start);
+    }
     // { // test list
     //     s_sis_lock_queue *input = sis_lock_queue_create();
     //     int inums = 0;
@@ -863,13 +952,46 @@ int main()
     //     sis_lock_queue_destroy(input);
     //     printf("cost 5 %llu us\n", sis_time_get_now_msec() - start);
     // }
+    safe_memory_stop();
+	return 1;
+}
+int main()
+{
+    safe_memory_start();
+    { // test fast list
+        s_sis_fast_queue *fastlist = sis_fast_queue_create(NULL, cb_fast_recv, 20, 0);
+        
+        pthread_t write[10];
+        int       writer = 1;
+        pops = 0;
+        for(int i = 0;i < writer; i++)
+        {
+            pthread_create(&write[i],NULL,thread_fast_push,(void*)fastlist);
+        }
+        msec_t start = sis_time_get_now_msec();
+        exit__ = 1;
+        for(int i = 0; i < writer; i++)
+        {
+            pthread_join(write[i], NULL);
+        }
+        printf("cost push %llu us , %d ==> %d\n", sis_time_get_now_msec() - start, series, pops);  
+        printf("recv %d count= %d + %d\n", pops, fastlist->rnums, fastlist->wnums);
+        while (pops < series)  
+        {
+            sis_sleep(1);
+        }
+        printf("cost pop %llu us \n", sis_time_get_now_msec() - start);  
+        sis_fast_queue_destroy(fastlist);
+        printf("cost %llu us , %d ==> %d\n", sis_time_get_now_msec() - start, series, pops);  
+
+    }
     { // test thread & list
         s_sis_lock_list *sharedb = sis_lock_list_create(0);
 
-        pthread_t            write[10];
+        pthread_t          write[10];
         s_sis_lock_reader *read[10];
 
-        int reader = 5;
+        int reader = 1;
         int writer = 1;
         // int reader = 10;
         // int writer = 5;

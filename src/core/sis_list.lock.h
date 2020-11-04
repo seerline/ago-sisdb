@@ -55,14 +55,32 @@ typedef struct s_sis_wait_queue {
     s_sis_thread       work_thread;  // 工作线程
 } s_sis_wait_queue;
 
-// // 一写一读 最安全高效
-// typedef struct s_sis_wait_queue {
-//     volatile int       busy;  // 返回的数据是否已经处理
-//     s_sis_unlock_mutex lock;  
-//     volatile int       count; // > 1 就不加锁
-//     s_sis_unlock_node *head;
-//     s_sis_unlock_node *tail;
-// } s_sis_wait_queue;
+/////////////////////////////////////////////////
+//  s_sis_fast_queue
+//  设置需求每秒处理1M的插入和读取
+//  这是一个一写一读的快速队列 优先保证写入速度 适用于需要快速插入 提取数据处理耗时且缓慢的场景
+/////////////////////////////////////////////////
+typedef struct s_sis_fast_queue {
+    // s_sis_mutex_t      rlock;  // 单用户用不到
+    int                rnums;  
+    s_sis_unlock_node *rhead;  // 读时try锁wlock 锁住就 直接截断whead -> rtail 
+    s_sis_unlock_node *rtail;
+
+    s_sis_mutex_t      wlock;  // 只要加了锁就直接写
+    int                wnums;  
+    s_sis_unlock_node *whead;  
+    s_sis_unlock_node *wtail;
+
+    void              *cb_source;
+    cb_lock_reader    *cb_reader;
+    int                work_status;
+    int                zero_msec;    // 0 正常 1 没有数据时间到也回调
+
+    msec_t             wago_msec;    // 上次通知时间
+    int                wait_msec;    // 最小超时通知 0 表示每次都发通知
+    s_sis_wait_handle  notice_wait;  // 信号量
+    s_sis_thread       work_thread;  // 工作线程
+} s_sis_fast_queue;
 
 #pragma pack(pop)
 
@@ -102,6 +120,16 @@ s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_);
 // 前次数据处理完后 设置 busy 队列会从线程获取下一个数据通过回调返回
 // 返回上次弹出的obj
 void sis_wait_queue_set_busy(s_sis_wait_queue *queue_, int );
+
+/////////////////////////////////////////////////
+//  s_sis_fast_queue
+/////////////////////////////////////////////////
+
+s_sis_fast_queue *sis_fast_queue_create(
+    void *cb_source_, cb_lock_reader *cb_reader_,
+    int wait_nums_, int zero_msec_);
+void sis_fast_queue_destroy(s_sis_fast_queue *queue_);
+int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_);
 
 #ifdef __cplusplus
 }

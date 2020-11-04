@@ -283,7 +283,7 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	mess->style = mess->cmd ? (mess->style | SIS_NET_CMD) : mess->style;
 	mess->key = _sis_json_node_get_sds(handle->node, "key");
 	mess->style = mess->key ? (mess->style | SIS_NET_KEY) : mess->style;
-	printf("sis_net_decoded_chars:%x %x %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
+	printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
 			mess->source? mess->source : "nil",
 			mess->cmd ? mess->cmd : "nil",
 			mess->key? mess->key : "nil",

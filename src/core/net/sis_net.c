@@ -537,7 +537,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 		if (cxt->status == SIS_NET_WORKING)
 		{
 			_send_nums++;
-			if (_send_nums % 1000 == 0 || cxt->send_cxts->count == 0)
+			if (_send_nums % 1000 == 0)
 			{
 				printf("server send : %d wait :%d cost :%d\n", _send_nums, cxt->send_cxts->count, sis_time_get_now_msec() - _send_msec);
 				_send_msec = sis_time_get_now_msec();

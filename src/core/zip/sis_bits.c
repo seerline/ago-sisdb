@@ -835,10 +835,6 @@ void _unzip_unit_free(s_sis_struct_list *list)
 // 用回调来返回数据
 int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {
-    if (!cb_read_)
-    {
-        return 0;
-    }
     _sis_bits_struct_init(s_);
     // 去尾部取标志位
     int nums = sis_bits_struct_get_bags(s_, true);
@@ -895,11 +891,14 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
         }
         sis_struct_list_push(list, &unzip);
     }
-    // printf("count=%d\n", list->count);
-    for (int i = 0; i < list->count; i++)
+    if (cb_read_)
     {
-        s_unzip_unit *punzip = (s_unzip_unit *)sis_struct_list_get(list, i);    
-        cb_read_(cb_source_ ?  cb_source_ : s_, punzip->kidx, punzip->sidx, punzip->data, punzip->size);
+        // printf("count=%d\n", list->count);
+        for (int i = 0; i < list->count; i++)
+        {
+            s_unzip_unit *punzip = (s_unzip_unit *)sis_struct_list_get(list, i);    
+            cb_read_(cb_source_ ?  cb_source_ : s_, punzip->kidx, punzip->sidx, punzip->data, punzip->size);
+        }
     }
     _unzip_unit_free(list);
     sis_bits_stream_restore(s_);

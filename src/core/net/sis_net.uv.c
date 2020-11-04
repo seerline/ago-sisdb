@@ -49,7 +49,7 @@ void sis_socket_close_handle(uv_handle_t *handle_, uv_close_cb close_cb_)
 	{
 		uv_close(handle_, close_cb_);
 	}
-	printf("close %p : type: %d closing: %lx\n", handle_, handle_->type, handle_->flags);// & UV_HANDLE_CLOSING);
+	// printf("close %p : type: %d closing: %lx\n", handle_, handle_->type, handle_->flags);// & UV_HANDLE_CLOSING);
 } 
 
 static void _cb_clear_walk(uv_handle_t* handle, void* arg)
@@ -198,14 +198,14 @@ void sis_socket_server_close(s_sis_socket_server *server_)
 
 	// 检查是否有未释放的句柄
 	// if ((int)server_->loop->active_handles > 0)
-	{
-		FILE *file = fopen("hserver.txt", "aw+");
-		fprintf(file, "---- %d - %d ---\n", sis_time_get_idate(0), sis_time_get_itime(0));
-		// uv_print_active_handles(server_->loop, file);
-		uv_print_all_handles(server_->loop, file);
-		fclose(file);
-	}
-	LOG(5)("server close. %d %d\n", server_->loop->active_handles, server_->loop->active_reqs.count);
+	// {
+	// 	FILE *file = fopen("hserver.txt", "aw+");
+	// 	fprintf(file, "---- %d - %d ---\n", sis_time_get_idate(0), sis_time_get_itime(0));
+	// 	// uv_print_active_handles(server_->loop, file);
+	// 	uv_print_all_handles(server_->loop, file);
+	// 	fclose(file);
+	// }
+	// LOG(5)("server close. %d %d\n", server_->loop->active_handles, server_->loop->active_reqs.count);
 
 	uv_stop(server_->loop); 
 	
@@ -706,15 +706,15 @@ void sis_socket_client_close(s_sis_socket_client *client_)
 	
 	// 检查是否有未释放的句柄
 	// if ((int)client_->loop->active_handles > 0)
-	{
-		FILE *file = fopen("hclient.txt", "aw+");
-		fprintf(file, "---- %d - %d ---\n", sis_time_get_idate(0), sis_time_get_itime(0));
-		// uv_print_active_handles(client_->loop, file);
-		uv_print_all_handles(client_->loop, file);
-		fclose(file);
-	}
+	// {
+	// 	FILE *file = fopen("hclient.txt", "aw+");
+	// 	fprintf(file, "---- %d - %d ---\n", sis_time_get_idate(0), sis_time_get_itime(0));
+	// 	// uv_print_active_handles(client_->loop, file);
+	// 	uv_print_all_handles(client_->loop, file);
+	// 	fclose(file);
+	// }
 
-	LOG(5)("client close. %d %d\n", client_->loop->active_handles, client_->loop->active_reqs);
+	// LOG(5)("client close. %d %d\n", client_->loop->active_handles, client_->loop->active_reqs);
 
 	uv_stop(client_->loop); 
 
