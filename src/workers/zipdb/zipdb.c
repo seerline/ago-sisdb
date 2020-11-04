@@ -43,7 +43,7 @@ s_sis_modules sis_modules_zipdb = {
 //------------------------zipdb --------------------------------//
 //////////////////////////////////////////////////////////////////
 // ??? 2级转发会拉低 1级转发的速度 好好查查 是哪里影响的
-// 顶级 无订阅者时内存不能缩小 应该每3秒清理一下
+// 速度不稳定
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_zipdb_cxt --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
@@ -51,11 +51,11 @@ s_sis_object *_zipdb_new_data(s_zipdb_cxt *zipdb, int isinit)
 {
 	size_t size = zipdb->zip_size + 256; // 这里应该取最长的结构体长度
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size + sizeof(s_zipdb_bits)));
-
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(obj);
 	if (isinit || zipdb->calcsize > zipdb->initsize)
 	{
 		memory->init = 1;
+		printf("new last obj = %p\n", obj);
 		zipdb->last_object = obj;
 		zipdb->calcsize = size;
 		sis_bits_struct_flush(zipdb->cur_sbits);
@@ -185,6 +185,7 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		{
 			// printf("null ..... %lld\n", sis_time_get_now_msec());
 			// printf("push 0 outmem->size = %d\n", outmem->size);
+			sis_memory_set_size(SIS_OBJ_MEMORY(obj), sizeof(s_zipdb_bits) + outmem->size);
 			sis_lock_list_push(zipdb->outputs, obj);
 			isnew = true;
 			_zip_nums++;
@@ -206,9 +207,11 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		sis_memory_setpos(inmem, offset);
 		// sis_mutex_unlock(&zipdb->write_lock);
 		outmem->size = sis_bits_struct_getsize(zipdb->cur_sbits);
+
 		//  数据如果超过一定数量就直接发送
 		if (outmem->size > zipdb->zip_size - 256)
 		{
+			sis_memory_set_size(SIS_OBJ_MEMORY(obj), sizeof(s_zipdb_bits) + outmem->size);
 			// printf("push 1 outmem->size  = %d num= %d\n", outmem->size, sis_bits_struct_get_bags(zipdb->cur_sbits, false));
 			sis_lock_list_push(zipdb->outputs, obj);
 			isnew = true;
@@ -487,19 +490,22 @@ int _zipdb_write(s_zipdb_cxt *zipdb_, int kidx_, int sidx_, void *in_, size_t il
 
 int _zipdb_write_bits(s_zipdb_cxt *zipdb_, s_zipdb_bits *in_)
 {
-	// printf("_zipdb_write_bits = %d %d\n", zipdb_->inited , zipdb_->stoped);
 	if (!zipdb_->inited || zipdb_->stoped)
 	{
 		return -1;
 	}
 	// 直接写入
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(sizeof(s_zipdb_bits) + in_->size));
+	size_t size = sizeof(s_zipdb_bits) + in_->size;
+	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(obj);
+	memmove(memory, in_, size);
+	sis_memory_set_size(SIS_OBJ_MEMORY(obj), size);
+	// printf("_zipdb_write_bits = %d %d | %d %d\n", zipdb_->inited , zipdb_->stoped, memory->init,memory->size);
 	if (memory->init == 1)
 	{
 		zipdb_->last_object = obj;
+		printf("set last obj = %p\n", obj);
 	}
-	memmove(memory, in_, sizeof(s_zipdb_bits) + in_->size);
 	// printf("push 3 outmem->size = %d\n", MAP_ZIPDB_BITS(obj)->size);
 	sis_lock_list_push(zipdb_->outputs, obj);
 	sis_object_destroy(obj);

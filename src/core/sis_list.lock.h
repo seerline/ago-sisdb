@@ -160,8 +160,8 @@ typedef struct s_sis_lock_reader
     char                       sign[20];     // 索引编号
     void                      *father;      // s_sis_lock_list *
     void                      *cb_source;   // 回调的参数
-    cb_lock_reader          *cb_recv;     // 正常数据
-    cb_lock_reader_realtime *cb_realtime; // 历史数据读取完毕
+    cb_lock_reader            *cb_recv;     // 正常数据
+    cb_lock_reader_realtime   *cb_realtime; // 历史数据读取完毕
 
     int                        work_mode;    // 工作模式
     int                        work_status;  // 工作状态
@@ -184,7 +184,7 @@ typedef struct s_sis_lock_list {
     s_sis_rwlock_t       userslock;  // 读者列表管理的锁  
     s_sis_pointer_list  *users;      // 读者列表 s_sis_lock_reader 操作时 用 userslock 这个锁来处理
 
-    s_sis_lock_reader *watcher;    // 守护线程 处理数据发布 如果不需要保留所有数据 就定时清理不用的数据
+    s_sis_lock_reader   *watcher;    // 守护线程 处理数据发布 如果不需要保留所有数据 就定时清理不用的数据
     int                  save_mode;  // 历史数据处理模式 
  
     size_t               cursize;    // 数据总的长度 由 watcher 统计

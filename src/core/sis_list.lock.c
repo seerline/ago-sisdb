@@ -675,6 +675,8 @@ static void *_thread_watcher(void *argv_)
                     {
                         // 销毁一个大家都不用的数据
                         s_sis_object *obj = sis_lock_queue_pop(ullist->work_queue);
+                        ullist->cursize += sizeof(s_sis_object) + SIS_OBJ_GET_SIZE(obj);  
+                        // printf("del. %zu(K)\n", ullist->cursize/1000);
                         sis_object_decr(obj); 
                     }
                     else // SIS_UNLOCK_SAVE_SIZE
@@ -685,6 +687,7 @@ static void *_thread_watcher(void *argv_)
                         }
                         if (ullist->cursize > ullist->maxsize)
                         {
+                            // printf("del. %zu(K)\n", ullist->cursize/1000);
                             s_sis_object *obj = sis_lock_queue_pop(ullist->work_queue);
                             ullist->cursize -= sizeof(s_sis_object) + SIS_OBJ_GET_SIZE(obj);
                             sis_object_decr(obj);
@@ -723,7 +726,6 @@ s_sis_lock_list *sis_lock_list_create(size_t maxsize_)
         o->maxsize = maxsize_ < 1024 ? 1024 : maxsize_;
     }
     sis_rwlock_init(&o->userslock);
-
     o->users = sis_pointer_list_create();
     o->users->vfree = sis_lock_reader_destroy;
     

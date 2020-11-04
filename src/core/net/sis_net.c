@@ -340,7 +340,7 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 		sis_strcpy(o->client->ip, 128, o->url->ip4);
 	}
 
-	o->ready_recv_cxts = sis_lock_list_create(4*1024*1024);
+	o->ready_recv_cxts = sis_lock_list_create(16*1024*1024);
     o->reader_recv = sis_lock_reader_create(o->ready_recv_cxts, 
 		SIS_UNLOCK_READER_HEAD, o, cb_sis_reader_recv, NULL);
 	sis_lock_reader_open(o->reader_recv);
@@ -521,6 +521,10 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			}		
 			sis_object_destroy(obj);
 		}
+		if (sis_memory_get_size(cxt->recv_buffer) == 0)
+		{
+			sis_memory_clear(cxt->recv_buffer);
+		}
 	}
 }
 int _send_nums = 0;
@@ -597,8 +601,8 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 
 			if (rtn == 1)
 			{
-				// printf("count= %d size= %zu\n", __count++, SIS_OBJ_GET_SIZE(obj));
 				mess->cid = sid_;
+				// printf("[%zu %zu] size= %zu\n", cxt->recv_buffer->maxsize / 1000, sis_memory_get_size(cxt->recv_buffer), SIS_OBJ_GET_SIZE(obj));
 				sis_lock_list_push(cls->ready_recv_cxts, obj);
 			}			
 			else if (rtn == 0)
@@ -615,6 +619,11 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 				break;				
 			}
 			sis_object_destroy(obj);
+		}
+		// 定时清理接收缓存
+		if (sis_memory_get_size(cxt->recv_buffer) == 0)
+		{
+			sis_memory_clear(cxt->recv_buffer);
 		}
 	}
 }

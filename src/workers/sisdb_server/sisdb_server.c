@@ -65,7 +65,7 @@ bool sisdb_server_init(void *worker_, void *argv_)
 
     context->level = sis_json_get_int(node, "level", 10);
 
-    context->recv_list = sis_lock_list_create(4*1024*1024);
+    context->recv_list = sis_lock_list_create(16*1024*1024);
     context->reader_recv = sis_lock_reader_create(context->recv_list, 
         SIS_UNLOCK_READER_HEAD, worker, cb_reader_recv, NULL);
     sis_lock_reader_open(context->reader_recv);
