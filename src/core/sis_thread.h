@@ -13,11 +13,6 @@ s_sis_wait_handle sis_wait_malloc();
 s_sis_wait *sis_wait_get(s_sis_wait_handle id_);
 void sis_wait_free(s_sis_wait_handle id_);
 
-// 下面是启动一个等待 和结束一个等待
-void sis_wait_start(s_sis_wait_handle *handle_);
-void sis_wait_stop(s_sis_wait_handle handle_);
-
-
 // 多读一写锁定义
 typedef struct s_sis_mutex_rw {
 	s_sis_mutex_t mutex_s;
@@ -38,43 +33,36 @@ int sis_mutex_rw_try_lock_w(s_sis_mutex_rw *mutex_);
 int sis_mutex_rw_try_lock_r(s_sis_mutex_rw *mutex_);
 
 ////////////////////////
-// 线程任务定义
+// 等待式线程定义
 /////////////////////////
+#define SIS_WAIT_STATUS_NONE   0  
+#define SIS_WAIT_STATUS_WORK   1  
+#define SIS_WAIT_STATUS_EXIT   2  
 
-// 任务运行模式 间隔秒数运行，按分钟时间点运行
-#define SIS_WORK_MODE_NONE     0  // 
-#define SIS_WORK_MODE_GAPS     1  // 在指定时间内 每隔 delay 毫秒运行一次working
-#define SIS_WORK_MODE_PLANS    2  // 计划任务 按数组中指定时间触发working 单位为分钟
-#define SIS_WORK_MODE_ONCE     3  // 默认值，每次启动该类只运行一次working 执行完就销毁
-#define SIS_WORK_MODE_NOTICE   4  // 等候通知去执行working, 执行期间的通知忽略, 执行后再等下一个通知
+#define SIS_WAIT_TIMEOUT   0  
+#define SIS_WAIT_NOTICE    1  
 
-typedef struct s_sis_service_thread {
-	int  		 		work_mode; 
-	bool                isfirst;
-	bool         		working;       // 退出时设置为false 
-	s_sis_struct_list  *work_plans;    // plans-work 定时任务 uint16 的数组
-	s_sis_time_gap      work_gap; 	   // always-work 循环运行的配置
+typedef struct s_sis_wait_thread {
+	int                 wait_msec;
+	int         		work_status;   
+	s_sis_thread        work_thread;  
+	s_sis_wait         *work_wait; 
+	s_sis_wait_handle 	wait_notice;
+} s_sis_wait_thread;
 
-	s_sis_mutex_t 		mutex;         // 锁
-	s_sis_thread        work_thread;   // 其中 working 是线程完全执行完毕
+s_sis_wait_thread *sis_wait_thread_create(int waitmsec_);
 
-	s_sis_wait_handle 	wait_delay;   //   线程内部延时处理
-	void(*call)(void *);        // ==NULL 不释放对应内存
-} s_sis_service_thread;
-
-s_sis_service_thread *sis_service_thread_create();
-
-void sis_service_thread_destroy(s_sis_service_thread *task_);
-
-bool sis_service_thread_start(s_sis_service_thread *task_,SIS_THREAD_START_ROUTINE func_, void* val_);
-
-void sis_service_thread_wait_notice(s_sis_service_thread *task_);
-
-void sis_service_thread_wait_start(s_sis_service_thread *task_);
-void sis_service_thread_wait_stop(s_sis_service_thread *task_);
-
-bool sis_service_thread_working(s_sis_service_thread *task_);
-bool sis_service_thread_execute(s_sis_service_thread *task_);  // 检查时间是否到了，可以执行就返回真
-
+void sis_wait_thread_destroy(s_sis_wait_thread *swt_);
+// 通知执行
+void sis_wait_thread_notice(s_sis_wait_thread *swt_);
+// 启动线程
+bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void *source_);
+// 退出线程标志 但不会马上退出
+void sis_wait_thread_close(s_sis_wait_thread *swt_);
+//////// 以下在线程中执行 ////// 
+void sis_wait_thread_start(s_sis_wait_thread *swt_);
+bool sis_wait_thread_working(s_sis_wait_thread *swt_);
+int sis_wait_thread_wait(s_sis_wait_thread *swt_, int waitmsec_);
+void sis_wait_thread_stop(s_sis_wait_thread *swt_);
 
 #endif //_SIS_TIME_H

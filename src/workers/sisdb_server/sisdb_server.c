@@ -50,6 +50,7 @@ static void _cb_disconnect(void *worker_, int sid)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 	sis_net_class_set_cb(context->socket, sid, worker, NULL);
+    // 清理客户信息
     LOG(5)("client disconnect. [%d]\n", sid);	
 }
 

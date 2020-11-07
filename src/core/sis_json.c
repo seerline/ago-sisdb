@@ -706,6 +706,8 @@ void sis_json_object_set_jstr(s_sis_json_node *node_, const char *key_, const ch
 				s_sis_json_node *node = sis_json_clone(handle->node, 1);
 				sis_json_object_add_node(node_, key_, node);
 				sis_json_close(handle);
+				// int i = 1;
+				// sis_json_show(node_, &i);
 			}
 		}
 		else

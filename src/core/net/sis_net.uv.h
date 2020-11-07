@@ -10,6 +10,7 @@
 #include <sis_malloc.h>
 #include <sis_str.h>
 #include <sis_obj.h>
+#include <sis_thread.h>
 
 #define MAX_NET_UV_BUFFSIZE (16 * 1024 * 1024)
 
@@ -25,17 +26,52 @@ void sis_socket_close_handle(uv_handle_t *handle_, uv_close_cb close_cb_);
 
 struct s_sis_socket_server;
 
+/////////////////////////////////////////////////
+//  s_sis_net_queue
+/////////////////////////////////////////////////
+
+// 队列结点
+typedef struct s_sis_net_node {
+	void                  *source; 
+    s_sis_object          *obj;    // 数据区
+    struct s_sis_net_node *next;
+} s_sis_net_node;
+
+// 发起始结点 全部处理完再返回
+typedef int (cb_net_reader)(void *, s_sis_object *);
+
+typedef struct s_sis_net_queue {
+
+    volatile int       busy;  // 返回的数据是否已经处理
+    s_sis_mutex_t      lock;  
+    int                count;
+
+    s_sis_net_node    *head;
+    s_sis_net_node    *tail;
+    cb_net_reader     *cb_reader;
+    s_sis_wait_thread *work_thread;  // 工作线程
+} s_sis_net_queue;
+
+
+s_sis_net_queue *sis_net_queue_create(cb_net_reader *cb_reader_, int wait_nums_);
+void sis_net_queue_destroy(s_sis_net_queue *queue_);
+s_sis_object *sis_net_queue_push(s_sis_net_queue *queue_, void *source_, s_sis_object *obj_);
+void sis_net_queue_next(s_sis_net_queue *queue_);
+
 // 用于服务器的会话单元
 typedef struct s_sis_socket_session
 {
 	int sid;   //会话 
 
-	uv_tcp_t *work_handle;	    //客户端句柄
+	uv_tcp_t *work_handle;	//客户端句柄
 	uv_buf_t  read_buffer;  // 接受数据的 buffer 有真实的数据区
 	uv_buf_t  write_buffer; // 写数据的 buffer 没有真实的数据区 直接使用传入的数据缓存指针
 	
 	uv_async_t write_async;
 	uv_write_t write_req;   // 写时请求
+
+	volatile int    _uv_send_async_nums;
+	volatile int    _uv_recv_async_nums;
 
 	struct s_sis_socket_server *server; //服务器句柄(保存是因为某些回调函数需要到)
 
@@ -53,6 +89,7 @@ typedef struct s_sis_socket_server
 	bool isinit; // 是否已初始化，用于 close 函数中判断
 	bool isexit;
 
+	s_sis_net_queue  *write_list; // 发送队列   
 	s_sis_index_list *sessions; // 子客户端链接 s_sis_socket_session
 
 	char ip[128];
@@ -118,6 +155,8 @@ typedef struct s_sis_socket_client
 
 	bool isinit; // 是否已初始化，用于 close 函数中判断
 	bool isexit; // 避免多次进入
+
+	s_sis_net_queue  *write_list; // 发送队列   
 
 	char  ip[128];
 	int   port;

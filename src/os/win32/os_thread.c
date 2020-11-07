@@ -9,7 +9,7 @@ unsigned _thread_process(void* arg)
 	thread->worker(thread->argv);
 	return 0;
 }
-bool sis_thread_create(SIS_THREAD_START_ROUTINE func, void* var, s_sis_thread *thread)
+bool sis_thread_create(cb_thread_working func, void* var, s_sis_thread *thread)
 {
 	uintptr_t result = 0;
 	unsigned int id = 0;

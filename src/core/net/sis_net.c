@@ -169,36 +169,6 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 // s_sis_net_context
 //////////////////////////
 
-static int cb_sis_reader_send(void *cxt_, s_sis_object *in_)
-{
-	// 从队列中来 往网络端口去
-	// printf("reader read +++ %p. %p\n", in_, SIS_OBJ_NETMSG(in_));
-	sis_object_incr(in_);
-
-	s_sis_net_context *cxt = (s_sis_net_context *)cxt_;
-	s_sis_net_class *cls = (s_sis_net_class *)cxt->father;
-
-	s_sis_net_message *mess = SIS_OBJ_NETMSG(in_);
-	s_sis_object *oobj = sis_net_send_message(cxt, mess); 
-
-	// sis_out_binary("send", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
-	if (oobj)
-	{
-		if (cls->url->io == SIS_NET_IO_WAITCNT)
-		{
-			sis_socket_server_send(cls->server, mess->cid, oobj);
-		}
-		else
-		{
-			sis_socket_client_send(cls->client, oobj);
-		}
-		// 这里要等待发送完毕
-		sis_object_destroy(oobj);
-	}	
-	sis_object_decr(in_);
-	return 0;
-}
-
 s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 {
 	s_sis_net_context *o =SIS_MALLOC(s_sis_net_context, o);
@@ -207,15 +177,12 @@ s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 	o->recv_buffer = sis_memory_create();
 	o->slots = SIS_MALLOC(s_sis_net_slot, o->slots);
 	// 初始化过程全部用 json 交互
-	o->send_cxts = sis_wait_queue_create(o, cb_sis_reader_send);
 	return o;
 } 
 
 void sis_net_context_destroy(void *cxt_)
 {
 	s_sis_net_context *cxt = (s_sis_net_context *)cxt_;
-
-	sis_wait_queue_destroy(cxt->send_cxts);
 
 	sis_memory_destroy(cxt->recv_buffer);
 	// if(cxt->unpack_memory)
@@ -472,8 +439,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 		{
 			// printf("server hand ok.\n");
 			// 此时仅仅是收到握手正确 还未发送信息给client 等发送应答包成功后才设置状态
-			cxt->status = SIS_NET_HANDANS;
-			// sis_wait_queue_set_busy(cxt->send_cxts, 0);	
+			cxt->status = SIS_NET_WORKING;
 			// 这里发送登录信息 
 			if (cls->cb_connected)
 			{
@@ -527,35 +493,49 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 		}
 	}
 }
-int _send_nums = 0;
-msec_t _send_msec = 0;
+// int _send_nums = 0;
+// msec_t _send_msec = 0;
 
 static void cb_server_send_after(void* handle_, int sid_, int status_)
 {
-	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-	char key[32];
-	sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
-	if (cxt)
-	{
-		if (cxt->status == SIS_NET_WORKING)
-		{
-			_send_nums++;
-			if (_send_nums % 1000 == 0)
-			{
-				printf("server send : %d wait :%d cost :%d\n", _send_nums, cxt->send_cxts->count, sis_time_get_now_msec() - _send_msec);
-				_send_msec = sis_time_get_now_msec();
-			}
-			sis_wait_queue_set_busy(cxt->send_cxts, 0);	
-		}
-		else if (cxt->status == SIS_NET_HANDANS)
-		{
-			cxt->status = SIS_NET_WORKING;
-			sis_wait_queue_set_busy(cxt->send_cxts, 0);	
-			LOG(5)("server ans hand. status = %d wait = %d\n", cxt->status, cxt->send_cxts->count);
-		}
-	}	
+	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
+	// char key[32];
+	// sis_llutoa(sid_, key, 32, 10);
+	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
+	// if (cxt)
+	// {
+	// 	if (cxt->status == SIS_NET_WORKING)
+	// 	{
+	// 		_send_nums++;
+	// 		if (_send_nums % 1000 == 0)
+	// 		{
+	// 			printf("server send : %d wait :%d cost :%d\n", _send_nums, cxt->send_cxts->count, sis_time_get_now_msec() - _send_msec);
+	// 			_send_msec = sis_time_get_now_msec();
+	// 		}
+	// 		sis_wait_queue_set_busy(cxt->send_cxts, 0);	
+	// 	}
+	// 	else if (cxt->status == SIS_NET_HANDANS)
+	// 	{
+	// 		cxt->status = SIS_NET_WORKING;
+	// 		sis_wait_queue_set_busy(cxt->send_cxts, 0);	
+	// 		LOG(5)("server ans hand. status = %d wait = %d\n", cxt->status, cxt->send_cxts->count);
+	// 	}
+	// 	else
+	// 	{
+	// 		LOG(5)("server send fail.\n");
+	// 	}
+		
+	// }
+	// else
+	// {
+	// 	LOG(5)("server send fail. %s\n", key);
+	// }
 	// printf("server send to [%d] client. %p %d | %d \n", sid_, cxt, status_, 0);	
+
+	if (status_)
+	{
+		LOG(5)("send to client fail. [%d:%d]\n", sid_, status_);
+	}	
 }
 // int __count = 0;
 static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen_)
@@ -573,9 +553,9 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 		int rtn = sis_ws_match_hand_ans(cls, cxt);
 		if (rtn == 1)
 		{
-			// printf("client hand ok.\n");
+			printf("client hand ok.\n");
 			cxt->status = SIS_NET_WORKING;
-			sis_wait_queue_set_busy(cxt->send_cxts, 0);	
+			// sis_wait_queue_set_busy(cxt->send_cxts, 0);	
 			// sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 			// 这里发送登录信息 
 			if (cls->cb_connected)
@@ -597,7 +577,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			s_sis_net_message *mess = sis_net_message_create();
 			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
 			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
-			// printf("recv decoded rtn.[%d]  %zu size = %zu\n", rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
+			// printf("recv decoded rtn.[%d] %d %zu size = %zu\n", mess->cid, rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
 
 			if (rtn == 1)
 			{
@@ -629,28 +609,28 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 }
 static void cb_client_send_after(void* handle_, int sid_, int status_)
 {
-	s_sis_net_class *cls = (s_sis_net_class *)handle_;
+	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
 
-	// char key[32];
-	// sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
-	if (cxt)
-	{
-		if (cxt->status == SIS_NET_WORKING)
-		{
-			_send_nums++;
-			if (_send_nums % 1000 == 0)
-			{
-				printf("send : %d wait :%d cost :%d\n", _send_nums, cxt->send_cxts->count, sis_time_get_now_msec() - _send_msec);
-				_send_msec = sis_time_get_now_msec();
-			}
-			sis_wait_queue_set_busy(cxt->send_cxts, 0);	
-		}
-		else
-		{
-			LOG(5)("client send hand. status = %d\n", cxt->status);
-		}
-	}
+	// // char key[32];
+	// // sis_llutoa(sid_, key, 32, 10);
+	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
+	// if (cxt)
+	// {
+	// 	if (cxt->status == SIS_NET_WORKING)
+	// 	{
+	// 		_send_nums++;
+	// 		if (_send_nums % 1000 == 0)
+	// 		{
+	// 			printf("send : %d wait :%d cost :%d\n", _send_nums, cxt->send_cxts->count, sis_time_get_now_msec() - _send_msec);
+	// 			_send_msec = sis_time_get_now_msec();
+	// 		}
+	// 		sis_wait_queue_set_busy(cxt->send_cxts, 0);	
+	// 	}
+	// 	else
+	// 	{
+	// 		LOG(5)("client send hand. status = %d\n", cxt->status);
+	// 	}
+	// }
 	// printf("client send to server. %p [%d]\n", cxt, status_);	
 	if (status_)
 	{
@@ -676,11 +656,12 @@ static void cb_server_connected(void *handle_, int sid_)
 		sis_memory_clear(cxt->recv_buffer);
 	}
 	sis_socket_server_set_rwcb(cls->server, sid_, cb_server_recv_after, cb_server_send_after);
+	// sis_socket_server_set_rwcb(cls->server, sid_, cb_server_recv_after, NULL);
 	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 	if (cls->url->protocol == SIS_NET_PROTOCOL_WS)
 	{
 		cxt->status = SIS_NET_HANDING;
-		sis_wait_queue_set_busy(cxt->send_cxts, 1); //  此时不发客户的正式数据
+		// sis_wait_queue_set_busy(cxt->send_cxts, 1); //  此时不发客户的正式数据
 		// 暂时不发送连接信号 等待客户端验证后才发送
 	}
 	else
@@ -718,7 +699,7 @@ static void cb_server_disconnect(void *handle_, int sid_)
 }
 static void cb_client_connected(void *handle_, int sid_)
 {
-	printf("new connect . sid_ = %d \n", sid_);	
+	printf("client connected . sid_ = %d \n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
 	if (!cxt)
@@ -744,7 +725,7 @@ static void cb_client_connected(void *handle_, int sid_)
 	{
 		// 发送握手请求
 		cxt->status = SIS_NET_HANDING;
-		sis_wait_queue_set_busy(cxt->send_cxts, 1);
+		// sis_wait_queue_set_busy(cxt->send_cxts, 1);
 		sis_ws_send_hand_ask(cls, cxt);
 	}
 	else
@@ -882,20 +863,29 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 		return -1;
 	}
 	sis_net_message_incr(mess_);
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess_);
 	char key[32];
 	sis_llutoa(mess_->cid, key, 32, 10);
 	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
 	if (cxt)
 	{
-		s_sis_object *send_obj = sis_wait_queue_push(cxt->send_cxts, obj);
-		if (send_obj == obj)
+		// printf("reader read +++ [%d] %d | %p \n", mess_->cid, cxt->send_cxts->count ,cxt->send_cxts);
+		s_sis_object *sendobj = sis_net_send_message(cxt, mess_); 
+		// sis_out_binary("send", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+		if (sendobj)
 		{
-			// printf("server send : ---- %p\n", obj);
-			cb_sis_reader_send(cxt, obj);
-		}
+			if (cls_->url->io == SIS_NET_IO_WAITCNT)
+			{
+				sis_socket_server_send(cls_->server, mess_->cid, sendobj);
+			}
+			else
+			{
+				sis_socket_client_send(cls_->client, sendobj);
+			}
+			// 这里要等待发送完毕
+			sis_object_destroy(sendobj);
+		}	
 	}
-	sis_object_destroy(obj);
+	sis_net_message_decr(mess_);
 	return 0;
 }
 

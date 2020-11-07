@@ -41,6 +41,8 @@ void sis_bits_stream_clear(s_sis_bits_stream *s_)
     s_->sdbsize = 0;
     s_->bags = 0;
     s_->bags_bytes = 0;
+    s_->max_keynum = 0;
+    s_->bags_curpos = 0;
     if (s_->units)
     {
         sis_pointer_list_clear(s_->units);
@@ -51,7 +53,6 @@ void sis_bits_stream_clear(s_sis_bits_stream *s_)
         s_->ago_memory = NULL;
     }   
 }
-
 size_t sis_bits_stream_getbytes(s_sis_bits_stream *s_)
 {
 	return (s_->bit_currpos + 7) / 8;

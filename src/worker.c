@@ -2,6 +2,123 @@
 #include <worker.h>
 #include <server.h>
 
+/////////////////////////////////////////////////
+//  worker thread
+/////////////////////////////////////////////////
+
+bool sis_work_thread_wait(s_sis_work_thread *task_)
+{
+	if (task_->work_mode == SIS_WORK_MODE_ONCE)
+	{
+        sis_wait_thread_close(task_->work_thread);
+		return true;
+	}
+	else if (task_->work_mode == SIS_WORK_MODE_NOTICE)
+	{
+		int o = sis_wait_thread_wait(task_->work_thread, 30000);
+		// printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
+		if (o == SIS_WAIT_NOTICE)
+		{
+			// only notice return true.
+			if (sis_wait_thread_working(task_->work_thread))
+			{
+				// printf("notice work...\n");
+				return true;
+			}
+		}
+	}
+	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
+	{
+		if (!task_->isfirst)
+		{
+			task_->isfirst = true;
+			return true;
+		}	
+		// printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
+		int o = sis_wait_thread_wait(task_->work_thread, task_->work_gap.delay);
+		// printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
+		if (o != SIS_WAIT_NOTICE)
+		{
+			// printf("delay 1 = %d\n", task_->work_gap.delay);
+			if (task_->work_gap.start == task_->work_gap.stop)
+			{
+				return true;
+			}
+			else
+			{
+				int min = sis_time_get_iminute(0);
+				if ((task_->work_gap.start < task_->work_gap.stop && min > task_->work_gap.start && min < task_->work_gap.stop) ||
+					(task_->work_gap.start > task_->work_gap.stop && (min > task_->work_gap.start || min < task_->work_gap.stop)))
+				{
+					return true;
+				}
+			}
+			// printf("delay = %d\n", task_->work_gap.delay);
+		}
+	}
+	else // SIS_WORK_MODE_PLANS
+	{
+		if (!task_->isfirst)
+		{
+			task_->isfirst = true;
+			return true;
+		}		
+		else 
+        {
+            int o = sis_wait_thread_wait(task_->work_thread, 30000);
+            // printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
+            if (o != SIS_WAIT_NOTICE)
+            {
+                int min = sis_time_get_iminute(0);
+                // printf("save plan ... -- -- -- %d \n", min);
+                for (int k = 0; k < task_->work_plans->count; k++)
+                {
+                    uint16 *lm = sis_struct_list_get(task_->work_plans, k);
+                    if (min == *lm)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+        }
+	}
+    sis_sleep(100);
+	return false;
+}
+s_sis_work_thread *sis_work_thread_create()
+{
+	s_sis_work_thread *o = sis_malloc(sizeof(s_sis_work_thread));
+	memset(o, 0, sizeof(s_sis_work_thread));
+	o->work_plans = sis_struct_list_create(sizeof(uint16));
+	return o;
+}
+
+bool sis_work_thread_open(s_sis_work_thread *task_, cb_thread_working func_, void *val_)
+{
+    if (task_->work_mode == SIS_WORK_MODE_NONE)
+    {
+        return false;
+    }
+    // 默认30秒
+    task_->work_thread = sis_wait_thread_create(30000);
+	if (!sis_wait_thread_open(task_->work_thread, func_, val_))
+	{
+		return false;
+	}
+	return true;
+}
+void sis_work_thread_destroy(s_sis_work_thread *task_)
+{
+    if (task_->work_thread)
+    {
+        sis_wait_thread_destroy(task_->work_thread);
+    }
+	sis_struct_list_destroy(task_->work_plans);
+	sis_free(task_);
+	LOG(5)("work_thread end.\n");
+}
+
 /////////////////////////////////////////
 // worker thread function
 /////////////////////////////////////////
@@ -13,34 +130,32 @@ void *_service_work_thread(void *argv_)
 	{
 		return NULL;
 	}
-    s_sis_service_thread *service_thread = worker->service_thread;
+    s_sis_work_thread *service_thread = worker->service_thread;
 	if (worker->slots->work_init)
 	{
 		worker->slots->work_init(worker);
 	}
-    sis_service_thread_wait_start(service_thread);  
+    sis_wait_thread_start(service_thread->work_thread);
     worker->status = SIS_SERVER_STATUS_INITED;
-    while (sis_service_thread_working(service_thread))
+    while (sis_wait_thread_working(service_thread->work_thread))
     {
-        // printf(".....%d \n", worker->status);
-        if (sis_service_thread_execute(service_thread) && worker->status != SIS_SERVER_STATUS_CLOSE)
+        if (sis_work_thread_wait(service_thread) && worker->status != SIS_SERVER_STATUS_CLOSE)
         {
-			// printf("work = %p mode = %d\n", worker, service_thread->work_mode);
-			LOG(10)("work = %p mode = %d\n", worker, service_thread->work_mode);
+			// LOG(10)("work = %p mode = %d\n", worker, service_thread->work_mode);
             // --------user option--------- //
 			if (worker->slots->working)
 			{
 				worker->slots->working(worker);
 			}
-			LOG(10)("work end. status = %d\n", worker->status);
+			// LOG(10)("work end. status = %d\n", worker->status);
         }
     }	
-    sis_service_thread_wait_stop(service_thread);
-    // 这里总执行不到，需想其他办法
-	// if (worker->slots->work_uninit)
-	// {
-	// 	worker->slots->work_uninit(worker);
-	// }	
+    sis_wait_thread_stop(service_thread->work_thread);
+	if (worker->slots->work_uninit)
+	{
+		worker->slots->work_uninit(worker);
+	}	
+    worker->status = SIS_SERVER_STATUS_NOINIT;
 	LOG(5)("work [%s] end.\n", worker->workername);
     return NULL;
 }
@@ -133,7 +248,6 @@ bool _sis_service_init(s_sis_worker *worker_, s_sis_json_node *node_)
                 return true;
             }            
         }
-
     }
     return true;
 }
@@ -181,7 +295,7 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
     // 如果有 working 表示有独立线程需要启动
     if (worker->slots->working) 
     {
-        worker->service_thread = sis_service_thread_create();
+        worker->service_thread = sis_work_thread_create();
 
         if (!_sis_service_init(worker, node_))
         {
@@ -189,12 +303,15 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
             sis_worker_destroy(worker);
             return NULL;
         }
-        LOG(5)("worker service_thread create. %d\n", worker->service_thread->work_mode);
-        if (!sis_service_thread_start(worker->service_thread, _service_work_thread, worker))
+        if (worker->service_thread->work_mode != SIS_WORK_MODE_NONE)
         {
-            LOG(3)("can't start service_thread\n");
-            sis_worker_destroy(worker);
-            return NULL;
+            LOG(5)("worker service_thread create. %d\n", worker->service_thread->work_mode);
+            if (!sis_work_thread_open(worker->service_thread, _service_work_thread, worker))
+            {
+                LOG(3)("can't start service_thread\n");
+                sis_worker_destroy(worker);
+                return NULL;
+            }
         }
     }
     worker->status |= SIS_SERVER_STATUS_WORK_INIT;
@@ -241,12 +358,7 @@ void sis_worker_destroy(void *worker_)
     {
         if (worker->service_thread)
         {
-            sis_service_thread_destroy(worker->service_thread);
-            // 应该在线程退出后执行，但有问题，所以先放这里
-            if (worker->slots->work_uninit)
-            {
-                worker->slots->work_uninit(worker);
-            }
+            sis_work_thread_destroy(worker->service_thread);
         }
     }
     if (worker->methods)
@@ -387,12 +499,115 @@ s_sis_worker *sis_worker_search(const char *workname_)
 }
 
 // 通知worker去执行 working 
-void sis_worker_notice(s_sis_worker *worker_)
+void sis_work_thread_notice(s_sis_worker *worker_)
 {
     // printf("====== %p\n", worker_->service_thread);
     // if (worker_ && worker_->service_thread && worker_->service_thread->work_mode == SIS_WORK_MODE_NOTICE)
-    if (worker_ && worker_->service_thread)
+    if (worker_ && worker_->service_thread && worker_->service_thread->work_thread)
     {
-        sis_service_thread_wait_notice(worker_->service_thread);
+        sis_wait_thread_notice(worker_->service_thread->work_thread);
     }
 }
+
+
+#if 0
+#include <signal.h>
+#include <stdio.h>
+
+s_sis_wait __thread_wait__; 
+s_sis_wait_handle __wait;
+int __count = 0;
+
+int sis_thread_wait_sleep1(s_sis_wait *wait_, int delay_) // 秒
+{
+	struct timeval tv;
+	struct timespec ts;
+	sis_time_get_day(&tv, NULL);
+	ts.tv_sec = tv.tv_sec + delay_;
+	ts.tv_nsec = tv.tv_usec * 1000;
+	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
+	// 返回 SIS_ETIMEDOUT 就正常处理
+}
+
+void *_plan_task_example(void *argv_)
+{
+	s_sis_work_thread *task = (s_sis_work_thread *)argv_;
+
+	// sis_thread_wait_create(&task->wait);
+	// sis_thread_wait_start(&task->wait);
+	sis_thread_wait_create(&__thread_wait__);
+	sis_thread_wait_start(&__thread_wait__);
+	// sis_out_binary("alone: ",(const char *)&__thread_wait__,sizeof(s_sis_wait));
+
+	// sis_thread_wait_create(&test_wait->wait);
+	// sis_thread_wait_start(&test_wait->wait);
+	// sis_out_binary("new: ",&test_wait->wait,sizeof(s_sis_wait));
+
+	s_sis_wait *wait = sis_wait_get(__wait);
+	sis_mutex_lock(&wait->mutex);
+
+	while (task->working)
+	{
+		printf(" test ..1.. %p \n", task);
+		sis_sleep(1000);
+		// if(sis_thread_wait_sleep(&task->wait, 3) == SIS_ETIMEDOUT)
+		// if(sis_thread_wait_sleep(&task->wait, 3) == SIS_ETIMEDOUT)
+		// if(sis_thread_wait_sleep_msec(&task->wait, 1000) == SIS_ETIMEDOUT)
+		// if(sis_thread_wait_sleep_msec(&__thread_wait__, 1300) == SIS_ETIMEDOUT)
+		if(sis_thread_wait_sleep1(wait, 1) == SIS_ETIMEDOUT)
+		{
+			__count++;
+			printf(" test ... [%d]\n", __count);
+		}
+		else
+		{
+			printf(" no timeout ... \n");
+		}
+		
+		// if (sis_work_thread_working(task))
+		{
+			// printf(" run ... \n");
+		}
+	}
+	printf("end . \n");
+	// sis_work_thread_wait_stop(task);
+	// sis_thread_wait_stop(&task->wait);
+	// sis_thread_wait_stop(&__thread_wait__);
+	// sis_thread_wait_stop(&test_wait->wait);
+	sis_mutex_unlock(&wait->mutex);
+	return NULL;
+}
+
+int __exit = 0;
+s_sis_work_thread *__plan_task;
+
+void exithandle(int sig)
+{
+	printf("exit .1. \n");
+	sis_work_thread_destroy(__plan_task);
+	printf("exit .ok . \n");
+	__exit = 1;
+}
+
+int main()
+{
+	__wait = sis_wait_malloc();
+
+	__plan_task = sis_work_thread_create();
+	__plan_task->work_mode = SIS_WORK_MODE_GAPS;
+	__plan_task->work_gap.start = 0;
+	__plan_task->work_gap.stop = 2359;
+	__plan_task->work_gap.delay = 5;
+
+	printf(" test ..0.. %p wait = %lld\n", __plan_task, sizeof(__plan_task->wait));
+	sis_work_thread_open(__plan_task, _plan_task_example, __plan_task);
+
+	signal(SIGINT, exithandle);
+
+	printf("working ... \n");
+	while (!__exit)
+	{
+		sis_sleep(300);
+	}
+}
+#endif

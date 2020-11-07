@@ -141,12 +141,11 @@ s_sis_object *sis_wait_queue_pop(s_sis_wait_queue *queue_)
 void *_thread_wait_reader(void *argv_)
 {
     s_sis_wait_queue *wqueue = (s_sis_wait_queue *)argv_;
-    s_sis_wait *wait = sis_wait_get(wqueue->notice_wait);
-    sis_thread_wait_start(wait);
-    wqueue->work_status = SIS_UNLOCK_STATUS_WORK;
-    while (wqueue->work_status != SIS_UNLOCK_STATUS_EXIT)
+    sis_wait_thread_start(wqueue->work_thread);
+    while (sis_wait_thread_working(wqueue->work_thread))
     {
         s_sis_object *obj = NULL;
+        // printf("1 --- %p\n", wqueue);
         sis_mutex_lock(&wqueue->lock);
         if (!wqueue->busy)
         {
@@ -156,7 +155,6 @@ void *_thread_wait_reader(void *argv_)
                 wqueue->busy = 1;
             }
         }
-        sis_mutex_unlock(&wqueue->lock);
         if (obj)
         {
             if (wqueue->cb_reader)
@@ -165,7 +163,9 @@ void *_thread_wait_reader(void *argv_)
             }
             sis_object_decr(obj);
         }
-        if (sis_thread_wait_sleep_msec(wait, 300) == SIS_ETIMEDOUT)
+        sis_mutex_unlock(&wqueue->lock);
+        // printf("1.1 ---  %p\n", wqueue);
+        if (sis_wait_thread_wait(wqueue->work_thread, 3000) == SIS_WAIT_TIMEOUT)
         {
             // printf("timeout exit. %d %p\n", waitmsec, reader);
         }
@@ -174,9 +174,7 @@ void *_thread_wait_reader(void *argv_)
             // printf("notice exit. %d\n", waitmsec);
         }       
     }
-    sis_thread_wait_stop(wait);
-    sis_thread_finish(&wqueue->work_thread);
-    wqueue->work_status = SIS_UNLOCK_STATUS_NONE;
+    sis_wait_thread_stop(wqueue->work_thread);
     return NULL;
 }
 
@@ -190,35 +188,32 @@ s_sis_wait_queue *sis_wait_queue_create(void *cb_source_, cb_lock_reader *cb_rea
     o->cb_source = cb_source_ ? cb_source_ : o;
     o->cb_reader = cb_reader_;
     sis_mutex_init(&o->lock, NULL);
-    o->notice_wait = sis_wait_malloc();
     
     // 最后再启动线程 顺序不能变 不然数据会等待
-    if (!sis_thread_create(_thread_wait_reader, o, &o->work_thread))
+	o->work_thread = sis_wait_thread_create(0);
+    // 最后再启动线程 顺序不能变 不然数据会等待
+    if (!sis_wait_thread_open(o->work_thread, _thread_wait_reader, o))
     {
         LOG(1)("can't start reader thread.\n");
         sis_wait_queue_destroy(o);
-        return false;
+        return NULL;
     }
     return  o;
 }
 void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
 {
-    queue_->work_status = SIS_UNLOCK_STATUS_EXIT;
-    // 通知退出
-    sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
-    while (queue_->work_status != SIS_UNLOCK_STATUS_NONE)
-    {
-        sis_sleep(10);
-    }
-    sis_wait_free(queue_->notice_wait);
+	if (queue_->work_thread)
+	{
+		sis_wait_thread_destroy(queue_->work_thread);
+	}
     sis_mutex_lock(&queue_->lock);
     while (queue_->count > 0)
     {
         s_sis_object *obj = sis_wait_queue_pop(queue_);
         sis_object_decr(obj);
     }
-    // printf("=== clear wait. %d\n", queue_->count);
     sis_mutex_unlock(&queue_->lock);
+    printf("=== sis_wait_queue_destroy. %d\n", queue_->count);
     sis_unlock_node_destroy(queue_->tail);
     sis_free(queue_);
 }
@@ -226,12 +221,12 @@ void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
 s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
 {  
     s_sis_object *obj = NULL;
+    // printf("2 ---  %p\n", queue_);
     sis_mutex_lock(&queue_->lock);
     if (!queue_->busy && queue_->count == 0)
     {
         obj = obj_; 
         queue_->busy = 1;
-        sis_mutex_unlock(&queue_->lock);
     }
     else
     {
@@ -239,9 +234,9 @@ s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
         queue_->tail->next = new_node;
         queue_->tail = new_node;
         queue_->count++;
-        sis_mutex_unlock(&queue_->lock);
-        // sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
     }
+    sis_mutex_unlock(&queue_->lock);
+    // printf("2.1 ---  %p\n", queue_);
 	return obj;
 }
 // 如果队列为空 设置 busy = 0 返回空 | 如果有数据就弹出最早的消息 返回值需要 sis_object_decr 释放 
@@ -249,12 +244,14 @@ s_sis_object *sis_wait_queue_push(s_sis_wait_queue *queue_, s_sis_object *obj_)
 
 void sis_wait_queue_set_busy(s_sis_wait_queue *queue_, int isbusy_)
 {
+    // printf("3 ---  %p\n", queue_);
     sis_mutex_lock(&queue_->lock);
     queue_->busy = isbusy_;
     sis_mutex_unlock(&queue_->lock);
+    // printf("3.1 ---  %p\n", queue_);
     if (isbusy_ == 0)
     {
-        sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
+        sis_wait_thread_notice(queue_->work_thread);
     }
 }
 /////////////////////////////////////////////////
@@ -280,17 +277,15 @@ int _fast_queue_move(s_sis_fast_queue *queue_)
 void *_thread_fast_reader(void *argv_)
 {
     s_sis_fast_queue *wqueue = (s_sis_fast_queue *)argv_;
-    s_sis_wait *wait = sis_wait_get(wqueue->notice_wait);
-    sis_thread_wait_start(wait);
+	sis_wait_thread_start(wqueue->work_thread);
 
-    int waitmsec = wqueue->wait_msec == 0 ? 1000 : wqueue->wait_msec;
+    int waitmsec = wqueue->work_thread->wait_msec == 0 ? 1000 : wqueue->work_thread->wait_msec;
     if (wqueue->zero_msec)
     {
         waitmsec = wqueue->zero_msec;
     }
-    wqueue->work_status = SIS_UNLOCK_STATUS_WORK;
     bool surpass_waittime = false;
-    while (wqueue->work_status != SIS_UNLOCK_STATUS_EXIT)
+    while (sis_wait_thread_working(wqueue->work_thread))
     {
         // s_sis_object *obj = NULL;
         if (!sis_mutex_trylock(&wqueue->wlock))
@@ -325,7 +320,7 @@ void *_thread_fast_reader(void *argv_)
             }
         }
         
-        if (sis_thread_wait_sleep_msec(wait, waitmsec) == SIS_ETIMEDOUT)
+        if (sis_wait_thread_wait(wqueue->work_thread, waitmsec) == SIS_WAIT_TIMEOUT)
         {
             // printf("timeout exit. %d %p\n", waitmsec, reader);
             surpass_waittime = true;
@@ -335,9 +330,7 @@ void *_thread_fast_reader(void *argv_)
             surpass_waittime = false;
         }            
     }
-    sis_thread_wait_stop(wait);
-    sis_thread_finish(&wqueue->work_thread);
-    wqueue->work_status = SIS_UNLOCK_STATUS_NONE;
+    sis_wait_thread_stop(wqueue->work_thread);
     return NULL;
 }
 
@@ -357,31 +350,26 @@ s_sis_fast_queue *sis_fast_queue_create(
 
     o->cb_source = cb_source_ ? cb_source_ : o;
     o->cb_reader = cb_reader_;
-    o->notice_wait = sis_wait_malloc();
 
-    o->wago_msec = 0;
-    o->wait_msec = wait_msec_ > 1000 ? 1000 : wait_msec_;   
+    int wait_msec = (wait_msec_ > 1000 || wait_msec_ < 3) ? 1000 : wait_msec_;   
     o->zero_msec = zero_msec_;   
 
+ 	o->work_thread = sis_wait_thread_create(wait_msec);
     // 最后再启动线程 顺序不能变 不然数据会等待
-    if (!sis_thread_create(_thread_fast_reader, o, &o->work_thread))
+    if (!sis_wait_thread_open(o->work_thread, _thread_fast_reader, o))
     {
         LOG(1)("can't start reader thread.\n");
         sis_fast_queue_destroy(o);
-        return false;
+        return NULL;
     }
     return  o;
 }
 void sis_fast_queue_destroy(s_sis_fast_queue *queue_)
 {
-    queue_->work_status = SIS_UNLOCK_STATUS_EXIT;
-    // 通知退出
-    sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
-    while (queue_->work_status != SIS_UNLOCK_STATUS_NONE)
-    {
-        sis_sleep(10);
-    }
-    sis_wait_free(queue_->notice_wait);
+	if (queue_->work_thread)
+	{
+		sis_wait_thread_destroy(queue_->work_thread);
+	}
     sis_mutex_lock(&queue_->wlock);
     _fast_queue_move(queue_); // 从w迁移到r
     sis_mutex_unlock(&queue_->wlock);
@@ -411,99 +399,88 @@ int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_)
     queue_->wtail = new_node;
     queue_->wnums++;
     sis_mutex_unlock(&queue_->wlock);
-    // if (queue_->wait_msec == 0)
-    // {
-    //     sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
-    // }
-    // else
-    // {
-    //     msec_t now_msec = sis_time_get_now_msec();
-    //     if (now_msec - queue_->wago_msec > queue_->wait_msec / 3) 
-    //     {
-    //         sis_thread_wait_notice(sis_wait_get(queue_->notice_wait));
-    //         queue_->wago_msec = now_msec;
-    //     }        
-    // }    
 	return 1;
 }
 /////////////////////////////////////////////////
 //  s_sis_lock_reader
 /////////////////////////////////////////////////
+// int __check_while = 0;
 void *_thread_reader(void *argv_)
 {
     s_sis_lock_reader *reader = (s_sis_lock_reader *)argv_;
     s_sis_lock_list *ullist = (s_sis_lock_list *)reader->father;
-    s_sis_wait *wait = sis_wait_get(reader->notice_wait);
-    sis_thread_wait_start(wait);
+
+	sis_wait_thread_start(reader->work_thread);
 
     int waitmsec = 3000;
     if (reader->work_mode & SIS_UNLOCK_READER_ZERO)
     {
-        waitmsec = reader->zeromsec;
+        waitmsec = reader->zero_msec;
     }
     bool surpass_waittime = false;
-    while (reader->work_status != SIS_UNLOCK_STATUS_EXIT)
+    while (sis_wait_thread_working(reader->work_thread))
     {
-        if (reader->work_status == SIS_UNLOCK_STATUS_WORK)
+        if (reader->cursor == NULL)
         {
-            if (reader->cursor == NULL)
+            // 第一次 得到开始的位置
+            if (reader->work_mode & SIS_UNLOCK_READER_HEAD)
             {
-                // 第一次 得到开始的位置
-                if (reader->work_mode & SIS_UNLOCK_READER_HEAD)
-                {
-                    reader->cursor = sis_lock_queue_head(ullist->work_queue);
-                }
-                else
-                {
-                    reader->cursor = sis_lock_queue_tail(ullist->work_queue);
-                }
+                reader->cursor = sis_lock_queue_head(ullist->work_queue);
             }
-            if (reader->cursor)
+            else
             {
-                s_sis_unlock_node *next = sis_lock_queue_next(ullist->work_queue, reader->cursor);
-                // if (surpass_waittime)
-                // {
-                //     printf("next = %p\n", next); 
-                // }
-                if (next)
-                {
-                    while(next)   
-                    {
-                        if (reader->work_status == SIS_UNLOCK_STATUS_EXIT) // 加速退出
-                        {
-                            break;
-                        }
-                        // printf("next = %p\n", next); 
-                        if (next->obj)
-                        {
-                            if (reader->cb_recv)
-                            reader->cb_recv(reader->cb_source, next->obj);
-                        }
-                        reader->cursor = next;
-                        next = sis_lock_queue_next(ullist->work_queue, reader->cursor);
-                    } 
-                }
-                else
-                {
-                    if (surpass_waittime && (reader->work_mode & SIS_UNLOCK_READER_ZERO))
-                    {
-                        if (reader->cb_recv)
-                        reader->cb_recv(reader->cb_source, NULL);
-                    }
-                }               
-                // 如果读完发送标志
-                if ((reader->work_mode & SIS_UNLOCK_READER_HEAD) && !reader->isrealtime)
-                {
-                    // 只发一次
-                    if (reader->cb_realtime)
-                    {
-                        reader->cb_realtime(reader->cb_source);
-                    }
-                    reader->isrealtime = true;
-                }
+                reader->cursor = sis_lock_queue_tail(ullist->work_queue);
             }
         }
-        if (sis_thread_wait_sleep_msec(wait, waitmsec) == SIS_ETIMEDOUT)
+        if (reader->cursor)
+        {
+            s_sis_unlock_node *next = sis_lock_queue_next(ullist->work_queue, reader->cursor);
+            // if (surpass_waittime)
+            // {
+            //     printf("next = %p\n", next); 
+            // }
+            if (next)
+            {
+                while(next)   
+                {
+                    if (reader->work_thread->work_status == SIS_WAIT_STATUS_EXIT) // 加速退出
+                    {
+                        break;
+                    }
+                    // if ((++__check_while) % 1000 == 0)
+                    // {
+                    //     printf("__check_while : next = %p\n", next); 
+                    // }
+                    // printf("next = %p\n", next); 
+                    if (next->obj)
+                    {
+                        if (reader->cb_recv)
+                        reader->cb_recv(reader->cb_source, next->obj);
+                    }
+                    reader->cursor = next;
+                    next = sis_lock_queue_next(ullist->work_queue, reader->cursor);
+                } 
+            }
+            else
+            {
+                if (surpass_waittime && (reader->work_mode & SIS_UNLOCK_READER_ZERO))
+                {
+                    if (reader->cb_recv)
+                    reader->cb_recv(reader->cb_source, NULL);
+                }
+            }               
+            // 如果读完发送标志
+            if ((reader->work_mode & SIS_UNLOCK_READER_HEAD) && !reader->isrealtime)
+            {
+                // 只发一次
+                if (reader->cb_realtime)
+                {
+                    reader->cb_realtime(reader->cb_source);
+                }
+                reader->isrealtime = true;
+            }
+        }
+        if (sis_wait_thread_wait(reader->work_thread, waitmsec) == SIS_WAIT_TIMEOUT)
         {
             // printf("timeout exit. %d %p\n", waitmsec, reader);
             surpass_waittime = reader->isrealtime ? true : false;
@@ -515,9 +492,7 @@ void *_thread_reader(void *argv_)
             surpass_waittime = false;
         }       
     }
-    sis_thread_wait_stop(wait);
-    sis_thread_finish(&reader->work_thread);
-    reader->work_status = SIS_UNLOCK_STATUS_NONE;
+    sis_wait_thread_stop(reader->work_thread);
     return NULL;
 }
 
@@ -528,7 +503,7 @@ s_sis_lock_reader *sis_lock_reader_create(s_sis_lock_list *ullist_,
 {
     s_sis_lock_reader *o = SIS_MALLOC(s_sis_lock_reader, o);
     sis_str_get_time_id(o->sign, 16);
-    // printf("sign=%s\n", o->sign);
+    printf("new sign=%s\n", o->sign);
     o->father = ullist_;
     o->cb_source = cb_source_ ? cb_source_ : o;
     o->cb_recv = cb_recv_;
@@ -540,43 +515,33 @@ s_sis_lock_reader *sis_lock_reader_create(s_sis_lock_list *ullist_,
         o->work_mode &= ~SIS_UNLOCK_READER_HEAD;
         o->isrealtime = 1;
     }
-
-    o->notice_wait = sis_wait_malloc();
-    // printf("new %p %d | %p\n", o, o->notice_wait, o->father);
-
-    o->work_status = SIS_UNLOCK_STATUS_NONE;
     return o;
 }
 void sis_lock_reader_destroy(void *reader_)
 {
     s_sis_lock_reader *reader = (s_sis_lock_reader *)reader_;
-    if (reader->work_status != SIS_UNLOCK_STATUS_NONE)
-    {
-        reader->work_status = SIS_UNLOCK_STATUS_EXIT;
-        // 通知退出
-        sis_thread_wait_notice(sis_wait_get(reader->notice_wait));
-        while (reader->work_status != SIS_UNLOCK_STATUS_NONE)
-        {
-            sis_sleep(10);
-        }
-    }
-    sis_wait_free(reader->notice_wait);
+
+	if (reader->work_thread)
+	{
+		sis_wait_thread_destroy(reader->work_thread);
+	}
+    printf("del sign=%s\n", reader->sign);
     sis_free(reader); 
 }
-void sis_lock_reader_zero(s_sis_lock_reader *reader_, int zeromsec_)
+void sis_lock_reader_zero(s_sis_lock_reader *reader_, int zero_msec_)
 {
-    if (zeromsec_ > 0)
+    if (zero_msec_ > 0)
     {
-        reader_->zeromsec = zeromsec_ > 10 ? zeromsec_ : 10;
+        reader_->zero_msec = zero_msec_ > 10 ? zero_msec_ : 10;
         reader_->work_mode |= SIS_UNLOCK_READER_ZERO;
     }
 }
 bool sis_lock_reader_open(s_sis_lock_reader *reader_)
 {
     // 设置工作状态
-    reader_->work_status = SIS_UNLOCK_STATUS_WORK;
+	reader_->work_thread = sis_wait_thread_create(3000);
     // 最后再启动线程 顺序不能变 不然数据会等待
-    if (!sis_thread_create(_thread_reader, reader_, &reader_->work_thread))
+    if (!sis_wait_thread_open(reader_->work_thread, _thread_reader, reader_))
     {
         LOG(1)("can't start reader thread.\n");
         sis_lock_reader_destroy(reader_);
@@ -594,6 +559,7 @@ void sis_lock_reader_close(s_sis_lock_reader *reader_)
     s_sis_lock_list *ullist = (s_sis_lock_list *)reader_->father;
     sis_rwlock_lock_w(&ullist->userslock);
     int index = sis_pointer_list_indexof(ullist->users, reader_);
+    printf("delete reader. %s %d %d\n", reader_->sign, index, ullist->users->count);
     sis_pointer_list_delete(ullist->users, index , 1);
     sis_rwlock_unlock(&ullist->userslock);
 }   
@@ -622,11 +588,10 @@ static void *_thread_watcher(void *argv_)
 {
     s_sis_lock_reader *reader = (s_sis_lock_reader *)argv_;
     s_sis_lock_list *ullist = (s_sis_lock_list *)reader->father;
-    s_sis_wait *wait = sis_wait_get(reader->notice_wait);
-    sis_thread_wait_start(wait);
-    while (reader->work_status != SIS_UNLOCK_STATUS_EXIT)
+	sis_wait_thread_start(reader->work_thread);
+    while (sis_wait_thread_working(reader->work_thread))
     {
-        if (sis_thread_wait_sleep_msec(wait, 3000) != SIS_ETIMEDOUT)
+        if (sis_wait_thread_wait(reader->work_thread, 3000) == SIS_WAIT_NOTICE)
         {
             // printf("reader notice.\n");
             // 如果被通知就一定有数据 同步消息给其他读者
@@ -636,7 +601,7 @@ static void *_thread_watcher(void *argv_)
                 for (int i = 0; i < ullist->users->count; i++)
                 {
                     s_sis_lock_reader *other = (s_sis_lock_reader *)sis_pointer_list_get(ullist->users, i);
-                    sis_thread_wait_notice(sis_wait_get(other->notice_wait));
+                    sis_wait_thread_notice(other->work_thread);
                 }
                 sis_rwlock_unlock(&ullist->userslock); 
             }
@@ -644,11 +609,11 @@ static void *_thread_watcher(void *argv_)
             // sis_sleep(10);
             // continue; // 不能要 否则内存不能释放
         }
-        if (reader->work_status == SIS_UNLOCK_STATUS_EXIT)
+        if (reader->work_thread->work_status == SIS_WAIT_STATUS_EXIT)
         {
             break;
         }
-        if (reader->work_status != SIS_UNLOCK_STATUS_WORK)
+        if (reader->work_thread->work_status != SIS_WAIT_STATUS_WORK)
         {
             continue;
         }
@@ -671,6 +636,10 @@ static void *_thread_watcher(void *argv_)
                     {
                         break;
                     }
+                    // if ((++__check_while) % 1000 == 0)
+                    // {
+                    //     printf("__check_while : watch = %p\n", next); 
+                    // }
                     if (ullist->save_mode == SIS_UNLOCK_SAVE_NONE)
                     {
                         // 销毁一个大家都不用的数据
@@ -699,9 +668,7 @@ static void *_thread_watcher(void *argv_)
             }            
         }
     }
-    sis_thread_wait_stop(wait);
-    sis_thread_finish(&reader->work_thread);
-    reader->work_status = SIS_UNLOCK_STATUS_NONE;
+    sis_wait_thread_stop(reader->work_thread);
     return NULL;
 }
 
@@ -731,8 +698,9 @@ s_sis_lock_list *sis_lock_list_create(size_t maxsize_)
     
     {
         o->watcher = sis_lock_reader_create(o, SIS_UNLOCK_READER_HEAD, NULL, NULL, NULL);
-        o->watcher->work_status = SIS_UNLOCK_STATUS_WORK;
-        if (!sis_thread_create(_thread_watcher, o->watcher, &o->watcher->work_thread))
+        o->watcher->work_thread = sis_wait_thread_create(0);
+        // 最后再启动线程 顺序不能变 不然数据会等待
+        if (!sis_wait_thread_open(o->watcher->work_thread, _thread_watcher, o->watcher))
         {
             LOG(1)("can't start watcher thread.\n");
             sis_lock_list_destroy(o);
@@ -764,7 +732,7 @@ void sis_lock_list_push(s_sis_lock_list *ullist_, s_sis_object *obj_)
     // 只对 watcher 通知
     if (ullist_->watcher)
     {
-        sis_thread_wait_notice(sis_wait_get(ullist_->watcher->notice_wait));
+        sis_wait_thread_notice(ullist_->watcher->work_thread);
     }
 }
 void sis_lock_list_clear(s_sis_lock_list *ullist_)
@@ -831,7 +799,7 @@ static int cb_recv(void *src, s_sis_object *obj)
 {
     s_sis_lock_reader *reader = (s_sis_lock_reader *)src;
     ADDF(&pops, 1);
-    ADDF(&read_pops[reader->zeromsec], 1);
+    ADDF(&read_pops[reader->zero_msec], 1);
     // printf("队列输出元素：------÷ %s : %d ||  %d\n", reader->sign, (int)obj->ptr, ADDF(&pops, 1));
     // sis_sleep(1);
     return 0;
@@ -1009,7 +977,7 @@ int main()
             read_pops[i] = 0;
             read[i] = sis_lock_reader_create(sharedb, SIS_UNLOCK_READER_HEAD, NULL, cb_recv, NULL);
             // read[i] = sis_lock_reader_create(sharedb, SIS_UNLOCK_READER_TAIL, NULL, cb_recv, NULL);
-            read[i]->zeromsec = i;
+            read[i]->zero_msec = i;
             sis_lock_reader_open(read[i]);
             printf("read %d \n", sharedb->users->count);
         }

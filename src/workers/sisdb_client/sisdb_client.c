@@ -440,7 +440,6 @@ static int cb_reply(void *worker_, int rid_, void *key_, void *val_)
         sis_message_set_str(msg, "val", val_, sis_sdslen(val_)); 
     }
     // printf("stop 1 : %d\n", (unsigned int)sis_thread_self());
-    // sis_wait_stop(context->wait);
     return 0; 
 }
 

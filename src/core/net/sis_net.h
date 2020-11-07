@@ -125,9 +125,8 @@ typedef struct s_sis_net_context {
 	// s_sis_memory      *unpack_memory; // 接收数据如果为不完整的包就把数据放这里 等待数据全部收完再拷贝给处理数据
 
 	void              *father;   // s_sis_net_class *的指针
-	// s_sis_lock_list    *ready_send_cxts; // 准备发送的数据 s_sis_net_message - s_sis_object
-	// s_sis_lock_reader  *reader_send;  // 读取发送队列 等待上一个读取结束的读者
-	s_sis_wait_queue   *send_cxts; 
+
+	// s_sis_wait_queue   *send_cxts; 
 	s_sis_net_slot    *slots;     // 根据协议对接不同功能函数	
 
 	void              *cb_source;    // 回调句柄

@@ -161,7 +161,7 @@
 //     return 0;  
 // }  
  
-bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread *thread_)
+bool sis_thread_create(cb_thread_working func_, void* val_, s_sis_thread *thread_)
 {
 	s_sis_thread_id_t result = 0;
 	pthread_attr_t attr;

@@ -175,8 +175,9 @@ void sis_net_message_clear_argv(s_sis_net_message *mess_)
 //  解码函数
 ////////////////////////////////////////////////////////
 
-bool sis_net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
+bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 {
+
     s_sis_json_node *node = sis_json_create_object();
 	if (in_->style & SIS_NET_CMD && in_->cmd) 
 	{
@@ -205,15 +206,15 @@ bool sis_net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 			sis_json_object_set_string(node, "rval", in_->rval, sis_sdslen(in_->rval)); 
 		}		
 	}
-	printf("sis_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n", 
-			in_->style, 
-			(int)in_->rcmd,
-			in_->source? in_->source : "nil",
-			in_->cmd ? in_->cmd : "nil",
-			in_->key? in_->key : "nil",
-			in_->val? in_->val : "nil"
-			// ,in_->rval? in_->rval : "nil"
-			);
+	// printf("_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n", 
+	// 		in_->style, 
+	// 		(int)in_->rcmd,
+	// 		in_->source? in_->source : "nil",
+	// 		in_->cmd ? in_->cmd : "nil",
+	// 		in_->key? in_->key : "nil",
+	// 		in_->val? in_->val : "nil"
+	// 		// ,in_->rval? in_->rval : "nil"
+	// 		);
 
     size_t len = 0;
     char *str = sis_json_output_zip(node, &len);
@@ -283,12 +284,12 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	mess->style = mess->cmd ? (mess->style | SIS_NET_CMD) : mess->style;
 	mess->key = _sis_json_node_get_sds(handle->node, "key");
 	mess->style = mess->key ? (mess->style | SIS_NET_KEY) : mess->style;
-	printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
-			mess->source? mess->source : "nil",
-			mess->cmd ? mess->cmd : "nil",
-			mess->key? mess->key : "nil",
-			mess->val? mess->val : "nil",
-			mess->rval? mess->rval : "nil");
+	// printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
+	// 		mess->source? mess->source : "nil",
+	// 		mess->cmd ? mess->cmd : "nil",
+	// 		mess->key? mess->key : "nil",
+	// 		mess->val? mess->val : "nil",
+	// 		mess->rval? mess->rval : "nil");
 
     sis_json_close(handle);
 	if (!mess->style)
@@ -309,7 +310,7 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
     sis_memory_cat(out_, ":", 1);
 	if (in_->format == SIS_NET_FORMAT_CHARS)
 	{
-		return sis_net_encoded_chars(in_, out_);
+		return _net_encoded_chars(in_, out_);
 	}
 	// 二进制流
 	sis_memory_cat(out_, "B", 1); 

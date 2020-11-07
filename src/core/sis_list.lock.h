@@ -50,9 +50,7 @@ typedef struct s_sis_wait_queue {
     s_sis_unlock_node *tail;
     void              *cb_source;
     cb_lock_reader    *cb_reader;
-    int                work_status;
-    s_sis_wait_handle  notice_wait;  // 信号量
-    s_sis_thread       work_thread;  // 工作线程
+    s_sis_wait_thread *work_thread;  // 工作线程
 } s_sis_wait_queue;
 
 /////////////////////////////////////////////////
@@ -76,10 +74,7 @@ typedef struct s_sis_fast_queue {
     int                work_status;
     int                zero_msec;    // 0 正常 1 没有数据时间到也回调
 
-    msec_t             wago_msec;    // 上次通知时间
-    int                wait_msec;    // 最小超时通知 0 表示每次都发通知
-    s_sis_wait_handle  notice_wait;  // 信号量
-    s_sis_thread       work_thread;  // 工作线程
+    s_sis_wait_thread *work_thread;  // 工作线程
 } s_sis_fast_queue;
 
 #pragma pack(pop)
@@ -135,10 +130,6 @@ int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_);
 }
 #endif
 
-#define SIS_UNLOCK_STATUS_NONE   0
-#define SIS_UNLOCK_STATUS_WORK   1
-#define SIS_UNLOCK_STATUS_EXIT   2
-
 #define SIS_UNLOCK_READER_HEAD   1  // 从头返回数据
 #define SIS_UNLOCK_READER_TAIL   2  // 从尾返回数据 SIS_UNLOCK_MODE_HEAD 互斥
 #define SIS_UNLOCK_READER_ZERO   4  // 没有数据但是时间超过也回调
@@ -157,25 +148,26 @@ int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_);
 // 读者不需要释放 只需要注册和启动
 typedef struct s_sis_lock_reader
 {
-    char                       sign[20];     // 索引编号
+    char                       sign[20];    // 索引编号
     void                      *father;      // s_sis_lock_list *
     void                      *cb_source;   // 回调的参数
     cb_lock_reader            *cb_recv;     // 正常数据
     cb_lock_reader_realtime   *cb_realtime; // 历史数据读取完毕
 
     int                        work_mode;    // 工作模式
-    int                        work_status;  // 工作状态
     
-    int                        zeromsec;     // 返回NULL数据
+    int                        zero_msec;     // 返回NULL数据
 
     bool                       isrealtime;   // 如果是从头读 是否已经送出了该信号
 
     s_sis_unlock_node         *cursor;       // 当前读者的结点指针 读者只能读 不能删除
-    s_sis_wait_handle          notice_wait;  // 信号量
-    s_sis_thread               work_thread;  // 工作线程
+    s_sis_wait_thread         *work_thread;  // 工作线程
 } s_sis_lock_reader;
 
-// 每个读者自己启动一个线程 当收到数据后 复制数据到每个读者
+
+// 每个读者自己启动一个线程 当收到数据后 各自处理 适用于各个用户处理时间严重不平衡的情况 
+// 因为每个读者读取数据会有锁动作 因此速度比fast稍慢
+// 有点是可以设置数据不销毁 对有历史数据需求的特别适用
 // 主动开启一个守护线程 相当于一个读者 用来及时销毁过期的数据
 typedef struct s_sis_lock_list {
 
@@ -196,6 +188,38 @@ typedef struct s_sis_lock_list {
 extern "C" {
 #endif
 
+// /////////////////////////////////////////////////
+// //  s_sis_fast_reader
+// /////////////////////////////////////////////////
+// // mode_  从什么位置开始读取
+// s_sis_fast_reader *sis_fast_reader_create(
+//     s_sis_fast_list *ullist_, 
+//     int level_,
+//     void *cb_source_, 
+//     cb_lock_reader *cb_recv_,
+//     cb_lock_reader_realtime cb_realtime_);
+
+// // 设置该值后 即使没有数据 到时间也会返回一个NULL数据
+// void sis_fast_reader_zero(s_sis_fast_reader *reader_, int zero_msec_);
+
+// // 注册一个自由的读者 并开始读取数据 
+// bool sis_lock_reader_open(s_sis_fast_reader *);
+// // 注销一个读者
+// void sis_lock_reader_close(s_sis_fast_reader *reader_);
+
+// /////////////////////////////////////////////////
+// //  s_sis_fast_list
+// /////////////////////////////////////////////////
+// // maxsize_ 为保存历史数据最大尺寸 需要统计数据大小 0 全部保存 1 不保存 n 保留的数据大小
+// // 实际使用时 n 表示如果有数据客户未处理数据 数据会一直保留 直到所有用户都不再使用才会删除数据
+// s_sis_fast_list *sis_fast_list_create(int wait_msec_);
+// void sis_fast_list_destroy(s_sis_fast_list *); 
+// // 广播写入入口 读是依靠回调实现 
+// void sis_fast_list_push(s_sis_fast_list *, s_sis_object *);
+// // 只清理已经读过的数据 
+// void sis_fast_list_clear(s_sis_fast_list *);
+
+
 /////////////////////////////////////////////////
 //  s_sis_lock_reader
 /////////////////////////////////////////////////
@@ -206,7 +230,7 @@ s_sis_lock_reader *sis_lock_reader_create(s_sis_lock_list *ullist_,
     cb_lock_reader_realtime cb_realtime_);
 
 // 设置该值后 即使没有数据 到时间也会返回一个NULL数据
-void sis_lock_reader_zero(s_sis_lock_reader *reader_, int zeromsec_);
+void sis_lock_reader_zero(s_sis_lock_reader *reader_, int zero_msec_);
 
 // 注册一个自由的读者 并开始读取数据 
 bool sis_lock_reader_open(s_sis_lock_reader *);

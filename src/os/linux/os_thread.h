@@ -25,7 +25,7 @@
 #define SIS_THREAD_PROC void *
 
 // 线程类型定义
-typedef void * (SIS_THREAD_START_ROUTINE)(void *); 
+typedef void * (cb_thread_working)(void *); 
 typedef pthread_mutex_t s_sis_mutex_t;
 typedef pthread_rwlock_t s_sis_rwlock_t;
 
@@ -36,7 +36,7 @@ typedef struct s_sis_thread {
 	int                timeout; 
 	bool               working;  // 1 工作中 0 结束
 	s_sis_thread_id_t  thread_id;  
-	SIS_THREAD_START_ROUTINE *worker;
+	cb_thread_working *worker;
 	void 					 *argv;
 } s_sis_thread;
 
@@ -44,7 +44,7 @@ typedef struct s_sis_thread {
 #ifdef __cplusplus
 extern "C" {
 #endif
-bool sis_thread_create(SIS_THREAD_START_ROUTINE func_, void* val_, s_sis_thread *thread_);
+bool sis_thread_create(cb_thread_working func_, void* val_, s_sis_thread *thread_);
 // 等待线程结束
 void sis_thread_finish(s_sis_thread *thread_);
 void sis_thread_join(s_sis_thread *thread_); 
