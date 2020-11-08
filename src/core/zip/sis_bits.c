@@ -643,7 +643,11 @@ void sis_bits_struct_flush(s_sis_bits_stream *s_)
     if (s_->inited == 1)
     {
         memset(s_->ago_memory, 0, s_->max_keynum * s_->sdbsize);
-    }    
+    }   
+    else
+    {
+        
+    }   
 }
 void _sis_bits_struct_init(s_sis_bits_stream *s_)
 {

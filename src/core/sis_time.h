@@ -55,8 +55,10 @@ int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:
 }
 #endif
 
-// 适用于短暂等待
-#define SIS_WAIT(_a_) do{ while(!(_a_)) { sis_sleep(300); }} while(0)
+// 长期等待 不超时退出
+#define SIS_WAIT_LONG(_a_) do { while(!(_a_)) { sis_sleep(100); }} while(0)
+// 等待条件产生 或超时
+#define SIS_WAIT_TIME(_a_,_t_) do { int _wt_ = _t_; while(!(_a_)) { _wt_-=3; sis_sleep(3); if(_wt_ < 0) break; }} while(0);
 
 typedef struct s_sis_time_delay {
 	bool is_busy;

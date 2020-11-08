@@ -158,13 +158,16 @@ s_sis_wait_thread *sis_wait_thread_create(int waitmsec_)
 }
 void sis_wait_thread_destroy(s_sis_wait_thread *swt_)
 {
-    swt_->work_status = SIS_WAIT_STATUS_EXIT;
-    while (swt_->work_status != SIS_WAIT_STATUS_NONE)
-    {
-	    // 循环通知退出
-        sis_thread_wait_notice(swt_->work_wait);
-        sis_sleep(10);
-    }
+	if (swt_->work_status == SIS_WAIT_STATUS_WORK)
+	{
+		swt_->work_status = SIS_WAIT_STATUS_EXIT;
+		while (swt_->work_status != SIS_WAIT_STATUS_NONE)
+		{
+			// 循环通知退出
+			sis_thread_wait_notice(swt_->work_wait);
+			sis_sleep(10);
+		}
+	}
     sis_wait_free(swt_->wait_notice);
 	sis_free(swt_);
 }
@@ -175,7 +178,6 @@ void sis_wait_thread_notice(s_sis_wait_thread *swt_)
 }
 bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void *source_)
 {
-    swt_->work_status = SIS_WAIT_STATUS_WORK;
     if (!sis_thread_create(func_, source_, &swt_->work_thread))
     {
         return false;
@@ -187,12 +189,14 @@ void sis_wait_thread_close(s_sis_wait_thread *swt_)
 {
     swt_->work_status = SIS_WAIT_STATUS_EXIT;
 }
+
 //////// 以下在线程中执行 ////// 
 void sis_wait_thread_start(s_sis_wait_thread *swt_)
 {
+    swt_->work_status = SIS_WAIT_STATUS_WORK;
     sis_thread_wait_start(swt_->work_wait);
 }
-bool sis_wait_thread_working(s_sis_wait_thread *swt_)
+bool sis_wait_thread_noexit(s_sis_wait_thread *swt_)
 {
 	return (swt_->work_status != SIS_WAIT_STATUS_EXIT);
 }

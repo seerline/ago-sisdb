@@ -124,6 +124,7 @@ s_sis_fast_queue *sis_fast_queue_create(
     void *cb_source_, cb_lock_reader *cb_reader_,
     int wait_nums_, int zero_msec_);
 void sis_fast_queue_destroy(s_sis_fast_queue *queue_);
+void sis_fast_queue_clear(s_sis_fast_queue *queue_);
 int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_);
 
 #ifdef __cplusplus

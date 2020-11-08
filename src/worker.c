@@ -20,7 +20,7 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 		if (o == SIS_WAIT_NOTICE)
 		{
 			// only notice return true.
-			if (sis_wait_thread_working(task_->work_thread))
+			if (sis_wait_thread_noexit(task_->work_thread))
 			{
 				// printf("notice work...\n");
 				return true;
@@ -96,10 +96,10 @@ s_sis_work_thread *sis_work_thread_create()
 
 bool sis_work_thread_open(s_sis_work_thread *task_, cb_thread_working func_, void *val_)
 {
-    if (task_->work_mode == SIS_WORK_MODE_NONE)
-    {
-        return false;
-    }
+    // if (task_->work_mode == SIS_WORK_MODE_NONE)
+    // {
+    //     return false;
+    // }
     // 默认30秒
     task_->work_thread = sis_wait_thread_create(30000);
 	if (!sis_wait_thread_open(task_->work_thread, func_, val_))
@@ -136,26 +136,27 @@ void *_service_work_thread(void *argv_)
 		worker->slots->work_init(worker);
 	}
     sis_wait_thread_start(service_thread->work_thread);
-    worker->status = SIS_SERVER_STATUS_INITED;
-    while (sis_wait_thread_working(service_thread->work_thread))
+    while (sis_wait_thread_noexit(service_thread->work_thread))
     {
-        if (sis_work_thread_wait(service_thread) && worker->status != SIS_SERVER_STATUS_CLOSE)
+        if (sis_work_thread_wait(service_thread))
         {
-			// LOG(10)("work = %p mode = %d\n", worker, service_thread->work_mode);
-            // --------user option--------- //
-			if (worker->slots->working)
-			{
-				worker->slots->working(worker);
-			}
-			// LOG(10)("work end. status = %d\n", worker->status);
+            if (!sis_wait_thread_isexit(service_thread->work_thread))
+            {                
+                // LOG(10)("work = %p mode = %d\n", worker, service_thread->work_mode);
+                // --------user option--------- //
+                if (worker->slots->working)
+                {
+                    worker->slots->working(worker);
+                }
+                // LOG(10)("work end. status = %d\n", worker->status);
+            }
         }
     }	
-    sis_wait_thread_stop(service_thread->work_thread);
 	if (worker->slots->work_uninit)
 	{
 		worker->slots->work_uninit(worker);
 	}	
-    worker->status = SIS_SERVER_STATUS_NOINIT;
+    sis_wait_thread_stop(service_thread->work_thread);
 	LOG(5)("work [%s] end.\n", worker->workername);
     return NULL;
 }
@@ -209,9 +210,10 @@ bool _sis_worker_init(s_sis_worker *worker_, s_sis_json_node *node_)
 }
 
 // 处理工作时间等公共的配置
-bool _sis_service_init(s_sis_worker *worker_, s_sis_json_node *node_)
+void _sis_load_work_time(s_sis_worker *worker_, s_sis_json_node *node_)
 {
-    worker_->service_thread->work_mode = SIS_WORK_MODE_NONE;  // 没有 work-time 就不启动线程
+    worker_->service_thread->work_mode = SIS_WORK_MODE_NONE;  
+    // 没有 work-time 就不启动线程
     s_sis_json_node *wtime = sis_json_cmp_child_node(node_, "work-time");
     if (wtime)
     {
@@ -221,7 +223,6 @@ bool _sis_service_init(s_sis_worker *worker_, s_sis_json_node *node_)
             if (!sis_strcasecmp(wtime->value, "notice"))
             {
                 worker_->service_thread->work_mode = SIS_WORK_MODE_NOTICE;
-                return true;            
             }
         }
         else
@@ -236,7 +237,6 @@ bool _sis_service_init(s_sis_worker *worker_, s_sis_json_node *node_)
                     uint16 min = sis_array_get_int(ptime, k, 0);
                     sis_struct_list_push(worker_->service_thread->work_plans, &min);
                 }
-                return true;
             }
             s_sis_json_node *atime = sis_json_cmp_child_node(wtime, "always-work");
             if (atime)
@@ -245,11 +245,9 @@ bool _sis_service_init(s_sis_worker *worker_, s_sis_json_node *node_)
                 worker_->service_thread->work_gap.start = sis_json_get_int(atime, "start", 900);
                 worker_->service_thread->work_gap.stop = sis_json_get_int(atime, "stop", 1530);
                 worker_->service_thread->work_gap.delay = sis_json_get_int(atime, "delay", 300);
-                return true;
             }            
         }
     }
-    return true;
 }
 /////////////////////////////////
 //  worker
@@ -261,7 +259,7 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
 
     worker->father = father_; 
 
-    worker->status = SIS_SERVER_STATUS_NOINIT;
+    worker->status = SIS_WORK_INIT_NONE;
 
     s_sis_json_node *classname_node = sis_json_cmp_child_node(node_, "classname");
     if (classname_node)
@@ -291,18 +289,14 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
         sis_worker_destroy(worker);
         return NULL;
     }
-    worker->status |= SIS_SERVER_STATUS_MAIN_INIT;
+    worker->status |= SIS_WORK_INIT_METHOD;
     // 如果有 working 表示有独立线程需要启动
     if (worker->slots->working) 
     {
         worker->service_thread = sis_work_thread_create();
+        // 设置工作模式
+        _sis_load_work_time(worker, node_);
 
-        if (!_sis_service_init(worker, node_))
-        {
-            LOG(3)("init service_thread [%s] error.\n", worker->classname);
-            sis_worker_destroy(worker);
-            return NULL;
-        }
         if (worker->service_thread->work_mode != SIS_WORK_MODE_NONE)
         {
             LOG(5)("worker service_thread create. %d\n", worker->service_thread->work_mode);
@@ -314,9 +308,8 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
             }
         }
     }
-    worker->status |= SIS_SERVER_STATUS_WORK_INIT;
+    worker->status |= SIS_WORK_INIT_WORKER;
     // 这里已经初始化完成
-    // worker->status = SIS_SERVER_STATUS_INITED;
     // 只有父节点不为空 才会写入workers 用于检索
     if (worker->father)
     {
@@ -350,17 +343,17 @@ void sis_worker_destroy(void *worker_)
 
     LOG(5)("worker [%s] kill.\n", worker->workername);
     // 应该先释放 notice 再释放其他的
+    worker->status = SIS_WORK_INIT_NONE;
+
     if (worker->workers)
     {
         sis_map_pointer_destroy(worker->workers);
     }
-    if(worker->status & SIS_SERVER_STATUS_WORK_INIT)
+    if (worker->service_thread)
     {
-        if (worker->service_thread)
-        {
-            sis_work_thread_destroy(worker->service_thread);
-        }
+        sis_work_thread_destroy(worker->service_thread);
     }
+    // 禁止所有服务
     if (worker->methods)
     {
         if (sis_map_pointer_getsize(worker->methods) > 0)
@@ -372,15 +365,11 @@ void sis_worker_destroy(void *worker_)
         }
         sis_methods_destroy(worker->methods);
     }
-    // if(worker->status & SIS_SERVER_STATUS_MAIN_INIT)
+    if (worker->slots && worker->slots->uninit)
     {
-        if (worker->slots && worker->slots->uninit)
-        {
-            worker->slots->uninit(worker);
-        }
+        worker->slots->uninit(worker);
     }
     sis_sdsfree(worker->workername);
-
     sis_sdsfree(worker->classname);
     sis_free(worker);
 }
@@ -425,7 +414,8 @@ int sis_worker_command(s_sis_worker *worker_, const char *cmd_, void *msg_)
     //     printf("---- %s : %p %s\n", val->name, val->proc, val->style);
     // }
     // sis_dict_iter_free(di);
-    SIS_WAIT(worker->status == SIS_SERVER_STATUS_INITED);
+    // 必须等方法启动完毕
+    SIS_WAIT_LONG(worker->status & SIS_WORK_INIT_METHOD);
 
     s_sis_method *method = sis_methods_get(worker->methods, cmd_);
     if (method&&method->proc)

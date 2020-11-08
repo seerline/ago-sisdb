@@ -59,9 +59,18 @@ void sis_wait_thread_notice(s_sis_wait_thread *swt_);
 bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void *source_);
 // 退出线程标志 但不会马上退出
 void sis_wait_thread_close(s_sis_wait_thread *swt_);
+// 是否为正在工作
+static inline bool sis_wait_thread_iswork(s_sis_wait_thread *swt_)
+{
+	return (swt_->work_status == SIS_WAIT_STATUS_WORK);
+}
+static inline bool sis_wait_thread_isexit(s_sis_wait_thread *swt_)
+{
+	return (swt_->work_status == SIS_WAIT_STATUS_EXIT);
+}
 //////// 以下在线程中执行 ////// 
 void sis_wait_thread_start(s_sis_wait_thread *swt_);
-bool sis_wait_thread_working(s_sis_wait_thread *swt_);
+bool sis_wait_thread_noexit(s_sis_wait_thread *swt_);
 int sis_wait_thread_wait(s_sis_wait_thread *swt_, int waitmsec_);
 void sis_wait_thread_stop(s_sis_wait_thread *swt_);
 

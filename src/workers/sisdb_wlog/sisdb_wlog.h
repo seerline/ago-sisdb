@@ -21,7 +21,9 @@ typedef struct s_sisdb_wlog_cxt
 	s_sis_map_pointer  *datasets;  // 每个数据集一个文件	
 
 	void   *cb_source;
-	sis_method_define   *cb_method;
+	sis_method_define  *cb_recv;
+	sis_method_define  *cb_sub_start;
+	sis_method_define  *cb_sub_stop;
 }s_sisdb_wlog_cxt;
 
 s_sisdb_wlog_unit *sisdb_wlog_unit_create(s_sisdb_wlog_cxt *cxt_, const char *);

@@ -686,7 +686,7 @@ int _sisdb_server_load(s_sisdb_server_cxt *context)
     for (int i = 0; i < count; i++)
     {
         s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;
-        sis_message_set(msg, "sisdb", sisdb, NULL);
+        sis_message_set_str(msg, "dbname", sisdb->name, sis_sdslen(sisdb->name));
         sis_message_set(msg, "source", context, NULL);
         sis_message_set_method(msg, "cb_recv", cb_sisdb_wlog_load);
         if (sis_worker_command(context->wlog_save, "read", msg) != SIS_METHOD_OK)

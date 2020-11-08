@@ -87,7 +87,7 @@ void *_thread_net_reader(void *argv_)
 {
     s_sis_net_queue *wqueue = (s_sis_net_queue *)argv_;
 	sis_wait_thread_start(wqueue->work_thread);
-    while (sis_wait_thread_working(wqueue->work_thread))
+    while (sis_wait_thread_noexit(wqueue->work_thread))
     {
 		s_sis_net_node *node = NULL;
         // printf("1 --- %p\n", wqueue);
@@ -459,12 +459,9 @@ bool _sis_socket_server_bind6(s_sis_socket_server *server)
 	return true;
 }
 //////////////////////////////////////////////////////////////////
-// ??? 两个连接在多CPU机器上会 因为某个客户端断开而中断server
-// 服务端在未知情况下内存会不断增大 断开所有客户端后回复正常
-// 测试后发现 当 两个连接断开后 再次连接后 会因为某种原因 不再能收到消息 此时客户端可以正常退出
-// 但服务端对客户端退出无响应 因此发送缓存会累计增大 需要好好检查一下 服务端在什么情况下会被卡住
-// ??? 疑问如果第一次连接可以一直正常收数据 为什么再次连接后就会卡住 从这一点去分析原因
-// 第一次连接也会在某种情况下卡住 其中一个卡住 另一个还可以继续运转
+// uv_async 如果多个线程同时发出信号 偶尔会漏掉一个信号
+// 造成接收数据中断因此只能以单个队列处理所有多线程发送来的数据
+// 尤其在多个CPU环境下 此种现象很常见 
 
 //服务器-新客户端函数
 static void cb_server_read_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buffer)

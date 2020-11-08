@@ -142,7 +142,7 @@ void *_thread_wait_reader(void *argv_)
 {
     s_sis_wait_queue *wqueue = (s_sis_wait_queue *)argv_;
     sis_wait_thread_start(wqueue->work_thread);
-    while (sis_wait_thread_working(wqueue->work_thread))
+    while (sis_wait_thread_noexit(wqueue->work_thread))
     {
         s_sis_object *obj = NULL;
         // printf("1 --- %p\n", wqueue);
@@ -285,7 +285,7 @@ void *_thread_fast_reader(void *argv_)
         waitmsec = wqueue->zero_msec;
     }
     bool surpass_waittime = false;
-    while (sis_wait_thread_working(wqueue->work_thread))
+    while (sis_wait_thread_noexit(wqueue->work_thread))
     {
         // s_sis_object *obj = NULL;
         if (!sis_mutex_trylock(&wqueue->wlock))
@@ -370,10 +370,16 @@ void sis_fast_queue_destroy(s_sis_fast_queue *queue_)
 	{
 		sis_wait_thread_destroy(queue_->work_thread);
 	}
+    sis_fast_queue_clear(queue_);
+
+    sis_unlock_node_destroy(queue_->rtail);
+    sis_unlock_node_destroy(queue_->wtail);
+    sis_free(queue_);
+}
+void sis_fast_queue_clear(s_sis_fast_queue *queue_)
+{
     sis_mutex_lock(&queue_->wlock);
     _fast_queue_move(queue_); // 从w迁移到r
-    sis_mutex_unlock(&queue_->wlock);
-
     // 此时没有人在读 直接清理所有 rhead
     s_sis_unlock_node *node = queue_->rhead;
     while (node->next)
@@ -384,12 +390,8 @@ void sis_fast_queue_destroy(s_sis_fast_queue *queue_)
         node = new_head;
         queue_->rnums--;
     }
-    
-    sis_unlock_node_destroy(queue_->rtail);
-    sis_unlock_node_destroy(queue_->wtail);
-    sis_free(queue_);
-}
-
+    sis_mutex_unlock(&queue_->wlock);
+}   
 // busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
 int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_)
 {  
@@ -418,7 +420,7 @@ void *_thread_reader(void *argv_)
         waitmsec = reader->zero_msec;
     }
     bool surpass_waittime = false;
-    while (sis_wait_thread_working(reader->work_thread))
+    while (sis_wait_thread_noexit(reader->work_thread))
     {
         if (reader->cursor == NULL)
         {
@@ -443,7 +445,7 @@ void *_thread_reader(void *argv_)
             {
                 while(next)   
                 {
-                    if (reader->work_thread->work_status == SIS_WAIT_STATUS_EXIT) // 加速退出
+                    if (sis_wait_thread_isexit(reader->work_thread)) // 加速退出
                     {
                         break;
                     }
@@ -589,7 +591,7 @@ static void *_thread_watcher(void *argv_)
     s_sis_lock_reader *reader = (s_sis_lock_reader *)argv_;
     s_sis_lock_list *ullist = (s_sis_lock_list *)reader->father;
 	sis_wait_thread_start(reader->work_thread);
-    while (sis_wait_thread_working(reader->work_thread))
+    while (sis_wait_thread_noexit(reader->work_thread))
     {
         if (sis_wait_thread_wait(reader->work_thread, 3000) == SIS_WAIT_NOTICE)
         {
@@ -609,11 +611,11 @@ static void *_thread_watcher(void *argv_)
             // sis_sleep(10);
             // continue; // 不能要 否则内存不能释放
         }
-        if (reader->work_thread->work_status == SIS_WAIT_STATUS_EXIT)
+        if (sis_wait_thread_isexit(reader->work_thread))
         {
             break;
         }
-        if (reader->work_thread->work_status != SIS_WAIT_STATUS_WORK)
+        if (!sis_wait_thread_iswork(reader->work_thread))
         {
             continue;
         }

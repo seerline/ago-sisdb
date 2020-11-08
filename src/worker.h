@@ -35,6 +35,9 @@ typedef struct s_sis_work_thread {
 /////////////////////////////////////////////////
 //  worker
 /////////////////////////////////////////////////
+#define SIS_WORK_INIT_NONE       0  // 
+#define SIS_WORK_INIT_METHOD     1  // 在指定时间内 每隔 delay 毫秒运行一次working
+#define SIS_WORK_INIT_WORKER     2  // 计划任务 按数组中指定时间触发working 单位为分钟
 
 typedef struct s_sis_worker {
 	int                    status;        // 当前的工作状态

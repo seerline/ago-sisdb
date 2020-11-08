@@ -4,7 +4,7 @@
 #include <worker.h>
 
 static s_sis_server _server = {
-	.status = SIS_SERVER_STATUS_NOINIT,
+	.status = SERVER_STATUS_NONE,
 	.config = NULL,
 	.work_mode = SERVER_WORK_MODE_NORMAL,
 	.log_screen = false,
@@ -40,25 +40,16 @@ int _server_open_workers()
 	return sis_map_pointer_getsize(_server.workers);
 }
 
-void _server_close()
-{
-	if (_server.status == SIS_SERVER_STATUS_CLOSE)
-	{
-		return;
-	}
-	_server.status = SIS_SERVER_STATUS_CLOSE;
-	// 设置退出信号
-	sis_set_signal(SIS_SIGNAL_EXIT);
-}
-
-void _sig_int(int sn)
-{
-	_server_close();
-}
-
 void _sig_kill(int sn)
 {
-	_server_close();
+	// 最简单的方法
+	// printf("exit!\n");  exit(0); 
+	// 通知其他循环工作终止
+	sis_set_signal(SIS_SIGNAL_EXIT);
+	// 通知等待server停止的循环终止
+	_server.status = SERVER_STATUS_EXIT;
+	// 这里清除所有的worker 当workers列表为空时表示所有work都已经关闭
+	sis_map_pointer_clear(_server.workers);
 }
 
 bool _server_open()
@@ -152,7 +143,7 @@ void _server_help()
 	printf("		-h           : help. \n");
 }
 #if 1
-#include "sis_python.h"
+
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 255, "%s.conf", argv[0]);
@@ -209,13 +200,12 @@ int main(int argc, char *argv[])
 	{
 		sis_log_open(NULL, _server.log_level, _server.log_size);
 	}
-	sis_signal(SIGINT, _sig_int);
+	sis_signal(SIGINT, _sig_kill);
 	sis_signal(SIGKILL, _sig_kill);
 	sis_signal(SIGTERM, _sig_kill);
 	sis_sigignore(SIGPIPE);
 
-	// 初始化多线程python
-	sis_py_init();
+	sis_set_signal(SIS_SIGNAL_WORK);
 	//  创建工作者
 	_server.workers = sis_map_pointer_create_v(sis_worker_destroy);
 	int workers = _server_open_workers();
@@ -223,10 +213,15 @@ int main(int argc, char *argv[])
 	if (workers > 0)
 	{
 		printf("program start. workers = %d.\n", workers);
-		_server.status = SIS_SERVER_STATUS_INITED;
-
-		while (_server.status != SIS_SERVER_STATUS_CLOSE)
+		_server.status = SERVER_STATUS_WORK;
+		while (_server.status != SERVER_STATUS_NONE)
 		{
+			if (sis_map_pointer_getsize(_server.workers) < 1)
+			{
+				// 所有work结束就退出
+				_server.status = SERVER_STATUS_NONE;
+				break; 
+			}
 			sis_sleep(500);
 		}
 	}
@@ -235,8 +230,6 @@ int main(int argc, char *argv[])
 		printf("no active worker.\n");		
 	}
 	sis_map_pointer_destroy(_server.workers);
-	// 释放多线程python
-	sis_py_uninit();
 	// 释放插件
 	sis_map_pointer_destroy(_server.modules);
 

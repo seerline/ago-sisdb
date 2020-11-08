@@ -440,7 +440,6 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         sis_seek(unit->fp, sizeof(s_sis_disk_main_head), SEEK_SET);
         while (!FILEEND)
         {
-            SIGNAL_EXIT_FAST
             size_t bytes = sis_memory_read(memory, unit->fp, SIS_MEMORY_SIZE);
             if (bytes <= 0)
             {

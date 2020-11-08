@@ -25,7 +25,7 @@ void sis_set_signal(int sign_);
 
 #define SIS_SIGNAL_WORK  0
 #define SIS_SIGNAL_EXIT  1
-#define SIGNAL_EXIT_FAST  { if(sis_get_signal() == SIS_SIGNAL_EXIT) break; }
+#define SIS_EXIT_SIGNAL  { if(sis_get_signal() == SIS_SIGNAL_EXIT) break; }
 
 // size_t sis_init_cpu();
 // int sis_set_cpu(pid_t pid_, size_t cpus_, cpu_set_t *mask_);

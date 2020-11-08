@@ -88,26 +88,40 @@ void sisdb_wlog_method_uninit(void *worker_)
 {
 }
 
-static void cb_begin(void *src, msec_t tt)
+static void cb_begin(void *source_, msec_t idate)
 {
-    // printf("%s : %llu\n", __func__, tt);
+    // printf("%s : %llu\n", __func__, idate);
+    s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)source_;
+    if (context->cb_sub_start)
+    {
+        char sdate[32];
+        sis_lldtoa(idate, sdate, 32, 10);
+        context->cb_sub_start(context->cb_source, sdate);
+    }
 }
 static void cb_read_stream(void *source_, const char *key_, const char *sdb_, s_sis_object *obj_)
 {
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)source_;
-    if (context->cb_method)
+    if (context->cb_recv)
     {
         s_sis_net_message *netmsg = sis_net_message_create();
         // sis_out_binary("wlog read", SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
         sis_net_decoded_normal(SIS_OBJ_MEMORY(obj_), netmsg);
-        context->cb_method(context->cb_source, netmsg);
+        context->cb_recv(context->cb_source, netmsg);
         sis_net_message_destroy(netmsg);
     }
     // 这里通过回调把数据传递出去 
 } 
-static void cb_end(void *src, msec_t tt)
+static void cb_end(void *source_, msec_t idate)
 {
-    // printf("%s : %llu\n", __func__, tt);
+    // printf("%s : %llu\n", __func__, idate);
+    s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)source_;
+    if (context->cb_sub_stop)
+    {
+        char sdate[32];
+        sis_lldtoa(idate, sdate, 32, 10);
+        context->cb_sub_stop(context->cb_source, sdate);
+    }
 }
 
 int cmd_sisdb_wlog_read(void *worker_, void *argv_)
@@ -116,11 +130,11 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_)
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;
 
     s_sis_message *message = (s_sis_message *)argv_;
-    s_sisdb_cxt *sisdb = sis_message_get(message, "sisdb");
+    s_sis_sds dbname = sis_message_get_str(message, "dbname");
 
     s_sis_disk_class *rfile = sis_disk_class_create();
     char fn[255];
-    sis_sprintf(fn, 255, "%s.log", sisdb->name);
+    sis_sprintf(fn, 255, "%s.log", dbname);
     sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn);
     int ok = sis_disk_file_read_start(rfile);
     if (ok)
@@ -129,7 +143,9 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_)
         return SIS_METHOD_OK;
     }
     context->cb_source =  sis_message_get(message, "source");
-    context->cb_method =  sis_message_get_method(message, "cb_recv");
+    context->cb_sub_start =  sis_message_get_method(message, "cb_sub_start");
+    context->cb_sub_stop =  sis_message_get_method(message, "cb_sub_stop");
+    context->cb_recv =  sis_message_get_method(message, "cb_recv");
 
     s_sis_disk_callback cb;
     memset(&cb, 0, sizeof(s_sis_disk_callback));

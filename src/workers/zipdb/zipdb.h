@@ -117,13 +117,20 @@ typedef struct s_zipdb_cxt
 	// msec_t   work_msec; // 
 	int      work_date; // 工作日期
 
-	s_sis_worker       *service_wlog;        // 当前使用的写log类
-	s_sis_method       *wlog_method;
-	s_sis_worker       *service_wfile;       // 当前使用的写文件类
-	s_sis_worker       *service_rfile;       // 当前使用的读文件类
+	int                 wlog_load;  // 是否正在加载 wlog       
+	int                 wlog_date;  // 是否正在加载 wlog       
+	s_sis_sds           wlog_keys; 
+	s_sis_sds           wlog_sdbs; 
+	s_sis_worker       *wlog_worker;        // 当前使用的写log类
 
-	s_sis_sds           work_keys; // 工作keys
-	s_sis_sds           work_sdbs; // 工作sdbs
+	s_sis_method       *wlog_method;
+	s_zipdb_reader     *wlog_reader;         // 写wlog的读者
+
+	s_sis_worker       *wfile_worker;       // 当前使用的写文件类
+	s_sis_worker       *rfile_worker;       // 当前使用的读文件类
+
+	s_sis_sds           work_keys; // 工作 keys
+	s_sis_sds           work_sdbs; // 工作 sdbs
 	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
 
@@ -205,7 +212,23 @@ int zipdb_sub_stop(s_zipdb_reader *reader);
 
 int zipdb_add_reader(s_zipdb_reader *reader_);
 // 清理指定的reader
-int zipdb_move_reader(s_zipdb_cxt *, int);
+int zipdb_reader_move(s_zipdb_cxt *, int);
 
+//////////////////////////////////////////////////////////////////
+//------------------------zipdb function -----------------------//
+//////////////////////////////////////////////////////////////////
+// 从磁盘中获取数据 0 没有wlog文件 ** 文件有错误直接删除 并返回0
+//               1 有文件 正在读 需要设置状态 并等待数据读完
+#define ZIPDB_FILE_SIGN_ZPUB  0  // zpub ...
+#define ZIPDB_FILE_SIGN_KEYS  1  // zset _sdbs_ ...
+#define ZIPDB_FILE_SIGN_SDBS  2  // zset _keys_ ...
+
+int zipdb_wlog_load(s_zipdb_cxt *, int workdate_);
+// 把数据写入到wlog中
+int zipdb_wlog_save(s_zipdb_cxt *, int , s_zipdb_bits *);
+// 把wlog转为snos格式 
+int zipdb_wlog_save_snos(s_zipdb_cxt *);
+// 读取 snos 文件 snos 为zipdb压缩的分块式顺序格式
+int zipdb_snos_read(s_zipdb_cxt *);
 
 #endif /* _SISDB_SNO_H */
