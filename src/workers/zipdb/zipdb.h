@@ -119,7 +119,8 @@ typedef struct s_zipdb_cxt
 	int      work_date; // 工作日期
 
 	int                 wlog_load;  // 是否正在加载 wlog       
-	int                 wlog_date;  // 是否正在加载 wlog       
+	int                 wlog_date;  // 是否正在加载 wlog    
+	int                 wlog_init;  // 是否发送了 keys 和 sdbs  
 	s_sis_sds           wlog_keys; 
 	s_sis_sds           wlog_sdbs; 
 	s_sis_worker       *wlog_worker;        // 当前使用的写log类

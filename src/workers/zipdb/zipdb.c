@@ -249,11 +249,11 @@ static int cb_wlog_reader(void *reader_, s_sis_object *in_)
 		reader->isinit = true;
 	}
 	// 无论是否有历史数据，都从新写一份keys和sdbs读取的时候也要更新dict表 以免数据混乱
-	if(reader->ishead == 0)
+	if(zipdb->wlog_init == 0)
 	{
 		zipdb_wlog_save(zipdb, ZIPDB_FILE_SIGN_KEYS, NULL);
 		zipdb_wlog_save(zipdb, ZIPDB_FILE_SIGN_SDBS, NULL);
-		reader->ishead = 1;
+		zipdb->wlog_init = 1;
 	}
 	zipdb_wlog_save(zipdb, ZIPDB_FILE_SIGN_ZPUB, memory);
 	return 0;
@@ -340,17 +340,19 @@ bool zipdb_init(void *worker_, void *argv_)
 		// 0 表示加载当前目录下有的文件
 		zipdb_wlog_load(context);
 		SIS_WAIT_LONG(context->wlog_load == 0);
-		// LOG(5)("load wlog ok. %d\n", context->wlog_load);
+		LOG(5)("load wlog ok. %d\n", context->wlog_load);
+		// 加载成功后 wlog 文件会被重写 以此来保证数据前后的一致性
+		zipdb_wlog_move(context);
 		//  如何保证磁盘的code索引和重启后索引保持一致 
 		//  传入数据时不能清理 keys 和 sdbs 才能不出错
 		// 然后启动一个读者 订阅 outputs 中数据 然后实时写盘
 		context->wlog_reader = zipdb_reader_create();
 		context->wlog_reader->zipdb_worker = worker;
 		context->wlog_reader->isinit = 0;
-		// 这里的是不是头的意思 表示有没有写keys和sdbs 一般收到outputs数据时 keys和sdbs都已经准备好了
-		context->wlog_reader->ishead = 0; 
+		context->wlog_reader->ishead = 0;
+		context->wlog_init = 0; 
 		context->wlog_reader->reader = sis_lock_reader_create(context->outputs, 
-			SIS_UNLOCK_READER_HEAD, context->wlog_reader, cb_wlog_reader, NULL);
+			SIS_UNLOCK_READER_TAIL, context->wlog_reader, cb_wlog_reader, NULL);
 		sis_lock_reader_open(context->wlog_reader->reader);	
 		 
 	}
@@ -442,7 +444,7 @@ bool _zipdb_write_init(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_si
 	{
 		return true;
 	}
-	LOG(8)("_zipdb_write_init : new. \n");
+	LOG(8)("_zipdb_write_init : new. %d %d\n", zipdb_->work_date ,workdate_);
 
 	// 有一个信息不匹配就全部重新初始化
 	zipdb_->work_date = workdate_;
@@ -489,15 +491,10 @@ bool _zipdb_write_init(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_si
 		}
 		sis_json_close(injson);
 	}
-	if (zipdb_->wlog_worker)
-	{ 
-		// 如果有wlog文件就删除
-		zipdb_wlog_move(zipdb_);
-		if (zipdb_->wlog_reader)
-		{
-			zipdb_->wlog_reader->isinit = 0;
-			zipdb_->wlog_reader->ishead = 0;
-		}
+	if (zipdb_->wlog_reader)
+	{
+		zipdb_->wlog_reader->isinit = 0;
+		zipdb_->wlog_init = 0;
 	}
 	return true;
 }
@@ -973,7 +970,8 @@ int zipdb_sub_start(s_zipdb_reader *reader)
 	if (!reader->reader)
 	{
 		reader->reader = sis_lock_reader_create(zipdb->outputs, 
-			SIS_UNLOCK_READER_HEAD, reader, cb_output_reader, cb_output_realtime);
+			reader->ishead ? SIS_UNLOCK_READER_HEAD : SIS_UNLOCK_READER_TAIL, 
+			reader, cb_output_reader, cb_output_realtime);
 		sis_lock_reader_open(reader->reader);	
 	}
     return 0;

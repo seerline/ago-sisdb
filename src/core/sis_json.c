@@ -17,40 +17,135 @@ static const char *skip(const char *in_)
 
 static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *value_);
 
-static const char *_sis_match_string(const char *start)
+// static const char *_sis_match_string(const char *start)
+// {
+// 	// 处理引号中有引号的问题
+// 	int ismatch = 0;
+// 	const char *ptr = start;
+// 	while (*ptr)
+// 	{
+// 		if (*ptr != '\"') 
+// 		{
+// 			ptr++;
+// 		}
+// 		else
+// 		{
+// 			ismatch = (ismatch + 1) % 2;
+// 			if (ismatch == 0)
+// 			{
+// 				ptr++;
+// 				continue;
+// 			}
+// 			const char *ago = ptr + 1;
+// 			ago = skip(ago);
+// 			if (*ago && *ago != ',' && *ago != '}' && *ago != ']')
+// 			{
+// 				ptr = ago + 1;
+// 			}
+// 			else
+// 			{
+// 				break;
+// 			}
+// 		}
+// 	}
+// 	return ptr;
+// }
+// static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *str_)
+// {
+// 	if (*str_ != '\"')
+// 	{
+// 		handle_->error = str_;
+// 		return 0;
+// 	}
+// 	const char *ptr = str_ + 1;	
+// 	// int len = 0;
+// 	// while (*ptr != '\"' && *ptr)
+// 	// {
+// 	// 	ptr++;
+// 	// 	len++;
+// 	// }
+// 	// if (!*ptr)
+// 	// {
+// 	// 	handle_->error = str_;
+// 	// 	return 0;
+// 	// }
+// 	// char *out = sis_strdup(str_ + 1, len);
+
+// 	// 引号中如果嵌套引号 判断第二个引号后面是否 , 或者 } 如果是就结束 否则就继续往下面找
+// 	if (!node_->key)
+// 	{
+// 		while (*ptr != '\"' && *ptr)
+// 		{
+// 			ptr++;
+// 		}
+// 	}
+// 	else
+// 	{
+// 		ptr = _sis_match_string(ptr);
+// 	}
+// 	if (!*ptr)
+// 	{
+// 		handle_->error = str_;
+// 		return 0;
+// 	}
+// 	char *out = sis_strdup(str_ + 1, ptr - str_ - 1);
+
+// 	ptr++;
+
+// 	if (!node_->key)
+// 	{
+// 		node_->key = out;
+// 		// 增加','判断是为了处理value为空的情况
+// 		while (*ptr && *ptr != ':'&& *ptr != ',')
+// 		{
+// 			ptr++;
+// 		}
+// 		if (!*ptr)
+// 		{
+// 			handle_->error = str_;
+// 			return 0;
+// 		}
+// 		if (*ptr == ':')
+// 		{
+// 			ptr++;
+// 			ptr = skip(_sis_parse_value(handle_, node_, skip(ptr)));
+// 		}
+// 		else // if (*ptr == ',')
+// 		{
+// 			node_->value = NULL;
+// 			node_->type = SIS_JSON_NULL;
+// 		}
+// 	}
+// 	else
+// 	{
+// 		node_->value = out;
+// 		node_->type = SIS_JSON_STRING;
+// 	}
+// 	return ptr;
+// }
+void _sis_replace_string(char *in_, size_t size_)
 {
-	// 处理引号中有引号的问题
-	int ismatch = 0;
-	const char *ptr = start;
-	while (*ptr)
+	char *str = sis_strdup(in_, size_);
+	int len = 0;
+	int pos = 0;
+	for (size_t i = 0; i < size_; i++)
 	{
-		if (*ptr != '\"') 
+		if (str[i] == '\\' && str[i + 1] == '\"')
 		{
-			ptr++;
+			in_[pos] = '\"';
+			i++;
 		}
 		else
 		{
-			ismatch = (ismatch + 1) % 2;
-			if (ismatch == 0)
-			{
-				ptr++;
-				continue;
-			}
-			const char *ago = ptr + 1;
-			ago = skip(ago);
-			if (*ago && *ago != ',' && *ago != '}' && *ago != ']')
-			{
-				ptr = ago + 1;
-			}
-			else
-			{
-				break;
-			}
+			in_[pos] = str[i];
 		}
+		pos++;
+		len++;
 	}
-	return ptr;
+	in_[len] = 0;
+	sis_free(str);
 }
-
+// 对字符串的解析 需要把字符串中的 \" 清理掉
 static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *str_)
 {
 	if (*str_ != '\"')
@@ -58,46 +153,27 @@ static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node
 		handle_->error = str_;
 		return 0;
 	}
+	int len = 0;
+	const char *ago = str_;
 	const char *ptr = str_ + 1;	
-	// int len = 0;
-	// while (*ptr != '\"' && *ptr)
-	// {
-	// 	ptr++;
-	// 	len++;
-	// }
-	// if (!*ptr)
-	// {
-	// 	handle_->error = str_;
-	// 	return 0;
-	// }
-	// char *out = sis_strdup(str_ + 1, len);
-
-	// 引号中如果嵌套引号 判断第二个引号后面是否 , 或者 } 如果是就结束 否则就继续往下面找
-	if (!node_->key)
+	while (*ptr && (*ptr != '\"' || *ago == '\\'))
 	{
-		while (*ptr != '\"' && *ptr)
-		{
-			ptr++;
-		}
-	}
-	else
-	{
-		ptr = _sis_match_string(ptr);
+		ago++;
+		ptr++;
+		len++;
 	}
 	if (!*ptr)
 	{
 		handle_->error = str_;
 		return 0;
 	}
-	char *out = sis_strdup(str_ + 1, ptr - str_ - 1);
-
+	char *out = sis_strdup(str_ + 1, len);
 	ptr++;
-
 	if (!node_->key)
 	{
 		node_->key = out;
 		// 增加','判断是为了处理value为空的情况
-		while (*ptr && *ptr != ':'&& *ptr != ',')
+		while (*ptr && *ptr != ':' && *ptr != ',')
 		{
 			ptr++;
 		}
@@ -119,6 +195,9 @@ static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node
 	}
 	else
 	{
+		// 对out中的'\'进行处理 仅仅对变量中出现的 \" 进行合并处理
+		_sis_replace_string(out, len);
+		// printf("out :: %s\n", out);
 		node_->value = out;
 		node_->type = SIS_JSON_STRING;
 	}
@@ -320,28 +399,28 @@ void sis_json_close(s_sis_json_handle *handle_)
 	sis_free(handle_->content);
 	sis_free(handle_);
 }
-void _sis_replace_json(char *in_, size_t size_)
-{
-	int match = 0;
-	for (size_t i = 0; i < size_ - 1; i++)
-	{
-		if (in_[i] == '\\' && in_[i + 1] == '\"')
-		{
-			if (match == 0)
-			{
-				in_[i] = ' '; 
-				in_[i + 1] = '\"'; 
-			}
-			else
-			{
-				in_[i] = '\"'; 
-				in_[i + 1] = ' '; 
-			}
-			i++;				
-			match = (match + 1) % 2;
-		}
-	}
-}
+// void _sis_replace_json(char *in_, size_t size_)
+// {
+// 	int match = 0;
+// 	for (size_t i = 0; i < size_ - 1; i++)
+// 	{
+// 		if (in_[i] == '\\' && in_[i + 1] == '\"')
+// 		{
+// 			if (match == 0)
+// 			{
+// 				in_[i] = ' '; 
+// 				in_[i + 1] = '\"'; 
+// 			}
+// 			else
+// 			{
+// 				in_[i] = '\"'; 
+// 				in_[i + 1] = ' '; 
+// 			}
+// 			i++;				
+// 			match = (match + 1) % 2;
+// 		}
+// 	}
+// }
 s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 {
 	if (!content_ || len_ <= 0)
@@ -363,7 +442,7 @@ s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 	memmove(handle->content, content_, len_);
 	handle->content[len_] = 0;
 	// 修改
-	_sis_replace_json(handle->content, len_);
+	// _sis_replace_json(handle->content, len_);
 	// printf(":::: %s \n", handle->content);
 
 	if (!_sis_json_parse(handle, handle->content))
