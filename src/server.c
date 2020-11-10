@@ -43,12 +43,17 @@ int _server_open_workers()
 void _sig_kill(int sn)
 {
 	// 最简单的方法
-	// printf("exit!\n");  exit(0); 
+	if (sis_get_signal() == SIS_SIGNAL_EXIT)
+	{
+		printf("force exit!\n");  
+		exit(0); 
+	}
 	// 通知其他循环工作终止
 	sis_set_signal(SIS_SIGNAL_EXIT);
 	// 通知等待server停止的循环终止
 	_server.status = SERVER_STATUS_EXIT;
 	// 这里清除所有的worker 当workers列表为空时表示所有work都已经关闭
+	// printf("exit! %d\n", sis_map_pointer_getsize(_server.workers));  
 	sis_map_pointer_clear(_server.workers);
 }
 

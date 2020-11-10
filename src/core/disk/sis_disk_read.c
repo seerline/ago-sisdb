@@ -338,28 +338,35 @@ int _sis_disk_read_hid_log(s_sis_disk_class *cls_, s_sis_object *obj_)
 s_sis_memory *_sis_disk_class_key_change(s_sis_memory *in)
 {
     s_sis_memory *out = sis_memory_create();
-    s_sis_json_handle *injson = sis_json_load(sis_memory(in), sis_memory_get_size(in));
-    if (!injson)
+    if (!sis_json_object_valid(sis_memory(in), sis_memory_get_size(in)))
     {
         sis_memory_clone(in, out);
     }
     else
     {
-        int nums = 0;
-        s_sis_json_node *innode = sis_json_first_node(injson->node); 
-        while (innode)
-        {   
-            // printf("%s\n",innode->key ? innode->key : "nil");
-            if (nums > 0)
-            {
-                sis_memory_cat(out, ",", 1);
-            }
-            nums++;
-            sis_memory_cat(out, innode->key, sis_strlen(innode->key));
-            innode = sis_json_next_node(innode);
+        s_sis_json_handle *injson = sis_json_load(sis_memory(in), sis_memory_get_size(in));
+        if (!injson)
+        {
+            sis_memory_clone(in, out);
         }
-        sis_json_close(injson);
-    }
+        else
+        {
+            int nums = 0;
+            s_sis_json_node *innode = sis_json_first_node(injson->node); 
+            while (innode)
+            {   
+                // printf("%s\n",innode->key ? innode->key : "nil");
+                if (nums > 0)
+                {
+                    sis_memory_cat(out, ",", 1);
+                }
+                nums++;
+                sis_memory_cat(out, innode->key, sis_strlen(innode->key));
+                innode = sis_json_next_node(innode);
+            }
+            sis_json_close(injson);
+        }
+    }    
     return out;
 }
 
@@ -512,6 +519,7 @@ size_t cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_ob
         {
             s_sis_memory *memory = _sis_disk_class_key_change(SIS_OBJ_MEMORY(obj_));
             // newkeys
+            // sis_out_binary("getkey", sis_memory(memory), sis_memory_get_size(memory));
             sis_disk_class_set_key(cls_, false, sis_memory(memory), sis_memory_get_size(memory));
             if(callback && callback->cb_key)
             {
@@ -1112,9 +1120,10 @@ int sis_disk_file_read_dict(s_sis_disk_class *cls_)
                 sis_memory_clear(memory);
                 if (sis_read_unit_from_index(cls_, NULL, unit, memory) > 0)
                 {
-                    // sis_out_binary("key", sis_memory(memory), 64);
+                    // sis_out_binary("key", sis_memory(memory), sis_memory_get_size(memory));
                     // newkeys
                     s_sis_memory *newmemory = _sis_disk_class_key_change(memory);
+                    // sis_out_binary("newkeys", sis_memory(newmemory), sis_memory_get_size(newmemory));
                     sis_disk_class_set_key(cls_, false, sis_memory(newmemory), sis_memory_get_size(newmemory));
                     sis_memory_destroy(newmemory);
                 }
@@ -1289,6 +1298,7 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     case SIS_DISK_TYPE_SNO:
         // 因为有索引，所以文件打开时就已经加载了keys和sdbs
         // 需要把同一时间块的数据全部读完后 排序播放后 才能读取下一个时间块的数据
+        
         if (!sis_strcasecmp(reader_->keys, "*") && !sis_strcasecmp(reader_->sdbs, "*"))
         {
             // 顺序读取所有文件

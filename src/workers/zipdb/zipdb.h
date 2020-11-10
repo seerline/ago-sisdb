@@ -15,6 +15,7 @@
 #include "sis_dynamic.h"
 #include "sis_bits.h"
 #include "sis_obj.h"
+#include "sis_net.io.h"
 
 #define ZIPMEM_MAXSIZE (16*1024)
 
@@ -126,7 +127,14 @@ typedef struct s_zipdb_cxt
 	s_sis_method       *wlog_method;
 	s_zipdb_reader     *wlog_reader;         // 写wlog的读者
 
-	s_sis_worker       *wfile_worker;       // 当前使用的写文件类
+	int                 wfile_save;
+	sis_method_define  *wfile_cb_sub_start;
+	sis_method_define  *wfile_cb_sub_stop ;
+	sis_method_define  *wfile_cb_dict_keys;
+	sis_method_define  *wfile_cb_dict_sdbs;
+	sis_method_define  *wfile_cb_zip_bytes;
+	s_sis_worker       *wfile_worker; // 当前使用的写文件类
+
 	s_sis_worker       *rfile_worker;       // 当前使用的读文件类
 
 	s_sis_sds           work_keys; // 工作 keys
@@ -223,9 +231,11 @@ int zipdb_reader_move(s_zipdb_cxt *, int);
 #define ZIPDB_FILE_SIGN_KEYS  1  // zset _sdbs_ ...
 #define ZIPDB_FILE_SIGN_SDBS  2  // zset _keys_ ...
 
-int zipdb_wlog_load(s_zipdb_cxt *, int workdate_);
+int zipdb_wlog_load(s_zipdb_cxt *);
 // 把数据写入到wlog中
 int zipdb_wlog_save(s_zipdb_cxt *, int , s_zipdb_bits *);
+// 清除wlog文件
+int zipdb_wlog_move(s_zipdb_cxt *);
 // 把wlog转为snos格式 
 int zipdb_wlog_save_snos(s_zipdb_cxt *);
 // 读取 snos 文件 snos 为zipdb压缩的分块式顺序格式

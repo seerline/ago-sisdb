@@ -346,7 +346,7 @@ void sis_path_del_files(char *path_)
 		findname[0] = '*';
 		findname[1] = 0;
 	}
-	printf("%s\n",path_);
+	// printf("%s\n",path_);
 	DIR *dirp = NULL;
 	struct dirent *direntp = NULL;
 	struct stat statbuf;
@@ -362,7 +362,7 @@ void sis_path_del_files(char *path_)
 				{	
 					continue;
 				}
-				printf("%s\n",filename);
+				// printf("%s\n",filename);
 				remove(filename);
 			}
 		}

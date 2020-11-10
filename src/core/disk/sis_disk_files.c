@@ -324,11 +324,11 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
 
     s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, cls_->cur_unit);
     
-    if (wcatch_) 
-    { 
-        printf("%s %s ",wcatch_->key ? SIS_OBJ_SDS(wcatch_->key) : "N", wcatch_->sdb ? SIS_OBJ_SDS(wcatch_->sdb) : "N");
-    }
-    printf("hid=%d, %p fidx = %d size = %zu\n", hid_, unit, cls_->cur_unit, wcatch_ ? sis_memory_get_size(wcatch_->memory) : 0);
+    // if (wcatch_) 
+    // { 
+    //     printf("%s %s ",wcatch_->key ? SIS_OBJ_SDS(wcatch_->key) : "N", wcatch_->sdb ? SIS_OBJ_SDS(wcatch_->sdb) : "N");
+    // }
+    // printf("hid=%d, %p fidx = %d size = %zu\n", hid_, unit, cls_->cur_unit, wcatch_ ? sis_memory_get_size(wcatch_->memory) : 0);
     if (!unit->fp)
     {
         return 0;
@@ -387,7 +387,7 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     wcatch_->winfo.offset = unit->offset;
     wcatch_->winfo.size = size;
     unit->offset += size;
-    LOG(8)("%d zip = %d size = %zu %zu\n", unit->fp, head.zip, size, unit->offset);
+    // LOG(8)("%d zip = %d size = %zu %zu\n", unit->fp, head.zip, size, unit->offset);
     return size;
 }
 
@@ -523,6 +523,7 @@ size_t sis_files_read(s_sis_files *cls_, int fidx_, size_t offset_, size_t size_
         size = sis_files_uncompress(cls_, &head, sis_memory(memory), size, out_);
     }
     sis_memory_destroy(memory);  
+    // printf("--- hid_ = %d %p size = %zu %zu\n",head.hid, hid_, size, sis_memory_get_size(out_));
     // 这里移动文件指针 效率低
     // sis_seek(unit->fp, unit->offset, SEEK_SET);
     return size;

@@ -138,9 +138,14 @@ void *_service_work_thread(void *argv_)
     sis_wait_thread_start(service_thread->work_thread);
     while (sis_wait_thread_noexit(service_thread->work_thread))
     {
+        SIS_EXIT_SIGNAL;
         if (sis_work_thread_wait(service_thread))
         {
-            if (!sis_wait_thread_isexit(service_thread->work_thread))
+            if (sis_wait_thread_isexit(service_thread->work_thread))
+            {
+                break;
+            }
+            if (sis_wait_thread_iswork(service_thread->work_thread))
             {                
                 // LOG(10)("work = %p mode = %d\n", worker, service_thread->work_mode);
                 // --------user option--------- //
@@ -344,14 +349,13 @@ void sis_worker_destroy(void *worker_)
     LOG(5)("worker [%s] kill.\n", worker->workername);
     // 应该先释放 notice 再释放其他的
     worker->status = SIS_WORK_INIT_NONE;
-
-    if (worker->workers)
-    {
-        sis_map_pointer_destroy(worker->workers);
-    }
     if (worker->service_thread)
     {
         sis_work_thread_destroy(worker->service_thread);
+    }
+    if (worker->workers)
+    {
+        sis_map_pointer_destroy(worker->workers);
     }
     // 禁止所有服务
     if (worker->methods)

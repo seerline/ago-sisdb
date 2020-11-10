@@ -206,22 +206,22 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 			sis_json_object_set_string(node, "rval", in_->rval, sis_sdslen(in_->rval)); 
 		}		
 	}
-	// printf("_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n", 
-	// 		in_->style, 
-	// 		(int)in_->rcmd,
-	// 		in_->source? in_->source : "nil",
-	// 		in_->cmd ? in_->cmd : "nil",
-	// 		in_->key? in_->key : "nil",
-	// 		in_->val? in_->val : "nil"
-	// 		// ,in_->rval? in_->rval : "nil"
-	// 		);
+	printf("_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n%s \n", 
+			in_->style, 
+			(int)in_->rcmd,
+			in_->source? in_->source : "nil",
+			in_->cmd ? in_->cmd : "nil",
+			in_->key? in_->key : "nil",
+			in_->val? in_->val : "nil"
+			,in_->rval? in_->rval : "nil"
+			);
 
     size_t len = 0;
     char *str = sis_json_output_zip(node, &len);
     // printf("sis_net_encoded_json [%d]: %d %s\n",in_->style, (int)len, str);
     sis_memory_cat(out_, str, len);
 	// ??? 这里转换后会把本来没有 \" 的 转换成 
-	// sis_out_binary("encode", sstr,  len);
+	sis_out_binary("encode", str,  len);
     sis_free(str);
     sis_json_delete_node(node);
     
@@ -284,12 +284,12 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	mess->style = mess->cmd ? (mess->style | SIS_NET_CMD) : mess->style;
 	mess->key = _sis_json_node_get_sds(handle->node, "key");
 	mess->style = mess->key ? (mess->style | SIS_NET_KEY) : mess->style;
-	// printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
-	// 		mess->source? mess->source : "nil",
-	// 		mess->cmd ? mess->cmd : "nil",
-	// 		mess->key? mess->key : "nil",
-	// 		mess->val? mess->val : "nil",
-	// 		mess->rval? mess->rval : "nil");
+	printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
+			mess->source? mess->source : "nil",
+			mess->cmd ? mess->cmd : "nil",
+			mess->key? mess->key : "nil",
+			mess->val? mess->val : "nil",
+			mess->rval? mess->rval : "nil");
 
     sis_json_close(handle);
 	if (!mess->style)

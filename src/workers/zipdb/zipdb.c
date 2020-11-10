@@ -1,6 +1,7 @@
 ﻿
 #include "sis_modules.h"
 #include "worker.h"
+#include "server.h"
 #include "sis_method.h"
 
 #include <zipdb.h>
@@ -238,7 +239,7 @@ static int cb_wlog_reader(void *reader_, s_sis_object *in_)
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
 	s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(in_);
-
+	// 从第一个初始包开始存盘
 	if (!reader->isinit)
 	{
 		if (!memory->init)
@@ -337,15 +338,9 @@ bool zipdb_init(void *worker_, void *argv_)
 	{
 		// 先从目录中获取wlog中数据 并加载到内存中
 		// 0 表示加载当前目录下有的文件
-		int o = zipdb_wlog_load(context, 0);
-		if (o)
-		{
-			while (context->wlog_load == 1)
-			{
-				// 等待数据加载完毕
-				sis_sleep(30);
-			}
-		}
+		zipdb_wlog_load(context);
+		SIS_WAIT_LONG(context->wlog_load == 0);
+		// LOG(5)("load wlog ok. %d\n", context->wlog_load);
 		//  如何保证磁盘的code索引和重启后索引保持一致 
 		//  传入数据时不能清理 keys 和 sdbs 才能不出错
 		// 然后启动一个读者 订阅 outputs 中数据 然后实时写盘
@@ -354,7 +349,7 @@ bool zipdb_init(void *worker_, void *argv_)
 		context->wlog_reader->isinit = 0;
 		// 这里的是不是头的意思 表示有没有写keys和sdbs 一般收到outputs数据时 keys和sdbs都已经准备好了
 		context->wlog_reader->ishead = 0; 
-		sis_lock_reader_create(context->outputs, 
+		context->wlog_reader->reader = sis_lock_reader_create(context->outputs, 
 			SIS_UNLOCK_READER_HEAD, context->wlog_reader, cb_wlog_reader, NULL);
 		sis_lock_reader_open(context->wlog_reader->reader);	
 		 
@@ -368,6 +363,7 @@ void zipdb_uninit(void *worker_)
 
     if (zipdb->wlog_worker)
     {
+		zipdb_reader_destroy(zipdb->wlog_reader);
         sis_worker_destroy(zipdb->wlog_worker);
 		zipdb->wlog_worker = NULL;
 		sis_sdsfree(zipdb->wlog_keys);
@@ -415,19 +411,13 @@ void zipdb_method_uninit(void *worker_)
 }
 
 // 设置
-bool _zipdb_new(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_sis_sds sdbs_)
+bool _zipdb_write_init(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_sis_sds sdbs_)
 {
-	zipdb_->work_date = 0;
 	if (!keys_ || sis_sdslen(keys_) < 3 || !sdbs_ || sis_sdslen(sdbs_) < 3)
 	{
 		return false;
 	}
-	printf("------ _zipdb_new : %d %d %d\n", workdate_, (int)sis_sdslen(keys_), (int)sis_sdslen(sdbs_));
-	zipdb_->work_date = workdate_;
-
-	sis_sdsfree(zipdb_->work_keys); zipdb_->work_keys = NULL;
-	sis_sdsfree(zipdb_->work_sdbs); zipdb_->work_sdbs = NULL;
-
+	LOG(8)("_zipdb_write_init : %d %d %d\n", workdate_, (int)sis_sdslen(keys_), (int)sis_sdslen(sdbs_));
 	// 这里为了保证二次进入 必须对压缩参数初始化
 	if (zipdb_->inputs)
 	{
@@ -439,13 +429,29 @@ bool _zipdb_new(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_sis_sds s
 		sis_object_decr(zipdb_->cur_object);
 		zipdb_->cur_object = NULL;
 	}
-	// 这里不能清理 是需要保证上次传入的顺序和这次的顺序不能发生改变
-	// sis_map_list_clear(zipdb_->keys);
-	// sis_map_list_clear(zipdb_->sdbs);	
 	sis_bits_stream_clear(zipdb_->cur_sbits);
 
 	zipdb_->inited = true;
 	zipdb_->stoped = false;
+
+	// 可能因为断线重连等原因 如果其他信息一致 就不需要执行以下代码
+	if (zipdb_->work_date == workdate_ && 
+		zipdb_->work_keys && zipdb_->work_sdbs &&
+		!sis_strcasecmp(zipdb_->work_keys, keys_) &&
+		!sis_strcasecmp(zipdb_->work_sdbs, sdbs_)) 
+	{
+		return true;
+	}
+	LOG(8)("_zipdb_write_init : new. \n");
+
+	// 有一个信息不匹配就全部重新初始化
+	zipdb_->work_date = workdate_;
+	sis_sdsfree(zipdb_->work_keys); 
+	zipdb_->work_keys = sis_sdsdup(keys_);
+	sis_sdsfree(zipdb_->work_sdbs); 
+	zipdb_->work_sdbs = sis_sdsdup(sdbs_);
+	sis_map_list_clear(zipdb_->keys);
+	sis_map_list_clear(zipdb_->sdbs);	
 	// 压缩参数初始化完成 ///
 	{
 		s_sis_string_list *klist = sis_string_list_create();
@@ -463,7 +469,6 @@ bool _zipdb_new(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_sis_sds s
 		}
     	sis_bits_struct_set_key(zipdb_->cur_sbits, count);
 		sis_string_list_destroy(klist);
-		zipdb_->work_keys = sis_sdsnew(keys_);
 	}
 	{
 		s_sis_json_handle *injson = sis_json_load(sdbs_, sis_sdslen(sdbs_));
@@ -482,8 +487,17 @@ bool _zipdb_new(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_sis_sds s
 			}
 			innode = sis_json_next_node(innode);
 		}
-		zipdb_->work_sdbs = sis_json_to_sds(injson->node, true);
 		sis_json_close(injson);
+	}
+	if (zipdb_->wlog_worker)
+	{ 
+		// 如果有wlog文件就删除
+		zipdb_wlog_move(zipdb_);
+		if (zipdb_->wlog_reader)
+		{
+			zipdb_->wlog_reader->isinit = 0;
+			zipdb_->wlog_reader->ishead = 0;
+		}
 	}
 	return true;
 }
@@ -498,10 +512,21 @@ int cmd_zipdb_init(void *worker_, void *argv_)
 	s_sis_sds keys = sis_message_get_str(msg, "keys");
 	s_sis_sds sdbs = sis_message_get_str(msg, "sdbs");
 	
-    if (_zipdb_new(context, work_date, keys, sdbs))
+	// 从外界过来的sdbs可能格式不对，需要转换
+	s_sis_json_handle *injson = sis_json_load(sdbs, sis_sdslen(sdbs));
+	if (!injson)
+	{
+		return SIS_METHOD_ERROR;
+	}
+	sdbs = sis_json_to_sds(injson->node, true);
+	sis_json_close(injson);
+
+    if (_zipdb_write_init(context, work_date, keys, sdbs))
     {
+		sis_sdsfree(sdbs);
         return SIS_METHOD_OK;
     }
+	sis_sdsfree(sdbs);
     return SIS_METHOD_ERROR;
 }
 int cmd_zipdb_start(void *worker_, void *argv_)
@@ -541,7 +566,14 @@ int cmd_zipdb_stop(void *worker_, void *argv_)
 	}
 	if (context->wlog_worker)
 	{
-		zipdb_wlog_save_snos(context);
+		int o = zipdb_wlog_save_snos(context);
+		if (o)
+		{
+			// 等待数据存盘完毕
+			SIS_WAIT_LONG(context->wfile_save == 0);
+			// 存盘结束清理wlog
+			zipdb_wlog_move(context);
+		}
 	}
     return SIS_METHOD_OK;
 }
@@ -735,7 +767,7 @@ int cmd_zipdb_rlog(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
 
-	if(zipdb_wlog_load(context, 0))
+	if(zipdb_wlog_load(context))
 	{
 		return SIS_METHOD_OK;
 	}
@@ -958,154 +990,3 @@ int zipdb_sub_stop(s_zipdb_reader *reader)
 }
 
 //////////////////////////////////////////////////////////////////
-//------------------------zipdb function -----------------------//
-//////////////////////////////////////////////////////////////////
-static int cb_zipdb_wlog_start(void *worker_, void *argv_)
-{
-    s_zipdb_cxt *context = (s_zipdb_cxt *)worker_;
-	const char *sdate = (const char *)argv_;
-	LOG(5)("load wlog start. %s\n", sdate);
-	context->wlog_date = sis_atoll(sdate);
-	return SIS_METHOD_OK;
-}
-static int cb_zipdb_wlog_stop(void *worker_, void *argv_)
-{
-    s_zipdb_cxt *context = (s_zipdb_cxt *)worker_;
-	const char *sdate = (const char *)argv_;
-	LOG(5)("load wlog stop. %s\n", sdate);
-	context->wlog_load = 0;
-	return SIS_METHOD_OK;
-}
-static int cb_zipdb_wlog_load(void *worker_, void *argv_)
-{
-    s_zipdb_cxt *context = (s_zipdb_cxt *)worker_;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-	if (context->wlog_load != 1)
-	{
-		return SIS_METHOD_ERROR;
-	}
-    // printf("cb_zipdb_wlog_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
-    //         netmsg->source? netmsg->source : "nil",
-    //         netmsg->cmd ?   netmsg->cmd : "nil",
-    //         netmsg->key?    netmsg->key : "nil",
-    //         netmsg->val?    netmsg->val : "nil");   
-
-	if (!sis_strcasecmp("zdb.zpub", netmsg->cmd))
-	{
-		for (int i = 0; i < netmsg->argvs->count; i++)
-		{
-			s_sis_object *obj = sis_pointer_list_get(netmsg->argvs, i);
-			_zipdb_write_bits(context, (s_zipdb_bits *)SIS_OBJ_SDS(obj));
-		}
-	}
-	else // "zdb.set"
-	{
-		if (!sis_strcasecmp("_keys_", netmsg->key))
-		{
-			context->wlog_keys = sis_sdsdup(netmsg->val);
-		}
-		if (!sis_strcasecmp("_sdbs_", netmsg->key))
-		{
-			context->wlog_sdbs = sis_sdsdup(netmsg->val);			
-		}
-		if (context->wlog_date && context->wlog_keys && context->wlog_sdbs)
-		{
-			if(!_zipdb_new(context, context->wlog_date, context->wlog_keys, context->wlog_sdbs))
-			{
-				// 数据错误 应该停止读取 直接返回错误
-				context->wlog_load = -1;
-			}	
-			context->wlog_date = 0;
-			sis_sdsfree(context->wlog_keys); context->wlog_keys = NULL;
-			sis_sdsfree(context->wlog_sdbs); context->wlog_sdbs = NULL;
-		}
-	}
-    return SIS_METHOD_OK;
-}
-
-// 从磁盘中获取数据 0 没有wlog文件 ** 文件有错误直接删除 并返回0
-//               1 有文件 正在读 需要设置状态 并等待数据读完
-int zipdb_wlog_load(s_zipdb_cxt *zipdb_, int workdate_)
-{
-	s_sis_message *msg = sis_message_create();
-
-	zipdb_->wlog_load = 1;
-	sis_message_set_str(msg, "dbname", "zdb", 3);
-	sis_message_set(msg, "source", zipdb_, NULL);
-	sis_message_set_method(msg, "cb_sub_start", cb_zipdb_wlog_start);
-	sis_message_set_method(msg, "cb_sub_stop", cb_zipdb_wlog_stop);
-	sis_message_set_method(msg, "cb_recv", cb_zipdb_wlog_load);
-	if (sis_worker_command(zipdb_->wlog_worker, "read", msg) != SIS_METHOD_OK)
-	{
-		sis_message_destroy(msg);
-		return SIS_METHOD_ERROR;
-	}
-	sis_message_destroy(msg);
-	return SIS_METHOD_OK;	return 0;
-}
-// 把数据写入到wlog中
-int zipdb_wlog_save(s_zipdb_cxt *zipdb_, int sign_, s_zipdb_bits *inmem_)
-{
-	s_sis_net_message *netmsg = sis_net_message_create();
-
-	switch (sign_)
-	{
-	case ZIPDB_FILE_SIGN_KEYS:
-		sis_net_ask_with_chars(netmsg, "zdb.set", "_keys_", zipdb_->work_keys, sis_sdslen(zipdb_->work_keys));
-		break;
-	case ZIPDB_FILE_SIGN_SDBS:
-		sis_net_ask_with_chars(netmsg, "zdb.set", "_sdbs_", zipdb_->work_sdbs, sis_sdslen(zipdb_->work_sdbs));
-		break;	
-	default: // ZIPDB_FILE_SIGN_ZPUB
-		sis_net_ask_with_bytes(netmsg, "zdb.zpub", NULL, (char *)inmem_, sizeof(s_zipdb_bits) + inmem_->size);
-		break;
-	}
-	zipdb_->wlog_method->proc(zipdb_->wlog_worker, netmsg);
-	sis_net_message_destroy(netmsg);
-	return 0;
-}
-// 把wlog转为snos格式 
-int zipdb_wlog_save_snos(s_zipdb_cxt *zipdb_)
-{
-	if (sis_worker_command(zipdb_->wlog_worker, "check", "zdb") != SIS_METHOD_OK)
-	{
-		// 文件不存在就返回
-		return 0;
-	}
-	// 从wlog直接取数据 转成 snos格式
-	// ??? 需要把sisdb_disk 改成 zipdb_disk
-    s_sis_message *msg = sis_message_create();
-	sis_message_set_str(msg, "dbname", "zdb", 3);
-	sis_message_set_int(msg, "workdate", zipdb_->work_date);       
-	if (sis_worker_command(zipdb_->wfile_worker, "save", msg) == SIS_METHOD_OK)
-	{
-		LOG(5)("save ok. start clear wlog [%s] ...\n", "zdb");
-		// 数据已经保存 删除wlog
-		sis_worker_command(zipdb_->wlog_worker, "clear", "zdb");
-	}
-	else
-	{
-		LOG(5)("save [%s] fail. workdate = %d .\n", "zdb", zipdb_->work_date); 
-	}
-    sis_message_destroy(msg);
-	return 1;
-}
-
-// 读取 snos 文件 snos 为zipdb压缩的分块式顺序格式
-int zipdb_snos_read(s_zipdb_cxt *zipdb_)
-{
-    // s_sis_message *msg = sis_message_create();
-    // int count = sis_map_list_getsize(context->datasets);
-    // for (int i = 0; i < count; i++)
-    // {
-    //     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;
-    //     sis_message_set(msg, "sisdb", sisdb, NULL);
-    //     sis_message_set(msg, "config", &context->catch_cfg, NULL);
-    //     if (sis_worker_command(context->fast_save, "load", msg) != SIS_METHOD_OK)
-    //     {
-    //         sis_message_destroy(msg);
-    //         return SIS_METHOD_ERROR;
-    //     }
-    // }
-	return SIS_METHOD_OK;
-}

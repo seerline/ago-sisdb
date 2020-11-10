@@ -140,7 +140,7 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_)
     if (ok)
     {
         sis_disk_class_destroy(rfile);
-        return SIS_METHOD_OK;
+        return SIS_METHOD_ERROR;
     }
     context->cb_source =  sis_message_get(message, "source");
     context->cb_sub_start =  sis_message_get_method(message, "cb_sub_start");
