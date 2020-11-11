@@ -338,21 +338,23 @@ bool zipdb_init(void *worker_, void *argv_)
 	{
 		// 先从目录中获取wlog中数据 并加载到内存中
 		// 0 表示加载当前目录下有的文件
-		zipdb_wlog_load(context);
+		int isload = zipdb_wlog_load(context);
 		SIS_WAIT_LONG(context->wlog_load == 0);
 		LOG(5)("load wlog ok. %d\n", context->wlog_load);
 		// 加载成功后 wlog 文件会被重写 以此来保证数据前后的一致性
-		zipdb_wlog_move(context);
+		// zipdb_wlog_move(context);
 		//  如何保证磁盘的code索引和重启后索引保持一致 
 		//  传入数据时不能清理 keys 和 sdbs 才能不出错
 		// 然后启动一个读者 订阅 outputs 中数据 然后实时写盘
 		context->wlog_reader = zipdb_reader_create();
 		context->wlog_reader->zipdb_worker = worker;
 		context->wlog_reader->isinit = 0;
-		context->wlog_reader->ishead = 0;
+		context->wlog_reader->ishead = isload ? 0 : 1;
 		context->wlog_init = 0; 
+		// 已经有了log文件就从头订阅 否则从尾部订阅
 		context->wlog_reader->reader = sis_lock_reader_create(context->outputs, 
-			SIS_UNLOCK_READER_TAIL, context->wlog_reader, cb_wlog_reader, NULL);
+			context->wlog_reader->ishead ? SIS_UNLOCK_READER_HEAD : SIS_UNLOCK_READER_TAIL, 
+			context->wlog_reader, cb_wlog_reader, NULL);
 		sis_lock_reader_open(context->wlog_reader->reader);	
 		 
 	}
