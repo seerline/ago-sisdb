@@ -196,7 +196,7 @@ static int cb_zipdb_wfile_load(void *worker_, void *argv_)
 // 把wlog转为snos格式 
 int zipdb_wlog_save_snos(s_zipdb_cxt *zipdb_)
 {
-	if (sis_worker_command(zipdb_->wlog_worker, "check", "zdb") != SIS_METHOD_OK)
+	if (sis_worker_command(zipdb_->wlog_worker, "exist", "zdb") != SIS_METHOD_OK)
 	{
 		// 文件不存在就返回
 		return 0;

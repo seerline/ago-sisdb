@@ -14,7 +14,7 @@ struct s_sis_method sisdb_wlog_methods[] = {
     {"read",  cmd_sisdb_wlog_read, 0, NULL},   
     {"write", cmd_sisdb_wlog_write, 0, NULL},  
     {"clear", cmd_sisdb_wlog_clear, 0, NULL},  
-    {"check", cmd_sisdb_wlog_check, 0, NULL},  
+    {"exist", cmd_sisdb_wlog_exist, 0, NULL},  
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_wlog = {
@@ -215,16 +215,11 @@ int cmd_sisdb_wlog_clear(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_wlog_check(void *worker_, void *argv_)
+int cmd_sisdb_wlog_exist(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;
 
-    // s_sisdb_wlog_unit *unit = sis_map_pointer_get(context->datasets, (char *)argv_);
-    // if (!unit)
-    // {
-    //     return SIS_METHOD_ERROR;
-    // }
     s_sis_disk_class *rfile = sis_disk_class_create();
     char fn[255];
     sis_sprintf(fn, 255, "%s.log", (char *)argv_);

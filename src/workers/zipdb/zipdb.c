@@ -552,6 +552,7 @@ int cmd_zipdb_stop(void *worker_, void *argv_)
     s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
 	// printf("cmd_zipdb_stop, curmemory : %d\n", context->cur_object->size);
 	context->stoped = true;
+	context->zipnums = 0; // 重新计数
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_zipdb_reader *reader = (s_zipdb_reader *)sis_pointer_list_get(context->readeres, i);

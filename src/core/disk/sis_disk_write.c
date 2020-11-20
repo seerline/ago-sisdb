@@ -671,7 +671,7 @@ void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
     {
         s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->work_fps->lists, i);
         sis_file_getname(unit->fn, fn, 255);
-        sis_sprintf(newfn, 255, "%s/%s/%s", path_, cls_->midpath , fn);
+        sis_sprintf(newfn, 255, "%s/%s", path_, fn);
         sis_file_rename(unit->fn, newfn);
     }
     if (cls_->work_fps->main_head.index)
@@ -680,7 +680,7 @@ void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
         {
             s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->index_fps->lists, i);
             sis_file_getname(unit->fn, fn, 255);
-            sis_sprintf(newfn, 255, "%s/%s/%s", path_, cls_->midpath , fn);
+            sis_sprintf(newfn, 255, "%s/%s", path_, fn);
             sis_file_rename(unit->fn, newfn);
         }
     }

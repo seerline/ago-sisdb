@@ -15,7 +15,6 @@ struct s_sis_method sisdb_methods[] = {
     {"init",      cmd_sisdb_init, SIS_METHOD_ACCESS_READ, NULL},   // 设置一些必要的参数
     {"get",       cmd_sisdb_get,  SIS_METHOD_ACCESS_READ, NULL},   // 默认 json 格式
     {"set",       cmd_sisdb_set,  SIS_METHOD_ACCESS_WRITE, NULL},   // 默认 json 格式
-    {"stop",      cmd_sisdb_stop, SIS_METHOD_ACCESS_WRITE, NULL},   // sno 当日数据完毕
     {"del",       cmd_sisdb_del,  SIS_METHOD_ACCESS_WRITE, NULL},  // 删除一个数据 数据区没有数据时 清理键值
     {"drop",      cmd_sisdb_drop, SIS_METHOD_ACCESS_WRITE, NULL},   // 删除一个表结构数据
     {"gets",      cmd_sisdb_gets, SIS_METHOD_ACCESS_READ, NULL},   // 默认 json 格式 get 多个key多个sdb数据 暂时不支持
@@ -23,6 +22,7 @@ struct s_sis_method sisdb_methods[] = {
     {"dels",      cmd_sisdb_dels, SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除多个数据
     {"sub",       cmd_sisdb_sub,  SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据
     {"unsub",     cmd_sisdb_unsub, SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅
+    {"stop",      cmd_sisdb_stop, SIS_METHOD_ACCESS_WRITE, NULL},   // sno 当日数据完毕
     {"subsno",    cmd_sisdb_subsno, SIS_METHOD_ACCESS_READ, NULL},   // 订阅sno数据 {"date":20201010}
     {"unsubsno",  cmd_sisdb_unsubsno, SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅sno数据 
 };

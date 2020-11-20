@@ -17,6 +17,7 @@ extern s_sis_modules sis_modules_market_collect;
 extern s_sis_modules sis_modules_market_file2;
 extern s_sis_modules sis_modules_market_link;
 extern s_sis_modules sis_modules_market_rfile;
+extern s_sis_modules sis_modules_market_seer;
 extern s_sis_modules sis_modules_market_server;
 extern s_sis_modules sis_modules_market_sisdb;
 extern s_sis_modules sis_modules_market_wfile;
@@ -59,6 +60,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_market_file2,
     &sis_modules_market_link,
     &sis_modules_market_rfile,
+    &sis_modules_market_seer,
     &sis_modules_market_server,
     &sis_modules_market_sisdb,
     &sis_modules_market_wfile,
@@ -103,6 +105,7 @@ const char *__modules_name[] = {
     "market_file2",
     "market_link",
     "market_rfile",
+    "market_seer",
     "market_server",
     "market_sisdb",
     "market_wfile",

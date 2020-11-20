@@ -189,13 +189,12 @@ bool sisdb_server_init(void *worker_, void *argv_)
     // 加载数据
     if (_sisdb_server_load(context) != SIS_METHOD_OK)
     {
-        sisdb_server_uninit(worker_);
+        // printf("...load fail\n");
         return false;
     }
     // 打开网络
     if (!sis_net_class_open(context->socket))
     {
-        sisdb_server_uninit(worker_);
         return false;
     }
 
@@ -665,7 +664,7 @@ static int cb_sisdb_wlog_load(void *worker_, void *argv_)
     }  
     return 0;
 }
-
+// ??? 这里如果文件没有返回错误的情况下 初始就启动不了server 
 int _sisdb_server_load(s_sisdb_server_cxt *context)
 {
     // 先根据规则加载磁盘数据
@@ -678,8 +677,8 @@ int _sisdb_server_load(s_sisdb_server_cxt *context)
         sis_message_set(msg, "config", &context->catch_cfg, NULL);
         if (sis_worker_command(context->fast_save, "load", msg) != SIS_METHOD_OK)
         {
-            sis_message_destroy(msg);
-            return SIS_METHOD_ERROR;
+            // sis_message_destroy(msg);
+            // return SIS_METHOD_ERROR;
         }
     }
     // 再加载wlog中的数据
@@ -691,8 +690,11 @@ int _sisdb_server_load(s_sisdb_server_cxt *context)
         sis_message_set_method(msg, "cb_recv", cb_sisdb_wlog_load);
         if (sis_worker_command(context->wlog_save, "read", msg) != SIS_METHOD_OK)
         {
-            sis_message_destroy(msg);
-            return SIS_METHOD_ERROR;
+            // printf("22222222 = %d\n", i);
+            // 不管有没有log都继续向下处理
+            // printf("load 2....\n");
+            // sis_message_destroy(msg);
+            // return SIS_METHOD_ERROR;
         }
     }
     sis_message_destroy(msg);
@@ -709,7 +711,7 @@ int _sisdb_server_save(s_sisdb_server_cxt *context, int workdate)
         s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;  
         printf("save [%s] fail. workdate = %d .\n", sisdb->name, workdate);
       
-        if (sis_worker_command(context->wlog_save, "check", sisdb->name) != SIS_METHOD_OK)
+        if (sis_worker_command(context->wlog_save, "exist", sisdb->name) != SIS_METHOD_OK)
         {
             continue;
         }

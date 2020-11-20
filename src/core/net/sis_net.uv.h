@@ -32,13 +32,14 @@ struct s_sis_socket_server;
 
 // 队列结点
 typedef struct s_sis_net_node {
-	void                  *source; 
+	int                    cid;
+	void                  *source; // server : s_sis_socket_server || s_sis_socket_client
     s_sis_object          *obj;    // 数据区
     struct s_sis_net_node *next;
 } s_sis_net_node;
 
 // 发起始结点 全部处理完再返回
-typedef int (cb_net_reader)(void *, s_sis_object *);
+typedef int (cb_net_reader)(s_sis_net_node *);
 
 typedef struct s_sis_net_queue {
 
@@ -55,7 +56,7 @@ typedef struct s_sis_net_queue {
 
 s_sis_net_queue *sis_net_queue_create(cb_net_reader *cb_reader_, int wait_nums_);
 void sis_net_queue_destroy(s_sis_net_queue *queue_);
-s_sis_object *sis_net_queue_push(s_sis_net_queue *queue_, void *source_, s_sis_object *obj_);
+s_sis_net_node *sis_net_queue_push(s_sis_net_queue *queue_, void *source_, int cid_, s_sis_object *obj_);
 void sis_net_queue_next(s_sis_net_queue *queue_);
 
 // 用于服务器的会话单元
@@ -67,6 +68,7 @@ typedef struct s_sis_socket_session
 	uv_buf_t  read_buffer;  // 接受数据的 buffer 有真实的数据区
 	uv_buf_t  write_buffer; // 写数据的 buffer 没有真实的数据区 直接使用传入的数据缓存指针
 	
+	int        write_stop; // 是否已经关闭
 	uv_async_t write_async;
 	uv_write_t write_req;   // 写时请求
 
@@ -88,7 +90,7 @@ typedef struct s_sis_socket_server
 	
 	bool isinit; // 是否已初始化，用于 close 函数中判断
 	bool isexit;
-
+	// ??? 客户断线后 删除了对象 却没清理发送队列
 	s_sis_net_queue  *write_list; // 发送队列   
 	s_sis_index_list *sessions; // 子客户端链接 s_sis_socket_session
 

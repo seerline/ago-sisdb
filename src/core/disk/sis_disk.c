@@ -201,9 +201,8 @@ int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, 
     case SIS_DISK_TYPE_LOG:  // fname_ 必须为日期
         if (sis_time_str_is_date((char *)fname_))
         {
-            sis_strcpy(cls_->midpath, 255, SIS_DISK_LOG_DIR);
-            sis_sprintf(work_fn, SIS_DISK_NAME_LEN, "%s/%s/%s.%s",
-                                        fpath_, SIS_DISK_LOG_DIR, fname_, SIS_DISK_LOG_CHAR);
+            sis_sprintf(work_fn, SIS_DISK_NAME_LEN, "%s/%s.%s",
+                                        fpath_, fname_, SIS_DISK_LOG_CHAR);
             cls_->work_fps->main_head.wtime = sis_time_get_idate_from_str(fname_, 0);
             cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MIDPAGE;
             cls_->work_fps->max_file_size = 0; // 顺序读写的文件 不需要设置最大值 
@@ -219,16 +218,15 @@ int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, 
         {
             int nyear = sis_time_get_iyear_from_str(fname_, 0);
             // 按年存储
-            sis_strcpy(cls_->midpath, 255, SIS_DISK_SNO_DIR);
-            sis_sprintf(work_fn, SIS_DISK_NAME_LEN, "%s/%s/%d/%s.%s",
-                                      fpath_, SIS_DISK_SNO_DIR, nyear, fname_, SIS_DISK_SNO_CHAR);
+            sis_sprintf(work_fn, SIS_DISK_NAME_LEN, "%s/%d/%s.%s",
+                                      fpath_, nyear, fname_, SIS_DISK_SNO_CHAR);
             cls_->work_fps->main_head.index = 1;
             cls_->work_fps->main_head.wtime = sis_time_get_idate_from_str(fname_, 0);
             cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MAXPAGE;
             // cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MIDPAGE;
             cls_->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
-            sis_sprintf(index_fn, SIS_DISK_NAME_LEN, "%s/%s/%d/%s.%s",
-                                       fpath_, SIS_DISK_SNO_DIR, nyear, fname_, SIS_DISK_IDX_CHAR);
+            sis_sprintf(index_fn, SIS_DISK_NAME_LEN, "%s/%d/%s.%s",
+                                       fpath_, nyear, fname_, SIS_DISK_IDX_CHAR);
         }
         else
         {

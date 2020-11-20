@@ -97,9 +97,6 @@
 #define  SIS_DISK_SCALE_MINU       2  // 1分钟  8 位 201002381425  14:25分
 #define  SIS_DISK_SCALE_DATE       3  // 日期   多条记录      20100238
 
-#define  SIS_DISK_LOG_DIR       "logs"   // 日志型文件 当日结束后根据此文件生成其他文件
-#define  SIS_DISK_SNO_DIR       "snos"
-
 #define  SIS_DISK_LOG_CHAR      "log"
 #define  SIS_DISK_SNO_CHAR      "sno"
 #define  SIS_DISK_SDB_CHAR      "sdb"
@@ -386,7 +383,6 @@ typedef struct s_sis_disk_class {
     int   style;
     char  fpath[255];
     char  fname[255];
-    char  midpath[255];
 
     int   status;
     // 字典表应该是这样的

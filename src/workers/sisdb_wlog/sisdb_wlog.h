@@ -40,7 +40,7 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_);
 int cmd_sisdb_wlog_write(void *worker_, void *argv_);
 // 数据全部处理完后清理内存
 int cmd_sisdb_wlog_clear(void *worker_, void *argv_);
-// 检查是否有新的数据需要写入
-int cmd_sisdb_wlog_check(void *worker_, void *argv_);
+// 检查wlog文件是否存在
+int cmd_sisdb_wlog_exist(void *worker_, void *argv_);
 
 #endif
