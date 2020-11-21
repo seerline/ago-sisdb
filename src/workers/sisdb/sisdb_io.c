@@ -1065,7 +1065,6 @@ void *_thread_publish_history(void *argv_)
     sis_disk_file_read_stop(read_class);
     sis_disk_class_destroy(read_class); 
 
-
     sis_thread_finish(&info->thread_cxt);
     // 线程结束应该从map表中剔除
     char subkey[255];

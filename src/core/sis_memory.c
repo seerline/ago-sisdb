@@ -62,7 +62,10 @@ void sis_memory_pack(s_sis_memory *m_)
 	else
 	{
 		m_->size = sis_memory_get_size(m_);
-		memmove(m_->buffer, m_->buffer + m_->offset, m_->size);
+		if (m_->size > 0)
+		{
+			memmove(m_->buffer, m_->buffer + m_->offset, m_->size);
+		}
 		m_->offset = 0;
 	}
 }

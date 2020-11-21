@@ -332,6 +332,8 @@ int _sis_disk_read_hid_log(s_sis_disk_class *cls_, s_sis_object *obj_)
             sis_object_destroy(obj);
         }   
     }
+    // 这里memory==0 需要清理
+    sis_memory_pack(memory);
     return count;
 }
 // 适配 {"k1","k2"} 和 k1,k2
@@ -468,6 +470,8 @@ int _sis_disk_read_hid_sno(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
         sis_pointer_list_push(cls_->sno_rcatch, catch);
         count++;
     }
+    // 这里memory==0 需要清理
+    sis_memory_pack(memory);
     return count;
 }
 int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
@@ -632,6 +636,7 @@ int _sis_disk_rget_hid_sno(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
         sis_memory_cat(output, sis_memory(memory), unit->db->size);
         sis_memory_move(memory, unit->db->size);        
     }
+    sis_memory_pack(memory);
     return count;
 }
 int _sis_disk_rget_hid_sdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_, s_sis_memory *inmem_, s_sis_object *obj_)
@@ -663,7 +668,8 @@ int _sis_disk_rget_hid_sdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
         count++;
         sis_memory_cat(SIS_OBJ_MEMORY(obj_), sis_memory(memory), unit->db->size);
         sis_memory_move(memory, unit->db->size);
-    }     
+    } 
+    sis_memory_pack(memory);    
     return count;
 }
 int _sis_disk_rget_hid_kdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_, s_sis_memory *inmem_, s_sis_object *obj_)
@@ -699,6 +705,7 @@ int _sis_disk_rget_hid_kdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
         sis_memory_cat(SIS_OBJ_MEMORY(obj_), sis_memory(memory), unit->db->size);
         sis_memory_move(memory, unit->db->size);
     }
+    sis_memory_pack(memory);    
     sis_sdsfree(key); 
     return count;
 }
@@ -797,7 +804,8 @@ int _sis_disk_read_hid_sdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
                     SIS_OBJ_SDS(key->name), SIS_OBJ_SDS(sdb->name), obj);
             }            
             sis_object_destroy(obj);
-        }          
+        }  
+        sis_memory_pack(memory);        
     }
     return count;
 }
@@ -855,6 +863,7 @@ int _sis_disk_read_hid_kdb(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
             }
             sis_object_destroy(obj);
         }
+        sis_memory_pack(memory);
     }
     sis_sdsfree(key); 
     return count;
@@ -1243,6 +1252,8 @@ size_t cb_sis_disk_file_read_index(void *source_, s_sis_disk_head *head_, s_sis_
         }
         count++;
     }
+    // 这里memory==0 需要清理
+    sis_memory_pack(memory);
     cls_->sno_pages = maxpages + 1; // 表示新写入的 page 以此为准
     return count;
 }

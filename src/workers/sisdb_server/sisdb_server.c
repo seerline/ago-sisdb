@@ -665,6 +665,8 @@ static int cb_sisdb_wlog_load(void *worker_, void *argv_)
     return 0;
 }
 // ??? 这里如果文件没有返回错误的情况下 初始就启动不了server 
+// 读取sno文件时，如果客户端中断 服务端会偶尔崩溃 怀疑是数据未清理 检查一下
+// 订阅sno时，会有几秒等待时间 查一下
 int _sisdb_server_load(s_sisdb_server_cxt *context)
 {
     // 先根据规则加载磁盘数据
@@ -690,7 +692,6 @@ int _sisdb_server_load(s_sisdb_server_cxt *context)
         sis_message_set_method(msg, "cb_recv", cb_sisdb_wlog_load);
         if (sis_worker_command(context->wlog_save, "read", msg) != SIS_METHOD_OK)
         {
-            // printf("22222222 = %d\n", i);
             // 不管有没有log都继续向下处理
             // printf("load 2....\n");
             // sis_message_destroy(msg);

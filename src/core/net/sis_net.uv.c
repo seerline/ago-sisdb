@@ -660,7 +660,7 @@ static void cb_server_write_after(uv_write_t *requst, int status)
 #ifdef _UV_DEBUG_
 	_uv_write_nums++;
 	if (_uv_write_nums % 1000 == 0)
-	printf("uv write stop:  nums :%d delay : %lld \n", _uv_write_nums, sis_time_get_now_msec() - _uv_write_msec);
+	LOG(5)("uv write stop:  nums :%d delay : %lld \n", _uv_write_nums, sis_time_get_now_msec() - _uv_write_msec);
 #endif
 	// 通知下一个
 	sis_net_queue_next(session->server->write_list);
@@ -716,7 +716,7 @@ static int cb_server_write(s_sis_net_node *node_)
 	}
 	if (_uv_write_nums % 1000 == 0)
 	{
-		printf("uv write start. nums :%d.\n", _uv_write_nums);
+		LOG(5)("uv write start. nums :%d.\n", _uv_write_nums);
 		_uv_write_msec = sis_time_get_now_msec();
 
 		int index = sis_index_list_first(server->sessions);
@@ -724,7 +724,13 @@ static int cb_server_write(s_sis_net_node *node_)
 		{
 			s_sis_socket_session *unit = (s_sis_socket_session *)sis_index_list_get(server->sessions, index);
 			if (unit->_uv_recv_async_nums != unit->_uv_send_async_nums)
-			LOG(2)("async %d != %d \n", unit->_uv_recv_async_nums, unit->_uv_send_async_nums);
+			{
+				LOG(2)("async %d != %d \n", unit->_uv_recv_async_nums, unit->_uv_send_async_nums);
+			}
+			else			
+			{
+				LOG(5)("async %d != %d \n", unit->_uv_recv_async_nums, unit->_uv_send_async_nums);
+			}
 			index = sis_index_list_next(server->sessions, index);
 		}
 	}

@@ -258,7 +258,7 @@ LINK_DIRECTORIES(${LIBPATH_LIST})
 MESSAGE(STATUS "LIBRARIES : ${LIBFILE_LIST}")
 
 # SET(LIBRARIES ${LIBFILE_LIST} c m iconv stdc++ pthread)
-SET(LIBRARIES ${LIBFILE_LIST} c m stdc++ pthread)
+SET(LIBRARIES ${LIBFILE_LIST} c m stdc++ dl pthread)
 # SET(LIBRARIES libuv.a libqs_api.a libboost.a c m stdc++ pthread)
 
 #生成可执行文件
