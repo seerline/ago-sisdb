@@ -723,6 +723,8 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_)
     }
     if (access == SIS_DISK_ACCESS_CREATE)
     {
+        // 这里要设置从0页开始
+        cls_->sno_pages = 0;
         // 以从新创建新文件的方式打开文件 如果以前有文件直接删除创建新的
         if (sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_CREATE))
         {

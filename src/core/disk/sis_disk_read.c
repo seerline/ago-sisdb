@@ -489,7 +489,7 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
         //     s_sis_disk_rcatch *rr =(s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);
         //     printf("[%p] %p list no = %d\n", sis_pointer_list_first(cls_->sno_rcatch), rr, rr->sno);     
         // }
-        // printf("sno_rcatch : stop %d\n", cls_->sno_rcatch->count);
+        printf("sno_rcatch : stop %d\n", cls_->sno_rcatch->count);
         // 然后发布出去
         if (cls_->reader->callback && cls_->reader->callback->cb_read)
         {
@@ -569,8 +569,21 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
         sis_pointer_list_destroy(filters);
         return 0;
     }
+    // 得到最小的页码编号 
+    // ??? 新的一天数据需要将页码设置为0
+    int minpage = -1;
+    for (int i = 0; i < filters->count; i++)
+    {
+        s_sis_disk_index *idxinfo = (s_sis_disk_index *)sis_pointer_list_get(filters, i);
+        s_sis_disk_index_unit *unit = sis_struct_list_get(idxinfo->index, 0);
+        if (!unit)
+        {
+            continue;
+        }
+        minpage = minpage == -1 ? unit->ipage : minpage < unit->ipage ? minpage : unit->ipage;
+    }
     // 按页获取数据
-    for (uint32 page = 0; page < cls_->sno_pages; page++)
+    for (uint32 page = minpage; page < cls_->sno_pages; page++)
     {
         sis_pointer_list_clear(cls_->sno_rcatch);
         for (int i = 0; i < filters->count; i++)
@@ -581,6 +594,7 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
             {
                 continue;
             }
+            // printf("%d %d %d: %s %s\n", page, unit->ipage, cls_->sno_pages, SIS_OBJ_GET_CHAR(idxinfo->key), SIS_OBJ_GET_CHAR(idxinfo->sdb));
             if (unit->ipage == page)
             {
                 // 一页中同一个数据只有一份

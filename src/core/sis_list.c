@@ -436,9 +436,35 @@ void *sis_sort_list_prev(s_sis_sort_list *list_, void *value_)
 {
 	return sis_struct_list_offset(list_->value, value_, -1);
 }
-
+// 二分法查找 从高向低
+int _sort_list_find(s_sis_sort_list *list, int key, int start, int stop)
+{	
+	while(start <= stop)
+	{
+		int mid = (stop - start) / 2 + start;
+		int *midv = (int *)sis_struct_list_get(list->key, mid);
+		if (*midv < key)
+		{
+			stop = mid - 1;
+		}
+		else if (*midv > key)
+		{
+			start = mid + 1;
+		}
+		else
+		{
+			return mid;
+		}		
+	}
+	return -1;
+}
 void *sis_sort_list_find(s_sis_sort_list *list_, int key_)
 {
+	// int index = _sort_list_find(list_, key_, 0, list_->key->count - 1);
+	// if (index >= 0)
+	// {
+	// 	return sis_struct_list_get(list_->value, index);
+	// }
 	for (int i = 0; i < list_->key->count; i++)
 	{
 		int *key = (int *)sis_struct_list_get(list_->key, i);

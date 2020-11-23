@@ -255,17 +255,19 @@ static int cb_sis_reader_recv(void *cls_, s_sis_object *in_)
 	// 从队列中来 往上层用户而去
 	s_sis_net_class *cls = (s_sis_net_class *)cls_;
 
-	// printf("reader recv. %d \n", SIS_OBJ_NETMSG(in_)->cid);
+	// LOG(8)("reader recv. %d count = %d\n", SIS_OBJ_NETMSG(in_)->cid, cls->ready_recv_cxts->work_queue->rnums);
 	// s_sis_net_message *mess = SIS_OBJ_NETMSG(in_);
 	// printf("recv mess: [%d] %x : %s %s %s\n %s\n", mess->cid, mess->style, 
 	// 	mess->cmd ? mess->cmd : "nil",
 	// 	mess->key ? mess->key : "nil",
 	// 	mess->val ? mess->val : "nil",
 	// 	mess->rval ? mess->rval : "nil");
-	// printf("recv argv: %x [%p] %d\n", mess->style, mess->argvs, mess->argvs ? mess->argvs->count : 0);
 
 	char key[16];
 	sis_llutoa(SIS_OBJ_NETMSG(in_)->cid, key, 16, 10);
+
+	// printf("recv argv: %x key = %s [%p] %d\n", mess->style, key, mess->argvs, mess->argvs ? mess->argvs->count : 0);
+
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (!cxt)
 	{
@@ -471,6 +473,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			{
 				mess->cid = sid_;
 				sis_lock_list_push(cls->ready_recv_cxts, obj);
+				LOG(8)("server list recv. %d count = %d\n", sid_, cls->ready_recv_cxts->work_queue->rnums);
 			}
 			else if (rtn == 0)
 			{
@@ -540,7 +543,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 // int __count = 0;
 static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen_)
 {
-	// printf("client recv from [%d] server : %d:||%s\n", sid_, (int)ilen_, in_);
+	// LOG(8)("client recv from [%d] server : %d:||%s status = %d\n", sid_, (int)ilen_, in_, cxt->status);
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
 	if (!cxt)
@@ -577,13 +580,18 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			s_sis_net_message *mess = sis_net_message_create();
 			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
 			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
-			// printf("recv decoded rtn.[%d] %d %zu size = %zu\n", mess->cid, rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
+			// if (sis_memory_get_size(cxt->recv_buffer) == 130 || sis_memory_get_size(cxt->recv_buffer) == 131)
+			// {
+			// 	sis_out_binary("wait", sis_memory(cxt->recv_buffer), sis_memory_get_size(cxt->recv_buffer));
+			// 	printf("client recv decoded rtn.[%d] %d %zu size = %zu\n", mess->cid, rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
+			// }
 
 			if (rtn == 1)
 			{
 				mess->cid = sid_;
 				// printf("[%zu %zu] size= %zu\n", cxt->recv_buffer->maxsize / 1000, sis_memory_get_size(cxt->recv_buffer), SIS_OBJ_GET_SIZE(obj));
 				sis_lock_list_push(cls->ready_recv_cxts, obj);
+				// LOG(8)("client list recv. %d count = %d\n", sid_, cls->ready_recv_cxts->work_queue->rnums);
 			}			
 			else if (rtn == 0)
 			{
