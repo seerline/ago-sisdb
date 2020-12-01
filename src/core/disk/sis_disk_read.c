@@ -489,7 +489,7 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
         //     s_sis_disk_rcatch *rr =(s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);
         //     printf("[%p] %p list no = %d\n", sis_pointer_list_first(cls_->sno_rcatch), rr, rr->sno);     
         // }
-        printf("sno_rcatch : stop %d\n", cls_->sno_rcatch->count);
+        // printf("sno_rcatch : stop %d %p\n", cls_->sno_rcatch->count, cls_->reader->callback->cb_read);
         // 然后发布出去
         if (cls_->reader->callback && cls_->reader->callback->cb_read)
         {
@@ -590,11 +590,11 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
         {
             s_sis_disk_index *idxinfo = (s_sis_disk_index *)sis_pointer_list_get(filters, i);
             s_sis_disk_index_unit *unit = sis_struct_list_get(idxinfo->index, idxinfo->cursor);
+            // printf("%p %d %d %d: %s %s\n", unit, page, unit ? unit->ipage : 0, cls_->sno_pages, SIS_OBJ_GET_CHAR(idxinfo->key), SIS_OBJ_GET_CHAR(idxinfo->sdb));
             if (!unit)
             {
                 continue;
             }
-            // printf("%d %d %d: %s %s\n", page, unit->ipage, cls_->sno_pages, SIS_OBJ_GET_CHAR(idxinfo->key), SIS_OBJ_GET_CHAR(idxinfo->sdb));
             if (unit->ipage == page)
             {
                 // 一页中同一个数据只有一份
@@ -604,6 +604,10 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
                 {
                     _sis_disk_read_hid_sno(cls_, unit, memory);
                 }
+                else
+                {
+                    LOG(5)("index fail.\n");
+                }                
                 sis_memory_destroy(memory);
                 idxinfo->cursor++;
             }

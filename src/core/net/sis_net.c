@@ -473,7 +473,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			{
 				mess->cid = sid_;
 				sis_lock_list_push(cls->ready_recv_cxts, obj);
-				LOG(8)("server list recv. %d count = %d\n", sid_, cls->ready_recv_cxts->work_queue->rnums);
+				// LOG(8)("server list recv. %d count = %d\n", sid_, cls->ready_recv_cxts->work_queue->rnums);
 			}
 			else if (rtn == 0)
 			{

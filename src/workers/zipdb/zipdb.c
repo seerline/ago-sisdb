@@ -542,6 +542,9 @@ int cmd_zipdb_start(void *worker_, void *argv_)
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_zipdb_reader *reader = (s_zipdb_reader *)sis_pointer_list_get(context->readeres, i);
+
+		LOG(5)("zipdb start. [%d] cid : %d workdate : %d = %s\n", 
+			i,  reader->cid, context->work_date, (char *)argv_);
 		zipdb_sub_start(reader);
 	}
 	return SIS_METHOD_OK;
@@ -551,16 +554,21 @@ int cmd_zipdb_stop(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
 	// printf("cmd_zipdb_stop, curmemory : %d\n", context->cur_object->size);
+	
+	// LOG(5)("zipdb stop. wlog : %d readers : %d workdate : %d = %s\n", 
+	// 	context->wlog_worker, context->readeres->count, context->work_date, (char *)argv_);
 	context->stoped = true;
 	context->zipnums = 0; // 重新计数
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_zipdb_reader *reader = (s_zipdb_reader *)sis_pointer_list_get(context->readeres, i);
+		LOG(5)("zipdb stop. [%d] cid : %d workdate : %d = %s\n", 
+			i,  reader->cid, context->work_date, (char *)argv_);
 		if (reader->cb_sub_stop)
 		{
-			char sub_date[32];
-        	sis_llutoa(context->work_date, sub_date, 32, 10);
-			reader->cb_sub_stop(reader, sub_date);
+			char sdate[32];
+			sis_llutoa(context->work_date, sdate, 32, 10);
+			reader->cb_sub_stop(reader, sdate);
 		}
 		zipdb_sub_stop(reader);
 	}

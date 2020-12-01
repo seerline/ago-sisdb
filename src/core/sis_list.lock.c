@@ -561,7 +561,7 @@ void sis_lock_reader_close(s_sis_lock_reader *reader_)
     s_sis_lock_list *ullist = (s_sis_lock_list *)reader_->father;
     sis_rwlock_lock_w(&ullist->userslock);
     int index = sis_pointer_list_indexof(ullist->users, reader_);
-    printf("delete reader. %s %d %d\n", reader_->sign, index, ullist->users->count);
+    LOG(5)("delete reader. %s %d %d\n", reader_->sign, index, ullist->users->count);
     sis_pointer_list_delete(ullist->users, index , 1);
     sis_rwlock_unlock(&ullist->userslock);
 }   
