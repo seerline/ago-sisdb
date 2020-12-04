@@ -69,9 +69,9 @@ static int cb_zipdb_wlog_load(void *worker_, void *argv_)
 				// 数据错误 应该停止读取 直接返回错误
 				context->wlog_load = 0;
 			}	
-			sis_sdsfree(context->wlog_keys); context->wlog_keys = NULL;
-			sis_sdsfree(context->wlog_sdbs); context->wlog_sdbs = NULL;
 		}
+		sis_sdsfree(context->wlog_keys); context->wlog_keys = NULL;
+		sis_sdsfree(context->wlog_sdbs); context->wlog_sdbs = NULL;
 	}
     return SIS_METHOD_OK;
 }

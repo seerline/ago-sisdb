@@ -31,12 +31,13 @@ void sis_bits_stream_destroy(s_sis_bits_stream *s_)
     }
 	sis_free(s_);
 }
+
 void sis_bits_stream_clear(s_sis_bits_stream *s_)
 {
     s_->inited = 0;
     s_->cur_stream = NULL;
-    s_->bit_currpos = 0;
     s_->bit_maxsize = 0;
+    s_->bit_currpos = 0;
     s_->bit_savepos = 0;
     s_->sdbsize = 0;
     s_->bags = 0;

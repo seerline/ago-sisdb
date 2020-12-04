@@ -135,20 +135,20 @@ static int cb_output_realtime(void *reader_)
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
 	s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
 
-	char sub_date[32];
-	sis_llutoa(zipdb->work_date, sub_date, 32, 10);
+	char sdate[32];
+	sis_llutoa(zipdb->work_date, sdate, 32, 10);
 	if(!zipdb->stoped)
 	{
 		if (reader->cb_sub_realtime)
 		{
-			reader->cb_sub_realtime(reader, sub_date);
+			reader->cb_sub_realtime(reader, sdate);
 		}
 	}
 	else
 	{
 		if (reader->cb_sub_stop)
 		{
-			reader->cb_sub_stop(reader, sub_date);
+			reader->cb_sub_stop(reader, sdate);
 		}		
 	}
 	
@@ -517,15 +517,15 @@ int cmd_zipdb_init(void *worker_, void *argv_)
 	{
 		return SIS_METHOD_ERROR;
 	}
-	sdbs = sis_json_to_sds(injson->node, true);
+	s_sis_sds newsdbs = sis_json_to_sds(injson->node, true);
 	sis_json_close(injson);
 
-    if (_zipdb_write_init(context, work_date, keys, sdbs))
+    if (_zipdb_write_init(context, work_date, keys, newsdbs))
     {
-		sis_sdsfree(sdbs);
+		sis_sdsfree(newsdbs);
         return SIS_METHOD_OK;
     }
-	sis_sdsfree(sdbs);
+	sis_sdsfree(newsdbs);
     return SIS_METHOD_ERROR;
 }
 int cmd_zipdb_start(void *worker_, void *argv_)
@@ -698,6 +698,8 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
 	}
     reader->zipdb_worker = worker;
     reader->ishead = sis_message_get_int(msg, "ishead");
+	reader->sub_date = sis_message_get_int(msg, "sub_date");
+
 	printf("reader->ishead = %d\n", reader->ishead);
     reader->cb_zipbits     = sis_message_get_method(msg, "cb_zipbits");
 
@@ -814,6 +816,7 @@ void unzipdb_reader_destroy(s_unzipdb_reader *unzipdb_)
 
 void unzipdb_reader_clear(s_unzipdb_reader *unzipdb_)
 {
+	LOG(5)("clear unzip reader\n");
 	sis_map_list_clear(unzipdb_->keys);
 	sis_map_list_clear(unzipdb_->sdbs);
 	sis_bits_stream_clear(unzipdb_->cur_sbits);
@@ -821,6 +824,7 @@ void unzipdb_reader_clear(s_unzipdb_reader *unzipdb_)
 
 void unzipdb_reader_set_keys(s_unzipdb_reader *unzipdb_, s_sis_sds in_)
 {
+	LOG(5)("set unzip keys\n");
 	// printf("%s\n",in_);
 	s_sis_string_list *klist = sis_string_list_create();
 	sis_string_list_load(klist, in_, sis_sdslen(in_), ",");
@@ -836,6 +840,7 @@ void unzipdb_reader_set_keys(s_unzipdb_reader *unzipdb_, s_sis_sds in_)
 }
 void unzipdb_reader_set_sdbs(s_unzipdb_reader *unzipdb_, s_sis_sds in_)
 {
+	LOG(5)("set unzip sdbs\n");
 	// printf("%s %d\n",in_, sis_sdslen(in_));
 	s_sis_json_handle *injson = sis_json_load(in_, sis_sdslen(in_));
 	if (!injson)
@@ -863,8 +868,8 @@ msec_t _unzip_usec = 0;
 void unzipdb_reader_set_bits(s_unzipdb_reader *unzipdb_, s_zipdb_bits *in_)
 {
 	if (in_->init == 1)
-	{
-		printf("unzip init = 1 : %d\n", unzipdb_->cur_sbits->inited);
+	{ 
+		LOG(5)("unzip init = %d : %d\n", in_->init, unzipdb_->cur_sbits->inited);
 		// 这里memset时报过错
 		sis_bits_struct_flush(unzipdb_->cur_sbits);
 		sis_bits_struct_link(unzipdb_->cur_sbits, in_->data, in_->size);	
@@ -961,23 +966,27 @@ int zipdb_sub_start(s_zipdb_reader *reader)
     s_sis_worker *worker = (s_sis_worker *)reader->zipdb_worker; 
     s_zipdb_cxt *zipdb = (s_zipdb_cxt *)worker->context;
     
-	if (reader->cb_sub_start)
+	LOG(5)("sub start : date = %d - %d\n", zipdb->work_date ,reader->sub_date);
+	if (zipdb->work_date == reader->sub_date)  
 	{
-		char sub_date[32];
-		sis_llutoa(zipdb->work_date, sub_date, 32, 10);
-		reader->cb_sub_start(reader, sub_date);
+		if (reader->cb_sub_start)
+		{
+			char sdate[32];
+			sis_llutoa(zipdb->work_date, sdate, 32, 10);
+			reader->cb_sub_start(reader, sdate);
+		}
+		LOG(5)("count = %d inited = %d stoped = %d\n", zipdb->outputs->work_queue->rnums, zipdb->inited, zipdb->stoped);
+		if (reader->cb_dict_keys)
+		{
+			reader->cb_dict_keys(reader, zipdb->work_keys);
+		}
+		if (reader->cb_dict_sdbs)
+		{
+			reader->cb_dict_sdbs(reader, zipdb->work_sdbs);
+		}
 	}
-	LOG(5)("sub start : count = %d inited = %d stoped = %d\n", zipdb->outputs->work_queue->rnums, zipdb->inited, zipdb->stoped);
-	if (reader->cb_dict_keys)
-	{
-		reader->cb_dict_keys(reader, zipdb->work_keys);
-	}
-	if (reader->cb_dict_sdbs)
-	{
-		reader->cb_dict_sdbs(reader, zipdb->work_sdbs);
-	}
-	// 新加入的订阅者 先发送订阅开始 再发送最后一个初始块后续所有数据 
 	reader->isinit = false;
+	// 新加入的订阅者 先发送订阅开始 再发送最后一个初始块后续所有数据 
 	if (!reader->reader)
 	{
 		reader->reader = sis_lock_reader_create(zipdb->outputs, 

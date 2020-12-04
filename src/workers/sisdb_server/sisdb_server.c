@@ -554,6 +554,7 @@ void sisdb_server_working(void *worker_)
                 sis_sleep(1000);
             }
             context->work_date = sis_time_get_idate(0);
+            LOG(5)("new workdate = %d\n", context->work_date);
             // 这步开始时 wlog 已经被清空 
             _sisdb_server_load(context);
             // 全部处理完成 修改 数据集的时间
