@@ -89,7 +89,7 @@ typedef struct s_sisdb_subsno_info
 	date_t              subdate;
 	struct s_sisdb_cxt *sisdb;
 	s_sis_thread        thread_cxt;
-
+	
 	s_sis_net_message  *netmsg;
 }s_sisdb_subsno_info;
 
@@ -191,6 +191,9 @@ int cmd_sisdb_unsub(void *worker_, void *argv_);
 // 历史数据查询指定日期 {"date":20201010} 
 // 当天数据查询日期为0 或不指定 {"date":0} 默认缓存数据读完 发送一条通知消息 然后把相关订阅注册到sub中 以获取最新数据 
 int cmd_sisdb_subsno(void *worker_, void *argv_);
+
+int cmd_sisdb_fsub(void *worker_, void *argv_);
+
 // 收到此消息 停止发送正在被订阅的数据
 int cmd_sisdb_unsubsno(void *worker_, void *argv_);
 

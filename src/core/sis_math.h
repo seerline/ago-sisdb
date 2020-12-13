@@ -16,6 +16,8 @@
 #define SIS_MINF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) < (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 #define SIS_MAXF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) > (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 
+#define SIS_DIVF(a, b) (SIS_IS_ZERO(b) ? 0.0 : (double)a / (double)b)
+
 //限制返回值a在某个区域内
 #define  sis_between(a,min,max)    (((a) < (min)) ? (min) : (((a) > (max)) ? (max) : (a)))
 

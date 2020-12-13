@@ -23,6 +23,7 @@ struct s_sis_method sisdb_methods[] = {
     {"sub",       cmd_sisdb_sub,  SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据
     {"unsub",     cmd_sisdb_unsub, SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅
     {"stop",      cmd_sisdb_stop, SIS_METHOD_ACCESS_WRITE, NULL},   // sno 当日数据完毕
+    {"fsub",      cmd_sisdb_fsub, SIS_METHOD_ACCESS_READ, NULL},    // 从文件中订阅sno数据 {"date":20201010}
     {"subsno",    cmd_sisdb_subsno, SIS_METHOD_ACCESS_READ, NULL},   // 订阅sno数据 {"date":20201010}
     {"unsubsno",  cmd_sisdb_unsubsno, SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅sno数据 
 };
@@ -577,7 +578,17 @@ int cmd_sisdb_unsub(void *worker_, void *argv_)
     sis_net_ans_with_int(netmsg, o);
     return SIS_METHOD_OK;
 }
-
+int cmd_sisdb_fsub(void *worker_, void *argv_)
+{
+    // 开启线程来处理
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    LOG(5)("%s %s %s\n", netmsg->key, netmsg->val, netmsg->cmd);
+    int o = sisdb_subsno_fromfile(context, netmsg);
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
+}
 int cmd_sisdb_subsno(void *worker_, void *argv_)
 {
     // 开启线程来处理

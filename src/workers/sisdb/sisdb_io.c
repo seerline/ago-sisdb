@@ -1067,6 +1067,7 @@ void *_thread_publish_history(void *argv_)
 
     sis_thread_finish(&info->thread_cxt);
     // 线程结束应该从map表中剔除
+    // ??? 这里应该长度不够
     char subkey[255];
     sis_sprintf(subkey, 255, "%s-%d", info->netmsg->key, (int)info->subdate);
     sis_map_pointer_del(info->sisdb->subsno_worker, subkey);
@@ -1075,7 +1076,6 @@ void *_thread_publish_history(void *argv_)
 }
 int _start_subsno_worker(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_, date_t subdate_, bool ismul_)
 {
-    
     if (subdate_ == 0 || subdate_ == sisdb_->work_date)
     {
         s_sisdb_subsno_info *info = sisdb_subsno_info_create(sisdb_, netmsg_);
@@ -1093,6 +1093,7 @@ int _start_subsno_worker(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_, date_t
         s_sisdb_subsno_info *info = sisdb_subsno_info_create(sisdb_, netmsg_);
         info->ismul = ismul_;
         info->subdate = subdate_;
+        // ??? 这里应该长度不够
         char subkey[255];
         sis_sprintf(subkey, 255, "%s-%d", netmsg_->key, (int)subdate_);
         sis_map_pointer_set(sisdb_->subsno_worker, subkey, info);
@@ -1111,6 +1112,32 @@ int _start_subsno_worker(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_, date_t
     }
     return 0;
 }
+int sisdb_subsno_fromfile(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
+{
+    s_sis_json_handle *handle = netmsg_->val ? sis_json_load(netmsg_->val, sis_sdslen(netmsg_->val)) : NULL;
+    if (handle)
+    {
+        date_t subdate = sis_json_get_int(handle->node, "date", 0); 
+        s_sisdb_subsno_info *info = sisdb_subsno_info_create(sisdb_, netmsg_);
+        info->ismul = true;
+        info->subdate = subdate;
+        char subkey[255];
+        // ??? 这里应该长度不够
+        sis_sprintf(subkey, 255, "%s-%d", netmsg_->key, (int)subdate);
+        sis_map_pointer_set(sisdb_->subsno_worker, subkey, info);
+        info->status = SISDB_SUBSNO_WORK;
+        if (!sis_thread_create(_thread_publish_history, info, &info->thread_cxt))
+        {
+            LOG(1)("can't start _thread_publish_history.\n");
+            sis_json_close(handle);
+            return 0;
+        }       
+        sis_json_close(handle);
+        return 1;
+    }
+    return 0; 
+}
+
 int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 {
     s_sis_json_handle *handle = netmsg_->val ? sis_json_load(netmsg_->val, sis_sdslen(netmsg_->val)) : NULL;

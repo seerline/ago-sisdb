@@ -523,7 +523,6 @@ size_t cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_ob
         {
             s_sis_memory *memory = _sis_disk_class_key_change(SIS_OBJ_MEMORY(obj_));
             // newkeys
-            // sis_out_binary("getkey", sis_memory(memory), sis_memory_get_size(memory));
             sis_disk_class_set_key(cls_, false, sis_memory(memory), sis_memory_get_size(memory));
             if(callback && callback->cb_key)
             {
@@ -556,6 +555,19 @@ int sis_read_unit_from_index(s_sis_disk_class *cls_, uint8 *hid_, s_sis_disk_ind
     return o;
 }
 
+size_t _calc_sno_rcatch_size(s_sis_disk_class *cls_)
+{
+    size_t size = 0;
+    for (int i = 0; i < cls_->sno_rcatch->count; i++)
+    {       
+        s_sis_disk_rcatch *catch = (s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);         
+        size += sizeof(s_sis_disk_rcatch);
+        size += SIS_OBJ_GET_SIZE(catch->key) + SIS_OBJ_GET_SIZE(catch->sdb);
+        s_sis_memory *output = SIS_OBJ_MEMORY(catch->output);
+        size += sizeof(s_sis_memory) + output->maxsize; 
+    }
+    return size;
+}
 int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
 {
     // 索引已加载
@@ -563,7 +575,7 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     s_sis_pointer_list *filters = sis_pointer_list_create(); 
     // 获取数据索引列表 --> filters
     sis_reader_sub_filters(cls_, reader_, filters);
-    LOG(5)("sub filters count =  %d\n",filters->count);
+    LOG(5)("sub filters count =  %d %d\n",filters->count, cls_->work_fps->main_head.wtime);
     if(filters->count < 1)
     {
         sis_pointer_list_destroy(filters);
@@ -612,7 +624,10 @@ int sis_disk_read_sub_sno(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
                 idxinfo->cursor++;
             }
         }
+        // printf("sno_rcatch_size = %zu \n", _calc_sno_rcatch_size(cls_));
         _sis_disk_read_hid_sno_end(cls_);
+        // printf("sno_rcatch_size = %zu \n", _calc_sno_rcatch_size(cls_));
+        // 这里应该释放了内存
     }
     sis_pointer_list_clear(cls_->sno_rcatch);
     sis_pointer_list_destroy(filters);

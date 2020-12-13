@@ -460,19 +460,19 @@ int _sort_list_find(s_sis_sort_list *list, int key, int start, int stop)
 }
 void *sis_sort_list_find(s_sis_sort_list *list_, int key_)
 {
-	// int index = _sort_list_find(list_, key_, 0, list_->key->count - 1);
-	// if (index >= 0)
-	// {
-	// 	return sis_struct_list_get(list_->value, index);
-	// }
-	for (int i = 0; i < list_->key->count; i++)
+	int index = _sort_list_find(list_, key_, 0, list_->key->count - 1);
+	if (index >= 0)
 	{
-		int *key = (int *)sis_struct_list_get(list_->key, i);
-		if (*key == key_)
-		{
-			return sis_struct_list_get(list_->value, i);
-		}
+		return sis_struct_list_get(list_->value, index);
 	}
+	// for (int i = 0; i < list_->key->count; i++)
+	// {
+	// 	int *key = (int *)sis_struct_list_get(list_->key, i);
+	// 	if (*key == key_)
+	// 	{
+	// 		return sis_struct_list_get(list_->value, i);
+	// 	}
+	// }
 	return NULL;
 }
 void *sis_sort_list_get(s_sis_sort_list *list_, int index_)

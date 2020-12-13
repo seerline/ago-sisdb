@@ -28,7 +28,6 @@ typedef struct s_sis_server
 
 	size_t log_size;
 	int    log_level;
-	bool   log_screen;
 	char   log_path[SIS_PATH_LEN];   // log路径
 	char   log_name[SIS_PATH_LEN];    // log文件名，通常以执行文件名为名
 

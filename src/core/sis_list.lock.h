@@ -177,6 +177,7 @@ typedef struct s_sis_lock_list {
     s_sis_rwlock_t       userslock;  // 读者列表管理的锁  
     s_sis_pointer_list  *users;      // 读者列表 s_sis_lock_reader 操作时 用 userslock 这个锁来处理
 
+    s_sis_mutex_t        watchlock;  // 对数据进行操作时必须加锁
     s_sis_lock_reader   *watcher;    // 守护线程 处理数据发布 如果不需要保留所有数据 就定时清理不用的数据
     int                  save_mode;  // 历史数据处理模式 
  

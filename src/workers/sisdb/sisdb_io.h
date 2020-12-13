@@ -64,6 +64,8 @@ int sisdb_multiple_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *, bool issno_);
 
 // sno 的订阅需要确定日期 如果没有参数 表示订阅当日且最新的 需要开启线程 传送历史数据 传输完毕后 
 // 如果订阅日期是当日的 把订阅的键值注册到 single 和 multiple 列表中
+int sisdb_subsno_fromfile(s_sisdb_cxt *sisdb_, s_sis_net_message *);
+
 int sisdb_one_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *);
 int sisdb_multiple_subsno(s_sisdb_cxt *sisdb_, s_sis_net_message *);
 

@@ -34,25 +34,25 @@ void sis_bits_stream_destroy(s_sis_bits_stream *s_)
 
 void sis_bits_stream_clear(s_sis_bits_stream *s_)
 {
-    s_->inited = 0;
     s_->cur_stream = NULL;
     s_->bit_maxsize = 0;
     s_->bit_currpos = 0;
     s_->bit_savepos = 0;
-    s_->sdbsize = 0;
-    s_->bags = 0;
-    s_->bags_bytes = 0;
-    s_->max_keynum = 0;
-    s_->bags_curpos = 0;
+    s_->inited = 0;
     if (s_->units)
     {
         sis_pointer_list_clear(s_->units);
     }
+    s_->sdbsize = 0;
+    s_->max_keynum = 0;
     if (s_->ago_memory)
     {
         sis_free(s_->ago_memory);
         s_->ago_memory = NULL;
     }   
+    s_->bags = 0;
+    s_->bags_curpos = 0;
+    s_->bags_bytes = 0;
 }
 size_t sis_bits_stream_getbytes(s_sis_bits_stream *s_)
 {
@@ -838,6 +838,7 @@ void _unzip_unit_free(s_sis_struct_list *list)
     }
     sis_struct_list_destroy(list);
 }
+// ??? 实际环境中连续运行解压会出错
 // 用回调来返回数据
 int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {

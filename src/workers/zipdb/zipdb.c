@@ -52,19 +52,19 @@ s_sis_object *_zipdb_new_data(s_zipdb_cxt *zipdb, int isinit)
 	size_t size = zipdb->zip_size + 256; // 这里应该取最长的结构体长度
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size + sizeof(s_zipdb_bits)));
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(obj);
-	if (isinit || zipdb->calcsize > zipdb->initsize)
+	if (isinit || zipdb->cur_size > zipdb->initsize)
 	{
 		memory->init = 1;
 		// printf("new last obj = %p\n", obj);
 		zipdb->last_object = obj;
-		zipdb->calcsize = size;
+		zipdb->cur_size = size;
 		sis_bits_struct_flush(zipdb->cur_sbits);
 		sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);				
 	}
 	else
 	{
 		memory->init = 0;
-		zipdb->calcsize += size;
+		zipdb->cur_size += size;
 		sis_bits_struct_link(zipdb->cur_sbits, memory->data, size);		
 	}	
 	memory->size = 0;
@@ -81,15 +81,30 @@ s_sis_object *_zipdb_get_data(s_zipdb_cxt *zipdb)
 	return zipdb->cur_object;
 }
 
+static void cb_output_reader_send(s_zipdb_reader *reader, s_zipdb_bits *memory)
+{
+	// LOG(5)("cb_output_reader_send = %d : %d\n", reader->sub_whole, memory->init);
+	if (reader->sub_whole)
+	{
+		// 订阅全部就直接发送
+		if (reader->cb_zipbits)
+		{	
+			reader->cb_zipbits(reader, memory);
+		}
+	}
+	else
+	{
+		// 订阅不是全部直接送到unzip中
+		zipdb_worker_unzip_set(reader->sub_unziper, memory);
+	}
+}
 static int cb_output_reader(void *reader_, s_sis_object *in_)
 {
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
-	s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
 	s_zipdb_bits *memory = MAP_ZIPDB_BITS(in_);
 
-	// printf("cb_output_reader %d %d | %d %d | %p %p\n", reader->isinit, reader->ishead, 
-	// 	memory->init, memory->size,
-	// 	zipdb->last_object , in_);
+	s_zipdb_cxt *zipdb = ((s_sis_worker *)reader->zipdb_worker)->context;
+
 	if (!reader->isinit)
 	{
 		if (!memory->init)
@@ -99,33 +114,22 @@ static int cb_output_reader(void *reader_, s_sis_object *in_)
 		if (reader->ishead)
 		{
 			reader->isinit = true;
-			if (reader->cb_zipbits)
-			{	
-				reader->cb_zipbits(reader, memory);
-			}
+			cb_output_reader_send(reader, memory);
 		}
 		else
 		{
 			// 当前包是最新的起始包 就开始发送数据
+			printf("last = %p  %p %d | %d\n", zipdb->last_object, in_, zipdb->last_object == in_, zipdb->outputs->work_queue->rnums);
 			if (zipdb->last_object == in_)
 			{
-	// printf("cb_output_reader %d %d | %d %d | %p %p\n", reader->isinit, reader->ishead, 
-	// 	memory->init, memory->size,
-	// 	zipdb->last_object , in_);
 				reader->isinit = true;
-				if (reader->cb_zipbits)
-				{	
-					reader->cb_zipbits(reader, memory);
-				}
+				cb_output_reader_send(reader, memory);
 			}
 		}		
 	}
 	else
 	{
-		if (reader->cb_zipbits)
-		{	
-			reader->cb_zipbits(reader, memory);
-		}
+		cb_output_reader_send(reader, memory);
 	}	
 	return 0;
 }
@@ -151,7 +155,6 @@ static int cb_output_realtime(void *reader_)
 			reader->cb_sub_stop(reader, sdate);
 		}		
 	}
-	
 	return 0;
 }
 // int _zip_nums = 0;
@@ -271,7 +274,7 @@ bool zipdb_init(void *worker_, void *argv_)
 
 	// context->initmsec = 600*1000;
 	context->initsize = 4*1024*1024;  // 4M 大约20秒 单只股票一天所有数据也足够一次传完
-	context->calcsize = 0; 
+	context->cur_size = 0; 
 
 	context->wait_msec = sis_json_get_int(node, "wait-msec", 30);//45); // 21;
 	context->zip_size = ZIPMEM_MAXSIZE;
@@ -437,6 +440,10 @@ bool _zipdb_write_init(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_si
 
 	zipdb_->inited = true;
 	zipdb_->stoped = false;
+	zipdb_->cur_size = 0;
+
+	// 清理输出缓存中可能存在的数据
+	sis_lock_list_clear(zipdb_->outputs);
 
 	// 可能因为断线重连等原因 如果其他信息一致 就不需要执行以下代码
 	if (zipdb_->work_date == workdate_ && 
@@ -500,7 +507,7 @@ bool _zipdb_write_init(s_zipdb_cxt *zipdb_, int workdate_, s_sis_sds keys_, s_si
 	}
 	return true;
 }
-// 因为可能发到中间时也会调用该函数 init 时需要保证环境一致
+// 因为可能发到中间时也会调用该函数 init 时需要保证环境和最初的环境一致
 int cmd_zipdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -542,10 +549,13 @@ int cmd_zipdb_start(void *worker_, void *argv_)
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_zipdb_reader *reader = (s_zipdb_reader *)sis_pointer_list_get(context->readeres, i);
-
+		if (reader->sub_disk)
+		{
+			continue;
+		}
 		LOG(5)("zipdb start. [%d] cid : %d workdate : %d = %s\n", 
 			i,  reader->cid, context->work_date, (char *)argv_);
-		zipdb_sub_start(reader);
+		zipdb_reader_realtime_start(reader);
 	}
 	return SIS_METHOD_OK;
 }
@@ -557,20 +567,16 @@ int cmd_zipdb_stop(void *worker_, void *argv_)
 	
 	// LOG(5)("zipdb stop. wlog : %d readers : %d workdate : %d = %s\n", 
 	// 	context->wlog_worker, context->readeres->count, context->work_date, (char *)argv_);
-	context->stoped = true;
-	context->zipnums = 0; // 重新计数
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_zipdb_reader *reader = (s_zipdb_reader *)sis_pointer_list_get(context->readeres, i);
+		if (reader->sub_disk)
+		{
+			continue;
+		}
 		LOG(5)("zipdb stop. [%d] cid : %d workdate : %d = %s\n", 
 			i,  reader->cid, context->work_date, (char *)argv_);
-		if (reader->cb_sub_stop)
-		{
-			char sdate[32];
-			sis_llutoa(context->work_date, sdate, 32, 10);
-			reader->cb_sub_stop(reader, sdate);
-		}
-		zipdb_sub_stop(reader);
+		zipdb_reader_realtime_stop(reader);
 	}
 	if (context->wlog_worker)
 	{
@@ -583,6 +589,8 @@ int cmd_zipdb_stop(void *worker_, void *argv_)
 			zipdb_wlog_move(context);
 		}
 	}
+	context->stoped = true; // 停止表示当日数据已经落盘
+	context->zipnums = 0;   // 重新计数
     return SIS_METHOD_OK;
 }
 
@@ -592,10 +600,9 @@ int _zipdb_write(s_zipdb_cxt *zipdb_, int kidx_, int sidx_, void *in_, size_t il
 	{
 		return -1;
 	}
-	if (zipdb_->isinput == 0)
+	if (!zipdb_->inputs)
 	{
 		zipdb_->inputs = sis_fast_queue_create(zipdb_, cb_input_reader, 30, zipdb_->wait_msec);
-		zipdb_->isinput = 1;
 	}
 	s_sis_memory *memory = sis_memory_create();
 	sis_memory_cat_byte(memory, kidx_, 4);
@@ -686,7 +693,7 @@ int cmd_zipdb_zpub(void *worker_, void *argv_)
 int cmd_zipdb_sub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    // s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
+    s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
     s_sis_message *msg = (s_sis_message *)argv_;
 
     s_zipdb_reader *reader = zipdb_reader_create();
@@ -700,7 +707,29 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
     reader->ishead = sis_message_get_int(msg, "ishead");
 	reader->sub_date = sis_message_get_int(msg, "sub_date");
 
-	printf("reader->ishead = %d\n", reader->ishead);
+	s_sis_sds keys = sis_message_get_str(msg, "sub_keys");
+	if (keys)
+	{
+		reader->sub_keys = sis_sdsdup(keys);
+	}
+	s_sis_sds sdbs = sis_message_get_str(msg, "sub_sdbs");
+	if (sdbs)
+	{
+		reader->sub_sdbs = sis_sdsdup(sdbs);
+	}
+	
+	if ((!reader->sub_keys && !reader->sub_sdbs) || 
+		(!sis_strcasecmp(reader->sub_keys, "*") && sis_strcasecmp(reader->sub_sdbs, "*")))
+	{
+		reader->sub_whole = true;
+	}
+	else
+	{
+		reader->sub_whole = false;
+
+	}
+	
+	// printf("reader->ishead = %d\n", reader->ishead);
     reader->cb_zipbits     = sis_message_get_method(msg, "cb_zipbits");
 
     reader->cb_sub_start = sis_message_get_method(msg, "cb_sub_start");
@@ -710,9 +739,19 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
     reader->cb_dict_keys = sis_message_get_method(msg, "cb_dict_keys");
     reader->cb_dict_sdbs = sis_message_get_method(msg, "cb_dict_sdbs");
 
-    // 一个 socket 只能订阅一次 后订阅的会冲洗掉前面一次
-    zipdb_add_reader(reader);
-
+	if (reader->sub_date != context->work_date || (context->stoped && context->inited))
+	{
+		reader->sub_disk = true;
+		// 启动历史数据线程 并返回 
+		// 如果断线要能及时中断文件读取 
+		// 同一个用户 必须等待上一次读取中断后才能开始新的任务
+	}
+	else
+	{		
+		reader->sub_disk = false;
+		// 一个 socket 只能订阅一次 后订阅的会冲洗掉前面一次
+		zipdb_reader_new_realtime(reader);
+	}
     return SIS_METHOD_OK;
 
 }
@@ -725,7 +764,7 @@ int cmd_zipdb_unsub(void *worker_, void *argv_)
 
 	int cid = sis_message_get_int(msg, "cid");
 
-	zipdb_reader_move(context, cid);
+	zipdb_move_reader(context, cid);
 
     return SIS_METHOD_OK;
 }
@@ -738,6 +777,7 @@ void _zipdb_clear_data(s_zipdb_cxt *context)
 		context->cur_object = NULL;
 	}
 	sis_lock_list_clear(context->outputs);
+	// 清理数据可能造成数据压缩的不连续 需要处理
 }
 int cmd_zipdb_clear(void *worker_, void *argv_)
 {
@@ -792,115 +832,6 @@ int cmd_zipdb_rsno(void *worker_, void *argv_)
 {
 	return SIS_METHOD_OK;
 }
-//////////////////////////////////////////////////////////////////
-//------------------------s_unzipdb_reader -----------------------//
-//////////////////////////////////////////////////////////////////
-s_unzipdb_reader *unzipdb_reader_create(void *cb_source_, cb_sis_struct_decode *cb_read_)
-{
-	s_unzipdb_reader *o = SIS_MALLOC(s_unzipdb_reader, o);
-	o->cb_source = cb_source_;
-	o->cb_read = cb_read_;
-	o->cur_sbits = sis_bits_stream_create(NULL, 0);
-	o->keys = sis_map_list_create(sis_sdsfree_call);
-	o->sdbs = sis_map_list_create(sis_dynamic_db_destroy);
-	return o;
-}
-
-void unzipdb_reader_destroy(s_unzipdb_reader *unzipdb_)
-{
-	sis_map_list_destroy(unzipdb_->keys);
-	sis_map_list_destroy(unzipdb_->sdbs);
-	sis_bits_stream_destroy(unzipdb_->cur_sbits);
-	sis_free(unzipdb_);
-}
-
-void unzipdb_reader_clear(s_unzipdb_reader *unzipdb_)
-{
-	LOG(5)("clear unzip reader\n");
-	sis_map_list_clear(unzipdb_->keys);
-	sis_map_list_clear(unzipdb_->sdbs);
-	sis_bits_stream_clear(unzipdb_->cur_sbits);
-}
-
-void unzipdb_reader_set_keys(s_unzipdb_reader *unzipdb_, s_sis_sds in_)
-{
-	LOG(5)("set unzip keys\n");
-	// printf("%s\n",in_);
-	s_sis_string_list *klist = sis_string_list_create();
-	sis_string_list_load(klist, in_, sis_sdslen(in_), ",");
-	// 重新设置keys
-	int count = sis_string_list_getsize(klist);
-	for (int i = 0; i < count; i++)
-	{
-		s_sis_sds key = sis_sdsnew(sis_string_list_get(klist, i));
-		sis_map_list_set(unzipdb_->keys, key, key);	
-	}
-	sis_string_list_destroy(klist);
-	sis_bits_struct_set_key(unzipdb_->cur_sbits, count);
-}
-void unzipdb_reader_set_sdbs(s_unzipdb_reader *unzipdb_, s_sis_sds in_)
-{
-	LOG(5)("set unzip sdbs\n");
-	// printf("%s %d\n",in_, sis_sdslen(in_));
-	s_sis_json_handle *injson = sis_json_load(in_, sis_sdslen(in_));
-	if (!injson)
-	{
-		return ;
-	}
-	s_sis_json_node *innode = sis_json_first_node(injson->node);
-	while (innode)
-	{
-		s_sis_dynamic_db *sdb = sis_dynamic_db_create(innode);
-		if (sdb)
-		{
-			sis_map_list_set(unzipdb_->sdbs, innode->key, sdb);
-			sis_bits_struct_set_sdb(unzipdb_->cur_sbits, sdb);
-		}
-		innode = sis_json_next_node(innode);
-	}
-	sis_json_close(injson);
-}
-int _unzip_nums = 0;
-msec_t _unzip_msec = 0;
-int _unzip_recs = 0;
-msec_t _unzip_usec = 0;
-
-void unzipdb_reader_set_bits(s_unzipdb_reader *unzipdb_, s_zipdb_bits *in_)
-{
-	if (in_->init == 1)
-	{ 
-		LOG(5)("unzip init = %d : %d\n", in_->init, unzipdb_->cur_sbits->inited);
-		// 这里memset时报过错
-		sis_bits_struct_flush(unzipdb_->cur_sbits);
-		sis_bits_struct_link(unzipdb_->cur_sbits, in_->data, in_->size);	
-	}
-	else
-	{
-		sis_bits_struct_link(unzipdb_->cur_sbits, in_->data, in_->size);
-	}
-	msec_t _start_usec = sis_time_get_now_usec();
-	// 开始解压 并回调
-	// int nums = sis_bits_struct_decode(unzipdb_->cur_sbits, NULL, NULL);
-	int nums = sis_bits_struct_decode(unzipdb_->cur_sbits, unzipdb_->cb_source, unzipdb_->cb_read);
-	if (nums == 0)
-	{
-		LOG(5)("unzip fail.\n");
-	}
-	if (_unzip_nums == 0)
-	{
-		_unzip_msec = sis_time_get_now_msec();
-	}
-	_unzip_recs+=nums;
-	_unzip_nums++;
-	_unzip_usec+= (sis_time_get_now_usec() - _start_usec);
-	if (_unzip_nums % 1000 == 0)
-	{
-		printf("unzip cost : %lld. [%d] msec : %lld recs : %d\n", _unzip_usec, _unzip_nums, 
-			sis_time_get_now_msec() - _unzip_msec, _unzip_recs);
-		_unzip_msec = sis_time_get_now_msec();
-		_unzip_usec = 0;
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_zipdb_reader --------------------------------//
@@ -915,10 +846,14 @@ void zipdb_reader_destroy(void *reader_)
 {
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
 	
-	// if (reader->unzip_reader)
-	// {
-	// 	unzipdb_reader_destroy(reader->unzip_reader);	
-	// }
+	if (reader->sub_unziper)
+	{
+		zipdb_worker_destroy(reader->sub_unziper);	
+	}
+	if (reader->sub_ziper)
+	{
+		zipdb_worker_destroy(reader->sub_ziper);	
+	}
 	if (reader->reader)
 	{
 		sis_lock_reader_close(reader->reader);	
@@ -929,20 +864,69 @@ void zipdb_reader_destroy(void *reader_)
 	sis_free(reader);
 }
 
-int zipdb_add_reader(s_zipdb_reader *reader_)
+static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t ilen_)
+{
+	s_zipdb_reader *reader = (s_zipdb_reader *)source_;
+    if (!in_)
+    {
+        // 表示一个包解析完成 如果数据区有数据就发送
+		// printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_obj, reader->sub_ziper->zip_size);
+		s_zipdb_bits *zipmem = MAP_ZIPDB_BITS(reader->sub_ziper->zip_obj);
+		zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
+		// sis_memory_set_size(SIS_OBJ_MEMORY(worker->zip_obj), sizeof(s_zipdb_bits) + zipmem->size);
+
+		if (zipmem->size > 0)
+		{
+			if (reader->cb_zipbits)
+			{	
+				reader->cb_zipbits(reader, zipmem);
+			}
+			if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
+			{
+				zipdb_worker_zip_flush(reader->sub_ziper, 1);
+			}
+			else
+			{
+				zipdb_worker_zip_flush(reader->sub_ziper, 0);
+			}
+		}
+        return 0;
+    }
+
+    s_sis_sds keyn = sis_map_list_geti(reader->sub_unziper->keys, kidx_);
+	s_sis_dynamic_db *db = sis_map_list_geti(reader->sub_unziper->sdbs, sidx_);
+	if (!db || !keyn)
+	{
+		return 0;
+	}
+	int kidx = sis_map_list_get_index(reader->sub_ziper->keys, keyn);
+	int sidx = sis_map_list_get_index(reader->sub_ziper->sdbs, db->name);
+	if (kidx < 0 || sidx < 0)
+	{
+		return 0;
+	}
+
+	// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", keyn, db->name, kidx, sidx, kidx_, sidx_);
+	zipdb_worker_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
+
+    return 0;
+}
+
+int zipdb_reader_new_realtime(s_zipdb_reader *reader_)
 {
     s_sis_worker *worker = (s_sis_worker *)reader_->zipdb_worker; 
     s_zipdb_cxt *zipdb = (s_zipdb_cxt *)worker->context;
 
-	zipdb_reader_move(zipdb, reader_->cid);
+	zipdb_move_reader(zipdb, reader_->cid);
+	// 这里初始化环境
 	if (zipdb->inited)  // 如果已经初始化就启动发送数据 否则就等待系统通知后再发送
 	{
-		zipdb_sub_start(reader_);
+		zipdb_reader_realtime_start(reader_);
 	}
 	sis_pointer_list_push(zipdb->readeres, reader_);
 	return 1;
 }
-int zipdb_reader_move(s_zipdb_cxt *zipdb_,int cid_)
+int zipdb_move_reader(s_zipdb_cxt *zipdb_,int cid_)
 {
 	int count = 0;
 	for (int i = 0; i < zipdb_->readeres->count; )
@@ -960,49 +944,125 @@ int zipdb_reader_move(s_zipdb_cxt *zipdb_,int cid_)
 	}	
 	return count;
 }
-
-int zipdb_sub_start(s_zipdb_reader *reader)
+s_sis_sds _zipdb_reader_get_sdbs(s_sis_map_list *srcmap, s_sis_sds sdbs_)
 {
-    s_sis_worker *worker = (s_sis_worker *)reader->zipdb_worker; 
+    int count = sis_map_list_getsize(srcmap);
+    s_sis_json_node *sdbs_node = sis_json_create_object();
+    {
+        for(int i = 0; i < count; i++)
+        {
+			s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_list_geti(srcmap, i);
+			int index = sis_str_subcmp_strict(db->name, sdbs_, ',');
+			if (index < 0)
+			{
+				continue;
+			}
+            sis_json_object_add_node(sdbs_node, db->name, sis_dynamic_dbinfo_to_json(db));
+        }
+    }
+    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
+    printf("sdbs = %s\n", msg);
+    sis_json_delete_node(sdbs_node);
+    return msg;
+	
+}
+// 只能在确定start时处理 定制解压相关类
+int zipdb_reader_realtime_start(s_zipdb_reader *reader_)
+{
+    s_sis_worker *worker = (s_sis_worker *)reader_->zipdb_worker; 
     s_zipdb_cxt *zipdb = (s_zipdb_cxt *)worker->context;
     
-	LOG(5)("sub start : date = %d - %d\n", zipdb->work_date ,reader->sub_date);
-	if (zipdb->work_date == reader->sub_date)  
+	LOG(5)("sub start : date = %d - %d\n", zipdb->work_date ,reader_->sub_date);
+	
+	s_sis_sds work_keys =  NULL;
+	s_sis_sds work_sdbs =  NULL;
+
+	if (!reader_->sub_whole)
 	{
-		if (reader->cb_sub_start)
+		if (!reader_->sub_ziper)
 		{
-			char sdate[32];
-			sis_llutoa(zipdb->work_date, sdate, 32, 10);
-			reader->cb_sub_start(reader, sdate);
+			reader_->sub_ziper = zipdb_worker_create();
+			// 超过 1M 就
+			zipdb_worker_zip_init(reader_->sub_ziper, zipdb->zip_size, 1024 * 1024);
 		}
-		LOG(5)("count = %d inited = %d stoped = %d\n", zipdb->outputs->work_queue->rnums, zipdb->inited, zipdb->stoped);
-		if (reader->cb_dict_keys)
+		else
 		{
-			reader->cb_dict_keys(reader, zipdb->work_keys);
-		}
-		if (reader->cb_dict_sdbs)
+			zipdb_worker_clear(reader_->sub_ziper);
+		}	
+		work_keys = sis_sdsdup(reader_->sub_keys);
+		work_sdbs = _zipdb_reader_get_sdbs(zipdb->sdbs, reader_->sub_sdbs);	
+        zipdb_worker_set_keys(reader_->sub_ziper, work_keys);
+        zipdb_worker_set_sdbs(reader_->sub_ziper, work_sdbs);
+
+		if (!reader_->sub_unziper)
 		{
-			reader->cb_dict_sdbs(reader, zipdb->work_sdbs);
+			reader_->sub_unziper = zipdb_worker_create();
+			zipdb_worker_unzip_init(reader_->sub_unziper, reader_, cb_unzip_reply);
 		}
+		else
+		{
+			zipdb_worker_clear(reader_->sub_unziper);
+		}	
+        zipdb_worker_set_keys(reader_->sub_unziper, zipdb->work_keys);
+        zipdb_worker_set_sdbs(reader_->sub_unziper, zipdb->work_sdbs);
 	}
-	reader->isinit = false;
-	// 新加入的订阅者 先发送订阅开始 再发送最后一个初始块后续所有数据 
-	if (!reader->reader)
+	else
 	{
-		reader->reader = sis_lock_reader_create(zipdb->outputs, 
-			reader->ishead ? SIS_UNLOCK_READER_HEAD : SIS_UNLOCK_READER_TAIL, 
-			reader, cb_output_reader, cb_output_realtime);
-		sis_lock_reader_open(reader->reader);	
+		work_keys =  zipdb->work_keys;
+		work_sdbs =  zipdb->work_sdbs;
+	}
+
+	if (reader_->cb_sub_start)
+	{
+		char sdate[32];
+		sis_llutoa(zipdb->work_date, sdate, 32, 10);
+		reader_->cb_sub_start(reader_, sdate);
+	}
+	LOG(5)("count = %d inited = %d stoped = %d\n", zipdb->outputs->work_queue->rnums, zipdb->inited, zipdb->stoped);
+	if (reader_->cb_dict_keys)
+	{
+		reader_->cb_dict_keys(reader_, work_keys);
+	}
+	if (reader_->cb_dict_sdbs)
+	{
+		reader_->cb_dict_sdbs(reader_, work_sdbs);
+	}
+
+	if (!reader_->sub_whole)
+	{
+		sis_sdsfree(work_keys);
+		sis_sdsfree(work_sdbs);
+	}
+	
+	reader_->isinit = false;
+	// 新加入的订阅者 先发送订阅开始 再发送最后一个初始块后续所有数据 
+	if (!reader_->reader)
+	{
+		reader_->reader = sis_lock_reader_create(zipdb->outputs, 
+			// reader_->ishead ? SIS_UNLOCK_READER_HEAD : SIS_UNLOCK_READER_TAIL, 
+			SIS_UNLOCK_READER_HEAD,
+			reader_, cb_output_reader, cb_output_realtime);
+		sis_lock_reader_open(reader_->reader);	
 	}
     return 0;
 }
 
-int zipdb_sub_stop(s_zipdb_reader *reader)
+int zipdb_reader_realtime_stop(s_zipdb_reader *reader_)
 {    
-	if (reader->reader)
+    s_sis_worker *worker = (s_sis_worker *)reader_->zipdb_worker; 
+    s_zipdb_cxt *zipdb = (s_zipdb_cxt *)worker->context;
+    
+	LOG(5)("sub stop : date = %d - %d\n", zipdb->work_date ,reader_->sub_date);
+	if (reader_->cb_sub_stop)
 	{
-		sis_lock_reader_close(reader->reader);	
-		reader->reader = NULL;
+		char sdate[32];
+		sis_llutoa(zipdb->work_date, sdate, 32, 10);
+		reader_->cb_sub_stop(reader_, sdate);
+	}
+	if (reader_->reader)
+	{
+		sis_lock_reader_close(reader_->reader);	
+		reader_->reader = NULL;
 	}
 	return 0;
 }

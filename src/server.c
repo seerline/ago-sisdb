@@ -7,7 +7,6 @@ static s_sis_server _server = {
 	.status = SERVER_STATUS_NONE,
 	.config = NULL,
 	.work_mode = SERVER_WORK_MODE_NORMAL,
-	.log_screen = false,
 	.log_level = 5,
 	.log_size = 10,
 };
@@ -82,8 +81,6 @@ bool _server_open()
 		sis_cat_fixed_path(conf_path, sis_json_get_str(lognode, "path"),
 						   _server.log_path, SIS_PATH_LEN);
 		// printf("%s == %s\n",conf_path, _server.log_path);
-		_server.log_screen = _server.work_mode & SERVER_WORK_MODE_DEBUG;
-		// _server.log_screen = sis_json_get_bool(lognode, "screen", false);
 		_server.log_level = sis_json_get_int(lognode, "level", 5);
 		_server.log_size = sis_json_get_int(lognode, "maxsize", 10) * 1024 * 1024;
 	}
@@ -197,7 +194,7 @@ int main(int argc, char *argv[])
 		sis_fork_process();
 	}	
 
-	if (!_server.log_screen)
+	if (!(_server.work_mode & SERVER_WORK_MODE_DEBUG))
 	{
 		sis_log_open(_server.log_name, _server.log_level, _server.log_size);
 	}

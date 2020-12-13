@@ -17,6 +17,8 @@
 #include "sis_obj.h"
 #include "sis_net.io.h"
 
+#include "worker.h"
+
 #define ZIPMEM_MAXSIZE (16*1024)
 
 #define ZIPDB_CLEAR_MODE_ALL    0
@@ -51,15 +53,22 @@ typedef struct s_zipdb_bits
 } s_zipdb_bits;
 
 // 仅仅解压 有数据就回调
-typedef struct s_unzipdb_reader
+// 对待sdb多记录压缩 需要一次性把单类数据压缩进去
+// 对待sno多记录压缩 需要修改sdbs的结构传入worker中
+typedef struct s_zipdb_worker
 {
-	void                 *cb_source;
-	cb_sis_struct_decode *cb_read;     // 按结构返回数据
-	s_sis_bits_stream    *cur_sbits;   // 当前指向缓存的位操作类
-	s_sis_map_list       *keys;     // key 的结构字典表 s_sis_sds
-	s_sis_map_list       *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
+	void                 *cb_source;   // 返回对象 unzipdb专用
+	cb_sis_struct_decode *cb_read;     // 按结构返回数据 unzipdb专用
 
-} s_unzipdb_reader;
+	s_sis_object         *zip_obj;     // zipdb 专用
+	int      	          initsize;    // 超过多大数据重新初始化 字节
+	int      	          zip_size;    // 单个数据块的大小
+	int      	          cur_size;    // 缓存数据当前的尺寸
+
+	s_sis_bits_stream    *cur_sbits;   // 当前指向缓存的位操作类
+	s_sis_map_list       *keys;        // key 的结构字典表 s_sis_sds
+	s_sis_map_list       *sdbs;        // sdb 的结构字典表 s_sis_dynamic_db 包括
+} s_zipdb_worker;
 
 typedef struct s_zipdb_reader
 {
@@ -71,16 +80,22 @@ typedef struct s_zipdb_reader
 	bool       ishead;                // 是否从头发送
 	bool       isinit;                // 0 刚刚订阅 1 正常订阅 
  
-	int        sub_date;              // 订阅日期 如果为历史就启动一个线程专门处理 历史默认为从头发送
-	s_sis_sds  sub_keys;              // 订阅股票
-	s_sis_sds  sub_sdbs;              // 订阅数据
+	bool                sub_whole;     // 是否返回所有的数据
+	///////以下为定制数据处理///////
+	// 这里先处理实时的 历史的以后再说
+	bool                sub_disk;     // 是否从磁盘中获取数据
+	int                 sub_date;     // 订阅日期 如果为历史就启动一个线程专门处理 历史默认为从头发送
+	s_sis_sds           sub_keys;     // 订阅股票
+	s_sis_sds           sub_sdbs;     // 订阅数据
+	// 当读者需要特定的数据 先对收到的数据进行解压 再根据指定的代码和表压缩 然后再传递出去
+	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取
+	//  传入的数据如果是压缩的就解压，然后过滤后压缩 如果是原始数据就直接过滤后压缩
+	s_zipdb_worker     *sub_ziper;     // 用于压缩的操作类
+	s_zipdb_worker     *sub_unziper;   // 用于解压的操作类
+	///////以上为定制数据处理///////
 
 	s_sis_lock_reader  *reader;       // 每个读者一个订阅者
-	// 当读者需要解压后的数据 使用下面2个
-	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取
-	// s_unzipdb_reader   *unzip_reader;   // 用于解压的位操作类
-
-	// 当读者需要压缩的数据 使用下面1个 
+	// 返回压缩的数据 
 	sis_method_define  *cb_zipbits;       // s_zipdb_bits
 
     sis_method_define  *cb_sub_start;    // char *
@@ -102,20 +117,15 @@ typedef struct s_zipdb_cxt
 {
 	int      work_status;  // 当前工作状态
 
-	bool     inited;    // 是否已经初始化
-	bool     stoped;    // 是否已经结束
-
 	int      wait_msec;   // 超过多长时间生成新的块 毫秒
-	// int      initmsec;  // 超过多长重新初始化 秒
-
-	int      initsize;  // 超过多大数据重新初始化 字节
-	int      calcsize;  // 当前累计字节数 字节
-
-	int      zip_size;   // 单个数据块的大小
+	int      initsize;    // 超过多大数据重新初始化 字节
+	int      zip_size;    // 单个数据块的大小
+	int      cur_size;    // 当前累计字节数 字节
 
 	uint64   catch_size;  // 缓存数据保留最大的尺寸
 
-	// msec_t   work_msec; // 
+	bool     inited;    // 是否已经初始化
+	bool     stoped;    // 是否已经结束
 	int      work_date; // 工作日期
 
 	int                 wlog_load;  // 是否正在加载 wlog       
@@ -143,7 +153,6 @@ typedef struct s_zipdb_cxt
 	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
 
-	int                 isinput;   // 只有在收到第一个单条行情时才启动inputs
 	s_sis_fast_queue   *inputs;    // 传入的数据链 s_zipdb_bits
 
 	s_sis_bits_stream  *cur_sbits;   // 当前指向缓存的位操作类
@@ -199,16 +208,22 @@ int cmd_zipdb_wsno(void *worker_, void *argv_);
 int cmd_zipdb_rsno(void *worker_, void *argv_);
 
 //////////////////////////////////////////////////////////////////
-//------------------------s_unzipdb_reader -----------------------//
+//------------------------s_zipdb_worker -----------------------//
 //////////////////////////////////////////////////////////////////
-s_unzipdb_reader *unzipdb_reader_create(void *cb_source, cb_sis_struct_decode *cb_read_);
-void unzipdb_reader_destroy(s_unzipdb_reader *);
+s_zipdb_worker *zipdb_worker_create();
+void zipdb_worker_destroy(s_zipdb_worker *);
 
-void unzipdb_reader_clear(s_unzipdb_reader *);
+void zipdb_worker_clear(s_zipdb_worker *);
 
-void unzipdb_reader_set_keys(s_unzipdb_reader *, s_sis_sds );
-void unzipdb_reader_set_sdbs(s_unzipdb_reader *, s_sis_sds );
-void unzipdb_reader_set_bits(s_unzipdb_reader *, s_zipdb_bits *);
+void zipdb_worker_set_keys(s_zipdb_worker *, s_sis_sds );
+void zipdb_worker_set_sdbs(s_zipdb_worker *, s_sis_sds );
+// 写入需要解压的数据
+void zipdb_worker_unzip_init(s_zipdb_worker *, void *cb_source, cb_sis_struct_decode *cb_read_);
+void zipdb_worker_unzip_set(s_zipdb_worker *, s_zipdb_bits *);
+// 写入需要压缩的数据
+void zipdb_worker_zip_init(s_zipdb_worker *, int, int);
+void zipdb_worker_zip_flush(s_zipdb_worker *, int);
+void zipdb_worker_zip_set(s_zipdb_worker *, int ,int, char *, size_t);
 
 //////////////////////////////////////////////////////////////////
 //------------------------s_zipdb_reader -----------------------//
@@ -216,12 +231,12 @@ void unzipdb_reader_set_bits(s_unzipdb_reader *, s_zipdb_bits *);
 s_zipdb_reader *zipdb_reader_create();
 void zipdb_reader_destroy(void *);
 
-int zipdb_sub_start(s_zipdb_reader *reader);
-int zipdb_sub_stop(s_zipdb_reader *reader);
+int zipdb_reader_realtime_start(s_zipdb_reader *reader);
+int zipdb_reader_realtime_stop(s_zipdb_reader *reader);
 
-int zipdb_add_reader(s_zipdb_reader *reader_);
-// 清理指定的reader
-int zipdb_reader_move(s_zipdb_cxt *, int);
+int zipdb_reader_new_realtime(s_zipdb_reader *reader_);
+// 清理指定的 reader
+int zipdb_move_reader(s_zipdb_cxt *, int);
 
 //////////////////////////////////////////////////////////////////
 //------------------------zipdb function -----------------------//

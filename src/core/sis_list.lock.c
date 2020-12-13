@@ -619,6 +619,7 @@ static void *_thread_watcher(void *argv_)
         {
             continue;
         }
+        sis_mutex_lock(&ullist->watchlock);
         if (ullist->save_mode != SIS_UNLOCK_SAVE_ALL) // 需要全部保留就什么也不干
         {
             if (reader->cursor == NULL)
@@ -667,8 +668,9 @@ static void *_thread_watcher(void *argv_)
                     reader->cursor = next;
                     next = sis_lock_queue_next(ullist->work_queue, reader->cursor);
                 }
-            }            
+            } 
         }
+        sis_mutex_unlock(&ullist->watchlock);           
     }
     sis_wait_thread_stop(reader->work_thread);
     return NULL;
@@ -699,6 +701,7 @@ s_sis_lock_list *sis_lock_list_create(size_t maxsize_)
     o->users->vfree = sis_lock_reader_destroy;
     
     {
+        sis_mutex_init(&o->watchlock, NULL);
         o->watcher = sis_lock_reader_create(o, SIS_UNLOCK_READER_HEAD, NULL, NULL, NULL);
         o->watcher->work_thread = sis_wait_thread_create(0);
         // 最后再启动线程 顺序不能变 不然数据会等待
@@ -743,7 +746,11 @@ void sis_lock_list_clear(s_sis_lock_list *ullist_)
     {
         return ;
     }
+    // 这里要注意 清理数据时可能有读者在读数据 必须等所有读者都空闲才能清理
+    sis_mutex_lock(&ullist_->watchlock);
     sis_lock_queue_clear(ullist_->work_queue);
+    ullist_->watcher->cursor = NULL; // 设置观察者为空
+    sis_mutex_unlock(&ullist_->watchlock);
     ullist_->cursize = 0;
 }
 
