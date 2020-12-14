@@ -551,7 +551,7 @@ void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_co
     // 赋新值
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = info_->cid;
-    newinfo->source = sis_sdsdup(info_->source);
+    newinfo->serial = sis_sdsdup(info_->serial);
     newinfo->key = sis_sdsdup(collect_->name);
 
     if(info_->rfmt & SISDB_FORMAT_CHARS)
@@ -852,7 +852,7 @@ static void cb_begin(void *src, msec_t tt)
     s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)src;
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = info->netmsg->cid;
-    newinfo->source = sis_sdsdup(info->netmsg->source);
+    newinfo->serial = sis_sdsdup(info->netmsg->serial);
 
     char fn[32];
     sis_llutoa(tt, fn, 32, 10);
@@ -867,7 +867,7 @@ static void cb_read(void *src, const char *key_, const char *sdb_, s_sis_object 
     s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)src;
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = info->netmsg->cid;
-    newinfo->source = sis_sdsdup(info->netmsg->source);
+    newinfo->serial = sis_sdsdup(info->netmsg->serial);
     newinfo->key = sis_sdsnew(key_);
     newinfo->key = sis_sdscatfmt(newinfo->key, ".%s", sdb_);
 
@@ -892,7 +892,7 @@ static void cb_end(void *src, msec_t tt)
     s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)src;
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = info->netmsg->cid;
-    newinfo->source = sis_sdsdup(info->netmsg->source);
+    newinfo->serial = sis_sdsdup(info->netmsg->serial);
 
     char fn[32];
     sis_llutoa(tt, fn, 32, 10);
@@ -970,7 +970,7 @@ void *_thread_publish_realtime(void *argv_)
             {
                 s_sis_net_message *newinfo = sis_net_message_create();
                 newinfo->cid = info->netmsg->cid;
-                newinfo->source = sis_sdsdup(info->netmsg->source);
+                newinfo->serial = sis_sdsdup(info->netmsg->serial);
                 char fn[32];
                 sis_llutoa(info->sisdb->work_date, fn, 32, 10);
                 sis_net_ans_with_sub_wait(newinfo, fn);
@@ -1026,7 +1026,7 @@ void *_thread_publish_history(void *argv_)
     {
         s_sis_net_message *newinfo = sis_net_message_create();
         newinfo->cid = info->netmsg->cid;
-        newinfo->source = sis_sdsdup(info->netmsg->source);
+        newinfo->serial = sis_sdsdup(info->netmsg->serial);
         sis_net_ans_with_sub_stop(newinfo, fn);
         sis_net_class_send(info->sisdb->socket, newinfo); 
         sis_net_message_destroy(newinfo); 

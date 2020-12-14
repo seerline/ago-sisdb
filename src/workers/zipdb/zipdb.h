@@ -73,7 +73,7 @@ typedef struct s_zipdb_worker
 typedef struct s_zipdb_reader
 {
 	int        cid;
-	s_sis_sds  source;
+	s_sis_sds  serial;
 	// 以下两个回调互斥
 	void      *zipdb_worker;          // 来源对象
 

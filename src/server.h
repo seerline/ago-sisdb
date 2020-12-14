@@ -8,6 +8,7 @@
 #include <sis_map.h>
 #include <os_fork.h>
 #include <sis_thread.h>
+#include <worker.h>
 
 #include <sis_modules.h>
 

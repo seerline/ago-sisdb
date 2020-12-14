@@ -21,7 +21,7 @@ void _sis_net_message_del(s_sis_net_message *in_)
 	{
 		sis_pointer_list_destroy(in_->argvs);
 	}
-	sis_sdsfree(in_->source);
+	sis_sdsfree(in_->serial);
 	sis_sdsfree(in_->cmd);
 	sis_sdsfree(in_->key);
 	sis_sdsfree(in_->val);
@@ -59,12 +59,12 @@ void sis_net_message_decr(void *in_)
 
 void sis_net_message_clear(s_sis_net_message *in_)
 {
-	sis_sdsfree(in_->source);
+	sis_sdsfree(in_->serial);
 	sis_sdsfree(in_->cmd);
 	sis_sdsfree(in_->key);
 	sis_sdsfree(in_->val);
 	sis_sdsfree(in_->rval);
-	in_->source = NULL;
+	in_->serial = NULL;
 	in_->cmd = NULL;
 	in_->key = NULL;
 	in_->val = NULL;
@@ -96,7 +96,7 @@ size_t _sis_net_message_list_size(s_sis_pointer_list *list_)
 size_t sis_net_message_get_size(s_sis_net_message *msg_)
 {
 	size_t size = sizeof(s_sis_net_message);
-	size += msg_->source ? sis_sdslen(msg_->source) : 0;
+	size += msg_->serial ? sis_sdslen(msg_->serial) : 0;
 	size += msg_->cmd ? sis_sdslen(msg_->cmd) : 0;
 	size += msg_->key ? sis_sdslen(msg_->key) : 0;
 	size += msg_->val ? sis_sdslen(msg_->val) : 0;
@@ -123,9 +123,9 @@ s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_)
 	}
 	s_sis_net_message *o = sis_net_message_create();
 	o->cid = in_->cid;
-	if (in_->source)
+	if (in_->serial)
 	{
-		o->source = sis_sdsdup(in_->source);
+		o->serial = sis_sdsdup(in_->serial);
 	}
 	o->style = in_->style;
 	o->format = in_->format;
@@ -209,7 +209,7 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 	// printf("_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n%s \n", 
 	// 		in_->style, 
 	// 		(int)in_->rcmd,
-	// 		in_->source? in_->source : "nil",
+	// 		in_->serial? in_->serial : "nil",
 	// 		in_->cmd ? in_->cmd : "nil",
 	// 		in_->key? in_->key : "nil",
 	// 		in_->val? in_->val : "nil"
@@ -284,7 +284,7 @@ bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
 	mess->key = _sis_json_node_get_sds(handle->node, "key");
 	mess->style = mess->key ? (mess->style | SIS_NET_KEY) : mess->style;
 	// printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
-	// 		mess->source? mess->source : "nil",
+	// 		mess->serial? mess->serial : "nil",
 	// 		mess->cmd ? mess->cmd : "nil",
 	// 		mess->key? mess->key : "nil",
 	// 		mess->val? mess->val : "nil",
@@ -302,9 +302,9 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 {
 	// 编码 一般只写 argvs 中的数据
     sis_memory_clear(out_);
-    if (in_->source)
+    if (in_->serial)
     {
-        sis_memory_cat(out_, in_->source, sis_sdslen(in_->source));
+        sis_memory_cat(out_, in_->serial, sis_sdslen(in_->serial));
     }
     sis_memory_cat(out_, ":", 1);
 	if (in_->format == SIS_NET_FORMAT_CHARS)
@@ -366,7 +366,7 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
     sis_net_message_clear(mess);
     if (cursor > 0)
     {
-        mess->source = sis_sdsnewlen(sis_memory(in_), cursor);
+        mess->serial = sis_sdsnewlen(sis_memory(in_), cursor);
     }
 	sis_memory_move(in_, cursor + 1);
 

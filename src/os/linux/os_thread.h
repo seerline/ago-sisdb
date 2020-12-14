@@ -37,13 +37,13 @@ typedef struct s_sis_thread {
 	bool               working;  // 1 工作中 0 结束
 	s_sis_thread_id_t  thread_id;  
 	cb_thread_working *worker;
-	void 					 *argv;
+	void 			  *argv;
 } s_sis_thread;
 
-// 线程函数定义
 #ifdef __cplusplus
 extern "C" {
 #endif
+// 线程函数定义
 bool sis_thread_create(cb_thread_working func_, void* val_, s_sis_thread *thread_);
 // 等待线程结束
 void sis_thread_finish(s_sis_thread *thread_);
@@ -100,8 +100,8 @@ int  sis_rwlock_init(s_sis_rwlock_t *rwlock_);
 #define sis_rwlock_lock_w     pthread_rwlock_wrlock
 #define sis_rwlock_unlock  	  pthread_rwlock_unlock
 // 返回 0 表示锁成功
-#define sis_mutex_trylock_r   pthread_rwlock_tryrdlock
-#define sis_mutex_trylock_w   pthread_rwlock_trywrlock
+#define sis_rwlock_trylock_r   pthread_rwlock_tryrdlock
+#define sis_rwlock_trylock_w   pthread_rwlock_trywrlock
 
 int sis_mutex_wait_lock_r(s_sis_rwlock_t *rwlock_, int msec_);
 int sis_mutex_wait_lock_w(s_sis_rwlock_t *rwlock_, int msec_);
@@ -175,42 +175,42 @@ extern "C" {
 #define SUBF __sync_sub_and_fetch
 #define ANDF __sync_and_and_fetch
 
-static inline void sis_unlock_mutex_init(s_sis_unlock_mutex *um_, int init_)
-{
-    ANDF(&(*um_), 0);
-}
-static inline void sis_unlock_mutex_lock(s_sis_unlock_mutex *um_)
-{
-    while(!BCAS(&(*um_), 0, 1))
-    {
-        sis_sleep(1);
-    }
-}
+// static inline void sis_unlock_mutex_init(s_sis_unlock_mutex *um_, int init_)
+// {
+//     ANDF(&(*um_), 0);
+// }
+// static inline void sis_unlock_mutex_lock(s_sis_unlock_mutex *um_)
+// {
+//     while(!BCAS(&(*um_), 0, 1))
+//     {
+//         sis_sleep(1);
+//     }
+// }
 
-static inline void sis_unlock_mutex_unlock(s_sis_unlock_mutex *um_)
-{
-    while(!BCAS(&(*um_), 1, 0))
-    {
-        sis_sleep(1);
-    }
-}
-// 0 锁住
-static inline int sis_unlock_mutex_try_lock(s_sis_unlock_mutex *um_)
-{
-    if (BCAS(&(*um_), 0, 1))
-    {
-        return 0;
-    }
-    return 1;
-}
-static inline int sis_unlock_mutex_try_unlock(s_sis_unlock_mutex *um_)
-{
-    if (BCAS(&(*um_), 1, 0))
-    {
-        return 0;
-    }
-    return 1;
-}
+// static inline void sis_unlock_mutex_unlock(s_sis_unlock_mutex *um_)
+// {
+//     while(!BCAS(&(*um_), 1, 0))
+//     {
+//         sis_sleep(1);
+//     }
+// }
+// // 0 锁住
+// static inline int sis_unlock_mutex_try_lock(s_sis_unlock_mutex *um_)
+// {
+//     if (BCAS(&(*um_), 0, 1))
+//     {
+//         return 0;
+//     }
+//     return 1;
+// }
+// static inline int sis_unlock_mutex_try_unlock(s_sis_unlock_mutex *um_)
+// {
+//     if (BCAS(&(*um_), 1, 0))
+//     {
+//         return 0;
+//     }
+//     return 1;
+// }
 #ifdef __cplusplus
 }
 #endif

@@ -10,6 +10,8 @@
 
 #define sis_atoll atoll
 
+char *sis_strcat(char *out_, size_t *olen_, const char *in_);
+
 inline char *sis_strsep(char **string_, const char *sub)
 {
     char *s;

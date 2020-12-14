@@ -9,7 +9,7 @@
 typedef int (sis_reply_define)(void *, int , void *, void *);
 
 typedef struct s_sisdb_client_ask {
-	char       source[16];     // 数据来源标识
+	char       serial[16];     // 数据来源标识
 
     bool       issub;          // 是否订阅
     int8       format;         // 字节还是字符

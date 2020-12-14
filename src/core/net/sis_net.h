@@ -12,7 +12,6 @@
 #include <sis_map.h>
 #include <sis_json.h>
 #include <sis_message.h>
-#include <sis_snappy.h>
 #include <sis_crypt.h>
 
 #include "sis_list.lock.h"
@@ -29,7 +28,7 @@
 
 // request 方决定网络数据压缩方式 
 #define SIS_NET_ZIP_NONE       0
-#define SIS_NET_ZIP_SNAPPY     1
+#define SIS_NET_ZIP_ZBIT       1
 
 // request 方决定网络数据加密编码方式 
 #define SIS_NET_CRYPT_NONE     0

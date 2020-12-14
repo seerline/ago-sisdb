@@ -665,7 +665,7 @@ void _sis_bits_struct_init(s_sis_bits_stream *s_)
 }
 uint8 *_sis_bits_struct_get_ago(s_sis_bits_stream *s_, int kid_, s_sis_struct_unit *unit_)
 {
-    if (unit_ && kid_ < s_->max_keynum)
+    if (unit_ && kid_ < (int)s_->max_keynum)
     {
         return s_->ago_memory + kid_ * s_->sdbsize + unit_->offset;
     }

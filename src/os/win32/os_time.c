@@ -44,7 +44,7 @@ unsigned long long sis_time_get_now_usec()
 {
 	struct timeval tv;
 	sis_time_get_day(&tv, NULL);
-	return ((unsigned long long)tv.tv_sec) * 1000000 + tv.tv_usec);
+	return (((unsigned long long)tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 void sis_time_check(time_t tt, struct tm *ptm)
 {

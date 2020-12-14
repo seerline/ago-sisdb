@@ -109,7 +109,7 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
 {
     s_sis_net_message *msg = sis_net_message_create();
     msg->cid = context->cid;
-    msg->source = sis_sdsnew(ask->source);
+    msg->serial = sis_sdsnew(ask->serial);
     if  (ask->format == SIS_NET_FORMAT_CHARS)
     {
         sis_net_ask_with_chars(msg, ask->cmd, ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
@@ -127,7 +127,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
     s_sisdb_client_cxt *context = (s_sisdb_client_cxt *)source_;
     if (context->status == SIS_CLI_STATUS_WORK)
     {
-        s_sisdb_client_ask *ask = sisdb_client_ask_get(context, msg_->source);
+        s_sisdb_client_ask *ask = sisdb_client_ask_get(context, msg_->serial);
         // 清理上次返回的信息
         if (ask && msg_->style & SIS_NET_RCMD)
         {
@@ -332,19 +332,19 @@ s_sisdb_client_ask *sisdb_client_ask_new(
 {
     s_sisdb_client_ask *ask = sisdb_client_ask_create(cmd_, key_, val_, vlen_, cb_source_, cb_sub_start, cb_sub_realtime, cb_sub_stop, cb_reply);
     context->ask_sno = (context->ask_sno + 1 ) % 0xFFFFFFFF;
-    sis_llutoa(context->ask_sno, ask->source, 16, 10);
+    sis_llutoa(context->ask_sno, ask->serial, 16, 10);
     ask->issub = issub;
-    sis_map_pointer_set(context->asks, ask->source, ask);
+    sis_map_pointer_set(context->asks, ask->serial, ask);
     return ask;
 }
 void sisdb_client_ask_del(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask_)
 {
     if (ask_)
     {
-        s_sisdb_client_ask *ask = sis_map_pointer_get(context->asks, ask_->source);
+        s_sisdb_client_ask *ask = sis_map_pointer_get(context->asks, ask_->serial);
         if (ask)
         {
-            sis_map_pointer_del(context->asks, ask->source);
+            sis_map_pointer_del(context->asks, ask->serial);
         }
         else
         {
@@ -355,10 +355,10 @@ void sisdb_client_ask_del(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask_)
 
 s_sisdb_client_ask *sisdb_client_ask_get(
     s_sisdb_client_cxt *context, 	
-    const char   *source         // 来源信息
+    const char   *serial         // 来源信息
 )
 {
-    return (s_sisdb_client_ask *)sis_map_pointer_get(context->asks, source);
+    return (s_sisdb_client_ask *)sis_map_pointer_get(context->asks, serial);
 }
 
 void sisdb_client_ask_unsub(
@@ -375,7 +375,7 @@ void sisdb_client_ask_unsub(
         s_sisdb_client_ask *ask = (s_sisdb_client_ask *)sis_dict_getval(de);
         if (ask->issub && !sis_strcasecmp(ask->cmd, cmd_) && !sis_strcasecmp(ask->key, key_) )
         {
-            str = ask->source;
+            str = ask->serial;
             break;
         }
     }

@@ -247,7 +247,6 @@ char *sis_path_get_files(const char *path_, int mode_)
 
 	char path[255];
 	char findname[255];
-	char filename[255];
 	sis_file_getpath(fname, path, 255);
 	sis_file_getname(fname, findname, 255);
 	if (sis_strlen(findname) < 1)
@@ -274,7 +273,7 @@ char *sis_path_get_files(const char *path_, int mode_)
 			{
 				o = sis_strcat(o, &size, ":");
 			}
-			o = sis_strcat(o, &size, df.cFileName);
+			o = sis_strcat(o, &size, f.cFileName);
 		}
 		rtn = FindNextFile(done, &f);
 	}

@@ -10,7 +10,7 @@
 // 非常好的数据结构，基本可以满足所有网络通许所有的信息了                //
 //--------------------------------------------------------------//
 
-#define SIS_NET_SOURCE   0x01    // 有 source
+#define SIS_NET_SERIAL   0x01    // 有 serial
 #define SIS_NET_CMD      0x02    // 有 cmd
 #define SIS_NET_KEY      0x04    // 有 key
 #define SIS_NET_VAL      0x08    // 有 val
@@ -29,30 +29,6 @@
 #define SIS_NET_ANS_SUB_STOP     7  // 订阅结束
 
 
-// #define SIS_NET_ANS_KEY      0x10    // 返回字符串数据 source + key
-// #define SIS_NET_ANS_VAL      0x20    // 有数据 返回一个缓存区  source + rval
-// #define SIS_NET_ANS_SIGN     0x40    // 有数据 返回一个信号   source + rint 
-// #define SIS_NET_ANS_CHARS    0x70    // 返回字符串数据
-// #define SIS_NET_ANS_ARGVS    0x80    // 有数据 返回多个缓存区  只有 argvs 数据 二进制专用
-// #define SIS_NET_ANS_BYTES    0x80    // 有数据 返回多个缓存区  只有 argvs 数据 二进制专用
-
-// #define SIS_NET_ANS_MSG      0xF0  // 应答数据 
-
-// #define SIS_NET_ANS_INT      0x0200  // 有数据 返回一个整数   source + rint 
-// #define SIS_NET_ANS_VAL      0x0400  // 有数据 返回一个缓存区  source + rval
-// #define SIS_NET_ANS_ARGVS    0x0800  // 有数据 返回多个缓存区  source + argvs
-// #define SIS_NET_ANS_SIGN     0x1000  // 有数据 返回一个信号    source + rint 
-// #define SIS_NET_ANS_KEY      0x2000  // 有数据 且有key  source + key
-
-
-// #define SIS_NET_ANS_SIGN_NIL         -1  // 数据为空
-// #define SIS_NET_ANS_SIGN_OK           0  // 数据正确
-// #define SIS_NET_ANS_SIGN_ERROR        1  // 数据错误
-// #define SIS_NET_ANS_SIGN_NOAUTH       2  // 未登录验证
-// #define SIS_NET_ANS_SIGN_SUB_START    5  // 订阅开始
-// #define SIS_NET_ANS_SIGN_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
-// #define SIS_NET_ANS_SIGN_SUB_STOP     7  // 订阅结束
-
 // request 方决定网络数据传输方式 是按字节流还是 JSON 字符串
 #define SIS_NET_FORMAT_CHARS   0 
 #define SIS_NET_FORMAT_BYTES   1 
@@ -64,7 +40,7 @@ typedef struct s_sis_net_message {
 	// 通常server等待消息然后再回送消息 但不排除在某些网络限制情况下 server向client请求数据
 	uint32              refs;      // 引用次数
 
-	s_sis_sds	        source;    // 来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址 s_sis_object   
+	s_sis_sds	        serial;    // 来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址 s_sis_object   
 
 	uint8               format;    // 数据是字符串还是字节流 根据此标记进行打包和拆包
 	//

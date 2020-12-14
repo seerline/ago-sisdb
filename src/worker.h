@@ -93,7 +93,6 @@ s_sis_worker *sis_worker_get(s_sis_worker *worker_, const char *);
 // 从根部找起 workname_ = aaa.bbb.ccc
 s_sis_worker *sis_worker_search(const char *workname_);
 
-
 #ifdef __cplusplus
 }
 #endif

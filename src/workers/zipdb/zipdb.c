@@ -211,7 +211,7 @@ static int cb_input_reader(void *zipdb_, s_sis_object *in_)
 		outmem->size = sis_bits_struct_getsize(zipdb->cur_sbits);
 
 		//  数据如果超过一定数量就直接发送
-		if (outmem->size > zipdb->zip_size - 256)
+		if ((int)outmem->size > zipdb->zip_size - 256)
 		{
 			sis_memory_set_size(SIS_OBJ_MEMORY(obj), sizeof(s_zipdb_bits) + outmem->size);
 			// printf("push 1 outmem->size  = %d num= %d\n", outmem->size, sis_bits_struct_get_bags(zipdb->cur_sbits, false));
@@ -698,10 +698,10 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
 
     s_zipdb_reader *reader = zipdb_reader_create();
 	reader->cid = sis_message_get_int(msg, "cid");
-	s_sis_sds source = sis_message_get_str(msg, "source");
-	if (source)
+	s_sis_sds serial = sis_message_get_str(msg, "serial");
+	if (serial)
 	{
-		reader->source = sis_sdsdup(source);
+		reader->serial = sis_sdsdup(serial);
 	}
     reader->zipdb_worker = worker;
     reader->ishead = sis_message_get_int(msg, "ishead");
@@ -860,7 +860,7 @@ void zipdb_reader_destroy(void *reader_)
 	}
 	sis_sdsfree(reader->sub_keys);
 	sis_sdsfree(reader->sub_sdbs);
-	sis_sdsfree(reader->source);
+	sis_sdsfree(reader->serial);
 	sis_free(reader);
 }
 

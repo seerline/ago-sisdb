@@ -120,7 +120,7 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 	}
 	{
 		const char *str = sis_json_get_str(node_, "compress");
-	    url_->compress = str && !sis_strcasecmp(str, "snappy") ? SIS_NET_ZIP_SNAPPY : SIS_NET_ZIP_NONE;
+	    url_->compress = str && !sis_strcasecmp(str, "zbit") ? SIS_NET_ZIP_ZBIT : SIS_NET_ZIP_NONE;
 	}
 	{
 		const char *str = sis_json_get_str(node_, "crypt");
@@ -206,10 +206,11 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 	// slots->slot_net_unpack = NULL; 必须有值	
 
 	// 设置回调 这个应该在收到客户端请求后设置 应该针对每个客户进行设置
-	if (compress == SIS_NET_ZIP_SNAPPY)
+	if (compress == SIS_NET_ZIP_ZBIT)
 	{
-		slots->slot_net_compress = sis_net_snappy_compress;
-		slots->slot_net_uncompress = sis_net_snappy_uncompress;
+		// 暂时不支持
+		slots->slot_net_compress = NULL;
+		slots->slot_net_uncompress = NULL;
 	}
 	if (crypt == SIS_NET_CRYPT_SSL)
 	{
@@ -856,7 +857,7 @@ int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, cha
 	{
 		protocol = SIS_NET_PROTOCOL_WS;
 	}
-	compress = compress_ && !sis_strcasecmp(compress_, "snappy") ? SIS_NET_ZIP_SNAPPY : SIS_NET_ZIP_NONE;
+	compress = compress_ && !sis_strcasecmp(compress_, "zbit") ? SIS_NET_ZIP_ZBIT : SIS_NET_ZIP_NONE;
 	crypt = crypt_ && !sis_strcasecmp(crypt_, "ssl") ? SIS_NET_CRYPT_SSL : SIS_NET_CRYPT_NONE;
 
 	sis_net_slot_set(cxt->slots, compress, crypt, protocol);

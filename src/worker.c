@@ -327,9 +327,6 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
         {
             // 一样的就跳过
             LOG(5)("workname = %s already exists.\n", worker->workername);
-            // sis_get_server()->work_series++;
-            // worker->workername = sis_sdscatfmt(worker->workername, "%i", sis_get_server()->work_series);
-            // LOG(5)("new workname = %s .\n", worker->workername);
         }       
     }
     else
@@ -441,6 +438,19 @@ s_sis_method *sis_worker_get_method(s_sis_worker *worker_, const char *cmd_)
     return NULL;   
 }
 
+// 通知worker去执行 working 
+void sis_work_thread_notice(s_sis_worker *worker_)
+{
+    // printf("====== %p\n", worker_->service_thread);
+    // if (worker_ && worker_->service_thread && worker_->service_thread->work_mode == SIS_WORK_MODE_NOTICE)
+    if (worker_ && worker_->service_thread && worker_->service_thread->work_thread)
+    {
+        sis_wait_thread_notice(worker_->service_thread->work_thread);
+    }
+}
+
+
+
 // 仅仅找当前 worker->workers 下的 workname_ = aaa
 s_sis_worker *sis_worker_get(s_sis_worker *worker_, const char *workname_)
 {
@@ -490,17 +500,6 @@ s_sis_worker *sis_worker_search(const char *workname_)
         count--;
     }
     return worker;
-}
-
-// 通知worker去执行 working 
-void sis_work_thread_notice(s_sis_worker *worker_)
-{
-    // printf("====== %p\n", worker_->service_thread);
-    // if (worker_ && worker_->service_thread && worker_->service_thread->work_mode == SIS_WORK_MODE_NOTICE)
-    if (worker_ && worker_->service_thread && worker_->service_thread->work_thread)
-    {
-        sis_wait_thread_notice(worker_->service_thread->work_thread);
-    }
 }
 
 

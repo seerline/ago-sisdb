@@ -105,19 +105,6 @@ bool _server_open()
 	return true;
 }
 
-int _server_load_modules()
-{
-	int i, count = 0;
-    for (i = 0; __modules[i]; i++) 
-	{
-		count++;
-		sis_map_pointer_set(_server.modules, __modules_name[i], __modules[i]);
-		printf("load modules %s ok.\n", __modules_name[i]);
-    }
-	printf("load modules ok. count = %d \n", count);
-	return sis_map_pointer_getsize(_server.modules);
-}
-
 bool sis_is_server(void *self_)
 {
 	if (self_ == &_server)
@@ -145,6 +132,19 @@ void _server_help()
 	printf("		-h           : help. \n");
 }
 #if 1
+
+int _server_load_modules()
+{
+	int i, count = 0;
+    for (i = 0; __modules[i]; i++) 
+	{
+		count++;
+		sis_map_pointer_set(_server.modules, __modules_name[i], __modules[i]);
+		printf("load modules %s ok.\n", __modules_name[i]);
+    }
+	printf("load modules ok. count = %d \n", count);
+	return sis_map_pointer_getsize(_server.modules);
+}
 
 int main(int argc, char *argv[])
 {
