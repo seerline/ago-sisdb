@@ -324,7 +324,7 @@ typedef struct s_sis_disk_wcatch {
 
 typedef struct s_sis_disk_reader {
     uint8                issub;
-    uint8                isone;  // 是否一次性输出
+    uint8                isone;   // 是否一次性输出
 ////////// ask  //////////
     s_sis_msec_pair      search_int;
 
@@ -376,9 +376,12 @@ typedef struct s_sis_files {
 } s_sis_files;
 
 typedef struct s_sis_disk_class {
-    s_sis_mutex_t        mutex;          // 多线程写入时需要加锁，不然报错
+    s_sis_mutex_t        mutex;  // 多线程写入时需要加锁，不然报错
     bool                 isinit; // 必须初始化后才能使用
+    // uint8                isstop;  // 读文件期间是否停止 如果为 1 立即退出
+    bool                 isstop; // 是否中断读取
     s_sis_disk_reader   *reader; // 读取数据时保存的指针
+
 
     int   style;
     char  fpath[255];
@@ -483,7 +486,8 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_);
 // long long sis_files_seek(s_sis_files *, int fidx_, size_t offset_, int where_);
 // // 从当前位置读取数据
 
-typedef size_t (cb_sis_files_read)(void *, s_sis_disk_head *, s_sis_object *);
+// 回调返回为 -1 表示已经没有读者了,停止继续读文件
+typedef int (cb_sis_files_read)(void *, s_sis_disk_head *, s_sis_object *);
 // 全文读取 数据后通过回调输出数据
 size_t sis_files_read_fulltext(s_sis_files *cls_, void *, cb_sis_files_read *callback);
 // 定位读去某一个块
@@ -588,7 +592,7 @@ void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_);
 // 读取索引后加载字典信息
 int sis_disk_file_read_dict(s_sis_disk_class *cls_);
 // 加载索引文件到内存 方便检索
-size_t cb_sis_disk_file_read_index(void *cls_, s_sis_disk_head *, s_sis_object *);
+int cb_sis_disk_file_read_index(void *cls_, s_sis_disk_head *, s_sis_object *);
 
 // 以流的方式读取文件 从文件中一条一条发出 
 // 必须是同一个时间尺度的数据 否则无效

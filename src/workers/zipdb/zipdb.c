@@ -327,15 +327,11 @@ bool zipdb_init(void *worker_, void *argv_)
             context->wfile_worker = service; 
         }     
     }
-    s_sis_json_node *rfilenode = sis_json_cmp_child_node(node, "rfile");
-    if (rfilenode)
+	const char *rfilepath = sis_json_get_str(node, "rfile-path");
+    if (rfilepath)
     {
-		// 表示支持历史数据的读取
-        s_sis_worker *service = sis_worker_create(worker, rfilenode);
-        if (service)
-        {
-            context->rfile_worker = service; 
-        }     
+		context->rfile_path = sis_sdsnew(rfilepath);
+		// 表示支持历史数据的读取   
     }
 	if (context->wlog_worker)
 	{
@@ -381,11 +377,7 @@ void zipdb_uninit(void *worker_)
         sis_worker_destroy(zipdb->wfile_worker);
 		zipdb->wfile_worker = NULL;
     }
-    if (zipdb->rfile_worker)
-    {
-        sis_worker_destroy(zipdb->rfile_worker);
-		zipdb->rfile_worker = NULL;
-    }
+	sis_sdsfree(zipdb->rfile_path);
 	sis_sdsfree(zipdb->work_keys);
 	sis_sdsfree(zipdb->work_sdbs);
     sis_map_list_destroy(zipdb->keys); 
@@ -514,6 +506,7 @@ int cmd_zipdb_init(void *worker_, void *argv_)
     s_zipdb_cxt *context = (s_zipdb_cxt *)worker->context;
     s_sis_message *msg = (s_sis_message *)argv_;
 
+	// 这里的keys和sdbs必须为真实值
 	int work_date = sis_message_get_int(msg, "work_date");
 	s_sis_sds keys = sis_message_get_str(msg, "keys");
 	s_sis_sds sdbs = sis_message_get_str(msg, "sdbs");
@@ -553,9 +546,9 @@ int cmd_zipdb_start(void *worker_, void *argv_)
 		{
 			continue;
 		}
-		LOG(5)("zipdb start. [%d] cid : %d workdate : %d = %s\n", 
-			i,  reader->cid, context->work_date, (char *)argv_);
 		zipdb_reader_realtime_start(reader);
+		LOG(5)("zipdb start. [%d] cid : %d disk: %d workdate : %d = %s\n", 
+			i,  reader->cid, reader->sub_disk, context->work_date, (char *)argv_);
 	}
 	return SIS_METHOD_OK;
 }
@@ -712,24 +705,31 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
 	{
 		reader->sub_keys = sis_sdsdup(keys);
 	}
+	else
+	{
+		reader->sub_keys = sis_sdsnew("*");
+	}
+	
 	s_sis_sds sdbs = sis_message_get_str(msg, "sub_sdbs");
 	if (sdbs)
 	{
 		reader->sub_sdbs = sis_sdsdup(sdbs);
 	}
+	else
+	{
+		reader->sub_sdbs = sis_sdsnew("*");
+	}
 	
-	if ((!reader->sub_keys && !reader->sub_sdbs) || 
-		(!sis_strcasecmp(reader->sub_keys, "*") && sis_strcasecmp(reader->sub_sdbs, "*")))
+	if (!sis_strcasecmp(reader->sub_keys, "*") && !sis_strcasecmp(reader->sub_sdbs, "*"))
 	{
 		reader->sub_whole = true;
 	}
 	else
 	{
 		reader->sub_whole = false;
-
 	}
 	
-	// printf("reader->ishead = %d\n", reader->ishead);
+	// printf("reader->ishead = %d reader->sub_whole = %d\n", reader->ishead, reader->sub_whole);
     reader->cb_zipbits     = sis_message_get_method(msg, "cb_zipbits");
 
     reader->cb_sub_start = sis_message_get_method(msg, "cb_sub_start");
@@ -745,6 +745,7 @@ int cmd_zipdb_sub(void *worker_, void *argv_)
 		// 启动历史数据线程 并返回 
 		// 如果断线要能及时中断文件读取 
 		// 同一个用户 必须等待上一次读取中断后才能开始新的任务
+		zipdb_reader_new_history(reader);
 	}
 	else
 	{		
@@ -845,7 +846,12 @@ s_zipdb_reader *zipdb_reader_create()
 void zipdb_reader_destroy(void *reader_)
 {
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
-	
+	printf("---1.1\n"); // ??? 大部分时候不能退出
+	if (reader->sub_disker)
+	{
+		zipdb_snos_read_stop(reader->sub_disker);
+	}
+	printf("---1.2\n");
 	if (reader->sub_unziper)
 	{
 		zipdb_worker_destroy(reader->sub_unziper);	
@@ -862,6 +868,7 @@ void zipdb_reader_destroy(void *reader_)
 	sis_sdsfree(reader->sub_sdbs);
 	sis_sdsfree(reader->serial);
 	sis_free(reader);
+	printf("---1.3\n");
 }
 
 static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t ilen_)
@@ -912,6 +919,17 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
     return 0;
 }
 
+int zipdb_reader_new_history(s_zipdb_reader *reader_)
+{
+    s_sis_worker *worker = (s_sis_worker *)reader_->zipdb_worker; 
+    s_zipdb_cxt *zipdb = (s_zipdb_cxt *)worker->context;
+	// 清除该端口其他的订阅
+	zipdb_move_reader(zipdb, reader_->cid);
+	sis_pointer_list_push(zipdb->readeres, reader_);
+	// zipdb_snos_read_stop(reader_->sub_disker);
+	reader_->sub_disker = zipdb_snos_read_start(zipdb->rfile_path, reader_);
+	return 1;
+}
 int zipdb_reader_new_realtime(s_zipdb_reader *reader_)
 {
     s_sis_worker *worker = (s_sis_worker *)reader_->zipdb_worker; 
@@ -944,28 +962,6 @@ int zipdb_move_reader(s_zipdb_cxt *zipdb_,int cid_)
 	}	
 	return count;
 }
-s_sis_sds _zipdb_reader_get_sdbs(s_sis_map_list *srcmap, s_sis_sds sdbs_)
-{
-    int count = sis_map_list_getsize(srcmap);
-    s_sis_json_node *sdbs_node = sis_json_create_object();
-    {
-        for(int i = 0; i < count; i++)
-        {
-			s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_list_geti(srcmap, i);
-			int index = sis_str_subcmp_strict(db->name, sdbs_, ',');
-			if (index < 0)
-			{
-				continue;
-			}
-            sis_json_object_add_node(sdbs_node, db->name, sis_dynamic_dbinfo_to_json(db));
-        }
-    }
-    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
-    printf("sdbs = %s\n", msg);
-    sis_json_delete_node(sdbs_node);
-    return msg;
-	
-}
 // 只能在确定start时处理 定制解压相关类
 int zipdb_reader_realtime_start(s_zipdb_reader *reader_)
 {
@@ -989,8 +985,8 @@ int zipdb_reader_realtime_start(s_zipdb_reader *reader_)
 		{
 			zipdb_worker_clear(reader_->sub_ziper);
 		}	
-		work_keys = sis_sdsdup(reader_->sub_keys);
-		work_sdbs = _zipdb_reader_get_sdbs(zipdb->sdbs, reader_->sub_sdbs);	
+		work_keys = sis_match_key(reader_->sub_keys, zipdb->work_keys);
+		work_sdbs = sis_match_sdb_of_map(reader_->sub_sdbs, zipdb->sdbs);
         zipdb_worker_set_keys(reader_->sub_ziper, work_keys);
         zipdb_worker_set_sdbs(reader_->sub_ziper, work_sdbs);
 

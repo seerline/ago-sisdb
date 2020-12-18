@@ -353,7 +353,7 @@ void sis_socket_server_close(s_sis_socket_server *server_)
 	{
 		s_sis_socket_session *session = (s_sis_socket_session *)sis_index_list_get(server_->sessions, index);
 		
-		sis_socket_close_handle((uv_handle_t*)&session->write_async, NULL);
+		// sis_socket_close_handle((uv_handle_t*)&session->write_async, NULL);
 		sis_socket_close_handle((uv_handle_t*)session->work_handle, cb_session_closed);
 		// uv_shutdown_t shutdown_req;
 		// uv_shutdown(&shutdown_req, (uv_stream_t*)session->work_handle, NULL);
@@ -819,7 +819,7 @@ bool sis_socket_server_delete(s_sis_socket_server *server, int sid_)
 		return false;
 	}
 
-	sis_socket_close_handle((uv_handle_t*)&session->write_async, NULL);
+	// sis_socket_close_handle((uv_handle_t*)&session->write_async, NULL);
 	sis_socket_close_handle((uv_handle_t*)session->work_handle, cb_session_closed);
 
 	LOG(5)("delete session.[%d] %d\n", sid_, sis_index_list_isnone(server->sessions));
@@ -939,7 +939,7 @@ void sis_socket_client_close(s_sis_socket_client *client_)
 	}
 	if (client_->work_status == SIS_UV_CONNECT_WORK)
 	{
-		sis_socket_close_handle((uv_handle_t*)&client_->write_async, NULL);
+		// sis_socket_close_handle((uv_handle_t*)&client_->write_async, NULL);
 		sis_socket_close_handle((uv_handle_t*)&client_->client_handle, cb_client_close);
 	}
 	client_->work_status = SIS_UV_CONNECT_EXIT;

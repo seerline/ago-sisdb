@@ -838,7 +838,6 @@ void _unzip_unit_free(s_sis_struct_list *list)
     }
     sis_struct_list_destroy(list);
 }
-// ??? 实际环境中连续运行解压会出错
 // 用回调来返回数据
 int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {

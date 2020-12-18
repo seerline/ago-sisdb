@@ -585,6 +585,22 @@ int sis_dynamic_convert(s_sis_dynamic_convert *cls_,
 //         const char *key_, int dir_,
 //         const char *in_, size_t ilen_);
 
+// match_keys : * --> whole_keys
+// match_keys : k,m1 | whole_keys : k1,k2,m1,m2 --> k1,k2,m1
+s_sis_sds sis_match_key(s_sis_sds match_keys, s_sis_sds whole_keys);
+// 得到匹配的sdbs
+// match_sdbs : * | whole_sdbs : {s1:{},s2:{},k1:{}} --> s1,s2,k1
+// match_sdbs : s1,s2,s4 | whole_sdbs : {s1:{},s2:{},k1:{}} --> s1,s2
+s_sis_sds sis_match_sdb(s_sis_sds match_keys, s_sis_sds whole_keys);
+// 得到匹配的sdbs
+// match_sdbs : * --> whole_sdbs
+// match_sdbs : s1,s2 | whole_sdbs : {s1:{},s2:{},k1:{}} --> {s1:{},s2:{}}
+s_sis_sds sis_match_sdb_of_sds(s_sis_sds match_sdbs, s_sis_sds  whole_sdbs);
+// 得到匹配的sdbs
+// whole_sdbs 是s_sis_dynamic_db结构的map表
+// match_sdbs : * --> whole_sdbs of sds
+// match_sdbs : s1,s2 | whole_sdbs : {s1:{},s2:{},k1:{}} --> {s1:{},s2:{}}
+s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs);
 
 #endif //_SIS_DYNAMIC_H
 

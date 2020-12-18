@@ -15,6 +15,7 @@
 #include "sis_dynamic.h"
 #include "sis_bits.h"
 #include "sis_obj.h"
+#include "sis_disk.h"
 #include "sis_net.io.h"
 
 #include "worker.h"
@@ -24,6 +25,10 @@
 #define ZIPDB_CLEAR_MODE_ALL    0
 #define ZIPDB_CLEAR_MODE_DATA   1
 #define ZIPDB_CLEAR_MODE_READER 2
+
+#define ZIPDB_DISK_INIT 0
+#define ZIPDB_DISK_WORK 1
+#define ZIPDB_DISK_EXIT 2
 
 #pragma pack(push,1)
 
@@ -84,9 +89,11 @@ typedef struct s_zipdb_reader
 	///////以下为定制数据处理///////
 	// 这里先处理实时的 历史的以后再说
 	bool                sub_disk;     // 是否从磁盘中获取数据
+	void               *sub_disker;   // 从从盘读取数据的对象  s_zipdb_disk_worker
+
 	int                 sub_date;     // 订阅日期 如果为历史就启动一个线程专门处理 历史默认为从头发送
-	s_sis_sds           sub_keys;     // 订阅股票
-	s_sis_sds           sub_sdbs;     // 订阅数据
+	s_sis_sds           sub_keys;     // 订阅股票 可能为 * 
+	s_sis_sds           sub_sdbs;     // 订阅数据 可能为 *
 	// 当读者需要特定的数据 先对收到的数据进行解压 再根据指定的代码和表压缩 然后再传递出去
 	// 为简便处理 即便传入的数据为原始数据 也从压缩数据解压后获取
 	//  传入的数据如果是压缩的就解压，然后过滤后压缩 如果是原始数据就直接过滤后压缩
@@ -96,7 +103,7 @@ typedef struct s_zipdb_reader
 
 	s_sis_lock_reader  *reader;       // 每个读者一个订阅者
 	// 返回压缩的数据 
-	sis_method_define  *cb_zipbits;       // s_zipdb_bits
+	sis_method_define  *cb_zipbits;      // s_zipdb_bits
 
     sis_method_define  *cb_sub_start;    // char *
     sis_method_define  *cb_sub_realtime; // char *
@@ -106,6 +113,15 @@ typedef struct s_zipdb_reader
 	sis_method_define  *cb_dict_sdbs;   // char *
 
 } s_zipdb_reader;
+
+typedef struct s_zipdb_disk_worker
+{
+	int                rdisk_status;  // 读取磁盘的状态 0 初始或退出完成 1 正常 2 请求中断退出
+	s_sis_sds          work_path; 
+	s_zipdb_reader    *zipdb_reader;  // 仅仅是指针
+	s_sis_disk_class  *rdisk_worker;
+	s_sis_thread       rdisk_thread;  // 读取磁盘的线程   
+} s_zipdb_disk_worker;
 
 // 来源数据只管写盘 只有key, sdb有的才会保存数据
 // 读取数据的人会接收到压缩的 out_bitzips 如果接收者订阅了全部就直接发送数据出去
@@ -146,12 +162,12 @@ typedef struct s_zipdb_cxt
 	sis_method_define  *wfile_cb_zip_bytes;
 	s_sis_worker       *wfile_worker; // 当前使用的写文件类
 
-	s_sis_worker       *rfile_worker;       // 当前使用的读文件类
+	s_sis_sds           rfile_path;       // 当前使用的读文件类
 
 	s_sis_sds           work_keys; // 工作 keys
 	s_sis_sds           work_sdbs; // 工作 sdbs
-	s_sis_map_list     *keys;     // key 的结构字典表 s_sis_sds
-	s_sis_map_list     *sdbs;     // sdb 的结构字典表 s_sis_dynamic_db 包括
+	s_sis_map_list     *keys;      // key 的结构字典表 s_sis_sds
+	s_sis_map_list     *sdbs;      // sdb 的结构字典表 s_sis_dynamic_db 包括
 
 	s_sis_fast_queue   *inputs;    // 传入的数据链 s_zipdb_bits
 
@@ -238,6 +254,8 @@ int zipdb_reader_new_realtime(s_zipdb_reader *reader_);
 // 清理指定的 reader
 int zipdb_move_reader(s_zipdb_cxt *, int);
 
+int zipdb_reader_new_history(s_zipdb_reader *reader_);
+
 //////////////////////////////////////////////////////////////////
 //------------------------zipdb function -----------------------//
 //////////////////////////////////////////////////////////////////
@@ -255,6 +273,8 @@ int zipdb_wlog_move(s_zipdb_cxt *);
 // 把wlog转为snos格式 
 int zipdb_wlog_save_snos(s_zipdb_cxt *);
 // 读取 snos 文件 snos 为zipdb压缩的分块式顺序格式
-int zipdb_snos_read(s_zipdb_cxt *);
+s_zipdb_disk_worker *zipdb_snos_read_start(const char *, s_zipdb_reader *);
+// 读取 snos 文件 snos 为zipdb压缩的分块式顺序格式
+int zipdb_snos_read_stop(s_zipdb_disk_worker *);
 
 #endif /* _SISDB_SNO_H */

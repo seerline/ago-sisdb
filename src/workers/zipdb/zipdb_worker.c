@@ -80,12 +80,12 @@ void zipdb_worker_clear(s_zipdb_worker *worker)
 
 void zipdb_worker_set_keys(s_zipdb_worker *worker, s_sis_sds in_)
 {
-	LOG(5)("set unzip keys\n");
 	// printf("%s\n",in_);
 	s_sis_string_list *klist = sis_string_list_create();
 	sis_string_list_load(klist, in_, sis_sdslen(in_), ",");
 	// 重新设置keys
 	int count = sis_string_list_getsize(klist);
+	LOG(5)("set unzip keys %d\n", count);
 	for (int i = 0; i < count; i++)
 	{
 		s_sis_sds key = sis_sdsnew(sis_string_list_get(klist, i));
