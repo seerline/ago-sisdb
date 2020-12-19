@@ -313,7 +313,7 @@ static void cb_sdb(void *worker_, void *sdb_, size_t size)
 	sis_sdsfree(srcsdbs); 
 }
 
-static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
+static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out_, size_t olen_)
 {
     // printf("cb_read : %s %s\n", key_, sdb_);
 	if (!key_ || !sdb_)
@@ -329,7 +329,7 @@ static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_obj
 	{
 		return ;
 	}
-	zipdb_worker_zip_set(worker->zipdb_reader->sub_ziper, kidx, sidx, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+	zipdb_worker_zip_set(worker->zipdb_reader->sub_ziper, kidx, sidx, out_, olen_);
 
 	_zipdb_read_send_data(worker->zipdb_reader, 0);
 

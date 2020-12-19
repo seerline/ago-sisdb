@@ -274,6 +274,19 @@ int sis_struct_list_pack(s_sis_struct_list *list_)
 	list_->maxcount = list_->count;
 	return list_->count;
 }
+
+// 弹出一条记录 只改变start不拷贝内存
+void *sis_struct_list_pop(s_sis_struct_list *list_)
+{
+	char *o = NULL;
+	if (list_->count > 0)
+	{
+		o = (char *)list_->buffer + (list_->start * list_->len);
+		list_->start++;
+		list_->count--;
+	}
+	return o;
+}
 int sis_struct_list_delete(s_sis_struct_list *list_, int start_, int count_)
 {
 	if (start_ < 0 || count_ < 1 || start_ + count_ > list_->count)

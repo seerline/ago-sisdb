@@ -1,6 +1,8 @@
 ﻿
 #include "sis_obj.h"
 
+// #define OBJ_ONE_THREAD
+
 s_sis_object *sis_object_create(int style_, void *ptr)
 {
     s_sis_object *o = sis_malloc(sizeof(*o));
@@ -15,8 +17,11 @@ s_sis_object *sis_object_incr(s_sis_object *obj_)
 {
     if (obj_ && obj_->refs != SIS_OBJECT_MAX_REFS) 
     {
-        // obj_->refs++;
+#ifdef OBJ_ONE_THREAD  
+        obj_->refs++;
+#else
         ADDF(&(obj_->refs), 1);
+#endif
         return obj_;
     }
     return NULL;
@@ -29,6 +34,7 @@ void sis_object_decr(void *obj_)
     {
         return ;
     }
+#ifndef OBJ_ONE_THREAD  
     unsigned int refs = obj->refs; 
     unsigned int newrefs = refs - 1; 
     while(!BCAS(&(obj->refs), refs, newrefs))
@@ -37,9 +43,10 @@ void sis_object_decr(void *obj_)
         newrefs = refs - 1;
         sis_sleep(1);
     }
-    // SUBF(&(obj->refs), 1);
-    // printf("%d %d %p \n", refs, obj->refs, obj);
     if (refs == 1)
+#else
+    if (obj->refs <= 1)
+#endif
     {        
         switch(obj->style) 
         {
@@ -63,10 +70,12 @@ void sis_object_decr(void *obj_)
         }
         sis_free(obj);
     }
-    // else
-    // {
-    //     SUBF(&(obj->refs), 1);
-    // }
+#ifdef OBJ_ONE_THREAD
+    else
+    {
+        obj->refs--;
+    }
+#endif
     
 }
 size_t sis_object_getsize(void *obj)
@@ -126,7 +135,38 @@ char * sis_object_getchar(void *obj)
     }
     return ptr;
 }
+#if 0
+// cost: 3692
+// cost: 2359
+// cost: 1250
+int main()
+{
+    int count = 10*1024*1024;
+    msec_t msec = sis_time_get_now_msec();
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
+        sis_object_destroy(obj);   
+    }
+    printf("cost: %llu\n", sis_time_get_now_msec() - msec);
+    msec = sis_time_get_now_msec();
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_memory *obj = sis_memory_create();
+        sis_memory_destroy(obj);   
+    }
+    printf("cost: %llu\n", sis_time_get_now_msec() - msec);
+    msec = sis_time_get_now_msec();
+    for (int i = 0; i < count; i++)
+    {
+        char *obj = sis_malloc(255);
+        sis_free(obj);   
+    }
+    printf("cost: %llu\n", sis_time_get_now_msec() - msec);
+    return 0;
+}
 
+#endif
 
 #if 0
 // 测试读写锁

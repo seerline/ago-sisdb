@@ -123,27 +123,22 @@ int sis_disk_dict_set(s_sis_disk_dict *dict_, bool iswrite_, s_sis_dynamic_db * 
 // s_sis_disk_rcatch
 ////////////////////////////////////////////////////////
 
-s_sis_disk_rcatch *sis_disk_rcatch_create(uint64 sno_, s_sis_object *key_, s_sis_object *sdb_)
+s_sis_disk_rcatch *sis_disk_rcatch_create(int rsize_, s_sis_memory *omem_)
 {
+    if (!omem_)
+    {
+        return NULL;
+    }
     s_sis_disk_rcatch *o = SIS_MALLOC(s_sis_disk_rcatch, o);
-    o->sno = sno_;
-    if (key_)
-    {
-        o->key = sis_object_incr(key_);
-    }
-    if (sdb_)
-    {
-        o->sdb = sis_object_incr(sdb_);
-    }
-    o->output = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
+    o->rsize = rsize_;
+    o->omem = sis_memory_create_size(sis_memory_get_size(omem_));
+    sis_memory_cat(o->omem, sis_memory(omem_), sis_memory_get_size(omem_));
     return o;
 }
 void sis_disk_rcatch_destroy(void *in_)
 {
     s_sis_disk_rcatch *info = (s_sis_disk_rcatch *)in_;
-    sis_object_decr(info->key);
-    sis_object_decr(info->sdb);
-    sis_object_destroy(info->output);
+    sis_memory_destroy(info->omem);
     sis_free(info);
 }
 ////////////////////////////////////////////////////////
@@ -473,17 +468,17 @@ static void cb_sdb(void *worker_, void *sdb_, size_t size)
     sis_disk_class_set_sdb(wfile, true, sdb_, size);
 }
 
-static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
+static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out_, size_t olen_)
 {
     printf("pack : %s : %s %s\n", __func__, (char *)key_, (char *)sdb_);
     s_sis_disk_class *wfile = (s_sis_disk_class *)worker_; 
     if (sdb_)
     {
-        sis_disk_file_write_sdb(wfile, key_, sdb_, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        sis_disk_file_write_sdb(wfile, key_, sdb_, out_, olen_);
     }
     else
     {
-        sis_disk_file_write_any(wfile, key_, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        sis_disk_file_write_any(wfile, key_, out_, olen_);
     }
 } 
 

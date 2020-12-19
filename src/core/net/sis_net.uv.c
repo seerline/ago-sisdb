@@ -626,8 +626,8 @@ bool sis_socket_server_open6(s_sis_socket_server *server)
 }
 #define _UV_DEBUG_
 #ifdef _UV_DEBUG_
-msec_t          _uv_write_msec = 0;
-volatile int    _uv_write_nums = 0;
+msec_t    _uv_write_msec = 0;
+int       _uv_write_nums = 0;
 #endif
 
 static void _send_buffer_clear(uv_buf_t *buffer)

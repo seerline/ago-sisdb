@@ -23,7 +23,7 @@
 
 typedef struct s_sis_server
 {
-	volatile int status; //是否已经初始化
+	int status; //是否已经初始化
 	
 	char conf_name[SIS_PATH_LEN];  //配置文件路径
 

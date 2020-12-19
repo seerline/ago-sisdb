@@ -99,15 +99,18 @@ static void cb_begin(void *source_, msec_t idate)
         context->cb_sub_start(context->cb_source, sdate);
     }
 }
-static void cb_read_stream(void *source_, const char *key_, const char *sdb_, s_sis_object *obj_)
+static void cb_read(void *source_, const char *key_, const char *sdb_, void *out_, size_t olen_)
 {
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)source_;
     if (context->cb_recv)
     {
         s_sis_net_message *netmsg = sis_net_message_create();
         // sis_out_binary("wlog read", SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
-        sis_net_decoded_normal(SIS_OBJ_MEMORY(obj_), netmsg);
+        s_sis_memory *memory = sis_memory_create_size(olen_);
+        sis_memory_cat(memory, out_, olen_);
+        sis_net_decoded_normal(memory, netmsg);
         context->cb_recv(context->cb_source, netmsg);
+        sis_memory_destroy(memory);
         sis_net_message_destroy(netmsg);
     }
     // 这里通过回调把数据传递出去 
@@ -152,7 +155,7 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_)
     cb.source = context; 
     cb.cb_begin = cb_begin;
     cb.cb_end = cb_end;
-    cb.cb_read = cb_read_stream;
+    cb.cb_read = cb_read;
     s_sis_disk_reader *reader = sis_disk_reader_create(&cb); 
 
     sis_disk_file_read_sub(rfile, reader);

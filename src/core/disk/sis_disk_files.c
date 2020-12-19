@@ -491,17 +491,17 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                 if (head.hid != SIS_DISK_HID_NONE)
                 {
                     // printf("read----: %d \n", head.hid);
-                    s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create());
-                    if (sis_files_uncompress(cls_, &head, sis_memory(memory), size, SIS_OBJ_MEMORY(obj)) > 0)
+                    s_sis_memory *omem = sis_memory_create();
+                    if (sis_files_uncompress(cls_, &head, sis_memory(memory), size, omem) > 0)
                     {
-                        if (callback(source_, &head, obj) < 0)
+                        if (callback(source_, &head, omem) < 0)
                         {
                             // 回调返回 -1 表示已经没有读者了
                             isstop = true;
                             break;
                         }
                     }
-                    sis_object_destroy(obj);
+                    sis_memory_destroy(omem);
                 }
                 sis_memory_move(memory, size);
                 size = 0;
@@ -514,8 +514,9 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         } // while
         // 读4G文件约60秒
         // 解压缩 约 40秒
-        // 只解析数据不发送 约 160秒
-        // 排序花费时间 840秒- 2050秒
+        // 只解析数据 约 160秒
+        // 排序花费时间 840秒- 2050秒 
+        // 优化后 300秒
         printf("%zu cost = %d\n", _mem_size, sis_time_get_now_msec() - _start_msec);
         sis_memory_destroy(memory);
         if (isstop)

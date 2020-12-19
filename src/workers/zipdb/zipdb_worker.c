@@ -26,7 +26,7 @@ void zipdb_worker_destroy(s_zipdb_worker *worker)
 void zipdb_worker_unzip_init(s_zipdb_worker *worker, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {
 	worker->cb_source = cb_source_;
-	worker->cb_read = cb_read_;
+	worker->cb_decode = cb_read_;
 }
 
 void zipdb_worker_zip_init(s_zipdb_worker *worker, int zipsize, int initsize)
@@ -138,15 +138,15 @@ void zipdb_worker_unzip_set(s_zipdb_worker *worker, s_zipdb_bits *in_)
 	msec_t _start_usec = sis_time_get_now_usec();
 	// 开始解压 并回调
 	// int nums = sis_bits_struct_decode(worker->cur_sbits, NULL, NULL);
-	int nums = sis_bits_struct_decode(worker->cur_sbits, worker->cb_source, worker->cb_read);
+	int nums = sis_bits_struct_decode(worker->cur_sbits, worker->cb_source, worker->cb_decode);
 	if (nums == 0)
 	{
 		LOG(5)("unzip fail.\n");
 	}
-	if (worker->cb_read)
+	if (worker->cb_decode)
 	{
 		// 当前包处理完毕
-		worker->cb_read(worker->cb_source, -1, -1, NULL, 0);
+		worker->cb_decode(worker->cb_source, -1, -1, NULL, 0);
 	}
 	if (_unzip_nums == 0)
 	{
