@@ -513,17 +513,17 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
         // 然后发布出去
         if (cls_->reader->callback && cls_->reader->callback->cb_read)
         {
-            // for (int i = 0; i < cls_->sno_rcatch->count; i++)
-            // {       
-            //     s_sis_disk_rcatch *catch = (s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);         
-            //     cls_->reader->callback->cb_read(cls_->reader->callback->source,
-            //         SIS_OBJ_SDS(catch->key), SIS_OBJ_SDS(catch->sdb), 
-            //         catch->output);
-            //     if (cls_->isstop)
-            //     {
-            //         break;
-            //     }
-            // }
+            for (int i = 0; i < cls_->sno_rcatch->count; i++)
+            {       
+                s_sis_disk_rcatch *catch = (s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);         
+                cls_->reader->callback->cb_read(cls_->reader->callback->source,
+                    SIS_OBJ_SDS(catch->key), SIS_OBJ_SDS(catch->sdb), 
+                    catch->output);
+                if (cls_->isstop)
+                {
+                    break;
+                }
+            }
         }
     }
     sis_pointer_list_clear(cls_->sno_rcatch);
