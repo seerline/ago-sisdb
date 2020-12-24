@@ -86,26 +86,38 @@ int sis_net_ws_chk_ans(s_sis_memory *in_)
     return 0;
 }
 
-#define MAX_SEND_BUFF (16 * 1024)
-// #define MAX_SEND_BUFF (16)
-// 浏览器的ws协议不能超过64K数据大小，因此必须拆包，才能发送给浏览器，否则发送失败
-// 打包
 int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s_sis_memory_info *info)
 {
     size_t insize = sis_memory_get_size(in_);
+    size_t infosize = 0;
     if (info) 
     {
-        insize += sizeof(s_sis_memory_info);
+        infosize = sizeof(s_sis_memory_info);
     }
-    int count = insize / MAX_SEND_BUFF + 1;
+    int count = (insize + infosize) / WS_MAX_SEND_BUFF;
+    count += (insize + infosize) % WS_MAX_SEND_BUFF ? 1 : 0;
+
     sis_memory_clear(out_);
-    sis_memory_set_maxsize(out_, insize + count * 10);
+    sis_memory_set_maxsize(out_, (insize + infosize) + count * WS_MAX_HEAD_LEN);
 
     char *inptr = sis_memory(in_);
+
+    // bool _mulbag = false;
+    // if (insize == 16383 || insize == 16384)
+    // {
+    //     _mulbag = true;
+    //     printf("insize = %d %d\n", (insize + infosize), count);
+    //     sis_out_binary("in", inptr, sis_memory_get_size(in_));
+    // }
+
     for (int i = 0; i < count; i++)
     {
-        size_t size = insize > MAX_SEND_BUFF ? MAX_SEND_BUFF : insize;
-        s_sis_bits_stream *stream = sis_bits_stream_create((uint8 *)sis_memory(out_), size + 4);
+        size_t size = insize > WS_MAX_SEND_BUFF ? WS_MAX_SEND_BUFF : insize;
+        if (i == count - 1)
+        {
+            size += infosize;
+        }
+        s_sis_bits_stream *stream = sis_bits_stream_create((uint8 *)sis_memory(out_), size + WS_MAX_HEAD_LEN);
         if (i == count - 1)
         {
             sis_bits_stream_put(stream, 1, 1); // fin
@@ -146,10 +158,13 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s
             sis_bits_stream_put(stream, 127, 7);
             sis_bits_stream_put(stream, size, 64);            
         }     
-        if (i == count - 1 && info)
+        if (i == count - 1)
         {
-            sis_bits_stream_put_buffer(stream, inptr, size - sizeof(s_sis_memory_info));
-            sis_bits_stream_put_buffer(stream, (char *)info, sizeof(s_sis_memory_info));
+            sis_bits_stream_put_buffer(stream, inptr, size - infosize);
+            if (infosize > 0)
+            {
+                sis_bits_stream_put_buffer(stream, (char *)info, infosize);
+            }
         }
         else
         {
@@ -157,6 +172,7 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s
         }
         inptr += size;
         insize -= size;
+        // 全部数据写完就写info信息
 
         int cursor = sis_bits_stream_getbytes(stream);
         sis_memory_set_size(out_, cursor);
@@ -167,7 +183,11 @@ int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s
     // 回到起点
     sis_memory_jumpto(out_, 0);
     // printf("2 == %zu\n",sis_memory_get_size(out_));
-    // sis_out_binary("pack", sis_memory(out_), sis_memory_get_size(out_));
+    // if(_mulbag)
+    // {
+    //     printf("insize = %d\n", insize);
+    //     sis_out_binary("pack", sis_memory(out_), sis_memory_get_size(out_));
+    // }
 
     return 0;
 }

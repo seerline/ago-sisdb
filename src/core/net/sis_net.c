@@ -382,7 +382,8 @@ int sis_ws_recv_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 	}
 	sis_net_ws_get_ans(key, ans);
 
-	// sis_out_binary("ans",sis_memory(ans), sis_memory_get_size(ans));
+	printf("send hand ans: %d\n", cxt->rid);
+	sis_out_binary("ans",sis_memory(ans), sis_memory_get_size(ans));
 
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, ans); 
 	if (cls->url->io == SIS_NET_IO_WAITCNT)
@@ -440,14 +441,14 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 		int rtn = sis_ws_recv_hand_ask(cls, cxt);
 		if (rtn == 1) // 收到正确的握手信息
 		{
-			// printf("server hand ok.\n");
+			printf("server hand ok wait.\n");
 			// 此时仅仅是收到握手正确 还未发送信息给client 等发送应答包成功后才设置状态
-			cxt->status = SIS_NET_WORKING;
 			// 这里发送登录信息 
-			if (cls->cb_connected)
-			{
-				cls->cb_connected(cls->cb_source, sid_);
-			}			
+			// if (cls->cb_connected)
+			// {
+			// 	cls->cb_connected(cls->cb_source, sid_);
+			// }			
+			// cxt->status = SIS_NET_WORKING;
 		}
 		else if (rtn != 0) // 收到错误的握手信息
 		{
@@ -502,9 +503,23 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 
 static void cb_server_send_after(void* handle_, int sid_, int status_)
 {
+	s_sis_net_class *cls = (s_sis_net_class *)handle_;
+	char key[32];
+	sis_llutoa(sid_, key, 32, 10);
+	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
+	if (cxt)
+	{
+		if (cxt->status == SIS_NET_HANDING)
+		{
+			printf("server hand ok.\n");
+			if (cls->cb_connected)
+			{
+				cls->cb_connected(cls->cb_source, sid_);
+			}
+			cxt->status = SIS_NET_WORKING;
+		}
+	} 
 	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
-	// char key[32];
-	// sis_llutoa(sid_, key, 32, 10);
 	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	// if (cxt)
 	// {
@@ -535,6 +550,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	// 	LOG(5)("server send fail. %s\n", key);
 	// }
 	// printf("server send to [%d] client. %p %d | %d \n", sid_, cxt, status_, 0);	
+	// printf("server send to client. %d [%d]\n", sid_, status_);	
 
 	if (status_)
 	{
@@ -558,7 +574,6 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 		if (rtn == 1)
 		{
 			printf("client hand ok.\n");
-			cxt->status = SIS_NET_WORKING;
 			// sis_wait_queue_set_busy(cxt->send_cxts, 0);	
 			// sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 			// 这里发送登录信息 
@@ -566,6 +581,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			{
 				cls->cb_connected(cls->cb_source, sid_);
 			}			
+			cxt->status = SIS_NET_WORKING;
 		}
 		else if (rtn != 0)
 		{
@@ -602,6 +618,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			}
 			else
 			{
+				LOG(5)("data error.\n");
 				// 如果返回<零 就说明数据出错
 				sis_object_destroy(obj);
 				sis_socket_client_close(cls->client);
@@ -640,7 +657,7 @@ static void cb_client_send_after(void* handle_, int sid_, int status_)
 	// 		LOG(5)("client send hand. status = %d\n", cxt->status);
 	// 	}
 	// }
-	// printf("client send to server. %p [%d]\n", cxt, status_);	
+	// printf("client send to server. %d [%d]\n", sid_, status_);	
 	if (status_)
 	{
 		LOG(5)("send to server fail. [%d:%d]\n", sid_, status_);

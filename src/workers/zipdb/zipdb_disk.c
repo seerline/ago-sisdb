@@ -238,9 +238,8 @@ int zipdb_wlog_save_snos(s_zipdb_cxt *zipdb_)
 }
 void _zipdb_read_send_data(s_zipdb_reader *reader, int issend)
 {
-	s_zipdb_bits *zipmem = MAP_ZIPDB_BITS(reader->sub_ziper->zip_obj);
+	s_zipdb_bits *zipmem = reader->sub_ziper->zip_bits;
 	zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
-	// printf("_zipdb_read_send_data :%d %d\n",zipmem->size, reader->sub_ziper->zip_size);
 	if ((issend && zipmem->size > 0 ) || (int)zipmem->size > reader->sub_ziper->zip_size - 256)
 	{
 		if (reader->cb_zipbits)
@@ -313,7 +312,7 @@ static void cb_sdb(void *worker_, void *sdb_, size_t size)
 	sis_sdsfree(srcsdbs); 
 }
 
-static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
+static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out_, size_t olen_)
 {
     // printf("cb_read : %s %s\n", key_, sdb_);
 	if (!key_ || !sdb_)
@@ -329,7 +328,7 @@ static void cb_read(void *worker_, const char *key_, const char *sdb_, s_sis_obj
 	{
 		return ;
 	}
-	zipdb_worker_zip_set(worker->zipdb_reader->sub_ziper, kidx, sidx, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+	zipdb_worker_zip_set(worker->zipdb_reader->sub_ziper, kidx, sidx, out_, olen_);
 
 	_zipdb_read_send_data(worker->zipdb_reader, 0);
 
@@ -384,8 +383,8 @@ void *_thread_snos_read_sub(void *argv_)
 
     sis_disk_reader_destroy(reader);
     sis_free(callback);
-    sis_disk_file_read_stop(worker->rdisk_worker);
 	printf("sub end..\n");
+    sis_disk_file_read_stop(worker->rdisk_worker);
     worker->rdisk_status = ZIPDB_DISK_INIT;
 	// 订阅结束 终止线程
     return NULL;

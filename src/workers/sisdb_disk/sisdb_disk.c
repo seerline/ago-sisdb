@@ -201,7 +201,7 @@ static void cb_sdb_sno(void *worker_, void *sdb_, size_t size)
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
     _sisdb_set_sdbs(sisdb, true, sdb_, size);
 }
-static void cb_read_sdb(void *worker_, const char *key_, const char *sdb_, s_sis_object *obj_)
+static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out_, size_t olen_)
 {
     // printf("load cb_read : %s %s.\n", key_, sdb_);
     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
@@ -221,7 +221,7 @@ static void cb_read_sdb(void *worker_, const char *key_, const char *sdb_, s_sis
             }    
         }
         int start = SIS_OBJ_LIST(collect->obj)->count;
-        sisdb_collect_wpush(collect, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        sisdb_collect_wpush(collect, out_, olen_);
         if (collect->sdb->style == SISDB_TB_STYLE_SNO)
         {  // 序号需要增加
             int stop = SIS_OBJ_LIST(collect->obj)->count - 1;
@@ -236,10 +236,14 @@ static void cb_read_sdb(void *worker_, const char *key_, const char *sdb_, s_sis
     }
     else
     {
-        // 写any
-        uint8 style = (uint8)sis_memory_get_byte(SIS_OBJ_MEMORY(obj_), 1);
-        s_sisdb_collect *info = sisdb_kv_create(style, key_, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
-        sis_map_pointer_set(sisdb->collects, key_, info);
+        if (olen_ > 1)
+        {
+            // 写any
+            uint8 *out  = (uint8 *)out_;
+            uint8 style = out[0];
+            s_sisdb_collect *info = sisdb_kv_create(style, key_, (char *)&out[1], olen_ - 1);
+            sis_map_pointer_set(sisdb->collects, key_, info);
+        }
     }
 
 } 
@@ -261,7 +265,7 @@ int _sisdb_disk_load_sdb(const char *pathname, s_sisdb_cxt *sisdb, s_sisdb_catch
     callback->cb_begin = NULL;
     callback->cb_key = cb_key;
     callback->cb_sdb = cb_sdb;
-    callback->cb_read = cb_read_sdb;
+    callback->cb_read = cb_read;
     callback->cb_end = NULL;
 
     printf("%s , cb_sdb = %p\n", __func__, callback->cb_sdb);
@@ -310,7 +314,7 @@ int _sisdb_disk_load_sno(const char *pathname, s_sisdb_cxt *sisdb, s_sisdb_catch
     callback->cb_begin = NULL;
     callback->cb_key = cb_key;
     callback->cb_sdb = cb_sdb_sno;
-    callback->cb_read = cb_read_sdb;
+    callback->cb_read = cb_read;
     callback->cb_end = NULL;
 
     printf("%s , cb_sdb = %p\n", __func__, callback->cb_sdb);

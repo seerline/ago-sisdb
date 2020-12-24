@@ -877,10 +877,10 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
     if (!in_)
     {
         // 表示一个包解析完成 如果数据区有数据就发送
-		// printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_obj, reader->sub_ziper->zip_size);
-		s_zipdb_bits *zipmem = MAP_ZIPDB_BITS(reader->sub_ziper->zip_obj);
+		s_zipdb_bits *zipmem = reader->sub_ziper->zip_bits;
 		zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
-		// sis_memory_set_size(SIS_OBJ_MEMORY(worker->zip_obj), sizeof(s_zipdb_bits) + zipmem->size);
+		printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_bits, reader->sub_ziper->zip_size);
+		// sis_memory_set_size(SIS_OBJ_MEMORY(worker->zip_bits), sizeof(s_zipdb_bits) + zipmem->size);
 
 		if (zipmem->size > 0)
 		{

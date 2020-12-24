@@ -46,7 +46,7 @@
 /////////////////////////////////////////////////
 //  s_sis_net_node
 /////////////////////////////////////////////////
-s_sis_net_node *sis_net_node_create(void *source_, int cid_, s_sis_object *obj_)
+s_sis_net_node *sis_net_node_create(int cid_, s_sis_object *obj_)
 {
     s_sis_net_node *node = SIS_MALLOC(s_sis_net_node, node);
     if (obj_)
@@ -54,7 +54,6 @@ s_sis_net_node *sis_net_node_create(void *source_, int cid_, s_sis_object *obj_)
         sis_object_incr(obj_);
         node->obj = obj_;
     }
-	node->source = source_;
 	node->cid = cid_;
     node->next = NULL;
     return node;    
@@ -97,12 +96,12 @@ void *_thread_net_reader(void *argv_)
 		s_sis_net_node *node = NULL;
         // printf("1 --- %p\n", wqueue);
         sis_mutex_lock(&wqueue->lock);
-        if (!wqueue->busy)
+        if (wqueue->live == NULL)
         {
             node = sis_net_queue_pop(wqueue);
             if (node)
             {
-                wqueue->busy = 1;
+                wqueue->live = node;
             }
         }
         sis_mutex_unlock(&wqueue->lock);
@@ -110,7 +109,7 @@ void *_thread_net_reader(void *argv_)
         {
             if (wqueue->cb_reader)
             {
-                wqueue->cb_reader(node);
+                wqueue->cb_reader(wqueue->source);
             }
         }
         // printf("1.1 ---  %p\n", wqueue);
@@ -124,14 +123,16 @@ void *_thread_net_reader(void *argv_)
 }
 
 s_sis_net_queue *sis_net_queue_create(
+	void *source_, 
     cb_net_reader *cb_reader_,
     int wait_msec_)
 {
     s_sis_net_queue *o = SIS_MALLOC(s_sis_net_queue, o);
+	o->source = source_;
     o->head = NULL;
     o->tail = NULL;
     o->count = 0;
-	o->busy = 0;
+	o->live = NULL;
 	
     sis_mutex_init(&o->lock, NULL);
 
@@ -148,12 +149,8 @@ s_sis_net_queue *sis_net_queue_create(
     }
     return  o;
 }
-void sis_net_queue_destroy(s_sis_net_queue *queue_)
+void sis_net_queue_clear(s_sis_net_queue *queue_)
 {
-	if (queue_->work_thread)
-	{
-		sis_wait_thread_destroy(queue_->work_thread);
-	}
     sis_mutex_lock(&queue_->lock);
     while (queue_->count > 0)
     {
@@ -163,41 +160,56 @@ void sis_net_queue_destroy(s_sis_net_queue *queue_)
 			sis_net_node_destroy(node);
 		}
     }
+	if (queue_->live)
+	{
+		sis_net_node_destroy(queue_->live);
+		queue_->live = NULL;
+	}
     sis_mutex_unlock(&queue_->lock);
-    printf("=== sis_net_queue_destroy. %d\n", queue_->count);
+}
+void sis_net_queue_destroy(s_sis_net_queue *queue_)
+{
+	if (queue_->work_thread)
+	{
+		sis_wait_thread_destroy(queue_->work_thread);
+	}
+	sis_net_queue_clear(queue_);
+    // printf("=== sis_net_queue_destroy. %d\n", queue_->count);
     sis_free(queue_);
 }
-s_sis_net_node *sis_net_queue_push(s_sis_net_queue *queue_, void *source_, int cid_, s_sis_object *obj_)
-{  
-	s_sis_net_node *new_node = sis_net_node_create(source_, cid_, obj_);
-	sis_mutex_lock(&queue_->lock);
-    if (!queue_->busy && queue_->count == 0)
-    {
-        queue_->busy = 1;
-		sis_mutex_unlock(&queue_->lock);  
-		return new_node;
-    }
-    {
-		if (!queue_->head)
-		{
-			queue_->head = new_node;
-			queue_->tail = queue_->head;
-		}
-		else
-		{			
-			queue_->tail->next = new_node;
-			queue_->tail = new_node;
-		}		
-		queue_->count++;
-    }
-    sis_mutex_unlock(&queue_->lock);   
-	return NULL;
-}
 
-void sis_net_queue_next(s_sis_net_queue *queue_)
+s_sis_net_node *sis_net_queue_push(s_sis_net_queue *queue_, int cid_, s_sis_object *obj_)
+{  
+	s_sis_net_node *new_node = sis_net_node_create(cid_, obj_);
+	sis_mutex_lock(&queue_->lock);
+    if (queue_->live == NULL && queue_->count == 0)
+    {
+        queue_->live = new_node;
+		sis_mutex_unlock(&queue_->lock); 
+		return queue_->live;
+    }
+	if (!queue_->head)
+	{
+		queue_->head = new_node;
+		queue_->tail = queue_->head;
+	}
+	else
+	{			
+		queue_->tail->next = new_node;
+		queue_->tail = new_node;
+	}		
+	queue_->count++;
+    sis_mutex_unlock(&queue_->lock); 
+	return NULL;  
+}
+void sis_net_queue_stop(s_sis_net_queue *queue_)
 {
     sis_mutex_lock(&queue_->lock);
-    queue_->busy = 0;
+	if (queue_->live)
+	{
+		sis_net_node_destroy(queue_->live);
+		queue_->live = NULL;
+	}
     sis_mutex_unlock(&queue_->lock);
 	sis_wait_thread_notice(queue_->work_thread);
 }
@@ -218,18 +230,18 @@ void sis_socket_close_handle(uv_handle_t *handle_, uv_close_cb close_cb_)
 	// printf("close %p : type: %d closing: %lx\n", handle_, handle_->type, handle_->flags);// & UV_HANDLE_CLOSING);
 } 
 
-static void _cb_clear_walk(uv_handle_t* handle, void* arg)
-{
-	if (!uv_is_closing(handle))
-	{
-		uv_close(handle, NULL);
-	}
-}
+// static void _cb_clear_walk(uv_handle_t* handle, void* arg)
+// {
+// 	if (!uv_is_closing(handle))
+// 	{
+// 		uv_close(handle, NULL);
+// 	}
+// }
 
 static void _uv_exit_loop(uv_loop_t* loop) 
 {
-	uv_walk(loop, _cb_clear_walk, NULL);
-	uv_run(loop, UV_RUN_DEFAULT);
+	// uv_walk(loop, _cb_clear_walk, NULL);
+	// uv_run(loop, UV_RUN_DEFAULT);
 	uv_loop_close(loop);
 	uv_library_shutdown();      
 }
@@ -244,7 +256,7 @@ s_sis_socket_session *sis_socket_session_create(s_sis_socket_server *server_, in
 	session->sid = sid_;
 	session->server = server_;
 
-	session->work_handle = (uv_tcp_t*)sis_malloc(sizeof(uv_tcp_t));
+	session->work_handle = SIS_MALLOC(uv_tcp_t,  session->work_handle);
 	session->work_handle->data = session;
 
 	session->_uv_send_async_nums = 0;
@@ -286,7 +298,7 @@ void sis_socket_session_destroy(void *session_)
 //////////////////////////////////////////////////////////////
 // s_sis_socket_server
 //////////////////////////////////////////////////////////////
-static int cb_server_write(s_sis_net_node *);
+static int cb_server_write(void *);
 
 s_sis_socket_server *sis_socket_server_create()
 {
@@ -302,11 +314,11 @@ s_sis_socket_server *sis_socket_server_create()
 
 	server->sessions = sis_index_list_create(1024);	
 	server->sessions->vfree = sis_socket_session_destroy;
-	server->sessions->wait_sec = 300;
+	server->sessions->wait_sec = 100; // 300
 
 	server->isexit = false;
 	
-	server->write_list = sis_net_queue_create(cb_server_write, 13);
+	server->write_list = sis_net_queue_create(server, cb_server_write, 13);
 	
 	LOG(8)("server create.[%p]\n", server);
 	return server; 
@@ -323,7 +335,7 @@ void sis_socket_server_destroy(s_sis_socket_server *server_)
 
 	sis_socket_server_close(server_);
 	// 等待所有的客户连接断开
-	while (!sis_index_list_isnone(server_->sessions))
+	while (sis_index_list_uses(server_->sessions) > 0)
 	{
 		LOG(8)("wait session.\n");
 		sis_sleep(1000);
@@ -338,8 +350,10 @@ void sis_socket_server_destroy(s_sis_socket_server *server_)
 static void cb_session_closed(uv_handle_t *handle)
 {
 	s_sis_socket_session *session = (s_sis_socket_session *)handle->data;
+	// 再删除
 	sis_index_list_del(session->server->sessions, session->sid - 1);
-	LOG(5)("server of session close ok.[%p]\n", handle);
+
+	LOG(5)("server of session close ok.[%p] %d\n", session, session->sid);
 }
 
 void sis_socket_server_close(s_sis_socket_server *server_)
@@ -349,7 +363,7 @@ void sis_socket_server_close(s_sis_socket_server *server_)
 		return ;
 	}
 	int index = sis_index_list_first(server_->sessions);
-	while(index >= 0)
+	while (index >= 0)
 	{
 		s_sis_socket_session *session = (s_sis_socket_session *)sis_index_list_get(server_->sessions, index);
 		
@@ -523,19 +537,18 @@ static void cb_server_read_after(uv_stream_t *handle, ssize_t nread, const uv_bu
 
 static void cb_server_new_connect(uv_stream_t *handle, int status)
 {
-	if (!handle->data) 
-	{
-		return;
-	}
-	LOG(8)("new connect ... [%p]\n", handle->data);
-
 	s_sis_socket_server *server = (s_sis_socket_server *)handle->data;
 
 	int index = sis_index_list_new(server->sessions);
+	if (index < 0)
+	{
+		LOG(5)("server connect nums > %d. close.\n", server->sessions->count);
+		return ;
+	}
 	s_sis_socket_session *session = sis_socket_session_create(server, index + 1);
 	sis_index_list_set(server->sessions, index, session);
 
-	int o = uv_tcp_init(server->loop, session->work_handle); // 析构函数释放
+	int o = uv_tcp_init(server->loop, session->work_handle); 
 	if (o) 
 	{
 		sis_index_list_del(server->sessions, session->sid - 1);
@@ -554,7 +567,7 @@ static void cb_server_new_connect(uv_stream_t *handle, int status)
 	
 	uv_read_start((uv_stream_t*)session->work_handle, cb_server_read_alloc, cb_server_read_after);
 	
-	LOG(5)("new session ok. id = %d \n", session->sid);
+	LOG(5)("new session ok. %p id = %d count = %d \n", session, session->sid, server->sessions->count);
 	//服务器开始接收客户端的数据
 	return ;
 }
@@ -624,37 +637,30 @@ bool sis_socket_server_open6(s_sis_socket_server *server)
 	}
 	return true;
 }
-#define _UV_DEBUG_
+// #define _UV_DEBUG_
 #ifdef _UV_DEBUG_
-msec_t          _uv_write_msec = 0;
-volatile int    _uv_write_nums = 0;
+msec_t    _uv_write_msec = 0;
+int       _uv_write_nums = 0;
 #endif
-
-static void _send_buffer_clear(uv_buf_t *buffer)
-{
-	if (buffer->base) 
-	{
-		sis_object_decr((s_sis_object *)buffer->base);
-		buffer->base = NULL;
-		buffer->len = 0;
-	}	
-}
 
 static void cb_server_write_after(uv_write_t *requst, int status)
 {	
-	s_sis_net_node *node = (s_sis_net_node *)requst->data;
-	s_sis_socket_server *server = (s_sis_socket_server *)node->source;
+	s_sis_socket_server *server = (s_sis_socket_server *)requst->data;
+	s_sis_net_node *node = server->write_list->live;
 	s_sis_socket_session *session = sis_index_list_get(server->sessions, node->cid);
-	_send_buffer_clear(&session->write_buffer);
-	sis_net_node_destroy(node);
 	if (!session) 
 	{
 		// session 已经退出
+		printf("cb_server_write_after ------%d \n", server->write_list->count);
+		sis_net_queue_stop(server->write_list);
 		return ;
 	}
 	if (status < 0) 
 	{
-		LOG(5)("server write fail: %s.\n", uv_strerror(status));	
+		LOG(5)("server write fail: %s.\n", uv_strerror(status));
+		// 应该关闭该连接
+		sis_socket_server_delete(server, session->sid); //连接断开，关闭客户端
+		sis_net_queue_stop(server->write_list);
 		return;
 	}
 #ifdef _UV_DEBUG_
@@ -663,50 +669,60 @@ static void cb_server_write_after(uv_write_t *requst, int status)
 	LOG(5)("uv write stop:  nums :%d delay : %lld \n", _uv_write_nums, sis_time_get_now_msec() - _uv_write_msec);
 #endif
 	// 通知下一个
-	sis_net_queue_next(session->server->write_list);
+	sis_net_queue_stop(server->write_list);
 	if (session->cb_send_after)
 	{
-		session->cb_send_after(session->server->cb_source, session->sid, status);
+		session->cb_send_after(server->cb_source, session->sid, status);
 	} 
 }
 void _cb_server_async_write(uv_async_t* handle)
 {
-	s_sis_net_node *node = (s_sis_net_node *)handle->data;
-	s_sis_socket_server *server = (s_sis_socket_server *)node->source;
+	s_sis_socket_server *server = (s_sis_socket_server *)handle->data;
+	s_sis_net_node *node = server->write_list->live;
+
+	// sis_socket_close_handle((uv_handle_t*)handle, NULL);
+	if (!uv_is_closing((uv_handle_t *)handle))
+	{
+		uv_close((uv_handle_t*)handle, NULL);	//如果async没有关闭，消息队列是会阻塞的
+	}
+
 	s_sis_socket_session *session = sis_index_list_get(server->sessions, node->cid);
 	if (!session) 
 	{
 		// session 已经退出
-		_send_buffer_clear(&session->write_buffer);
-		sis_net_node_destroy(node);
+		printf("_cb_server_async_write ------%d \n", server->write_list->count);
+		sis_net_queue_stop(server->write_list);
 		return ;
 	}
-	uv_buf_t buffer = uv_buf_init(SIS_OBJ_GET_CHAR(session->write_buffer.base), session->write_buffer.len);
-	session->write_req.data = node;	
+	uv_buf_t buffer = uv_buf_init(SIS_OBJ_GET_CHAR(node->obj), SIS_OBJ_GET_SIZE(node->obj));
+	session->write_req.data = server;	
 #ifdef _UV_DEBUG_	
 	session->_uv_recv_async_nums++;
 #endif
 	int o = uv_write(&session->write_req, (uv_stream_t*)session->work_handle, &buffer, 1, cb_server_write_after);
 	if (o) 
 	{
-		_send_buffer_clear(&session->write_buffer);
-		sis_net_node_destroy(node);
+		sis_socket_server_delete(server, session->sid);
+		sis_net_queue_stop(server->write_list);
 		LOG(5)("server write fail.\n");
 	}
-	if (!uv_is_closing((uv_handle_t *)handle))
-	{
-		uv_close((uv_handle_t*)handle, NULL);	//如果async没有关闭，消息队列是会阻塞的
-	}
+	// if (!uv_is_closing((uv_handle_t *)handle))
+	// {
+	// 	uv_close((uv_handle_t*)handle, NULL);	//如果async没有关闭，消息队列是会阻塞的
+	// }
 }
 
-static int cb_server_write(s_sis_net_node *node_)
+static int cb_server_write(void *source_)
 {
-	s_sis_socket_server *server = (s_sis_socket_server *)node_->source;
-	s_sis_socket_session *session = sis_index_list_get(server->sessions, node_->cid);
+	s_sis_socket_server *server = (s_sis_socket_server *)source_;
+	s_sis_net_node *node = server->write_list->live;
+	s_sis_socket_session *session = sis_index_list_get(server->sessions, node->cid);
+	// printf("cb_server_write %p  %d %d\n",session , session->sid, node_->cid);
 	if (!session) 
 	{
-		// session 已经退出
-		sis_net_node_destroy(node_);
+		printf("cb_server_write ------%d \n", server->write_list->count);
+		// session 已经退出 处理下一条
+		sis_net_queue_stop(server->write_list);
 		return 0;
 	}
 #ifdef _UV_DEBUG_	
@@ -736,16 +752,14 @@ static int cb_server_write(s_sis_net_node *node_)
 	}
 	session->_uv_send_async_nums++;
 #endif
-	sis_object_incr(node_->obj);
-	session->write_buffer.base = (char *)node_->obj;
-	session->write_buffer.len = SIS_OBJ_GET_SIZE(node_->obj);
-	session->write_async.data = node_;
+	session->write_async.data = server;
 	int o = uv_async_init(server->loop, &session->write_async, _cb_server_async_write);
 	if (o) 
 	{
 		LOG(5)("init async fail.\n");
-		_send_buffer_clear(&session->write_buffer);
-		sis_net_node_destroy(node_);
+		// 失败就断开连接
+		sis_socket_server_delete(server, session->sid);
+		sis_net_queue_stop(server->write_list);
 		return 0;
 	}
 	// 垃圾东西 多CPU写入居然某些有人收不到信号 不是号称线程安全吗！！！
@@ -753,8 +767,9 @@ static int cb_server_write(s_sis_net_node *node_)
 	if (o) 
 	{
 		LOG(5)("send async fail.\n");
-		_send_buffer_clear(&session->write_buffer);
-		sis_net_node_destroy(node_);
+		// 失败就断开连接
+		sis_socket_server_delete(server, session->sid);
+		sis_net_queue_stop(server->write_list);
 		return 0;
 	}
 	return 1;
@@ -778,12 +793,11 @@ bool sis_socket_server_send(s_sis_socket_server *server, int sid_, s_sis_object 
 		return false;
 	}
 	// 放入队列就返回 其他交给内部处理
-	s_sis_net_node *node = sis_net_queue_push(server->write_list, server, sid_ - 1, inobj_);
-	if (node)
+	if (sis_net_queue_push(server->write_list, sid_ - 1, inobj_))
 	{
-		// 如果队列为空 就直接调用
-		cb_server_write(node);
+		cb_server_write(server);
 	}
+
 	return true;
 }
  
@@ -807,22 +821,27 @@ void sis_socket_server_set_cb(s_sis_socket_server *server,
 bool sis_socket_server_delete(s_sis_socket_server *server, int sid_)
 {
 	//  先发断开回调，再去关闭
-	if (server->cb_disconnect_s2c) 
-	{
-		server->cb_disconnect_s2c(server->cb_source, sid_);
-	}
-
 	s_sis_socket_session *session = sis_index_list_get(server->sessions, sid_ - 1);
 	if (!session)
 	{
 		LOG(5)("can't find client.[%d]\n", sid_);
 		return false;
 	}
-
+	if (session->write_stop == 1)
+	{
+		// 已经发出关闭信号 避免二次进入
+		return true;
+	}
+	session->write_stop = 1;
+	if (server->cb_disconnect_s2c) 
+	{
+		server->cb_disconnect_s2c(server->cb_source, sid_);
+	}
+	
 	// sis_socket_close_handle((uv_handle_t*)&session->write_async, NULL);
 	sis_socket_close_handle((uv_handle_t*)session->work_handle, cb_session_closed);
 
-	LOG(5)("delete session.[%d] %d\n", sid_, sis_index_list_isnone(server->sessions));
+	LOG(5)("delete session.[%d == %d] %p count = %d\n", session->sid, sid_, session);
 
 	return true;	
 }
@@ -840,17 +859,24 @@ void _thread_keep_connect(void* arg)
 	int count = 0;
 	while (!(client->keep_connect_status == SIS_UV_CONNECT_EXIT))
 	{
-		if (count > 25 && client->work_status != SIS_UV_CONNECT_WORK)
+		if (client->work_status != SIS_UV_CONNECT_WORK)
 		{
-			sis_socket_client_open(client);
+			if (count > 25)
+			{
+				sis_socket_client_open(client);
+				count = 0;
+			}
+			count++;
+		}
+		else
+		{
 			count = 0;
 		}
-		count++;
 		sis_sleep(200);
 	}
 	LOG(5)("client keep connect thread stop. [%d]\n", client->work_status);
 }
-static int cb_client_write(s_sis_net_node *);
+static int cb_client_write(void *);
 
 s_sis_socket_client *sis_socket_client_create()
 {
@@ -876,7 +902,7 @@ s_sis_socket_client *sis_socket_client_create()
 
 	client->isexit = false;
 
-	client->write_list = sis_net_queue_create(cb_client_write, 13);
+	client->write_list = sis_net_queue_create(client, cb_client_write, 13);
 
 	if (uv_thread_create(&client->keep_connect_thread_handle, _thread_keep_connect, client)) 
 	{
@@ -937,13 +963,14 @@ void sis_socket_client_close(s_sis_socket_client *client_)
 	{
 		return ; // 已经关闭过
 	}
-	if (client_->work_status == SIS_UV_CONNECT_WORK)
+	client_->work_status = SIS_UV_CONNECT_EXIT;
+	// if (client_->work_status == SIS_UV_CONNECT_WORK)
 	{
 		// sis_socket_close_handle((uv_handle_t*)&client_->write_async, NULL);
 		sis_socket_close_handle((uv_handle_t*)&client_->client_handle, cb_client_close);
 	}
-	client_->work_status = SIS_UV_CONNECT_EXIT;
 	
+	sis_net_queue_clear(client_->write_list);
 	// 检查是否有未释放的句柄
 	// if ((int)client_->loop->active_handles > 0)
 	// {
@@ -1165,61 +1192,58 @@ void sis_socket_client_set_rwcb(s_sis_socket_client *client_,
 
 static void cb_client_write_after(uv_write_t *requst, int status)
 {
-	s_sis_net_node *node = (s_sis_net_node *)requst->data;
-	s_sis_socket_client *client = (s_sis_socket_client*)node->source; 
-	_send_buffer_clear(&client->write_buffer);
-	sis_net_node_destroy(node);
+	s_sis_socket_client *client = (s_sis_socket_client *)requst->data;
 	if (status < 0) 
 	{
 		LOG(5)("client write error: %s.\n", uv_strerror(status));
 		sis_socket_client_close(client);
+		sis_net_queue_stop(client->write_list);
 		return;
 	}
-	sis_net_queue_next(client->write_list);
+	sis_net_queue_stop(client->write_list);
 	if (client->cb_send_after)
 	{
 		client->cb_send_after(client->cb_source, 0, status);
 	} 
-	// if (!uv_is_closing((uv_handle_t *)requst->handle))
-	// {
-	// 	uv_close((uv_handle_t*)requst->handle, NULL);	
-	// }
 }
 
 void _cb_client_async_write(uv_async_t* handle)
 {
-	s_sis_net_node *node = (s_sis_net_node *)handle->data;
-	s_sis_socket_client *client = (s_sis_socket_client *)node->source;
-	uv_buf_t buffer = uv_buf_init(SIS_OBJ_GET_CHAR(client->write_buffer.base), client->write_buffer.len);
-	client->write_req.data = node;
-	int o = uv_write(&client->write_req, (uv_stream_t*)&client->client_handle, &buffer, 1, cb_client_write_after);
-	if (o) 
-	{
-		_send_buffer_clear(&client->write_buffer);
-		sis_net_node_destroy(node);
-		LOG(5)("client write fail.\n");
-	}
+	s_sis_socket_client *client = (s_sis_socket_client *)handle->data;	
+	s_sis_net_node *node = client->write_list->live;
 
 	if (!uv_is_closing((uv_handle_t *)handle))
 	{
 		uv_close((uv_handle_t*)handle, NULL);	//如果async没有关闭，消息队列是会阻塞的
 	}
+
+	if (!node || (client->work_status & SIS_UV_CONNECT_EXIT))
+	{
+		LOG(5)("client close. no data.\n");
+		return ;
+	}
+
+	uv_buf_t buffer = uv_buf_init(SIS_OBJ_GET_CHAR(node->obj), SIS_OBJ_GET_SIZE(node->obj));
+	client->write_req.data = client;
+	int o = uv_write(&client->write_req, (uv_stream_t*)&client->client_handle, &buffer, 1, cb_client_write_after);
+	if (o) 
+	{
+		sis_socket_client_close(client);
+		sis_net_queue_stop(client->write_list);
+		LOG(5)("client write fail.\n");
+	}
+	// sis_socket_close_handle((uv_handle_t*)handle, NULL);
 }
-static int cb_client_write(s_sis_net_node *node_)
+static int cb_client_write(void *source_)
 {
-	s_sis_socket_client *client = (s_sis_socket_client *)node_->source;
-	sis_object_incr(node_->obj);
-	client->write_buffer.base = (char *)node_->obj;
-	client->write_buffer.len = SIS_OBJ_GET_SIZE(node_->obj);
-
-	client->write_async.data = node_;
-
+	s_sis_socket_client *client = (s_sis_socket_client *)source_;
+	client->write_async.data = client;
 	int o = uv_async_init(client->loop, &client->write_async, _cb_client_async_write);
 	if (o) 
 	{
 		LOG(5)("init async fail.\n");
-		_send_buffer_clear(&client->write_buffer);
-		sis_net_node_destroy(node_);
+		sis_socket_client_close(client);
+		sis_net_queue_stop(client->write_list);
 		return 0;
 	}
 
@@ -1227,8 +1251,8 @@ static int cb_client_write(s_sis_net_node *node_)
 	if (o) 
 	{
 		LOG(5)("send async fail.\n");
-		_send_buffer_clear(&client->write_buffer);
-		sis_net_node_destroy(node_);
+		sis_socket_client_close(client);
+		sis_net_queue_stop(client->write_list);
 		return 0;
 	}
 	return 1;
@@ -1244,12 +1268,11 @@ bool sis_socket_client_send(s_sis_socket_client *client_, s_sis_object *inobj_)
 		return false;
 	}
 	// 放入队列就返回 其他交给内部处理
-	s_sis_net_node *node = sis_net_queue_push(client_->write_list, client_, 0, inobj_);
-	if (node)
+	if (sis_net_queue_push(client_->write_list, 0, inobj_))
 	{
-		// 如果队列为空 就直接调用
-		cb_client_write(node);
-	}	
+		cb_client_write(client_);
+	}
+
 	return true;
 }
 

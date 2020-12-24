@@ -862,7 +862,7 @@ static void cb_begin(void *src, msec_t tt)
     sis_net_message_destroy(newinfo); 
 }
 
-static void cb_read(void *src, const char *key_, const char *sdb_, s_sis_object *obj_)
+static void cb_read(void *src, const char *key_, const char *sdb_, void *out_, size_t olen_)
 {
     s_sisdb_subsno_info *info = (s_sisdb_subsno_info *)src;
     s_sis_net_message *newinfo = sis_net_message_create();
@@ -875,13 +875,13 @@ static void cb_read(void *src, const char *key_, const char *sdb_, s_sis_object 
     {
         s_sisdb_table *tb = sis_map_list_get(info->sisdb->sdbs, sdb_);
         s_sis_sds out = sisdb_get_chars_format_sds(tb, newinfo->key, info->netmsg->rfmt, 
-                SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_), NULL);
+                out_, olen_, NULL);
         sis_net_ans_with_chars(newinfo, out, sis_sdslen(out));
         sis_sdsfree(out); 
     }
     else
     {
-        sis_net_ans_with_bytes(newinfo, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        sis_net_ans_with_bytes(newinfo, out_, olen_);
     }
     sis_net_class_send(info->sisdb->socket, newinfo);
     sis_net_message_destroy(newinfo); 

@@ -249,7 +249,9 @@ typedef struct s_sis_disk_callback {
     // 返回sdb定义 key属性的定义
     void (*cb_sdb)(void *, void *sdb_, size_t);  // 返回属性信息
     // 返回读到的数据(解压后)
-    void (*cb_read)(void *, const char *key_, const char *sdb_, s_sis_object *obj_); // 头描述 实际返回的数据区和大小
+    void (*cb_read)(void *, const char *key_, const char *sdb_, void *out_, size_t olen_); // 头描述 实际返回的数据区和大小
+    // 返回读到的数据(解压后)
+    //void (*cb_onebyone)(void *, int kidx_, int sidx_, void *out_, size_t olen_); 
     // 通知文件结束了
     void (*cb_end)(void *, msec_t); //第一个参数就是用户传递进来的指针
     // 通知文件已经关闭或网络已经断开
@@ -307,11 +309,23 @@ typedef struct s_sis_disk_index {
 
 // 专门用来缓存sno数据的
 typedef struct s_sis_disk_rcatch {
-    uint64             sno;     // 用来排序的标志号
-    s_sis_object      *key;     // 可能多次引用 - 指向dict表 因为可能文件没有索引
-    s_sis_object      *sdb;     // 可能多次引用 - 指向dict表
-    s_sis_object      *output;  // 数据缓存指针 可能提供给外部引用
+    int                rsize;    // 当前的记录长度
+    s_sis_disk_dict   *kdict;
+    s_sis_disk_dict   *sdict;
+    s_sis_memory      *omem;    // 数据缓存指针 可能多条记录 已经移动到数据区
 }s_sis_disk_rcatch;
+
+typedef struct s_sis_disk_rsno_unit {
+    s_sis_object      *keyn;     // 可能多次引用 - 指向dict表 因为可能文件没有索引
+    s_sis_object      *sdbn;     // 可能多次引用 - 指向dict表
+    int                size;     // 当前的数据长度
+    char*              optr;     // 指向omem数据指针
+}s_sis_disk_rsno_unit;
+
+typedef struct s_sis_disk_rsno {
+    uint64                sno;     // 用来排序的标志号
+    s_sis_disk_rsno_unit *unit;    
+}s_sis_disk_rsno;
 // 通用的读取数据函数 如果有字典数据key就用字典的信息 
 // 如果没有字典信息就自己建立一个
 typedef struct s_sis_disk_wcatch {
@@ -440,7 +454,8 @@ int sis_disk_dict_set(s_sis_disk_dict *, bool iswrite_, s_sis_dynamic_db * db_);
 ///////////////////////////
 //  s_sis_disk_rcatch
 ///////////////////////////
-s_sis_disk_rcatch *sis_disk_rcatch_create(uint64 sno_, s_sis_object *key_, s_sis_object *sdb_); 
+// 先把磁盘读取的数据 保存在列表中
+s_sis_disk_rcatch *sis_disk_rcatch_create(int size_, s_sis_memory *omem_); 
 void sis_disk_rcatch_destroy(void *in_);
 
 ///////////////////////////
@@ -487,7 +502,7 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_);
 // // 从当前位置读取数据
 
 // 回调返回为 -1 表示已经没有读者了,停止继续读文件
-typedef int (cb_sis_files_read)(void *, s_sis_disk_head *, s_sis_object *);
+typedef int (cb_sis_files_read)(void *, s_sis_disk_head *, s_sis_memory *);
 // 全文读取 数据后通过回调输出数据
 size_t sis_files_read_fulltext(s_sis_files *cls_, void *, cb_sis_files_read *callback);
 // 定位读去某一个块
@@ -592,7 +607,7 @@ void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_);
 // 读取索引后加载字典信息
 int sis_disk_file_read_dict(s_sis_disk_class *cls_);
 // 加载索引文件到内存 方便检索
-int cb_sis_disk_file_read_index(void *cls_, s_sis_disk_head *, s_sis_object *);
+int cb_sis_disk_file_read_index(void *cls_, s_sis_disk_head *, s_sis_memory *);
 
 // 以流的方式读取文件 从文件中一条一条发出 
 // 必须是同一个时间尺度的数据 否则无效

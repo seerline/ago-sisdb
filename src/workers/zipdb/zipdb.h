@@ -63,9 +63,9 @@ typedef struct s_zipdb_bits
 typedef struct s_zipdb_worker
 {
 	void                 *cb_source;   // 返回对象 unzipdb专用
-	cb_sis_struct_decode *cb_read;     // 按结构返回数据 unzipdb专用
+	cb_sis_struct_decode *cb_decode;     // 按结构返回数据 unzipdb专用
 
-	s_sis_object         *zip_obj;     // zipdb 专用
+	s_zipdb_bits         *zip_bits;     // zipdb 专用
 	int      	          initsize;    // 超过多大数据重新初始化 字节
 	int      	          zip_size;    // 单个数据块的大小
 	int      	          cur_size;    // 缓存数据当前的尺寸

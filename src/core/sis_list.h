@@ -51,6 +51,8 @@ int sis_struct_list_setone(s_sis_struct_list *, int index_, void *in_);
 void sis_struct_list_limit(s_sis_struct_list *, int limit_);
 int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *dst_);
 int sis_struct_list_append(s_sis_struct_list *src_, s_sis_struct_list *dst_);
+
+void *sis_struct_list_pop(s_sis_struct_list *list_);
 int sis_struct_list_delete(s_sis_struct_list *src_, int start_, int count_);
 int sis_struct_list_pack(s_sis_struct_list *list_);
 
@@ -232,7 +234,7 @@ void *sis_index_list_get(s_sis_index_list *, int index_);
 
 int sis_index_list_first(s_sis_index_list *);
 int sis_index_list_next(s_sis_index_list *, int index_);
-bool sis_index_list_isnone(s_sis_index_list *);
+int sis_index_list_uses(s_sis_index_list *);
 
 int sis_index_list_del(s_sis_index_list *list_, int index_);
 

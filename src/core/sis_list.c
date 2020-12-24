@@ -274,6 +274,19 @@ int sis_struct_list_pack(s_sis_struct_list *list_)
 	list_->maxcount = list_->count;
 	return list_->count;
 }
+
+// 弹出一条记录 只改变start不拷贝内存
+void *sis_struct_list_pop(s_sis_struct_list *list_)
+{
+	char *o = NULL;
+	if (list_->count > 0)
+	{
+		o = (char *)list_->buffer + (list_->start * list_->len);
+		list_->start++;
+		list_->count--;
+	}
+	return o;
+}
 int sis_struct_list_delete(s_sis_struct_list *list_, int start_, int count_)
 {
 	if (start_ < 0 || count_ < 1 || start_ + count_ > list_->count)
@@ -1070,6 +1083,7 @@ s_sis_index_list *sis_index_list_create(int count_)
 	o->buffer = sis_malloc(sizeof(void *) * o->count);
 	memset(o->buffer, 0 ,sizeof(void *) * o->count);
 	o->vfree = NULL;
+	// o->wait_sec == 0 表示立即释放 否则等待时间到再释放
 	return o;
 }
 void sis_index_list_destroy(s_sis_index_list *list_)
@@ -1108,6 +1122,16 @@ int sis_index_list_set(s_sis_index_list *list_, int index_, void *in_)
 	list_->used[index_] = 1;
 	return index_;
 }
+void _index_list_free(s_sis_index_list *list_, int index_)
+{
+	char **ptr = (char **)list_->buffer;
+	if (list_->vfree && ptr[index_])
+	{
+		list_->vfree(ptr[index_]);
+		ptr[index_] = NULL;
+	}
+	list_->used[index_] = 0;
+}
 int sis_index_list_new(s_sis_index_list *list_)
 {
 	// 先检查超时的
@@ -1119,7 +1143,7 @@ int sis_index_list_new(s_sis_index_list *list_)
 		{
 			if (list_->used[i] == 2 && (now_sec - stop_sec[i]) > list_->wait_sec)
 			{
-				list_->used[i] = 0;
+				_index_list_free(list_, i);
 			}
 		}
 	}
@@ -1144,6 +1168,7 @@ void *sis_index_list_get(s_sis_index_list *list_, int index_)
 	{
 		return NULL;
 	}
+	// printf("list_->used[%d] = %d\n", index_, list_->used[index_]);
 	char **ptr = (char **)list_->buffer;
 	return ptr[index_];;
 }
@@ -1173,18 +1198,17 @@ int sis_index_list_next(s_sis_index_list *list_, int index_)
 	}
 	return index;
 }
-bool sis_index_list_isnone(s_sis_index_list *list_)
+int sis_index_list_uses(s_sis_index_list *list_)
 {
-	int index = -1;
+	int count = 0;
 	for (int i = 0; i < list_->count; i++)
 	{
 		if (list_->used[i] == 1)
 		{
-			index = i;
-			break;
+			count++;
 		}
 	}
-	return index == -1 ? true : false;	
+	return count;	
 }
 
 int sis_index_list_del(s_sis_index_list *list_, int index_)
@@ -1197,12 +1221,12 @@ int sis_index_list_del(s_sis_index_list *list_, int index_)
 	{
 		return -1;
 	}
-	char **ptr = (char **)list_->buffer;
-	if (list_->vfree && ptr[index_])
-	{
-		list_->vfree(ptr[index_]);
-		ptr[index_] = NULL;
-	}
+	// char **ptr = (char **)list_->buffer;
+	// if (list_->vfree && ptr[index_])
+	// {
+	// 	list_->vfree(ptr[index_]);
+	// 	ptr[index_] = NULL;
+	// }
 	if (list_->wait_sec > 0)
 	{
 		fsec_t *stop_sec = (fsec_t *)list_->stop_sec;
@@ -1211,8 +1235,9 @@ int sis_index_list_del(s_sis_index_list *list_, int index_)
 	}
 	else
 	{
-		list_->used[index_] = 0;
+		_index_list_free(list_, index_);
 	}
+	// printf("list_->used[%d] = %d\n", index_, list_->used[index_]);
 	return index_;
 }
 

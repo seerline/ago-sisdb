@@ -14,6 +14,11 @@
 #include <sis_json.h>
 #include <sis_bits.h>
 
+#define WS_MAX_HEAD_LEN  (10 + 6)  // 实际是10 保险起见多留几个字节
+#define WS_MAX_SEND_BUFF (16 * 1024 - WS_MAX_HEAD_LEN)  // 确保不超过16K
+// 浏览器的ws协议不能超过64K数据大小，因此必须拆包，才能发送给浏览器，否则发送失败
+// 打包
+
 // 数据体结构定义
 typedef  struct s_sis_ws_header {
   uint8  fin;

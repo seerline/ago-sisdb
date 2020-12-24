@@ -33,31 +33,34 @@ struct s_sis_socket_server;
 // 队列结点
 typedef struct s_sis_net_node {
 	int                    cid;
-	void                  *source; // server : s_sis_socket_server || s_sis_socket_client
     s_sis_object          *obj;    // 数据区
     struct s_sis_net_node *next;
 } s_sis_net_node;
 
 // 发起始结点 全部处理完再返回
-typedef int (cb_net_reader)(s_sis_net_node *);
+typedef int (cb_net_reader)(void *);
 
 typedef struct s_sis_net_queue {
 
-    volatile int       busy;  // 返回的数据是否已经处理
     s_sis_mutex_t      lock;  
     int                count;
 
+	void              *source; // server : s_sis_socket_server || s_sis_socket_client
+
     s_sis_net_node    *head;
     s_sis_net_node    *tail;
+
+    s_sis_net_node    *live;  // 当前激活的节点 只能一个一个处理
+
     cb_net_reader     *cb_reader;
     s_sis_wait_thread *work_thread;  // 工作线程
 } s_sis_net_queue;
 
 
-s_sis_net_queue *sis_net_queue_create(cb_net_reader *cb_reader_, int wait_nums_);
+s_sis_net_queue *sis_net_queue_create(void *source_, cb_net_reader *cb_reader_, int wait_nums_);
 void sis_net_queue_destroy(s_sis_net_queue *queue_);
-s_sis_net_node *sis_net_queue_push(s_sis_net_queue *queue_, void *source_, int cid_, s_sis_object *obj_);
-void sis_net_queue_next(s_sis_net_queue *queue_);
+s_sis_net_node *sis_net_queue_push(s_sis_net_queue *queue_, int cid_, s_sis_object *obj_);
+void sis_net_queue_stop(s_sis_net_queue *queue_);
 
 // 用于服务器的会话单元
 typedef struct s_sis_socket_session
