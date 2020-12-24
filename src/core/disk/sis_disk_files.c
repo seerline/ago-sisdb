@@ -467,6 +467,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                         if (callback(source_, &head, NULL) < 0)
                         {
                             // 回调返回 -1 表示已经没有读者了
+                            printf("stop break. end\n");
                             isstop = true;
                             break;
                         }
@@ -497,6 +498,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                         if (callback(source_, &head, omem) < 0)
                         {
                             // 回调返回 -1 表示已经没有读者了
+                            printf("stop break. sno\n");
                             isstop = true;
                             break;
                         }

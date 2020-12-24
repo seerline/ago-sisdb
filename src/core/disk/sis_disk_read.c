@@ -568,10 +568,12 @@ int cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_memor
     {
     case SIS_DISK_HID_MSG_SNO: // 只有一个key + 可能多条数据
         _sis_disk_read_hid_sno(cls_, NULL, omem_);
+        printf("break sno. %d\n", cls_->isstop);
         break;
-    case SIS_DISK_HID_SNO_END: // ??? 为什么只有一个sno
-        printf("hid=%d\n", head_->hid);
+    case SIS_DISK_HID_SNO_END: 
+        // printf("hid=%d\n", head_->hid);
         _sis_disk_read_hid_sno_end(cls_);
+        printf("break end. %d\n", cls_->isstop);
         break;
     case SIS_DISK_HID_DICT_KEY:
         {
