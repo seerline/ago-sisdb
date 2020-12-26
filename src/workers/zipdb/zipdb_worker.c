@@ -16,6 +16,7 @@ void zipdb_worker_destroy(s_zipdb_worker *worker)
 {
 	sis_map_list_destroy(worker->keys);
 	sis_map_list_destroy(worker->sdbs);
+
 	if (worker->zip_bits)
 	{
 		sis_free(worker->zip_bits);
@@ -42,7 +43,7 @@ void zipdb_worker_zip_init(s_zipdb_worker *worker, int zipsize, int initsize)
 	int size = worker->zip_size + sizeof(s_zipdb_bits) + 256;
 	worker->zip_bits = sis_malloc(size);
 	zipdb_worker_zip_flush(worker, 1);
-	printf("reader->sub_ziper = %p %d\n", worker->zip_bits, size);
+	// printf("reader->sub_ziper = %p %d\n", worker->zip_bits, size);
 }
 void zipdb_worker_zip_flush(s_zipdb_worker *worker, int isinit)
 {

@@ -60,7 +60,7 @@ typedef struct s_unzip_unit
 // // 一个数据结构的定义
 typedef struct s_sis_struct_unit{
 	uint32               offset;
-	s_sis_dynamic_db    *sdb;            
+	s_sis_dynamic_db    *sdb;     // 不用释放       
 }s_sis_struct_unit;
 
 // 可装载多个结构的数据流

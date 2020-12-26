@@ -167,8 +167,7 @@ void *sis_struct_list_next(s_sis_struct_list *list_, void *current_)
 }
 void *sis_struct_list_offset(s_sis_struct_list *list_, void *current_, int offset_)
 {
-	int offset = offset_;
-	char *o = (char *)current_ + offset * list_->len;
+	char *o = (char *)current_ + offset_ * list_->len;
 	if (o >= (char *)list_->buffer + list_->start * list_->len &&
 		o <= (char *)list_->buffer + (list_->start + list_->count - 1) * list_->len)
 	{

@@ -435,7 +435,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 		return ;
 	}
 	sis_memory_cat(cxt->recv_buffer, in_, ilen_);
-	if (cxt->status == SIS_NET_HANDING && cls->url->protocol == SIS_NET_PROTOCOL_WS)
+	if (cxt->status == SIS_NET_HANDING)
 	{
 		// 未初始化的客户端
 		int rtn = sis_ws_recv_hand_ask(cls, cxt);
@@ -509,6 +509,10 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (cxt)
 	{
+		if (cxt->status != SIS_NET_WORKING)
+		{
+			LOG(5)("wait working. [%d]\n", cxt->status);
+		}
 		if (cxt->status == SIS_NET_HANDING)
 		{
 			printf("server hand ok.\n");
@@ -519,6 +523,10 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 			cxt->status = SIS_NET_WORKING;
 		}
 	} 
+	else
+	{
+		LOG(5)("no find context. [%d]\n", sis_map_pointer_getsize(cls->cxts));
+	}
 	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	// if (cxt)
@@ -800,7 +808,7 @@ void sis_net_class_delete(s_sis_net_class *cls_, int sid_)
 		sis_llutoa(sid_, key, 32, 10);
 		sis_map_pointer_del(cls_->cxts, key);
 	}
-	// printf("connect count del = %d \n", sis_map_pointer_getsize(cls_->cxts));	
+	printf("connect count del = %d \n", sis_map_pointer_getsize(cls_->cxts));	
 }
 bool sis_net_class_open(s_sis_net_class *cls_)
 {
@@ -886,6 +894,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 {
 	if(cls_->work_status != SIS_NET_WORKING)
 	{
+		LOG(5)("net no working. %d\n", cls_->work_status);
 		return -1;
 	}
 	sis_net_message_incr(mess_);

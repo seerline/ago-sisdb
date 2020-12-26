@@ -846,7 +846,12 @@ s_zipdb_reader *zipdb_reader_create()
 void zipdb_reader_destroy(void *reader_)
 {
 	s_zipdb_reader *reader = (s_zipdb_reader *)reader_;
-	printf("---1.1\n"); // ??? 大部分时候不能退出
+	// 必须先关闭读句柄 数据才会不再写入 再关闭其他
+	if (reader->reader)
+	{
+		sis_lock_reader_close(reader->reader);	
+	}
+	printf("---1.1\n"); // ??? 大部分时候不能立即退出
 	if (reader->sub_disker)
 	{
 		zipdb_snos_read_stop(reader->sub_disker);
@@ -858,11 +863,8 @@ void zipdb_reader_destroy(void *reader_)
 	}
 	if (reader->sub_ziper)
 	{
+		// 次级退出 上级会报异常 onebyone = 1
 		zipdb_worker_destroy(reader->sub_ziper);	
-	}
-	if (reader->reader)
-	{
-		sis_lock_reader_close(reader->reader);	
 	}
 	sis_sdsfree(reader->sub_keys);
 	sis_sdsfree(reader->sub_sdbs);
@@ -879,7 +881,7 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
         // 表示一个包解析完成 如果数据区有数据就发送
 		s_zipdb_bits *zipmem = reader->sub_ziper->zip_bits;
 		zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
-		printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_bits, reader->sub_ziper->zip_size);
+		// printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_bits, reader->sub_ziper->zip_size);
 		// sis_memory_set_size(SIS_OBJ_MEMORY(worker->zip_bits), sizeof(s_zipdb_bits) + zipmem->size);
 
 		if (zipmem->size > 0)

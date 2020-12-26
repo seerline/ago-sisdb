@@ -84,6 +84,7 @@ typedef struct s_zipdb_reader
 
 	bool       ishead;                // 是否从头发送
 	bool       isinit;                // 0 刚刚订阅 1 正常订阅 
+	bool       isstop;                // 为真 什么也不能干
  
 	bool                sub_whole;     // 是否返回所有的数据
 	///////以下为定制数据处理///////

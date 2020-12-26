@@ -446,7 +446,7 @@ size_t _calc_sno_rcatch_size(s_sis_disk_class *cls_)
 
 static int _sort_sno_rsno(const void *arg1, const void *arg2 ) 
 { 
-    return ((s_sis_disk_rsno *)arg1)->sno - ((s_sis_disk_rsno *)arg2)->sno;
+    return ((s_sis_disk_rsno *)arg1)->sno > ((s_sis_disk_rsno *)arg2)->sno;
 }
 
 int _sis_disk_read_hid_sno(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_, s_sis_memory *omem_)
@@ -507,8 +507,10 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
             }
         }
         printf("sno_rcatch : start %d\n", olist->count);
-
-        qsort(sis_struct_list_first(olist), olist->count, sizeof(s_sis_disk_rsno), _sort_sno_rsno);
+        if (cls_->isstop == 0)
+        {
+            qsort(sis_struct_list_first(olist), olist->count, sizeof(s_sis_disk_rsno), _sort_sno_rsno);
+        }
         
         printf("sno_rcatch : sort %d\n", olist->count);
 
@@ -553,8 +555,10 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
             sis_free(rsnop->unit);
         }
         sis_struct_list_destroy(olist);
+        printf("sno_rcatch : stop %d\n", cls_->sno_rcatch->count);
     }
     sis_pointer_list_clear(cls_->sno_rcatch);
+    printf("sno_rcatch : stop .\n");
 
     return 0;
 }
@@ -568,7 +572,7 @@ int cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_memor
     {
     case SIS_DISK_HID_MSG_SNO: // 只有一个key + 可能多条数据
         _sis_disk_read_hid_sno(cls_, NULL, omem_);
-        printf("break sno. %d\n", cls_->isstop);
+        // printf("break sno. %d\n", cls_->isstop);
         break;
     case SIS_DISK_HID_SNO_END: 
         // printf("hid=%d\n", head_->hid);

@@ -427,11 +427,13 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         return 0;
     }
     bool isstop = false;
+    s_sis_memory *imem = sis_memory_create_size(SIS_MEMORY_SIZE);
+    s_sis_memory *omem = sis_memory_create();
     for (int i = 0; i < cls_->lists->count && !isstop; i++)
     {
         s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, i); 
 
-        s_sis_memory    *memory = sis_memory_create_size(SIS_MEMORY_SIZE);
+        sis_memory_clear(imem);
         
         bool             FILEEND = false;
         bool             LINEEND = true;
@@ -443,25 +445,25 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         size_t _mem_size = 0;
         while (!FILEEND && !isstop)
         {
-            size_t bytes = sis_memory_read(memory, unit->fp, SIS_MEMORY_SIZE);
+            size_t bytes = sis_memory_read(imem, unit->fp, SIS_MEMORY_SIZE);
             if (bytes <= 0)
             {
                 FILEEND = true; // 文件读完了, 但要处理完数据
             }
             _mem_size+=bytes;
-            // sis_memory_clear(memory);
+            // sis_memory_clear(imem);
             // continue;
             // 缓存不够大就继续读
-            if (sis_memory_get_size(memory) < size)
+            if (sis_memory_get_size(imem) < size)
             {
                 continue;
             }
-            while (sis_memory_get_size(memory) >= SIS_DISK_MIN_BUFFER && !isstop)
+            while (sis_memory_get_size(imem) >= SIS_DISK_MIN_BUFFER && !isstop)
             {
                 if (LINEEND)
                 {
-                    memmove(&head, sis_memory(memory), sizeof(s_sis_disk_head));
-                    sis_memory_move(memory, sizeof(s_sis_disk_head));
+                    memmove(&head, sis_memory(imem), sizeof(s_sis_disk_head));
+                    sis_memory_move(imem, sizeof(s_sis_disk_head));
                     if (head.hid == SIS_DISK_HID_SNO_END)
                     {
                         if (callback(source_, &head, NULL) < 0)
@@ -482,8 +484,8 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                         break;
                     }
                     // 读取数据区长度
-                    size = sis_memory_get_ssize(memory);
-                    if (sis_memory_get_size(memory) < size)
+                    size = sis_memory_get_ssize(imem);
+                    if (sis_memory_get_size(imem) < size)
                     {
                         LINEEND = false;
                         break;
@@ -492,8 +494,8 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                 if (head.hid != SIS_DISK_HID_NONE)
                 {
                     // printf("read----: %d \n", head.hid);
-                    s_sis_memory *omem = sis_memory_create();
-                    if (sis_files_uncompress(cls_, &head, sis_memory(memory), size, omem) > 0)
+                    // sis_memory_clear(omem); // 解压时会自动清理
+                    if (sis_files_uncompress(cls_, &head, sis_memory(imem), size, omem) > 0)
                     {
                         if (callback(source_, &head, omem) < 0)
                         {
@@ -503,9 +505,8 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                             break;
                         }
                     }
-                    sis_memory_destroy(omem);
                 }
-                sis_memory_move(memory, size);
+                sis_memory_move(imem, size);
                 size = 0;
                 LINEEND = true;
             } // while SIS_DISK_MIN_BUFFER
@@ -516,8 +517,9 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         // 排序花费时间 840秒- 2050秒 
         // 优化后 300秒
         printf("%zu cost = %d\n", _mem_size, sis_time_get_now_msec() - _start_msec);
-        sis_memory_destroy(memory);
     }
+    sis_memory_destroy(imem);
+    sis_memory_destroy(omem);
     return 0;
 }
 
