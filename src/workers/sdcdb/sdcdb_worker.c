@@ -1,10 +1,10 @@
-﻿#include "zipdb.h"
+﻿#include "sdcdb.h"
 //////////////////////////////////////////////////////////////////
-//------------------------s_zipdb_worker -----------------------//
+//------------------------s_sdcdb_worker -----------------------//
 //////////////////////////////////////////////////////////////////
-s_zipdb_worker *zipdb_worker_create()
+s_sdcdb_worker *sdcdb_worker_create()
 {
-	s_zipdb_worker *o = SIS_MALLOC(s_zipdb_worker, o);
+	s_sdcdb_worker *o = SIS_MALLOC(s_sdcdb_worker, o);
 	o->cur_sbits = sis_bits_stream_create(NULL, 0);
 	o->keys = sis_map_list_create(sis_sdsfree_call);
 	o->sdbs = sis_map_list_create(sis_dynamic_db_destroy);
@@ -12,7 +12,7 @@ s_zipdb_worker *zipdb_worker_create()
 	return o;
 }
 
-void zipdb_worker_destroy(s_zipdb_worker *worker)
+void sdcdb_worker_destroy(s_sdcdb_worker *worker)
 {
 	sis_map_list_destroy(worker->keys);
 	sis_map_list_destroy(worker->sdbs);
@@ -25,13 +25,13 @@ void zipdb_worker_destroy(s_zipdb_worker *worker)
 	sis_free(worker);
 }
 
-void zipdb_worker_unzip_init(s_zipdb_worker *worker, void *cb_source_, cb_sis_struct_decode *cb_read_)
+void sdcdb_worker_unzip_init(s_sdcdb_worker *worker, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {
 	worker->cb_source = cb_source_;
 	worker->cb_decode = cb_read_;
 }
 
-void zipdb_worker_zip_init(s_zipdb_worker *worker, int zipsize, int initsize)
+void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize)
 {
 	worker->initsize = initsize;
 	worker->zip_size = zipsize;
@@ -40,14 +40,14 @@ void zipdb_worker_zip_init(s_zipdb_worker *worker, int zipsize, int initsize)
 	{
 		sis_free(worker->zip_bits);
 	}
-	int size = worker->zip_size + sizeof(s_zipdb_bits) + 256;
+	int size = worker->zip_size + sizeof(s_sdcdb_bits) + 256;
 	worker->zip_bits = sis_malloc(size);
-	zipdb_worker_zip_flush(worker, 1);
+	sdcdb_worker_zip_flush(worker, 1);
 	// printf("reader->sub_ziper = %p %d\n", worker->zip_bits, size);
 }
-void zipdb_worker_zip_flush(s_zipdb_worker *worker, int isinit)
+void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
 {
-	s_zipdb_bits *zipmem = worker->zip_bits;
+	s_sdcdb_bits *zipmem = worker->zip_bits;
 	if (isinit)
 	{
 		zipmem->init = 1;
@@ -63,12 +63,12 @@ void zipdb_worker_zip_flush(s_zipdb_worker *worker, int isinit)
 	zipmem->size = 0;
 	memset(zipmem->data, 0, worker->zip_size + 255);			
 }
-void zipdb_worker_zip_set(s_zipdb_worker *worker, int kidx, int sidx, char *in_, size_t ilen_)
+void sdcdb_worker_zip_set(s_sdcdb_worker *worker, int kidx, int sidx, char *in_, size_t ilen_)
 {
 	sis_bits_struct_encode(worker->cur_sbits, kidx, sidx, in_, ilen_);
 	worker->zip_bits->size = sis_bits_struct_getsize(worker->cur_sbits);
 }
-void zipdb_worker_clear(s_zipdb_worker *worker)
+void sdcdb_worker_clear(s_sdcdb_worker *worker)
 {
 	LOG(5)("clear unzip reader\n");
 	sis_map_list_clear(worker->keys);
@@ -76,7 +76,7 @@ void zipdb_worker_clear(s_zipdb_worker *worker)
 	sis_bits_stream_clear(worker->cur_sbits);
 }
 
-void zipdb_worker_set_keys(s_zipdb_worker *worker, s_sis_sds in_)
+void sdcdb_worker_set_keys(s_sdcdb_worker *worker, s_sis_sds in_)
 {
 	// printf("%s\n",in_);
 	s_sis_string_list *klist = sis_string_list_create();
@@ -92,7 +92,7 @@ void zipdb_worker_set_keys(s_zipdb_worker *worker, s_sis_sds in_)
 	sis_string_list_destroy(klist);
 	sis_bits_struct_set_key(worker->cur_sbits, count);
 }
-void zipdb_worker_set_sdbs(s_zipdb_worker *worker, s_sis_sds in_)
+void sdcdb_worker_set_sdbs(s_sdcdb_worker *worker, s_sis_sds in_)
 {
 	LOG(5)("set unzip sdbs\n");
 	// printf("%s %d\n",in_, sis_sdslen(in_));
@@ -120,7 +120,7 @@ msec_t _unzip_msec = 0;
 int _unzip_recs = 0;
 msec_t _unzip_usec = 0;
 
-void zipdb_worker_unzip_set(s_zipdb_worker *worker, s_zipdb_bits *in_)
+void sdcdb_worker_unzip_set(s_sdcdb_worker *worker, s_sdcdb_bits *in_)
 {
 	if (in_->init == 1)
 	{ 

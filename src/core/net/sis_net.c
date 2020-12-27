@@ -525,7 +525,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	} 
 	else
 	{
-		LOG(5)("no find context. [%d]\n", sis_map_pointer_getsize(cls->cxts));
+		LOG(5)("no find context. [%d]\n", (int)sis_map_pointer_getsize(cls->cxts));
 	}
 	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
@@ -808,7 +808,7 @@ void sis_net_class_delete(s_sis_net_class *cls_, int sid_)
 		sis_llutoa(sid_, key, 32, 10);
 		sis_map_pointer_del(cls_->cxts, key);
 	}
-	printf("connect count del = %d \n", sis_map_pointer_getsize(cls_->cxts));	
+	printf("connect count del = %d \n", (int)sis_map_pointer_getsize(cls_->cxts));	
 }
 bool sis_net_class_open(s_sis_net_class *cls_)
 {

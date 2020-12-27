@@ -35,12 +35,12 @@ extern s_sis_modules sis_modules_work_east2day;
 extern s_sis_modules sis_modules_work_sno2after;
 extern s_sis_modules sis_modules_work_zh2cw;
 extern s_sis_modules sis_modules_memdb;
+extern s_sis_modules sis_modules_sdcdb;
 extern s_sis_modules sis_modules_sisdb;
 extern s_sis_modules sis_modules_sisdb_client;
 extern s_sis_modules sis_modules_sisdb_disk;
 extern s_sis_modules sis_modules_sisdb_server;
 extern s_sis_modules sis_modules_sisdb_wlog;
-extern s_sis_modules sis_modules_zipdb;
 
 s_sis_modules *__modules[] = {
     &sis_modules_digger_bayes,
@@ -78,12 +78,12 @@ s_sis_modules *__modules[] = {
     &sis_modules_work_sno2after,
     &sis_modules_work_zh2cw,
     &sis_modules_memdb,
+    &sis_modules_sdcdb,
     &sis_modules_sisdb,
     &sis_modules_sisdb_client,
     &sis_modules_sisdb_disk,
     &sis_modules_sisdb_server,
     &sis_modules_sisdb_wlog,
-    &sis_modules_zipdb,
     0
   };
 
@@ -123,11 +123,11 @@ const char *__modules_name[] = {
     "work_sno2after",
     "work_zh2cw",
     "memdb",
+    "sdcdb",
     "sisdb",
     "sisdb_client",
     "sisdb_disk",
     "sisdb_server",
     "sisdb_wlog",
-    "zipdb",
     0
   };

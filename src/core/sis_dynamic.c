@@ -332,19 +332,6 @@ s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_)
 	return jone;
 }
 
-// s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
-// {
-// 	s_sis_json_node *jone = sis_dynamic_dbinfo_to_json(db_);
-
-// 	char *str;
-// 	size_t olen;
-// 	str = sis_json_output_zip(jone, &olen);
-// 	// printf("jone = %s\n", str);
-// 	in_ = sis_sdscatlen(in_, str, olen);
-// 	sis_free(str);
-// 	sis_json_delete_node(jone);
-// 	return in_;
-// }
 msec_t sis_dynamic_db_get_time(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_)
 {
 	if (!db_->field_time || !in_ || ilen_ % db_->size || ( index_ + 1 ) * db_->size > ilen_)
