@@ -115,6 +115,14 @@ typedef struct s_sisdb_table
 	s_sis_string_list    *fields;   // 默认的字段序列
 } s_sisdb_table;	
 
+typedef struct s_sisdb_chars
+{
+	const char   *kname;
+	const char   *sname;
+	uint16  size;
+	void   *data;     
+} s_sisdb_chars;
+
 typedef struct s_sisdb_cxt
 {
 	int                 status;      // 工作状态

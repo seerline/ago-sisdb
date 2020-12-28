@@ -40,14 +40,14 @@ void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize)
 	{
 		sis_free(worker->zip_bits);
 	}
-	int size = worker->zip_size + sizeof(s_sdcdb_bits) + 256;
+	int size = worker->zip_size + sizeof(s_sdcdb_compress) + 256;
 	worker->zip_bits = sis_malloc(size);
 	sdcdb_worker_zip_flush(worker, 1);
 	// printf("reader->sub_ziper = %p %d\n", worker->zip_bits, size);
 }
 void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
 {
-	s_sdcdb_bits *zipmem = worker->zip_bits;
+	s_sdcdb_compress *zipmem = worker->zip_bits;
 	if (isinit)
 	{
 		zipmem->init = 1;
@@ -120,7 +120,7 @@ msec_t _unzip_msec = 0;
 int _unzip_recs = 0;
 msec_t _unzip_usec = 0;
 
-void sdcdb_worker_unzip_set(s_sdcdb_worker *worker, s_sdcdb_bits *in_)
+void sdcdb_worker_unzip_set(s_sdcdb_worker *worker, s_sdcdb_compress *in_)
 {
 	if (in_->init == 1)
 	{ 

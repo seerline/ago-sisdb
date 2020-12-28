@@ -44,10 +44,10 @@ typedef struct s_sis_worker {
 	int                    style;         // 工作者的类型 0 - normal 1 - python
     s_sis_sds              classname;     // 归属类名
     s_sis_sds              workername;
-    void                  *context;         // 保存上下文数据指针
-    void                  *father;          // 父指针 为 NULL 表示依赖于 server 存在
+    void                  *context;        // 保存上下文数据指针
+    void                  *father;         // 父指针 为 NULL 表示依赖于 server 存在
     s_sis_map_pointer     *workers;        // 该工作者 次一级 的工作线程
-    int                    method_status;   // 方法状态 0 - 未初始化 1 - 初始化完成
+    int                    method_status;  // 方法状态 0 - 未初始化 1 - 初始化完成
 	s_sis_methods         *methods;        // 该工作者 提供的方法
     s_sis_modules         *slots;          // 该工作者 标准接插函数指针
     s_sis_work_thread     *service_thread; // 该工作者 对应的服务线程

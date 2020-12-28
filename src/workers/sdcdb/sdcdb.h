@@ -36,8 +36,8 @@
 // 单个数据结构
 typedef struct s_sdcdb_chars
 {
-	char    keyn[32];
-	char    sdbn[64];
+	char   *kname;
+	char   *sname;
 	uint16  size;
 	void   *data;     
 } s_sdcdb_chars;
@@ -51,12 +51,12 @@ typedef struct s_sdcdb_bytes
 } s_sdcdb_bytes;
 
 // 压缩数据结构
-typedef struct s_sdcdb_bits
+typedef struct s_sdcdb_compress
 {
 	uint8   init;
 	uint32  size;
 	uint8   data[0];    
-} s_sdcdb_bits;
+} s_sdcdb_compress;
 
 // 仅仅解压 有数据就回调
 // 对待sdb多记录压缩 需要一次性把单类数据压缩进去
@@ -66,7 +66,7 @@ typedef struct s_sdcdb_worker
 	void                 *cb_source;   // 返回对象 unsdcdb专用
 	cb_sis_struct_decode *cb_decode;     // 按结构返回数据 unsdcdb专用
 
-	s_sdcdb_bits         *zip_bits;     // sdcdb 专用
+	s_sdcdb_compress     *zip_bits;     // sdcdb 专用
 	int      	          initsize;    // 超过多大数据重新初始化 字节
 	int      	          zip_size;    // 单个数据块的大小
 	int      	          cur_size;    // 缓存数据当前的尺寸
@@ -105,7 +105,7 @@ typedef struct s_sdcdb_reader
 
 	s_sis_lock_reader  *reader;       // 每个读者一个订阅者
 	// 返回压缩的数据 
-	sis_method_define  *cb_zipbits;      // s_sdcdb_bits
+	sis_method_define  *cb_sdcdb_compress;      // s_sdcdb_compress
 
     sis_method_define  *cb_sub_start;    // char *
     sis_method_define  *cb_sub_realtime; // char *
@@ -119,17 +119,18 @@ typedef struct s_sdcdb_reader
 typedef struct s_sdcdb_disk_worker
 {
 	int                rdisk_status;  // 读取磁盘的状态 0 初始或退出完成 1 正常 2 请求中断退出
-	s_sis_sds          work_path; 
+	s_sis_worker      *rdisk_worker;  // 读文件类
+	// s_sis_sds          work_path; 
 	s_sdcdb_reader    *sdcdb_reader;  // 仅仅是指针
-	s_sis_disk_class  *rdisk_worker;
-	s_sis_thread       rdisk_thread;  // 读取磁盘的线程   
+	// s_sis_disk_class  *rdisk_worker;
+	// s_sis_thread       rdisk_thread;  // 读取磁盘的线程   
 } s_sdcdb_disk_worker;
 
 // 来源数据只管写盘 只有key, sdb有的才会保存数据
 // 读取数据的人会接收到压缩的 out_bitzips 如果接收者订阅了全部就直接发送数据出去
 //          否则就把数据解压，然后写入自己的 s_sdcdb_cxt 再通过读者回调发送数据
 
-#define MAP_SDCDB_BITS(v) ((s_sdcdb_bits *)sis_memory(v->ptr))
+#define MAP_SDCDB_BITS(v) ((s_sdcdb_compress *)sis_memory(v->ptr))
 
 typedef struct s_sdcdb_cxt
 {
@@ -146,6 +147,8 @@ typedef struct s_sdcdb_cxt
 	bool     stoped;    // 是否已经结束
 	int      work_date; // 工作日期
 
+	s_sis_sds dbname; // 数据库名称 
+
 	int                 wlog_load;  // 是否正在加载 wlog       
 	int                 wlog_date;  // 是否正在加载 wlog    
 	int                 wlog_init;  // 是否发送了 keys 和 sdbs  
@@ -161,25 +164,25 @@ typedef struct s_sdcdb_cxt
 	sis_method_define  *wfile_cb_sub_stop ;
 	sis_method_define  *wfile_cb_dict_keys;
 	sis_method_define  *wfile_cb_dict_sdbs;
-	sis_method_define  *wfile_cb_zip_bytes;
+	sis_method_define  *wfile_cb_sdcdb_compress;
 	s_sis_worker       *wfile_worker; // 当前使用的写文件类
 
-	s_sis_sds           rfile_path;       // 当前使用的读文件类
+	s_sis_json_node    *rfile_config;
 
 	s_sis_sds           work_keys; // 工作 keys
 	s_sis_sds           work_sdbs; // 工作 sdbs
 	s_sis_map_list     *keys;      // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *sdbs;      // sdb 的结构字典表 s_sis_dynamic_db 包括
 
-	s_sis_fast_queue   *inputs;    // 传入的数据链 s_sdcdb_bits
+	s_sis_fast_queue   *inputs;    // 传入的数据链 s_sdcdb_compress
 
 	s_sis_bits_stream  *cur_sbits;   // 当前指向缓存的位操作类
 
-	s_sis_object       *cur_object;   // s_sdcdb_bits -> 映射为memory 当前用于写数据的缓存 
+	s_sis_object       *cur_object;   // s_sdcdb_compress -> 映射为memory 当前用于写数据的缓存 
 	s_sis_object       *last_object;  // 最近一个其实数据包的指针
 	// 这个outputs需要设置为无限容量
 	int                 zipnums;    // 统计数量
-	s_sis_lock_list    *outputs;    // 输出的数据链 s_sdcdb_bits -> 映射为 memory 每10分钟一个新的压缩数据块
+	s_sis_lock_list    *outputs;    // 输出的数据链 s_sdcdb_compress -> 映射为 memory 每10分钟一个新的压缩数据块
 	s_sis_pointer_list *readeres;   // 读者列表 s_sdcdb_reader
 
 } s_sdcdb_cxt;
@@ -209,7 +212,7 @@ int cmd_sdcdb_ipub(void *worker_, void *argv_);  // s_sdcdb_bytes
 // 需要传入 key sdb val 收到数据后压缩存储
 int cmd_sdcdb_spub(void *worker_, void *argv_);  // s_sdcdb_chars
 // 需要传入 zipval 直接是压缩数据块 直接放入队列中
-int cmd_sdcdb_zpub(void *worker_, void *argv_);  // s_sdcdb_bits
+int cmd_sdcdb_zpub(void *worker_, void *argv_);  // s_sdcdb_compress
 // 对指定的无锁队列增加订阅者
 // 默认从最新的具备完备数据的数据包开始订阅 seat : 0
 // seat : 1 从最开始订阅 
@@ -237,7 +240,7 @@ void sdcdb_worker_set_keys(s_sdcdb_worker *, s_sis_sds );
 void sdcdb_worker_set_sdbs(s_sdcdb_worker *, s_sis_sds );
 // 写入需要解压的数据
 void sdcdb_worker_unzip_init(s_sdcdb_worker *, void *cb_source, cb_sis_struct_decode *cb_read_);
-void sdcdb_worker_unzip_set(s_sdcdb_worker *, s_sdcdb_bits *);
+void sdcdb_worker_unzip_set(s_sdcdb_worker *, s_sdcdb_compress *);
 // 写入需要压缩的数据
 void sdcdb_worker_zip_init(s_sdcdb_worker *, int, int);
 void sdcdb_worker_zip_flush(s_sdcdb_worker *, int);
@@ -268,14 +271,18 @@ int sdcdb_reader_new_history(s_sdcdb_reader *reader_);
 #define SDCDB_FILE_SIGN_SDBS  2  // zset _keys_ ...
 
 int sdcdb_wlog_load(s_sdcdb_cxt *);
+// 停止wlog文件
+int sdcdb_wlog_start(s_sdcdb_cxt *);
 // 把数据写入到wlog中
-int sdcdb_wlog_save(s_sdcdb_cxt *, int , s_sdcdb_bits *);
+int sdcdb_wlog_save(s_sdcdb_cxt *, int , s_sdcdb_compress *);
+// 停止wlog文件
+int sdcdb_wlog_stop(s_sdcdb_cxt *);
 // 清除wlog文件
 int sdcdb_wlog_move(s_sdcdb_cxt *);
 // 把wlog转为snos格式 
 int sdcdb_wlog_save_snos(s_sdcdb_cxt *);
 // 读取 snos 文件 snos 为sdcdb压缩的分块式顺序格式
-s_sdcdb_disk_worker *sdcdb_snos_read_start(const char *, s_sdcdb_reader *);
+s_sdcdb_disk_worker *sdcdb_snos_read_start(s_sis_json_node *, s_sdcdb_reader *);
 // 读取 snos 文件 snos 为sdcdb压缩的分块式顺序格式
 int sdcdb_snos_read_stop(s_sdcdb_disk_worker *);
 

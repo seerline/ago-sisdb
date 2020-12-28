@@ -39,8 +39,10 @@ extern s_sis_modules sis_modules_sdcdb;
 extern s_sis_modules sis_modules_sisdb;
 extern s_sis_modules sis_modules_sisdb_client;
 extern s_sis_modules sis_modules_sisdb_disk;
+extern s_sis_modules sis_modules_sisdb_rsno;
 extern s_sis_modules sis_modules_sisdb_server;
 extern s_sis_modules sis_modules_sisdb_wlog;
+extern s_sis_modules sis_modules_sisdb_wsno;
 
 s_sis_modules *__modules[] = {
     &sis_modules_digger_bayes,
@@ -82,8 +84,10 @@ s_sis_modules *__modules[] = {
     &sis_modules_sisdb,
     &sis_modules_sisdb_client,
     &sis_modules_sisdb_disk,
+    &sis_modules_sisdb_rsno,
     &sis_modules_sisdb_server,
     &sis_modules_sisdb_wlog,
+    &sis_modules_sisdb_wsno,
     0
   };
 
@@ -127,7 +131,9 @@ const char *__modules_name[] = {
     "sisdb",
     "sisdb_client",
     "sisdb_disk",
+    "sisdb_rsno",
     "sisdb_server",
     "sisdb_wlog",
+    "sisdb_wsno",
     0
   };
