@@ -260,6 +260,10 @@ void _sis_load_work_time(s_sis_worker *worker_, s_sis_json_node *node_)
 
 s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
 {
+    if (!node_)
+    {
+        return NULL;
+    }
     s_sis_worker *worker = SIS_MALLOC(s_sis_worker, worker);
 
     worker->father = father_; 

@@ -12,7 +12,7 @@
 
 struct s_sis_method sisdb_wlog_methods[] = {
     {"read",   cmd_sisdb_wlog_read,   0, NULL},   
-    {"open",   cmd_sisdb_wlog_open,  0, NULL},   
+    {"open",   cmd_sisdb_wlog_open,   0, NULL},   
     {"write",  cmd_sisdb_wlog_write,  0, NULL},  
     {"close",  cmd_sisdb_wlog_close,  0, NULL},   
     {"clear",  cmd_sisdb_wlog_clear,  0, NULL},  

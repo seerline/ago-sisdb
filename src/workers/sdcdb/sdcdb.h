@@ -147,7 +147,7 @@ typedef struct s_sdcdb_cxt
 	bool     stoped;    // 是否已经结束
 	int      work_date; // 工作日期
 
-	s_sis_sds dbname; // 数据库名称 
+	s_sis_sds dbname;  // 数据库名称 
 
 	int                 wlog_load;  // 是否正在加载 wlog       
 	int                 wlog_date;  // 是否正在加载 wlog    

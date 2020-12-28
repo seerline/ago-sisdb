@@ -509,10 +509,6 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
 	if (cxt)
 	{
-		if (cxt->status != SIS_NET_WORKING)
-		{
-			LOG(5)("wait working. [%d]\n", cxt->status);
-		}
 		if (cxt->status == SIS_NET_HANDING)
 		{
 			printf("server hand ok.\n");
@@ -521,6 +517,10 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 				cls->cb_connected(cls->cb_source, sid_);
 			}
 			cxt->status = SIS_NET_WORKING;
+		}
+		if (cxt->status != SIS_NET_WORKING)
+		{
+			LOG(5)("wait working. [%d]\n", cxt->status);
 		}
 	} 
 	else

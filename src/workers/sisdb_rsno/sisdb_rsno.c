@@ -38,12 +38,17 @@ bool sisdb_rsno_init(void *worker_, void *node_)
 
     context->work_date = sis_json_get_int(node, "work-date", sis_time_get_idate(0));
 
-    context->work_path = sis_sdsempty();
-    const char *str = sis_json_get_str(node, "work-path");
-    if (str)
     {
-        context->work_path = sis_sdscat(context->work_path, str);
-    } 
+        const char *str = sis_json_get_str(node, "work-path");
+        if (str)
+        {
+            context->work_path = sis_sdsnew(str);
+        }
+        else
+        {
+            context->work_path = sis_sdsnew("./");
+        }
+    }
     {
         const char *str = sis_json_get_str(node, "sub-sdbs");
         if (str)
@@ -54,9 +59,8 @@ bool sisdb_rsno_init(void *worker_, void *node_)
         {
             context->work_sdbs = sis_sdsnew("*");
         }
-    } 
-    {
-        
+    }
+    {     
         const char *str = sis_json_get_str(node, "sub-keys");
         if (str)
         {
@@ -366,7 +370,7 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
         {
             initsize = sis_message_get_int(msg, "init-size");
         }
-        if (context->rsno_ziper)
+        if (!context->rsno_ziper)
         {
             context->rsno_ziper = sdcdb_worker_create();
             sdcdb_worker_zip_init(context->rsno_ziper, zip_size, initsize);

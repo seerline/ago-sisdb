@@ -330,7 +330,7 @@ bool sdcdb_init(void *worker_, void *argv_)
         }     
     }
     s_sis_json_node *rfilenode = sis_json_cmp_child_node(node, "rfile");
-    if (wfilenode)
+    if (rfilenode)
     {
 		context->rfile_config = sis_json_clone(rfilenode, 1);
     }
@@ -583,12 +583,19 @@ int cmd_sdcdb_stop(void *worker_, void *argv_)
 		// 停止写wlog文件
 		sdcdb_wlog_stop(context);
 		// 转格式
-		int o = sdcdb_wlog_save_snos(context);
-		if (o)
+		if (context->wfile_worker)
 		{
-			// 等待数据存盘完毕
-			SIS_WAIT_LONG(context->wfile_save == 0);
-			// 存盘结束清理wlog
+			if (sdcdb_wlog_save_snos(context))
+			{
+				// 等待数据存盘完毕
+				SIS_WAIT_LONG(context->wfile_save == 0);
+				// 存盘结束清理 wlog
+				sdcdb_wlog_move(context);
+			}
+			// 数据转错 就不删除
+		}
+		else
+		{
 			sdcdb_wlog_move(context);
 		}
 	}
@@ -755,7 +762,17 @@ int cmd_sdcdb_sub(void *worker_, void *argv_)
 		// 启动历史数据线程 并返回 
 		// 如果断线要能及时中断文件读取 
 		// 同一个用户 必须等待上一次读取中断后才能开始新的任务
-		sdcdb_reader_new_history(reader);
+		if (!sdcdb_reader_new_history(reader))
+		{
+			// 没有服务或其他原因
+			if (reader->cb_sub_stop)
+			{
+				char sdate[32];
+				sis_llutoa(reader->sub_date, sdate, 32, 10);
+				reader->cb_sub_stop(reader, sdate);
+			}
+			sdcdb_reader_destroy(reader);
+		}
 	}
 	else
 	{		
@@ -937,10 +954,13 @@ int sdcdb_reader_new_history(s_sdcdb_reader *reader_)
     s_sdcdb_cxt *sdcdb = (s_sdcdb_cxt *)worker->context;
 	// 清除该端口其他的订阅
 	sdcdb_move_reader(sdcdb, reader_->cid);
-	sis_pointer_list_push(sdcdb->readeres, reader_);
-
 	reader_->sub_disker = sdcdb_snos_read_start(sdcdb->rfile_config, reader_);
-	return 1;
+	if (reader_->sub_disker)
+	{
+		sis_pointer_list_push(sdcdb->readeres, reader_);
+		return 1;
+	}
+	return 0;
 }
 int sdcdb_reader_new_realtime(s_sdcdb_reader *reader_)
 {

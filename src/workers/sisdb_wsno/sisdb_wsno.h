@@ -13,7 +13,7 @@ typedef struct s_sisdb_wsno_cxt
     s_sis_disk_class  *write_class;   // 写盘类
     s_sis_sds          work_path;     // 可配置 也可传入
     int                page_size;    
-    
+
     int                iswhead;       // 是否写了头
  
 	s_sis_sds          wsno_date;    // 文件名      

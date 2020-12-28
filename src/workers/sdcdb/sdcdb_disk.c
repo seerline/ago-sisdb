@@ -71,8 +71,6 @@ static int cb_sdcdb_wlog_load(void *worker_, void *argv_)
 				context->wlog_load = 0;
 			}	
 		}
-		sis_sdsfree(context->wlog_keys); context->wlog_keys = NULL;
-		sis_sdsfree(context->wlog_sdbs); context->wlog_sdbs = NULL;
 	}
     return SIS_METHOD_OK;
 }
@@ -270,9 +268,16 @@ void _sdcdb_read_send_data(s_sdcdb_reader *reader, int issend)
 // 读取 snos 文件 snos 为sdcdb压缩的分块式顺序格式
 s_sdcdb_disk_worker *sdcdb_snos_read_start(s_sis_json_node *config_, s_sdcdb_reader *reader_)
 {
+
 	s_sdcdb_disk_worker *worker = SIS_MALLOC(s_sdcdb_disk_worker, worker);
 
 	worker->rdisk_worker = sis_worker_create(NULL, config_);
+	if (!worker->rdisk_worker)
+	{
+		sis_free(worker);
+		return NULL;
+	}
+	printf("%s\n", worker->rdisk_worker->workername);
 	worker->rdisk_status = SDCDB_DISK_INIT;
 	worker->sdcdb_reader = reader_;
 
