@@ -72,17 +72,9 @@ typedef struct s_sisdb_collect
 
 	s_sisdb_cxt         *father;
 	
-	// s_sisdb_sub_info    *sub_info;    // 订阅字典的指针 当修改collect时可以快速发布
-
 	s_sis_step_index    *stepinfo;    // 时间索引表，这里会保存时间序列key，每条记录的指针(不申请内存)，
 
 } s_sisdb_collect;
-
-typedef struct s_sisdb_collect_sno
-{
-	s_sisdb_collect   *collect;
-	int32              recno;    // 记录号 recno = -1 collect = NULL 表示当日结束
-} s_sisdb_collect_sno;
 
 #pragma pack(pop)
 
@@ -202,9 +194,6 @@ int sisdb_collect_delete(s_sisdb_collect  *, s_sis_json_node *jsql); // jsql 为
 ///////////////////////////
 // 写通用sdb数据 需要检验数据合法性
 int sisdb_collect_update(s_sisdb_collect *, s_sis_sds in_);
-
-// 写sno数据 即使数据会覆盖 此种格式也要记录下每一次变化
-int sisdb_collect_wseries(s_sisdb_collect *, s_sis_sds in_);
 
 // 从磁盘中整块写入，不逐条进行校验 直接追加数据
 int sisdb_collect_wpush(s_sisdb_collect *, char *in_, size_t ilen_);

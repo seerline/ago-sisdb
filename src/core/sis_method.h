@@ -24,10 +24,15 @@ typedef int (sis_method_define)(void *, void *);
 #define SIS_INT_TO_VOID(n)  ((void *)(uint64)n)
 #define SIS_VOID_TO_INT(v)  ((int)(uint64)v)
 
-#define SIS_METHOD_ACCESS_NONE    0
-#define SIS_METHOD_ACCESS_READ    1  // 1
-#define SIS_METHOD_ACCESS_WRITE   3  // 11
-#define SIS_METHOD_ACCESS_ADMIN   7  // 111
+#define SIS_METHOD_ACCESS_NONE      0  //      不限制
+#define SIS_METHOD_ACCESS_READ      1  // 1    可读
+#define SIS_METHOD_ACCESS_WRITE     2  // 1    可写
+#define SIS_METHOD_ACCESS_DEL       4  // 1    可删
+// #define SIS_METHOD_ACCESS_SUB       8  // 1    订阅
+#define SIS_METHOD_ACCESS_NONET   100  // 禁止网络数据包 仅限于进程间调用
+
+#define SIS_METHOD_ACCESS_RDWR    3  // 11   可写
+#define SIS_METHOD_ACCESS_ADMIN   7  // 111  可删除
 
 typedef struct s_sis_method {
     const char *name;     // 方法的名字

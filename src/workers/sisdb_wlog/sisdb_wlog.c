@@ -2,7 +2,6 @@
 #include "worker.h"
 #include "server.h"
 #include "sis_method.h"
-#include "sisdb.h"
 
 #include "sisdb_wlog.h"
 
@@ -15,7 +14,7 @@ struct s_sis_method sisdb_wlog_methods[] = {
     {"open",   cmd_sisdb_wlog_open,   0, NULL},   
     {"write",  cmd_sisdb_wlog_write,  0, NULL},  
     {"close",  cmd_sisdb_wlog_close,  0, NULL},   
-    {"clear",  cmd_sisdb_wlog_clear,  0, NULL},  
+    {"move",   cmd_sisdb_wlog_move,  0, NULL},  
     {"exist",  cmd_sisdb_wlog_exist,  0, NULL},  
 };
 // 共享内存数据库
@@ -201,7 +200,7 @@ int cmd_sisdb_wlog_write(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_wlog_clear(void *worker_, void *argv_)
+int cmd_sisdb_wlog_move(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;

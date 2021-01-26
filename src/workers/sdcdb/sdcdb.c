@@ -12,20 +12,24 @@
 ///////////////////////////////////////////////////
 // NULL 默认为读取
 struct s_sis_method sdcdb_methods[] = {
-    {"init",      cmd_sdcdb_init,   0, NULL},  // 初始化 workdate,keys,sdbs 
-    {"start",     cmd_sdcdb_start,  0, NULL},  // 开始发送数据 
-    {"stop",      cmd_sdcdb_stop,   0, NULL},  // 数据流发布完成 此时不再接收数据
-    {"ipub",      cmd_sdcdb_ipub,   0, NULL},  // 发布数据流 单条数据 kidx+sidx+data
-    {"spub",      cmd_sdcdb_spub,   0, NULL},  // 发布数据流 单条数据 key sdb data
-    {"zpub",      cmd_sdcdb_zpub,   0, NULL},  // 发布数据流 只有完成的压缩数据块
-    {"sub",       cmd_sdcdb_sub,    0, NULL},  // 订阅数据流 
-    {"unsub",     cmd_sdcdb_unsub,  0, NULL},  // 取消订阅数据流 
-    {"clear",     cmd_sdcdb_clear,  0, NULL},  // 清理数据流 
+// 网络结构体
+    {"init",      cmd_sdcdb_init,   SIS_METHOD_ACCESS_NONET, NULL},  // 
+    {"set",       cmd_sdcdb_set,    SIS_METHOD_ACCESS_RDWR, NULL},   // 
+    {"start",     cmd_sdcdb_start,  SIS_METHOD_ACCESS_RDWR, NULL},   // 开始发送数据 
+    {"stop",      cmd_sdcdb_stop,   SIS_METHOD_ACCESS_RDWR, NULL},   // 数据流发布完成 此时不再接收数据
+    {"ipub",      cmd_sdcdb_ipub,   SIS_METHOD_ACCESS_NONET, NULL},  // 发布数据流 单条数据 kidx+sidx+data
+    {"spub",      cmd_sdcdb_spub,   SIS_METHOD_ACCESS_RDWR, NULL},   // 发布数据流 单条数据 key sdb data
+    {"zpub",      cmd_sdcdb_zpub,   SIS_METHOD_ACCESS_NONET, NULL},  // 发布数据流 只有完成的压缩数据块
+    {"zsub",      cmd_sdcdb_zsub,   SIS_METHOD_ACCESS_READ, NULL},   // 订阅压缩数据流 
+    {"sub",       cmd_sdcdb_sub,    SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据流 
+    {"unsub",     cmd_sdcdb_unsub,  SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅数据流 
+    {"clear",     cmd_sdcdb_clear,  SIS_METHOD_ACCESS_NONET, NULL},  // 清理数据流 
 // 磁盘工具
-    {"wlog",      cmd_sdcdb_wlog,  0, NULL},  // 接收数据实时写盘
+    // {"wlog",      cmd_sdcdb_wlog,  0, NULL},  // 接收数据实时写盘
     {"rlog",      cmd_sdcdb_rlog,  0, NULL},  // 异常退出时加载磁盘数据
-    {"wsno",      cmd_sdcdb_wsno,  0, NULL},  // 盘后转压缩格式
-    {"rsno",      cmd_sdcdb_rsno,  0, NULL},  // 从历史数据中获取数据 
+    // {"wsno",      cmd_sdcdb_wsno,  0, NULL},  // 盘后转压缩格式
+    // {"rsno",      cmd_sdcdb_rsno,  0, NULL},  // 从历史数据中获取数据 
+    {"getdb",     cmd_sdcdb_getdb ,   SIS_METHOD_ACCESS_NONET, NULL},   // 得到表
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sdcdb = {
@@ -386,6 +390,10 @@ void sdcdb_uninit(void *worker_)
     }
 	sis_sdsfree(sdcdb->work_keys);
 	sis_sdsfree(sdcdb->work_sdbs);
+
+	sis_sdsfree(sdcdb->init_keys);
+	sis_sdsfree(sdcdb->init_sdbs);
+
     sis_map_list_destroy(sdcdb->keys); 
     sis_map_list_destroy(sdcdb->sdbs);
 
@@ -506,39 +514,54 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 	}
 	return true;
 }
+int cmd_sdcdb_set(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+	if (!sis_strcasecmp(netmsg->key, "_keys_"))
+	{
+		sis_sdsfree(context->init_keys);
+		context->init_keys = sis_sdsdup(netmsg->val);
+	}
+	if (!sis_strcasecmp(netmsg->key, "_sdbs_"))
+	{
+		sis_sdsfree(context->init_sdbs);
+		// 从外界过来的sdbs可能格式不对，需要转换
+		s_sis_json_handle *injson = sis_json_load(netmsg->val, sis_sdslen(netmsg->val));
+		if (!injson)
+		{
+			return SIS_METHOD_ERROR;
+		}
+		context->init_sdbs = sis_json_to_sds(injson->node, true);
+		sis_json_close(injson);
+	}
+    return SIS_METHOD_ERROR;
+}
 // 因为可能发到中间时也会调用该函数 init 时需要保证环境和最初的环境一致
 int cmd_sdcdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_;
-
-	// 这里的keys和sdbs必须为真实值
-	int work_date = sis_message_get_int(msg, "work_date");
-	s_sis_sds keys = sis_message_get_str(msg, "keys");
-	s_sis_sds sdbs = sis_message_get_str(msg, "sdbs");
-	
-	// 从外界过来的sdbs可能格式不对，需要转换
-	s_sis_json_handle *injson = sis_json_load(sdbs, sis_sdslen(sdbs));
-	if (!injson)
-	{
-		return SIS_METHOD_ERROR;
-	}
-	s_sis_sds newsdbs = sis_json_to_sds(injson->node, true);
-	sis_json_close(injson);
-
-    if (_sdcdb_write_init(context, work_date, keys, newsdbs))
-    {
-		sis_sdsfree(newsdbs);
-        return SIS_METHOD_OK;
-    }
-	sis_sdsfree(newsdbs);
-    return SIS_METHOD_ERROR;
+    
+	s_sis_message *msg = (s_sis_message *)argv_;
+	context->cb_source = sis_message_get(msg, "cb_source");
+	context->cb_net_message = sis_message_get_method(msg, "cb_net_message");
+    return SIS_METHOD_OK;
 }
 int cmd_sdcdb_start(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
+	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+	// 这里的keys和sdbs必须为真实值
+	int work_date = sis_atoll(netmsg->val);
+    _sdcdb_write_init(context, work_date, context->init_keys, context->init_sdbs);
+	sis_sdsfree(context->init_keys);
+	sis_sdsfree(context->init_sdbs);
+	context->init_keys = NULL;
+	context->init_sdbs = NULL;
 
 	if (!context->inited)
 	{
@@ -555,7 +578,7 @@ int cmd_sdcdb_start(void *worker_, void *argv_)
 		}
 		sdcdb_reader_realtime_start(reader);
 		LOG(5)("sdcdb start. [%d] cid : %d disk: %d workdate : %d = %s\n", 
-			i,  reader->cid, reader->sub_disk, context->work_date, (char *)argv_);
+			i,  reader->cid, reader->sub_disk, context->work_date, netmsg->val);
 	}
 	return SIS_METHOD_OK;
 }
@@ -563,10 +586,11 @@ int cmd_sdcdb_stop(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
+	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	// printf("cmd_sdcdb_stop, curmemory : %d\n", context->cur_object->size);
 	
 	// LOG(5)("sdcdb stop. wlog : %d readers : %d workdate : %d = %s\n", 
-	// 	context->wlog_worker, context->readeres->count, context->work_date, (char *)argv_);
+	// 	context->wlog_worker, context->readeres->count, context->work_date, netmsg->val);
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_sdcdb_reader *reader = (s_sdcdb_reader *)sis_pointer_list_get(context->readeres, i);
@@ -575,7 +599,7 @@ int cmd_sdcdb_stop(void *worker_, void *argv_)
 			continue;
 		}
 		LOG(5)("sdcdb stop. [%d] cid : %d workdate : %d = %s\n", 
-			i,  reader->cid, context->work_date, (char *)argv_);
+			i,  reader->cid, context->work_date, netmsg->val);
 		sdcdb_reader_realtime_stop(reader);
 	}
 	if (context->wlog_worker)
@@ -675,15 +699,21 @@ int cmd_sdcdb_spub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
-    s_sdcdb_chars *in = (s_sdcdb_chars *)argv_;
+	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+	char kname[128]; 
+	char sname[128]; 
+	int  cmds = sis_str_divide(netmsg->key, '.', kname, sname);
+	s_sis_sds inmem = sis_net_get_argvs(netmsg, 0);
+	if (cmds == 2 && inmem)
+	{
+		int kidx = sis_map_list_get_index(context->keys, kname);
+		int sidx = sis_map_list_get_index(context->sdbs, sname);
 
-	int kidx = sis_map_list_get_index(context->keys, in->kname);
-	int sidx = sis_map_list_get_index(context->sdbs, in->sname);
-
-    if (_sdcdb_write(context, kidx, sidx, in->data, in->size) >= 0)
-    {
-        return SIS_METHOD_OK;
-    }
+		if (_sdcdb_write(context, kidx, sidx, inmem, sis_sdslen(inmem)) >= 0)
+		{
+			return SIS_METHOD_OK;
+		}
+	}
     return SIS_METHOD_ERROR;
 }
 // 从这里写入的数据为索引+二进制数据
@@ -700,42 +730,54 @@ int cmd_sdcdb_zpub(void *worker_, void *argv_)
     return SIS_METHOD_ERROR;
 }
 
-int cmd_sdcdb_sub(void *worker_, void *argv_)
+static int cb_sdcdb_compress(void *source, void *argv);
+static int cb_sisdb_bytes(void *source, void *argv);
+static int cb_sub_start(void *source, void *argv);
+static int cb_sub_realtime(void *source, void *argv);
+static int cb_sub_stop(void *source, void *argv);
+static int cb_dict_keys(void *source, void *argv);
+static int cb_dict_sdbs(void *source, void *argv);
+
+int _sdcdb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_;
 
     s_sdcdb_reader *reader = sdcdb_reader_create();
-	reader->cid = sis_message_get_int(msg, "cid");
-	s_sis_sds serial = sis_message_get_str(msg, "serial");
-	if (serial)
+	reader->cid = netmsg->cid;
+	if (netmsg->serial)
 	{
-		reader->serial = sis_sdsdup(serial);
+		reader->serial = sis_sdsdup(netmsg->serial);
 	}
+	reader->rfmt = SISDB_FORMAT_JSON;
+	reader->iszip = iszip;
     reader->sdcdb_worker = worker;
-    reader->ishead = sis_message_get_int(msg, "ishead");
-	reader->sub_date = sis_message_get_int(msg, "sub_date");
-
-	s_sis_sds keys = sis_message_get_str(msg, "sub_keys");
-	if (keys)
+    reader->ishead = 0;
+	reader->sub_date = context->work_date;
+    if (netmsg->val)
+    {
+        s_sis_json_handle *argnode = sis_json_load(netmsg->val, sis_sdslen(netmsg->val));
+        if (argnode)
+        {
+			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
+            reader->ishead = sis_json_get_int(argnode->node, "ishead", 0);
+            reader->sub_date = sis_json_get_int(argnode->node, "sub_date", context->work_date);
+            sis_json_close(argnode);
+        }
+	}
+    sis_str_divide_sds(netmsg->key, '.', &reader->sub_keys, &reader->sub_sdbs);
+	if (reader->iszip)
 	{
-		reader->sub_keys = sis_sdsdup(keys);
+		reader->cb_sdcdb_compress = cb_sdcdb_compress;
 	}
 	else
 	{
-		reader->sub_keys = sis_sdsnew("*");
+		reader->cb_sisdb_bytes 	= cb_sisdb_bytes;
 	}
-	
-	s_sis_sds sdbs = sis_message_get_str(msg, "sub_sdbs");
-	if (sdbs)
-	{
-		reader->sub_sdbs = sis_sdsdup(sdbs);
-	}
-	else
-	{
-		reader->sub_sdbs = sis_sdsnew("*");
-	}
+	reader->cb_sub_start 		= cb_sub_start;
+	reader->cb_sub_realtime 	= cb_sub_realtime;
+	reader->cb_sub_stop 		= cb_sub_stop;
+	reader->cb_dict_keys 		= cb_dict_keys;
+	reader->cb_dict_sdbs 		= cb_dict_sdbs;
 	
 	if (!sis_strcasecmp(reader->sub_keys, "*") && !sis_strcasecmp(reader->sub_sdbs, "*"))
 	{
@@ -746,16 +788,6 @@ int cmd_sdcdb_sub(void *worker_, void *argv_)
 		reader->sub_whole = false;
 	}
 	
-	// printf("reader->ishead = %d reader->sub_whole = %d\n", reader->ishead, reader->sub_whole);
-    reader->cb_sdcdb_compress     = sis_message_get_method(msg, "cb_sdcdb_compress");
-
-    reader->cb_sub_start = sis_message_get_method(msg, "cb_sub_start");
-    reader->cb_sub_realtime = sis_message_get_method(msg, "cb_sub_realtime");
-    reader->cb_sub_stop = sis_message_get_method(msg, "cb_sub_stop");
-
-    reader->cb_dict_keys = sis_message_get_method(msg, "cb_dict_keys");
-    reader->cb_dict_sdbs = sis_message_get_method(msg, "cb_dict_sdbs");
-
 	if (reader->sub_date != context->work_date || (context->stoped && context->inited))
 	{
 		reader->sub_disk = true;
@@ -781,18 +813,28 @@ int cmd_sdcdb_sub(void *worker_, void *argv_)
 		sdcdb_reader_new_realtime(reader);
 	}
     return SIS_METHOD_OK;
-
 }
+int cmd_sdcdb_zsub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
+	return _sdcdb_sub(worker, netmsg, true);
+}
+int cmd_sdcdb_sub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+	return _sdcdb_sub(worker, netmsg, false);
+}
 int cmd_sdcdb_unsub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_;
+	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-	int cid = sis_message_get_int(msg, "cid");
-
-	sdcdb_move_reader(context, cid);
+	sdcdb_move_reader(context, netmsg->cid);
 
     return SIS_METHOD_OK;
 }
@@ -813,33 +855,39 @@ int cmd_sdcdb_clear(void *worker_, void *argv_)
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
     s_sis_message *msg = (s_sis_message *)argv_;
 
-	int mode = sis_message_get_int(msg, "mode");
-	switch (mode)
+	const char *mode = sis_message_get_str(msg, "mode");
+	if (sis_strcasecmp(mode, "reader"))
 	{
-	case SDCDB_CLEAR_MODE_DATA:
-		_sdcdb_clear_data(context);
-		break;
-	case SDCDB_CLEAR_MODE_READER:
-		sis_pointer_list_clear(context->readeres);
-		break;	
-	default:
-		sis_pointer_list_clear(context->readeres);
-		_sdcdb_clear_data(context);
-		break;
+		int cid  = sis_message_get_int(msg, "cid");
+		if (cid == -1)
+		{
+			sis_pointer_list_clear(context->readeres);
+		}
+		else
+		{
+			sdcdb_move_reader(context, cid);
+		}		
 	}
+	if (sis_strcasecmp(mode, "catch"))
+	{
+		_sdcdb_clear_data(context);	
+	}	
     return SIS_METHOD_OK;
 }
 	
-int cmd_sdcdb_wlog(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
-	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+// int cmd_sdcdb_wlog(void *worker_, void *argv_)
+// {
+//     s_sis_worker *worker = (s_sis_worker *)worker_; 
+//     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
+// 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	
-	context->wlog_method->proc(context->wlog_worker, netmsg);
-
-	return SIS_METHOD_OK;
-}
+// 	if (!sdcdb_->wlog_reader)
+// 	{
+// 		// 非压缩数据 这里有问题
+// 		context->wlog_method->proc(context->wlog_worker, netmsg);
+// 	}
+// 	return SIS_METHOD_OK;
+// }
 int cmd_sdcdb_rlog(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -851,19 +899,198 @@ int cmd_sdcdb_rlog(void *worker_, void *argv_)
 	}
 	return SIS_METHOD_ERROR;
 }
-int cmd_sdcdb_wsno(void *worker_, void *argv_)
+// int cmd_sdcdb_wsno(void *worker_, void *argv_)
+// {
+// 	// 从log中获取数据后直接写盘
+// 	return SIS_METHOD_OK;
+// }
+// int cmd_sdcdb_rsno(void *worker_, void *argv_)
+// {
+// 	return SIS_METHOD_OK;
+// }
+
+int cmd_sdcdb_getdb(void *worker_, void *argv_)
 {
-	// 从log中获取数据后直接写盘
-	return SIS_METHOD_OK;
-}
-int cmd_sdcdb_rsno(void *worker_, void *argv_)
-{
-	return SIS_METHOD_OK;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker->context;
+    s_sis_message *msg = (s_sis_message *)argv_;
+
+	const char *dbname = sis_message_get_str(msg, "dbname");
+	s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_list_get(context->sdbs, dbname);
+    sis_message_set(msg, "db", db, NULL);
+    return SIS_METHOD_OK;
 }
 
 ///////////////////////////////////////////////////////////////////////////
+//------------------------s_sdcdb_reader callback -----------------------//
+///////////////////////////////////////////////////////////////////////////
+
+// // 直接返回一个数据块 压缩数据
+#define MSERVER_DEBUG
+#ifdef MSERVER_DEBUG
+static int _bitzip_nums = 0;
+static int64 _bitzip_size = 0;
+static msec_t _bitzip_msec = 0;
+#endif
+static int cb_sdcdb_compress(void *source, void *argv)
+{
+    // printf("%s\n", __func__);
+    s_sdcdb_reader *reader = (s_sdcdb_reader *)source;
+    s_sis_worker *sdcdb_worker = (s_sis_worker *)reader->sdcdb_worker;
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)sdcdb_worker->context;
+    s_sdcdb_compress *inmem = (s_sdcdb_compress *)argv;
+    // 向对应的socket发送数据
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->cid = reader->cid;
+#ifdef MSERVER_DEBUG
+    _bitzip_nums++;
+    _bitzip_size += sizeof(s_sdcdb_compress) + inmem->size;
+    if (_bitzip_nums % 100 == 0)
+    {
+        LOG(8)("server send zip : %d %lld(k) cost :%lld\n", _bitzip_nums, _bitzip_size/1000, sis_time_get_now_msec() - _bitzip_msec);
+        _bitzip_msec = sis_time_get_now_msec();
+    } 
+#endif
+    sis_net_ans_with_bytes(newinfo, (const char *)inmem, sizeof(s_sdcdb_compress) + inmem->size);    
+    if (context->cb_net_message)
+	{
+		context->cb_net_message(context->cb_source, newinfo);
+	}
+    sis_net_message_destroy(newinfo); 
+    return SIS_METHOD_OK;
+}
+
+static int cb_sisdb_bytes(void *source, void *argv)
+{
+    // printf("%s\n", __func__);
+    s_sdcdb_reader *reader = (s_sdcdb_reader *)source;
+    s_sis_worker *sdcdb_worker = (s_sis_worker *)reader->sdcdb_worker;
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)sdcdb_worker->context;
+    s_sis_db_chars *inmem = (s_sis_db_chars *)argv;
+    // 向对应的socket发送数据
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->cid = reader->cid;
+
+	sis_net_ans_set_key(newinfo, inmem->kname, inmem->sname);
+	if (reader->rfmt & SISDB_FORMAT_BYTES)
+	{
+	    sis_net_ans_with_bytes(newinfo, (const char *)inmem->data, inmem->size);    
+	}
+	else
+	{
+		s_sis_dynamic_db *db = sis_map_list_get(reader->sub_unziper->sdbs, inmem->sname);
+		s_sis_sds omem = sis_db_format_sds(db, NULL, reader->rfmt, (const char *)inmem->data, inmem->size, 1);
+		sis_net_ans_with_bytes(newinfo, omem, sis_sdslen(omem));
+		sis_sdsfree(omem); 
+	}
+    if (context->cb_net_message)
+	{
+		context->cb_net_message(context->cb_source, newinfo);
+	}
+    sis_net_message_destroy(newinfo); 
+    return SIS_METHOD_OK;
+}
+static int cb_sub_start(void *source, void *argv)
+{
+    s_sdcdb_reader *reader = (s_sdcdb_reader *)source;
+    s_sis_worker *sdcdb_worker = (s_sis_worker *)reader->sdcdb_worker;
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)sdcdb_worker->context;
+    const char *workdate = (const char *)argv;
+    // 向对应的socket发送数据
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->cid = reader->cid;
+    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    sis_net_ans_with_sub_start(newinfo, workdate);
+    if (context->cb_net_message)
+	{
+		context->cb_net_message(context->cb_source, newinfo);
+	}
+    sis_net_message_destroy(newinfo); 
+    return 0;
+}
+static int cb_sub_realtime(void *source, void *argv)
+{
+    s_sdcdb_reader *reader = (s_sdcdb_reader *)source;
+    s_sis_worker *sdcdb_worker = (s_sis_worker *)reader->sdcdb_worker;
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)sdcdb_worker->context;
+    const char *workdate = (const char *)argv;
+    // 向对应的socket发送数据
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->cid = reader->cid;
+    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    sis_net_ans_with_sub_wait(newinfo, workdate);
+    if (context->cb_net_message)
+	{
+		context->cb_net_message(context->cb_source, newinfo);
+	}
+    sis_net_message_destroy(newinfo); 
+    return 0;
+}
+
+static int cb_sub_stop(void *source, void *argv)
+{ 
+    s_sdcdb_reader *reader = (s_sdcdb_reader *)source;
+    s_sis_worker *sdcdb_worker = (s_sis_worker *)reader->sdcdb_worker;
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)sdcdb_worker->context;
+    const char *workdate = (const char *)argv;
+    LOG(5)("server send sub stop. %s [%d]\n", (char *)argv, reader->cid);
+    // 向对应的socket发送数据
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->cid = reader->cid;
+    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    sis_net_ans_with_sub_stop(newinfo, workdate);
+    if (context->cb_net_message)
+	{
+		context->cb_net_message(context->cb_source, newinfo);
+	}
+    sis_net_message_destroy(newinfo); 
+    return 0;
+}
+static int cb_dict_keys(void *source, void *argv)
+{
+    s_sdcdb_reader *reader = (s_sdcdb_reader *)source;
+    s_sis_worker *sdcdb_worker = (s_sis_worker *)reader->sdcdb_worker;
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)sdcdb_worker->context;
+    const char *keys = (const char *)argv;
+
+    // 向对应的socket发送数据
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->cid = reader->cid;
+    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->key = sis_sdsnew("_keys_");
+    sis_net_ans_with_chars(newinfo, keys, sis_strlen(keys));
+	if (context->cb_net_message)
+	{
+		context->cb_net_message(context->cb_source, newinfo);
+	}
+    sis_net_message_destroy(newinfo); 
+    return 0;
+}
+static int cb_dict_sdbs(void *source, void *argv)
+{
+    s_sdcdb_reader *reader = (s_sdcdb_reader *)source;
+    s_sis_worker *sdcdb_worker = (s_sis_worker *)reader->sdcdb_worker;
+    s_sdcdb_cxt *context = (s_sdcdb_cxt *)sdcdb_worker->context;
+    const char *sdbs = (const char *)argv;
+    // 向对应的socket发送数据
+    s_sis_net_message *newinfo = sis_net_message_create();
+    newinfo->cid = reader->cid;
+    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->key = sis_sdsnew("_sdbs_");
+    sis_net_ans_with_chars(newinfo, sdbs, sis_strlen(sdbs));
+	if (context->cb_net_message)
+	{
+		context->cb_net_message(context->cb_source, newinfo);
+	}
+    sis_net_message_destroy(newinfo); 
+    return 0;
+}
+///////////////////////////////////////////////////////////////////////////
 //------------------------s_sdcdb_reader --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
+
 
 s_sdcdb_reader *sdcdb_reader_create()
 {
@@ -874,16 +1101,15 @@ void sdcdb_reader_destroy(void *reader_)
 {
 	s_sdcdb_reader *reader = (s_sdcdb_reader *)reader_;
 	// 必须先关闭读句柄 数据才会不再写入 再关闭其他
+	LOG(8)("reader close. cid = %d\n", reader->cid);
 	if (reader->reader)
 	{
 		sis_lock_reader_close(reader->reader);	
 	}
-	printf("---1.1\n"); // ??? 大部分时候不能立即退出
 	if (reader->sub_disker)
 	{
 		sdcdb_snos_read_stop(reader->sub_disker);
 	}
-	printf("---1.2\n");
 	if (reader->sub_unziper)
 	{
 		sdcdb_worker_destroy(reader->sub_unziper);	
@@ -896,57 +1122,84 @@ void sdcdb_reader_destroy(void *reader_)
 	sis_sdsfree(reader->sub_keys);
 	sis_sdsfree(reader->sub_sdbs);
 	sis_sdsfree(reader->serial);
+	LOG(8)("reader close ok. cid = %d\n", reader->cid);
 	sis_free(reader);
-	printf("---1.3\n");
 }
 
 static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t ilen_)
 {
 	s_sdcdb_reader *reader = (s_sdcdb_reader *)source_;
-    if (!in_)
-    {
-        // 表示一个包解析完成 如果数据区有数据就发送
-		s_sdcdb_compress *zipmem = reader->sub_ziper->zip_bits;
-		zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
-		// printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_bits, reader->sub_ziper->zip_size);
-		// sis_memory_set_size(SIS_OBJ_MEMORY(worker->zip_bits), sizeof(s_sdcdb_bytes) + zipmem->size);
-
-		if (zipmem->size > 0)
+	if (reader->cb_sisdb_bytes)
+	{
+		if (!in_)
 		{
-			if (reader->cb_sdcdb_compress)
-			{	
-				reader->cb_sdcdb_compress(reader, zipmem);
-			}
-			if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
-			{
-				sdcdb_worker_zip_flush(reader->sub_ziper, 1);
-			}
-			else
-			{
-				sdcdb_worker_zip_flush(reader->sub_ziper, 0);
-			}
+			// 数据包结束
+			return 0;
 		}
-        return 0;
-    }
-
-    s_sis_sds keyn = sis_map_list_geti(reader->sub_unziper->keys, kidx_);
-	s_sis_dynamic_db *db = sis_map_list_geti(reader->sub_unziper->sdbs, sidx_);
-	if (!db || !keyn)
-	{
-		return 0;
+		s_sis_sds kname = sis_map_list_geti(reader->sub_unziper->keys, kidx_);
+		s_sis_dynamic_db *db = sis_map_list_geti(reader->sub_unziper->sdbs, sidx_);
+		if (!db || !kname)
+		{
+			return 0;
+		}
+		int kidx = sis_map_list_get_index(reader->sub_ziper->keys, kname);
+		int sidx = sis_map_list_get_index(reader->sub_ziper->sdbs, db->name);
+		if (kidx < 0 || sidx < 0)
+		{
+			// 通过此判断是否是需要的key和sdb
+			return 0;
+		}
+		s_sis_db_chars inmem = {0};
+		inmem.kname = kname;
+		inmem.sname = db->name;
+		inmem.data = in_;
+		inmem.size = ilen_;
+		reader->cb_sisdb_bytes(reader, &inmem);
 	}
-	int kidx = sis_map_list_get_index(reader->sub_ziper->keys, keyn);
-	int sidx = sis_map_list_get_index(reader->sub_ziper->sdbs, db->name);
-	if (kidx < 0 || sidx < 0)
+	if (reader->cb_sdcdb_compress)
 	{
-		return 0;
+		if (!in_)
+		{
+			// 表示一个包解析完成 如果数据区有数据就发送
+			s_sdcdb_compress *zipmem = reader->sub_ziper->zip_bits;
+			zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
+			// printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_bits, reader->sub_ziper->zip_size);
+			// sis_memory_set_size(SIS_OBJ_MEMORY(worker->zip_bits), sizeof(s_sdcdb_bytes) + zipmem->size);
+
+			if (zipmem->size > 0)
+			{
+				reader->cb_sdcdb_compress(reader, zipmem);
+				if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
+				{
+					sdcdb_worker_zip_flush(reader->sub_ziper, 1);
+				}
+				else
+				{
+					sdcdb_worker_zip_flush(reader->sub_ziper, 0);
+				}
+			}
+			return 0;
+		}
+
+		s_sis_sds kname = sis_map_list_geti(reader->sub_unziper->keys, kidx_);
+		s_sis_dynamic_db *db = sis_map_list_geti(reader->sub_unziper->sdbs, sidx_);
+		if (!db || !kname)
+		{
+			return 0;
+		}
+		int kidx = sis_map_list_get_index(reader->sub_ziper->keys, kname);
+		int sidx = sis_map_list_get_index(reader->sub_ziper->sdbs, db->name);
+		if (kidx < 0 || sidx < 0)
+		{
+			return 0;
+		}
+
+		// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, db->name, kidx, sidx, kidx_, sidx_);
+		sdcdb_worker_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
 	}
-
-	// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", keyn, db->name, kidx, sidx, kidx_, sidx_);
-	sdcdb_worker_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
-
     return 0;
 }
+
 
 int sdcdb_reader_new_history(s_sdcdb_reader *reader_)
 {
@@ -1019,8 +1272,8 @@ int sdcdb_reader_realtime_start(s_sdcdb_reader *reader_)
 		}	
 		work_keys = sis_match_key(reader_->sub_keys, sdcdb->work_keys);
 		work_sdbs = sis_match_sdb_of_map(reader_->sub_sdbs, sdcdb->sdbs);
-        sdcdb_worker_set_keys(reader_->sub_ziper, work_keys);
-        sdcdb_worker_set_sdbs(reader_->sub_ziper, work_sdbs);
+		sdcdb_worker_set_keys(reader_->sub_ziper, work_keys);
+		sdcdb_worker_set_sdbs(reader_->sub_ziper, work_sdbs);
 
 		if (!reader_->sub_unziper)
 		{
@@ -1094,5 +1347,115 @@ int sdcdb_reader_realtime_stop(s_sdcdb_reader *reader_)
 	}
 	return 0;
 }
+// // 从磁盘中获取数据
+// s_sis_sds sisdb_disk_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, int iformat_, int workdate_, s_sis_json_node *node_)
+// {
+//     char fn[32];
+//     sis_llutoa(workdate_, fn, 32, 10);
+//     char work_path[512];
+//     sis_sprintf(work_path, 512, "%s%s/", sisdb_->fast_path, sisdb_->name);
+//     s_sis_disk_class *read_class = sis_disk_class_create(); 
+//     if (sis_disk_class_init(read_class, SIS_DISK_TYPE_SNO, work_path, fn) 
+//         || sis_disk_file_read_start(read_class))
+//     {
+//         sis_disk_class_destroy(read_class);
+//         return NULL;
+//     }
+//     s_sis_sds kname = NULL; s_sis_sds sname = NULL; 
+//     int cmds = sis_str_divide_sds(key_, '.', &kname, &sname);
+//     if (cmds < 2)
+//     {
+//         sis_disk_class_destroy(read_class);
+//         return NULL;
+//     }
+//     s_sisdb_table *tb = sis_map_list_get(sisdb_->sdbs, sname);
+
+//     s_sis_disk_reader *reader = sis_disk_reader_create(NULL);
+//     // reader->issub = 0;
+//     // printf("%s| %s | %s\n", context->read_cb->sub_keys, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
+//     sis_disk_reader_set_sdb(reader, sname);
+//     sis_disk_reader_set_key(reader, kname); 
+//     sis_sdsfree(kname); sis_sdsfree(sname);
+
+//     // sub 是一条一条的输出
+//     // get 是所有符合条件的一次性输出
+//     s_sis_object *obj = sis_disk_file_read_get_obj(read_class, reader);
+//     printf("obj = %p\n",obj);
+//     sis_disk_reader_destroy(reader);
+
+//     sis_disk_file_read_stop(read_class);
+//     sis_disk_class_destroy(read_class); 
+
+//     if (obj)
+//     {
+//         const char *fields = NULL;
+//         if (node_ && sis_json_cmp_child_node(node_, "fields"))
+//         {
+//             fields = sis_json_get_str(node_, "fields");
+//         }
+//         // printf(" %s iformat_ = %x %d\n", key_, iformat_, obj->style);
+//         // sis_out_binary("sno", SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
+//         if (iformat_ == SISDB_FORMAT_BYTES)
+//         {
+//             bool iswhole = sisdb_field_is_whole(fields);
+//             if (iswhole)
+//             {
+//                 s_sis_sds o = sis_sdsnewlen(SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
+//                 sis_object_destroy(obj);
+//                 return o;
+//             }
+//             s_sis_string_list *field_list = sis_string_list_create();
+//             sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
+//             s_sis_sds other = sisdb_collect_struct_to_sds(tb->db, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), field_list);
+//             sis_string_list_destroy(field_list);
+//             return other;
+//         }
+//         s_sis_sds o = sisdb_get_chars_format_sds(tb, key_, iformat_, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), fields);
+//         sis_object_destroy(obj);
+//         return o;
+//     }
+//     return NULL;
+// }
+
+// // 获取sno的数据
+// s_sis_sds sisdb_get_sno_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)
+// {
+//     s_sis_sds o = NULL;    
+//     s_sisdb_collect *collect = sisdb_get_collect(sisdb_, key_);  
+//     if (!argv_)
+//     {
+//         *format_ = SISDB_FORMAT_CHARS;
+//         o = sisdb_collect_fastget_sds(collect, key_, SISDB_FORMAT_CHARS);
+//     }
+//     else
+//     {
+//         s_sis_json_handle *handle = sis_json_load(argv_, sis_sdslen(argv_));
+//         if (handle)
+//         {
+//             // 带参数 
+//             int iformat = sis_db_get_format_from_node(handle->node, SISDB_FORMAT_JSON);
+//             *format_ = iformat & SISDB_FORMAT_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
+//             // 找 date 字段  
+//             date_t workdate = sis_json_get_int(handle->node, "date", sisdb_->work_date);
+//             printf("----- %d %d\n", workdate, sisdb_->work_date);
+//             if (workdate < sisdb_->work_date)
+//             {
+//                 // 从磁盘中获取数据
+//                 o = sisdb_disk_get_sno_sds(sisdb_, key_, iformat, workdate, handle->node); 
+//             }
+//             else
+//             {
+//                 o = sisdb_collect_get_sds(collect, key_, iformat, handle->node);                          
+//             }
+//             sis_json_close(handle);
+//         }
+//         else
+//         {
+//             *format_ = SISDB_FORMAT_CHARS;
+//             o = sisdb_collect_fastget_sds(collect, key_, SISDB_FORMAT_CHARS);
+//         }        
+//     } 
+//     return o;
+// } 
 
 //////////////////////////////////////////////////////////////////

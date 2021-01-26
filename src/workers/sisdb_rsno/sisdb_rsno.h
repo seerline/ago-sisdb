@@ -4,7 +4,6 @@
 #include "sis_method.h"
 
 #include "sdcdb.h"
-#include "sisdb.h"
 #include <sis_disk.h>
 
 #define  SIS_RSNO_NONE     0 // 订阅未开始
@@ -35,7 +34,7 @@ typedef struct s_sisdb_rsno_cxt
     sis_method_define *cb_dict_keys;    // 代码串 字符串
 
     sis_method_define *cb_sdcdb_compress;  // s_sdcdb_compress
-    sis_method_define *cb_sisdb_bytes;     // s_sisdb_chars
+    sis_method_define *cb_sisdb_bytes;     // s_sis_db_chars
 
 }s_sisdb_rsno_cxt;
 

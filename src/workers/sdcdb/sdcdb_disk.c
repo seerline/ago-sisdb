@@ -126,7 +126,7 @@ int sdcdb_wlog_stop(s_sdcdb_cxt *sdcdb_)
 }
 int sdcdb_wlog_move(s_sdcdb_cxt *sdcdb_)
 {
-	return sis_worker_command(sdcdb_->wlog_worker, "clear", sdcdb_->dbname); 
+	return sis_worker_command(sdcdb_->wlog_worker, "move", sdcdb_->dbname); 
 }
 
 //////////////////////////////////////////////////////////////////
@@ -163,7 +163,7 @@ static int cb_sdcdb_wfile_load(void *worker_, void *argv_)
 	{
 		return SIS_METHOD_ERROR;
 	}
-    // printf("cb_sdcdb_wlog_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
+    // printf("cb_sdcdb_wfile_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
     //         netmsg->source? netmsg->source : "nil",
     //         netmsg->cmd ?   netmsg->cmd : "nil",
     //         netmsg->key?    netmsg->key : "nil",
@@ -241,26 +241,7 @@ int sdcdb_wlog_save_snos(s_sdcdb_cxt *sdcdb_)
 	}
 	return 1;
 }
-void _sdcdb_read_send_data(s_sdcdb_reader *reader, int issend)
-{
-	s_sdcdb_compress *zipmem = reader->sub_ziper->zip_bits;
-	zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
-	if ((issend && zipmem->size > 0 ) || (int)zipmem->size > reader->sub_ziper->zip_size - 256)
-	{
-		if (reader->cb_sdcdb_compress)
-		{	
-			reader->cb_sdcdb_compress(reader, zipmem);
-		}
-		if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
-		{
-			sdcdb_worker_zip_flush(reader->sub_ziper, 1);
-		}
-		else
-		{
-			sdcdb_worker_zip_flush(reader->sub_ziper, 0);
-		}
-	}
-}
+
 ///////////////////////////////////////////
 //  callback define begin
 ///////////////////////////////////////////
@@ -291,14 +272,17 @@ s_sdcdb_disk_worker *sdcdb_snos_read_start(s_sis_json_node *config_, s_sdcdb_rea
     sis_message_set_method(msg, "cb_sub_stop"  ,  worker->sdcdb_reader->cb_sub_stop );
     sis_message_set_method(msg, "cb_dict_sdbs" ,  worker->sdcdb_reader->cb_dict_sdbs);
     sis_message_set_method(msg, "cb_dict_keys" ,  worker->sdcdb_reader->cb_dict_keys);
-    // context->cb_sisdb_bytes     = sis_message_get_method(msg, "cb_sisdb_bytes"   );
 
-	if (!worker->sdcdb_reader->sub_ziper)
+	if (worker->sdcdb_reader->iszip)
 	{
 		s_sdcdb_cxt *sdcdb = ((s_sis_worker *)worker->sdcdb_reader->sdcdb_worker)->context;
 		sis_message_set_int(msg, "zip-size" , sdcdb->zip_size);
 		sis_message_set_int(msg, "init-size", sdcdb->initsize);
 		sis_message_set_method(msg, "cb_sdcdb_compress", worker->sdcdb_reader->cb_sdcdb_compress);
+	}
+	else
+	{
+		sis_message_set_method(msg, "cb_sisdb_bytes", worker->sdcdb_reader->cb_sisdb_bytes);
 	}
 
 	sis_worker_command(worker->rdisk_worker, "sub", msg);

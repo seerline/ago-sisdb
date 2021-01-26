@@ -164,7 +164,7 @@ static int cb_sisdb_bytes(void *worker_, void *argv_)
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
     _write_head(context, 0);
 	// printf("%s\n",__func__);
-    s_sisdb_chars *inmem = (s_sisdb_chars *)argv_;
+    s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
     sis_disk_file_write_sdb(context->write_class, inmem->kname, inmem->sname, inmem->data, inmem->size);
     // s_v0_cf_snapshot *snapshot = (s_v0_cf_snapshot *)argv_;
         // snapshot->code, MARKET_SDB_CF_SNAPSHOT, 
@@ -209,16 +209,9 @@ static int cb_unzip_info(void *source, int kidx, int sidx, char *in, size_t ilen
 int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
+    // s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
 
     s_sis_message *msg = (s_sis_message *)argv_;
-    // 这里可以设置目录
-    s_sis_sds wpath = sis_message_get_str(msg, "work-path");
-    if (wpath)
-    {
-        sis_sdsfree(context->work_path);
-        context->work_path = sis_sdsdup(wpath);
-    }
     sis_message_set(msg, "source", worker, NULL);
     sis_message_set_method(msg, "cb_sub_start"      ,cb_sub_start);
     sis_message_set_method(msg, "cb_sub_stop"       ,cb_sub_stop);

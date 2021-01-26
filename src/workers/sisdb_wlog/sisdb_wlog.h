@@ -35,7 +35,7 @@ int cmd_sisdb_wlog_write(void *worker_, void *argv_);
 int cmd_sisdb_wlog_close(void *worker_, void *argv_);
 
 // 删除wlog文件 argv_ 为 表名
-int cmd_sisdb_wlog_clear(void *worker_, void *argv_);
+int cmd_sisdb_wlog_move(void *worker_, void *argv_);
 // 检查wlog文件是否存在 argv_ 为 表名
 int cmd_sisdb_wlog_exist(void *worker_, void *argv_);
 

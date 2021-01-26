@@ -12,19 +12,19 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_server_methods[] = {
-    {"auth",     cmd_sisdb_server_auth, SIS_METHOD_ACCESS_READ, NULL},   // 用户登录
-    {"show",     cmd_sisdb_server_show, SIS_METHOD_ACCESS_READ, NULL},   // 显示有多少数据集
-    {"save",     cmd_sisdb_server_save, SIS_METHOD_ACCESS_ADMIN, NULL},  // 手动存盘
-    {"pack",     cmd_sisdb_server_pack, SIS_METHOD_ACCESS_ADMIN, NULL},  // 手动清理磁盘旧的数据
-    {"call",     cmd_sisdb_server_call, SIS_METHOD_ACCESS_READ, NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
-    {"wget",     cmd_sisdb_server_wget, SIS_METHOD_ACCESS_READ, NULL},   // get 后是否写log文件 方便查看信息
+    {"auth",     cmd_sisdb_server_auth, SIS_METHOD_ACCESS_READ,  NULL},   // 用户登录
+    {"show",     cmd_sisdb_server_show, SIS_METHOD_ACCESS_READ,  NULL},   // 显示有多少数据集
+    {"save",     cmd_sisdb_server_save, SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动存盘
+    {"pack",     cmd_sisdb_server_pack, SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动清理磁盘旧的数据
+    {"wget",     cmd_sisdb_server_wget, SIS_METHOD_ACCESS_READ,  NULL},   // get 后是否写log文件 方便查看信息
+    {"call",     cmd_sisdb_server_call, SIS_METHOD_ACCESS_READ,  NULL},   // 用于不同数据表之间关联计算的用途，留出其他语言加载的接口
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_server = {
     sisdb_server_init,
-    sisdb_server_work_init,
-    sisdb_server_working,
-    sisdb_server_work_uninit,
+    NULL,
+    NULL,
+    NULL,
     sisdb_server_uninit,
     sisdb_server_method_init,
     sisdb_server_method_uninit,
@@ -32,29 +32,36 @@ s_sis_modules sis_modules_sisdb_server = {
     sisdb_server_methods,
 };
 
-static int cb_reader_recv(void *cls_, s_sis_object *in_);
-// static int cb_reader_wlog(void *cls_, s_sis_object *in_);
-static int cb_reader_convert(void *cls_, s_sis_object *in_);
-static void cb_recv(void *worker_, s_sis_net_message *msg);
+static int  cb_reader_recv(void *worker_, s_sis_object *in_);
+static int  cb_reader_convert(void *worker_, s_sis_object *in_);
+static void cb_socket_recv(void *worker_, s_sis_net_message *msg);
 
 static void _cb_connected(void *worker_, int sid)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-		sis_net_class_set_cb(context->socket, sid, worker, cb_recv);
+	sis_net_class_set_cb(context->socket, sid, worker, cb_socket_recv);
     LOG(5)("client connect ok. [%d]\n", sid);
 }
-
 static void _cb_disconnect(void *worker_, int sid)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-	sis_net_class_set_cb(context->socket, sid, worker, NULL);
+	// sis_net_class_set_cb(context->socket, sid, worker, NULL);
     // 清理客户信息
-    // 尤其是订阅信息 要如何干净的退出 ??? 应该向所有的数据工作线程发送停止消息
+    sisdb_server_decr_auth(context, sid);
+    
+    _sisdb_server_stop(context, sid);
+    // 向所有表发布信息 停止工作
     LOG(5)("client disconnect. [%d]\n", sid);	
 }
-
+// 所有子数据集通过网络主动返回的数据都在这里返回
+static int cb_net_message(void *context_, void *argv_)
+{
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)context_;
+    sis_net_class_send(context->socket, (s_sis_net_message *)argv_);
+    return 0;
+}
 bool sisdb_server_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -63,41 +70,18 @@ bool sisdb_server_init(void *worker_, void *argv_)
     s_sisdb_server_cxt *context = SIS_MALLOC(s_sisdb_server_cxt, context);
     worker->context = context;
 
-    sis_mutex_init(&(context->wlog_lock), NULL);
-
     context->level = sis_json_get_int(node, "level", 10);
 
-    context->recv_list = sis_lock_list_create(16*1024*1024);
+    context->recv_list = sis_lock_list_create(16 * 1024 * 1024);
     context->reader_recv = sis_lock_reader_create(context->recv_list, 
         SIS_UNLOCK_READER_HEAD, worker, cb_reader_recv, NULL);
     sis_lock_reader_open(context->reader_recv);
-
-    s_sis_json_node *wlognode = sis_json_cmp_child_node(node, "wlog-save");
-    if (wlognode)
-    {
-        s_sis_worker *service = sis_worker_create(worker, wlognode);
-        if (service)
-        {
-            context->wlog_save = service;  // 根据是否为空判断是订阅还是自动执行
-            context->wlog_method = sis_worker_get_method(context->wlog_save, "write");
-        }     
-    }
-
-    s_sis_json_node *fastnode = sis_json_cmp_child_node(node, "fast-save");
-    if (fastnode)
-    {
-        s_sis_worker *service = sis_worker_create(worker, fastnode);
-        if (service)
-        {
-            context->fast_save = service;  // 根据是否为空判断是订阅还是自动执行
-        }     
-    }
 
     s_sis_json_node *authnode = sis_json_cmp_child_node(node, "auth");
     if (authnode)
     {
         context->user_auth = sis_map_pointer_create_v(sis_free_call);
-        context->user_access = sis_map_int_create();
+        context->user_access = sis_map_pointer_create(); // 不用释放
         s_sis_json_node *next = sis_json_first_node(authnode);
         while(next)
         {
@@ -106,7 +90,7 @@ bool sisdb_server_init(void *worker_, void *argv_)
             userinfo->access = SIS_METHOD_ACCESS_READ;
             if (!sis_strcasecmp(access, "write"))
             {
-                userinfo->access = SIS_METHOD_ACCESS_WRITE;
+                userinfo->access = SIS_METHOD_ACCESS_RDWR;
             }
             if (!sis_strcasecmp(access, "admin"))
             {
@@ -117,6 +101,7 @@ bool sisdb_server_init(void *worker_, void *argv_)
             if (!userinfo->username[0])
             {
                 sis_strcpy(userinfo->username, 32, "guest");
+                sis_strcpy(userinfo->password, 32, "guest1234");
                 // 如果不设置用户名就默认 guest 登录
             }
             sis_map_pointer_set(context->user_auth, userinfo->username, userinfo);
@@ -131,12 +116,15 @@ bool sisdb_server_init(void *worker_, void *argv_)
         s_sis_json_node *next = sis_json_first_node(dsnode);
         while(next)
         {
-            // s_sis_worker *service = sis_worker_create(worker, next);
             s_sis_worker *service = sis_worker_create(NULL, next);
             if (service)
             {
+                s_sis_message *msg = sis_message_create();
+                sis_message_set(msg, "cb_source", context, NULL);
+                sis_message_set_method(msg, "cb_net_message", cb_net_message);
+                sis_worker_command(service, "init", msg);
+                sis_message_destroy(msg);
                 sis_map_list_set(context->datasets, next->key, service);
-                // printf("add service : %s %d\n", next->key, 1);
             }
             next = next->next;
         }  
@@ -145,15 +133,12 @@ bool sisdb_server_init(void *worker_, void *argv_)
     if (cvnode)
     {
         context->converts = sis_map_pointer_create_v(sis_pointer_list_destroy);
-
         sisdb_convert_init(context, cvnode);
-
         context->reader_convert = sis_lock_reader_create(context->recv_list, 
             SIS_UNLOCK_READER_HEAD, worker, cb_reader_convert, NULL);
         sis_lock_reader_open(context->reader_convert);
     }
 
-    // context->message = sis_message_create();
     // 数据集初始化和服务启动完毕，这里开始加载数据
     // 应该需要判断数据的版本号，如果不同，应该对磁盘上的数据进行数据字段重新匹配
     s_sis_json_node *catchcfg = sis_json_cmp_child_node(node, "catchcfg");
@@ -177,17 +162,8 @@ bool sisdb_server_init(void *worker_, void *argv_)
         context->socket->cb_connected = _cb_connected;
         context->socket->cb_disconnect = _cb_disconnect;
     }
-    int count = sis_map_list_getsize(context->datasets);
-    for (int i = 0; i < count; i++)
-    {
-        s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
-        s_sis_message *msg = (s_sis_message *)sis_message_create();
-        sis_message_set(msg, "socket", context->socket, NULL);
-        sis_message_set_str(msg, "fastpath", "data/", 5);
-        sis_worker_command(service, "init", msg);
-        sis_message_destroy(msg);
-    }
-    // 加载数据
+
+    // 加载log中的当日数据
     if (_sisdb_server_load(context) != SIS_METHOD_OK)
     {
         // printf("...load fail\n");
@@ -198,6 +174,8 @@ bool sisdb_server_init(void *worker_, void *argv_)
     {
         return false;
     }
+    
+    context->status = SISDB_STATUS_WORK;
 
     return true;
 }
@@ -207,37 +185,26 @@ void sisdb_server_uninit(void *worker_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 
+    context->status = SISDB_STATUS_EXIT;
+
     if (context->socket)
     {
         sis_net_class_destroy(context->socket);
     }
-    // sis_message_destroy(context->message);
     if (context->datasets)
     {
         sis_map_list_destroy(context->datasets);
     }
     if (context->user_auth)
     {
-        sis_map_int_destroy(context->user_access);
+        sis_map_pointer_destroy(context->user_access);
         sis_map_pointer_destroy(context->user_auth);
     }
-
-    if (context->fast_save)
-    {
-        sis_worker_destroy(context->fast_save);
-    }
-
-    if (context->wlog_save)
-    {
-        sis_worker_destroy(context->wlog_save);
-    }
-
     if (context->converts)
     {
     	sis_lock_reader_close(context->reader_convert);
         sis_map_pointer_destroy(context->converts);
     }
-
 	sis_lock_reader_close(context->reader_recv);
     sis_lock_list_destroy(context->recv_list);
 
@@ -245,7 +212,7 @@ void sisdb_server_uninit(void *worker_)
     worker->context = NULL;
 }
 
-static void cb_recv(void *worker_, s_sis_net_message *msg)
+static void cb_socket_recv(void *worker_, s_sis_net_message *msg)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
@@ -270,8 +237,7 @@ void sisdb_server_reply_error(s_sisdb_server_cxt *context, s_sis_net_message *ne
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
-
-void sisdb_server_reply_null(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
+void sisdb_server_reply_null(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, const char *name)
 {
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "no key [%s].", name);
@@ -279,7 +245,7 @@ void sisdb_server_reply_null(s_sisdb_server_cxt *context, s_sis_net_message *net
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
-void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
+void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, const char *name)
 {
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "no find method [%s].", name);
@@ -287,7 +253,7 @@ void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
-void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, char *name)
+void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, const char *name)
 {
     s_sis_sds reply = sis_sdsempty();
     reply = sis_sdscatfmt(reply, "no find service [%s].", name);
@@ -295,28 +261,24 @@ void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_messag
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
-void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
+void sisdb_server_send_service(s_sis_worker *worker, const char *sdbname, const char *cmdname, s_sis_net_message *netmsg)
 {
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
-    // printf("cb_reader_recv: %d %s %s %s\n", cmds, argv[0], argv[1], netmsg->key);
-
-    if (cmds == 1)
+    if (!sdbname)
     {
-        int o = sis_worker_command(worker, netmsg->cmd, netmsg);
+        int o = sis_worker_command(worker, cmdname, netmsg);
         if (o == SIS_METHOD_OK)
         {
             sis_net_class_send(context->socket, netmsg);
         }  
         else if (o == SIS_METHOD_NULL)
         {
-            sisdb_server_reply_null(context, netmsg, netmsg->cmd);
+            sisdb_server_reply_null(context, netmsg, cmdname);
         }
         else if (o == SIS_METHOD_NOCMD)
         {
-            sisdb_server_reply_no_method(context, netmsg, netmsg->cmd);
+            sisdb_server_reply_no_method(context, netmsg, cmdname);
         }
         else // if (o == SIS_METHOD_ERROR)
         {
@@ -325,21 +287,21 @@ void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
     }
     else
     {
-        s_sis_worker *service = sis_map_list_get(context->datasets, argv[0]);
+        s_sis_worker *service = sis_map_list_get(context->datasets, sdbname);
         if (service)
         {
-            int o = sis_worker_command(service, argv[1], netmsg);
+            int o = sis_worker_command(service, cmdname, netmsg);
             if (o == SIS_METHOD_OK)
             {
                 sis_net_class_send(context->socket, netmsg);
             } 
             else if (o == SIS_METHOD_NULL)
             {
-                sisdb_server_reply_null(context, netmsg, argv[1]);
+                sisdb_server_reply_null(context, netmsg, cmdname);
             }
             else if (o == SIS_METHOD_NOCMD)
             {
-                sisdb_server_reply_no_method(context, netmsg, argv[1]);
+                sisdb_server_reply_no_method(context, netmsg, cmdname);
             }
             else // if (o == SIS_METHOD_ERROR)
             {
@@ -348,48 +310,11 @@ void sisdb_server_send_service(s_sis_worker *worker, s_sis_net_message *netmsg)
         } 
         else
         {
-            sisdb_server_reply_no_service(context, netmsg, argv[0]);
+            sisdb_server_reply_no_service(context, netmsg, sdbname);
         }               
     }  
 }
 
-// static int cb_reader_wlog(void *worker_, s_sis_object *in_)
-// {
-//     s_sis_worker *worker = (s_sis_worker *)worker_; 
-//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-//     if (!context->wlog_method || // 没有方法就不执行下面这句
-//         (context->user_auth && !context->logined))  // 没有登录成功
-//     {
-//         return 0;
-//     }
-//     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
-//     if(netmsg->style & SIS_NET_INSIDE)
-//     {
-//         return 0;
-//     }
-//     sis_object_incr(in_);
-
-//     char argv[2][128]; 
-//     // int cmds = 
-//     sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
-
-//     s_sis_worker *service = sis_map_list_get(context->datasets, argv[0]);
-//     if (service)
-//     {
-//         s_sis_method *method = sis_worker_get_method(service, argv[1]);
-//         if (method && method->access == SIS_METHOD_ACCESS_WRITE)
-//         {
-//             printf("wlog: %s %s\n", netmsg->key, netmsg->cmd);
-
-//             // 只记录写盘的数据
-//             sis_mutex_lock(&context->wlog_lock);
-//             context->wlog_method->proc(context->wlog_save, netmsg);
-//             sis_mutex_unlock(&context->wlog_lock);
-//         }
-//     }
-// 	sis_object_decr(in_);
-// 	return 0;
-// }
 // 返回值 -1 为没有权限
 int sisdb_server_get_access(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
 {
@@ -399,22 +324,31 @@ int sisdb_server_get_access(s_sisdb_server_cxt *context, s_sis_net_message *netm
     }
     char userid[16];   
     sis_lldtoa(netmsg->cid, userid, 16, 10);
-    return sis_map_int_get(context->user_access, userid);
+    s_sisdb_userinfo *info = sis_map_pointer_get(context->user_access, userid);
+    return info->access;
 }
-bool sisdb_method_access(s_sis_method *method, int access)
+bool sisdb_check_method_access(s_sis_method *method, int access)
 {
-    if (!method->access || (access == SIS_METHOD_ACCESS_ADMIN))
+    if (!method->access)
+    {
+        return true;
+    }
+    if (method->access & SIS_METHOD_ACCESS_NONET)
+    {
+        return false;
+    }
+    if (access == SIS_METHOD_ACCESS_ADMIN)
     {
         return true;
     }
     if (access == SIS_METHOD_ACCESS_WRITE && 
-        method->access == SIS_METHOD_ACCESS_ADMIN)
+        method->access & SIS_METHOD_ACCESS_DEL)
     {
         return false;
     }
     if (access == SIS_METHOD_ACCESS_READ &&
-        (method->access == SIS_METHOD_ACCESS_ADMIN ||
-         method->access == SIS_METHOD_ACCESS_WRITE))
+        (method->access & SIS_METHOD_ACCESS_DEL ||
+         method->access & SIS_METHOD_ACCESS_WRITE))
     {
         return false;
     }
@@ -437,35 +371,36 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     {
         // 先写log再处理
         bool make = true; 
-        char argv[2][128]; 
-        int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
+        char sdbname[128]; 
+        char cmdname[128]; 
+        int cmds = sis_str_divide(netmsg->cmd, '.', sdbname, cmdname);
         if (cmds == 2)
         {
-            s_sis_worker *service = sis_map_list_get(context->datasets, argv[0]);
+            printf("%s %s\n", sdbname, cmdname);
+            s_sis_worker *service = sis_map_list_get(context->datasets, sdbname);
             if (service)
             {
-                s_sis_method *method = sis_worker_get_method(service, argv[1]);
+                s_sis_method *method = sis_worker_get_method(service, cmdname);
                 if (!method)
                 {
                     make = false;
                 }
                 else
                 {
-                    if (!sisdb_method_access(method, access))
+                    if (!sisdb_check_method_access(method, access))
                     {
                         // 当前用户是否有权限
+                        // 从网络过来的数据包 只能调用支持网络数据包的方法
                         make = false;
                     }
                     else
                     {
                         // 指令是否为写入
-                        if (method->access == SIS_METHOD_ACCESS_WRITE)
+                        if (method->access & SIS_METHOD_ACCESS_WRITE)
                         {
                             // printf("wlog: %s %s\n", netmsg->key, netmsg->cmd);
                             // 只记录写盘的数据
-                            sis_mutex_lock(&context->wlog_lock);
-                            context->wlog_method->proc(context->wlog_save, netmsg);
-                            sis_mutex_unlock(&context->wlog_lock);
+                            sis_worker_command(service, "wlog", netmsg);
                         }
                     }
                 }
@@ -478,7 +413,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         else
         {
             s_sis_method *method = sis_worker_get_method(worker, netmsg->cmd);
-            if (!method || !sisdb_method_access(method, access))
+            if (!method || !sisdb_check_method_access(method, access))
             {
                 make = false;
             }
@@ -486,11 +421,15 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         
         if (make)
         {
-            // 写完log开始处理
-            sisdb_server_send_service(worker, netmsg);
+            // 此时已经写完log 再开始处理
+            sisdb_server_send_service(worker, cmds == 1 ? NULL : sdbname, cmdname, netmsg);
+        }
+        else
+        {
+            sisdb_server_reply_no_method(context, netmsg, netmsg->cmd);
+            sis_net_class_send(context->socket, netmsg);
         }
     }
-
 	sis_object_decr(in_);
 	return 0;
 }
@@ -500,7 +439,7 @@ static int cb_reader_convert(void *worker_, s_sis_object *in_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    if (context->status != SISDB_STATUS_WORKING)
+    if (context->status != SISDB_STATUS_WORK)
     {
         // 数据库重新加载时不工作
         return 0;
@@ -523,61 +462,45 @@ static int cb_reader_convert(void *worker_, s_sis_object *in_)
 	return 0;
 }
 
-void sisdb_server_work_init(void *worker_)
-{
-}
-void sisdb_server_working(void *worker_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    // 这里要判断是否新的一天 如果是就存盘
-    // 存盘后如果检测到是周五 就执行pack工作
-    // if (context->work_date == 0)
-    // {
-    //     context->work_date = sis_time_get_idate(0);
-    // }
-    // else
-    {
-        int minute = sis_time_get_iminute(0);
-        // 最后一分钟就开始处理数据
-        if (minute >= 2358)
-        {
-            sis_mutex_lock(&context->wlog_lock);
-            _sisdb_server_save(context, context->work_date);
-            int week = sis_time_get_week_ofday(context->work_date);
-            if (week == 5)
-            {
-                _sisdb_server_pack(context);
-            }
-            // 等待新的一天到来
-            while(sis_time_get_idate(0) <= context->work_date)
-            {
-                sis_sleep(1000);
-            }
-            context->work_date = sis_time_get_idate(0);
-            LOG(5)("new workdate = %d\n", context->work_date);
-            // 这步开始时 wlog 已经被清空 
-            _sisdb_server_load(context);
-            // 全部处理完成 修改 数据集的时间
-            int count = sis_map_list_getsize(context->datasets);
-            for (int i = 0; i < count; i++)
-            {
-                s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);                
-                s_sisdb_cxt *cxt = service->context;
-                cxt->work_date = context->work_date;
-            }
-            sis_mutex_unlock(&context->wlog_lock);
-        }
-    }  
-}
-void sisdb_server_work_uninit(void *worker_)
-{
-}
 void sisdb_server_method_init(void *worker_)
 {
 }
 void sisdb_server_method_uninit(void *worker_)
 {
+}
+//////////////////////////////////
+bool sisdb_server_check_auth(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
+{
+    if (!context->user_auth)
+    {
+        return true;
+    }
+    char userid[16];   
+    sis_lldtoa(netmsg->cid, userid, 16, 10);
+    s_sisdb_userinfo *info = sis_map_pointer_get(context->user_access, userid);
+    if (!info)
+    {
+        return false;
+    }
+    return true;
+}
+void sisdb_server_decr_auth(s_sisdb_server_cxt *context, int cid_)
+{
+    if (context->user_auth)
+    {
+        char userid[16];   
+        sis_lldtoa(cid_, userid, 16, 10);
+        sis_map_pointer_del(context->user_access, userid);
+    }
+}
+void sisdb_server_incr_auth(s_sisdb_server_cxt *context, int cid, s_sisdb_userinfo *info)
+{
+    if (context->user_auth)
+    {
+        char userid[16];   
+        sis_lldtoa(cid, userid, 16, 10);
+        sis_map_pointer_set(context->user_access, userid, info);
+    }
 }
 int cmd_sisdb_server_auth(void *worker_, void *argv_)
 {
@@ -598,18 +521,8 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
     else
     {
         // 登录成功
-        char userid[16];   
-        sis_lldtoa(netmsg->cid, userid, 16, 10);
-        sis_map_int_set(context->user_access, userid, uinfo->access);
-
-        if (sis_map_list_getsize(context->datasets) > 0)
-        {
-            sis_net_ans_with_ok(netmsg);
-        }
-        else
-        {
-            sis_net_ans_with_error(netmsg, "auth ok. but no dataset.", 24);
-        }
+        sisdb_server_incr_auth(context, netmsg->cid, uinfo);
+        sis_net_ans_with_ok(netmsg);
     }
     return SIS_METHOD_OK;
 }
@@ -620,52 +533,45 @@ int cmd_sisdb_server_show(void *worker_, void *argv_)
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
         
-    s_sis_json_node *jone = sis_json_create_object();
-    s_sis_json_node *jdbs = sis_json_create_object();
-    sis_json_object_add_node(jone, "datasets", jdbs);
+    s_sis_sds sdbs = NULL;
+    s_sis_dict_entry *de;
+    s_sis_dict_iter *di = sis_dict_get_iter(context->datasets->map);
+    while ((de = sis_dict_next(di)) != NULL)
+    {
+        if (!sdbs)
+        {
+            sdbs = sis_sdsnew((char *)sis_dict_getkey(de));
+        }
+        else
+        {
+            sdbs = sis_sdscatfmt(sdbs, ",%s", (char *)sis_dict_getkey(de));
+        }
+    }
+    sis_dict_iter_free(di);
+
+    sis_net_ans_with_chars(netmsg, sdbs, sis_sdslen(sdbs));
+
+    sis_sdsfree(sdbs);
+    return SIS_METHOD_OK;
+}
+
+int _sisdb_server_stop(s_sisdb_server_cxt *context, int sid)
+{
+    // 停止某个客户端的所有未完成工作
+    // -1 表示停止所有工作
+    s_sis_message *msg = (s_sis_message *)sis_message_create();
+    sis_message_set_str(msg, "mode", "reader", 6);
+    sis_message_set_int(msg, "cid", sid);
     int count = sis_map_list_getsize(context->datasets);
     for (int i = 0; i < count; i++)
     {
         s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
-        
-        s_sisdb_cxt *cxt = service->context;
-        s_sis_json_node *jdb = sis_sisdb_make_sdb_node(cxt);
-        sis_json_object_add_node(jdbs, service->workername, jdb);
+        sis_worker_command(service, "clear", msg);
     }
-    size_t len;
-    char *str = sis_json_output_zip(jone, &len);
-
-    sis_net_ans_with_chars(netmsg, str, len);
-
-    sis_free(str);
-    sis_json_delete_node(jone);
-
+    sis_message_destroy(msg);
     return SIS_METHOD_OK;
-
 }
-static int cb_sisdb_wlog_load(void *worker_, void *argv_)
-{
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker_;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    printf("cb_sisdb_wlog_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
-            netmsg->serial? netmsg->serial : "nil",
-            netmsg->cmd ?   netmsg->cmd : "nil",
-            netmsg->key?    netmsg->key : "nil",
-            netmsg->val?    netmsg->val : "nil");   
-
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
-    if (cmds == 2)
-    {
-        s_sis_worker *service = sis_map_list_get(context->datasets, argv[0]);
-        if (service)
-        {
-            sis_worker_command(service, argv[1], netmsg);
-        }              
-    }  
-    return 0;
-}
 // ??? 这里如果文件没有返回错误的情况下 初始就启动不了server 
 // 读取sno文件时，如果客户端中断 服务端会偶尔崩溃 怀疑是数据未清理 检查一下
 // 订阅sno时，会有几秒等待时间 查一下
@@ -676,34 +582,23 @@ int _sisdb_server_load(s_sisdb_server_cxt *context)
     int count = sis_map_list_getsize(context->datasets);
     for (int i = 0; i < count; i++)
     {
-        s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;
-        sis_message_set(msg, "sisdb", sisdb, NULL);
+        s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
         sis_message_set(msg, "config", &context->catch_cfg, NULL);
-        if (sis_worker_command(context->fast_save, "load", msg) != SIS_METHOD_OK)
-        {
-            // sis_message_destroy(msg);
-            // return SIS_METHOD_ERROR;
-        }
+        sis_worker_command(service, "rdisk", msg);
     }
     // 再加载wlog中的数据
     for (int i = 0; i < count; i++)
     {
-        s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;
-        sis_message_set_str(msg, "dbname", sisdb->name, sis_sdslen(sisdb->name));
+        s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
         sis_message_set(msg, "source", context, NULL);
-        sis_message_set_method(msg, "cb_recv", cb_sisdb_wlog_load);
-        if (sis_worker_command(context->wlog_save, "read", msg) != SIS_METHOD_OK)
+        if (sis_worker_command(service, "rlog", msg) != SIS_METHOD_OK)
         {
-            // 不管有没有log都继续向下处理
-            // printf("load 2....\n");
-            // sis_message_destroy(msg);
-            // return SIS_METHOD_ERROR;
         }
     }
     sis_message_destroy(msg);
     return SIS_METHOD_OK;
 }
-int _sisdb_server_save(s_sisdb_server_cxt *context, int workdate)
+int _sisdb_server_save(s_sisdb_server_cxt *context)
 {
     // 需要把内存数据保存到磁盘中 并清理 wlog 等工作
     int oks = 0;
@@ -711,25 +606,26 @@ int _sisdb_server_save(s_sisdb_server_cxt *context, int workdate)
     int count = sis_map_list_getsize(context->datasets);
     for (int i = 0; i < count; i++)
     {
-        s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;  
-        printf("save [%s] fail. workdate = %d .\n", sisdb->name, workdate);
-      
-        if (sis_worker_command(context->wlog_save, "exist", sisdb->name) != SIS_METHOD_OK)
+        s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
+        if (sis_worker_command(service, "save", msg) == SIS_METHOD_OK)
         {
-            continue;
-        }
-        sis_message_set(msg, "sisdb", sisdb, NULL);
-        sis_message_set_int(msg, "workdate", workdate);       
-        if (sis_worker_command(context->fast_save, "save", msg) == SIS_METHOD_OK)
-        {
-            LOG(5)("save ok. start clear wlog [%s] ...\n", sisdb->name);
-            // 数据已经保存 删除wlog
-            sis_worker_command(context->wlog_save, "clear", sisdb->name);
             oks++;
         }
-        else
+    }
+    sis_message_destroy(msg);
+    return oks;
+}
+int _sisdb_server_pack(s_sisdb_server_cxt *context)
+{
+    int oks = 0;
+    s_sis_message *msg = sis_message_create();
+    int count = sis_map_list_getsize(context->datasets);
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
+        if (sis_worker_command(service, "pack", msg) == SIS_METHOD_OK)
         {
-            LOG(5)("save [%s] fail. workdate = %d .\n", sisdb->name, workdate);
+            oks++;
         }
     }
     sis_message_destroy(msg);
@@ -741,54 +637,23 @@ int cmd_sisdb_server_save(void *worker_, void *argv_)
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    int workdate = context->work_date;
-    if (netmsg->key)
-    {
-        workdate = sis_atoll(netmsg->key);
-    }
-
-    sis_mutex_lock(&context->wlog_lock);
-    int count = _sisdb_server_save(context, workdate);
-    sis_mutex_unlock(&context->wlog_lock);
+    int count = _sisdb_server_save(context);
 
     sis_net_ans_with_int(netmsg, count); 
     return SIS_METHOD_OK;
 }
-int _sisdb_server_pack(s_sisdb_server_cxt *context)
-{
-    int oks = 0;
-    s_sis_message *msg = sis_message_create();
-    int count = sis_map_list_getsize(context->datasets);
-    for (int i = 0; i < count; i++)
-    {
-        s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;
-        sis_message_set(msg, "sisdb", sisdb, NULL);
-        if (sis_worker_command(context->fast_save, "pack", msg) == SIS_METHOD_OK)
-        {
-            oks++;
-        }
-    }
-    sis_message_destroy(msg);
-    return oks;
-}
+
 int cmd_sisdb_server_pack(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    sis_mutex_lock(&context->wlog_lock);
     int count = _sisdb_server_pack(context);
-    sis_mutex_unlock(&context->wlog_lock);
 
     sis_net_ans_with_int(netmsg, count); 
 
     return SIS_METHOD_OK;
-}
-int cmd_sisdb_server_call(void *worker_, void *argv_)
-{
-    // 调用其他扩展方法
-    return SIS_METHOD_ERROR;
 }
 int cmd_sisdb_server_wget(void *worker_, void *argv_)
 {
@@ -797,45 +662,8 @@ int cmd_sisdb_server_wget(void *worker_, void *argv_)
     context->switch_wget = !context->switch_wget;
     return SIS_METHOD_OK;
 }
-
-// int cmd_sisdb_server_snew(void *worker_, void *argv_)
-// {
-//     s_sis_worker *worker = (s_sis_worker *)worker_; 
-//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-//     sis_net_ans_with_ok(netmsg); 
-
-//     return SIS_METHOD_OK;
-// }
-
-// int cmd_sisdb_server_spub(void *worker_, void *argv_)
-// {
-//     s_sis_worker *worker = (s_sis_worker *)worker_; 
-//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-//     sis_net_ans_with_ok(netmsg); 
-
-//     return SIS_METHOD_OK;
-// }
-// int cmd_sisdb_server_ssub(void *worker_, void *argv_)
-// {
-//     s_sis_worker *worker = (s_sis_worker *)worker_; 
-//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-//     sis_net_ans_with_ok(netmsg); 
-
-//     return SIS_METHOD_OK;
-// }
-// int cmd_sisdb_server_sdel(void *worker_, void *argv_)
-// {
-//     s_sis_worker *worker = (s_sis_worker *)worker_; 
-//     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-//     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-//     sis_net_ans_with_ok(netmsg); 
-
-//     return SIS_METHOD_OK;
-// }
+int cmd_sisdb_server_call(void *worker_, void *argv_)
+{
+    // 调用其他扩展方法
+    return SIS_METHOD_ERROR;
+}

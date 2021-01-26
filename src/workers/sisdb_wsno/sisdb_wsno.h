@@ -4,7 +4,6 @@
 #include "sis_method.h"
 
 #include "sdcdb.h"
-#include "sisdb.h"
 #include <sis_disk.h>
 
 typedef struct s_sisdb_wsno_cxt
@@ -21,15 +20,6 @@ typedef struct s_sisdb_wsno_cxt
 	s_sis_sds          wsno_sdbs; 
 
 	s_sdcdb_worker    *wsno_unzip;     // 解压 s_sdcdb_compress 中来的数据
-
-    // sis_method_define *cb_sub_start;    // 必须是字符的日期
-    // sis_method_define *cb_sub_stop;     // 必须是字符的日期
-
-    // sis_method_define *cb_dict_sdbs;    // 表结构 json字符串 
-    // sis_method_define *cb_dict_keys;    // 代码串 字符串
-
-    // sis_method_define *cb_sdcdb_compress;  // s_sdcdb_compress
-    // sis_method_define *cb_sisdb_bytes;     // s_sisdb_chars
 
 }s_sisdb_wsno_cxt;
 

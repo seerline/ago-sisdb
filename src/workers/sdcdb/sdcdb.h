@@ -18,14 +18,11 @@
 #include "sis_obj.h"
 #include "sis_disk.h"
 #include "sis_net.io.h"
+#include "sis_db.h"
 
 #include "worker.h"
 
 #define ZIPMEM_MAXSIZE (16*1024)
-
-#define SDCDB_CLEAR_MODE_ALL    0
-#define SDCDB_CLEAR_MODE_DATA   1
-#define SDCDB_CLEAR_MODE_READER 2
 
 #define SDCDB_DISK_INIT 0
 #define SDCDB_DISK_WORK 1
@@ -34,13 +31,6 @@
 #pragma pack(push,1)
 
 // 单个数据结构
-typedef struct s_sdcdb_chars
-{
-	char   *kname;
-	char   *sname;
-	uint16  size;
-	void   *data;     
-} s_sdcdb_chars;
 
 typedef struct s_sdcdb_bytes
 {
@@ -64,9 +54,9 @@ typedef struct s_sdcdb_compress
 typedef struct s_sdcdb_worker
 {
 	void                 *cb_source;   // 返回对象 unsdcdb专用
-	cb_sis_struct_decode *cb_decode;     // 按结构返回数据 unsdcdb专用
+	cb_sis_struct_decode *cb_decode;   // 按结构返回数据 unsdcdb专用
 
-	s_sdcdb_compress     *zip_bits;     // sdcdb 专用
+	s_sdcdb_compress     *zip_bits;    // sdcdb 专用
 	int      	          initsize;    // 超过多大数据重新初始化 字节
 	int      	          zip_size;    // 单个数据块的大小
 	int      	          cur_size;    // 缓存数据当前的尺寸
@@ -83,6 +73,9 @@ typedef struct s_sdcdb_reader
 	// 以下两个回调互斥
 	void      *sdcdb_worker;          // 来源对象
 
+	int        rfmt;                  // 返回数据的格式
+
+	bool       iszip;                 // 是否返回压缩格式
 	bool       ishead;                // 是否从头发送
 	bool       isinit;                // 0 刚刚订阅 1 正常订阅 
 	bool       isstop;                // 为真 什么也不能干
@@ -104,6 +97,8 @@ typedef struct s_sdcdb_reader
 	///////以上为定制数据处理///////
 
 	s_sis_lock_reader  *reader;       // 每个读者一个订阅者
+	// 返回数据 s_sis_db_chars
+	sis_method_define  *cb_sisdb_bytes;
 	// 返回压缩的数据 
 	sis_method_define  *cb_sdcdb_compress;      // s_sdcdb_compress
 
@@ -120,10 +115,7 @@ typedef struct s_sdcdb_disk_worker
 {
 	int                rdisk_status;  // 读取磁盘的状态 0 初始或退出完成 1 正常 2 请求中断退出
 	s_sis_worker      *rdisk_worker;  // 读文件类
-	// s_sis_sds          work_path; 
 	s_sdcdb_reader    *sdcdb_reader;  // 仅仅是指针
-	// s_sis_disk_class  *rdisk_worker;
-	// s_sis_thread       rdisk_thread;  // 读取磁盘的线程   
 } s_sdcdb_disk_worker;
 
 // 来源数据只管写盘 只有key, sdb有的才会保存数据
@@ -150,7 +142,7 @@ typedef struct s_sdcdb_cxt
 	s_sis_sds dbname;  // 数据库名称 
 
 	int                 wlog_load;  // 是否正在加载 wlog       
-	int                 wlog_date;  // 是否正在加载 wlog    
+	int                 wlog_date;  // wlog    
 	int                 wlog_init;  // 是否发送了 keys 和 sdbs  
 	s_sis_sds           wlog_keys; 
 	s_sis_sds           wlog_sdbs; 
@@ -169,6 +161,9 @@ typedef struct s_sdcdb_cxt
 
 	s_sis_json_node    *rfile_config;
 
+	s_sis_sds           init_keys; // 初始化的 keys
+	s_sis_sds           init_sdbs; // 初始化的 sdbs
+
 	s_sis_sds           work_keys; // 工作 keys
 	s_sis_sds           work_sdbs; // 工作 sdbs
 	s_sis_map_list     *keys;      // key 的结构字典表 s_sis_sds
@@ -184,6 +179,10 @@ typedef struct s_sdcdb_cxt
 	int                 zipnums;    // 统计数量
 	s_sis_lock_list    *outputs;    // 输出的数据链 s_sdcdb_compress -> 映射为 memory 每10分钟一个新的压缩数据块
 	s_sis_pointer_list *readeres;   // 读者列表 s_sdcdb_reader
+
+	// 直接回调组装好的 s_sis_net_message
+	void               *cb_source;       // 
+	sis_method_define  *cb_net_message;  // s_sis_net_message 
 
 } s_sdcdb_cxt;
 
@@ -203,6 +202,7 @@ void  sdcdb_method_uninit(void *);
 // *****************//
 // 初始化 需要传入 workdate,keys,sdbs 
 int cmd_sdcdb_init(void *worker_, void *argv_);
+int cmd_sdcdb_set(void *worker_, void *argv_);
 // 数据流开始写入 
 int cmd_sdcdb_start(void *worker_, void *argv_);
 // 数据流写入完成 设置标记 方便发送订阅完成信号
@@ -210,13 +210,15 @@ int cmd_sdcdb_stop(void *worker_, void *argv_);
 // 需要传入 kidx sidx val 收到数据后压缩存储
 int cmd_sdcdb_ipub(void *worker_, void *argv_);  // s_sdcdb_bytes
 // 需要传入 key sdb val 收到数据后压缩存储
-int cmd_sdcdb_spub(void *worker_, void *argv_);  // s_sdcdb_chars
+int cmd_sdcdb_spub(void *worker_, void *argv_);  // s_sis_db_chars
 // 需要传入 zipval 直接是压缩数据块 直接放入队列中
 int cmd_sdcdb_zpub(void *worker_, void *argv_);  // s_sdcdb_compress
 // 对指定的无锁队列增加订阅者
 // 默认从最新的具备完备数据的数据包开始订阅 seat : 0
 // seat : 1 从最开始订阅 
 // 订阅后首先收到 订阅start 然后收到 key sdb 然后开始持续收到压缩的数据 最后收到 stop 
+int cmd_sdcdb_zsub(void *worker_, void *argv_);
+// 订阅其他格式数据
 int cmd_sdcdb_sub(void *worker_, void *argv_);
 // 取消订阅
 int cmd_sdcdb_unsub(void *worker_, void *argv_);
@@ -227,6 +229,8 @@ int cmd_sdcdb_wlog(void *worker_, void *argv_);
 int cmd_sdcdb_rlog(void *worker_, void *argv_);
 int cmd_sdcdb_wsno(void *worker_, void *argv_);
 int cmd_sdcdb_rsno(void *worker_, void *argv_);
+
+int cmd_sdcdb_getdb(void *worker_, void *argv_);
 
 //////////////////////////////////////////////////////////////////
 //------------------------s_sdcdb_worker -----------------------//
@@ -249,8 +253,11 @@ void sdcdb_worker_zip_set(s_sdcdb_worker *, int ,int, char *, size_t);
 //////////////////////////////////////////////////////////////////
 //------------------------s_sdcdb_reader -----------------------//
 //////////////////////////////////////////////////////////////////
+int sdcdb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip);
+
 s_sdcdb_reader *sdcdb_reader_create();
 void sdcdb_reader_destroy(void *);
+
 
 int sdcdb_reader_realtime_start(s_sdcdb_reader *reader);
 int sdcdb_reader_realtime_stop(s_sdcdb_reader *reader);

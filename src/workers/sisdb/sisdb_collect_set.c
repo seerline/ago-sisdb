@@ -205,39 +205,6 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 }
 ////////////////
 
-int sisdb_collect_wseries(s_sisdb_collect *collect_, s_sis_sds in_)
-{
-	int ilen = sis_sdslen(in_);
-	if (ilen < collect_->sdb->db->size)
-	{
-		return 0;
-	}
-	int count = (int)(ilen / collect_->sdb->db->size);
-	if (count * collect_->sdb->db->size != ilen)
-	{
-		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->sdb->db->size, ilen);
-		return 0;
-	}
-	// if (!collect_->obj)
-	// {
-	// 	collect_->obj = sis_object_create(SIS_OBJECT_LIST, sis_struct_list_create(collect_->sdb->db->size));
-	// }
-	// 应该写入一个队列中
-	int start = SIS_OBJ_LIST(collect_->obj)->count;
-	sis_struct_list_pushs(SIS_OBJ_LIST(collect_->obj), in_, count);
-	int stop = SIS_OBJ_LIST(collect_->obj)->count - 1;
-
-	s_sisdb_collect_sno sno;
-	sno.collect = collect_;
-	for (int i = start; i <= stop; i++)
-	{
-		sno.recno = i;
-		sis_node_list_push(collect_->father->series, &sno);
-	}
-
-	return count;
-}
-
 // 从磁盘中整块写入，不逐条进行校验
 int sisdb_collect_wpush(s_sisdb_collect *collect_, char *in_, size_t ilen_)
 {

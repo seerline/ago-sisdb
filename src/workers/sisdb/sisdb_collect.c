@@ -68,15 +68,15 @@ int sisdb_stepindex_goto(s_sis_step_index *si_, uint64 curr_)
 s_sisdb_collect *sisdb_get_collect(s_sisdb_cxt *sisdb_, const char *key_)
 {
 	s_sisdb_collect *collect = NULL;
-	if (sisdb_->collects)
+	if (sisdb_->work_keys)
 	{
-		collect = sis_map_pointer_get(sisdb_->collects, key_);
+		collect = sis_map_pointer_get(sisdb_->work_keys, key_);
 	}
 	return collect;
 }
 s_sisdb_table *sisdb_get_table(s_sisdb_cxt *sisdb_, const char *dbname_)
 {
-	s_sisdb_table *tb = (s_sisdb_table *)sis_map_list_get(sisdb_->sdbs, dbname_);
+	s_sisdb_table *tb = (s_sisdb_table *)sis_map_list_get(sisdb_->work_sdbs, dbname_);
 	return tb;
 }
 
@@ -108,7 +108,7 @@ s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 		return NULL;
 	}
 	s_sisdb_collect *o = SIS_MALLOC(s_sisdb_collect, o);
-	sis_map_pointer_set(sisdb_->collects, key_, o);
+	sis_map_pointer_set(sisdb_->work_keys, key_, o);
 	
 	o->style = SISDB_COLLECT_TYPE_TABLE;
 	o->name = sis_sdsnew(key_);

@@ -179,7 +179,7 @@ static void cb_read(void *context_, const char *key_, const char *sdb_, void *ou
 
     if (context->cb_sisdb_bytes)
     {
-        s_sisdb_chars inmem = {0};
+        s_sis_db_chars inmem = {0};
         inmem.kname= key_;
         inmem.sname= sdb_;
         inmem.data = out_;
@@ -312,7 +312,7 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
 
-    // printf("%s = %d\n", __func__, context->status);    
+    printf("%s = %d\n", __func__, context->status);    
     if (context->status != SIS_RSNO_NONE)
     {
         return SIS_METHOD_ERROR;

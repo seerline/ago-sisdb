@@ -54,9 +54,10 @@ typedef struct s_sis_net_message {
 	s_sis_sds	        rval;      // 应答缓存
 	uint16              rfmt;      // 返回数据格式 临时变量
 
-	// 存放字节流数据
-	s_sis_pointer_list *argvs;     //  按顺序获取 s_sis_sds 
+	// 存放字节流数据 ??? 没必要用s_sis_object 等待修改为 s_sis_sds
+	s_sis_pointer_list *argvs;     // 按顺序获取 s_sis_sds 
 
+	// s_sis_message      *msg;       // 用于方法传递参数使用 
 } s_sis_net_message;
 
 

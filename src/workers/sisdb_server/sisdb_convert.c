@@ -1,13 +1,17 @@
 #include "sisdb_collect.h"
 #include "sisdb_server.h"
 
-s_sisdb_table *sisdb_find_table(s_sisdb_server_cxt *server_, const char *dataset_, const char *table_)
+s_sis_dynamic_db *sisdb_find_db(s_sisdb_server_cxt *server_, const char *dataset_, const char *table_)
 {
-    s_sisdb_table *o = NULL;
+    s_sis_dynamic_db *o = NULL;
     s_sis_worker *dataset = sis_map_list_get(server_->datasets, dataset_);
     if (dataset)
     {
-        o = sisdb_get_table((s_sisdb_cxt *)dataset->context, table_);
+        s_sis_message *msg = sis_message_create();
+        sis_message_set_str(msg, "dbname", table_, sis_strlen(table_));
+        sis_worker_command(dataset, "getdb", msg);
+        o = sis_message_get(msg, "db");
+        sis_message_destroy(msg);        
     }
 	return o;
 }
@@ -34,8 +38,8 @@ int sisdb_convert_init(s_sisdb_server_cxt *server_, s_sis_json_node *node_)
         int  pubnums = sis_str_divide(next->key, '.', pub[0], pub[1]);
         if (pubnums == 2)
         {
-           s_sisdb_table *pub_tb = sisdb_find_table(server_, pub[0], pub[1]);
-            if (pub_tb)
+            s_sis_dynamic_db *pub_db = sisdb_find_db(server_, pub[0], pub[1]);
+            if (pub_db)
             {
                 s_sis_pointer_list *sublist = sis_pointer_list_create();
                 sublist->vfree = sisdb_convert_destroy;
@@ -46,10 +50,10 @@ int sisdb_convert_init(s_sisdb_server_cxt *server_, s_sis_json_node *node_)
                     int  subnums = sis_str_divide(subnext->key, '.', sub[0], sub[1]);
                     if (subnums == 2)
                     {
-                        s_sisdb_table *sub_tb = sisdb_find_table(server_, sub[0], sub[1]);
-                        if (sub_tb)
+                        s_sis_dynamic_db *sub_db = sisdb_find_db(server_, sub[0], sub[1]);
+                        if (sub_db)
                         {
-                            s_sis_dynamic_convert *convert = sis_dynamic_convert_create(pub_tb->db, sub_tb->db);
+                            s_sis_dynamic_convert *convert = sis_dynamic_convert_create(pub_db, sub_db);
                             s_sisdb_convert *unit = sisdb_convert_create(sub[0], convert);
                             sis_pointer_list_push(sublist, unit);
                         }
@@ -98,7 +102,7 @@ int sisdb_convert_working(s_sisdb_server_cxt *server_, s_sis_net_message *netmsg
         char *out = sis_malloc(size + 1);
         sis_dynamic_convert(unit->convert, netmsg->val, sis_sdslen(netmsg->val), out, size);
         s_sis_net_message *newmsg = sis_net_message_clone(netmsg);
-        newmsg->style |= SIS_NET_INSIDE;
+        newmsg->style |= SIS_NET_INSIDE; // 内部传递
         sis_sdsfree(newmsg->cmd);
         newmsg->cmd = sis_sdsnew(unit->dateset);
         newmsg->cmd = sis_sdscatfmt(newmsg->cmd , ".%s", command);
