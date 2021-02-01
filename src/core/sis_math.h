@@ -165,7 +165,11 @@ static inline uint64 sis_bits_dec(uint64 in_, int index_)
 // 两组数是否相交 > 最小的 0.382
 static inline int sis_is_mixed(double min1, double max1, double min2, double max2)
 {
-	if (min1 >= max2 || min2 >= max1)
+	if (min1 == max2 || min2 == max1)
+	{
+		return 1;
+	}
+	if (min1 > max2 || min2 > max1)
 	{
 		return 0;
 	}

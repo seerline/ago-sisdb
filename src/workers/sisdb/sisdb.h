@@ -76,9 +76,7 @@ typedef struct s_sisdb_cxt
 
 
 	int                 wlog_load;  // 是否正在加载 wlog       
-	int                 wlog_init;  // 是否发送了 keys 和 sdbs  
-	s_sis_sds           wlog_keys; 
-	s_sis_sds           wlog_sdbs; 
+	int                 wlog_open;  // wlog是否可写
     s_sis_mutex_t		wlog_lock;
 	s_sis_worker       *wlog_worker;        // 当前使用的写log类
 

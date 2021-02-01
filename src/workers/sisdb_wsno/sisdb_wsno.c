@@ -31,15 +31,21 @@ bool sisdb_wsno_init(void *worker_, void *node_)
 
     s_sisdb_wsno_cxt *context = SIS_MALLOC(s_sisdb_wsno_cxt, context);
     worker->context = context;
-    const char *str = sis_json_get_str(node, "work-path");
-    if (str)
     {
-        context->work_path = sis_sdsnew(str);
-    } 
-    else
-    {
-        context->work_path = sis_sdsnew("./");
-    } 
+        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
+        if (sonnode)
+        {
+            context->work_path = sis_sdsnew(sonnode->value);
+        }
+        else
+        {
+            context->work_path = sis_sdsnew("data/");
+        }
+        if (!sis_path_exists(context->work_path))
+        {
+            sis_path_mkdir(context->work_path);
+        }    
+    }
     context->page_size =  sis_json_get_int(node, "page-size", 0) * 1000000;   
 
     context->write_class = sis_disk_class_create(); 

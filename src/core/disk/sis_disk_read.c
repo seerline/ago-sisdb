@@ -408,6 +408,7 @@ int cb_sis_disk_file_read_log(void *source_, s_sis_disk_head *head_, s_sis_memor
             {
                 callback->cb_read(callback->source, NULL, NULL, sis_memory(omem_), sis_memory_get_size(omem_));
             }
+            sis_memory_clear(omem_);
         }
         break;
     default:
@@ -1154,7 +1155,7 @@ s_sis_object *sis_disk_read_get_obj(s_sis_disk_class *cls_, s_sis_disk_reader *r
     for (int k = 0; k < idxinfo->index->count; k++)
     {
         s_sis_disk_index_unit *unit = sis_struct_list_get(idxinfo->index, k);
-        printf("%s %d | %d %d %d %d\n",__func__, idxinfo->index->count, (int)reader_->search_sno.start, (int)reader_->search_sno.stop, (int)unit->start, (int)unit->stop);
+        // printf("%s %d | %llu %llu %llu %llu\n",__func__, idxinfo->index->count, reader_->search_sno.start, reader_->search_sno.stop, unit->start, unit->stop);
         s_sis_msec_pair search;
         int style = sis_disk_get_idx_style(cls_, SIS_OBJ_GET_CHAR(idxinfo->sdb), unit);
         sis_disk_reader_get_stime(reader_, style, &search);

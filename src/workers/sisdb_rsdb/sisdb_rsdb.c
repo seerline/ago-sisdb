@@ -44,10 +44,6 @@ bool sisdb_rsdb_init(void *worker_, void *argv_)
         {
             context->work_path = sis_sdsnew("data/");
         }
-        if (!sis_path_exists(context->work_path))
-        {
-            sis_path_mkdir(context->work_path);
-        }
     }
     return true;
 }
@@ -156,13 +152,13 @@ static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out
     }
 
 } 
-int _sisdb_rsdb_load_sdb(const char *pathname, s_sisdb_cxt *sisdb, s_sisdb_catch *config)
+int _sisdb_rsdb_load_sdb(const char *workpath, s_sisdb_cxt *sisdb, s_sisdb_catch *config)
 {
     s_sis_disk_class *sdbfile = sis_disk_class_create();  
-    sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, pathname, sisdb->dbname);
+    sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, workpath, sisdb->dbname);
     int ro = sis_disk_file_read_start(sdbfile);
 
-    // printf("%s , ro = %d\n", __func__, ro, sdbfile->work_fps->cur_name);
+    printf("%s , ro = %d  %s\n", __func__, ro, workpath);
     if (ro != SIS_DISK_CMD_OK)
     {
         sis_disk_class_destroy(sdbfile);
@@ -218,12 +214,10 @@ int cmd_sisdb_rsdb_load(void *worker_, void *argv_)
 
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
-    char pathname[255];
-    sis_sprintf(pathname, 255, "%s/%s/", context->work_path, sisdb->dbname);
     ///////////////////////////////////////
     // 再读sdb数据  
     ///////////////////////////////////////
-    if (_sisdb_rsdb_load_sdb(pathname, sisdb, &config) != SIS_METHOD_OK)
+    if (_sisdb_rsdb_load_sdb(context->work_path, sisdb, &config) != SIS_METHOD_OK)
     {
         return SIS_METHOD_ERROR;
     }

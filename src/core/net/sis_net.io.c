@@ -70,14 +70,15 @@ void sis_net_ans_with_chars(s_sis_net_message *netmsg_, const char *in_, size_t 
 }
 void sis_net_ans_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_)
 {
-    sis_sdsclear(netmsg_->key);
+    sis_sdsfree(netmsg_->key);
     if (sname_)
     {
+        netmsg_->key =sis_sdsempty();
         netmsg_->key = sis_sdscatfmt(netmsg_->key, "%s.%s", kname_, sname_);
     }
     else
     {
-        netmsg_->key = sis_sdscatfmt(netmsg_->key, "%s", kname_);
+        netmsg_->key = sis_sdsnew(kname_);
     }
 }
 

@@ -47,6 +47,8 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_);
 
 int cmd_sisdb_rsno_unsub(void *worker_, void *argv_);
 
+int cmd_sisdb_rsno_get(void *worker_, void *argv_);
+
 int cmd_sisdb_rsno_setcb(void *worker_, void *argv_);
 
 void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context); 

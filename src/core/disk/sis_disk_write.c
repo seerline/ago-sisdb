@@ -178,7 +178,7 @@ size_t sis_disk_file_write_sdb_one(s_sis_disk_class *cls_,
         int count = ilen_ / unit->db->size;
         wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
         wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
-        // printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
+        printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
 
         wcatch->winfo.kdict = key->units->count;
         wcatch->winfo.sdict = sdb->units->count;
@@ -450,8 +450,8 @@ size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_)
 {
     size_t size = 0;
     // 写 键表
-    s_sis_sds msg = sis_sdsempty();
-    msg = sis_disk_file_get_keys(cls_, true);
+    s_sis_sds msg = sis_disk_file_get_keys(cls_, true);
+    printf("new key:%s\n", msg);
     if (sis_sdslen(msg) > 2)
     {
         s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_KEY));
@@ -462,7 +462,6 @@ size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_)
         sis_object_destroy(mapobj);
     }
     sis_sdsfree(msg);
-
     return size;
 }
 s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_)
@@ -473,7 +472,7 @@ s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_)
         for(int i = 0; i < count; i++)
         {
             s_sis_disk_dict *info = (s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, i);
-            // printf("+++++ %d %d %s\n",count, info->units->count, SIS_OBJ_SDS(info->name));
+            printf("+++++ %d %d %s\n",count, info->units->count, SIS_OBJ_SDS(info->name));
             for(int k = 0; k < info->units->count; k++)
             {
                 s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);
@@ -491,7 +490,7 @@ s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_)
         }
     }
     s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
-    // printf("sdbs = %s\n", msg);
+    printf("sdbs :%s\n", msg);
     sis_json_delete_node(sdbs_node);
     return msg;
 }
@@ -500,6 +499,7 @@ size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_)
 {
     size_t size = 0;
     s_sis_sds msg = sis_disk_file_get_sdbs(cls_, true);
+    printf("new sdb:%s\n", msg);
     if (sis_sdslen(msg) > 2)
     {
         s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_SDB));

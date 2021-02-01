@@ -110,6 +110,7 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
     s_sis_net_message *msg = sis_net_message_create();
     msg->cid = context->cid;
     msg->serial = sis_sdsnew(ask->serial);
+
     if  (ask->format == SIS_NET_FORMAT_CHARS)
     {
         sis_net_ask_with_chars(msg, ask->cmd, ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
@@ -118,6 +119,12 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
     {
         sis_net_ask_with_bytes(msg, ask->cmd, ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
     }
+    // printf("send query: [%d] %d : %s %s %s %d\n", msg->cid, msg->style, 
+    //     ask->serial ? ask->serial : "nil",
+    //     ask->cmd ? ask->cmd : "nil",
+    //     ask->key ? ask->key : "nil",
+    //     ask->val ? (int)sis_sdslen(ask->val) : 0);
+
     sis_net_class_send(context->session, msg);
     sis_net_message_destroy(msg);
 }
@@ -167,10 +174,6 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
                     {
                         sis_net_ask_with_chars(msg, "unsub", ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
                     }
-                    else
-                    {
-                        sis_net_ask_with_chars(msg, "unsubsno", ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
-                    }                        
                     sis_net_class_send(context->session, msg);
                     sis_net_message_destroy(msg);
                     // 取消订阅后 删除本地信息
@@ -430,7 +433,6 @@ static int cb_reply(void *worker_, int rid_, void *key_, void *val_)
 {
     s_sis_message *msg = (s_sis_message *)worker_;
 
-    sis_message_set_int(msg, "rid", rid_); 
     if (key_)
     {
         sis_message_set_str(msg, "key", key_, sis_sdslen(key_)); 
@@ -439,6 +441,8 @@ static int cb_reply(void *worker_, int rid_, void *key_, void *val_)
     {
         sis_message_set_str(msg, "val", val_, sis_sdslen(val_)); 
     }
+    sis_message_set_int(msg, "rid", rid_); 
+    // printf("rid = %d\n", rid_);
     // printf("stop 1 : %d\n", (unsigned int)sis_thread_self());
     return 0; 
 }
@@ -467,7 +471,7 @@ int cmd_sisdb_client_ask_chars_wait(void *worker_, void *argv_)
 
     ask->format = SIS_NET_FORMAT_CHARS;
     // sis_message_set(msg, "context", context, NULL); 
-    sis_message_del(msg, "rid");
+    // sis_message_del(msg, "rid");
 
     sisdb_client_send_ask(context, ask);
 
@@ -477,7 +481,6 @@ int cmd_sisdb_client_ask_chars_wait(void *worker_, void *argv_)
     }
     // printf("start 1 : %d\n", (unsigned int)sis_thread_self());
     // sis_wait_start(&context->wait);
-
     if (sis_message_get_int(msg, "rid") != SIS_NET_ANS_OK)
     {
         return SIS_METHOD_ERROR; 
@@ -510,10 +513,10 @@ int cmd_sisdb_client_ask_bytes_wait(void *worker_, void *argv_)
 
     ask->format = SIS_NET_FORMAT_BYTES;
     // sis_message_set(msg, "context", context, NULL); 
-    sis_message_del(msg, "rid");
+    // sis_message_del(msg, "rid");
 
     sisdb_client_send_ask(context, ask);
-
+    printf("wait %p\n", msg);
     while(!sis_message_exist(msg, "rid"))
     {
         sis_sleep(1);
@@ -546,7 +549,7 @@ int cmd_sisdb_client_ask_chars(void *worker_, void *argv_)
 		NULL,
 		NULL,
 		NULL,
-		cb_reply,
+		NULL,
 		false);
 
     ask->format = SIS_NET_FORMAT_CHARS;
@@ -568,15 +571,14 @@ int cmd_sisdb_client_ask_bytes(void *worker_, void *argv_)
 
     s_sisdb_client_ask *ask = sisdb_client_ask_new( 
 		context,
-		(const char *)sis_message_get_str(msg, "cmd"), 
-		(const char *)sis_message_get_str(msg, "key"), 
+		(const char *)sis_message_get(msg, "cmd"), 
+		(const char *)sis_message_get(msg, "key"), 
 		sis_message_get(msg, "val"), 
         sis_message_get_int(msg, "vlen"), 
 		msg, 
 		NULL,
 		NULL,
 		NULL,
-		// cb_reply,
         NULL,
 		false);;
 

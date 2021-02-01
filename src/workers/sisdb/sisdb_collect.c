@@ -288,13 +288,13 @@ s_sis_sds sisdb_collect_struct_to_json_sds(s_sis_dynamic_db *db_, const char *in
 				for (int k = 0; k < inunit->count; k++)
 				{
 					char fname[64];
-					sis_sprintf(fname, 64, "%s%d", inunit->name, k);
+					sis_sprintf(fname, 64, "%s%d", inunit->fname, k);
 					sis_json_object_add_uint(jfields, fname, i);
 				}
 			}
 			else
 			{
-				sis_json_object_add_uint(jfields, inunit->name, i);
+				sis_json_object_add_uint(jfields, inunit->fname, i);
 			}
 			
 		}
@@ -362,13 +362,13 @@ s_sis_sds sisdb_collect_struct_to_csv_sds(s_sis_dynamic_db *db_, const char *in_
 				for (int k = 0; k < inunit->count; k++)
 				{
 					char fname[64];
-					sis_sprintf(fname, 64, "%s%d", inunit->name, k);
+					sis_sprintf(fname, 64, "%s%d", inunit->fname, k);
 					o = sis_csv_make_str(o, fname, sis_strlen(fname));
 				}
 			}
 			else
 			{
-				o = sis_csv_make_str(o, inunit->name, sis_sdslen(inunit->name));
+				o = sis_csv_make_str(o, inunit->fname, sis_strlen(inunit->fname));
 			}
 		}
 		o = sis_csv_make_end(o);
@@ -425,13 +425,13 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds 
 		{
 			if (fu->count > 1)
 			{
-				sis_sprintf(key, 64, "%s%d", fu->name, i);
+				sis_sprintf(key, 64, "%s%d", fu->fname, i);
 				// printf("key = %s %d\n", key, i);
 				sis_dynamic_field_json_to_struct(o, fu, i, key, handle->node);
 			}
 			else
 			{
-				sis_dynamic_field_json_to_struct(o, fu, i, fu->name, handle->node);
+				sis_dynamic_field_json_to_struct(o, fu, i, fu->fname, handle->node);
 			}			
 		}
 	}

@@ -98,6 +98,7 @@ int sis_disk_dict_set(s_sis_disk_dict *dict_, bool iswrite_, s_sis_dynamic_db * 
         {
             isnew = false;
         }
+        printf("%p isnew %d\n", last, isnew);
     }
     if (isnew)
     {
@@ -296,8 +297,8 @@ s_sis_disk_class *sis_disk_class_create()
     //     sis_disk_class_destroy(cls);
     //     return NULL;
     // }
-    printf("--1--%p %p\n", cls->keys, cls->sdbs);
-    printf("--3--%p\n", cls->index_infos);
+    // printf("--1--%p %p\n", cls->keys, cls->sdbs);
+    // printf("--3--%p\n", cls->index_infos);
     return cls;
 }
 
@@ -440,11 +441,11 @@ int sis_disk_class_set_sdb(s_sis_disk_class *cls_, bool iswrite_, const char *in
         innode = sis_json_next_node(innode);
     }
     sis_json_close(injson);
-    // for (int i = 0; i < cls_->sdbs->list->count; i++)
-    // {
-    //     s_sis_disk_dict *info = sis_map_list_geti(cls_->sdbs, i);
-    //     printf("set sdb : %s, %d\n", SIS_OBJ_SDS(info->name), info->index);
-    // }
+    for (int i = 0; i < cls_->sdbs->list->count; i++)
+    {
+        s_sis_disk_dict *info = sis_map_list_geti(cls_->sdbs, i);
+        printf("--- set sdb : %s, %d\n", SIS_OBJ_SDS(info->name), info->index);
+    }
     if (iswrite_)
     {
         sis_disk_file_write_sdb_dict(cls_);

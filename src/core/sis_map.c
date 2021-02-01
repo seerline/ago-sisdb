@@ -259,6 +259,7 @@ s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_)
 	s_sis_dict_type *type = SIS_MALLOC(s_sis_dict_type, type);
 	memmove(type, &_sis_dict_type_owner_free_val_s, sizeof(s_sis_dict_type));
 	s_sis_map_pointer *map = sis_dict_create(type, (void *)1);
+	// s_sis_map_pointer *map = sis_dict_create(type, NULL);
 	map->type->vfree = vfree_;
 	return map;
 };

@@ -217,7 +217,8 @@ static void cb_socket_recv(void *worker_, s_sis_net_message *msg)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 	
-    printf("recv query: [%d] %d : %s %s %s\n %s\n", msg->cid, msg->style, 
+    printf("recv query: [%d] %d : %s %s %s %s\n %s\n", msg->cid, msg->style, 
+        msg->serial ? msg->serial : "nil",
         msg->cmd ? msg->cmd : "nil",
         msg->key ? msg->key : "nil",
         msg->val ? msg->val : "nil",
@@ -231,32 +232,44 @@ static void cb_socket_recv(void *worker_, s_sis_net_message *msg)
 }
 void sisdb_server_reply_error(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
 {
-    s_sis_sds reply = sis_sdsempty();
-    reply = sis_sdscatfmt(reply, "method [%s] fail.", netmsg->cmd);
+    s_sis_sds reply = sis_sdsnew("method call fail ");
+    if (netmsg->cmd)
+    {
+        reply = sis_sdscatfmt(reply, "[%s].", netmsg->cmd);
+    }
     sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
 void sisdb_server_reply_null(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, const char *name)
 {
-    s_sis_sds reply = sis_sdsempty();
-    reply = sis_sdscatfmt(reply, "no key [%s].", name);
+    s_sis_sds reply = sis_sdsnew("null of ");
+    if (name)
+    {
+        reply = sis_sdscatfmt(reply, "[%s].", name);
+    }    
     sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
 void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, const char *name)
 {
-    s_sis_sds reply = sis_sdsempty();
-    reply = sis_sdscatfmt(reply, "no find method [%s].", name);
+    s_sis_sds reply = sis_sdsnew("no find method ");
+    if (name)
+    {
+        reply = sis_sdscatfmt(reply, "[%s].", name);
+    }
     sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
 void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_message *netmsg, const char *name)
 {
-    s_sis_sds reply = sis_sdsempty();
-    reply = sis_sdscatfmt(reply, "no find service [%s].", name);
+    s_sis_sds reply = sis_sdsnew("no find service ");
+    if (name)
+    {
+        reply = sis_sdscatfmt(reply, "[%s].", name);
+    }    
     sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
@@ -297,7 +310,7 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *sdbname, const 
             } 
             else if (o == SIS_METHOD_NULL)
             {
-                sisdb_server_reply_null(context, netmsg, cmdname);
+                sisdb_server_reply_null(context, netmsg, netmsg->key);
             }
             else if (o == SIS_METHOD_NOCMD)
             {
@@ -376,7 +389,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         int cmds = sis_str_divide(netmsg->cmd, '.', sdbname, cmdname);
         if (cmds == 2)
         {
-            printf("%s %s\n", sdbname, cmdname);
+            // printf("2 %s %s\n", sdbname, cmdname);
             s_sis_worker *service = sis_map_list_get(context->datasets, sdbname);
             if (service)
             {
@@ -417,12 +430,13 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
             {
                 make = false;
             }
+            // printf("1 access = %d %d| %d %s\n", access, method->access, make, netmsg->cmd);
         }
         
         if (make)
         {
             // 此时已经写完log 再开始处理
-            sisdb_server_send_service(worker, cmds == 1 ? NULL : sdbname, cmdname, netmsg);
+            sisdb_server_send_service(worker, cmds == 1 ? NULL : sdbname, cmds == 1 ? sdbname : cmdname, netmsg);
         }
         else
         {
@@ -590,7 +604,6 @@ int _sisdb_server_load(s_sisdb_server_cxt *context)
     for (int i = 0; i < count; i++)
     {
         s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
-        sis_message_set(msg, "source", context, NULL);
         if (sis_worker_command(service, "rlog", msg) != SIS_METHOD_OK)
         {
         }

@@ -249,7 +249,7 @@ int sdcdb_wlog_save_snos(s_sdcdb_cxt *sdcdb_)
 // 读取 snos 文件 snos 为sdcdb压缩的分块式顺序格式
 s_sdcdb_disk_worker *sdcdb_snos_read_start(s_sis_json_node *config_, s_sdcdb_reader *reader_)
 {
-
+	// printf("%s\n", __func__);
 	s_sdcdb_disk_worker *worker = SIS_MALLOC(s_sdcdb_disk_worker, worker);
 
 	worker->rdisk_worker = sis_worker_create(NULL, config_);
@@ -258,7 +258,7 @@ s_sdcdb_disk_worker *sdcdb_snos_read_start(s_sis_json_node *config_, s_sdcdb_rea
 		sis_free(worker);
 		return NULL;
 	}
-	printf("%s\n", worker->rdisk_worker->workername);
+	// printf("%s\n", worker->rdisk_worker->workername);
 	worker->rdisk_status = SDCDB_DISK_INIT;
 	worker->sdcdb_reader = reader_;
 
@@ -300,3 +300,6 @@ int sdcdb_snos_read_stop(s_sdcdb_disk_worker *worker_)
 	sis_free(worker_);
 	return 0;
 }
+
+
+

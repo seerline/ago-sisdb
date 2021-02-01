@@ -222,6 +222,9 @@ int cmd_sdcdb_zsub(void *worker_, void *argv_);
 int cmd_sdcdb_sub(void *worker_, void *argv_);
 // 取消订阅
 int cmd_sdcdb_unsub(void *worker_, void *argv_);
+// 取消订阅
+int cmd_sdcdb_get(void *worker_, void *argv_);
+
 // 默认仅仅做数据清理  data 清理数据 client 客户端订阅清理 all 全部清理(默认)
 int cmd_sdcdb_clear(void *worker_, void *argv_);
 

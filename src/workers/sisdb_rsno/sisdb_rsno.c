@@ -10,6 +10,7 @@
 static s_sis_method _sisdb_rsno_methods[] = {
   {"sub",    cmd_sisdb_rsno_sub, 0, NULL},
   {"unsub",  cmd_sisdb_rsno_unsub, 0, NULL},
+  {"get",    cmd_sisdb_rsno_get, 0, NULL},
   {"setcb",  cmd_sisdb_rsno_setcb, 0, NULL}
 };
 
@@ -39,15 +40,15 @@ bool sisdb_rsno_init(void *worker_, void *node_)
     context->work_date = sis_json_get_int(node, "work-date", sis_time_get_idate(0));
 
     {
-        const char *str = sis_json_get_str(node, "work-path");
-        if (str)
+        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
+        if (sonnode)
         {
-            context->work_path = sis_sdsnew(str);
+            context->work_path = sis_sdsnew(sonnode->value);
         }
         else
         {
-            context->work_path = sis_sdsnew("./");
-        }
+            context->work_path = sis_sdsnew("data/");
+        }  
     }
     {
         const char *str = sis_json_get_str(node, "sub-sdbs");
@@ -393,6 +394,49 @@ int cmd_sisdb_rsno_unsub(void *worker_, void *argv_)
 
     return SIS_METHOD_OK;
 }
+
+int cmd_sisdb_rsno_get(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
+    s_sis_message *msg = (s_sis_message *)argv_; 
+
+    char *sdate = sis_message_get_str(msg, "get-date");
+    s_sis_disk_class *read_class = sis_disk_class_create(); 
+    if (sis_disk_class_init(read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate) 
+        || sis_disk_file_read_start(read_class))
+    {
+        sis_disk_class_destroy(read_class);
+        return SIS_METHOD_ERROR;
+    }
+    char *kname = sis_message_get_str(msg, "get-keys");
+    char *sname = sis_message_get_str(msg, "get-sdbs");
+
+    s_sis_disk_reader *reader = sis_disk_reader_create(NULL);
+    sis_disk_reader_set_sdb(reader, sname);
+    sis_disk_reader_set_key(reader, kname); 
+   // get 是所有符合条件的一次性输出
+    s_sis_object *obj = sis_disk_file_read_get_obj(read_class, reader);
+    sis_disk_reader_destroy(reader);
+
+    if (obj)
+    {
+        sis_message_set(msg, "omem", obj, sis_object_destroy);
+        s_sis_disk_dict *sdict = sis_map_list_get(read_class->sdbs, sname);
+        if (sdict)
+        {
+            s_sis_disk_dict_unit *sunit = sis_disk_dict_last(sdict);
+            s_sis_json_node *node = sis_dynamic_dbinfo_to_json(sunit->db);
+            s_sis_dynamic_db *diskdb = sis_dynamic_db_create(node);
+            sis_json_delete_node(node);
+            sis_message_set(msg, "diskdb", diskdb, sis_dynamic_db_destroy);
+        }
+    }
+    sis_disk_file_read_stop(read_class);
+    sis_disk_class_destroy(read_class); 
+    return SIS_METHOD_OK;
+}
+
 int cmd_sisdb_rsno_setcb(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

@@ -144,15 +144,10 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
-    // int work_date = sis_message_get_int(msg, "workdate");
-    char pathname[255];
-    sis_sprintf(pathname, 255, "%s/%s/", context->work_path, sisdb->dbname);
-
-    // 再写sdb数据
     if (sis_map_pointer_getsize(sisdb->work_keys) > 0)
     {
         s_sis_disk_class *sdbfile = sis_disk_class_create();
-        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, pathname, sisdb->dbname);
+        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->dbname);
         // 不能删除老文件的信息
         sis_disk_file_write_start(sdbfile);
         {
@@ -201,31 +196,29 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
 int cmd_sisdb_wsdb_pack(void *worker_, void *argv_)
 {
     s_sis_message *msg = (s_sis_message *)argv_;
-    s_sisdb_cxt *sisdb = (s_sisdb_cxt *)sis_message_get(msg, "sisdb");
-    if (!sisdb)
+    s_sis_sds dbname = sis_message_get_str(msg, "dbname");
+    if (!dbname)
     {
         return SIS_METHOD_ERROR;
     }
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
-    char pathname[255];
-    sis_sprintf(pathname, 255, "%s/%s/", context->work_path, sisdb->dbname);
     // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
     s_sis_disk_class *srcfile = sis_disk_class_create();
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, pathname, sisdb->dbname);
+    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname);
     sis_disk_file_move(srcfile, context->safe_path);
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, sisdb->dbname);
+    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname);
 
     s_sis_disk_class *desfile = sis_disk_class_create();
-    sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, pathname, sisdb->dbname);
+    sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname);
 
     size_t size = sis_disk_file_pack(srcfile, desfile);
 
     if (size == 0)
     {
         sis_disk_file_delete(desfile);
-        sis_disk_file_move(srcfile, pathname);
+        sis_disk_file_move(srcfile, context->work_path);
     }   
     sis_disk_class_destroy(desfile);
     sis_disk_class_destroy(srcfile);

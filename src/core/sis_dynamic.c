@@ -56,13 +56,12 @@ int _sis_dynamic_get_style(const char *str_)
 s_sis_dynamic_field *sis_dynamic_field_create(char *name_)
 {
 	s_sis_dynamic_field *o = SIS_MALLOC(s_sis_dynamic_field, o);
-	o->name = sis_sdsnew(name_);
+	sis_strcpy(o->fname, 32, name_);
 	return o;
 }
 void sis_dynamic_field_destroy(void *field_)
 {
 	s_sis_dynamic_field *field = (s_sis_dynamic_field *)field_;
-	sis_sdsfree(field->name);
 	sis_free(field);
 }
 ////////////////////////////////////////////////////////////////
@@ -181,6 +180,7 @@ void sis_dynamic_db_destroy(void *db_)
 	sis_pointer_list_destroy(db->field_solely);
 	sis_free(db);
 }
+
 s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_)
 {
 	s_sis_dynamic_field *field = sis_map_list_get(db_->fields, field_);
@@ -213,7 +213,7 @@ s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
 		{
 			in_ = sis_sdscat(in_, ",");
 		}
-		in_ = sis_sdscatfmt(in_, "%s:[", unit->name);
+		in_ = sis_sdscatfmt(in_, "%s:[", unit->fname);
 		sign[0] = unit->style; sign[1] = 0;
 		in_ = sis_sdscatfmt(in_, "%s", sign);
 		in_ = sis_sdscatfmt(in_, ",%u", unit->len);
@@ -256,6 +256,7 @@ s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
 bool sis_dynamic_dbinfo_same(s_sis_dynamic_db *db1_, s_sis_dynamic_db *db2_)
 {
 	int fnums = sis_map_list_getsize(db1_->fields);
+	// printf("%s %s : %d %d\n", db1_->name, db2_->name, fnums, sis_map_list_getsize(db2_->fields));
 	if(fnums != sis_map_list_getsize(db2_->fields))	
 	{
 		return false;
@@ -268,6 +269,8 @@ bool sis_dynamic_dbinfo_same(s_sis_dynamic_db *db1_, s_sis_dynamic_db *db2_)
 		{
 			return false;
 		}
+		// sis_out_binary("1", unit1, sizeof(s_sis_dynamic_field));
+		// sis_out_binary("2", unit2, sizeof(s_sis_dynamic_field));
 		if (memcmp(unit1, unit2, sizeof(s_sis_dynamic_field)))
 		{
 			return false;
@@ -326,7 +329,7 @@ s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_)
 				}
 			}
 		}
-		sis_json_object_add_node(jfields, inunit->name, jfield);
+		sis_json_object_add_node(jfields, inunit->fname, jfield);
 	}
 	sis_json_object_add_node(jone, "fields", jfields);
 	return jone;
@@ -713,13 +716,13 @@ void _sis_dynamic_match(s_sis_dynamic_convert *convert_)
 	for (int i = 0; i < rfnums; i++)
 	{
 		s_sis_dynamic_field *outunit = (s_sis_dynamic_field *)sis_map_list_geti(out->fields, i);
-		s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(in->fields, outunit->name);
+		s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(in->fields, outunit->fname);
 
 		s_sis_dynamic_field_convert *curunit = SIS_MALLOC(s_sis_dynamic_field_convert, curunit);
 		curunit->out_field = outunit;
 		curunit->in_field = inunit;
 		curunit->cb_shift = NULL;
-		sis_map_list_set(convert_->map_fields, outunit->name, curunit);
+		sis_map_list_set(convert_->map_fields, outunit->fname, curunit);
 
 		if(inunit)
 		{

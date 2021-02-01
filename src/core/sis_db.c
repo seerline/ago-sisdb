@@ -3,7 +3,8 @@
 
 int sis_db_get_format(s_sis_sds argv_)
 {
-    int iformat = SISDB_FORMAT_CHARS;
+    int iformat = SISDB_FORMAT_JSON;
+	// SISDB_FORMAT_CHARS; 这里必须明确返回数据类型 不能是CHARS或者是BYTES
     s_sis_json_handle *handle = argv_ ? sis_json_load(argv_, sis_sdslen(argv_)) : NULL;
     if (handle)
     {
@@ -72,13 +73,13 @@ s_sis_sds sis_db_struct_to_json_sds(s_sis_dynamic_db *db_, const char *in_, size
 				for (int k = 0; k < inunit->count; k++)
 				{
 					char fname[64];
-					sis_sprintf(fname, 64, "%s%d", inunit->name, k);
+					sis_sprintf(fname, 64, "%s%d", inunit->fname, k);
 					sis_json_object_add_uint(jfields, fname, index++);
 				}
 			}
 			else
 			{
-				sis_json_object_add_uint(jfields, inunit->name, index++);
+				sis_json_object_add_uint(jfields, inunit->fname, index++);
 			}	
 		}
 		sis_json_object_add_node(jone, "fields", jfields);
@@ -143,13 +144,13 @@ s_sis_sds sis_db_struct_to_csv_sds(s_sis_dynamic_db *db_, const char *in_, size_
 				for (int k = 0; k < inunit->count; k++)
 				{
 					char fname[64];
-					sis_sprintf(fname, 64, "%s%d", inunit->name, k);
+					sis_sprintf(fname, 64, "%s%d", inunit->fname, k);
 					o = sis_csv_make_str(o, fname, sis_strlen(fname));
 				}
 			}
 			else
 			{
-				o = sis_csv_make_str(o, inunit->name, sis_sdslen(inunit->name));
+				o = sis_csv_make_str(o, inunit->fname, sis_strlen(inunit->fname));
 			}
 		}
 		o = sis_csv_make_end(o);

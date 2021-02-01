@@ -8,7 +8,7 @@ s_sis_dynamic_db *sisdb_find_db(s_sisdb_server_cxt *server_, const char *dataset
     if (dataset)
     {
         s_sis_message *msg = sis_message_create();
-        sis_message_set_str(msg, "dbname", table_, sis_strlen(table_));
+        sis_message_set_str(msg, "dbname", (char *)table_, sis_strlen(table_));
         sis_worker_command(dataset, "getdb", msg);
         o = sis_message_get(msg, "db");
         sis_message_destroy(msg);        

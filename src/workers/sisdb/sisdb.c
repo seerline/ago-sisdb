@@ -59,7 +59,7 @@ s_sisdb_table *sisdb_table_create(s_sis_json_node *node_)
     for (int i = 0; i < sis_map_list_getsize(db->fields); i++)
     {
         s_sis_dynamic_field *field = (s_sis_dynamic_field *)sis_map_list_geti(db->fields, i);
-        sis_string_list_push(o->fields, (const char *)field->name, sis_sdslen(field->name));
+        sis_string_list_push(o->fields, (const char *)field->fname, sis_strlen(field->fname));
     }
     return o;
 }
@@ -223,10 +223,13 @@ void sisdb_uninit(void *worker_)
 
     if (context->wlog_worker)
     {
+        if (context->wlog_open)
+        {
+            sis_worker_command(context->wlog_worker, "close", context->dbname);
+            context->wlog_open = 0;
+        }
         sis_worker_destroy(context->wlog_worker);
 		context->wlog_worker = NULL;
-		sis_sdsfree(context->wlog_keys);
-		sis_sdsfree(context->wlog_sdbs);
     }
     if (context->wfile_worker)
     {
@@ -254,7 +257,27 @@ void sisdb_method_uninit(void *worker_)
 {
     // 释放数据
 }
-
+int _sisdb_pack(s_sisdb_cxt *context)
+{
+    sis_mutex_lock(&context->wlog_lock);
+    s_sis_message *msg = sis_message_create();
+    sis_message_set_str(msg, "dbname", context->dbname, sis_sdslen(context->dbname));
+    int o = sis_worker_command(context->wfile_worker, "pack", msg);
+    sis_message_destroy(msg);
+    sis_mutex_unlock(&context->wlog_lock);
+    return o;
+}
+int _sisdb_save(s_sisdb_cxt *context)
+{
+    sis_mutex_lock(&context->wlog_lock);
+    s_sis_message *msg = sis_message_create();
+    sis_message_set(msg, "sisdb", context, NULL);
+    sis_message_set_int(msg, "workdate", context->work_date);  
+    int o = sis_worker_command(context->wfile_worker, "save", msg);
+    sis_message_destroy(msg);
+    sis_mutex_unlock(&context->wlog_lock);
+    return o;
+}
 void sisdb_working(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -273,24 +296,26 @@ void sisdb_working(void *worker_)
     if (minute > context->save_time)
     {
         sis_mutex_lock(&context->wlog_lock);
-        // 这里要判断是否新的一天 如果是就存盘
-        s_sis_message *msg = sis_message_create();
-        sis_message_set(msg, "sisdb", context, NULL);
-        sis_message_set_int(msg, "workdate", context->work_date);  
-        if (sis_worker_command(context->wfile_worker, "save", msg) == SIS_METHOD_OK)
+        if (context->wlog_open)
         {
+            sis_worker_command(context->wlog_worker, "close", context->dbname);
+            context->wlog_open = 0;
+        }
 
+        // 这里要判断是否新的一天 如果是就存盘
+        if (_sisdb_save(context) == SIS_METHOD_OK)
+        {
+            sis_worker_command(context->wlog_worker, "move", context->dbname);
         }
         int week = sis_time_get_week_ofday(context->work_date);
         // 存盘后如果检测到是周五 就执行pack工作
         if (week == 5)
         {
-            if (sis_worker_command(context->wfile_worker, "pack", msg) == SIS_METHOD_OK)
+            if (_sisdb_pack(context) == SIS_METHOD_OK)
             {
 
             }
         }   
-        sis_message_destroy(msg);
         context->work_date = idate;   
         LOG(5)("new workdate = %d\n", context->work_date);  
         sis_mutex_unlock(&context->wlog_lock);
@@ -477,7 +502,9 @@ int cmd_sisdb_bset(void *worker_, void *argv_)
     s_sis_sds kname = NULL; s_sis_sds sname = NULL; 
     int cmds = sis_str_divide_sds(netmsg->key, '.', &kname, &sname);
     // printf("cmd_sisdb_bset: %d %s %s \n", cmds, kname, sname);
-    if (!netmsg->val && sis_sdslen(netmsg->val) > 0)
+    // 得到二进制数据
+    s_sis_sds imem = sis_net_get_argvs(netmsg, 0);
+    if (!imem || sis_sdslen(imem) < 1)
     {
         return SIS_METHOD_ERROR;
     }
@@ -485,11 +512,11 @@ int cmd_sisdb_bset(void *worker_, void *argv_)
     if (cmds == 1)
     {
         // 单
-        o = sisdb_one_set(context, kname, SISDB_COLLECT_TYPE_BYTES, netmsg->val);
+        o = sisdb_one_set(context, kname, SISDB_COLLECT_TYPE_BYTES, imem);
     }
     else
     {
-        o = sisdb_set_bytes(context, netmsg->key, netmsg->val);
+        o = sisdb_set_bytes(context, netmsg->key, imem);
     }
     sis_sdsfree(kname);    sis_sdsfree(sname);
 	if (!o)
@@ -587,43 +614,97 @@ int cmd_sisdb_unsub(void *worker_, void *argv_)
 
 int cmd_sisdb_save(void *worker_, void *argv_)
 {
-        // s_sisdb_cxt *sisdb = (s_sisdb_cxt *)((s_sis_worker *)sis_map_list_geti(context->datasets, i))->context;  
-        // printf("save [%s] fail. workdate = %d .\n", sisdb->name, workdate);
-      
-        // if (sis_worker_command(context->wlog_save, "exist", sisdb->name) != SIS_METHOD_OK)
-        // {
-        //     continue;
-        // }
-        // sis_message_set(msg, "sisdb", sisdb, NULL);
-        // sis_message_set_int(msg, "workdate", workdate);       
-        // if (sis_worker_command(context->fast_save, "save", msg) == SIS_METHOD_OK)
-        // {
-        //     LOG(5)("save ok. start clear wlog [%s] ...\n", sisdb->name);
-        //     // 数据已经保存 删除wlog
-        //     sis_worker_command(context->wlog_save, "clear", sisdb->name);
-        //     oks++;
-        // }
-        // else
-        // {
-        //     LOG(5)("save [%s] fail. workdate = %d .\n", sisdb->name, workdate);
-        // }
-    return SIS_METHOD_OK;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    
+    int o = _sisdb_save(context);  
+    if (o == SIS_METHOD_OK)
+    {
+        sis_worker_command(context->wlog_worker, "move", context->dbname);
+        s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+        sis_net_ans_with_ok(netmsg);
+    }
+    return o;
 }
-int cmd_sisdb_pack (void *worker_, void *argv_)
+
+int cmd_sisdb_pack(void *worker_, void *argv_)
 {
-    return SIS_METHOD_OK;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    
+    int o = _sisdb_pack(context);
+
+    if (o == SIS_METHOD_OK)
+    {
+        s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+        sis_net_ans_with_ok(netmsg);
+    }
+    return o;
 }
 int cmd_sisdb_rdisk(void *worker_, void *argv_)
 {
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_message *msg = (s_sis_message *)argv_;
+    sis_message_set(msg, "sisdb", context, NULL);
+    // 如果自己有就用自己的 否则就继承
+    // sis_message_set(msg, "config", &context->catch_cfg, NULL);
+    // 直接转移过去
+    // sis_mutex_lock(&context->wlog_lock);
+    sis_worker_command(context->rfile_worker, "load", msg);
+    // sis_mutex_unlock(&context->wlog_lock);
+
     return SIS_METHOD_OK;
 }
-int cmd_sisdb_rlog (void *worker_, void *argv_)
-{   
-    return SIS_METHOD_OK;
-}
-int cmd_sisdb_wlog (void *worker_, void *argv_)
+
+static int cb_rlog_recv(void *worker_, void *argv_)
 {
-    return SIS_METHOD_OK;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    printf("cb_rlog_recv: %d %s \n%s \n%s \n%s \n", netmsg->style,
+            netmsg->serial? netmsg->serial : "nil",
+            netmsg->cmd ?   netmsg->cmd : "nil",
+            netmsg->key?    netmsg->key : "nil",
+            netmsg->val?    netmsg->val : "nil");   
+
+    char argv[2][128]; 
+    int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
+    if (cmds == 2)
+    {
+        sis_worker_command(worker, argv[1], netmsg);
+    }  
+    return 0;
+}
+int cmd_sisdb_rlog(void *worker_, void *argv_)
+{   
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_message *msg = (s_sis_message *)argv_;
+
+    sis_mutex_lock(&context->wlog_lock);
+    sis_message_set_str(msg, "dbname", context->dbname, sis_sdslen(context->dbname));
+    sis_message_set(msg, "source", worker, NULL);
+    sis_message_set_method(msg, "cb_recv", cb_rlog_recv);
+    int o = sis_worker_command(context->wlog_worker, "read", msg);
+    sis_mutex_unlock(&context->wlog_lock);
+	return o;
+}
+int cmd_sisdb_wlog(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+
+    sis_mutex_lock(&context->wlog_lock);
+    if (!context->wlog_open)
+    {
+        sis_worker_command(context->wlog_worker, "open", context->dbname);
+        context->wlog_open = 1;
+    }
+    int o = context->wlog_method->proc(context->wlog_worker, argv_);
+    sis_mutex_unlock(&context->wlog_lock);
+
+    return o;
 }
 
 int cmd_sisdb_clear(void *worker_, void *argv_)

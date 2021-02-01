@@ -47,6 +47,10 @@ bool sisdb_wlog_init(void *worker_, void *argv_)
         {
             context->work_path = sis_sdsnew("data/wlog/");
         }
+        if (!sis_path_exists(context->work_path))
+        {
+            sis_path_mkdir(context->work_path);
+        }
     }    
     return true;
 }
@@ -87,7 +91,7 @@ static void cb_read(void *source_, const char *key_, const char *sdb_, void *out
     if (context->cb_recv)
     {
         s_sis_net_message *netmsg = sis_net_message_create();
-        // sis_out_binary("wlog read", SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_));
+        sis_out_binary("wlog read", out_, olen_);
         s_sis_memory *memory = sis_memory_create_size(olen_);
         sis_memory_cat(memory, out_, olen_);
         sis_net_decoded_normal(memory, netmsg);

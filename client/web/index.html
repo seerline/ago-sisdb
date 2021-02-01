@@ -25,26 +25,31 @@ html, body, .container {
   </div>
   <div>
     <div>sdb option</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600600.stk_day", "val":{"time":20200101,"newp":10050}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600600.stk_day", "val":[20200102,101, 105, 100, 103, 1000, 8000]}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_day", "val":{"time":20200102,"newp":10150}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh600600.stk_day", "val":{"time":20200101,"newp":10050}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh600600.stk_day", "val":[20200102,101, 105, 100, 103, 1000, 8000]}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh600601.stk_day", "val":{"time":20200102,"newp":10150}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"sh600601.stk_day"}' onclick="send_command(this)"/>
     <div>---</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.gets", "key":"*.stk_day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.sub", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsub", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.gets", "key":"*.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.sub", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.unsub", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"SH601628.stk_right"}' onclick="send_command(this)"/>
     <div>sno option</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_snapshot", "val":{"time":20200101,"newp":80050,"askp1":80800}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.set", "key":"sh600601.stk_transact", "val":{"time":20200101,"newp":80060,"volume":222000}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_transact"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.sub", "key":"sh600601.stk_snapshot", "val":{"date":20200730,"format":"array"}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot", "val":{"date":20200730,"format":"array"}}' onclick="send_command(this)"/>
     <div>---</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"SH600745.stk_snapshot","val":{"date":20200407,"format":"csv"}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"csv"}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"array"}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"json"}}' onclick="send_command(this)"/>
+    <!-- <div>sno option</div>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.set", "key":"sh600601.stk_snapshot", "val":{"time":20200101,"newp":80050,"askp1":80800}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.set", "key":"sh600601.stk_transact", "val":{"time":20200101,"newp":80060,"volume":222000}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_transact"}' onclick="send_command(this)"/>
     <div>---</div>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"SH600745.stk_snapshot","val":{"date":20200407,"format":"csv"}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"csv"}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"array"}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"json"}}' onclick="send_command(this)"/>
+    <div>---</div> -->
     <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.*"}' onclick="send_command(this)"/>

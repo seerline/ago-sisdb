@@ -92,8 +92,8 @@
 #pragma pack(push,1)
 
 typedef struct s_sis_dynamic_field {    
-    s_sis_sds      name;  // 字段名
-                                      // 以字段名为唯一检索标记，如果用户对字段名
+    char           fname[32];  // 字段名 类型不要动 比较时有用
+                               // 以字段名为唯一检索标记，如果用户对字段名
     unsigned char  style;      // 数据类型
     unsigned short len;        // 数据长度
     unsigned short count;      // 该字段重复多少次
