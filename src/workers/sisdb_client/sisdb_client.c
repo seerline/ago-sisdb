@@ -516,7 +516,7 @@ int cmd_sisdb_client_ask_bytes_wait(void *worker_, void *argv_)
     // sis_message_del(msg, "rid");
 
     sisdb_client_send_ask(context, ask);
-    printf("wait %p\n", msg);
+    // printf("wait %p\n", msg);
     while(!sis_message_exist(msg, "rid"))
     {
         sis_sleep(1);

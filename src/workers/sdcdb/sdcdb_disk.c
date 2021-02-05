@@ -38,7 +38,7 @@ static int cb_sdcdb_wlog_load(void *worker_, void *argv_)
 		return SIS_METHOD_ERROR;
 	}
     // printf("cb_sdcdb_wlog_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
-    //         netmsg->source? netmsg->source : "nil",
+    //         netmsg->serial? netmsg->serial : "nil",
     //         netmsg->cmd ?   netmsg->cmd : "nil",
     //         netmsg->key?    netmsg->key : "nil",
     //         netmsg->val?    netmsg->val : "nil");   

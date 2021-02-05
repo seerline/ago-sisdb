@@ -46,6 +46,7 @@
 // 0 表示和前值一样
 // 1 + size长度+字符 ….
 
+typedef int (cb_sis_struct_encode)(void *, char *, size_t);
 typedef int (cb_sis_struct_decode)(void *, int ,int , char *, size_t);
 
 #pragma pack(push,1)
@@ -82,6 +83,9 @@ typedef struct s_sis_bits_stream{
 	uint32                bags_curpos;  // 数量的位置 必须取模8后 实际长度会大一些 4 位
 	// 最后一个字节如果 <= 250 表示实际长度 251 再向前取两位 252 再向前取4位....
 	uint8                 bags_bytes;  // 数量长度 字节
+	//
+	void                 *cb_zip_source; // 
+	cb_sis_struct_encode *cb_zip_stream; // 数据满以回调方式返回 默认为 bit_maxsize < bit_currpos + 2 * newdbsize
 }s_sis_bits_stream;
 
 #pragma pack(pop)
@@ -96,6 +100,7 @@ typedef struct s_sis_bits_stream{
 
 s_sis_bits_stream *sis_bits_stream_create(uint8 *in_, size_t ilen_);
 void sis_bits_stream_destroy(s_sis_bits_stream *);
+void sis_bits_stream_init(s_sis_bits_stream *);
 void sis_bits_stream_clear(s_sis_bits_stream *);
 // 得到数据的字节长度
 size_t sis_bits_stream_getbytes(s_sis_bits_stream *s_);
@@ -152,6 +157,8 @@ int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen
 ////////////////////////////
 int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_);
 int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_);
+// 结构化压缩必须设置回调 以保证数据满后立即处理 
+int sis_bits_struct_set_zipcb(s_sis_bits_stream *s_, void *source_, cb_sis_struct_encode *);
 
 // isread_ == true 从maxpos取值 false 其他就从curpos取值
 int  sis_bits_struct_get_bags(s_sis_bits_stream *s_, bool isread_);

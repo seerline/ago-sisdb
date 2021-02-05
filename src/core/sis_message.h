@@ -26,10 +26,8 @@ typedef struct s_sis_message_unit {
 //  message
 /////////////////////////////////////////////////
 // 分开定义是为了解决key同民问题，支持同一个名字下各种类型数据
-typedef struct s_sis_message {
-    void              *parent;   // 信息的来源 - 主要用于回调函数的参数
-    s_sis_map_pointer *maps ;     // 映射表
-} s_sis_message;
+#define s_sis_message s_sis_map_pointer
+
 
 #ifdef __cplusplus
 extern "C" {

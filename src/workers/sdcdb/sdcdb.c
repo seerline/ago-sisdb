@@ -54,7 +54,7 @@ s_sis_modules sis_modules_sdcdb = {
 ///////////////////////////////////////////////////////////////////////////
 s_sis_object *_sdcdb_new_data(s_sdcdb_cxt *sdcdb, int isinit)
 {
-	size_t size = sdcdb->zip_size + 256; // 这里应该取最长的结构体长度
+	size_t size = sdcdb->zip_size + 1024; // 这里应该取最长的结构体长度
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size + sizeof(s_sdcdb_compress)));
 	s_sdcdb_compress *memory = MAP_SDCDB_BITS(obj);
 	if (isinit || sdcdb->cur_size > sdcdb->initsize)
@@ -88,7 +88,7 @@ s_sis_object *_sdcdb_get_data(s_sdcdb_cxt *sdcdb)
 
 static void cb_output_reader_send(s_sdcdb_reader *reader, s_sdcdb_compress *memory)
 {
-	// LOG(5)("cb_output_reader_send = %d : %d\n", reader->sub_whole, memory->init);
+	// printf("cb_output_reader_send = %d : %d\n", reader->sub_whole, memory->init);
 	if (reader->sub_whole)
 	{
 		// 订阅全部就直接发送
@@ -109,7 +109,7 @@ static int cb_output_reader(void *reader_, s_sis_object *in_)
 	s_sdcdb_compress *memory = MAP_SDCDB_BITS(in_);
 
 	s_sdcdb_cxt *sdcdb = ((s_sis_worker *)reader->sdcdb_worker)->context;
-
+	// printf("cb_output_reader = %d\n",reader->isinit);
 	if (!reader->isinit)
 	{
 		if (!memory->init)
@@ -124,7 +124,7 @@ static int cb_output_reader(void *reader_, s_sis_object *in_)
 		else
 		{
 			// 当前包是最新的起始包 就开始发送数据
-			printf("last = %p  %p %d | %d\n", sdcdb->last_object, in_, sdcdb->last_object == in_, sdcdb->outputs->work_queue->rnums);
+			// printf("last = %p  %p %d | %d\n", sdcdb->last_object, in_, sdcdb->last_object == in_, sdcdb->outputs->work_queue->rnums);
 			if (sdcdb->last_object == in_)
 			{
 				reader->isinit = true;
@@ -214,9 +214,9 @@ static int cb_input_reader(void *sdcdb_, s_sis_object *in_)
 		sis_bits_struct_encode(sdcdb->cur_sbits, kidx, sidx, sis_memory(inmem), sis_memory_get_size(inmem));
 		sis_memory_setpos(inmem, offset);
 		outmem->size = sis_bits_struct_getsize(sdcdb->cur_sbits);
-
+		// printf("push 1s outmem->size = %d %d %d %d\n", outmem->size, sdcdb->zip_size, sdcdb->cur_sbits->max_keynum, sdcdb->cur_sbits->sdbsize);
 		//  数据如果超过一定数量就直接发送
-		if ((int)outmem->size > sdcdb->zip_size - 256)
+		if ((int)outmem->size > sdcdb->zip_size - 255)
 		{
 			sis_memory_set_size(SIS_OBJ_MEMORY(obj), sizeof(s_sdcdb_compress) + outmem->size);
 			// printf("push 1 outmem->size  = %d num= %d\n", outmem->size, sis_bits_struct_get_bags(sdcdb->cur_sbits, false));
@@ -303,7 +303,7 @@ bool sdcdb_init(void *worker_, void *argv_)
 	// sis_mutex_init(&(context->write_lock), NULL);
  
 	context->outputs = sis_lock_list_create(context->catch_size);
-	printf("context->outputs save = %d\n", context->outputs->save_mode);
+	// printf("context->outputs save = %d\n", context->outputs->save_mode);
 	context->cur_sbits = sis_bits_stream_create(NULL, 0);
 
     context->keys = sis_map_list_create(sis_sdsfree_call); 
@@ -352,6 +352,7 @@ bool sdcdb_init(void *worker_, void *argv_)
 		int isload = sdcdb_wlog_load(context);
 		SIS_WAIT_LONG(context->wlog_load == 0);
 		LOG(5)("load wlog ok. %d\n", context->wlog_load);
+
 		// 加载成功后 wlog 文件会被重写 以此来保证数据前后的一致性
 		// sdcdb_wlog_move(context);
 		//  如何保证磁盘的code索引和重启后索引保持一致 
@@ -449,8 +450,8 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 		sis_object_decr(sdcdb_->cur_object);
 		sdcdb_->cur_object = NULL;
 	}
-	sis_bits_stream_clear(sdcdb_->cur_sbits);
-
+	// sis_bits_stream_clear(sdcdb_->cur_sbits);
+	
 	sdcdb_->inited = true;
 	sdcdb_->stoped = false;
 	sdcdb_->cur_size = 0;
@@ -459,15 +460,15 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 	sis_lock_list_clear(sdcdb_->outputs);
 
 	// 可能因为断线重连等原因 如果其他信息一致 就不需要执行以下代码
-	if (sdcdb_->work_date == workdate_ && 
-		sdcdb_->work_keys && sdcdb_->work_sdbs &&
-		!sis_strcasecmp(sdcdb_->work_keys, keys_) &&
-		!sis_strcasecmp(sdcdb_->work_sdbs, sdbs_)) 
-	{
-		return true;
-	}
-	LOG(8)("_sdcdb_write_init : new. %d %d\n", sdcdb_->work_date ,workdate_);
-
+	// if (sdcdb_->work_date == workdate_ && 
+	// 	sdcdb_->work_keys && sdcdb_->work_sdbs &&
+	// 	!sis_strcasecmp(sdcdb_->work_keys, keys_) &&
+	// 	!sis_strcasecmp(sdcdb_->work_sdbs, sdbs_)) 
+	// {
+	// 	return true;
+	// }
+	// LOG(8)("_sdcdb_write_init : new. %d %d\n", sdcdb_->work_date ,workdate_);
+	sis_bits_stream_clear(sdcdb_->cur_sbits);
 	// 有一个信息不匹配就全部重新初始化
 	sdcdb_->work_date = workdate_;
 	sis_sdsfree(sdcdb_->work_keys); 
@@ -491,6 +492,7 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 			s_sis_sds key = sis_sdsnew(sis_string_list_get(klist, i));
 			sis_map_list_set(sdcdb_->keys, key, key);	
 		}
+		// LOG(8)("sis_bits_struct_set_key . %d\n", count);
     	sis_bits_struct_set_key(sdcdb_->cur_sbits, count);
 		sis_string_list_destroy(klist);
 	}
@@ -513,8 +515,9 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 		}
 		sis_json_close(injson);
 	}
-	if (sdcdb_->wlog_reader)
+	if (sdcdb_->wlog_reader && sdcdb_->wlog_date != workdate_)
 	{
+		// log日期不同就重新生成文件
 		sdcdb_->wlog_reader->isinit = 0;
 		sdcdb_->wlog_init = 0;
 	}
@@ -543,7 +546,7 @@ int cmd_sdcdb_set(void *worker_, void *argv_)
 		context->init_sdbs = sis_json_to_sds(injson->node, true);
 		sis_json_close(injson);
 	}
-    return SIS_METHOD_ERROR;
+    return SIS_METHOD_OK;
 }
 // 因为可能发到中间时也会调用该函数 init 时需要保证环境和最初的环境一致
 int cmd_sdcdb_init(void *worker_, void *argv_)
@@ -568,6 +571,8 @@ int cmd_sdcdb_start(void *worker_, void *argv_)
 	sis_sdsfree(context->init_sdbs);
 	context->init_keys = NULL;
 	context->init_sdbs = NULL;
+
+	// printf("cmd_sdcdb_start : %d\n", context->inited);
 
 	if (!context->inited)
 	{
@@ -979,6 +984,7 @@ int _sdcdb_get(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 	// sis_net_message_destroy(newinfo); 	
 	// sdcdb_reader_destroy(reader);
 	// sis_object_destroy(obj);
+	// sis_net_ans_with_noreply(netmsg); // 这一句功能是不二次回复
 
 	return SIS_METHOD_OK;
 }
@@ -1013,7 +1019,7 @@ int cmd_sdcdb_clear(void *worker_, void *argv_)
     s_sis_message *msg = (s_sis_message *)argv_;
 
 	const char *mode = sis_message_get_str(msg, "mode");
-	if (sis_strcasecmp(mode, "reader"))
+	if (!sis_strcasecmp(mode, "reader"))
 	{
 		int cid  = sis_message_get_int(msg, "cid");
 		if (cid == -1)
@@ -1025,7 +1031,7 @@ int cmd_sdcdb_clear(void *worker_, void *argv_)
 			sdcdb_move_reader(context, cid);
 		}		
 	}
-	if (sis_strcasecmp(mode, "catch"))
+	if (!sis_strcasecmp(mode, "catch"))
 	{
 		_sdcdb_clear_data(context);	
 	}	
@@ -1302,6 +1308,7 @@ void sdcdb_reader_destroy(void *reader_)
 static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t ilen_)
 {
 	s_sdcdb_reader *reader = (s_sdcdb_reader *)source_;
+	// return; // 只解压什么也不干
 	if (reader->cb_sisdb_bytes)
 	{
 		if (!in_)
@@ -1336,7 +1343,7 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 			// 表示一个包解析完成 如果数据区有数据就发送
 			s_sdcdb_compress *zipmem = reader->sub_ziper->zip_bits;
 			zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
-			// printf("reader->sub_ziper = %p %d\n", reader->sub_ziper->zip_bits, reader->sub_ziper->zip_size);
+			// printf("reader->sub_ziper = %p %d %d\n", reader->sub_ziper->zip_bits, reader->sub_ziper->zip_size, zipmem->size);
 			// sis_memory_set_size(SIS_OBJ_MEMORY(worker->zip_bits), sizeof(s_sdcdb_bytes) + zipmem->size);
 
 			if (zipmem->size > 0)
@@ -1353,13 +1360,14 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 			}
 			return 0;
 		}
-
+		// 先从大表中得到实际名称
 		s_sis_sds kname = sis_map_list_geti(reader->sub_unziper->keys, kidx_);
 		s_sis_dynamic_db *db = sis_map_list_geti(reader->sub_unziper->sdbs, sidx_);
 		if (!db || !kname)
 		{
 			return 0;
 		}
+		// 再获取订阅的索引
 		int kidx = sis_map_list_get_index(reader->sub_ziper->keys, kname);
 		int sidx = sis_map_list_get_index(reader->sub_ziper->sdbs, db->name);
 		if (kidx < 0 || sidx < 0)
@@ -1369,6 +1377,25 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 
 		// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, db->name, kidx, sidx, kidx_, sidx_);
 		sdcdb_worker_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
+		// if (reader->sub_ziper->zip_bits->size > reader->sub_ziper->zip_size)
+		// printf("zipbit size= %d\n", reader->sub_ziper->zip_bits->size);
+		s_sdcdb_compress *zipmem = reader->sub_ziper->zip_bits;
+		zipmem->size = reader->sub_ziper->zip_bits->size;
+		// 这里必须要判断 否则可能因为品种不同造成单包尺寸越界
+		// ??? 应该根据压缩的返回值 来判断是否要处理
+		if (zipmem->size > reader->sub_ziper->zip_size - 255)
+		{
+			// printf("zipbit size= %d\n", reader->sub_ziper->zip_bits->size);
+			reader->cb_sdcdb_compress(reader, zipmem);
+			if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
+			{
+				sdcdb_worker_zip_flush(reader->sub_ziper, 1);
+			}
+			else
+			{
+				sdcdb_worker_zip_flush(reader->sub_ziper, 0);
+			}
+		}
 	}
     return 0;
 }
@@ -1444,6 +1471,8 @@ int sdcdb_reader_realtime_start(s_sdcdb_reader *reader_)
 		{
 			sdcdb_worker_clear(reader_->sub_ziper);
 		}	
+		// printf("%d:%s \n %d:%s \n", sis_sdslen(reader_->sub_keys), reader_->sub_keys,
+		// 	sis_sdslen(sdcdb->work_keys), sdcdb->work_keys);
 		work_keys = sis_match_key(reader_->sub_keys, sdcdb->work_keys);
 		work_sdbs = sis_match_sdb_of_map(reader_->sub_sdbs, sdcdb->sdbs);
 		sdcdb_worker_set_keys(reader_->sub_ziper, work_keys);

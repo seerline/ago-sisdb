@@ -384,15 +384,14 @@ void sis_fast_queue_clear(s_sis_fast_queue *queue_)
     s_sis_unlock_node *node = queue_->rhead;
     while (node->next)
     {
-        s_sis_unlock_node *new_head = node->next;
-        sis_object_decr(new_head->obj);
+        s_sis_unlock_node *new_head = node->next; 
+        sis_object_decr(new_head->obj); // ???
         sis_unlock_node_destroy(node);
         node = new_head;
         queue_->rnums--;
     }
     sis_mutex_unlock(&queue_->wlock);
 }   
-// busy 为 1 只能push 并返回 NULL, 否则直接 设置 busy = 1 并返回原 obj 
 int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_)
 {  
     s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
@@ -454,7 +453,7 @@ void *_thread_reader(void *argv_)
                     //     printf("__check_while : next = %p\n", next); 
                     // }
                     // printf("next = %p\n", next); 
-                    if (next->obj)
+                    if (next->obj) // ???
                     {
                         if (reader->cb_recv)
                         reader->cb_recv(reader->cb_source, next->obj);

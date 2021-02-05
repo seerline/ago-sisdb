@@ -1270,48 +1270,73 @@ void sis_string_list_clear(s_sis_string_list *list_)
 	}
 	sis_pointer_list_clear(list_->strlist);
 }
-// read & write
+
 int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen_, const char *sign)
 {
 	sis_string_list_clear(list_);
 
-	if (strlen(in_) == 0)
-	{
-		return 0;
-	}
-	char *src = (char *)sis_malloc(inlen_ + 1);
-	sis_strncpy(src, inlen_ + 1, in_, inlen_);
+	int signsize = strlen(sign);
+
+	char *inptr = (char *)sis_malloc(inlen_ + 1);
+	memmove(inptr, in_, inlen_);
+	inptr[inlen_] = 0;
 
 	if (list_->permissions == STRING_LIST_RD)
 	{
-		list_->m_ptr_r = src;
+		list_->m_ptr_r = inptr;
 	}
-	char *ptr = src;
-	char *des = NULL;
-	char *token = NULL;
-	size_t len;
-	while ((token = sis_strsep(&ptr, sign)) != NULL)
+	int size = 0;
+	char *curr = (char *)inptr;
+	char *move = (char *)inptr;
+	char *newp = NULL;
+	while (size < inlen_)
 	{
-		sis_trim(token);
-		if (list_->permissions == STRING_LIST_WR)
+		if (!memcmp(curr, sign, signsize))
 		{
-			len = strlen(token);
-			des = (char *)sis_malloc(len + 1);
-			sis_strncpy(des, len + 1, token, len);
+			*curr = 0;
+			if (list_->permissions == STRING_LIST_WR)
+			{
+				int len = curr - move;
+				newp = (char *)sis_malloc(len + 1);
+				memmove(newp, move, len);
+				newp[len] = 0;
+			}
+			else
+			{
+				newp = move;
+			}
+			curr += signsize;
+			size += signsize;
+			move = curr;
+			sis_pointer_list_push(list_->strlist, newp);
 		}
 		else
 		{
-			des = token;
+			curr++;
+			size++;
 		}
-		sis_pointer_list_push(list_->strlist, des);
+	}
+	if (curr > move)
+	{
+		if (list_->permissions == STRING_LIST_WR)
+		{
+			int len = curr - move;
+			newp = (char *)sis_malloc(len + 1);
+			memmove(newp, move, len);
+			newp[len] = 0;
+		}
+		else
+		{
+			newp = move;
+		}
+		sis_pointer_list_push(list_->strlist, newp);
 	}
 	if (list_->permissions == STRING_LIST_WR)
 	{
-		sis_free(src);
+		sis_free(inptr);
 	}
 	return list_->strlist->count;
 }
-
 const char *sis_string_list_get(s_sis_string_list *list_, int index_)
 {
 	return (const char *)sis_pointer_list_get(list_->strlist, index_);
