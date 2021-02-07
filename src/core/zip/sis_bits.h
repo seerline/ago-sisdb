@@ -46,7 +46,15 @@
 // 0 表示和前值一样
 // 1 + size长度+字符 ….
 
-typedef int (cb_sis_struct_encode)(void *, char *, size_t);
+// 结构化压缩数据结构
+// typedef struct s_struct_compress
+// {
+// 	uint8   init;
+// 	uint32  size;
+// 	uint8   data[0];    
+// } s_struct_compress;
+
+typedef int (cb_sis_struct_encode)(void *, int);
 typedef int (cb_sis_struct_decode)(void *, int ,int , char *, size_t);
 
 #pragma pack(push,1)
@@ -66,7 +74,7 @@ typedef struct s_sis_struct_unit{
 
 // 可装载多个结构的数据流
 typedef struct s_sis_bits_stream{
-	uint8                *cur_stream;	// 目标缓冲区
+	uint8                *cur_stream;	// 目标缓冲区  s_struct_compress
 	uint32                bit_maxsize;  // 缓冲区大小，Bit
 
 	uint32                bit_currpos;  // 当前操作位置
@@ -84,8 +92,8 @@ typedef struct s_sis_bits_stream{
 	// 最后一个字节如果 <= 250 表示实际长度 251 再向前取两位 252 再向前取4位....
 	uint8                 bags_bytes;  // 数量长度 字节
 	//
-	void                 *cb_zip_source; // 
-	cb_sis_struct_encode *cb_zip_stream; // 数据满以回调方式返回 默认为 bit_maxsize < bit_currpos + 2 * newdbsize
+	// void                 *cb_zip_source; // 
+	// cb_sis_struct_encode *cb_zip_stream; // 数据满以回调方式返回 默认为 bit_maxsize < bit_currpos + 2 * newdbsize
 }s_sis_bits_stream;
 
 #pragma pack(pop)
@@ -158,7 +166,7 @@ int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen
 int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_);
 int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_);
 // 结构化压缩必须设置回调 以保证数据满后立即处理 
-int sis_bits_struct_set_zipcb(s_sis_bits_stream *s_, void *source_, cb_sis_struct_encode *);
+// void sis_bits_struct_set_zipcb(s_sis_bits_stream *s_, void *source_, cb_sis_struct_encode *);
 
 // isread_ == true 从maxpos取值 false 其他就从curpos取值
 int  sis_bits_struct_get_bags(s_sis_bits_stream *s_, bool isread_);

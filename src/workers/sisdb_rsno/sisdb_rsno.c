@@ -374,12 +374,12 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
         if (!context->rsno_ziper)
         {
             context->rsno_ziper = sdcdb_worker_create();
-            sdcdb_worker_zip_init(context->rsno_ziper, zip_size, initsize);
         }
         else
         {
             sdcdb_worker_clear(context->rsno_ziper);
         }
+        sdcdb_worker_zip_init(context->rsno_ziper, zip_size, initsize);
     }
     sisdb_rsno_sub_start(context);
 

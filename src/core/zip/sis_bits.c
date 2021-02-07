@@ -163,8 +163,8 @@ int sis_bits_stream_put(s_sis_bits_stream *s_, uint64 in_, int bits_)
         {
             while (offset > 0)
             {
-                if (s_->bit_maxsize > 131072 || s_->bit_currpos > s_->bit_maxsize)
-                printf("[%p]offset= %5d, %5d | %5d, %3d %3u\n", s_->cur_stream, s_->bit_maxsize/8, s_->bit_currpos/8, offset, bits_, (uint8)*phigh_byte);
+                // if (s_->bit_maxsize > 131072 || s_->bit_currpos > s_->bit_maxsize)
+                // printf("[%p]offset= %5d, %5d | %5d, %3d %3u\n", s_->cur_stream, s_->bit_maxsize/8, s_->bit_currpos/8, offset, bits_, (uint8)*phigh_byte);
                 s_->cur_stream[s_->bit_currpos / 8] = *phigh_byte;
                 s_->bit_currpos += sis_min(8, offset);
                 offset -= 8;
@@ -596,11 +596,11 @@ int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_)
     s_->max_keynum = keynum_;
     return keynum_;
 }
-int sis_bits_struct_set_zipcb(s_sis_bits_stream *s_, void *source_, cb_sis_struct_encode *cb_zip_)
-{
-    s_->cb_zip_source = source_;
-    s_->cb_zip_stream = cb_zip_;
-}
+// void sis_bits_struct_set_zipcb(s_sis_bits_stream *s_, void *source_, cb_sis_struct_encode *cb_zip_)
+// {
+//     s_->cb_zip_source = source_;
+//     s_->cb_zip_stream = cb_zip_;
+// }
 
 int  sis_bits_struct_get_bags(s_sis_bits_stream *s_, bool isread_)
 {
@@ -748,20 +748,21 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
         return 0;
     }
     int count = ilen_ / unit->sdb->size;
-    int bytes = sis_bits_stream_getbytes(s_);
 
-    if (s_->cb_zip_stream)
-    {
+    // if (s_->cb_zip_stream)
+    // {
         int size = ((s_->bit_currpos + 7) / 8 + 2 * ilen_ + 4 );
-        if ( ((s_->bit_currpos + 7) / 8 + 2 * ilen_ + 4 ) > (s_->bit_maxsize + 7) / 8)
+        if ( size > (s_->bit_maxsize + 7) / 8)
         {
-            s_->cb_zip_stream(s_->cb_zip_source, s_->cur_stream, sis_bits_struct_getsize(s_));
+            printf("zip %d %d %d key= %d  %d\n", s_->bit_currpos, s_->bit_maxsize, ilen_, s_->max_keynum, unit->sdb->size);
+            return -1;
+            // s_->cb_zip_stream(s_->cb_zip_source, sis_bits_struct_getsize(s_));
             // 传递后重头开始写数据
         }
-    }
+    // }
     char *memory = (char *)&buffer[1];
     // sis_out_binary("buffer", (char *)buffer, unit->sdb->size + 1);
-    // printf("key= %d  %d\n", s_->max_keynum, unit->sdb->size);
+    // printf("zip %d %d %dkey= %d  %d\n", buffer[0], s_->bit_currpos, s_->bit_maxsize, s_->max_keynum, unit->sdb->size);
     sis_bits_stream_put(s_, buffer[0] == 0 ? 0 : 1, 1);
     // printf("[%d %d] %s \n",kid_, sid_, unit->sdb->name);
     sis_bits_stream_put_uint(s_, kid_);
@@ -870,6 +871,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
     // printf("decode nums= %d\n", nums);
     if (nums < 1)
     {
+        // printf("decode fail nums= %d\n", nums);
         return 0;
     }    
     sis_bits_stream_savepos(s_);
@@ -892,6 +894,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
         uint8 *buffer = _sis_bits_struct_get_ago(s_, unzip.kidx, unit);
         if (!buffer)
         {
+            // printf("decode fail %d %d\n", unzip.kidx, unzip.sidx);
             // 如果解析失败
             _unzip_unit_free(list);
             sis_bits_stream_restore(s_);

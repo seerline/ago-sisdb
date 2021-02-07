@@ -5,7 +5,7 @@
 s_sis_memory *sis_memory_create()
 {
 	s_sis_memory *m = (s_sis_memory *)sis_malloc(sizeof(s_sis_memory));
-	m->buffer = (char *)sis_calloc(255);
+	m->buffer = (char *)sis_malloc(255);
 	m->size = 0;
 	m->maxsize = 255;
 	m->offset = 0;
@@ -14,7 +14,7 @@ s_sis_memory *sis_memory_create()
 s_sis_memory *sis_memory_create_size(size_t size_)
 {
 	s_sis_memory *m = (s_sis_memory *)sis_malloc(sizeof(s_sis_memory));
-	m->buffer = (char *)sis_calloc(size_ + 1);
+	m->buffer = (char *)sis_malloc(size_ + 1);
 	m->size = 0;
 	m->maxsize = size_ + 1;
 	m->offset = 0;

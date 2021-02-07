@@ -261,7 +261,6 @@ int sdcdb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip);
 s_sdcdb_reader *sdcdb_reader_create();
 void sdcdb_reader_destroy(void *);
 
-
 int sdcdb_reader_realtime_start(s_sdcdb_reader *reader);
 int sdcdb_reader_realtime_stop(s_sdcdb_reader *reader);
 

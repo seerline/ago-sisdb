@@ -30,8 +30,8 @@ void sdcdb_worker_unzip_init(s_sdcdb_worker *worker, void *cb_source_, cb_sis_st
 	worker->cb_source = cb_source_;
 	worker->cb_decode = cb_read_;
 }
-
-void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize, void *cb_source_, cb_sis_struct_decode *cb_read_)
+// 很重要
+void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize) //, void *cb_source_, cb_sis_struct_encode *cb_read_)
 {
 	worker->initsize = initsize;
 	worker->zip_size = zipsize;
@@ -40,11 +40,18 @@ void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize, vo
 	{
 		sis_free(worker->zip_bits);
 	}
-	// 1024 需要足够大 最少大于最长结构的1倍 否则会出现意想不到的错误 这里以后需要做优化
-	int size = sizeof(s_sdcdb_compress) + worker->zip_size + 1024;
-	worker->zip_bits = sis_calloc(size);
+	int size = sizeof(s_sdcdb_compress) + worker->zip_size + 512;
+	worker->zip_bits = sis_malloc(size);
 	sdcdb_worker_zip_flush(worker, 1);
-	// printf("reader->sub_ziper = %p %d\n", worker->zip_bits, size);
+}
+void sdcdb_worker_clear(s_sdcdb_worker *worker)
+{
+	LOG(5)("clear unzip reader\n");
+	sis_map_list_clear(worker->keys);
+	sis_map_list_clear(worker->sdbs);
+	sis_bits_stream_clear(worker->cur_sbits);
+	// 如果是压缩 清理后必须记得 init
+	// sdcdb_worker_zip_init(worker, worker->zip_size, worker->initsize);
 }
 void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
 {
@@ -60,7 +67,7 @@ void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
 		zipmem->init = 0;
 		worker->cur_size += zipmem->size;
 	}
-	int size = worker->zip_size + 1024;
+	int size = worker->zip_size + 512;
 	sis_bits_struct_link(worker->cur_sbits, zipmem->data, size);	
 	zipmem->size = 0;
 	memset(zipmem->data, 0, size);			
@@ -68,15 +75,12 @@ void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
 void sdcdb_worker_zip_set(s_sdcdb_worker *worker, int kidx, int sidx, char *in_, size_t ilen_)
 {
 	// printf("zip cur_sbits : %p %d %d\n", worker, worker->cur_sbits->max_keynum, worker->cur_sbits->units->count);
-	sis_bits_struct_encode(worker->cur_sbits, kidx, sidx, in_, ilen_);
+	int o = sis_bits_struct_encode(worker->cur_sbits, kidx, sidx, in_, ilen_);
+	if (o < 0)
+	{
+		LOG(5)("zip fail.\n");
+	}
 	worker->zip_bits->size = sis_bits_struct_getsize(worker->cur_sbits);
-}
-void sdcdb_worker_clear(s_sdcdb_worker *worker)
-{
-	LOG(5)("clear unzip reader\n");
-	sis_map_list_clear(worker->keys);
-	sis_map_list_clear(worker->sdbs);
-	sis_bits_stream_clear(worker->cur_sbits);
 }
 
 void sdcdb_worker_set_keys(s_sdcdb_worker *worker, s_sis_sds in_)
@@ -140,7 +144,7 @@ void sdcdb_worker_unzip_set(s_sdcdb_worker *worker, s_sdcdb_compress *in_)
 	msec_t _start_usec = sis_time_get_now_usec();
 	// 开始解压 并回调
 	// int nums = sis_bits_struct_decode(worker->cur_sbits, NULL, NULL);
-	printf("unzip cur_sbits : %p %d %d\n", worker, worker->cur_sbits->max_keynum, worker->cur_sbits->units->count);
+	// printf("unzip cur_sbits : %p %d %d\n", worker, worker->cur_sbits->max_keynum, worker->cur_sbits->units->count);
 	int nums = sis_bits_struct_decode(worker->cur_sbits, worker->cb_source, worker->cb_decode);
 	if (nums == 0)
 	{

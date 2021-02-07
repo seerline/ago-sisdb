@@ -18,7 +18,7 @@ static int cb_sdcdb_wlog_start(void *worker_, void *argv_)
     s_sdcdb_cxt *context = (s_sdcdb_cxt *)worker_;
 	const char *sdate = (const char *)argv_;
 	LOG(5)("load wlog start. %s\n", sdate);
-	context->wlog_date = sis_atoll(sdate);
+	context->wlog_date = sis_atoll(sdate); 
 	return SIS_METHOD_OK;
 }
 static int cb_sdcdb_wlog_stop(void *worker_, void *argv_)
@@ -164,15 +164,15 @@ static int cb_sdcdb_wfile_load(void *worker_, void *argv_)
 		return SIS_METHOD_ERROR;
 	}
     // printf("cb_sdcdb_wfile_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
-    //         netmsg->source? netmsg->source : "nil",
+    //         netmsg->serial? netmsg->serial : "nil",
     //         netmsg->cmd ?   netmsg->cmd : "nil",
     //         netmsg->key?    netmsg->key : "nil",
     //         netmsg->val?    netmsg->val : "nil");   
-
 	if (!sis_strcasecmp("zpub", netmsg->cmd))
 	{
+		// printf("%p %d\n", context->wfile_cb_sdcdb_compress, netmsg->argvs->count);
 		for (int i = 0; i < netmsg->argvs->count; i++)
-		{
+		{ 
 			s_sis_object *obj = sis_pointer_list_get(netmsg->argvs, i);
 			if (context->wfile_cb_sdcdb_compress)
 			{

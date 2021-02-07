@@ -153,6 +153,7 @@ static int cb_dict_keys(void *worker_, void *argv_)
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
     sis_sdsfree(context->wsno_keys);
+    // printf("%s\n",__func__);
     context->wsno_keys = sis_sdsdup(argv_);
     return SIS_METHOD_OK;
 }
@@ -161,6 +162,7 @@ static int cb_dict_sdbs(void *worker_, void *argv_)
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
     sis_sdsfree(context->wsno_sdbs);
+    // printf("%s\n",__func__);
     context->wsno_sdbs = sis_sdsdup(argv_);
     return SIS_METHOD_OK;
 }
@@ -183,6 +185,7 @@ static int cb_sdcdb_compress(void *worker_, void *argv_)
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
     _write_head(context, 1);
+    // printf("%s\n",__func__);
 	sdcdb_worker_unzip_set(context->wsno_unzip, (s_sdcdb_compress *)argv_);
     return SIS_METHOD_OK;
 }
@@ -200,6 +203,7 @@ static int cb_unzip_info(void *source, int kidx, int sidx, char *in, size_t ilen
     {
         return 0;
     }
+    // printf("%s %s\n",kname, db->name);
     sis_disk_file_write_sdb(context->write_class, kname, db->name, in, ilen);
     return 0;
 }
