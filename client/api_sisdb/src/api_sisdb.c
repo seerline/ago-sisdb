@@ -275,6 +275,8 @@ int main()
 	// api_sisdb_command_ask(no, "show", NULL, NULL, cb_reply1);
 	api_sisdb_command_ask(no, "mdb.get", "sh600601.stk_right", "{\"format\":\"struct\"}", cb_reply1);
 	api_sisdb_command_ask(no, "mdb.get", "BK000000.bkinfo", "{\"format\":\"struct\"}", cb_reply1);
+	api_sisdb_command_ask(no, "mdb.get", "BK600001.bkcodes", "{\"format\":\"struct\"}", cb_reply1);
+	api_sisdb_command_ask(no, "mdb.get", "SH600600.bkinside", "{\"format\":\"struct\"}", cb_reply1);
 	
 	// 获取二进制数据
 	api_sisdb_command_ask(no, "nowdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"struct\"}", cb_reply1);
