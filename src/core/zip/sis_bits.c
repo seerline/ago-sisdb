@@ -681,7 +681,7 @@ uint8 *_sis_bits_struct_get_ago(s_sis_bits_stream *s_, int kid_, s_sis_struct_un
     {
         return s_->ago_memory + kid_ * s_->sdbsize + unit_->offset;
     }
-    return NULL;
+    return NULL; 
 }
 
 // 
@@ -738,14 +738,18 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
     _sis_bits_struct_init(s_);
 
     s_sis_struct_unit *unit = (s_sis_struct_unit *)sis_pointer_list_get(s_->units, sid_);
+    if (!unit)
+    {
+        return -1;
+    }
     uint8 *buffer = _sis_bits_struct_get_ago(s_, kid_, unit);
     if (!buffer)
     {
-        return 0;
+        return -2;
     }
     if (ilen_ % unit->sdb->size)
     {
-        return 0;
+        return -3;
     }
     int count = ilen_ / unit->sdb->size;
 
@@ -754,8 +758,8 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
         int size = ((s_->bit_currpos + 7) / 8 + 2 * ilen_ + 4 );
         if ( size > (s_->bit_maxsize + 7) / 8)
         {
-            printf("zip %d %d %d key= %d  %d\n", s_->bit_currpos, s_->bit_maxsize, ilen_, s_->max_keynum, unit->sdb->size);
-            return -1;
+            LOG(5)("zip %d %d %d key= %d  %d\n", s_->bit_currpos, s_->bit_maxsize, ilen_, s_->max_keynum, unit->sdb->size);
+            return -5;
             // s_->cb_zip_stream(s_->cb_zip_source, sis_bits_struct_getsize(s_));
             // 传递后重头开始写数据
         }

@@ -293,6 +293,75 @@ double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double
 /////////////////////////////////////////////////////////
 //
 /////////////////////////////////////////////////////////
+
+void sis_ai_calc_avgm(double in_, s_ai_avg_m *avgm_)
+{
+    if (SIS_IS_ZERO(in_))
+    {
+        return ;
+    }
+    if (avgm_->nums == 0)
+    {
+        avgm_->nums = 1;
+        avgm_->avgm = in_;
+    }
+    else if (avgm_->nums < SIS_AI_AVG_MIN)
+    {
+        avgm_->avgm = (avgm_->avgm * (SIS_AI_AVG_MIN - 1) + in_) / SIS_AI_AVG_MIN;
+        avgm_->nums ++;                
+    }
+    else if (avgm_->nums < SIS_AI_AVG_MAX)
+    {
+        avgm_->avgm = (avgm_->avgm * avgm_->nums + in_) / (avgm_->nums + 1);        
+        avgm_->nums ++;
+    }
+    else
+    {
+        avgm_->avgm = (avgm_->avgm * (SIS_AI_AVG_MAX - 1) + in_) / SIS_AI_AVG_MAX;                
+    }
+}
+
+void sis_ai_calc_avgr(double son_, double mom_, s_ai_avg_r *avgr_)
+{
+    if (SIS_IS_ZERO(mom_) || (SIS_IS_ZERO(son_) && avgr_->nums < SIS_AI_AVG_MIN))
+    {
+        return ;
+    }
+    double newv = son_ / mom_;
+    if (avgr_->nums == 0)
+    {
+        avgr_->nums = 1;
+        avgr_->avgm = son_;
+        avgr_->avgr = newv;
+    }
+    else if (avgr_->nums < SIS_AI_AVG_MIN)
+    {
+        double newm = (avgr_->avgm * (SIS_AI_AVG_MIN - 1) + son_);
+        avgr_->avgr = (avgr_->avgm * (SIS_AI_AVG_MIN - 1)) / newm * avgr_->avgr + 
+                    son_ / newm * newv;
+        avgr_->avgm = newm / SIS_AI_AVG_MIN;
+        avgr_->nums = avgr_->nums + 1;                
+    }
+    else if (avgr_->nums < SIS_AI_AVG_MAX)
+    {
+        double newm = (avgr_->avgm * avgr_->nums + son_);
+        avgr_->avgr = (avgr_->avgm * avgr_->nums) / newm * avgr_->avgr + 
+                     son_ / newm * newv;
+        avgr_->nums = avgr_->nums + 1;
+        avgr_->avgm = newm / avgr_->nums;        
+    }
+    else
+    {
+        double newm = (avgr_->avgm * (SIS_AI_AVG_MAX - 1) + son_);
+        avgr_->avgr = (avgr_->avgm * (SIS_AI_AVG_MAX - 1)) / newm * avgr_->avgr + 
+                     son_ / newm * newv;
+        avgr_->avgm = newm / SIS_AI_AVG_MAX;                
+    }
+}
+
+/////////////////////////////////////////////////////////
+//
+/////////////////////////////////////////////////////////
 s_ai_nearest_drift *sis_ai_nearest_drift_create()
 {
     s_ai_nearest_drift *o = SIS_MALLOC(s_ai_nearest_drift, o);

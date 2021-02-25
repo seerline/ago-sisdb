@@ -78,7 +78,7 @@ void sdcdb_worker_zip_set(s_sdcdb_worker *worker, int kidx, int sidx, char *in_,
 	int o = sis_bits_struct_encode(worker->cur_sbits, kidx, sidx, in_, ilen_);
 	if (o < 0)
 	{
-		LOG(5)("zip fail.\n");
+		LOG(5)("worker zip fail. %d \n", o);
 	}
 	worker->zip_bits->size = sis_bits_struct_getsize(worker->cur_sbits);
 }

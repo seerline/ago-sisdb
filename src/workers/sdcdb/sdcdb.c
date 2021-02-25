@@ -52,30 +52,6 @@ s_sis_modules sis_modules_sdcdb = {
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sdcdb_cxt --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
-s_sis_object *_sdcdb_new_data(s_sdcdb_cxt *sdcdb, int isinit)
-{
-	size_t size = sizeof(s_sdcdb_compress) + sdcdb->zip_size + 512; // 这里应该取最长的结构体长度
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
-	s_sdcdb_compress *inmem = MAP_SDCDB_BITS(obj);
-	if (isinit || sdcdb->cur_size > sdcdb->initsize)
-	{
-		inmem->init = 1;
-		// printf("new last obj = %p\n", obj);
-		sdcdb->last_object = obj;
-		sdcdb->cur_size = size;
-		sis_bits_struct_flush(sdcdb->cur_sbits);
-		sis_bits_struct_link(sdcdb->cur_sbits, inmem->data, size);				
-	}
-	else
-	{
-		inmem->init = 0;
-		sdcdb->cur_size += size;
-		sis_bits_struct_link(sdcdb->cur_sbits, inmem->data, size);		
-	}	
-	inmem->size = 0;
-	memset(inmem->data, 0, sdcdb->zip_size + 512);
-	return obj;
-}
 
 static void cb_output_reader_send(s_sdcdb_reader *reader, s_sdcdb_compress *memory)
 {
@@ -160,23 +136,31 @@ static int cb_output_realtime(void *reader_)
 // 测试不压缩和压缩的速度一致
 // 把队列数据写入压缩流中 堵塞
 
-// static int cb_zip_complete(void *sdcdb_, size_t size_)
-// {	
-// 	// 数据超出范围就写队列
-// 	if (size_ < 1)
-// 	{
-// 		return 1;
-// 	}
-// 	s_sdcdb_cxt *sdcdb = (s_sdcdb_cxt *)sdcdb_;
-// 	s_sis_object *obj = sdcdb->cur_object;
-// 	s_sdcdb_compress *outmem = MAP_SDCDB_BITS(obj);
-// 	outmem->size = size_;
-// 	sis_memory_set_size(SIS_OBJ_MEMORY(obj), sizeof(s_sdcdb_compress) + outmem->size);
-// 	sis_lock_list_push(sdcdb->outputs, obj);
-// 	sis_object_decr(sdcdb->cur_object);
-// 	sdcdb->cur_object = _sdcdb_new_data(sdcdb, 0);
-// 	return 0;
-// }
+s_sis_object *_sdcdb_new_data(s_sdcdb_cxt *sdcdb, int isinit)
+{
+	size_t size = sizeof(s_sdcdb_compress) + sdcdb->zip_size + 512; // 这里应该取最长的结构体长度
+	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
+	s_sdcdb_compress *inmem = MAP_SDCDB_BITS(obj);
+	if (isinit || sdcdb->cur_size > sdcdb->initsize)
+	{
+		inmem->init = 1;
+		// printf("new last obj = %p\n", obj);
+		sdcdb->last_object = obj;
+		sdcdb->cur_size = size;
+		sis_bits_struct_flush(sdcdb->cur_sbits);
+		sis_bits_struct_link(sdcdb->cur_sbits, inmem->data, size);				
+	}
+	else
+	{
+		inmem->init = 0;
+		sdcdb->cur_size += size;
+		sis_bits_struct_link(sdcdb->cur_sbits, inmem->data, size);		
+	}	
+	inmem->size = 0;
+	memset(inmem->data, 0, sdcdb->zip_size + 512);
+	return obj;
+}
+
 static int cb_input_reader(void *sdcdb_, s_sis_object *in_)
 {	
 	// if (_unzip_nums <= 2000000)
@@ -192,9 +176,16 @@ static int cb_input_reader(void *sdcdb_, s_sis_object *in_)
 
 	// bool isnew = false;
 	s_sdcdb_cxt *sdcdb = (s_sdcdb_cxt *)sdcdb_;
+	if (!sdcdb->inited)
+	{
+		// 必须有这个判断 否则正在初始化时 会收到 in==NULL的数据包 
+		LOG(5)("sdcdb no init. %d %d %p\n", sdcdb->inited, sdcdb->work_date, in_);
+		return -1;
+	}
 	if (!sdcdb->cur_object)
 	{
 		sdcdb->cur_object = _sdcdb_new_data(sdcdb, 1);
+		LOG(5)("sdcdb new obj %d %d.\n", sdcdb->zip_size, sdcdb->cur_sbits->bit_maxsize);
 	}
 	s_sis_object *obj = sdcdb->cur_object; 
 	s_sdcdb_compress *outmem = MAP_SDCDB_BITS(obj);
@@ -225,7 +216,7 @@ static int cb_input_reader(void *sdcdb_, s_sis_object *in_)
 		int o = sis_bits_struct_encode(sdcdb->cur_sbits, kidx, sidx, sis_memory(inmem), sis_memory_get_size(inmem));
 		if (o < 0)
 		{
-			LOG(5)("zip fail 0.\n");
+			LOG(5)("sdcdb zip fail %d.\n", o);
 		}
 		sis_memory_setpos(inmem, offset);
 		outmem->size = sis_bits_struct_getsize(sdcdb->cur_sbits);
@@ -453,11 +444,15 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 	{
 		return false;
 	}
+	sdcdb_->inited = false;
+	sdcdb_->stoped = false;
 	LOG(8)("_sdcdb_write_init : %d %d %d\n", workdate_, (int)sis_sdslen(keys_), (int)sis_sdslen(sdbs_));
 	// 这里为了保证二次进入 必须对压缩参数初始化
 	if (sdcdb_->inputs)
 	{
+		LOG(5)("inputs: - %d %d\n", sdcdb_->inputs->rnums, sdcdb_->inputs->wnums);
 		sis_fast_queue_clear(sdcdb_->inputs);
+		LOG(5)("inputs: - %d %d\n", sdcdb_->inputs->rnums, sdcdb_->inputs->wnums);
 	}
 	sdcdb_->last_object = NULL;
 	if (sdcdb_->cur_object)
@@ -466,9 +461,6 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 		sdcdb_->cur_object = NULL;
 	}
 	// sis_bits_stream_clear(sdcdb_->cur_sbits);
-	
-	sdcdb_->inited = true;
-	sdcdb_->stoped = false;
 	sdcdb_->cur_size = 0;
 
 	// 清理输出缓存中可能存在的数据
@@ -482,7 +474,7 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 	// {
 	// 	return true;
 	// }
-	// LOG(8)("_sdcdb_write_init : new. %d %d\n", sdcdb_->work_date ,workdate_);
+	LOG(8)("_sdcdb_write_init : new. %d %d\n", sdcdb_->work_date ,workdate_);
 	sis_bits_stream_clear(sdcdb_->cur_sbits);
 	// 有一个信息不匹配就全部重新初始化
 	sdcdb_->work_date = workdate_;
@@ -507,7 +499,7 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 			s_sis_sds key = sis_sdsnew(sis_string_list_get(klist, i));
 			sis_map_list_set(sdcdb_->keys, key, key);	
 		}
-		// LOG(8)("sis_bits_struct_set_key . %d\n", count);
+		LOG(8)("sis_bits_struct_set_key . %d\n", count);
     	sis_bits_struct_set_key(sdcdb_->cur_sbits, count);
 		sis_string_list_destroy(klist);
 	}
@@ -530,6 +522,8 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 		}
 		sis_json_close(injson);
 	}
+	// 这里要设置
+	
 	// sis_bits_struct_set_zipcb(sdcdb_->cur_sbits, sdcdb_, cb_zip_complete);
 	if (sdcdb_->wlog_reader && sdcdb_->wlog_date != workdate_)
 	{
@@ -537,6 +531,8 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 		sdcdb_->wlog_reader->isinit = 0;
 		sdcdb_->wlog_init = 0;
 	}
+	LOG(5)("old obj = %p.\n", sdcdb_->cur_object);
+	sdcdb_->inited = true;
 	return true;
 }
 int cmd_sdcdb_set(void *worker_, void *argv_)
@@ -582,7 +578,11 @@ int cmd_sdcdb_start(void *worker_, void *argv_)
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	// 这里的keys和sdbs必须为真实值
 	int work_date = sis_atoll(netmsg->val);
-    _sdcdb_write_init(context, work_date, context->init_keys, context->init_sdbs);
+    if (!_sdcdb_write_init(context, work_date, context->init_keys, context->init_sdbs))
+	{
+		LOG(5)("sdcdb init fail.\n");
+		return SIS_METHOD_ERROR;
+	}
 	sis_sdsfree(context->init_keys);
 	sis_sdsfree(context->init_sdbs);
 	context->init_keys = NULL;

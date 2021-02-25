@@ -39,6 +39,26 @@ double sis_ai_normalization_series_drift(int nums_, double ins_[], double min_, 
 // 归一化的最近加速度
 double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double min_, double max_);
 
+
+#define SIS_AI_AVG_MIN    10   //  为避免初始波动过于剧烈 小于10按10比例求均值
+#define SIS_AI_AVG_MAX    100  //  小于100 求均值 大于100 后按比例求均值
+
+typedef struct s_ai_avg_m
+{
+	int8   nums;    // 数量
+	float  avgm;    // 平均值
+} s_ai_avg_m;
+
+typedef struct s_ai_avg_r
+{
+	int8   nums;    // 数量
+	float  avgm;    // 平均值
+	float  avgr;    // 平均比例
+} s_ai_avg_r;
+
+void sis_ai_calc_avgm(double in_, s_ai_avg_m *avgm_);
+void sis_ai_calc_avgr(double son_, double mom_, s_ai_avg_r *avgr_);
+
 /////////////////////////////////////////////////////////
 //  求一组数据的最近的趋势和极值
 //  长周期的极值判断方法，主要确定局部周期, 取 N*SIS_AI_GOLD4+1取整为局部周期
@@ -51,6 +71,7 @@ double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double
 #define SIS_AI_GOLD2   (0.382) //  0.618 ^ 2
 #define SIS_AI_GOLD1   (0.618) //  
 #define SIS_AI_GOLD    (0.618) //  
+
 
 int sis_ai_nearest_drift_future(int nums_, double ins_[], double min_, double max_, double *minrate_, int *stop_, double *drift_);
 int sis_ai_nearest_drift_formerly(int nums_, double ins_[], double min_, double max_, double *minrate_, int *start_, double *drift_);
