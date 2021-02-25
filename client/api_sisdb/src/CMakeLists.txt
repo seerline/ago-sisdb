@@ -55,15 +55,20 @@ INCLUDE_DIRECTORIES(
     ${SISLIB_PATH}core/
     ${SISLIB_PATH}core/disk
     ${SISLIB_PATH}core/net
+    ${SISLIB_PATH}core/zip
     ${SISLIB_PATH}workers/sisdb_client/
     ${SISLIB_PATH}workers/sisdb/
-	${SISLIB_PATH}../sdk/libuv/include
-	${SISLIB_PATH}../sdk/snappy/include
+	# ${SISLIB_PATH}../sdk/linux/libuv/include
+	# ${SISLIB_PATH}../sdk/linux/snappy/include
     .)
 IF(MSVC)
-	INCLUDE_DIRECTORIES(${SISLIB_PATH}os/win32)
+    INCLUDE_DIRECTORIES(${SISLIB_PATH}os/win32)
+	INCLUDE_DIRECTORIES(${SISLIB_PATH}../sdk/win32/libuv/include)
+	INCLUDE_DIRECTORIES(${SISLIB_PATH}../sdk/win32/snappy/include)
 ELSE()
 	INCLUDE_DIRECTORIES(${SISLIB_PATH}os/linux)
+	INCLUDE_DIRECTORIES(${SISLIB_PATH}../sdk/linux/libuv/include)
+	INCLUDE_DIRECTORIES(${SISLIB_PATH}../sdk/linux/snappy/include)
 ENDIF()
 			
 #提取源目录下所有文件
@@ -72,6 +77,7 @@ AUX_SOURCE_DIRECTORY(${STKLIB_PATH}src/ DIR_STK_MAIN)
 AUX_SOURCE_DIRECTORY(${SISLIB_PATH} DIR_MAIN)
 AUX_SOURCE_DIRECTORY(${SISLIB_PATH}core/ DIR_CORE)
 AUX_SOURCE_DIRECTORY(${SISLIB_PATH}core/net DIR_CORE_NET)
+AUX_SOURCE_DIRECTORY(${SISLIB_PATH}core/zip DIR_CORE_ZIP)
 AUX_SOURCE_DIRECTORY(${SISLIB_PATH}core/disk DIR_CORE_DISK)
 AUX_SOURCE_DIRECTORY(${SISLIB_PATH}workers/sisdb/ DIR_SISDB)
 AUX_SOURCE_DIRECTORY(${SISLIB_PATH}workers/sisdb_client/ DIR_CLIENT)
@@ -86,6 +92,7 @@ SET(SRC_LIST ${DIR_SRCS}
              ${DIR_STK_MAIN}
              ${DIR_CORE}
              ${DIR_CORE_NET}
+             ${DIR_CORE_ZIP}
              ${DIR_CORE_DISK}
              ${DIR_MAIN}
              ${DIR_SISDB}
@@ -121,8 +128,8 @@ SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../)
 # SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin)
 #设置需要链接的库目录
 LINK_DIRECTORIES(
-	${SISLIB_PATH}../sdk/libuv/lib
-	${SISLIB_PATH}../sdk/snappy/lib
+	${SISLIB_PATH}../sdk/linux/libuv/lib
+	${SISLIB_PATH}../sdk/linux/snappy/lib
 	# ${CMAKE_SOURCE_DIR}/../../../linux/lib/python3.5
     )
 #设置所有需要链接的库名到 LIBRARIES 环境变量
@@ -137,7 +144,7 @@ IF(MSVC)
         # snappy_a.lib
 	)
 ELSE()
-	SET(LIBRARIES libuv.a libsnappy.a pthread stdc++
+	SET(LIBRARIES libuv.a libsnappy.a c m dl stdc++ pthread
 		# ${MY_LIB_PATH}python3.5/libboost_python3.a
 		# ${MY_LIB_PATH}libboost.a
 	)

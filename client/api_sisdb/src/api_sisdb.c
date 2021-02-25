@@ -92,7 +92,7 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_ask(
 	}
 	char ds[128], cmd[128]; 
 	sis_str_divide(cmd_, '.', ds, cmd);
-	if (sis_str_subcmp_strict(cmd, "sub,subsno,unsub,unsubsno", ',') >= 0)
+	if (sis_str_subcmp_strict(cmd, "sub,zsub,unsub", ',') >= 0)
 	{
 		return API_REPLY_ERR;
 	}
@@ -144,12 +144,12 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_command_sub(
 
 	char ds[128], cmd[128]; 
 	int cmds = sis_str_divide(cmd_, '.', ds, cmd);
-	if (cmds != 2 || sis_str_subcmp_strict(cmd, "sub,subsno,unsub,unsubsno", ',') < 0)
+	if (cmds != 2 || sis_str_subcmp_strict(cmd, "sub,zsub,unsub", ',') < 0)
 	{
 		return API_REPLY_ERR;
 	}
 
-	if (sis_str_subcmp_strict(cmd, "unsub,unsubsno", ',') >= 0)
+	if (sis_str_subcmp_strict(cmd, "unsub", ',') >= 0)
 	{
 		// 删除本地的订阅信息
 		sisdb_client_ask_unsub(context, cmd_, key_);
@@ -216,12 +216,15 @@ int cb_read1(void *source, void *argv)
 
 int cb_reply1(void *source, int rid, void *key, void *val)
 {
-	// printf("%d : %s %d, %s %d\n", rid, 
-	// 	key ? (char *)key : "nil", sis_sdslen(key),
-	// 	val ? (char *)val : "nil", sis_sdslen(val));
-
 	printf("%d : %s %d, vsize = %d\n", rid, 
-		key ? (char *)key : "nil", key ? sis_sdslen(key) : 0, val ? sis_sdslen(val) : 0);
+		key ? (char *)key : "nil", 
+		key ? sis_sdslen(key) : 0,
+		val ? sis_sdslen(val) : 0);
+	if (val) sis_out_binary("val", val, 16);
+	// printf("%d : %s %d, vsize = %d\n", rid, 
+	// 	key ? (char *)key : "nil", 
+	// 	key ? sis_sdslen(key) : 0,
+	// 	val ? sis_sdslen(val) : 0);
 
 	// s_sis_json_handle *h = sis_json_load((char *)argv,strlen((char *)argv));
 	// if (!h) {return -1;}
@@ -262,17 +265,22 @@ int ask_sisdb(int id_)
 	sis_message_destroy(msg);
 	return API_REPLY_OK;
 }
+
 int main()
 {
 	// int no = api_sisdb_client_create("woan2007.ticp.io", 7329, "", ""); 
-	int no = api_sisdb_client_create("192.168.3.118", 7329, "aaa", "aaa"); 
+	// int no = api_sisdb_client_create("192.168.3.118", 7329, "aaa", "aaa"); 
+	int no = api_sisdb_client_create("192.168.1.202", 7329, "guest", "guest1234"); 
 
 	// api_sisdb_command_ask(no, "show", NULL, NULL, cb_reply1);
-	// api_sisdb_command_ask(no, "sdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"chars\"}", cb_reply1);
-	api_sisdb_command_ask(no, "sdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"bytes\"}", cb_reply1);
-	// 订阅有问题
-	// api_sisdb_command_sub(no, "sdb.subsno", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"chars\"}", 
-		// NULL, cb_read1, cb_read1, cb_read1, cb_reply1);
+	api_sisdb_command_ask(no, "mdb.get", "sh600601.stk_right", "{\"format\":\"struct\"}", cb_reply1);
+	api_sisdb_command_ask(no, "mdb.get", "BK000000.bkinfo", "{\"format\":\"struct\"}", cb_reply1);
+	
+	// 获取二进制数据
+	api_sisdb_command_ask(no, "nowdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"struct\"}", cb_reply1);
+	// 订阅二进制数据
+	// api_sisdb_command_sub(no, "nowdb.sub", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"struct\"}", 
+	// 	NULL, cb_read1, cb_read1, cb_read1, cb_reply1);
 	// ask_sisdb(no);
 
 

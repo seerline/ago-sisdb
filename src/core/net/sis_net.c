@@ -385,16 +385,22 @@ int sis_ws_recv_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 
 	printf("send hand ans: %d\n", cxt->rid);
 	sis_out_binary("ans",sis_memory(ans), sis_memory_get_size(ans));
-
+	
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, ans); 
+	// int so = 0;
 	if (cls->url->io == SIS_NET_IO_WAITCNT)
 	{
+		// so = 
+		printf("wait send count = %d\n", cls->server->write_list->count);
 		sis_socket_server_send(cls->server, cxt->rid, obj);
 	}
 	else
 	{
+		// so = 
+		printf("wait send count = %d\n", cls->client->write_list->count);
 		sis_socket_client_send(cls->client, obj);
 	}
+	printf("wait send count = %d\n", cls->server->write_list->count);
 	// sis_memory_move(cxt->recv_buffer, size);
 	sis_object_destroy(obj);	
 	return 1; // 成功 

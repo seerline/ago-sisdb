@@ -592,7 +592,7 @@ s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int
 	{
 		fields = sis_json_get_str(node_, "fields");
 	}
-	if (iformat_ == SISDB_FORMAT_BYTES)
+	if (iformat_ & SISDB_FORMAT_BYTES)
 	{
 		bool iswhole = sisdb_field_is_whole(fields);
 		if (iswhole)

@@ -367,10 +367,13 @@ void sis_thread_wait_init(s_sis_wait *wait_)
 }
 void sis_thread_wait_notice(s_sis_wait *wait_)
 {
-	pthread_mutex_lock(&wait_->mutex);
-	// pthread_cond_signal(&wait_->cond);
-	pthread_cond_broadcast(&wait_->cond);
-	pthread_mutex_unlock(&wait_->mutex);
+	// pthread_mutex_lock(&wait_->mutex);
+	if (!pthread_mutex_trylock(&wait_->mutex)) // 保证已经处于等待状态 否则死锁
+	{
+		// pthread_cond_signal(&wait_->cond);
+		pthread_cond_broadcast(&wait_->cond);
+		pthread_mutex_unlock(&wait_->mutex);
+	}
 }
 void sis_thread_wait_kill(s_sis_wait *wait_)
 {

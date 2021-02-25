@@ -24,18 +24,23 @@ html, body, .container {
     <button onclick="send_string()">submit</button>
   </div>
   <div>
-    <div>sdb option</div>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh600600.stk_day", "val":{"time":20200101,"newp":10050}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh600600.stk_day", "val":[20200102,101, 105, 100, 103, 1000, 8000]}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh600601.stk_day", "val":{"time":20200102,"newp":10150}}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"sh600601.stk_day"}' onclick="send_command(this)"/>
-    <div>---</div>
+    <div>debug option</div>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh111.stk_day", "val":{"time":20200101,"newp":10050}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh111.stk_day", "val":[20200102,101, 105, 100, 103, 1000, 8000]}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"sh111.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.set", "key":"sh222.stk_day", "val":{"time":20200102,"newp":10150}}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"sh222.stk_day"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.gets", "key":"*.stk_day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.sub", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.unsub", "key":"sh600600.stk_day"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"SH601628.stk_right"}' onclick="send_command(this)"/>
-    <div>sno option</div>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.sub", "key":"sh111.stk_day"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.unsub", "key":"sh111.stk_day"}' onclick="send_command(this)"/>
+    <div>mdb option</div>
+    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"SH600600.stk_info"}' onclick="send_command(this)"/> -->
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"SH600600.stk_right"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"SH600600.stk_finance"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"BK000000.bkinfo"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"BK600001.bkcodes"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"mdb.get", "key":"SH600600.bkinside"}' onclick="send_command(this)"/>
+    <div>nowdb option</div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.sub", "key":"sh600601.stk_snapshot", "val":{"date":20200730,"format":"array"}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot", "val":{"date":20200730,"format":"array"}}' onclick="send_command(this)"/>
     <div>---</div>
@@ -72,9 +77,9 @@ html, body, .container {
   <div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"auth", "key":"guest", "val":"guest1234"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"show"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"save"}' onclick="send_command(this)"/>
+    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"save"}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"pack"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"call"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"call"}' onclick="send_command(this)"/> -->
   </div>
   <div id='recv-msg'></div>
 </body>

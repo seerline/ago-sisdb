@@ -94,7 +94,7 @@ void *_thread_net_reader(void *argv_)
     while (sis_wait_thread_noexit(wqueue->work_thread))
     {
 		s_sis_net_node *node = NULL;
-        // printf("1 --- %p\n", wqueue);
+        // printf("1 --- %p\n", wqueue->live);
         sis_mutex_lock(&wqueue->lock);
         if (wqueue->live == NULL)
         {
@@ -105,6 +105,7 @@ void *_thread_net_reader(void *argv_)
             }
         }
         sis_mutex_unlock(&wqueue->lock);
+		// printf("1.1 ---  %p %p %p %d\n", node, wqueue->head, wqueue->tail, wqueue->work_thread->wait_msec);
         if (node)
         {
             if (wqueue->cb_reader)
@@ -112,11 +113,15 @@ void *_thread_net_reader(void *argv_)
                 wqueue->cb_reader(wqueue->source);
             }
         }
-        // printf("1.1 ---  %p\n", wqueue);
-        if (sis_wait_thread_wait(wqueue->work_thread, wqueue->work_thread->wait_msec) == SIS_WAIT_TIMEOUT)
-        {
-            // printf("timeout exit. %d \n", waitmsec);
-        }     
+        // printf("1.2 ---  %p\n", node);
+		if (wqueue->live == NULL && wqueue->count > 0) // 已经发送完毕 不需等待直接下一个
+		{
+			continue;
+		}
+		if (sis_wait_thread_wait(wqueue->work_thread, wqueue->work_thread->wait_msec) == SIS_WAIT_TIMEOUT)
+		{
+			// printf("timeout exit. %d \n", waitmsec);
+		}     
     }
     sis_wait_thread_stop(wqueue->work_thread);
     return NULL;
@@ -211,7 +216,9 @@ void sis_net_queue_stop(s_sis_net_queue *queue_)
 		queue_->live = NULL;
 	}
     sis_mutex_unlock(&queue_->lock);
+	// printf("stop --- %d\n", queue_->count);
 	sis_wait_thread_notice(queue_->work_thread);
+	// printf("stop --- %d\n", queue_->count);
 }
 /////////////////////////////////////////////////
 //  
@@ -318,7 +325,7 @@ s_sis_socket_server *sis_socket_server_create()
 
 	server->isexit = false;
 	
-	server->write_list = sis_net_queue_create(server, cb_server_write, 13);
+	server->write_list = sis_net_queue_create(server, cb_server_write, 333);
 	
 	LOG(8)("server create.[%p]\n", server);
 	return server; 
@@ -699,6 +706,7 @@ void _cb_server_async_write(uv_async_t* handle)
 #ifdef _UV_DEBUG_	
 	session->_uv_recv_async_nums++;
 #endif
+	// printf("_cb_server_async_write %p  %d %d\n",session , session->sid, node->cid);
 	int o = uv_write(&session->write_req, (uv_stream_t*)session->work_handle, &buffer, 1, cb_server_write_after);
 	if (o) 
 	{
@@ -717,14 +725,15 @@ static int cb_server_write(void *source_)
 	s_sis_socket_server *server = (s_sis_socket_server *)source_;
 	s_sis_net_node *node = server->write_list->live;
 	s_sis_socket_session *session = sis_index_list_get(server->sessions, node->cid);
-	// printf("cb_server_write %p  %d %d\n",session , session->sid, node_->cid);
 	if (!session) 
 	{
 		printf("cb_server_write ------%d \n", server->write_list->count);
 		// session 已经退出 处理下一条
 		sis_net_queue_stop(server->write_list);
+		// printf("cb_server_write ------%d \n", server->write_list->count);
 		return 0;
 	}
+	// printf("cb_server_write %p  %d %d\n",session , session->sid, node->cid);
 #ifdef _UV_DEBUG_	
 	if (_uv_write_nums == 0)
 	{
@@ -902,7 +911,7 @@ s_sis_socket_client *sis_socket_client_create()
 
 	client->isexit = false;
 
-	client->write_list = sis_net_queue_create(client, cb_client_write, 13);
+	client->write_list = sis_net_queue_create(client, cb_client_write, 333);
 
 	if (uv_thread_create(&client->keep_connect_thread_handle, _thread_keep_connect, client)) 
 	{
