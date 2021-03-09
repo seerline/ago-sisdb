@@ -91,7 +91,7 @@ bool sisdb_client_init(void *worker_, void *argv_)
 
     context->ask_sno = 0; 
 
-    context->asks = sis_map_pointer_create_v(sisdb_client_ask_destroy);
+    context->asks = sis_safe_map_create_v(sisdb_client_ask_destroy);
 
     context->status = SIS_CLI_STATUS_INIT;
     // printf("%s %p, %d\n", __func__, context, context->status);
@@ -101,7 +101,7 @@ void sisdb_client_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_client_cxt *context = (s_sisdb_client_cxt *)worker->context;
-    sis_map_pointer_destroy(context->asks);
+    sis_safe_map_destroy(context->asks);
     sis_free(context);
 }
 
@@ -119,11 +119,12 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
     {
         sis_net_ask_with_bytes(msg, ask->cmd, ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
     }
-    // printf("send query: [%d] %d : %s %s %s %d\n", msg->cid, msg->style, 
-    //     ask->serial ? ask->serial : "nil",
-    //     ask->cmd ? ask->cmd : "nil",
-    //     ask->key ? ask->key : "nil",
-    //     ask->val ? (int)sis_sdslen(ask->val) : 0);
+    printf("send query: [%d] %d : %s %s %s %s %d\n", msg->cid, msg->style, 
+        ask->serial ? ask->serial : "nil",
+        ask->cmd ? ask->cmd : "nil",
+        ask->key ? ask->key : "nil",
+        ask->val ? ask->val : "nil",
+        ask->val ? (int)sis_sdslen(ask->val) : 0);
 
     sis_net_class_send(context->session, msg);
     sis_net_message_destroy(msg);
@@ -235,8 +236,9 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
         if((msg_->style & SIS_NET_RCMD) && msg_->rcmd == SIS_NET_ANS_OK)
         {        
             // 发送订阅信息
+            sis_safe_map_lock(context->asks);
             s_sis_dict_entry *de;
-            s_sis_dict_iter *di = sis_dict_get_iter(context->asks);
+            s_sis_dict_iter *di = sis_dict_get_iter(context->asks->map);
             while ((de = sis_dict_next(di)) != NULL)
             {
                 s_sisdb_client_ask *ask = (s_sisdb_client_ask *)sis_dict_getval(de);
@@ -246,6 +248,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
                 }
             }
             sis_dict_iter_free(di);
+            sis_safe_map_unlock(context->asks);
             // 设置工作状态
             context->status = SIS_CLI_STATUS_WORK;
         }
@@ -334,20 +337,22 @@ s_sisdb_client_ask *sisdb_client_ask_new(
     bool          issub)
 {
     s_sisdb_client_ask *ask = sisdb_client_ask_create(cmd_, key_, val_, vlen_, cb_source_, cb_sub_start, cb_sub_realtime, cb_sub_stop, cb_reply);
-    context->ask_sno = (context->ask_sno + 1 ) % 0xFFFFFFFF;
+    context->ask_sno = (context->ask_sno + 1 ) % 0xFFFFFF;//FFFF;
     sis_llutoa(context->ask_sno, ask->serial, 16, 10);
     ask->issub = issub;
-    sis_map_pointer_set(context->asks, ask->serial, ask);
+    // printf("new %d %s\n", (unsigned int)sis_thread_self(), ask->serial);
+    sis_safe_map_set(context->asks, ask->serial, ask);  
     return ask;
 }
 void sisdb_client_ask_del(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask_)
 {
     if (ask_)
     {
-        s_sisdb_client_ask *ask = sis_map_pointer_get(context->asks, ask_->serial);
+        s_sisdb_client_ask *ask = sis_safe_map_get(context->asks, ask_->serial);
         if (ask)
         {
-            sis_map_pointer_del(context->asks, ask->serial);
+            // printf("del %d %s\n", (unsigned int)sis_thread_self(), ask->serial);
+            sis_safe_map_del(context->asks, ask->serial);
         }
         else
         {
@@ -361,7 +366,7 @@ s_sisdb_client_ask *sisdb_client_ask_get(
     const char   *serial         // 来源信息
 )
 {
-    return (s_sisdb_client_ask *)sis_map_pointer_get(context->asks, serial);
+    return (s_sisdb_client_ask *)sis_safe_map_get(context->asks, serial);
 }
 
 void sisdb_client_ask_unsub(
@@ -371,8 +376,9 @@ void sisdb_client_ask_unsub(
 )
 {
     char *str = NULL;
+    sis_safe_map_lock(context->asks);
     s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(context->asks);
+    s_sis_dict_iter *di = sis_dict_get_iter(context->asks->map);
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_client_ask *ask = (s_sisdb_client_ask *)sis_dict_getval(de);
@@ -383,9 +389,10 @@ void sisdb_client_ask_unsub(
         }
     }
     sis_dict_iter_free(di);
+    sis_safe_map_unlock(context->asks);
     if (str)
     {
-        sis_map_pointer_del(context->asks, str);
+        sis_safe_map_del(context->asks, str);
     }
 }
 
@@ -396,8 +403,9 @@ bool sisdb_client_ask_sub_exists(
 )
 {
     bool exists = false;
+    sis_safe_map_lock(context->asks);
     s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(context->asks);
+    s_sis_dict_iter *di = sis_dict_get_iter(context->asks->map);
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_sisdb_client_ask *ask = (s_sisdb_client_ask *)sis_dict_getval(de);
@@ -408,6 +416,7 @@ bool sisdb_client_ask_sub_exists(
         }
     }
     sis_dict_iter_free(di);
+    sis_safe_map_unlock(context->asks);
     return exists;
 }
 
@@ -439,7 +448,7 @@ static int cb_reply(void *worker_, int rid_, void *key_, void *val_)
     }
     if (val_)
     {
-        sis_message_set_str(msg, "val", val_, sis_sdslen(val_)); 
+        sis_message_set_str(msg, "reply", val_, sis_sdslen(val_)); 
     }
     sis_message_set_int(msg, "rid", rid_); 
     // printf("rid = %d\n", rid_);

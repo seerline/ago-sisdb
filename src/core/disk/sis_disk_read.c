@@ -486,7 +486,7 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
     }
     if (cls_->reader->callback)
     {
-        printf("[%d] sno_rcatch_size = %zu \n", cls_->sno_rcatch->count, _calc_sno_rcatch_size(cls_));
+        // printf("[%d] sno_rcatch_size = %zu \n", cls_->sno_rcatch->count, _calc_sno_rcatch_size(cls_));
         s_sis_struct_list *olist = sis_struct_list_create(sizeof(s_sis_disk_rsno));
         sis_struct_list_set_size(olist, 16 * 1024 *1024);
         // 这里的数量是为了满足块的记录数
@@ -507,13 +507,13 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
                 sis_struct_list_push(olist, &rsno);
             }
         }
-        printf("sno_rcatch : start %d\n", olist->count);
+        // printf("sno_rcatch : start %d\n", olist->count);
         if (cls_->isstop == 0)
         {
             qsort(sis_struct_list_first(olist), olist->count, sizeof(s_sis_disk_rsno), _sort_sno_rsno);
         }
         
-        printf("sno_rcatch : sort %d\n", olist->count);
+        // printf("sno_rcatch : sort %d\n", olist->count);
 
         while(cls_->isstop == 0)
         {
@@ -543,9 +543,9 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
                     SIS_OBJ_SDS(rsnop->unit->keyn), SIS_OBJ_SDS(rsnop->unit->sdbn), 
                     rsnop->unit->optr, rsnop->unit->size);
             } 
-            sis_free(rsnop->unit);
+            sis_free(rsnop->unit); // ??? 这里会跳出
         }
-        printf("sno_rcatch : stop %d\n", olist->count);
+        // printf("sno_rcatch : stop %d\n", olist->count);
         while(olist->count > 0)
         {
             s_sis_disk_rsno *rsnop = (s_sis_disk_rsno *)sis_struct_list_pop(olist); 
@@ -556,10 +556,10 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
             sis_free(rsnop->unit);
         }
         sis_struct_list_destroy(olist);
-        printf("sno_rcatch : stop %d\n", cls_->sno_rcatch->count);
+        // printf("sno_rcatch : stop %d\n", cls_->sno_rcatch->count);
     }
     sis_pointer_list_clear(cls_->sno_rcatch);
-    printf("sno_rcatch : stop .\n");
+    // printf("sno_rcatch : stop .\n");
 
     return 0;
 }

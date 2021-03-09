@@ -343,6 +343,7 @@ s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *collect_, int start_, 
 s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *collect_, int start_, int count_)
 {
 	bool o = sisdb_collect_trans_of_count(collect_, &start_, &count_);
+	printf("%d\n", o);
 	if (!o)
 	{
 		return NULL;
@@ -358,6 +359,49 @@ s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *collect_)
 	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), SIS_OBJ_LIST(collect_->obj)->count - 1), collect_->sdb->db->size);
 }
 
+s_sis_sds sisdb_collect_get_of_is_sds(s_sisdb_collect *collect_, int finder, int offset, int count)
+{
+	// 只找字段数据相等的数据
+	int start;
+	int dirX;
+
+	// int count = sis_json_get_int(isnode, "count", 1);
+	// int offset = sis_json_get_int(isnode, "offset", 0);
+	s_sis_sds o = NULL;
+
+	count = count == -1 ? sisdb_collect_recs(collect_) : count;
+	if (offset < 0)
+	{
+		start = sisdb_collect_search_left(collect_, finder, &dirX);
+		if (start >= 0)
+		{
+			start = dirX == SIS_SEARCH_LEFT ? start + offset + 1 : start + offset;
+			// printf("3.2 %d %d | %d %d\n", start, start + offset, offset, count);
+			if (start >= 0)
+			{
+				o = sisdb_collect_get_of_count_sds(collect_, start, count);
+			}
+		}
+	}
+	else
+	{
+		start = sisdb_collect_search_left(collect_, finder, &dirX);
+		// printf("3.3 %d | %d %d\n", start, offset, count);
+		if (start >= 0)
+		{
+			o = sisdb_collect_get_of_count_sds(collect_, start, count);
+		}
+		else
+		{
+			start = sisdb_collect_search_right(collect_, finder, &dirX);
+			if (start >= 0)
+			{
+				o = sisdb_collect_get_of_count_sds(collect_, start, count);
+			}
+		}
+	}
+	return o;
+}
 ////////////////////////////////////////////
 // main get
 // 定义默认的检索工具 还需要定义
@@ -382,13 +426,26 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 	int count = 0;
 	int maxX, minX;
 	int offset = 0;
+	// 找匹配的时间数据
 
 	s_sis_json_node *search = sis_json_cmp_child_node(node_, "search");
 	if (!search)
 	{
+		// 默认内存中全部数据
 		o = sisdb_collect_get_of_range_sds(collect, 0, -1);
 		return o;
 	}
+	s_sis_json_node *isnode = sis_json_cmp_child_node(search, "is");
+	if (isnode)
+	{
+		// 指定数据集合
+		start = sis_json_get_int(search, "is", 0);
+		offset = sis_json_get_int(search, "offset", 0);
+		count = sis_json_get_int(search, "count", 1);  // 默认1条记录 -1 为剩余全部
+		o = sisdb_collect_get_of_is_sds(collect, start, offset, count);
+		return o;
+	}
+
 	int style = 0;
 	if (sis_json_cmp_child_node(search, "min"))
 	{
@@ -431,7 +488,7 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 			else
 			{
 				start = sisdb_collect_search_left(collect, min, &minX);
-				if (minX!=SIS_SEARCH_OK)
+				if (minX != SIS_SEARCH_OK)
 				{
 					if (offset < 0)
 					{
@@ -440,30 +497,41 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 					}
 				}
 			}
+			// printf("1.1--%d---%d---%d\n", start, offset, count);
 			if (start >= 0)
 			{
 				start += offset;
-				start = sis_max(0, start);
+				// start = sis_max(0, start);
 				if (offset < 0)
 				{
 					count -= offset;
 				}
-				o = sisdb_collect_get_of_count_sds(collect, start, count);
+				if (start >= 0)
+				{
+					o = sisdb_collect_get_of_count_sds(collect, start, count);
+				}
+				// printf("1.2--%d---%d---%d\n", start, offset, count);
 			}
 		}
 		else
 		{
+			// count = 1
 			if (sis_json_cmp_child_node(search, "max"))
 			{
 				max = sis_json_get_int(search, "max", 0);
 				start = sisdb_collect_search_right(collect, min, &minX);
 				stop = sisdb_collect_search_left(collect, max, &maxX);
-				// printf("%d---%d\n", start, stop);
+				// printf("2.1--%d---%d | %d %d\n", start, stop, minX, maxX);
 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
 				{
 					start += offset;
-					start = sis_max(0, start);
-					o = sisdb_collect_get_of_range_sds(collect, start, stop);
+					// printf("2.2--%d---%d\n", start, stop);
+					if (start >= 0)
+					{
+						o = sisdb_collect_get_of_range_sds(collect, start, start);
+					}
+					// start = sis_max(0, start);
+					// o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
 			}
 			else
@@ -474,8 +542,13 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 				if (minX != SIS_SEARCH_NONE && maxX != SIS_SEARCH_NONE)
 				{
 					start += offset;
-					start = sis_max(0, start);
-					o = sisdb_collect_get_of_range_sds(collect, start, stop);
+					// printf("3.2--%d---%d\n", start, stop);
+					if (start >= 0)
+					{
+						o = sisdb_collect_get_of_range_sds(collect, start, start);
+					}
+					// start = sis_max(0, start);
+					// o = sisdb_collect_get_of_range_sds(collect, start, stop);
 				}
 			}
 		}
@@ -606,7 +679,9 @@ s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int
 		sis_string_list_destroy(field_list);
 		return other;
 	}
-	return sisdb_get_chars_format_sds(collect_->sdb, key_, iformat_, out, sis_sdslen(out), fields);
+	s_sis_sds other = sisdb_get_chars_format_sds(collect_->sdb, key_, iformat_, out, sis_sdslen(out), fields);
+	sis_sdsfree(out);
+	return other;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

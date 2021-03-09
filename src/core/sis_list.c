@@ -398,16 +398,23 @@ s_sis_sort_list *sis_sort_list_create(int len_)
 	o->value = sis_struct_list_create(len_);
 	return o;
 }
-void sis_sort_list_destroy(s_sis_sort_list *list_)
+void sis_sort_list_destroy(void *list_)
 {
-	sis_struct_list_destroy(list_->key);
-	sis_struct_list_destroy(list_->value);
-	sis_free(list_);
+	s_sis_sort_list *list = (s_sis_sort_list *)list_;
+	sis_struct_list_destroy(list->key);
+	sis_struct_list_destroy(list->value);
+	sis_free(list);
 }
 void sis_sort_list_clear(s_sis_sort_list *list_)
 {
 	sis_struct_list_clear(list_->key);
 	sis_struct_list_clear(list_->value);
+}
+void sis_sort_list_clone(s_sis_sort_list *src_,s_sis_sort_list *des_)
+{
+	sis_sort_list_clear(des_);
+	sis_struct_list_clone(src_->key, des_->key);
+	sis_struct_list_clone(src_->value, des_->value);
 }
 
 void *sis_sort_list_set(s_sis_sort_list *list_, int key_, void *in_)

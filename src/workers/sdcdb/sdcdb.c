@@ -138,7 +138,7 @@ static int cb_output_realtime(void *reader_)
 
 s_sis_object *_sdcdb_new_data(s_sdcdb_cxt *sdcdb, int isinit)
 {
-	size_t size = sizeof(s_sdcdb_compress) + sdcdb->zip_size + 512; // 这里应该取最长的结构体长度
+	size_t size = sizeof(s_sdcdb_compress) + sdcdb->zip_size + 1024; // 这里应该取最长的结构体长度
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
 	s_sdcdb_compress *inmem = MAP_SDCDB_BITS(obj);
 	if (isinit || sdcdb->cur_size > sdcdb->initsize)
@@ -157,7 +157,7 @@ s_sis_object *_sdcdb_new_data(s_sdcdb_cxt *sdcdb, int isinit)
 		sis_bits_struct_link(sdcdb->cur_sbits, inmem->data, size);		
 	}	
 	inmem->size = 0;
-	memset(inmem->data, 0, sdcdb->zip_size + 512);
+	memset(inmem->data, 0, sdcdb->zip_size + 1024);
 	return obj;
 }
 
@@ -474,7 +474,7 @@ bool _sdcdb_write_init(s_sdcdb_cxt *sdcdb_, int workdate_, s_sis_sds keys_, s_si
 	// {
 	// 	return true;
 	// }
-	LOG(8)("_sdcdb_write_init : new. %d %d\n", sdcdb_->work_date ,workdate_);
+	LOG(8)("_sdcdb_write_init : new. %d %d | %d\n", sdcdb_->work_date ,workdate_, sdcdb_->outputs->work_queue->rnums);
 	sis_bits_stream_clear(sdcdb_->cur_sbits);
 	// 有一个信息不匹配就全部重新初始化
 	sdcdb_->work_date = workdate_;
@@ -788,7 +788,7 @@ int _sdcdb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
             reader->ishead = sis_json_get_int(argnode->node, "ishead", 0);
             reader->sub_date = sis_json_get_int(argnode->node, "date", context->work_date);
-			// sis_json_get_int(argnode->node, "sub_date", context->work_date);
+			// sis_json_get_int(argnode->node, "sub-date", context->work_date);
             sis_json_close(argnode);
         }
 	}
@@ -807,6 +807,13 @@ int _sdcdb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 	reader->cb_dict_sdbs 		= cb_dict_sdbs;
 	
     sis_str_divide_sds(netmsg->key, '.', &reader->sub_keys, &reader->sub_sdbs);
+	if (!reader->sub_keys || !reader->sub_sdbs || 
+		sis_sdslen(reader->sub_keys) < 1 || sis_sdslen(reader->sub_sdbs) < 1)
+	{
+		LOG(5)("format error. %s\n", netmsg->key);
+		sdcdb_reader_destroy(reader);
+		return SIS_METHOD_ERROR;
+	}
 	if (!sis_strcasecmp(reader->sub_keys, "*") && !sis_strcasecmp(reader->sub_sdbs, "*"))
 	{
 		reader->sub_whole = true;
@@ -939,6 +946,12 @@ int _sdcdb_get(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 	}
 	reader->sub_whole = false;
     sis_str_divide_sds(netmsg->key, '.', &reader->sub_keys, &reader->sub_sdbs);
+	if (!reader->sub_keys || !reader->sub_sdbs || 
+		sis_sdslen(reader->sub_keys) < 1 || sis_sdslen(reader->sub_sdbs) < 1)
+	{
+		sdcdb_reader_destroy(reader);
+		return SIS_METHOD_ERROR;
+	}
 
 	s_sis_object *obj = NULL;
 	// printf("%s %d %d\n", __func__, reader->sub_date ,context->work_date);

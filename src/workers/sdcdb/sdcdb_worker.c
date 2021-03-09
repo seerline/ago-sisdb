@@ -40,7 +40,7 @@ void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize) //
 	{
 		sis_free(worker->zip_bits);
 	}
-	int size = sizeof(s_sdcdb_compress) + worker->zip_size + 512;
+	int size = sizeof(s_sdcdb_compress) + worker->zip_size + 1024;
 	worker->zip_bits = sis_malloc(size);
 	sdcdb_worker_zip_flush(worker, 1);
 }
@@ -67,7 +67,7 @@ void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
 		zipmem->init = 0;
 		worker->cur_size += zipmem->size;
 	}
-	int size = worker->zip_size + 512;
+	int size = worker->zip_size + 1024;
 	sis_bits_struct_link(worker->cur_sbits, zipmem->data, size);	
 	zipmem->size = 0;
 	memset(zipmem->data, 0, size);			

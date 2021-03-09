@@ -472,7 +472,7 @@ s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_)
         for(int i = 0; i < count; i++)
         {
             s_sis_disk_dict *info = (s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, i);
-            printf("+++++ %d %d %s\n",count, info->units->count, SIS_OBJ_SDS(info->name));
+            // printf("+++++ %d %d %s\n",count, info->units->count, SIS_OBJ_SDS(info->name));
             for(int k = 0; k < info->units->count; k++)
             {
                 s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);

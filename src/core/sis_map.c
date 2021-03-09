@@ -56,7 +56,7 @@ s_sis_dict_type _sis_dict_type_nofree_val_s = {
 	_sis_dict_str_free,		   /* key destructor */
 	NULL					   /* val destructor */
 };
-s_sis_dict_type _sis_dict_type_int_val_s = {
+s_sis_dict_type _sis_dict_type_int_key_s = {
 	_sis_dict_int_hash,	       /* hash function */
 	_sis_dict_int_dup,		   /* key dup */
 	NULL,					   /* val dup */

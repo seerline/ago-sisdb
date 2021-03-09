@@ -37,6 +37,18 @@ void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
     }   
     sis_pointer_list_push(netmsg_->argvs, obj);    
 }
+// void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
+//     char *cmd_, char *key_, char *val_, size_t vlen_)
+// {
+//     netmsg_->format = SIS_NET_FORMAT_BYTES;
+//     netmsg_->style = SIS_NET_ASK;
+//     netmsg_->style |= cmd_ ? SIS_NET_CMD: 0;
+//     netmsg_->style |= key_ ? SIS_NET_KEY: 0;
+//     netmsg_->style |= val_ ? SIS_NET_VAL: 0;
+//     netmsg_->cmd = cmd_ ? sis_sdsnew(cmd_) : NULL;
+//     netmsg_->key = key_ ? sis_sdsnew(key_) : NULL;
+//     netmsg_->val = val_ ? sis_sdsnewlen(val_, vlen_) : NULL;
+// }
 // 只增加数据 不清理
 void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {

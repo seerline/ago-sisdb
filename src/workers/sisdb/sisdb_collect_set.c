@@ -155,7 +155,7 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 {
 	int ilen = sis_sdslen(in_);
 
-	printf("-----len=%d:%d\n", ilen, collect_->sdb->db->size);
+	// printf("-----len=%d:%d\n", ilen, collect_->sdb->db->size);
 	if (ilen < collect_->sdb->db->size)
 	{
 		return 0;

@@ -75,8 +75,9 @@ typedef struct s_sis_sort_list {
 extern "C" {
 #endif
 s_sis_sort_list *sis_sort_list_create(int len_); 
-void sis_sort_list_destroy(s_sis_sort_list *list_);
+void sis_sort_list_destroy(void *);
 void sis_sort_list_clear(s_sis_sort_list *list_);
+void sis_sort_list_clone(s_sis_sort_list *src_,s_sis_sort_list *des_);
 
 void *sis_sort_list_set(s_sis_sort_list *, int key_, void *in_);
 void *sis_sort_list_first(s_sis_sort_list *);

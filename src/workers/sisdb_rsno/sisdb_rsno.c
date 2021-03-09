@@ -134,12 +134,12 @@ static void cb_end(void *context_, msec_t tt)
 	    _send_rsno_compress(context, 1); 
     }	
 
-    if (context->cb_sub_stop)
-    {
-        char sdate[32];
-        sis_llutoa(tt, sdate, 32, 10);
-        context->cb_sub_stop(context->cb_source, sdate);
-    } 
+    // if (context->cb_sub_stop)
+    // {
+    //     char sdate[32];
+    //     sis_llutoa(tt, sdate, 32, 10);
+    //     context->cb_sub_stop(context->cb_source, sdate);
+    // } 
 }
 static void cb_key(void *context_, void *key_, size_t size) 
 {
@@ -212,6 +212,9 @@ static void *_thread_snos_read_sub(void *argv_)
 	// 开始读盘
     s_sis_disk_callback *callback = SIS_MALLOC(s_sis_disk_callback, callback);
 
+    char sdate[32];   
+    sis_llutoa(context->work_date, sdate, 32, 10);
+
     callback->source = context;
     callback->cb_begin = cb_begin;
     callback->cb_key = cb_key;
@@ -249,13 +252,20 @@ static void *_thread_snos_read_sub(void *argv_)
     // sis_disk_file_read_get(ctrl->disk_reader, reader);
     sis_disk_reader_destroy(reader);
     sis_free(callback);
-	printf("rson sub end..\n");
+	// printf("rson sub end..\n");
     sis_disk_file_read_stop(context->read_class);
 
     sis_disk_class_destroy(context->read_class);
     context->read_class = NULL;
 
     context->status = SIS_RSNO_NONE;
+    // stop 放这里
+    if (context->cb_sub_stop)
+    {
+        char sdate[32];
+        sis_llutoa(context->work_date, sdate, 32, 10);
+        context->cb_sub_stop(context->cb_source, sdate);
+    } 
 
     return NULL;
 }
@@ -271,11 +281,11 @@ void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context)
     if (sis_disk_class_init(context->read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate)
      || sis_disk_file_read_start(context->read_class))
     {
+        sisdb_rsno_sub_stop(context);
         if (context->cb_sub_stop)
         {
             context->cb_sub_stop(context->cb_source, sdate);
         }
-        sisdb_rsno_sub_stop(context);
         return ;
     }
 	// 启动订阅线程 到这里已经保证了文件存在

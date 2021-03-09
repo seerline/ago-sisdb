@@ -1,5 +1,8 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <link href="https://fonts.googleapis.com/css?family=Cousine|Roboto+Mono" rel="stylesheet">
+<link rel="stylesheet" href="jquery.autocomplete.css" />
+<script type="text/javascript" src="jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="jquery.autocomplete.js" charset="UTF-8"></script>
 
 <style>
 html, body, .container {
@@ -20,7 +23,7 @@ html, body, .container {
   <div>welcome to sisdb</div>
   <div>db command:</div>
   <div>
-    <input type="text" style="width:80%" id="send-msg" value='{"cmd":"show"}' />
+    <input id="input" style="width:160px;position:absolute;left:10px;height:20px;">
     <button onclick="send_string()">submit</button>
   </div>
   <div>
@@ -44,6 +47,7 @@ html, body, .container {
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.sub", "key":"sh600601.stk_snapshot", "val":{"date":20200730,"format":"array"}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot", "val":{"date":20200730,"format":"array"}}' onclick="send_command(this)"/>
     <div>---</div>
+    <!-- {"cmd":"iodb.get", "key":"SH600745.inout_day","val":{"search":{"max":20200730,"offset":-1}}} -->
     <!-- <div>sno option</div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.set", "key":"sh600601.stk_snapshot", "val":{"time":20200101,"newp":80050,"askp1":80800}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
@@ -55,10 +59,10 @@ html, body, .container {
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"array"}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"nowdb.get", "key":"sh600601.stk_snapshot","val":{"date":20200724,"format":"json"}}' onclick="send_command(this)"/>
     <div>---</div> -->
-    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.subsno", "key":"sh600601.*"}' onclick="send_command(this)"/>
-    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsubsno", "key":"sh600601.*"}' onclick="send_command(this)"/>
+    <!-- <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.sub", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsub", "key":"sh600601.stk_snapshot"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.sub", "key":"sh600601.*"}' onclick="send_command(this)"/>
+    <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.unsub", "key":"sh600601.*"}' onclick="send_command(this)"/>
     <div>del option</div>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.del", "key":"sh600600.stk_day", "val":{"search":{"start":0,"stop":-1}}}' onclick="send_command(this)"/>
     <input type="button" style="text-align:left; width:80%" value='{"cmd":"sdb.dels", "key":"*.stk_day", "val":{"search":{"start":0,"stop":-1}}}' onclick="send_command(this)"/> -->

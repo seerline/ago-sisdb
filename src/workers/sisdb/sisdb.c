@@ -141,13 +141,13 @@ s_sisdb_reader *sisdb_reader_create(s_sis_net_message *netmsg_)
     return o;
 }
 
-void sisdb_reader_destroy(void *info_)
+void sisdb_reader_destroy(void *reader_)
 {
-    s_sisdb_reader *info = (s_sisdb_reader *)info_;
-    sis_sdsfree(info->sub_keys);
-    sis_sdsfree(info->sub_sdbs);
-    sis_pointer_list_destroy(info->netmsgs);
-    sis_free(info);
+    s_sisdb_reader *o = (s_sisdb_reader *)reader_;
+    sis_sdsfree(o->sub_keys);
+    sis_sdsfree(o->sub_sdbs);
+    sis_pointer_list_destroy(o->netmsgs);
+    sis_free(o);
 }
 
 
@@ -499,15 +499,15 @@ int cmd_sisdb_bset(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    s_sis_sds kname = NULL; s_sis_sds sname = NULL; 
-    int cmds = sis_str_divide_sds(netmsg->key, '.', &kname, &sname);
-    // printf("cmd_sisdb_bset: %d %s %s \n", cmds, kname, sname);
     // 得到二进制数据
     s_sis_sds imem = sis_net_get_argvs(netmsg, 0);
     if (!imem || sis_sdslen(imem) < 1)
     {
         return SIS_METHOD_ERROR;
     }
+    s_sis_sds kname = NULL; s_sis_sds sname = NULL; 
+    int cmds = sis_str_divide_sds(netmsg->key, '.', &kname, &sname);
+    // printf("cmd_sisdb_bset: %d %s %s \n", cmds, kname, sname);
     int o = -1;
     if (cmds == 1)
     {

@@ -4,7 +4,7 @@
 #include "sis_method.h"
 #include "sis_net.h"
 #include "sis_list.h"
-#include "sis_map.h"
+#include "sis_map.lock.h"
 
 typedef int (sis_reply_define)(void *, int , void *, void *);
 
@@ -49,7 +49,7 @@ typedef struct s_sisdb_client_cxt
     uint32 ask_sno;      // 请求序列号    
 
 	// 订阅的数据列表
-    s_sis_map_pointer      *asks;   // 订阅的信息 断线后需要重新发送订阅信息 以key为索引 s_sisdb_client_ask
+    s_sis_safe_map      *asks;   // 订阅的信息 断线后需要重新发送订阅信息 以key为索引 s_sisdb_client_ask
 
 }s_sisdb_client_cxt;
 
