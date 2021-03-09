@@ -96,21 +96,21 @@ void sisdb_rsno_uninit(void *worker_)
 ///////////////////////////////////////////
 void _send_rsno_compress(s_sisdb_rsno_cxt *context, int issend)
 {
-	s_sdcdb_compress *zipmem = context->rsno_ziper->zip_bits;
+	s_snodb_compress *zipmem = context->rsno_ziper->zip_bits;
 	zipmem->size = sis_bits_struct_getsize(context->rsno_ziper->cur_sbits);
 	if ((issend && zipmem->size > 0 ) || (int)zipmem->size > context->rsno_ziper->zip_size - 256)
 	{
-		if (context->cb_sdcdb_compress)
+		if (context->cb_snodb_compress)
 		{	
-			context->cb_sdcdb_compress(context->cb_source, zipmem);
+			context->cb_snodb_compress(context->cb_source, zipmem);
 		}
 		if (context->rsno_ziper->cur_size > context->rsno_ziper->initsize)
 		{
-			sdcdb_worker_zip_flush(context->rsno_ziper, 1);
+			snodb_worker_zip_flush(context->rsno_ziper, 1);
 		}
 		else
 		{
-			sdcdb_worker_zip_flush(context->rsno_ziper, 0);
+			snodb_worker_zip_flush(context->rsno_ziper, 0);
 		}
 	}
 }
@@ -128,7 +128,7 @@ static void cb_end(void *context_, msec_t tt)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
     
-    if (context->cb_sdcdb_compress)
+    if (context->cb_snodb_compress)
     {
        // 检查是否有剩余数据
 	    _send_rsno_compress(context, 1); 
@@ -150,9 +150,9 @@ static void cb_key(void *context_, void *key_, size_t size)
     {
         context->cb_dict_keys(context->cb_source, keys);
     } 
-    if (context->cb_sdcdb_compress)
+    if (context->cb_snodb_compress)
     {
-    	sdcdb_worker_set_keys(context->rsno_ziper, keys);
+    	snodb_worker_set_keys(context->rsno_ziper, keys);
     }
 	sis_sdsfree(keys);
 	sis_sdsfree(srckeys);
@@ -166,9 +166,9 @@ static void cb_sdb(void *context_, void *sdb_, size_t size)
     {
         context->cb_dict_sdbs(context->cb_source, sdbs);
     } 
-    if (context->cb_sdcdb_compress)
+    if (context->cb_snodb_compress)
     {
-    	sdcdb_worker_set_sdbs(context->rsno_ziper, sdbs);
+    	snodb_worker_set_sdbs(context->rsno_ziper, sdbs);
     }
 	sis_sdsfree(sdbs);
 	sis_sdsfree(srcsdbs); 
@@ -187,7 +187,7 @@ static void cb_read(void *context_, const char *key_, const char *sdb_, void *ou
         inmem.size = olen_;
         context->cb_sisdb_bytes(context->cb_source, &inmem);
     }
-    if (context->cb_sdcdb_compress)
+    if (context->cb_snodb_compress)
     {
         int kidx = sis_map_list_get_index(context->rsno_ziper->keys, key_);
         int sidx = sis_map_list_get_index(context->rsno_ziper->sdbs, sdb_);
@@ -195,7 +195,7 @@ static void cb_read(void *context_, const char *key_, const char *sdb_, void *ou
         {
             return ;
         }
-        sdcdb_worker_zip_set(context->rsno_ziper, kidx, sidx, out_, olen_);
+        snodb_worker_zip_set(context->rsno_ziper, kidx, sidx, out_, olen_);
 
         _send_rsno_compress(context, 0);
     }
@@ -311,7 +311,7 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
     }
     if (context->rsno_ziper)
     {
-        sdcdb_worker_destroy(context->rsno_ziper);
+        snodb_worker_destroy(context->rsno_ziper);
         context->rsno_ziper = NULL;
     }
 }
@@ -365,11 +365,11 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
     context->cb_sub_stop        = sis_message_get_method(msg, "cb_sub_stop"      );
     context->cb_dict_sdbs       = sis_message_get_method(msg, "cb_dict_sdbs"     );
     context->cb_dict_keys       = sis_message_get_method(msg, "cb_dict_keys"     );
-    context->cb_sdcdb_compress  = sis_message_get_method(msg, "cb_sdcdb_compress");
+    context->cb_snodb_compress  = sis_message_get_method(msg, "cb_snodb_compress");
     context->cb_sisdb_bytes     = sis_message_get_method(msg, "cb_sisdb_bytes"   );
 
     LOG(5)("sub market start. [%d]\n", context->work_date);
-    if (context->cb_sdcdb_compress)
+    if (context->cb_snodb_compress)
     {
         int zip_size = ZIPMEM_MAXSIZE;
         if (sis_message_exist(msg, "zip-size"))
@@ -383,13 +383,13 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
         }
         if (!context->rsno_ziper)
         {
-            context->rsno_ziper = sdcdb_worker_create();
+            context->rsno_ziper = snodb_worker_create();
         }
         else
         {
-            sdcdb_worker_clear(context->rsno_ziper);
+            snodb_worker_clear(context->rsno_ziper);
         }
-        sdcdb_worker_zip_init(context->rsno_ziper, zip_size, initsize);
+        snodb_worker_zip_init(context->rsno_ziper, zip_size, initsize);
     }
     sisdb_rsno_sub_start(context);
 
@@ -469,7 +469,7 @@ int cmd_sisdb_rsno_setcb(void *worker_, void *argv_)
     context->cb_sub_stop        = sis_message_get_method(msg, "cb_sub_stop"      );
     context->cb_dict_sdbs       = sis_message_get_method(msg, "cb_dict_sdbs"     );
     context->cb_dict_keys       = sis_message_get_method(msg, "cb_dict_keys"     );
-    context->cb_sdcdb_compress  = sis_message_get_method(msg, "cb_sdcdb_compress");
+    context->cb_snodb_compress  = sis_message_get_method(msg, "cb_snodb_compress");
     context->cb_sisdb_bytes     = sis_message_get_method(msg, "cb_sisdb_bytes"   );
 
     context->status = SIS_RSNO_INIT;

@@ -1,10 +1,10 @@
-﻿#include "sdcdb.h"
+﻿#include "snodb.h"
 //////////////////////////////////////////////////////////////////
-//------------------------s_sdcdb_worker -----------------------//
+//------------------------s_snodb_worker -----------------------//
 //////////////////////////////////////////////////////////////////
-s_sdcdb_worker *sdcdb_worker_create()
+s_snodb_worker *snodb_worker_create()
 {
-	s_sdcdb_worker *o = SIS_MALLOC(s_sdcdb_worker, o);
+	s_snodb_worker *o = SIS_MALLOC(s_snodb_worker, o);
 	o->cur_sbits = sis_bits_stream_create(NULL, 0);
 	o->keys = sis_map_list_create(sis_sdsfree_call);
 	o->sdbs = sis_map_list_create(sis_dynamic_db_destroy);
@@ -12,7 +12,7 @@ s_sdcdb_worker *sdcdb_worker_create()
 	return o;
 }
 
-void sdcdb_worker_destroy(s_sdcdb_worker *worker)
+void snodb_worker_destroy(s_snodb_worker *worker)
 {
 	sis_map_list_destroy(worker->keys);
 	sis_map_list_destroy(worker->sdbs);
@@ -25,13 +25,13 @@ void sdcdb_worker_destroy(s_sdcdb_worker *worker)
 	sis_free(worker);
 }
 
-void sdcdb_worker_unzip_init(s_sdcdb_worker *worker, void *cb_source_, cb_sis_struct_decode *cb_read_)
+void snodb_worker_unzip_init(s_snodb_worker *worker, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {
 	worker->cb_source = cb_source_;
 	worker->cb_decode = cb_read_;
 }
 // 很重要
-void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize) //, void *cb_source_, cb_sis_struct_encode *cb_read_)
+void snodb_worker_zip_init(s_snodb_worker *worker, int zipsize, int initsize) //, void *cb_source_, cb_sis_struct_encode *cb_read_)
 {
 	worker->initsize = initsize;
 	worker->zip_size = zipsize;
@@ -40,22 +40,22 @@ void sdcdb_worker_zip_init(s_sdcdb_worker *worker, int zipsize, int initsize) //
 	{
 		sis_free(worker->zip_bits);
 	}
-	int size = sizeof(s_sdcdb_compress) + worker->zip_size + 1024;
+	int size = sizeof(s_snodb_compress) + worker->zip_size + 1024;
 	worker->zip_bits = sis_malloc(size);
-	sdcdb_worker_zip_flush(worker, 1);
+	snodb_worker_zip_flush(worker, 1);
 }
-void sdcdb_worker_clear(s_sdcdb_worker *worker)
+void snodb_worker_clear(s_snodb_worker *worker)
 {
 	LOG(5)("clear unzip reader\n");
 	sis_map_list_clear(worker->keys);
 	sis_map_list_clear(worker->sdbs);
 	sis_bits_stream_clear(worker->cur_sbits);
 	// 如果是压缩 清理后必须记得 init
-	// sdcdb_worker_zip_init(worker, worker->zip_size, worker->initsize);
+	// snodb_worker_zip_init(worker, worker->zip_size, worker->initsize);
 }
-void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
+void snodb_worker_zip_flush(s_snodb_worker *worker, int isinit)
 {
-	s_sdcdb_compress *zipmem = worker->zip_bits;
+	s_snodb_compress *zipmem = worker->zip_bits;
 	if (isinit)
 	{
 		zipmem->init = 1;
@@ -72,7 +72,7 @@ void sdcdb_worker_zip_flush(s_sdcdb_worker *worker, int isinit)
 	zipmem->size = 0;
 	memset(zipmem->data, 0, size);			
 }
-void sdcdb_worker_zip_set(s_sdcdb_worker *worker, int kidx, int sidx, char *in_, size_t ilen_)
+void snodb_worker_zip_set(s_snodb_worker *worker, int kidx, int sidx, char *in_, size_t ilen_)
 {
 	// printf("zip cur_sbits : %p %d %d\n", worker, worker->cur_sbits->max_keynum, worker->cur_sbits->units->count);
 	int o = sis_bits_struct_encode(worker->cur_sbits, kidx, sidx, in_, ilen_);
@@ -83,7 +83,7 @@ void sdcdb_worker_zip_set(s_sdcdb_worker *worker, int kidx, int sidx, char *in_,
 	worker->zip_bits->size = sis_bits_struct_getsize(worker->cur_sbits);
 }
 
-void sdcdb_worker_set_keys(s_sdcdb_worker *worker, s_sis_sds in_)
+void snodb_worker_set_keys(s_snodb_worker *worker, s_sis_sds in_)
 {
 	// printf("%s\n",in_);
 	s_sis_string_list *klist = sis_string_list_create();
@@ -99,7 +99,7 @@ void sdcdb_worker_set_keys(s_sdcdb_worker *worker, s_sis_sds in_)
 	sis_string_list_destroy(klist);
 	sis_bits_struct_set_key(worker->cur_sbits, count);
 }
-void sdcdb_worker_set_sdbs(s_sdcdb_worker *worker, s_sis_sds in_)
+void snodb_worker_set_sdbs(s_snodb_worker *worker, s_sis_sds in_)
 {
 	LOG(5)("set unzip sdbs\n");
 	// printf("%s %d\n",in_, sis_sdslen(in_));
@@ -127,9 +127,9 @@ msec_t _unzip_msec = 0;
 int _unzip_recs = 0;
 msec_t _unzip_usec = 0;
 
-void sdcdb_worker_unzip_set(s_sdcdb_worker *worker, s_sdcdb_compress *in_)
+void snodb_worker_unzip_set(s_snodb_worker *worker, s_snodb_compress *in_)
 {
-	// printf("sdcdb_worker_unzip_set %s %d\n",in_, sis_sdslen(in_));
+	// printf("snodb_worker_unzip_set %s %d\n",in_, sis_sdslen(in_));
 	if (in_->init == 1)
 	{ 
 		LOG(5)("unzip init = %d : %d\n", in_->init, worker->cur_sbits->inited);

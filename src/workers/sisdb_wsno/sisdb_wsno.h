@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 
-#include "sdcdb.h"
+#include "snodb.h"
 #include <sis_disk.h>
 
 typedef struct s_sisdb_wsno_cxt
@@ -19,7 +19,7 @@ typedef struct s_sisdb_wsno_cxt
 	s_sis_sds          wsno_keys;    
 	s_sis_sds          wsno_sdbs; 
 
-	s_sdcdb_worker    *wsno_unzip;     // 解压 s_sdcdb_compress 中来的数据
+	s_snodb_worker    *wsno_unzip;     // 解压 s_snodb_compress 中来的数据
 
 }s_sisdb_wsno_cxt;
 

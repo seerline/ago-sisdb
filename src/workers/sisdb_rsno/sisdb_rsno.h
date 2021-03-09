@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 
-#include "sdcdb.h"
+#include "snodb.h"
 #include <sis_disk.h>
 
 #define  SIS_RSNO_NONE     0 // 订阅未开始
@@ -22,7 +22,7 @@ typedef struct s_sisdb_rsno_cxt
     s_sis_sds         work_sdbs;
     s_sis_sds         work_keys;
 
-	s_sdcdb_worker   *rsno_ziper;       // s_sdcdb_compress 有值时 压缩数据返回
+	s_snodb_worker   *rsno_ziper;       // s_snodb_compress 有值时 压缩数据返回
 
     s_sis_thread      rsno_thread;      // 读文件时间长 需要启动一个线程处理
 
@@ -33,7 +33,7 @@ typedef struct s_sisdb_rsno_cxt
     sis_method_define *cb_dict_sdbs;    // 表结构 json字符串 
     sis_method_define *cb_dict_keys;    // 代码串 字符串
 
-    sis_method_define *cb_sdcdb_compress;  // s_sdcdb_compress
+    sis_method_define *cb_snodb_compress;  // s_snodb_compress
     sis_method_define *cb_sisdb_bytes;     // s_sis_db_chars
 
 }s_sisdb_rsno_cxt;

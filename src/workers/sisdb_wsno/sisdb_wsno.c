@@ -61,7 +61,7 @@ void sisdb_wsno_uninit(void *worker_)
     sis_disk_class_destroy(context->write_class);
     if (context->wsno_unzip)
     {
-        sdcdb_worker_destroy(context->wsno_unzip);
+        snodb_worker_destroy(context->wsno_unzip);
     }
     sis_sdsfree(context->wsno_date);
     sis_sdsfree(context->wsno_keys);
@@ -106,10 +106,10 @@ static int _write_head(s_sisdb_wsno_cxt *context, bool iszip)
     }
     if (iszip)
     {
-        context->wsno_unzip = sdcdb_worker_create();
-        sdcdb_worker_unzip_init(context->wsno_unzip, context, cb_unzip_info);
-        sdcdb_worker_set_keys(context->wsno_unzip, context->wsno_keys);
-        sdcdb_worker_set_sdbs(context->wsno_unzip, context->wsno_sdbs);
+        context->wsno_unzip = snodb_worker_create();
+        snodb_worker_unzip_init(context->wsno_unzip, context, cb_unzip_info);
+        snodb_worker_set_keys(context->wsno_unzip, context->wsno_keys);
+        snodb_worker_set_sdbs(context->wsno_unzip, context->wsno_sdbs);
     }
     context->iswhead = 2;
     return 1;
@@ -139,7 +139,7 @@ static int cb_sub_stop(void *worker_, void *argv_)
 
     if (context->wsno_unzip)
     {
-        sdcdb_worker_destroy(context->wsno_unzip);
+        snodb_worker_destroy(context->wsno_unzip);
         context->wsno_unzip = NULL;
     }
     sis_sdsfree(context->wsno_date); context->wsno_date = NULL;
@@ -180,13 +180,13 @@ static int cb_sisdb_bytes(void *worker_, void *argv_)
 
 	return SIS_METHOD_OK;
 }
-static int cb_sdcdb_compress(void *worker_, void *argv_)
+static int cb_snodb_compress(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
     _write_head(context, 1);
     // printf("%s\n",__func__);
-	sdcdb_worker_unzip_set(context->wsno_unzip, (s_sdcdb_compress *)argv_);
+	snodb_worker_unzip_set(context->wsno_unzip, (s_snodb_compress *)argv_);
     return SIS_METHOD_OK;
 }
 static int cb_unzip_info(void *source, int kidx, int sidx, char *in, size_t ilen)
@@ -227,7 +227,7 @@ int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
     sis_message_set_method(msg, "cb_sub_stop"       ,cb_sub_stop);
     sis_message_set_method(msg, "cb_dict_sdbs"      ,cb_dict_sdbs);
     sis_message_set_method(msg, "cb_dict_keys"      ,cb_dict_keys);
-    sis_message_set_method(msg, "cb_sdcdb_compress" ,cb_sdcdb_compress);
+    sis_message_set_method(msg, "cb_snodb_compress" ,cb_snodb_compress);
     sis_message_set_method(msg, "cb_sisdb_bytes"    ,cb_sisdb_bytes);
 
     return SIS_METHOD_OK; 
