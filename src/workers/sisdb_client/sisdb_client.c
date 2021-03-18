@@ -444,11 +444,19 @@ static int cb_reply(void *worker_, int rid_, void *key_, void *val_)
 
     if (key_)
     {
-        sis_message_set_str(msg, "key", key_, sis_sdslen(key_)); 
+        sis_message_set_str(msg, "rkey", key_, sis_sdslen(key_)); 
+    }
+    else
+    {
+        sis_message_del(msg, "rkey");
     }
     if (val_)
     {
         sis_message_set_str(msg, "reply", val_, sis_sdslen(val_)); 
+    }
+    else
+    {
+        sis_message_del(msg, "reply");
     }
     sis_message_set_int(msg, "rid", rid_); 
     // printf("rid = %d\n", rid_);
@@ -481,6 +489,7 @@ int cmd_sisdb_client_ask_chars_wait(void *worker_, void *argv_)
     ask->format = SIS_NET_FORMAT_CHARS;
     // sis_message_set(msg, "context", context, NULL); 
     // sis_message_del(msg, "rid");
+    sis_message_del(msg, "rid");
 
     sisdb_client_send_ask(context, ask);
 
@@ -523,7 +532,7 @@ int cmd_sisdb_client_ask_bytes_wait(void *worker_, void *argv_)
     ask->format = SIS_NET_FORMAT_BYTES;
     // sis_message_set(msg, "context", context, NULL); 
     // sis_message_del(msg, "rid");
-
+    sis_message_del(msg, "rid");
     sisdb_client_send_ask(context, ask);
     // printf("wait %p\n", msg);
     while(!sis_message_exist(msg, "rid"))
@@ -562,7 +571,7 @@ int cmd_sisdb_client_ask_chars(void *worker_, void *argv_)
 		false);
 
     ask->format = SIS_NET_FORMAT_CHARS;
-
+    
     sisdb_client_send_ask(context, ask);
 
     return SIS_METHOD_OK;    

@@ -179,16 +179,17 @@ void sis_disk_wcatch_clear(s_sis_disk_wcatch *in_)
 ////////////////////////////////////////////////////////
 // s_sis_disk_class
 ////////////////////////////////////////////////////////
-int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, const char *fname_)
+int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, const char *fname_, int wtime_)
 {
 
     cls_->style = style_;
     sis_strcpy(cls_->fpath, 255, fpath_);
     sis_strcpy(cls_->fname, 255, fname_);
+    cls_->wtime = wtime_;
 
     cls_->work_fps->main_head.style = style_;
     cls_->work_fps->main_head.index = 0;
-    cls_->work_fps->main_head.wtime = sis_time_get_idate(0);
+    cls_->work_fps->main_head.wtime = wtime_ == 0 ? sis_time_get_idate(0) : wtime_;
 
     char work_fn[SIS_DISK_NAME_LEN];
     char index_fn[SIS_DISK_NAME_LEN];
@@ -260,7 +261,7 @@ int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, 
         cls_->index_fps->max_file_size = SIS_DISK_MAXLEN_INDEX;
         cls_->index_fps->max_page_size = SIS_DISK_MAXLEN_MINPAGE;
 
-        cls_->index_fps->main_head.wtime = sis_time_get_idate(0);
+        cls_->index_fps->main_head.wtime = wtime_ == 0 ? sis_time_get_idate(0) : wtime_;
 
         sis_files_init(cls_->index_fps, index_fn);
 
@@ -292,13 +293,7 @@ s_sis_disk_class *sis_disk_class_create()
     cls->index_fps = sis_files_create();
 
     cls->status = SIS_DISK_STATUS_CLOSED;
-    // if (sis_disk_class_init(cls, style_, fpath_, fname_))
-    // {
-    //     sis_disk_class_destroy(cls);
-    //     return NULL;
-    // }
-    // printf("--1--%p %p\n", cls->keys, cls->sdbs);
-    // printf("--3--%p\n", cls->index_infos);
+
     return cls;
 }
 
@@ -329,12 +324,12 @@ void sis_disk_class_clear(s_sis_disk_class *cls_)
 
     sis_files_clear(cls_->work_fps);
     sis_files_clear(cls_->index_fps);
-    printf("--1--%p %p\n", cls_->keys, cls_->sdbs);
+    // printf("--1--%p %p\n", cls_->keys, cls_->sdbs);
     sis_map_list_clear(cls_->keys);
     sis_map_list_clear(cls_->sdbs);
 
     sis_disk_wcatch_clear(cls_->src_wcatch);
-    printf("--3--%p\n", cls_->index_infos);
+    // printf("--3--%p\n", cls_->index_infos);
     sis_map_list_clear(cls_->index_infos);
 
     cls_->sno_size = 0;
@@ -345,7 +340,7 @@ void sis_disk_class_clear(s_sis_disk_class *cls_)
 
     sis_mutex_unlock(&cls_->mutex);
 
-    sis_disk_class_init(cls_, cls_->style, cls_->fpath, cls_->fname);
+    sis_disk_class_init(cls_, cls_->style, cls_->fpath, cls_->fname, cls_->wtime);
 }
 
 // 设置文件大小

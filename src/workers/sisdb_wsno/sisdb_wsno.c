@@ -81,7 +81,7 @@ static int _write_head(s_sisdb_wsno_cxt *context, bool iszip)
     {
         return 0;
     }
-    sis_disk_class_init(context->write_class, SIS_DISK_TYPE_SNO , context->work_path, context->wsno_date); 
+    sis_disk_class_init(context->write_class, SIS_DISK_TYPE_SNO , context->work_path, context->wsno_date, sis_atoll(context->wsno_date)); 
     if (context->page_size > 1024 * 1024)
     {
         context->write_class->work_fps->max_page_size = context->page_size; 

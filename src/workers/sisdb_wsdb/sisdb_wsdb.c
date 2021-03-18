@@ -147,7 +147,7 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
     if (sis_map_pointer_getsize(sisdb->work_keys) > 0)
     {
         s_sis_disk_class *sdbfile = sis_disk_class_create();
-        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->dbname);
+        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->dbname, 0);
         // 不能删除老文件的信息
         sis_disk_file_write_start(sdbfile);
         {
@@ -206,12 +206,12 @@ int cmd_sisdb_wsdb_pack(void *worker_, void *argv_)
 
     // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
     s_sis_disk_class *srcfile = sis_disk_class_create();
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname);
+    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
     sis_disk_file_move(srcfile, context->safe_path);
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname);
+    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname, 0);
 
     s_sis_disk_class *desfile = sis_disk_class_create();
-    sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname);
+    sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
 
     size_t size = sis_disk_file_pack(srcfile, desfile);
 

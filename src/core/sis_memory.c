@@ -94,8 +94,18 @@ void sis_memory_grow(s_sis_memory *m_, size_t nsize_)
 	if (nsize_ > m_->maxsize)
 	{
 		size_t grow = sis_min(SIS_MEMORY_SIZE, (nsize_ + m_->maxsize) / 2);
-		m_->maxsize = nsize_ + grow;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		// m_->maxsize = nsize_ + grow;
+		// m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		size_t newsize = nsize_ + grow;
+		char *newbuffer = sis_malloc(newsize);
+		if (m_->size)
+		{
+			memmove(newbuffer, m_->buffer + m_->offset, m_->size);
+		}
+		m_->offset = 0;
+		sis_free(m_->buffer);
+		m_->buffer = newbuffer;
+		m_->maxsize = newsize;
 	}	
 }
 size_t sis_memory_cat(s_sis_memory *m_, char *in_, size_t ilen_)
@@ -360,8 +370,18 @@ size_t sis_memory_set_maxsize(s_sis_memory *m_, size_t len_)
 	// printf("%zu -- %zu\n", len_, m_->maxsize);
 	if (len_ > m_->maxsize)
 	{
-		m_->maxsize = len_ + 256;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		// m_->maxsize = len_ + 256;
+		// m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		size_t newsize = len_ + 256;
+		char *newbuffer = sis_malloc(newsize);
+		if (m_->size)
+		{
+			memmove(newbuffer, m_->buffer + m_->offset, m_->size);
+		}
+		m_->offset = 0;
+		sis_free(m_->buffer);
+		m_->buffer = newbuffer;
+		m_->maxsize = newsize;
 	}
 	return m_->maxsize;
 }

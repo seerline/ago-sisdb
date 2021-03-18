@@ -400,6 +400,7 @@ typedef struct s_sis_disk_class {
     int   style;
     char  fpath[255];
     char  fname[255];
+    int   wtime;   // 数据时间
 
     int   status;
     // 字典表应该是这样的
@@ -517,7 +518,7 @@ size_t sis_files_read(s_sis_files *, int fidx_, size_t offset_, size_t size_,
 s_sis_disk_class *sis_disk_class_create();
 void sis_disk_class_destroy(s_sis_disk_class *cls_);
 
-int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, const char *fname_);
+int sis_disk_class_init(s_sis_disk_class *cls_, int style_, const char *fpath_, const char *fname_, int wtime_);
 
 // 关闭文件
 void sis_disk_class_clear(s_sis_disk_class *cls_);

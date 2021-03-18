@@ -155,7 +155,7 @@ static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out
 int _sisdb_rsdb_load_sdb(const char *workpath, s_sisdb_cxt *sisdb, s_sisdb_catch *config)
 {
     s_sis_disk_class *sdbfile = sis_disk_class_create();  
-    sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, workpath, sisdb->dbname);
+    sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, workpath, sisdb->dbname, 0);
     int ro = sis_disk_file_read_start(sdbfile);
 
     printf("%s , ro = %d  %s\n", __func__, ro, workpath);

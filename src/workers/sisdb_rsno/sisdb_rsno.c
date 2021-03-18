@@ -278,7 +278,7 @@ void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context)
     char sdate[32];   
     sis_llutoa(context->work_date, sdate, 32, 10);
 
-    if (sis_disk_class_init(context->read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate)
+    if (sis_disk_class_init(context->read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, context->work_date)
      || sis_disk_file_read_start(context->read_class))
     {
         sisdb_rsno_sub_stop(context);
@@ -413,7 +413,7 @@ int cmd_sisdb_rsno_get(void *worker_, void *argv_)
 
     char *sdate = sis_message_get_str(msg, "get-date");
     s_sis_disk_class *read_class = sis_disk_class_create(); 
-    if (sis_disk_class_init(read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate) 
+    if (sis_disk_class_init(read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, sis_atoll(sdate)) 
         || sis_disk_file_read_start(read_class))
     {
         sis_disk_class_destroy(read_class);

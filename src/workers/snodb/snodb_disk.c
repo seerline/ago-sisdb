@@ -118,7 +118,12 @@ int snodb_wlog_save(s_snodb_cxt *snodb_, int sign_, s_snodb_compress *inmem_)
 }
 int snodb_wlog_start(s_snodb_cxt *snodb_)
 {
-	return sis_worker_command(snodb_->wlog_worker, "open", snodb_->dbname); 
+	s_sis_message *msg = sis_message_create();
+	sis_message_set_str(msg, "log-name", snodb_->dbname, sis_sdslen(snodb_->dbname));
+	sis_message_set_int(msg, "log-date", snodb_->work_date);
+	int o = sis_worker_command(snodb_->wlog_worker, "open", msg); 
+	sis_message_destroy(msg);
+	return o;
 }
 int snodb_wlog_stop(s_snodb_cxt *snodb_)
 {

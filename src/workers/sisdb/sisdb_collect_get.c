@@ -359,7 +359,7 @@ s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *collect_)
 	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), SIS_OBJ_LIST(collect_->obj)->count - 1), collect_->sdb->db->size);
 }
 
-s_sis_sds sisdb_collect_get_of_is_sds(s_sisdb_collect *collect_, int finder, int offset, int count)
+s_sis_sds sisdb_collect_get_of_are_sds(s_sisdb_collect *collect_, int finder, int offset, int count)
 {
 	// 只找字段数据相等的数据
 	int start;
@@ -435,17 +435,19 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 		o = sisdb_collect_get_of_range_sds(collect, 0, -1);
 		return o;
 	}
-	s_sis_json_node *isnode = sis_json_cmp_child_node(search, "is");
+	s_sis_json_node *isnode = sis_json_cmp_child_node(search, "are");
 	if (isnode)
 	{
-		// 指定数据集合
-		start = sis_json_get_int(search, "is", 0);
+		// 完全匹配时间 
+		start = sis_json_get_int(search, "are", 0);
 		offset = sis_json_get_int(search, "offset", 0);
 		count = sis_json_get_int(search, "count", 1);  // 默认1条记录 -1 为剩余全部
-		o = sisdb_collect_get_of_is_sds(collect, start, offset, count);
+		o = sisdb_collect_get_of_are_sds(collect, start, offset, count);
 		return o;
 	}
-
+	// 如果min max 都有就只取其中的数据 offset 和 count 无效
+	// 如果只有 min 表示无论 offset count 为何值 都不能早于min
+	// 如果只有 max 表示无论 offset count 为何值 都不能晚于max
 	int style = 0;
 	if (sis_json_cmp_child_node(search, "min"))
 	{
@@ -488,23 +490,24 @@ s_sis_sds sisdb_collect_get_original_sds(s_sisdb_collect *collect, s_sis_json_no
 			else
 			{
 				start = sisdb_collect_search_left(collect, min, &minX);
-				if (minX != SIS_SEARCH_OK)
-				{
-					if (offset < 0)
-					{
-						offset++;
-						count++;
-					}
-				}
+				// if (minX != SIS_SEARCH_OK)
+				// {
+				// 	if (offset < 0)
+				// 	{
+				// 		offset++;
+				// 		count++;
+				// 	}
+				// }
 			}
-			// printf("1.1--%d---%d---%d\n", start, offset, count);
+			// printf("1.1 %d %d %d\n", start, offset, count);
 			if (start >= 0)
 			{
-				start += offset;
+				start += offset + 1;
 				// start = sis_max(0, start);
-				if (offset < 0)
+				if (start < 0)
 				{
-					count -= offset;
+					count += start;
+					start = 0;
 				}
 				if (start >= 0)
 				{

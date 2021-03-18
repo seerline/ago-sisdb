@@ -132,6 +132,7 @@ int sis_files_open_create(s_sis_files *cls_, s_sis_files_unit *unit)
         return -2;
     }
     sis_write(unit->fp, (const char *)&cls_->main_head, sizeof(s_sis_disk_main_head));
+    printf("-2--ss-- %d\n", cls_->main_head.wtime);
     unit->offset = sizeof(s_sis_disk_main_head);
     unit->status = SIS_DISK_STATUS_CREATE | SIS_DISK_STATUS_NOSTOP;
     return 0;
@@ -162,7 +163,8 @@ int sis_files_open_append(s_sis_files *cls_, s_sis_files_unit *unit)
     {
         unit->offset = sis_seek(unit->fp, 0, SEEK_END);
     }
-    
+    // ??? 这里可能有问题 日期不同的log这里会有问题
+    memmove(&cls_->main_head, &head, sizeof(s_sis_disk_main_head));
     unit->status = SIS_DISK_STATUS_APPEND | SIS_DISK_STATUS_NOSTOP;
     return 0;
 }
@@ -186,7 +188,10 @@ int sis_files_open_rdonly(s_sis_files *cls_, s_sis_files_unit *unit)
         LOG(5)("style fail. [%d %d] [%d %d]\n", (int)bytes , (int)sizeof(s_sis_disk_main_head), head.style, cls_->main_head.style);
         sis_files_close(cls_);
         return -4;
-    }     
+    }  
+    // 这里要更新init设置的头信息
+    memmove(&cls_->main_head, &head, sizeof(s_sis_disk_main_head));
+    printf("-3--ss-- %d\n", cls_->main_head.wtime);
     unit->status = SIS_DISK_STATUS_RDOPEN;
 
     return 0;
@@ -204,6 +209,7 @@ int sis_files_delete(s_sis_files *cls_)
 int sis_files_open(s_sis_files *cls_, int access_)
 {
     cls_->access = access_;
+    // printf("-3.1--ss-- %d\n", cls_->main_head.wtime);
     LOG(3)("sis_files_open count = %d \n", cls_->lists->count);
     switch (cls_->access)
     {
@@ -256,7 +262,7 @@ int sis_files_open(s_sis_files *cls_, int access_)
         }
         break;
     }
-    
+    // printf("-3--ss-- %d\n", cls_->main_head.wtime);
     return 0;
 }
 // int sis_files_open(s_sis_files *cls_, int access_)
@@ -441,7 +447,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         s_sis_disk_head  head;   
         // 从头开始读
         sis_seek(unit->fp, sizeof(s_sis_disk_main_head), SEEK_SET);
-        msec_t _start_msec = sis_time_get_now_msec();
+        // msec_t _start_msec = sis_time_get_now_msec();
         size_t _mem_size = 0;
         while (!FILEEND && !isstop)
         {
@@ -469,7 +475,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                         if (callback(source_, &head, NULL) < 0)
                         {
                             // 回调返回 -1 表示已经没有读者了
-                            printf("stop break. end\n");
+                            // printf("stop break. end\n");
                             isstop = true;
                             break;
                         }
@@ -500,7 +506,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                         if (callback(source_, &head, omem) < 0)
                         {
                             // 回调返回 -1 表示已经没有读者了
-                            printf("stop break. sno\n");
+                            // printf("stop break. sno\n");
                             isstop = true;
                             break;
                         }
@@ -516,7 +522,7 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
         // 只解析数据 约 160秒
         // 排序花费时间 840秒- 2050秒 
         // 优化后 300秒
-        printf("%zu cost = %d\n", _mem_size, sis_time_get_now_msec() - _start_msec);
+        // printf("%zu cost = %d\n", _mem_size, sis_time_get_now_msec() - _start_msec);
     }
     sis_memory_destroy(imem);
     sis_memory_destroy(omem);

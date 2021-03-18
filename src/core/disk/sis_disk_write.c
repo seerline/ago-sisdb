@@ -178,7 +178,7 @@ size_t sis_disk_file_write_sdb_one(s_sis_disk_class *cls_,
         int count = ilen_ / unit->db->size;
         wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
         wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
-        printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
+        // printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
 
         wcatch->winfo.kdict = key->units->count;
         wcatch->winfo.sdict = sdb->units->count;
@@ -721,6 +721,7 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_)
     {
         access = SIS_DISK_ACCESS_CREATE;
     }
+    printf("-5--ss-- %d\n", cls_->work_fps->main_head.wtime);
     if (access == SIS_DISK_ACCESS_CREATE)
     {
         // 这里要设置从0页开始
@@ -788,6 +789,7 @@ int sis_disk_file_write_stop(s_sis_disk_class *cls_)
 
     if (cls_->work_fps->main_head.index)
     {
+        printf("-6--ss-- %d\n", cls_->work_fps->main_head.wtime);
         cls_->index_fps->main_head.workers = cls_->work_fps->lists->count;
         // 当前索引就1个文件 以后有需求再说
         // 难点是要先统计索引的时间和热度，以及可以加载内存的数据量 来计算出把索引分为几个
@@ -808,6 +810,7 @@ int sis_disk_file_write_stop(s_sis_disk_class *cls_)
     sis_files_close(cls_->work_fps);
 
     sis_disk_class_clear(cls_);
+
     cls_->status = SIS_DISK_STATUS_CLOSED;
     return 0;
 }

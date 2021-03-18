@@ -135,6 +135,8 @@ int cmd_sisdb_drop(void *worker_, void *argv_);
 
 // 得到多股票和多表的最后一条数据 仅仅读取内存中的数据
 int cmd_sisdb_gets(void *worker_, void *argv_);
+// 得到所有键值
+int cmd_sisdb_keys(void *worker_, void *argv_);
 // 二进制数据写入
 int cmd_sisdb_bset(void *worker_, void *argv_);
 // 删除多个数据

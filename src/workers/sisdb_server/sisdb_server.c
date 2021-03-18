@@ -217,12 +217,12 @@ static void cb_socket_recv(void *worker_, s_sis_net_message *msg)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 	
-    printf("recv query: [%d] %d : %s %s %s %s\n %s\n", msg->cid, msg->style, 
-        msg->serial ? msg->serial : "nil",
-        msg->cmd ? msg->cmd : "nil",
-        msg->key ? msg->key : "nil",
-        msg->val ? msg->val : "nil",
-        msg->rval ? msg->rval : "nil");
+    // printf("recv query: [%d] %d : %s %s %s %s\n %s\n", msg->cid, msg->style, 
+    //     msg->serial ? msg->serial : "nil",
+    //     msg->cmd ? msg->cmd : "nil",
+    //     msg->key ? msg->key : "nil",
+    //     msg->val ? msg->val : "nil",
+    //     msg->rval ? msg->rval : "nil");
 
     sis_net_message_incr(msg);
     s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, msg);
@@ -677,6 +677,29 @@ int cmd_sisdb_server_wget(void *worker_, void *argv_)
 }
 int cmd_sisdb_server_call(void *worker_, void *argv_)
 {
-    // 调用其他扩展方法
-    return SIS_METHOD_ERROR;
+    // 调用其他扩展方法 只能返回json格式
+    // s_sis_worker *worker = (s_sis_worker *)worker_; 
+    // s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    // s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+        
+    // s_sis_sds o = NULL;
+    // s_sis_dict_entry *de;
+    // s_sis_dict_iter *di = sis_dict_get_iter(context->datasets->map);
+    // while ((de = sis_dict_next(di)) != NULL)
+    // {
+    //     if (!sdbs)
+    //     {
+    //         sdbs = sis_sdsnew((char *)sis_dict_getkey(de));
+    //     }
+    //     else
+    //     {
+    //         sdbs = sis_sdscatfmt(sdbs, ",%s", (char *)sis_dict_getkey(de));
+    //     }
+    // }
+    // sis_dict_iter_free(di);
+
+    // sis_net_ans_with_chars(netmsg, sdbs, sis_sdslen(sdbs));
+
+    // sis_sdsfree(sdbs);
+    return SIS_METHOD_OK;
 }

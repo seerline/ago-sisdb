@@ -14,7 +14,7 @@ struct s_sis_method sisdb_wlog_methods[] = {
     {"open",   cmd_sisdb_wlog_open,   0, NULL},   
     {"write",  cmd_sisdb_wlog_write,  0, NULL},  
     {"close",  cmd_sisdb_wlog_close,  0, NULL},   
-    {"move",   cmd_sisdb_wlog_move,  0, NULL},  
+    {"move",   cmd_sisdb_wlog_move,   0, NULL},  
     {"exist",  cmd_sisdb_wlog_exist,  0, NULL},  
 };
 // 共享内存数据库
@@ -124,7 +124,7 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_)
     s_sis_disk_class *rfile = sis_disk_class_create();
     char fn[255];
     sis_sprintf(fn, 255, "%s.log", dbname);
-    sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn);
+    sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
     int ok = sis_disk_file_read_start(rfile);
     if (ok)
     {
@@ -158,14 +158,16 @@ int cmd_sisdb_wlog_open(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;
 
-    if (!argv_)
+    s_sis_message *msg = (s_sis_message *)argv_;
+    if (!sis_message_exist(msg, "log-name") || !sis_message_exist(msg, "log-date"))
     {
         return SIS_METHOD_ERROR;
     }
     char fn[255];
-    sis_sprintf(fn, 255, "%s.log", (char *)argv_);
+    sis_sprintf(fn, 255, "%s.log", sis_message_get_str(msg, "log-name"));
     context->wlog = sis_disk_class_create();
-    sis_disk_class_init(context->wlog, SIS_DISK_TYPE_STREAM, context->work_path, fn);
+    sis_disk_class_init(context->wlog, SIS_DISK_TYPE_STREAM, context->work_path, fn, sis_message_get_int(msg, "log-date"));
+
     // 立即写盘 且不限制文件大小
     sis_disk_class_set_size(context->wlog, 0, 0);
     sis_disk_file_write_start(context->wlog);
@@ -221,7 +223,7 @@ int cmd_sisdb_wlog_move(void *worker_, void *argv_)
         s_sis_disk_class *rfile = sis_disk_class_create();
         char fn[255];
         sis_sprintf(fn, 255, "%s.log", (char *)argv_);
-        sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn);
+        sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
         sis_disk_file_delete(rfile);
         sis_disk_class_destroy(rfile);
     }
@@ -236,7 +238,7 @@ int cmd_sisdb_wlog_exist(void *worker_, void *argv_)
     s_sis_disk_class *rfile = sis_disk_class_create();
     char fn[255];
     sis_sprintf(fn, 255, "%s.log", (char *)argv_);
-    sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn);
+    sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
     int ok = sis_disk_file_read_start(rfile) == 0 ? SIS_METHOD_OK : SIS_METHOD_ERROR;
     sis_disk_file_read_stop(rfile);
     sis_disk_class_destroy(rfile);

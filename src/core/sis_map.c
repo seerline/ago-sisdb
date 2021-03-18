@@ -193,10 +193,9 @@ s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_)
 
 void sis_map_pointer_destroy(s_sis_map_pointer *map_)
 {
-	sis_dict_empty(map_, NULL);
-	sis_free(map_->type);
-	sis_free(map_);
-	// sis_dict_destroy(map_);
+	s_sis_dict_type *type = map_->type;
+	sis_dict_destroy(map_);
+	sis_free(type);
 };
 void  sis_map_pointer_clear(s_sis_map_pointer *map_)
 {

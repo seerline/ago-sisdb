@@ -33,6 +33,9 @@ s_sis_sds sisdb_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, 
 // 只返回内存中每个key的最后一条记录
 s_sis_sds sisdb_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_sds argv_);
 
+s_sis_sds sisdb_one_keys_sds(s_sisdb_cxt *sisdb_, const char *keys_);
+s_sis_sds sisdb_keys_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_);
+
 // 删除某个key的某些数据
 int sisdb_del(s_sisdb_cxt *sisdb_, const char *key_,  s_sis_sds argv_);
 // 删除多个key的数据

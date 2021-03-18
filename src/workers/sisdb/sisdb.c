@@ -19,6 +19,7 @@ struct s_sis_method sisdb_methods[] = {
     {"del",       cmd_sisdb_del,      SIS_METHOD_ACCESS_RDWR,  NULL},   // 删除一个数据 数据区没有数据时 清理键值
     {"drop",      cmd_sisdb_drop,     SIS_METHOD_ACCESS_RDWR,  NULL},   // 删除一个表结构数据
     {"gets",      cmd_sisdb_gets,     SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式 get 多个key最后一条sdb数据 
+    {"keys",      cmd_sisdb_keys,     SIS_METHOD_ACCESS_READ,  NULL},   // 获取 所有keys
     {"bset",      cmd_sisdb_bset,     SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 二进制 格式
     {"dels",      cmd_sisdb_dels,     SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除多个数据
     {"sub",       cmd_sisdb_sub,      SIS_METHOD_ACCESS_READ,  NULL},   // 订阅数据
@@ -472,10 +473,10 @@ int cmd_sisdb_gets(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
+    s_sis_sds o = NULL;
     s_sis_sds kname = NULL; s_sis_sds sname = NULL; 
     int cmds = sis_str_divide_sds(netmsg->key, '.', &kname, &sname);
     // printf("cmd_sisdb_gets: %d %s %s \n", cmds, kname, sname);
-    s_sis_sds o = NULL;
     if (cmds == 1)
     {
         o = sisdb_one_gets_sds(context, kname, netmsg->val);
@@ -485,6 +486,33 @@ int cmd_sisdb_gets(void *worker_, void *argv_)
         o = sisdb_gets_sds(context, kname, sname, netmsg->val);
     }
     sis_sdsfree(kname);    sis_sdsfree(sname);
+    
+	if (o)
+	{
+        sis_net_ans_with_chars(netmsg, o, sis_sdslen(o));
+        sis_sdsfree(o);
+		return SIS_METHOD_OK;
+	}
+	return SIS_METHOD_NULL;
+}
+int cmd_sisdb_keys(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    s_sis_sds o = NULL;
+    
+    if (netmsg->key && !sis_strcasecmp(netmsg->key, "*"))
+    {
+        // 求单键
+        o = sisdb_one_keys_sds(context, netmsg->key);
+    }
+    else
+    {
+        o = sisdb_keys_sds(context, netmsg->key, netmsg->val);        
+    }
+    
 	if (o)
 	{
         sis_net_ans_with_chars(netmsg, o, sis_sdslen(o));
@@ -698,7 +726,11 @@ int cmd_sisdb_wlog(void *worker_, void *argv_)
     sis_mutex_lock(&context->wlog_lock);
     if (!context->wlog_open)
     {
-        sis_worker_command(context->wlog_worker, "open", context->dbname);
+        s_sis_message *msg = sis_message_create();
+        sis_message_set_str(msg, "log-name", context->dbname, sis_sdslen(context->dbname));
+        sis_message_set_int(msg, "log-date", context->work_date);
+        sis_worker_command(context->wlog_worker, "open", msg);
+    	sis_message_destroy(msg);
         context->wlog_open = 1;
     }
     int o = context->wlog_method->proc(context->wlog_worker, argv_);

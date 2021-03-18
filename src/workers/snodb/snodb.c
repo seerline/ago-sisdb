@@ -306,6 +306,12 @@ bool snodb_init(void *worker_, void *argv_)
         context->catch_size = 1; // 不保留
     }
 
+    s_sis_json_node *sdbsnode = sis_json_cmp_child_node(node, "sdbs");
+    if (sdbsnode)
+	{
+		context->work_sdbs = sis_json_to_sds(sdbsnode, true);
+		// printf("%s\n", context->work_sdbs);
+	}
 	// sis_mutex_init(&(context->write_lock), NULL);
  
 	context->outputs = sis_lock_list_create(context->catch_size);
@@ -440,13 +446,29 @@ void snodb_method_uninit(void *worker_)
 // 设置
 bool _snodb_write_init(s_snodb_cxt *snodb_, int workdate_, s_sis_sds keys_, s_sis_sds sdbs_)
 {
-	if (!keys_ || sis_sdslen(keys_) < 3 || !sdbs_ || sis_sdslen(sdbs_) < 3)
+	snodb_->inited = false;
+	snodb_->stoped = false;
+	LOG(8)("_snodb_write_init : %d \n", workdate_);
+
+	snodb_->work_date = workdate_;
+	if (keys_)
+	{
+		sis_sdsfree(snodb_->work_keys); 
+		snodb_->work_keys = sis_sdsdup(keys_);
+	}
+	if (sdbs_)
+	{
+		sis_sdsfree(snodb_->work_sdbs); 
+		snodb_->work_sdbs = sis_sdsdup(sdbs_);
+	}
+	sis_map_list_clear(snodb_->keys);
+	sis_map_list_clear(snodb_->sdbs);	
+	// 压缩参数初始化完成 ///
+	if (!snodb_->work_keys || sis_sdslen(snodb_->work_keys) < 3 
+		|| !snodb_->work_sdbs || sis_sdslen(snodb_->work_sdbs) < 3)
 	{
 		return false;
 	}
-	snodb_->inited = false;
-	snodb_->stoped = false;
-	LOG(8)("_snodb_write_init : %d %d %d\n", workdate_, (int)sis_sdslen(keys_), (int)sis_sdslen(sdbs_));
 	// 这里为了保证二次进入 必须对压缩参数初始化
 	if (snodb_->inputs)
 	{
@@ -477,17 +499,9 @@ bool _snodb_write_init(s_snodb_cxt *snodb_, int workdate_, s_sis_sds keys_, s_si
 	LOG(8)("_snodb_write_init : new. %d %d | %d\n", snodb_->work_date ,workdate_, snodb_->outputs->work_queue->rnums);
 	sis_bits_stream_clear(snodb_->cur_sbits);
 	// 有一个信息不匹配就全部重新初始化
-	snodb_->work_date = workdate_;
-	sis_sdsfree(snodb_->work_keys); 
-	snodb_->work_keys = sis_sdsdup(keys_);
-	sis_sdsfree(snodb_->work_sdbs); 
-	snodb_->work_sdbs = sis_sdsdup(sdbs_);
-	sis_map_list_clear(snodb_->keys);
-	sis_map_list_clear(snodb_->sdbs);	
-	// 压缩参数初始化完成 ///
 	{
 		s_sis_string_list *klist = sis_string_list_create();
-		sis_string_list_load(klist, keys_, sis_sdslen(keys_), ",");
+		sis_string_list_load(klist, snodb_->work_keys, sis_sdslen(snodb_->work_keys), ",");
 		// 重新设置keys
 		int count = sis_string_list_getsize(klist);
 		if (count < 1)
@@ -504,7 +518,7 @@ bool _snodb_write_init(s_snodb_cxt *snodb_, int workdate_, s_sis_sds keys_, s_si
 		sis_string_list_destroy(klist);
 	}
 	{
-		s_sis_json_handle *injson = sis_json_load(sdbs_, sis_sdslen(sdbs_));
+		s_sis_json_handle *injson = sis_json_load(snodb_->work_sdbs, sis_sdslen(snodb_->work_sdbs));
 		if (!injson)
 		{
 			return false;
@@ -541,12 +555,12 @@ int cmd_snodb_set(void *worker_, void *argv_)
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-	if (!sis_strcasecmp(netmsg->key, "_keys_"))
+	if (!sis_strcasecmp(netmsg->key, "_keys_") && netmsg->val)
 	{
 		sis_sdsfree(context->init_keys);
 		context->init_keys = sis_sdsdup(netmsg->val);
 	}
-	if (!sis_strcasecmp(netmsg->key, "_sdbs_"))
+	if (!sis_strcasecmp(netmsg->key, "_sdbs_") && netmsg->val)
 	{
 		sis_sdsfree(context->init_sdbs);
 		// 从外界过来的sdbs可能格式不对，需要转换
@@ -577,6 +591,10 @@ int cmd_snodb_start(void *worker_, void *argv_)
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	// 这里的keys和sdbs必须为真实值
+	if (!netmsg->val)
+	{
+		return SIS_METHOD_ERROR;
+	}
 	int work_date = sis_atoll(netmsg->val);
     if (!_snodb_write_init(context, work_date, context->init_keys, context->init_sdbs))
 	{
@@ -616,8 +634,8 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	// printf("cmd_snodb_stop, curmemory : %d\n", context->cur_object->size);
 	
-	// LOG(5)("snodb stop. wlog : %d readers : %d workdate : %d = %s\n", 
-	// 	context->wlog_worker, context->readeres->count, context->work_date, netmsg->val);
+	LOG(5)("snodb stop. wlog : %d readers : %d workdate : %d = %s\n", 
+		context->wlog_worker, context->readeres->count, context->work_date, netmsg->val);
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_snodb_reader *reader = (s_snodb_reader *)sis_pointer_list_get(context->readeres, i);
@@ -704,6 +722,7 @@ int _snodb_write_bits(s_snodb_cxt *snodb_, s_snodb_compress *in_)
 	sis_object_destroy(obj);
 	return 0;
 }
+
 // #include "stk_struct.v0.h"
 int cmd_snodb_ipub(void *worker_, void *argv_)
 {

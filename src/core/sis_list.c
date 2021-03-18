@@ -76,7 +76,10 @@ void _struct_list_grow(s_sis_struct_list *list_, int addlen_)
 	// void *newbuffer = sis_realloc(newbuffer, maxlen * list_->len);
 	if (list_->buffer)
 	{
-		memmove(newbuffer, list_->buffer, list_->maxcount * list_->len);
+		if (list_->count > 0)
+		{
+			memmove(newbuffer, list_->buffer, list_->count * list_->len);
+		}
 		sis_free(list_->buffer);
 	}
 	list_->buffer = newbuffer;
@@ -182,33 +185,25 @@ void *sis_struct_list_offset(s_sis_struct_list *list_, void *current_, int offse
 // 仅仅设置尺寸，不初始化
 void sis_struct_list_set_size(s_sis_struct_list *list_, int len_)
 {
-	if (len_ <= list_->maxcount)
-	{
-		return;
-	}
 	if (list_->buffer)
 	{
-		list_->buffer = sis_realloc(list_->buffer, len_ * list_->len);
+		sis_free(list_->buffer);
 	}
-	else
-	{
-		list_->buffer = sis_malloc(len_ * list_->len);
-	}
+	list_->buffer = sis_malloc(len_ * list_->len);
+	list_->count = 0;
+	list_->start = 0;
 	list_->maxcount = len_;
 }
 
 int sis_struct_list_set(s_sis_struct_list *list_, void *in_, int inlen_)
 {
 	int count = inlen_ / list_->len;
+	if (count < 1 || !in_)
+	{
+		return 0;
+	}
 	sis_struct_list_set_size(list_, count);
-	if (in_)
-	{
-		memmove(list_->buffer, in_, inlen_);
-	}
-	else
-	{
-		memset(list_->buffer, 0, count * list_->len);
-	}
+	memmove(list_->buffer, in_, list_->len * count);
 	list_->count = count;
 	list_->start = 0;
 	return count;
@@ -933,11 +928,14 @@ void _pointer_list_grow(s_sis_pointer_list *list_, int len_)
 	{
 		maxlen = len_ + POINTER_LIST_STEP_ROW;
 	}
-	// void *buffer = sis_malloc(maxlen * list_->len);
-	// memmove(buffer, list_->buffer, list_->maxcount*list_->len);
-	// sis_free(list_->buffer);
-	// list_->buffer = buffer;
-	list_->buffer = sis_realloc(list_->buffer, maxlen * list_->len);
+	void *newbuffer = sis_malloc(maxlen * list_->len);
+	if (list_->buffer && list_->maxcount > 0)
+	{
+		memmove(newbuffer, list_->buffer, list_->maxcount*list_->len);
+		sis_free(list_->buffer);
+	}
+	list_->buffer = newbuffer;
+	// list_->buffer = sis_realloc(list_->buffer, maxlen * list_->len);
 	list_->maxcount = maxlen;
 }
 int sis_pointer_list_push(s_sis_pointer_list *list_, void *in_)

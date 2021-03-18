@@ -256,6 +256,77 @@ s_sis_sds sisdb_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_,const  char *sdb
     return o;
 }
 
+// 只获取单键数值
+s_sis_sds sisdb_one_keys_sds(s_sisdb_cxt *sisdb_, const char *keys_)
+{
+    s_sis_sds o = NULL;
+    s_sis_dict_entry *de;
+    s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
+    while ((de = sis_dict_next(di)) != NULL)
+    {
+        s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+        if (collect->style != SISDB_COLLECT_TYPE_TABLE)
+        {
+            if (!o)
+            {
+                o = sis_sdsnew(sis_dict_getkey(de));
+            }
+            else
+            {
+                o = sis_sdscatfmt(o, ",%s", sis_dict_getkey(de));
+            }
+        }
+    }
+    sis_dict_iter_free(di);
+    return o;
+}
+s_sis_sds sisdb_keys_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
+{
+    s_sis_map_int *keys = sis_map_int_create();
+
+    {
+        char kname[128], sname[128]; 
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+            // printf("%s\n", (char *)sis_dict_getkey(de));
+            if (collect->style == SISDB_COLLECT_TYPE_TABLE)
+            {
+                int cmds = sis_str_divide(sis_dict_getkey(de), '.', kname, sname);
+                if (cmds == 2)
+                {
+                    if (sis_map_int_get(keys, kname) == -1)
+                    {
+                        sis_map_int_set(keys, kname, 1);
+                    }
+                }
+            }
+        }
+        sis_dict_iter_free(di);
+    }
+    s_sis_sds o = NULL;
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(keys);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            if (!o)
+            {
+                o = sis_sdsnew(sis_dict_getkey(de));
+            }
+            else
+            {
+                o = sis_sdscatfmt(o, ",%s", sis_dict_getkey(de));
+            }
+        }
+        sis_dict_iter_free(di);
+    }
+    sis_map_int_destroy(keys);
+
+    return o;
+}
 // 必须带参数 否则不执行删除操作
 int sisdb_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
 {
