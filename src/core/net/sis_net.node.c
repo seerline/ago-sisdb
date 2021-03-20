@@ -212,8 +212,8 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 	// 		in_->serial? in_->serial : "nil",
 	// 		in_->cmd ? in_->cmd : "nil",
 	// 		in_->key? in_->key : "nil",
-	// 		in_->val? in_->val : "nil"
-	// 		,in_->rval? in_->rval : "nil"
+	// 		in_->val? in_->val : "nil",
+	// 		in_->rval? in_->rval : "nil"
 	// 		);
 
     size_t len = 0;

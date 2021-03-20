@@ -132,7 +132,7 @@ int sis_files_open_create(s_sis_files *cls_, s_sis_files_unit *unit)
         return -2;
     }
     sis_write(unit->fp, (const char *)&cls_->main_head, sizeof(s_sis_disk_main_head));
-    printf("-2--ss-- %d\n", cls_->main_head.wtime);
+    // printf("-2--ss-- %d\n", cls_->main_head.wtime);
     unit->offset = sizeof(s_sis_disk_main_head);
     unit->status = SIS_DISK_STATUS_CREATE | SIS_DISK_STATUS_NOSTOP;
     return 0;
@@ -191,7 +191,7 @@ int sis_files_open_rdonly(s_sis_files *cls_, s_sis_files_unit *unit)
     }  
     // 这里要更新init设置的头信息
     memmove(&cls_->main_head, &head, sizeof(s_sis_disk_main_head));
-    printf("-3--ss-- %d\n", cls_->main_head.wtime);
+    // printf("-3--ss-- %d\n", cls_->main_head.wtime);
     unit->status = SIS_DISK_STATUS_RDOPEN;
 
     return 0;

@@ -86,6 +86,12 @@ typedef struct s_sis_minute_pair{
 	uint16	second; // 单位分钟
 }s_sis_minute_pair;
 
+
+typedef struct s_sis_time_pair{
+	uint32	first;  // 单位分钟
+	uint32	second; // 单位分钟
+}s_sis_time_pair;
+
 typedef struct s_sis_date_pair{
 	uint32	start;  // 开始日期
 	uint32	stop;   // 结束日期

@@ -1368,7 +1368,7 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     s_sis_disk_callback *callback = reader_->callback;   
     if(callback->cb_begin)
     {
-        printf("-4--ss-- %d\n", cls_->work_fps->main_head.wtime);
+        // printf("-4--ss-- %d\n", cls_->work_fps->main_head.wtime);
         callback->cb_begin(callback->source, cls_->work_fps->main_head.wtime);
     }
     reader_->issub = 1;
@@ -1464,7 +1464,7 @@ int sis_disk_file_read_start(s_sis_disk_class *cls_)
             return SIS_DISK_CMD_NO_EXISTS_IDX;
         }
     }
-    printf("-7--ss-- %d\n", cls_->work_fps->main_head.wtime);
+    // printf("-7--ss-- %d\n", cls_->work_fps->main_head.wtime);
     int o = sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_RDONLY);
     if (o)
     {
@@ -1485,7 +1485,7 @@ int sis_disk_file_read_start(s_sis_disk_class *cls_)
         sis_disk_file_read_dict(cls_);
         sis_files_close(cls_->index_fps);
     }
-    printf("-7.1--ss-- %d\n", cls_->work_fps->main_head.wtime);
+    // printf("-7.1--ss-- %d\n", cls_->work_fps->main_head.wtime);
     cls_->status = SIS_DISK_STATUS_OPENED;
     return SIS_DISK_CMD_OK;
 }

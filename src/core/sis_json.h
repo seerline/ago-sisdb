@@ -9,10 +9,11 @@
 #define SIS_JSON_NULL    0
 #define SIS_JSON_ROOT    1 // 根节点
 #define SIS_JSON_INT     2
-#define SIS_JSON_DOUBLE  3
-#define SIS_JSON_STRING  4
-#define SIS_JSON_ARRAY   5
-#define SIS_JSON_OBJECT  6
+#define SIS_JSON_BOOL    3
+#define SIS_JSON_DOUBLE  4
+#define SIS_JSON_STRING  5
+#define SIS_JSON_ARRAY   6
+#define SIS_JSON_OBJECT  7
 
 typedef struct s_sis_json_node
 {

@@ -28,6 +28,7 @@ void sisdb_wsno_uninit(void *);
 
 void market_file_method_init(void *);
 
+int cmd_sisdb_wsno_init(void *worker_, void *argv_);
 int cmd_sisdb_wsno_getcb(void *worker_, void *argv_);
 
 #endif

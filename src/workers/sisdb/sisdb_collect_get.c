@@ -343,7 +343,7 @@ s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *collect_, int start_, 
 s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *collect_, int start_, int count_)
 {
 	bool o = sisdb_collect_trans_of_count(collect_, &start_, &count_);
-	printf("%d\n", o);
+	// printf("%d\n", o);
 	if (!o)
 	{
 		return NULL;

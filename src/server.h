@@ -57,6 +57,7 @@ s_sis_modules *sis_get_worker_slot(const char *);
 }
 #endif
 
+#define SIS_SERVER_EXIT (sis_get_server()->status == SERVER_STATUS_EXIT)
 // 等待条件产生 或者程序退出 
 #define SIS_WAIT_OR_EXIT(_a_) do { while(!(_a_)) { sis_sleep(30); if(sis_get_server()->status == SERVER_STATUS_EXIT) break; }} while(0);
 

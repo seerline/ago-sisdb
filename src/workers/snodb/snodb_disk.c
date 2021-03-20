@@ -142,6 +142,8 @@ static int cb_snodb_wfile_start(void *worker_, void *argv_)
 {
     s_snodb_cxt *context = (s_snodb_cxt *)worker_;
 	LOG(5)("read wlog start. %s\n", (char *)argv_);
+	// 先删除对应日期的目标文件
+
 	if (context->wfile_cb_sub_start)
 	{
 		context->wfile_cb_sub_start(context->wfile_worker, (char *)argv_);

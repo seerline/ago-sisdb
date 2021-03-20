@@ -721,7 +721,7 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_)
     {
         access = SIS_DISK_ACCESS_CREATE;
     }
-    printf("-5--ss-- %d\n", cls_->work_fps->main_head.wtime);
+    // printf("-5--ss-- %d\n", cls_->work_fps->main_head.wtime);
     if (access == SIS_DISK_ACCESS_CREATE)
     {
         // 这里要设置从0页开始
@@ -789,7 +789,7 @@ int sis_disk_file_write_stop(s_sis_disk_class *cls_)
 
     if (cls_->work_fps->main_head.index)
     {
-        printf("-6--ss-- %d\n", cls_->work_fps->main_head.wtime);
+        // printf("-6--ss-- %d\n", cls_->work_fps->main_head.wtime);
         cls_->index_fps->main_head.workers = cls_->work_fps->lists->count;
         // 当前索引就1个文件 以后有需求再说
         // 难点是要先统计索引的时间和热度，以及可以加载内存的数据量 来计算出把索引分为几个

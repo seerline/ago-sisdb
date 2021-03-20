@@ -6,6 +6,7 @@
 
 // 从行情流文件中获取数据源
 static s_sis_method _sisdb_wsno_methods[] = {
+  {"init",   cmd_sisdb_wsno_init,  0, NULL},
   {"getcb",  cmd_sisdb_wsno_getcb, 0, NULL},
 };
 
@@ -81,11 +82,13 @@ static int _write_head(s_sisdb_wsno_cxt *context, bool iszip)
     {
         return 0;
     }
-    sis_disk_class_init(context->write_class, SIS_DISK_TYPE_SNO , context->work_path, context->wsno_date, sis_atoll(context->wsno_date)); 
+    int idate = sis_atoll(context->wsno_date);
+    sis_disk_class_init(context->write_class, SIS_DISK_TYPE_SNO , context->work_path, context->wsno_date, idate); 
     if (context->page_size > 1024 * 1024)
     {
         context->write_class->work_fps->max_page_size = context->page_size; 
     }
+    sis_disk_file_delete(context->write_class);
     int rtn = sis_disk_file_write_start(context->write_class);
 
     if (rtn)
@@ -216,6 +219,10 @@ static int cb_unzip_info(void *source, int kidx, int sidx, char *in, size_t ilen
 ///////////////////////////////////////////
 //  method define
 /////////////////////////////////////////
+int cmd_sisdb_wsno_init(void *worker_, void *argv_)
+{
+    return SIS_METHOD_OK; 
+}
 int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

@@ -119,12 +119,12 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
     {
         sis_net_ask_with_bytes(msg, ask->cmd, ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
     }
-    printf("send query: [%d] %d : %s %s %s %s %d\n", msg->cid, msg->style, 
-        ask->serial ? ask->serial : "nil",
-        ask->cmd ? ask->cmd : "nil",
-        ask->key ? ask->key : "nil",
-        ask->val ? ask->val : "nil",
-        ask->val ? (int)sis_sdslen(ask->val) : 0);
+    // printf("send query: [%d] %d : %s %s %s %s %d\n", msg->cid, msg->style, 
+    //     ask->serial ? ask->serial : "nil",
+    //     ask->cmd ? ask->cmd : "nil",
+    //     ask->key ? ask->key : "nil",
+    //     ask->val && ask->format == SIS_NET_FORMAT_CHARS ? ask->val : "nil",
+    //     ask->val ? (int)sis_sdslen(ask->val) : 0);
 
     sis_net_class_send(context->session, msg);
     sis_net_message_destroy(msg);

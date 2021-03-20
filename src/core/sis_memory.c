@@ -432,9 +432,10 @@ size_t sis_memory_get_line_sign(s_sis_memory *m_)
 	{
 		return 0;
 	}
+	char rtn = '\n';
 	char *ptr = sis_memory(m_);
 	size_t len = 0;
-	while (*ptr && (unsigned char)*ptr != '\n')
+	while (*ptr && (unsigned char)*ptr != rtn)
 	{
 		if ((m_->offset + len) < m_->size - 1)
 		{
@@ -447,7 +448,7 @@ size_t sis_memory_get_line_sign(s_sis_memory *m_)
 			return 0;
 		}
 	}
-	if ((unsigned char)*ptr == '\n')
+	if ((unsigned char)*ptr == rtn)
 	{
 		len++;
 	} // skip return key

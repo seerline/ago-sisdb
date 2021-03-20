@@ -4,6 +4,8 @@
 //////////////////////////////////////////////
 //   inside parse function define
 ///////////////////////////////////////////////
+// 如果引号中包含 "" 压缩时时必须加上 /" 字符串中不能包含单 /
+// 解析时严格要求 引号中的数据 如果包含子引号 必须是 /" 否则解析失败
 
 /* jump whitespace and cr/lf */
 static const char *skip(const char *in_)
@@ -203,7 +205,20 @@ static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node
 	}
 	return ptr;
 }
+static const char *_sis_parse_bool(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *str_)
+{
+	node_->type = SIS_JSON_BOOL;
+	const char *ptr = str_;
 
+	int len = 0;
+	while (*ptr && *ptr != ','&& *ptr != ' ')
+	{
+		ptr++;
+		len++;
+	}
+	node_->value = sis_strdup(str_, len);
+	return ptr;
+}
 static const char *_sis_parse_number(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *num_)
 {
 
@@ -211,7 +226,7 @@ static const char *_sis_parse_number(s_sis_json_handle *handle_, s_sis_json_node
 	int len = 0;
 
 	int isfloat = 0;
-	while (strchr("-.0123456789", (unsigned char)*ptr) && *ptr)
+	while (strchr("-.0123456789e", (unsigned char)*ptr) && *ptr)
 	{
 		if (*ptr == '.' && ptr[1] >= '0' && ptr[1] <= '9')
 		{
@@ -262,6 +277,7 @@ static const char *_sis_parse_array(s_sis_json_handle *handle_, s_sis_json_node 
 		if (!value_ || !*value_)
 		{
 			handle_->error = value_;
+			// exit(0);
 			return 0;
 		}
 		// value_ = skip(value_);
@@ -331,6 +347,10 @@ static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node 
 		handle_->error = value_;
 		return 0;
 	} /* Fail on null. */
+	if (*value_ == 'f'||*value_ == 't')
+	{
+		return _sis_parse_bool(handle_, node_, value_);
+	}
 	if (*value_ == '\"')
 	{
 		return _sis_parse_string(handle_, node_, value_);
@@ -908,9 +928,12 @@ void sis_json_delete_node(s_sis_json_node *node_)
 static char *_sis_json_to_value(s_sis_json_node *node_, int depth_, int fmt_);
 static char *_sis_json_to_number(s_sis_json_node *node_)
 {
-	return sis_strdup(node_->value, 0);
+	return sis_strdup(node_->value, sis_strlen(node_->value));
 }
-
+static char *_sis_json_to_bool(s_sis_json_node *node_)
+{
+	return sis_strdup(node_->value, sis_strlen(node_->value));
+}
 // \n, new line，另起一行
 // \t, tab，表格
 // \b, word boundary，词边界
@@ -960,6 +983,7 @@ static char *_sis_json_to_string(const char *str_)
 		}
 		else
 		{
+			// 注释掉 引号前不会再添加'\'
 			*ptr2++ = '\\';
 			switch (token = *ptr++)
 			{
@@ -1298,6 +1322,9 @@ char *_sis_json_to_value(s_sis_json_node *node_, int depth_, int fmt_)
 	case SIS_JSON_INT:
 		out = _sis_json_to_number(node_);
 		break;
+	case SIS_JSON_BOOL:
+		out = _sis_json_to_bool(node_);
+		break;
 	case SIS_JSON_DOUBLE:
 		out = _sis_json_to_number(node_);
 		break;
@@ -1571,7 +1598,10 @@ int main()
 {
 	safe_memory_start();
 	// const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":12345}}\"}";
-	const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":[\"d1\",\"d2\",33]}}\",\"key2\":[\"d1\\\",\"d2\",33]}";
+	// 下面字符串合法
+	const char *command = "{\"key1\":\"{\\\"m1\\\":1,\\\"m2\\\":{\\\"k1\\\":[\\\"d1\\\",\\\"d2\\\",33]}}\",\"key2\":true,\"key3\":[\"d1\",\"d2\",33]}";
+	// 下面字符串不合法
+	// const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":[\"d1\",\"d2\",33]}}\",\"key2\":true,\"key3\":[\"d1\",\"d2\",33]}";
 	s_sis_json_handle *h = sis_json_load(command,strlen(command));
 	if (!h) {return -1;}
 
@@ -1591,8 +1621,12 @@ int main()
 
 		int iii=1;
 		sis_json_show(h->node,&iii);
-
+		size_t len1;
+		char *str1 = sis_json_output_zip(h->node, &len1);
+		printf("out1: %s\n", str1);
+		sis_free(str1);
 	}
+
 	sis_free(str);
 	sis_json_close(h);
 	safe_memory_stop();
@@ -1665,6 +1699,8 @@ int main2()
 
 	str = sis_json_output_zip(h->node, &len);
 	printf("|%s|\n",str);	
+
+
 	sis_free(str);
 
 	s_sis_json_node *no = sis_json_clone(h->node, 1);

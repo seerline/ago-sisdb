@@ -12,7 +12,7 @@
 
 #define SIS_MINI(a, b) (a && b ? (((a) < (b)) ? (a) : (b)) : (a ? a : b))
 
-#define SIS_IS_ZERO(a) ((a > -0.0000001) && ( a < 0.0000001))
+#define SIS_IS_ZERO(a) (a == 0 || ((a > -0.0000001) && ( a < 0.0000001)))
 #define SIS_MINF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) < (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 #define SIS_MAXF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) > (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 
