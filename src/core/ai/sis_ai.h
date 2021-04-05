@@ -39,6 +39,8 @@ double sis_ai_normalization_series_drift(int nums_, double ins_[], double min_, 
 // 归一化的最近加速度
 double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double min_, double max_);
 
+// 求均值和中位数
+int sis_ai_get_avg_and_mid(int nums_, double ins_[], double *avg_, double *mid_);
 
 #define SIS_AI_AVG_MIN    10   //  为避免初始波动过于剧烈 小于10按10比例求均值
 #define SIS_AI_AVG_MAX    100  //  小于100 求均值 大于100 后按比例求均值

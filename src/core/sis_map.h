@@ -53,6 +53,8 @@ extern "C" {
 s_sis_map_list *sis_map_list_create(void *vfree_);
 void sis_map_list_destroy(void *);
 void sis_map_list_clear(s_sis_map_list *);
+void sis_map_list_clone(s_sis_map_list *srclist_, s_sis_map_list *dstlist_);
+
 void *sis_map_list_get(s_sis_map_list *, const char *key_);
 void *sis_map_list_geti(s_sis_map_list *, int );
 // void *sis_map_list_first(s_sis_map_list *);

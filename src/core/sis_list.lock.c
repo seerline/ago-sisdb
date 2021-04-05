@@ -352,7 +352,7 @@ s_sis_fast_queue *sis_fast_queue_create(
     o->cb_reader = cb_reader_;
 
     int wait_msec = (wait_msec_ > 1000 || wait_msec_ < 3) ? 1000 : wait_msec_;   
-    o->zero_msec = zero_msec_;   
+    o->zero_msec = zero_msec_;   // zero_msec_ == 0 没有数据不会发送
 
  	o->work_thread = sis_wait_thread_create(wait_msec);
     // 最后再启动线程 顺序不能变 不然数据会等待

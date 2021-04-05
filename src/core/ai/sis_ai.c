@@ -290,6 +290,51 @@ double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double
     sis_free(outs);
     return o;
 }
+
+static int _sort_double_list(const void *arg1, const void *arg2 ) 
+{ 
+    return (*(double *)arg1 > *(double *)arg2);
+}
+
+// 求均值和中位数
+int sis_ai_get_avg_and_mid(int nums_, double ins_[], double *avg_, double *mid_)
+{
+    if (nums_ > 1)
+    {
+        if (*avg_)
+        {
+            double sums = 0.0;
+            for (int i = 0; i < nums_; i++)
+            {
+                sums += ins_[i];
+            }
+            *avg_ = sums / nums_;
+        }
+        if (*mid_)
+        {
+            double *ins = sis_malloc(sizeof(double)*nums_);
+            memmove(ins, ins_, sizeof(double)*nums_);
+            qsort(ins, nums_, sizeof(double), _sort_double_list);
+            if (nums_ % 2 == 0)
+            {
+                int index = nums_ / 2 - 1;
+                *mid_ = (ins_[index] + ins_[index + 1]) / 2.0;  
+            }
+            else
+            {
+                int index = nums_ / 2;
+                *mid_ = ins_[index];  
+            }
+        }
+    }
+    else if (nums_ == 1)
+    {
+        *avg_ = *avg_ ? ins_[0] : 0.0;
+        *mid_ = *mid_ ? ins_[0] : 0.0;
+    } 
+    return 0;
+}
+
 /////////////////////////////////////////////////////////
 //
 /////////////////////////////////////////////////////////

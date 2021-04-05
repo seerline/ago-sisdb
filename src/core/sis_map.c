@@ -97,6 +97,11 @@ void sis_map_list_clear(s_sis_map_list *mlist_)
 	sis_map_int_clear(mlist_->map);
 	sis_pointer_list_clear(mlist_->list);
 }
+void sis_map_list_clone(s_sis_map_list *srclist_, s_sis_map_list *dstlist_)
+{
+	
+}
+
 int sis_map_list_get_index(s_sis_map_list *mlist_, const char *key_)
 {
 	if (!mlist_ || !key_ || sis_map_list_getsize(mlist_) < 1)

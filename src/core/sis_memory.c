@@ -100,7 +100,8 @@ void sis_memory_grow(s_sis_memory *m_, size_t nsize_)
 		char *newbuffer = sis_malloc(newsize);
 		if (m_->size)
 		{
-			memmove(newbuffer, m_->buffer + m_->offset, m_->size);
+			// printf("%p : %d,%d,%d,%d,%d \n", newbuffer, newsize, nsize_, m_->maxsize, m_->offset, m_->size);
+			memmove(newbuffer, m_->buffer + m_->offset, m_->size - m_->offset);
 		}
 		m_->offset = 0;
 		sis_free(m_->buffer);

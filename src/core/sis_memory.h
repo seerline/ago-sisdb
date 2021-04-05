@@ -10,9 +10,9 @@
 // 传说中32K读取文件速度最快，千万不要改大了
 
 typedef struct s_sis_memory {
-    size_t  size;
-	size_t  maxsize;
-	size_t  offset;  
+    size_t  size;     // 有数据的长度
+	size_t  maxsize;  // 缓存总长度
+	size_t  offset;   // 有效数据的起始位置
     char   *buffer; 
 } s_sis_memory;
 

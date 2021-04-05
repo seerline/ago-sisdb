@@ -33,7 +33,10 @@ bool sisdb_rsno_init(void *worker_, void *node_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sis_json_node *node = (s_sis_json_node *)node_;
-
+    if (!node)
+    {
+        return false;
+    }
     s_sisdb_rsno_cxt *context = SIS_MALLOC(s_sisdb_rsno_cxt, context);
     worker->context = context;
 
@@ -146,6 +149,10 @@ static void cb_key(void *context_, void *key_, size_t size)
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
 	s_sis_sds srckeys = sis_sdsnewlen((char *)key_, size);
 	s_sis_sds keys = sis_match_key(context->work_keys, srckeys);
+    if (!keys)
+    {
+        keys =  sis_sdsdup(srckeys);
+    } 
     if (context->cb_dict_keys)
     {
         context->cb_dict_keys(context->cb_source, keys);
@@ -162,6 +169,10 @@ static void cb_sdb(void *context_, void *sdb_, size_t size)
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
 	s_sis_sds srcsdbs = sis_sdsnewlen((char *)sdb_, size);
 	s_sis_sds sdbs = sis_match_sdb_of_sds(context->work_sdbs, srcsdbs);
+    if (!sdbs)
+    {
+        sdbs =  sis_sdsdup(srcsdbs);
+    } 
     if (context->cb_dict_sdbs)
     {
         context->cb_dict_sdbs(context->cb_source, sdbs);
@@ -234,6 +245,10 @@ static void *_thread_snos_read_sub(void *argv_)
 		// 获取真实的代码
 		s_sis_sds keys = sis_disk_file_get_keys(context->read_class, false);
 		s_sis_sds sub_keys = sis_match_key(context->work_keys, keys);
+        if (!sub_keys)
+        {
+            sub_keys =  sis_sdsdup(keys);
+        } 
 		sis_disk_reader_set_key(reader, sub_keys);
 		sis_sdsfree(sub_keys);
 		sis_sdsfree(keys);
@@ -241,6 +256,10 @@ static void *_thread_snos_read_sub(void *argv_)
 		// 获取真实的表名
 		s_sis_sds sdbs = sis_disk_file_get_sdbs(context->read_class, false);
 		s_sis_sds sub_sdbs = sis_match_sdb(context->work_sdbs, sdbs);
+        if (!sub_sdbs)
+        {
+            sub_sdbs =  sis_sdsdup(sdbs);
+        } 
 		sis_disk_reader_set_sdb(reader, sub_sdbs);  
 		sis_sdsfree(sub_sdbs);
 		sis_sdsfree(sdbs);
@@ -282,6 +301,7 @@ void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context)
      || sis_disk_file_read_start(context->read_class))
     {
         sisdb_rsno_sub_stop(context);
+        LOG(5)("sno file open fail.\n");
         if (context->cb_sub_stop)
         {
             context->cb_sub_stop(context->cb_source, sdate);

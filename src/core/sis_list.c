@@ -946,6 +946,20 @@ int sis_pointer_list_push(s_sis_pointer_list *list_, void *in_)
 	list_->count++;
 	return list_->count;
 }
+int sis_pointer_list_set(s_sis_pointer_list *list_, void *in_)
+{
+	int index = sis_pointer_list_indexof(list_, in_);
+	if ( index < 0)
+	{
+		sis_pointer_list_push(list_, in_);
+	}
+	else
+	{
+		sis_pointer_list_update(list_, index, in_);
+	}
+	return index;
+}
+
 int sis_pointer_list_update(s_sis_pointer_list *list_, int index_, void *in_)
 {
 	if (index_ >= 0 && index_ < list_->count)

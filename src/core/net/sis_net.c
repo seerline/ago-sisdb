@@ -647,6 +647,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 				LOG(5)("data error.\n");
 				// 如果返回<零 就说明数据出错
 				sis_object_destroy(obj);
+				sis_lock_list_clear(cls->ready_recv_cxts);
 				sis_socket_client_close(cls->client);
 				break;				
 			}

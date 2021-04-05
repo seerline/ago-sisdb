@@ -4,8 +4,8 @@
 //*******************************************************
 
 // struct diffrent compress
-#ifndef _SDCDB_H
-#define _SDCDB_H
+#ifndef _SNODB_H
+#define _SNODB_H
 
 #include "sis_core.h"
 #include "sis_math.h"
@@ -122,7 +122,7 @@ typedef struct s_snodb_disk_worker
 // 读取数据的人会接收到压缩的 out_bitzips 如果接收者订阅了全部就直接发送数据出去
 //          否则就把数据解压，然后写入自己的 s_snodb_cxt 再通过读者回调发送数据
 
-#define MAP_SDCDB_BITS(v) ((s_snodb_compress *)sis_memory(v->ptr))
+#define MAP_SNODB_BITS(v) ((s_snodb_compress *)sis_memory(v->ptr))
 
 typedef struct s_snodb_cxt
 {

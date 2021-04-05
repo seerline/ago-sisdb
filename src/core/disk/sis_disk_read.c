@@ -264,7 +264,8 @@ int sis_reader_sub_filters(s_sis_disk_class *cls_, s_sis_disk_reader *reader_, s
         {
             for (int k = 0; k < sis_string_list_getsize(sdbs); k++)
             {
-                sis_sprintf(info, 255, "%s.%s", sis_string_list_get(keys, i), sis_string_list_get(sdbs, k));                
+                sis_sprintf(info, 255, "%s.%s", sis_string_list_get(keys, i), sis_string_list_get(sdbs, k));    
+                // printf("%s %s\n", info, reader_->sdbs);            
                 s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, info);
                 if (node)
                 {
@@ -1322,7 +1323,7 @@ int cb_sis_disk_file_read_index(void *source_, s_sis_disk_head *head_, s_sis_mem
             }
             sis_object_destroy(key);
             sis_object_destroy(sdb);
-            // printf(" +++ %s : %d %d  - %d\n", name);
+            // printf(" +++ %s : \n", name);
             sis_map_list_set(cls_->index_infos, name, node);   
         }
         count++;
@@ -1409,6 +1410,7 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
         }
         break;
     }
+    // printf("-4--ss-- %d\n", cls_->isstop);
     // 不是因为中断而结束
     if(callback->cb_end && !cls_->isstop)
     {

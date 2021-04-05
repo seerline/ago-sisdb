@@ -8,6 +8,7 @@ extern s_sis_modules sis_modules_digger_series;
 extern s_sis_modules sis_modules_factor_drift;
 extern s_sis_modules sis_modules_factor_near;
 extern s_sis_modules sis_modules_macd;
+extern s_sis_modules sis_modules_signal_inout;
 extern s_sis_modules sis_modules_sign_money;
 extern s_sis_modules sis_modules_sign_mp;
 extern s_sis_modules sis_modules_sign_newp;
@@ -27,6 +28,7 @@ extern s_sis_modules sis_modules_net_ws;
 extern s_sis_modules sis_modules_source_datayes;
 extern s_sis_modules sis_modules_source_demo;
 extern s_sis_modules sis_modules_source_server;
+extern s_sis_modules sis_modules_trade_drive_demo;
 extern s_sis_modules sis_modules_trade_drive_easy;
 extern s_sis_modules sis_modules_trade_drive_fast;
 extern s_sis_modules sis_modules_trade_drive_real;
@@ -59,6 +61,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_factor_drift,
     &sis_modules_factor_near,
     &sis_modules_macd,
+    &sis_modules_signal_inout,
     &sis_modules_sign_money,
     &sis_modules_sign_mp,
     &sis_modules_sign_newp,
@@ -78,6 +81,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_source_datayes,
     &sis_modules_source_demo,
     &sis_modules_source_server,
+    &sis_modules_trade_drive_demo,
     &sis_modules_trade_drive_easy,
     &sis_modules_trade_drive_fast,
     &sis_modules_trade_drive_real,
@@ -112,6 +116,7 @@ const char *__modules_name[] = {
     "factor_drift",
     "factor_near",
     "macd",
+    "signal_inout",
     "sign_money",
     "sign_mp",
     "sign_newp",
@@ -131,6 +136,7 @@ const char *__modules_name[] = {
     "source_datayes",
     "source_demo",
     "source_server",
+    "trade_drive_demo",
     "trade_drive_easy",
     "trade_drive_fast",
     "trade_drive_real",

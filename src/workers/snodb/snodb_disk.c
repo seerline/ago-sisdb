@@ -292,7 +292,12 @@ s_snodb_disk_worker *snodb_snos_read_start(s_sis_json_node *config_, s_snodb_rea
 		sis_message_set_method(msg, "cb_sisdb_bytes", worker->snodb_reader->cb_sisdb_bytes);
 	}
 
-	sis_worker_command(worker->rdisk_worker, "sub", msg);
+	if(sis_worker_command(worker->rdisk_worker, "sub", msg) != SIS_METHOD_OK)
+	{
+		sis_worker_destroy(worker->rdisk_worker);
+		sis_free(worker);
+		worker = NULL;
+	}
 	sis_message_destroy(msg);
 
 	return worker;

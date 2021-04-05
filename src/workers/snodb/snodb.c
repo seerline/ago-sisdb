@@ -73,7 +73,7 @@ static void cb_output_reader_send(s_snodb_reader *reader, s_snodb_compress *memo
 static int cb_output_reader(void *reader_, s_sis_object *in_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
-	s_snodb_compress *memory = MAP_SDCDB_BITS(in_);
+	s_snodb_compress *memory = MAP_SNODB_BITS(in_);
 
 	s_snodb_cxt *snodb = ((s_sis_worker *)reader->snodb_worker)->context;
 	// printf("cb_output_reader = %d\n",reader->isinit);
@@ -140,7 +140,7 @@ s_sis_object *_snodb_new_data(s_snodb_cxt *snodb, int isinit)
 {
 	size_t size = sizeof(s_snodb_compress) + snodb->zip_size + 1024; // 这里应该取最长的结构体长度
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
-	s_snodb_compress *inmem = MAP_SDCDB_BITS(obj);
+	s_snodb_compress *inmem = MAP_SNODB_BITS(obj);
 	if (isinit || snodb->cur_size > snodb->initsize)
 	{
 		inmem->init = 1;
@@ -188,7 +188,7 @@ static int cb_input_reader(void *snodb_, s_sis_object *in_)
 		LOG(5)("snodb new obj %d %d.\n", snodb->zip_size, snodb->cur_sbits->bit_maxsize);
 	}
 	s_sis_object *obj = snodb->cur_object; 
-	s_snodb_compress *outmem = MAP_SDCDB_BITS(obj);
+	s_snodb_compress *outmem = MAP_SNODB_BITS(obj);
 
 	// printf("--input %d %d %p\n", snodb->inputs->rnums, outmem->size, in_);
 
@@ -252,7 +252,7 @@ static int cb_wlog_reader(void *reader_, s_sis_object *in_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
 	s_snodb_cxt *snodb = ((s_sis_worker *)reader->snodb_worker)->context;
-	s_snodb_compress *memory = MAP_SDCDB_BITS(in_);
+	s_snodb_compress *memory = MAP_SNODB_BITS(in_);
 	// 从第一个初始包开始存盘
 	if (!reader->isinit)
 	{
@@ -704,7 +704,7 @@ int _snodb_write_bits(s_snodb_cxt *snodb_, s_snodb_compress *in_)
 	// 直接写入
 	size_t size = sizeof(s_snodb_compress) + in_->size;
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
-	s_snodb_compress *memory = MAP_SDCDB_BITS(obj);
+	s_snodb_compress *memory = MAP_SNODB_BITS(obj);
 	memmove(memory, in_, size);
 	sis_memory_set_size(SIS_OBJ_MEMORY(obj), size);
 	// printf("_snodb_write_bits = %d %d | %d %d\n", snodb_->inited , snodb_->stoped, memory->init,memory->size);
@@ -713,7 +713,7 @@ int _snodb_write_bits(s_snodb_cxt *snodb_, s_snodb_compress *in_)
 		snodb_->last_object = obj;
 		// printf("set last obj = %p\n", obj);
 	}
-	// printf("push 3 outmem->size = %d\n", MAP_SDCDB_BITS(obj)->size);
+	// printf("push 3 outmem->size = %d\n", MAP_SNODB_BITS(obj)->size);
 	sis_lock_list_push(snodb_->outputs, obj);
 	if ((snodb_->zipnums++) % 100 == 0)
 	{
@@ -841,9 +841,10 @@ int _snodb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 	{
 		reader->sub_whole = false;
 	}
-	// printf("%s %d %d\n", __func__, reader->sub_date ,context->work_date);
+	printf("%s %d %d | %d %d\n", __func__, reader->sub_date ,context->work_date, context->stoped , context->inited);
 	if (reader->sub_date < context->work_date ||  
-		(reader->sub_date == context->work_date && context->stoped && context->inited))
+		// (reader->sub_date == context->work_date && context->stoped && context->inited))
+		(reader->sub_date == context->work_date && context->stoped))
 	{
 		reader->sub_disk = true;
 		// 启动历史数据线程 并返回 
@@ -1175,12 +1176,14 @@ static int cb_snodb_compress(void *source, void *argv)
 
 static int cb_sisdb_bytes(void *source, void *argv)
 {
-    // printf("%s\n", __func__);
+    // printf("%s %d\n", __func__, reader->rfmt);
     s_snodb_reader *reader = (s_snodb_reader *)source;
     s_sis_worker *snodb_worker = (s_sis_worker *)reader->snodb_worker;
     s_snodb_cxt *context = (s_snodb_cxt *)snodb_worker->context;
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv;
     // 向对应的socket发送数据
+
+    // printf("%s %d %s\n", __func__, reader->rfmt, inmem->sname);
 
 	s_sis_net_message *newinfo = sis_net_message_create();
 	newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
@@ -1443,7 +1446,7 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 			return 0;
 		}
 
-		// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, db->name, kidx, sidx, kidx_, sidx_);
+		LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, db->name, kidx, sidx, kidx_, sidx_);
 		snodb_worker_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
 		// if (reader->sub_ziper->zip_bits->size > reader->sub_ziper->zip_size)
 		// printf("zipbit size= %d\n", reader->sub_ziper->zip_bits->size);
@@ -1453,7 +1456,7 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 		// ??? 应该根据压缩的返回值 来判断是否要处理
 		if (zipmem->size > reader->sub_ziper->zip_size)
 		{
-			// printf("zipbit size= %d\n", reader->sub_ziper->zip_bits->size);
+			printf("zipbit size= %d\n", reader->sub_ziper->zip_bits->size);
 			reader->cb_snodb_compress(reader, zipmem);
 			if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
 			{
@@ -1474,6 +1477,7 @@ int snodb_reader_new_history(s_snodb_reader *reader_)
 	// printf("%s\n", __func__);
     s_sis_worker *worker = (s_sis_worker *)reader_->snodb_worker; 
     s_snodb_cxt *snodb = (s_snodb_cxt *)worker->context;
+	printf("snodb_reader_new_history %p\n", snodb->rfile_config);
 	// 清除该端口其他的订阅
 	snodb_move_reader(snodb, reader_->cid);
 	reader_->sub_disker = snodb_snos_read_start(snodb->rfile_config, reader_);
@@ -1482,6 +1486,7 @@ int snodb_reader_new_history(s_snodb_reader *reader_)
 		sis_pointer_list_push(snodb->readeres, reader_);
 		return 1;
 	}
+	printf("sub histroy error.\n");
 	return 0;
 }
 int snodb_reader_new_realtime(s_snodb_reader *reader_)
@@ -1543,7 +1548,15 @@ int snodb_reader_realtime_start(s_snodb_reader *reader_)
 		// printf("%d:%s \n %d:%s \n", sis_sdslen(reader_->sub_keys), reader_->sub_keys,
 		// 	sis_sdslen(snodb->work_keys), snodb->work_keys);
 		work_keys = sis_match_key(reader_->sub_keys, snodb->work_keys);
+		if (!work_keys)
+		{
+			work_keys =  sis_sdsdup(snodb->work_keys);
+		}
 		work_sdbs = sis_match_sdb_of_map(reader_->sub_sdbs, snodb->sdbs);
+		if (!work_sdbs)
+		{
+			work_sdbs =  sis_sdsdup(snodb->work_sdbs);
+		}
 		snodb_worker_set_keys(reader_->sub_ziper, work_keys);
 		snodb_worker_set_sdbs(reader_->sub_ziper, work_sdbs);
 

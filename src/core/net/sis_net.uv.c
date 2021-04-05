@@ -979,6 +979,8 @@ void sis_socket_client_close(s_sis_socket_client *client_)
 		sis_socket_close_handle((uv_handle_t*)&client_->client_handle, cb_client_close);
 	}
 	
+	// sis_memory_clear(client_->read_buffer);
+
 	sis_net_queue_clear(client_->write_list);
 	// 检查是否有未释放的句柄
 	// if ((int)client_->loop->active_handles > 0)

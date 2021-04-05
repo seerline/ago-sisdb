@@ -192,6 +192,7 @@ void sis_pointer_list_destroy(s_sis_pointer_list *list_);
 void sis_pointer_list_clear(s_sis_pointer_list *list_);
 
 int sis_pointer_list_push(s_sis_pointer_list *, void *in_);
+int sis_pointer_list_set(s_sis_pointer_list *, void *in_);
 int sis_pointer_list_update(s_sis_pointer_list *, int index_, void *in_);
 int sis_pointer_list_insert(s_sis_pointer_list *, int index_, void *in_);
 
