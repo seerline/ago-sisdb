@@ -63,6 +63,8 @@ int sis_str_divide(const char *in_, char ch_, char *one_, char *two_);
 int sis_str_divide_sds(const char *in_, char ch_, s_sis_sds *one_,  s_sis_sds *two_);
 // 返回字符所在位置
 int sis_strsub(char *big_, char *small_);
+// 得到方法的字符串 method(11,22,33)
+bool sis_str_method(const char *minfo_, char *mname_, size_t mlen_, char *param_, size_t plen_);
 
 int sis_str_pos(const char *in_, size_t ilen_, char c);
 int sis_str_substr_nums(const char *s, char c);

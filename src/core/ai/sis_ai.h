@@ -13,6 +13,8 @@
 int sis_cut_ratio_int(s_sis_struct_list *list_, int count_, int div_);
 int sis_cut_ratio_double(s_sis_struct_list *list_, int count_, int div_, double min_, double max_);
 int sis_cut_ratio_random(s_sis_struct_list *list_, int inc_, double ins_[], int div_, double min_, double max_);
+// 得到最小的索引
+int sis_ai_get_min_index(int inc_, double ins_[]);
 
 //////////////////////////////////////////////
 //  归一化的算法

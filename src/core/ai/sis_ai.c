@@ -148,6 +148,23 @@ int sis_cut_ratio_int(s_sis_struct_list *list_, int count_, int div_)
     sis_free(ins);
     return list_->count;
 }
+
+int sis_ai_get_min_index(int inc_, double ins_[])
+{
+    int index = 0;
+    double minv = ins_[0];
+    for (int i = 1; i < inc_; i++)
+    {
+        if (minv > ins_[i])
+        {
+            minv = ins_[i];
+            index = i;
+        }
+    }
+    // printf("sis_ai_get_min_index %d %.2f\n",index, minv);
+    return index;
+}
+
 // 从连续值中求得标准归一值 mid 无用
 double sis_ai_normalization_series(double value_, double min_, double max_)
 {

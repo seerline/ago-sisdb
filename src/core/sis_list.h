@@ -109,6 +109,7 @@ typedef struct s_sis_split {
 
 typedef struct s_sis_double_split {
 	double minv;
+	double midv; 
 	double maxv;
 } s_sis_double_split;
 

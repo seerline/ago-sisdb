@@ -248,6 +248,44 @@ int sis_strsub(char *big_, char *small_)
 	}	
 	return (int)(str - big_);
 }
+bool sis_str_method(const char *minfo_, char *mname_, size_t mlen_, char *param_, size_t plen_)
+{
+	int o = 0;
+	const char *ptr = minfo_;
+	const char *start = minfo_;
+	while (ptr && *ptr)
+	{
+		if (*ptr == '(')
+		{
+			if (ptr == start)
+			{
+				return false;
+			}
+			sis_strncpy(mname_, mlen_, start, ptr - start);
+			ptr++;
+			start = ptr;
+			o++;
+		}
+		else if (*ptr == ')')
+		{
+			if (ptr == start)
+			{
+				param_[0] = 0;
+			}
+			else
+			{
+				sis_strncpy(param_, plen_, start, ptr - start);
+			}
+			o++; 
+			break;
+		}
+		else
+		{
+			ptr++;
+		}
+	}
+	return o == 2;
+}
 
 int sis_str_pos(const char *in_, size_t ilen_, char c)
 {
