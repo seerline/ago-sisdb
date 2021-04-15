@@ -587,18 +587,18 @@ int sis_double_list_getsize(s_sis_double_list *list_)
 	return list_->value->count;
 }
 
-static int _sort_double_list(const void *arg1, const void *arg2 ) 
+int sis_sort_double_list(const void *arg1, const void *arg2 ) 
 { 
     return (*(double *)arg1 > *(double *)arg2);
 }
-static int _sort_uint32_list(const void *arg1, const void *arg2 ) 
+int sis_sort_uint32_list(const void *arg1, const void *arg2 ) 
 { 
     return (*(uint32 *)arg1 > *(uint32 *)arg2);
 }
 void sis_double_list_sort(s_sis_double_list *list_)
 {
-   qsort(sis_struct_list_get(list_->value, 0), list_->value->count, sizeof(double), _sort_double_list);
-   qsort(sis_struct_list_get(list_->index, 0), list_->index->count, sizeof(uint32), _sort_uint32_list);
+   qsort(sis_struct_list_get(list_->value, 0), list_->value->count, sizeof(double), sis_sort_double_list);
+   qsort(sis_struct_list_get(list_->index, 0), list_->index->count, sizeof(uint32), sis_sort_uint32_list);
 }
 
 int sis_double_list_count_nozero_split(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_)
@@ -717,7 +717,7 @@ int sis_double_list_count_split(s_sis_double_list *list_, s_sis_struct_list *spl
 	double *ins = sis_malloc(sizeof(double)*count);
 	memmove(ins, sis_struct_list_first(list_->value), sizeof(double)*count);
 
-    qsort(ins, count, sizeof(double), _sort_double_list);
+    qsort(ins, count, sizeof(double), sis_sort_double_list);
 
 	double step = (double)count / (double)nums_;
 	s_sis_double_split split;

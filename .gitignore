@@ -21,7 +21,6 @@ core.*
 *.pdb
 *.ilk
 *.exp
-*.a
 macos/
 win/
 x64/

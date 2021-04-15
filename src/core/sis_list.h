@@ -109,7 +109,6 @@ typedef struct s_sis_split {
 
 typedef struct s_sis_double_split {
 	double minv;
-	double midv; 
 	double maxv;
 } s_sis_double_split;
 
@@ -138,6 +137,10 @@ extern "C" {
 
 s_sis_double_list *sis_double_list_create(); 
 void sis_double_list_destroy(void *);
+
+int sis_sort_double_list(const void *arg1, const void *arg2);
+
+int sis_sort_uint32_list(const void *arg1, const void *arg2);
 
 // 排序必须放置到新的数组中
 void sis_double_list_sort(s_sis_double_list *src_);

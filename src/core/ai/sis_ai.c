@@ -308,11 +308,6 @@ double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double
     return o;
 }
 
-static int _sort_double_list(const void *arg1, const void *arg2 ) 
-{ 
-    return (*(double *)arg1 > *(double *)arg2);
-}
-
 // 求均值和中位数
 int sis_ai_get_avg_and_mid(int nums_, double ins_[], double *avg_, double *mid_)
 {
@@ -331,7 +326,7 @@ int sis_ai_get_avg_and_mid(int nums_, double ins_[], double *avg_, double *mid_)
         {
             double *ins = sis_malloc(sizeof(double)*nums_);
             memmove(ins, ins_, sizeof(double)*nums_);
-            qsort(ins, nums_, sizeof(double), _sort_double_list);
+            qsort(ins, nums_, sizeof(double), sis_sort_double_list);
             if (nums_ % 2 == 0)
             {
                 int index = nums_ / 2 - 1;
