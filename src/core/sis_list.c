@@ -938,6 +938,15 @@ void _pointer_list_grow(s_sis_pointer_list *list_, int len_)
 	// list_->buffer = sis_realloc(list_->buffer, maxlen * list_->len);
 	list_->maxcount = maxlen;
 }
+int sis_pointer_list_clone(s_sis_pointer_list *src_, s_sis_pointer_list *des_)
+{
+	sis_pointer_list_clear(des_);
+	_pointer_list_grow(des_, src_->count);
+	memmove(des_->buffer, src_->buffer, src_->count*src_->len);
+	des_->count = src_->count;
+	return des_->count;
+}
+
 int sis_pointer_list_push(s_sis_pointer_list *list_, void *in_)
 {
 	_pointer_list_grow(list_, list_->count + 1);
