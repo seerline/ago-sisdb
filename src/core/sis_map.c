@@ -37,11 +37,6 @@ void *_sis_dict_int_dup(const void *val)
 {
 	int64 *o = sis_malloc(sizeof(int64));
 	memmove(o, val, sizeof(int64));	
-	// char iv[64];
-	// sis_lldtoa(val, iv, 64, 10);
-	// int size = sis_strlen(iv);
-	// char *o = sis_malloc(size + 1);
-	// sis_strcpy(o, size + 1, iv);
 	return o;
 }
 void _sis_dict_sds_free(void *val)
@@ -69,14 +64,7 @@ s_sis_dict_type _sis_dict_type_int_key_s = {
 	_sis_dict_str_free,		   /* key destructor */
 	NULL					   /* val destructor */
 };
-// s_sis_dict_type _sis_dict_type_int_key_s = {
-// 	_sis_dict_int_hash,	       /* hash function */
-// 	NULL,		               /* key dup */
-// 	NULL,					   /* val dup */
-// 	_sis_dict_int_compare,     /* key compare */
-// 	NULL,		   			   /* key destructor */
-// 	NULL					   /* val destructor */
-// };
+
 s_sis_dict_type _sis_dict_type_sds_s = {
 	_sis_dict_strcase_hash,	/* hash function */
 	_sis_dict_str_dup,		   /* key dup */
@@ -306,7 +294,10 @@ int sis_map_key_int_set(s_sis_map_key_int *map_, int64 key_, void *val_)
 	sis_dict_replace(map_, (void *)&key_, val_);	
 	return 0;
 }
-
+void sis_map_key_int_del(s_sis_map_key_int *map_, const char *key_)
+{
+	sis_dict_delete(map_, (void *)&key_);
+}
 //////////////////////////////////////////
 //  s_sis_map_sds 基础定义
 //////////////////////////////////////////

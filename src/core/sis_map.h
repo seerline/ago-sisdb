@@ -96,7 +96,7 @@ s_sis_map_key_int *sis_map_key_int_create();
 void *sis_map_key_int_get(s_sis_map_key_int *, int64 );
 int sis_map_key_int_set(s_sis_map_key_int *, int64, void *value_);
 #define sis_map_key_int_getsize sis_dict_getsize
-
+void sis_map_key_int_del(s_sis_map_key_int *, int64);
 
 #ifdef __cplusplus
 }
