@@ -3,6 +3,7 @@
 extern s_sis_modules sis_modules_digger_bayes;
 extern s_sis_modules sis_modules_digger_core;
 extern s_sis_modules sis_modules_digger_ding;
+extern s_sis_modules sis_modules_digger_inout_factor;
 extern s_sis_modules sis_modules_digger_inout_signal;
 extern s_sis_modules sis_modules_digger_inout_study;
 extern s_sis_modules sis_modules_digger_nbt;
@@ -58,6 +59,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_digger_bayes,
     &sis_modules_digger_core,
     &sis_modules_digger_ding,
+    &sis_modules_digger_inout_factor,
     &sis_modules_digger_inout_signal,
     &sis_modules_digger_inout_study,
     &sis_modules_digger_nbt,
@@ -115,6 +117,7 @@ const char *__modules_name[] = {
     "digger_bayes",
     "digger_core",
     "digger_ding",
+    "digger_inout_factor",
     "digger_inout_signal",
     "digger_inout_study",
     "digger_nbt",

@@ -294,7 +294,7 @@ int sis_map_key_int_set(s_sis_map_key_int *map_, int64 key_, void *val_)
 	sis_dict_replace(map_, (void *)&key_, val_);	
 	return 0;
 }
-void sis_map_key_int_del(s_sis_map_key_int *map_, const char *key_)
+void sis_map_key_int_del(s_sis_map_key_int *map_, int64 key_)
 {
 	sis_dict_delete(map_, (void *)&key_);
 }
