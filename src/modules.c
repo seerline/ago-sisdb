@@ -35,6 +35,7 @@ extern s_sis_modules sis_modules_trade_drive_easy;
 extern s_sis_modules sis_modules_trade_drive_fast;
 extern s_sis_modules sis_modules_trade_drive_real;
 extern s_sis_modules sis_modules_trade_drive_wb;
+extern s_sis_modules sis_modules_trade_maker_t0;
 extern s_sis_modules sis_modules_trade_maker_wb;
 extern s_sis_modules sis_modules_trade_out_csv;
 extern s_sis_modules sis_modules_trade_out_sisdb;
@@ -91,6 +92,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_trade_drive_fast,
     &sis_modules_trade_drive_real,
     &sis_modules_trade_drive_wb,
+    &sis_modules_trade_maker_t0,
     &sis_modules_trade_maker_wb,
     &sis_modules_trade_out_csv,
     &sis_modules_trade_out_sisdb,
@@ -149,6 +151,7 @@ const char *__modules_name[] = {
     "trade_drive_fast",
     "trade_drive_real",
     "trade_drive_wb",
+    "trade_maker_t0",
     "trade_maker_wb",
     "trade_out_csv",
     "trade_out_sisdb",

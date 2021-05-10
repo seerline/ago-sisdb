@@ -301,7 +301,7 @@ void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context)
      || sis_disk_file_read_start(context->read_class))
     {
         sisdb_rsno_sub_stop(context);
-        LOG(5)("sno file open fail.\n");
+        LOG(5)("sno file open fail.[%s]\n", sdate);
         if (context->cb_sub_stop)
         {
             context->cb_sub_stop(context->cb_source, sdate);

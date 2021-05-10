@@ -145,6 +145,12 @@ int cmd_sisdb_dels(void *worker_, void *argv_);
 int cmd_sisdb_sub(void *worker_, void *argv_);
 // 取消订阅
 int cmd_sisdb_unsub(void *worker_, void *argv_);
+// 回放数据 需指定日期 支持模糊匹配 所有数据全部拿到按时间排序后一条一条返回 
+// 会先发送start 然后是各种数据 s_sis_db_chars * 最后是stop 每个请求获取数据样本后 开一个线程处理并返回数据
+// 同一个连接只能同时有一个回放请求
+int cmd_sisdb_playback(void *worker_, void *argv_);
+// 取消回放
+int cmd_sisdb_unplayback(void *worker_, void *argv_);
 
 int cmd_sisdb_save (void *worker_, void *argv_);// 存盘
 int cmd_sisdb_pack (void *worker_, void *argv_);// 合并整理数据

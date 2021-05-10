@@ -12,27 +12,29 @@
 ///////////////////////////////////////////////////
 // NULL 默认为读取
 struct s_sis_method sisdb_methods[] = {
-    {"show",      cmd_sisdb_show,     SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式
-    {"init",      cmd_sisdb_init,     SIS_METHOD_ACCESS_NONET, NULL},   // 设置一些必要的参数
-    {"get",       cmd_sisdb_get,      SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式
-    {"set",       cmd_sisdb_set,      SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 json 格式
-    {"del",       cmd_sisdb_del,      SIS_METHOD_ACCESS_RDWR,  NULL},   // 删除一个数据 数据区没有数据时 清理键值
-    {"drop",      cmd_sisdb_drop,     SIS_METHOD_ACCESS_RDWR,  NULL},   // 删除一个表结构数据
-    {"gets",      cmd_sisdb_gets,     SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式 get 多个key最后一条sdb数据 
-    {"keys",      cmd_sisdb_keys,     SIS_METHOD_ACCESS_READ,  NULL},   // 获取 所有keys
-    {"bset",      cmd_sisdb_bset,     SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 二进制 格式
-    {"dels",      cmd_sisdb_dels,     SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除多个数据
-    {"sub",       cmd_sisdb_sub,      SIS_METHOD_ACCESS_READ,  NULL},   // 订阅数据
-    {"unsub",     cmd_sisdb_unsub,    SIS_METHOD_ACCESS_READ,  NULL},   // 取消订阅
+    {"show",      cmd_sisdb_show,       SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式
+    {"init",      cmd_sisdb_init,       SIS_METHOD_ACCESS_NONET, NULL},   // 设置一些必要的参数
+    {"get",       cmd_sisdb_get,        SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式
+    {"set",       cmd_sisdb_set,        SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 json 格式
+    {"del",       cmd_sisdb_del,        SIS_METHOD_ACCESS_RDWR,  NULL},   // 删除一个数据 数据区没有数据时 清理键值
+    {"drop",      cmd_sisdb_drop,       SIS_METHOD_ACCESS_RDWR,  NULL},   // 删除一个表结构数据
+    {"gets",      cmd_sisdb_gets,       SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式 get 多个key最后一条sdb数据 
+    {"keys",      cmd_sisdb_keys,       SIS_METHOD_ACCESS_READ,  NULL},   // 获取 所有keys
+    {"bset",      cmd_sisdb_bset,       SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 二进制 格式
+    {"dels",      cmd_sisdb_dels,       SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除多个数据
+    {"sub",       cmd_sisdb_sub,        SIS_METHOD_ACCESS_READ,  NULL},   // 订阅数据 - 只发新写入的数据
+    {"unsub",     cmd_sisdb_unsub,      SIS_METHOD_ACCESS_READ,  NULL},   // 取消订阅
+    {"playback",  cmd_sisdb_playback,   SIS_METHOD_ACCESS_READ,  NULL},   // 回放数据 需指定日期 支持模糊匹配 所有数据全部拿到按时间排序后一条一条返回 
+    {"unplayback",cmd_sisdb_unplayback, SIS_METHOD_ACCESS_READ,  NULL},   // 取消回放
     // 存储方法
-    {"save",      cmd_sisdb_save  ,   SIS_METHOD_ACCESS_ADMIN, NULL},   // 存盘
-    {"pack",      cmd_sisdb_pack  ,   SIS_METHOD_ACCESS_ADMIN, NULL},   // 合并整理数据
+    {"save",      cmd_sisdb_save  ,     SIS_METHOD_ACCESS_ADMIN, NULL},   // 存盘
+    {"pack",      cmd_sisdb_pack  ,     SIS_METHOD_ACCESS_ADMIN, NULL},   // 合并整理数据
     // 主要用于server调用
-    {"rdisk",     cmd_sisdb_rdisk ,   SIS_METHOD_ACCESS_NONET, NULL},   // 从磁盘加载数据
-    {"rlog",      cmd_sisdb_rlog  ,   SIS_METHOD_ACCESS_NONET, NULL},   // 加载没有写盘的log信息
-    {"wlog",      cmd_sisdb_wlog  ,   SIS_METHOD_ACCESS_NONET, NULL},   // 写入没有写盘的log信息
-    {"clear",     cmd_sisdb_clear ,   SIS_METHOD_ACCESS_NONET, NULL},   // 停止某个客户的所有查询
-    {"getdb",     cmd_sisdb_getdb ,   SIS_METHOD_ACCESS_NONET, NULL},   // 得到表
+    {"rdisk",     cmd_sisdb_rdisk ,     SIS_METHOD_ACCESS_NONET, NULL},   // 从磁盘加载数据
+    {"rlog",      cmd_sisdb_rlog  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 加载没有写盘的log信息
+    {"wlog",      cmd_sisdb_wlog  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 写入没有写盘的log信息
+    {"clear",     cmd_sisdb_clear ,     SIS_METHOD_ACCESS_NONET, NULL},   // 停止某个客户的所有查询
+    {"getdb",     cmd_sisdb_getdb ,     SIS_METHOD_ACCESS_NONET, NULL},   // 得到表
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb = {
@@ -636,6 +638,64 @@ int cmd_sisdb_unsub(void *worker_, void *argv_)
             o = sisdb_one_unsub(context, netmsg);
         }
     }
+    else
+    {
+        // 没有键值就取消所有订阅
+        o = sisdb_unsub_whole(context, netmsg->cid);
+    }
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_playback(void *worker_, void *argv_)
+{
+    // 只订阅最后一条记录 不开线程 
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    int o = 0;
+    // if (netmsg->key && sis_sdslen(netmsg->key) > 0)
+    // {
+    //     if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+    //     {
+    //         o = sisdb_multiple_sub(context, netmsg);
+    //     }
+    //     else
+    //     {
+    //         o = sisdb_one_sub(context, netmsg);        
+    //     }
+    // }
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_unplayback(void *worker_, void *argv_)
+{
+    // 只订阅最后一条记录 不开线程 
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    int o = 0;
+    // if (netmsg->key && sis_sdslen(netmsg->key) > 0)
+    // {
+    //     if (!sis_strcasecmp(netmsg->key, "*")||!sis_strcasecmp(netmsg->key, "*.*"))
+    //     {
+    //         o = sisdb_unsub_whole(context, netmsg->cid);
+    //     }    
+    //     else if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+    //     {
+    //         o = sisdb_multiple_unsub(context, netmsg);
+    //     }
+    //     else
+    //     {
+    //         o = sisdb_one_unsub(context, netmsg);
+    //     }
+    // }
+    // else
+    // {
+    //     // 没有键值就取消所有订阅
+    //     o = sisdb_unsub_whole(context, netmsg->cid);
+    // }
     sis_net_ans_with_int(netmsg, o);
     return SIS_METHOD_OK;
 }

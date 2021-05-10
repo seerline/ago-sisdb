@@ -10,8 +10,12 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 {
 	if (task_->work_mode == SIS_WORK_MODE_ONCE)
 	{
-        sis_wait_thread_close(task_->work_thread);
-		return true;
+		if (!task_->isfirst)
+		{
+			task_->isfirst = true;
+			return true;
+		}	
+        sis_wait_thread_close(task_->work_thread);        
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_NOTICE)
 	{
