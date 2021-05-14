@@ -76,6 +76,11 @@ void sis_files_close(s_sis_files *cls_)
     // sis_struct_list_clear(cls_->lists);
 }
 
+// static size_t sis_seek(int fp, __off_t offset, int set)
+// {
+//     printf("lseek ..\n");
+//     return lseek(fp, offset, set);
+// }
 void sis_files_init(s_sis_files *cls_, char *fn_)
 {
     sis_strcpy(cls_->cur_name, SIS_DISK_NAME_LEN, fn_);
@@ -323,11 +328,29 @@ int sis_files_open(s_sis_files *cls_, int access_)
 //     } 
 //     return 0;
 // }
-
+bool sis_files_seek(s_sis_files *cls_)
+{ 
+    s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, cls_->cur_unit);
+    if (!unit->fp)
+    {
+        return false;
+    }
+    // 定位写入的位置 每次定位写盘速度慢
+    sis_seek(unit->fp, unit->offset, SEEK_SET);
+    return true;
+}
+size_t sis_files_offset(s_sis_files *cls_)
+{
+    s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, cls_->cur_unit);
+    if (!unit->fp)
+    {
+        return 0;
+    }
+    return unit->offset;
+}
 size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
 { 
    // 传进来的数据一定是要写盘的了
-
     s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->lists, cls_->cur_unit);
     
     // if (wcatch_) 
@@ -339,8 +362,8 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     {
         return 0;
     }
-    // 定位写入的位置
-    sis_seek(unit->fp, unit->offset, SEEK_SET);
+    // 定位写入的位置 每次定位写盘速度慢
+    // sis_seek(unit->fp, unit->offset, SEEK_SET);
 
     s_sis_disk_head head;
     head.fin = 1;
@@ -377,6 +400,8 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     s_sis_memory *memory = sis_memory_create();
     sis_memory_cat(memory, (char *)&head, sizeof(s_sis_disk_head));
     sis_memory_cat_ssize(memory, size);
+    ////
+    ////
     sis_write(unit->fp, sis_memory(memory), sis_memory_get_size(memory));
     if (head.zip)
     {
@@ -386,6 +411,7 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     {
       size = sis_write(unit->fp, sis_memory(wcatch_->memory), size);
     }  
+    ///
     size += sis_memory_get_size(memory);
     sis_memory_destroy(memory); 
 
@@ -393,7 +419,7 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     wcatch_->winfo.offset = unit->offset;
     wcatch_->winfo.size = size;
     unit->offset += size;
-    // LOG(8)("%d zip = %d size = %zu %zu\n", unit->fp, head.zip, size, unit->offset);
+    LOG(8)("%d zip = %d size = %zu %zu\n", unit->fp, head.zip, size, unit->offset);
     return size;
 }
 

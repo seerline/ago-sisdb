@@ -369,7 +369,8 @@ typedef struct s_sis_files_unit {
     char                  fn[SIS_DISK_NAME_LEN];    // 文件名
     s_sis_handle          fp;         // 文件句柄
     size_t                offset;     // 当前偏移位置
-    uint8                 status;     // 文件状态 
+    uint8                 status;     // 文件状态
+    s_sis_memory         *wcatch;     // 必须加写缓存 如果写入块太小 写盘耗时会成倍增加
 } s_sis_files_unit;
 
 #define  SIS_DISK_ACCESS_NOLOAD    0  // 没有这类文件 
@@ -495,6 +496,10 @@ int sis_files_delete(s_sis_files *cls_);
 
 int sis_files_open(s_sis_files *cls_, int access_);
 void sis_files_close(s_sis_files *cls_);
+
+bool sis_files_seek(s_sis_files *cls_);
+
+size_t sis_files_offset(s_sis_files *cls_);
 
 size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_);
 

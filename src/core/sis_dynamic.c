@@ -64,6 +64,27 @@ void sis_dynamic_field_destroy(void *field_)
 	s_sis_dynamic_field *field = (s_sis_dynamic_field *)field_;
 	sis_free(field);
 }
+
+int sis_dynamic_field_scale(int style_)
+{
+	int o = 1;
+	switch (style_)
+	{
+	case SIS_DYNAMIC_TYPE_WSEC: o = 864000000;
+		break;
+	case SIS_DYNAMIC_TYPE_TICK: o = 86400000;
+		break;
+	case SIS_DYNAMIC_TYPE_SEC:  o = 86400;
+		break;
+	case SIS_DYNAMIC_TYPE_MINU: o = 1440;
+		break;	
+	default: // SIS_DYNAMIC_TYPE_DATE
+		o = 1;
+		break;
+	}
+	return o;
+}
+
 ////////////////////////////////////////////////////////////////
 // s_sis_dynamic_db
 ////////////////////////////////////////////////////////////////
@@ -457,7 +478,7 @@ void _sis_dynamic_unit_copy(void *inunit_, void *in_, void *out_)
 	// 		0, outunit->len*(outunit->count - count));
 	// }
 }	
-uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
+uint64 sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 {
 	uint64 u64 = in64;
 	switch (instyle)
@@ -465,7 +486,7 @@ uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 	case SIS_DYNAMIC_TYPE_SEC:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 1000; break;
+			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 1000 + 999; break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = in64 / 60;   break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64);   break;
 		}
@@ -481,7 +502,7 @@ uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 	case SIS_DYNAMIC_TYPE_MINU:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 60 * 1000; break;
+			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 60 * 1000 + 59999; break;
 			case SIS_DYNAMIC_TYPE_SEC:  u64 = in64 * 60; break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64 * 60);   break;
 		}
@@ -489,9 +510,9 @@ uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 	case SIS_DYNAMIC_TYPE_DATE:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_TICK: u64 = sis_time_make_time(in64, 120000) * 1000; break;
-			case SIS_DYNAMIC_TYPE_SEC:  u64 = sis_time_make_time(in64, 120000); break;
-			case SIS_DYNAMIC_TYPE_MINU: u64 = sis_time_make_time(in64, 120000) / 60;   break;
+			case SIS_DYNAMIC_TYPE_TICK: u64 = sis_time_make_time(in64, 235959) * 1000 + 999; break;
+			case SIS_DYNAMIC_TYPE_SEC:  u64 = sis_time_make_time(in64, 235959); break;
+			case SIS_DYNAMIC_TYPE_MINU: u64 = sis_time_make_time(in64, 235959) / 60;   break;
 		}
 		break;
 	}
@@ -554,7 +575,7 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					case SIS_DYNAMIC_TYPE_TICK:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
-						u64 = _sis_time_unit_convert(inunit->style, outunit->style, u64);
+						u64 = sis_time_unit_convert(inunit->style, outunit->style, u64);
 						_sis_field_set_uint(outunit, (char *)out_, u64, i);
 						break;
 					case SIS_DYNAMIC_TYPE_UINT:

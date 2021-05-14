@@ -254,6 +254,10 @@ static int cb_wlog_reader(void *reader_, s_sis_object *in_)
 	s_snodb_cxt *snodb = ((s_sis_worker *)reader->snodb_worker)->context;
 	s_snodb_compress *memory = MAP_SNODB_BITS(in_);
 	// 从第一个初始包开始存盘
+	if ((snodb->zipnums++) % 100 == 0)
+	{
+		LOG(8)("recv nums = %d %d %d\n", reader->isinit, memory->init, snodb->wlog_init);
+	}
 	if (!reader->isinit)
 	{
 		if (!memory->init)
@@ -717,7 +721,7 @@ int _snodb_write_bits(s_snodb_cxt *snodb_, s_snodb_compress *in_)
 	sis_lock_list_push(snodb_->outputs, obj);
 	if ((snodb_->zipnums++) % 100 == 0)
 	{
-		LOG(8)("zpub nums = %d\n", snodb_->zipnums);
+		LOG(8)("zpub nums = %d %d\n", snodb_->zipnums, snodb_->outputs->users->count);
 	}
 	sis_object_destroy(obj);
 	return 0;

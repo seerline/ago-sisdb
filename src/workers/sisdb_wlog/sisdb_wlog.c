@@ -73,7 +73,6 @@ void sisdb_wlog_method_init(void *worker_)
 void sisdb_wlog_method_uninit(void *worker_)
 {
 }
-
 static void cb_begin(void *source_, msec_t idate)
 {
     // printf("%s : %llu\n", __func__, idate);

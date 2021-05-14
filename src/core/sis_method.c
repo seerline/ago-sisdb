@@ -53,7 +53,7 @@ s_sis_map_pointer *sis_method_map_create(s_sis_method *methods_, int count_)
 		// s_sis_sds key = sis_sdsnew(c->access);
 		// key = sis_sdscatfmt(key, ".%s", c->name);
 		int o = sis_map_pointer_set(map, c->name, c);
-		assert(o == DICT_OK);
+		assert(o == SIS_DICT_OK);
 	}
 	return map;
 }

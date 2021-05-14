@@ -74,7 +74,7 @@ void sis_message_set_str(s_sis_message *msg_, const char* key_, char *in_, size_
 {
     s_sis_message_unit *unit = SIS_MALLOC(s_sis_message_unit, unit);
     unit->style = SIS_MESSGE_TYPE_SDS;
-    unit->value = sdsnewlen(in_, ilen_);
+    unit->value = sis_sdsnewlen(in_, ilen_);
     sis_map_pointer_set(msg_, key_, unit);
 }
 // void sis_message_set_strlist(s_sis_message *msg_, const char* key_, s_sis_string_list *list_)

@@ -81,8 +81,9 @@
 #define SIS_DYNAMIC_TYPE_FLOAT  'F'
 #define SIS_DYNAMIC_TYPE_PRICE  'P'
 // 时间类型 定义
+#define SIS_DYNAMIC_TYPE_WSEC   'W'  // 微秒 8  
 #define SIS_DYNAMIC_TYPE_TICK   'T'  // 毫秒 8  
-#define SIS_DYNAMIC_TYPE_SEC    'S'  // 秒   8  
+#define SIS_DYNAMIC_TYPE_SEC    'S'  // 秒   4 8  
 #define SIS_DYNAMIC_TYPE_MINU   'M'  // 分钟 4 time_t/60
 #define SIS_DYNAMIC_TYPE_DATE   'D'  // 天 4 20010101
 
@@ -491,6 +492,8 @@ static inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynami
 s_sis_dynamic_field *sis_dynamic_field_create(char *name_);
 void sis_dynamic_field_destroy(void *db_);
 
+// 得到时间字段的精度
+int sis_dynamic_field_scale(int style_);
 
 s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
 void sis_dynamic_db_destroy(void *db_);
@@ -532,6 +535,7 @@ size_t sis_dynamic_convert_length(s_sis_dynamic_convert *cls_, const char *in_, 
 int sis_dynamic_convert(s_sis_dynamic_convert *cls_, 
 		const char *in_, size_t ilen_, char *out_, size_t olen_);
 
+uint64 sis_time_unit_convert(int instyle, int outstyle, uint64 in64);
 
 // // 参数为json结构的数据表定义,必须两个数据定义全部传入才创建成功
 // // 同名的自动生成link信息，不同名的没有link信息
@@ -598,7 +602,7 @@ s_sis_sds sis_match_sdb(s_sis_sds match_keys, s_sis_sds whole_keys);
 s_sis_sds sis_match_sdb_of_sds(s_sis_sds match_sdbs, s_sis_sds  whole_sdbs);
 // 得到匹配的sdbs
 // whole_sdbs 是s_sis_dynamic_db结构的map表
-// match_sdbs : * --> whole_sdbs of sds
+// match_sdbs : * --> whole_sdbs of sis_sds
 // match_sdbs : s1,s2 | whole_sdbs : {s1:{},s2:{},k1:{}} --> {s1:{},s2:{}}
 s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs);
 

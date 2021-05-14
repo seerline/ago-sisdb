@@ -25,7 +25,7 @@ size_t sis_net_ws_get_ans(char *key_, s_sis_memory *memory_)
         __ws_define_hash[i] = key_[i];
     }
     char anskey[32];
-    shacalc(__ws_define_hash, anskey);
+    sis_shacalc(__ws_define_hash, anskey);
     anskey[28] = 0;
     sis_memory_clear(memory_);
     sis_memory_cat(memory_, __ws_define_ans, sis_strlen(__ws_define_ans));

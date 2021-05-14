@@ -4,15 +4,15 @@
 
 uint64_t _sis_dict_str_hash(const void *key)
 {
-	return sis_dict_hash_func((unsigned char *)key, sis_strlen((char *)key));
+	return sis_dict_get_hash_func((unsigned char *)key, sis_strlen((char *)key));
 }
 uint64_t _sis_dict_strcase_hash(const void *key)
 {
-	return sis_dict_casehash_func((unsigned char *)key, sis_strlen((char *)key));
+	return sis_dict_get_casehash_func((unsigned char *)key, sis_strlen((char *)key));
 }
 uint64_t _sis_dict_int_hash(const void *key) // 只能是 int64
 {
-	return sis_dict_casehash_func((unsigned char *)key, sizeof(int64));
+	return sis_dict_get_casehash_func((unsigned char *)key, sizeof(int64));
 }
 int _sis_dict_strcase_compare(const void *key1, const void *key2)
 {

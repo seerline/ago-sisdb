@@ -88,6 +88,7 @@ size_t sis_disk_file_write_sno(s_sis_disk_class *cls_)
     size += sis_disk_write_work(cls_, SIS_DISK_HID_SNO_END, NULL);
     cls_->sno_size = 0;
     cls_->sno_series = 0;
+    LOG(5)("write sno page ok. pageno= %d, offset=%dM\n", cls_->sno_pages, (int)(sis_files_offset(cls_->work_fps)/1000000));
     return size;
 }
 
@@ -516,6 +517,11 @@ size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_)
 // 索引每次都重写一遍
 size_t sis_disk_file_write_index(s_sis_disk_class *cls_)
 {
+    if (!sis_files_seek(cls_->index_fps))
+    {
+        return 0;
+    }
+
     size_t size = 0;
     // 到这里头已经写了 尾不用写，直接写中间的内容
     s_sis_memory *memory = cls_->src_wcatch->memory;
@@ -773,6 +779,12 @@ int sis_disk_file_write_start(s_sis_disk_class *cls_)
 
     cls_->sno_size = 0;   // 当前块的总大小
     cls_->sno_series = 0; // 当前块的序号 每个新的page重新计数
+
+    // 写文件前强制修正一次写入位置
+    if (!sis_files_seek(cls_->work_fps))
+    {
+        return -8;
+    }
 
     return 0;
 }

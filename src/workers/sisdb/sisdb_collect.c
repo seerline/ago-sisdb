@@ -85,7 +85,7 @@ s_sisdb_collect *sisdb_kv_create(uint8 style_, const char *key_,char *in_, size_
     s_sisdb_collect *o = SIS_MALLOC(s_sisdb_collect, o);
 	o->name = sis_sdsnew(key_);
     o->style = style_;
-    o->obj = sis_object_create(SIS_OBJECT_SDS, sdsnewlen(in_, ilen_));
+    o->obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
     return o;
 }
 void sisdb_kv_destroy(void *info_)

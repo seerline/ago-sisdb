@@ -1001,6 +1001,12 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
 // }
 
 #if 0
+
+// snappy 压缩率为 69554735 -- > 32692142 时间为  66652 - 65440 = 1222
+// struct 读文件耗费时间为 3850 0264 = 3586
+// 实际处理时间 21153 25595 = 4442 - 3586 = 856 
+// 压缩率高了80% 时间缩小80% 值得推广
+
 #include "sis_memory.h"
 #pragma pack(push,1)
 typedef struct _snap_ {

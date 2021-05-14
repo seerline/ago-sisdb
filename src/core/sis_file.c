@@ -92,7 +92,7 @@ void sis_check_path(const char *fn_)
     // LOG(5)("outpath_:%s\n",outpath);
 }
 
-#if 0
+#if 1
 // test large file
 int main()
 {
@@ -108,11 +108,12 @@ int main()
     //     char buffer[32*10000];
     //     size_t bytes = sis_write(fp, buffer, 32*10000);
     //     if (bytes!=32*10000||i%3125==0)
-    for (int i = 0; i < 5*1000*1000; i++)
+    for (int i = 0; i < 5*1000*1000/32; i++)
     {
-        char buffer[1000];
-        size_t bytes = sis_write(fp, buffer, 1000);
-        if (bytes!=1000||i%1000000==0)
+        char buffer[32000];
+        size_t bytes = sis_write(fp, buffer, 32000);
+        // if (bytes!=1000||i%1000000==0)
+        if (i%100000==0)
         {
             printf("[%4d] %llu size= %zu  %zu\n", i, sis_time_get_now_msec() - start, bytes, sis_seek(fp, 0, SEEK_CUR));
         }

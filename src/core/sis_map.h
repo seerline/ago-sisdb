@@ -7,10 +7,10 @@
 #include "sis_list.h"
 #include "sis_sds.h"
 
-#define s_sis_map_pointer dict
-#define s_sis_map_int dict
-#define s_sis_map_sds dict
-#define s_sis_map_key_int dict
+#define s_sis_map_pointer s_sis_dict
+#define s_sis_map_int     s_sis_dict
+#define s_sis_map_sds     s_sis_dict
+#define s_sis_map_key_int s_sis_dict
 
 // 定义一个指针类型的字典  string -- void*
 // 定义一个整数类型的字典  string -- int

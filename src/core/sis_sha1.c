@@ -1,6 +1,6 @@
 ﻿#include "sis_sha1.h"
 
-static char encoding_table[] = {
+static char _encoding_table[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
   'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
   'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
@@ -10,14 +10,14 @@ static char encoding_table[] = {
   'w', 'x', 'y', 'z', '0', '1', '2', '3',
   '4', '5', '6', '7', '8', '9', '+', '/'
 };
-static int mod_table[] = {0, 2, 1};
+static int _mod_table[] = {0, 2, 1};
 
-static inline const unsigned int rol(const unsigned int value, const unsigned int steps)
+static inline const unsigned int _rol(const unsigned int value, const unsigned int steps)
 {
   return ((value << steps) | (value >> (32 - steps)));
 }
 
-static inline void clearWBuffert(unsigned int* buffert)
+static inline void _clear_w_buffer(unsigned int* buffert)
 {
   int pos = 0;
   for (pos = 16; --pos >= 0;)
@@ -26,7 +26,7 @@ static inline void clearWBuffert(unsigned int* buffert)
   }
 }
 
-void innerHash(unsigned int* result, unsigned int* w)
+void _inner_hash(unsigned int* result, unsigned int* w)
 {
   unsigned int a = result[0];
   unsigned int b = result[1];
@@ -36,10 +36,10 @@ void innerHash(unsigned int* result, unsigned int* w)
   int round = 0;
 #define sha1macro(func,val) \
 { \
-const unsigned int t = rol(a, 5) + (func) + e + val + w[round]; \
+const unsigned int t = _rol(a, 5) + (func) + e + val + w[round]; \
 e = d; \
 d = c; \
-c = rol(b, 30); \
+c = _rol(b, 30); \
 b = a; \
 a = t; \
 }
@@ -50,25 +50,25 @@ a = t; \
   }
   while (round < 20)
   {
-    w[round] = rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
+    w[round] = _rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
     sha1macro((b & c) | (~b & d), 0x5a827999)
     ++round;
   }
   while (round < 40)
   {
-    w[round] = rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
+    w[round] = _rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
     sha1macro(b ^ c ^ d, 0x6ed9eba1)
     ++round;
   }
   while (round < 60)
   {
-    w[round] = rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
+    w[round] = _rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
     sha1macro((b & c) | (b & d) | (c & d), 0x8f1bbcdc)
     ++round;
   }
   while (round < 80)
   {
-    w[round] = rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
+    w[round] = _rol((w[round - 3] ^ w[round - 8] ^ w[round - 14] ^ w[round - 16]), 1);
     sha1macro(b ^ c ^ d, 0xca62c1d6)
     ++round;
   }
@@ -80,7 +80,7 @@ a = t; \
   result[4] += e;
 }
 
-void shacalc(const char* src, char* dest)
+void sis_shacalc(const char* src, char* dest)
 {
   unsigned char hash[20];
   int bytelength = strlen(src);
@@ -101,10 +101,10 @@ void shacalc(const char* src, char* dest)
         | (((unsigned int) sarray[currentBlock + 1]) << 16)
         | (((unsigned int) sarray[currentBlock]) << 24);
     }
-    innerHash(result, w);
+    _inner_hash(result, w);
   }
   endCurrentBlock = bytelength - currentBlock;
-  clearWBuffert(w);
+  _clear_w_buffer(w);
   int lastBlockBytes = 0;
   for (;lastBlockBytes < endCurrentBlock; ++lastBlockBytes)
   {
@@ -113,11 +113,11 @@ void shacalc(const char* src, char* dest)
   w[lastBlockBytes >> 2] |= 0x80 << ((3 - (lastBlockBytes & 3)) << 3);
   if (endCurrentBlock >= 56)
   {
-    innerHash(result, w);
-    clearWBuffert(w);
+    _inner_hash(result, w);
+    _clear_w_buffer(w);
   }
   w[15] = bytelength << 3;
-  innerHash(result, w);
+  _inner_hash(result, w);
   int hashByte = 0;
   for (hashByte = 20; --hashByte >= 0;)
   {
@@ -130,12 +130,12 @@ void shacalc(const char* src, char* dest)
     uint32_t octet_b = i < 20 ? hash[i++] : 0;
     uint32_t octet_c = i < 20 ? hash[i++] : 0;
     uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
-    dest[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
-    dest[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
-    dest[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
-    dest[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
+    dest[j++] = _encoding_table[(triple >> 3 * 6) & 0x3F];
+    dest[j++] = _encoding_table[(triple >> 2 * 6) & 0x3F];
+    dest[j++] = _encoding_table[(triple >> 1 * 6) & 0x3F];
+    dest[j++] = _encoding_table[(triple >> 0 * 6) & 0x3F];
   }
-  for (i = 0; i < mod_table[20 % 3]; i++) {
+  for (i = 0; i < _mod_table[20 % 3]; i++) {
     dest[28 - 1 - i] = '=';
   }
 }

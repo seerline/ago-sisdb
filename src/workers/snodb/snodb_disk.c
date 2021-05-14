@@ -12,9 +12,11 @@
 bool _snodb_write_init(s_snodb_cxt *snodb_, int workdate_, s_sis_sds keys_, s_sis_sds sdbs_);
 int _snodb_write_bits(s_snodb_cxt *snodb_, s_snodb_compress *in_);
 
+// static msec_t _speed_msec = 0;
 // 从wlog文件中加载数据
 static int cb_snodb_wlog_start(void *worker_, void *argv_)
 {
+	// _speed_msec = sis_time_get_now_msec();
     s_snodb_cxt *context = (s_snodb_cxt *)worker_;
 	const char *sdate = (const char *)argv_;
 	LOG(5)("load wlog start. %s\n", sdate);
@@ -27,6 +29,7 @@ static int cb_snodb_wlog_stop(void *worker_, void *argv_)
 	const char *sdate = (const char *)argv_;
 	context->wlog_load = 0;
 	LOG(5)("load wlog stop. %s\n", sdate);
+	// printf("load wlog cost : %lld\n", sis_time_get_now_msec()-_speed_msec);
 	return SIS_METHOD_OK;
 }
 static int cb_snodb_wlog_load(void *worker_, void *argv_)
@@ -138,6 +141,7 @@ int snodb_wlog_move(s_snodb_cxt *snodb_)
 //------------------------wlog function -----------------------//
 //////////////////////////////////////////////////////////////////
 // 从wlog文件中加载数据
+
 static int cb_snodb_wfile_start(void *worker_, void *argv_)
 {
     s_snodb_cxt *context = (s_snodb_cxt *)worker_;
@@ -207,6 +211,19 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 // 把wlog转为snos格式 
+// 以目标为snappy格式 压缩到4.666G的数据
+// 读取zbit压缩的wlog文件需要时间为 msec = 13602 ~ 22212
+// 不用snappy压缩不写盘，只解压zbit数据需要时间为 msec = 153805 - 13602 = 140秒 约2分钟
+// 测试硬盘顺序写速度为300M/秒 15秒应该差不多写完
+// -- 以下测试为snappy压缩和写盘的 完整程序流程的速度 -- 
+// --不用snappy压缩不写盘，走完所有函数功能 需要时间为 msec = 390161 - 153805 = 236秒 约4分钟
+// --用snappy压缩不写盘，4.67G 需要时间为  msec = 512051 - 390161 = 122秒 约2分钟
+// --用snappy压缩并且写盘，4.67G 需要时间为  msec = 879961 - 390161 = 490秒 约8分钟
+// --不用snappy压缩但写盘，约20G 需要时间为 msec = 758862 - 390161 = 359秒 约6分钟
+// --按一秒300M写盘速度 15秒写完
+// 需要时间 153+236+122+369 = 880 大概14-15分钟
+// ??? 走完所有函数话费4分钟有点多
+
 int snodb_wlog_save_snos(s_snodb_cxt *snodb_)
 {
 	if (sis_worker_command(snodb_->wlog_worker, "exist", snodb_->dbname) != SIS_METHOD_OK)

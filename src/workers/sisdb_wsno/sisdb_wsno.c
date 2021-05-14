@@ -117,8 +117,10 @@ static int _write_head(s_sisdb_wsno_cxt *context, bool iszip)
     context->iswhead = 2;
     return 1;
 }
+static msec_t _speed_msec = 0;
 static int cb_sub_start(void *worker_, void *argv_)
 {
+    _speed_msec = sis_time_get_now_msec();
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
     
@@ -135,6 +137,7 @@ static int cb_sub_start(void *worker_, void *argv_)
 }
 static int cb_sub_stop(void *worker_, void *argv_)
 {
+    printf("wsno cost = %lld\n", sis_time_get_now_msec() - _speed_msec);
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
 
@@ -207,6 +210,7 @@ static int cb_unzip_info(void *source, int kidx, int sidx, char *in, size_t ilen
         return 0;
     }
     // printf("%s %s\n",kname, db->name);
+
     sis_disk_file_write_sdb(context->write_class, kname, db->name, in, ilen);
     return 0;
 }
