@@ -6,8 +6,9 @@
 #include <sis_malloc.h>
 #include <sis_str.h>
 
-#define SIS_MEMORY_SIZE  32*1024  // read buffer size
+#define SIS_MEMORY_SIZE  32768  // read buffer size
 // 传说中32K读取文件速度最快，千万不要改大了
+// 64位机似乎64K更快
 
 typedef struct s_sis_memory {
     size_t  size;     // 有数据的长度

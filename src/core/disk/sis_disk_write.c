@@ -15,7 +15,7 @@ size_t sis_disk_write_work(s_sis_disk_class *cls_, int hid_, s_sis_disk_wcatch *
     if (wcatch_ && cls_->work_fps->main_head.index)
     {
         s_sis_disk_index *node = sis_disk_index_get(cls_->index_infos, wcatch_->key, wcatch_->sdb);        
-        printf("write : %s %d \n ",SIS_OBJ_SDS(wcatch_->key), hid_);
+        // printf("write : %s %d \n ",SIS_OBJ_SDS(wcatch_->key), hid_);
         wcatch_->winfo.active++;
         sis_struct_list_push(node->index, &wcatch_->winfo); // 写完盘后增加一条索引记录
     }
@@ -25,6 +25,20 @@ size_t sis_disk_write_work(s_sis_disk_class *cls_, int hid_, s_sis_disk_wcatch *
 ////////////////////
 //  write
 ///////////////////
+// size_t sis_disk_file_write_stream(s_sis_disk_class *cls_, void *in_, size_t ilen_)
+// {
+//     size_t size = 0;
+    
+//     if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_STREAM)
+//     {
+//         s_sis_disk_wcatch *wcatch = cls_->src_wcatch;
+//         sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
+//         size = sis_files_write(cls_->work_fps, SIS_DISK_HID_STREAM, wcatch);
+//         sis_memory_clear(wcatch->memory);
+//     }
+//     return size;
+// }
+// 
 size_t sis_disk_file_write_stream(s_sis_disk_class *cls_, void *in_, size_t ilen_)
 {
     size_t size = 0;
@@ -38,11 +52,11 @@ size_t sis_disk_file_write_stream(s_sis_disk_class *cls_, void *in_, size_t ilen
             size = sis_files_write(cls_->work_fps, SIS_DISK_HID_STREAM, wcatch);
             // printf("wlog %d\n", size);
             sis_disk_wcatch_clear(wcatch);
+            // 流式文件每次必写盘
         }
     }
     return size;
 }
-
 size_t sis_disk_file_write_sdb_log(s_sis_disk_class *cls_,
                                    s_sis_disk_dict *key, s_sis_disk_dict *sdb, void *in_, size_t ilen_)
 {
@@ -622,7 +636,7 @@ size_t sis_disk_file_write_index(s_sis_disk_class *cls_)
         }
         sis_memory_clear(memory);
     }   
-
+    sis_files_write_sync(cls_->index_fps);
     LOG(5)("write_index end %zu \n", size);
     return size;
 }
@@ -660,6 +674,8 @@ size_t sis_disk_file_write_surplus(s_sis_disk_class *cls_)
 
         break;
     }
+    // 把缓存的数据全部写盘
+    sis_files_write_sync(cls_->work_fps);
     return size;
 }
 
@@ -675,7 +691,7 @@ void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
     char newfn[255];
     for (int  i = 0; i < cls_->work_fps->lists->count; i++)
     {
-        s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->work_fps->lists, i);
+        s_sis_files_unit *unit = (s_sis_files_unit *)sis_pointer_list_get(cls_->work_fps->lists, i);
         sis_file_getname(unit->fn, fn, 255);
         sis_sprintf(newfn, 255, "%s/%s", path_, fn);
         sis_file_rename(unit->fn, newfn);
@@ -684,7 +700,7 @@ void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
     {
         for (int  i = 0; i < cls_->index_fps->lists->count; i++)
         {
-            s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->index_fps->lists, i);
+            s_sis_files_unit *unit = (s_sis_files_unit *)sis_pointer_list_get(cls_->index_fps->lists, i);
             sis_file_getname(unit->fn, fn, 255);
             sis_sprintf(newfn, 255, "%s/%s", path_, fn);
             sis_file_rename(unit->fn, newfn);

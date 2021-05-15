@@ -47,7 +47,8 @@ bool sisdb_wsno_init(void *worker_, void *node_)
             sis_path_mkdir(context->work_path);
         }    
     }
-    context->page_size =  sis_json_get_int(node, "page-size", 0) * 1000000;   
+    // context->page_size =  sis_json_get_int(node, "page-size", 0) * 1024*1024;   
+    context->page_size =  sis_json_get_int(node, "page-size", 0) * 1024*1024;   
 
     context->write_class = sis_disk_class_create(); 
     return true;

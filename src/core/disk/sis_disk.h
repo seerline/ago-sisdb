@@ -387,7 +387,7 @@ typedef struct s_sis_files {
     uint8                 cur_unit;       // 当前是哪个文件
 	size_t                max_file_size;  // 文件最大尺寸 大于就换文件
 	size_t                max_page_size;  // 块最大尺寸 大于就换文件
-	s_sis_struct_list    *lists;          // s_sis_files_unit 文件信息 有几个就打开几个
+	s_sis_pointer_list   *lists;          // s_sis_files_unit 文件信息 有几个就打开几个
 } s_sis_files;
 
 typedef struct s_sis_disk_class {
@@ -501,7 +501,10 @@ bool sis_files_seek(s_sis_files *cls_);
 
 size_t sis_files_offset(s_sis_files *cls_);
 
+size_t sis_files_write_sync(s_sis_files *cls_);
+
 size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_);
+
 
 // // 移动指针到第几个文件 某个位置
 // long long sis_files_seek(s_sis_files *, int fidx_, size_t offset_, int where_);

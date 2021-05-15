@@ -154,6 +154,10 @@ size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_)
 	// fflush(fp_);
 	return size;
 }
+int sis_file_fsync(s_sis_file_handle fp_)
+{
+	return fsync(fileno(fp_));
+}
 
 void sis_file_getpath(const char *fn_, char *out_, int olen_)
 {

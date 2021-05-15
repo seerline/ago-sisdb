@@ -51,6 +51,8 @@ size_t sis_size(s_sis_handle fp_);
 size_t sis_read(s_sis_handle fp_, char *in_, size_t len_);
 size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_);
 
+#define sis_fsync(a) FlushFileBuffers(a)
+#define sis_fdatasync(a) 
 
 #define s_sis_file_handle FILE *
 
@@ -63,6 +65,8 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_);
 size_t sis_file_size(s_sis_file_handle fp_);
 size_t sis_file_read(s_sis_file_handle fp_, char *in_, size_t len_);
 size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_);
+
+int sis_file_fsync(s_sis_file_handle fp_);
 
 void  sis_file_getpath(const char *fn_, char *out_, int olen_);
 void sis_file_getname(const char *fn_, char *out_, int olen_);

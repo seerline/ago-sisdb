@@ -48,7 +48,6 @@
 //          对client发给server老的数据结构，只要server的数据集合名还在，就可以解析出来，并为client服务
 //     最大的好处是，以后增加服务接口，不用每个接口定义一个数据结构，可以通过 key-value的方式就可以增加接口了
 //     只要client收到信息，解析成功后，就直接返回一个 数据集合名 数据区；做好安全检查后，就可以映射到一个数据结构，
-#define SIS_MEMORY_DB_SIZE    32*1024
 
 #define SIS_DYNAMIC_CHR_LEN   64
 
