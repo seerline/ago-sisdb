@@ -30,6 +30,7 @@ extern s_sis_modules sis_modules_net_ws;
 extern s_sis_modules sis_modules_source_datayes;
 extern s_sis_modules sis_modules_source_demo;
 extern s_sis_modules sis_modules_source_server;
+extern s_sis_modules sis_modules_source_wind;
 extern s_sis_modules sis_modules_trade_drive_demo;
 extern s_sis_modules sis_modules_trade_drive_easy;
 extern s_sis_modules sis_modules_trade_drive_fast;
@@ -87,6 +88,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_source_datayes,
     &sis_modules_source_demo,
     &sis_modules_source_server,
+    &sis_modules_source_wind,
     &sis_modules_trade_drive_demo,
     &sis_modules_trade_drive_easy,
     &sis_modules_trade_drive_fast,
@@ -146,6 +148,7 @@ const char *__modules_name[] = {
     "source_datayes",
     "source_demo",
     "source_server",
+    "source_wind",
     "trade_drive_demo",
     "trade_drive_easy",
     "trade_drive_fast",

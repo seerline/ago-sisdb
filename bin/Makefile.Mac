@@ -1,0 +1,34 @@
+# Top level makefile, the real shit is at src/Makefile
+
+default: all
+
+all:
+
+ifeq (../macos, $(wildcard ../macos))
+	cd ../macos && cmake ../src/ && $(MAKE) $@
+else
+	cd ../ && mkdir macos && cd macos && cmake ../src/ && $(MAKE) $@
+endif
+
+server:
+
+ifeq (../macos, $(wildcard ../macos))
+	cd ../macos && cmake ../src/ && $(MAKE) $@
+else
+	cd ../ && mkdir macos && cd macos && cmake ../src/ && $(MAKE) $@
+endif
+	cp ./sisdb ./sisdb-server
+
+client:
+
+ifeq (../macos, $(wildcard ../macos))
+	cd ../macos && cmake ../src/ && $(MAKE) $@
+else
+	cd ../ && mkdir macos && cd macos && cmake ../src/ && $(MAKE) $@
+endif
+	cp ./sisdb ./sisdb-client
+
+clean:
+
+	cd ../ && rm -rf macos
+

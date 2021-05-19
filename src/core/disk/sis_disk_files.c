@@ -466,7 +466,8 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     }
     
     sis_memory_cat(unit->wcatch, (char *)&head, sizeof(s_sis_disk_head));
-    int offset = sis_memory_cat_ssize(unit->wcatch, size);
+    // int offset = 
+    sis_memory_cat_ssize(unit->wcatch, size);
     if (head.zip)
     {
         size = SIS_FWRITE(head.hid, unit->wcatch, unit->fp, sis_memory(cls_->zip_memory), size);
@@ -477,7 +478,6 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     }  
     ///
     // size += offset + sizeof(s_sis_disk_head);
-
     wcatch_->winfo.fidx = cls_->cur_unit;
     wcatch_->winfo.offset = unit->offset;
     wcatch_->winfo.size = size;
