@@ -379,40 +379,23 @@ size_t sis_files_write_sync(s_sis_files *cls_)
     sis_fsync(unit->fp);
     return size;
 }
-/*  按32K缓存写入数据
-#define SIS_FWRITE(__t__,__m__,__f__,__v__,__z__) ({                     \
-    size_t _osize_ = 0;   size_t _curz_ = sis_memory_get_size(__m__);    \
-    if (__t__ == SIS_DISK_HID_STREAM) {                                  \
-        _osize_ = sis_write(__f__, sis_memory(__m__), _curz_);  \
-        sis_memory_clear(__m__); \
-        _osize_ += sis_write(__f__,__v__,__z__); \
-        sis_fsync(__f__); \
-    } else { \
-        if (__z__ + _curz_ > SIS_MEMORY_SIZE) { \
-            _osize_ = sis_write(__f__, sis_memory(__m__), _curz_); \
-            sis_memory_clear(__m__); \
-            if (__z__ < SIS_MEMORY_SIZE) { \
-                sis_memory_cat(__m__, (char *)__v__, __z__); \
-            } else { \
-                _osize_ += sis_write(__f__,__v__,__z__); \
-            } \
-        } else {  sis_memory_cat(__m__, (char *)__v__, __z__);  } \
-    } _osize_; \
-}) \
-*/
-
 // 有数据就写 只有stream才同步每一次写入
-#define SIS_FWRITE(__t__,__m__,__f__,__v__,__z__) ({                     \
-    size_t _osize_ = 0;   size_t _curz_ = sis_memory_get_size(__m__);    \
-    if (_curz_ > 0) { \
-        _osize_ = sis_write(__f__, sis_memory(__m__), _curz_);  \
-        sis_memory_clear(__m__); \
-    } \
-    _osize_ += sis_write(__f__,__v__,__z__);  \
-    if (__t__ == SIS_DISK_HID_STREAM) {       \
-        sis_fsync(__f__); \
-    } _osize_; \
-}) \
+static size_t sis_safe_write(int __t__,s_sis_memory *__m__,s_sis_handle __f__,
+    const char *__v__,size_t __z__)
+{
+    size_t _osize_ = 0;   
+    size_t _curz_ = sis_memory_get_size(__m__); 
+    if (_curz_ > 0) { 
+        _osize_ = sis_write(__f__, sis_memory(__m__), _curz_); 
+        sis_memory_clear(__m__); 
+    } 
+    _osize_ += sis_write(__f__,__v__,__z__);  
+    if (__t__ == SIS_DISK_HID_STREAM) 
+    {       
+        sis_fsync(__f__); 
+    } 
+    return _osize_; 
+} 
 
 
 size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
@@ -438,7 +421,7 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     head.zip = 0;
     if (!wcatch_)
     {
-        SIS_FWRITE(head.hid, unit->wcatch, unit->fp, (const char *)&head, 1);
+        sis_safe_write(head.hid, unit->wcatch, unit->fp, (const char *)&head, 1);
         unit->offset += 1;
         return 1;
     }
@@ -470,11 +453,11 @@ size_t sis_files_write(s_sis_files *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
     sis_memory_cat_ssize(unit->wcatch, size);
     if (head.zip)
     {
-        size = SIS_FWRITE(head.hid, unit->wcatch, unit->fp, sis_memory(cls_->zip_memory), size);
+		size = sis_safe_write(head.hid, unit->wcatch, unit->fp, sis_memory(cls_->zip_memory), size);
     }
     else
     {
-        size = SIS_FWRITE(head.hid, unit->wcatch, unit->fp, sis_memory(wcatch_->memory), size);
+		size = sis_safe_write(head.hid, unit->wcatch, unit->fp, sis_memory(wcatch_->memory), size);
     }  
     ///
     // size += offset + sizeof(s_sis_disk_head);

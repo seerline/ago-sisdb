@@ -343,23 +343,23 @@ void _subdb_cxt_link_tail(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
 		cxt->head = unit;
 	}
 }
-void _subdb_cxt_link_insert(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *near, s_sis_subdb_unit *unit)
+void _subdb_cxt_link_insert(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *nearunit, s_sis_subdb_unit *unit)
 {
 	_subdb_cxt_link_move(cxt, unit);
-	// 插入到near前
-	if (near == cxt->head)
+	// 插入到 nearunit 前
+	if (nearunit == cxt->head)
 	{
-		near->prev = unit;
-		unit->next = near;
+		nearunit->prev = unit;
+		unit->next = nearunit;
 		unit->prev = NULL;
 		cxt->head = unit;
 	}
 	else
 	{
-		near->prev->next = unit;
-		unit->prev = near->prev;
-		near->prev = unit;
-		unit->next = near;
+		nearunit->prev->next = unit;
+		unit->prev = nearunit->prev;
+		nearunit->prev = unit;
+		unit->next = nearunit;
 
 	}
 }
@@ -368,19 +368,19 @@ void _subdb_cxt_next_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
 	// 从下一记录开始查找
 	int mode = SIS_SUBDB_NONE; 
 	msec_t agov = _subdb_cxt_get_vmsec(unit);
-	s_sis_subdb_unit *near = unit->next;
-	while (near)
+	s_sis_subdb_unit *nearunit = unit->next;
+	while (nearunit)
 	{
-		msec_t curv = _subdb_cxt_get_vmsec(near);
+		msec_t curv = _subdb_cxt_get_vmsec(nearunit);
 		if (agov <= curv)
 		{
 			break;
 		}
 		else
 		{
-			mode = near->next ? SIS_SUBDB_INSERT : SIS_SUBDB_TAIL; 
+			mode = nearunit->next ? SIS_SUBDB_INSERT : SIS_SUBDB_TAIL; 
 		}
-		near = near->next;
+		nearunit = nearunit->next;
 	};
 	if (mode == SIS_SUBDB_TAIL)
 	{ // 到尾部
@@ -388,32 +388,32 @@ void _subdb_cxt_next_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
 	}
 	else if (mode == SIS_SUBDB_INSERT)
 	{ 
-		_subdb_cxt_link_insert(cxt, near, unit);
+		_subdb_cxt_link_insert(cxt, nearunit, unit);
 	}	
 }
 void _subdb_cxt_push_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
 {
 	// 从下一记录开始查找
 	int mode = SIS_SUBDB_NONE; 
-	s_sis_subdb_unit *near = NULL;
+	s_sis_subdb_unit *nearunit = NULL;
 	if (cxt->head && cxt->tail)
 	{
 		msec_t agov = _subdb_cxt_get_vmsec(unit);
-		near = cxt->head;
-		while (near)
+		nearunit = cxt->head;
+		while (nearunit)
 		{
-			msec_t curv = _subdb_cxt_get_vmsec(near);
+			msec_t curv = _subdb_cxt_get_vmsec(nearunit);
 			if (agov <= curv)
 			{
 				mode = SIS_SUBDB_INSERT;
 				break;
 			}
-			near = near->next;
+			nearunit = nearunit->next;
 		};
 	}
 	if (mode == SIS_SUBDB_INSERT)
 	{ 
-		_subdb_cxt_link_insert(cxt, near, unit);
+		_subdb_cxt_link_insert(cxt, nearunit, unit);
 	}
 	else
 	{  // 到尾部
