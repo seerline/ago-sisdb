@@ -14,6 +14,7 @@
 // 线程类型定义
 typedef void *(_stdcall cb_thread_working)(void *);
 typedef CRITICAL_SECTION s_sis_mutex_t;
+
 typedef struct s_sis_rwlock_t
 {
     HANDLE   m_mutex;  
@@ -56,9 +57,9 @@ void sis_thread_kill(s_sis_thread_id_t thread);
 typedef struct s_sis_wait {
 	unsigned char status; // 0 正常 1 退出
 	bool          used;
-	HANDLE        semaphore;
 	int           count;
-	s_sis_mutex_t mutex;
+	HANDLE        event;
+	HANDLE        mutex;
 } s_sis_wait;
 #ifdef __cplusplus
 extern "C" {
