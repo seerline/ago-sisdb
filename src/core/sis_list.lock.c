@@ -453,7 +453,7 @@ void *_thread_reader(void *argv_)
                     //     printf("__check_while : next = %p\n", next); 
                     // }
                     // printf("next = %p\n", next); 
-                    if (next->obj) // ???
+                    if (next->obj) // ??? 有时会跳出
                     {
                         if (reader->cb_recv)
                         reader->cb_recv(reader->cb_source, next->obj);

@@ -9,7 +9,6 @@ logs/
 __pycache__/
 .DS_Store
 .vscode
-modules.c
 Makefile
 CMakeFiles
 cmake_install.cmake
@@ -25,7 +24,9 @@ core.*
 macos/
 win/
 x64/
+!*.script
 !bin/*.conf
 !bin/Makefile
 !bin/Makefile.Mac
 !bin/sisdb
+modules.c
