@@ -505,7 +505,6 @@ s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_)
         }
     }
     s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
-    printf("sdbs :%s\n", msg);
     sis_json_delete_node(sdbs_node);
     return msg;
 }

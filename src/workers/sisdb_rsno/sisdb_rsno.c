@@ -256,6 +256,7 @@ static void *_thread_snos_read_sub(void *argv_)
 		// 获取真实的表名
 		s_sis_sds sdbs = sis_disk_file_get_sdbs(context->read_class, false);
 		s_sis_sds sub_sdbs = sis_match_sdb(context->work_sdbs, sdbs);
+        printf("sub_sdbs :%s\n", sdbs);
         if (!sub_sdbs)
         {
             sub_sdbs =  sis_sdsdup(sdbs);

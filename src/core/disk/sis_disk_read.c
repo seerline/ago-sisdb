@@ -1349,6 +1349,7 @@ void _disk_file_call_dict(s_sis_disk_class *cls_, s_sis_disk_callback *callback)
     if (callback->cb_sdb)
     {
         s_sis_sds msg = sis_disk_file_get_sdbs(cls_, false);
+        // printf("sdbs :%s\n", msg);
         if (sis_sdslen(msg) > 2) 
         {
             callback->cb_sdb(callback->source, msg, sis_sdslen(msg));

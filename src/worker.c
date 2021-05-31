@@ -38,9 +38,9 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 			task_->isfirst = true;
 			return true;
 		}	
-		printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
+		// printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
 		int o = sis_wait_thread_wait(task_->work_thread, task_->work_gap.delay);
-		printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
+		// printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
 		if (o != SIS_WAIT_NOTICE)
 		{
 			// printf("delay 1 = %d\n", task_->work_gap.delay);

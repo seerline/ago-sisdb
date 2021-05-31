@@ -9,8 +9,9 @@ extern s_sis_modules sis_modules_trade_maker_t0;
 extern s_sis_modules sis_modules_trade_maker_wb;
 extern s_sis_modules sis_modules_trade_out_csv;
 extern s_sis_modules sis_modules_trade_service;
-extern s_sis_modules sis_modules_trade_signal_mq;
-extern s_sis_modules sis_modules_trade_signal_wb;
+extern s_sis_modules sis_modules_trade_signal_mq_v0;
+extern s_sis_modules sis_modules_trade_signal_mq_v1;
+extern s_sis_modules sis_modules_trade_signal_wb_v0;
 extern s_sis_modules sis_modules_trade_signal_wb_v1;
 extern s_sis_modules sis_modules_memdb;
 extern s_sis_modules sis_modules_sisdb;
@@ -33,8 +34,9 @@ s_sis_modules *__modules[] = {
     &sis_modules_trade_maker_wb,
     &sis_modules_trade_out_csv,
     &sis_modules_trade_service,
-    &sis_modules_trade_signal_mq,
-    &sis_modules_trade_signal_wb,
+    &sis_modules_trade_signal_mq_v0,
+    &sis_modules_trade_signal_mq_v1,
+    &sis_modules_trade_signal_wb_v0,
     &sis_modules_trade_signal_wb_v1,
     &sis_modules_memdb,
     &sis_modules_sisdb,
@@ -59,8 +61,9 @@ const char *__modules_name[] = {
     "trade_maker_wb",
     "trade_out_csv",
     "trade_service",
-    "trade_signal_mq",
-    "trade_signal_wb",
+    "trade_signal_mq_v0",
+    "trade_signal_mq_v1",
+    "trade_signal_wb_v0",
     "trade_signal_wb_v1",
     "memdb",
     "sisdb",
