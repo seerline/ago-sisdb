@@ -50,8 +50,14 @@ static inline void safe_memory_newnode(void *__p__,unsigned int size_, int line_
     __n->size = size_;
     __n->next = NULL; 
     __n->line = line_; 
-    memmove(__n->info, func_, MEMORY_INFO_SIZE); __n->info[MEMORY_INFO_SIZE - 1] = 0; 
-
+    // memmove(__n->info, func_, MEMORY_INFO_SIZE); __n->info[MEMORY_INFO_SIZE - 1] = 0; 
+    for (int i = 0; i < MEMORY_INFO_SIZE - 1; i++)
+    {
+        __n->info[i] = func_[i];
+        if (!func_[i]) { break; }
+    }
+    __n->info[MEMORY_INFO_SIZE - 1] = 0; 
+    
     if (!__memory_first) { 
         __n->prev = NULL;  
         __memory_first = __n; 

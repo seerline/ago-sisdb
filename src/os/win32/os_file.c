@@ -75,12 +75,9 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 			mode[index] = 'a';
 			index++;
 		}
-		if (mode_ & SIS_FILE_IO_READ)
-		{
-			mode[index] = 'r';
-			index++;
-		}
 	}
+	mode[index] = 'r';
+	index++;
 	mode[index] = 'b';
 	index++;
 	if (mode_ & SIS_FILE_IO_READ && mode_ & SIS_FILE_IO_WRITE)
@@ -89,7 +86,6 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 		index++;
 	}
 	mode[index] = 0;
-
 	fopen_s(&fp, fn_, mode);
 	return fp;
 }

@@ -1,7 +1,7 @@
-#ifndef _OS_THREAD_H
+ï»¿#ifndef _OS_THREAD_H
 #define _OS_THREAD_H
 
-// ÒÔÏÂ¼¸¸öÊÇ²âÊÔcpu°ó¶¨ Êµ¼Ê²âÊÔ·¢ÏÖÖ¸¶¨cpu·´¶øĞ§ÂÊµÍ
+// ä»¥ä¸‹å‡ ä¸ªæ˜¯æµ‹è¯•cpuç»‘å®š å®é™…æµ‹è¯•å‘ç°æŒ‡å®šcpuåè€Œæ•ˆç‡ä½
 // #ifndef _GNU_SOURCE
 // #define _GNU_SOURCE
 // #endif
@@ -18,13 +18,13 @@
 
 #include <os_fork.h>
 
-// ³¬¹ıÊ±¼ä²Å·µ»Ø¸ÃÖµ£¬Èç¹ûÇ¿ÖÆÍË³ö²»·µ»Ø¸ÃÖµ
+// è¶…è¿‡æ—¶é—´æ‰è¿”å›è¯¥å€¼ï¼Œå¦‚æœå¼ºåˆ¶é€€å‡ºä¸è¿”å›è¯¥å€¼
 #define SIS_ETIMEDOUT ETIMEDOUT
-// Ïß³Ì³£Á¿¶¨Òå
+// çº¿ç¨‹å¸¸é‡å®šä¹‰
 #define SIS_THREAD_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
 #define SIS_THREAD_PROC void *
 
-// Ïß³ÌÀàĞÍ¶¨Òå
+// çº¿ç¨‹ç±»å‹å®šä¹‰
 typedef void * (cb_thread_working)(void *); 
 typedef pthread_mutex_t s_sis_mutex_t;
 typedef pthread_rwlock_t s_sis_rwlock_t;
@@ -34,7 +34,7 @@ typedef pthread_t s_sis_thread_id_t;
 
 typedef struct s_sis_thread {	
 	int                timeout; 
-	bool               working;  // 1 ¹¤×÷ÖĞ 0 ½áÊø
+	bool               working;  // 1 å·¥ä½œä¸­ 0 ç»“æŸ
 	s_sis_thread_id_t  thread_id;  
 	cb_thread_working *worker;
 	void 			  *argv;
@@ -43,44 +43,44 @@ typedef struct s_sis_thread {
 #ifdef __cplusplus
 extern "C" {
 #endif
-// Ïß³Ìº¯Êı¶¨Òå
+// çº¿ç¨‹å‡½æ•°å®šä¹‰
 bool sis_thread_create(cb_thread_working func_, void* val_, s_sis_thread *thread_);
-// µÈ´ıÏß³Ì½áÊø
+// ç­‰å¾…çº¿ç¨‹ç»“æŸ
 void sis_thread_finish(s_sis_thread *thread_);
 void sis_thread_join(s_sis_thread *thread_); 
-// ½ö½ö¶Ôlinux£¬ÊÍ·ÅÏß³Ì×ÊÔ´
+// ä»…ä»…å¯¹linuxï¼Œé‡Šæ”¾çº¿ç¨‹èµ„æº
 void sis_thread_clear(s_sis_thread *thread);
-//»ñÈ¡Ïß³ÌID
+//è·å–çº¿ç¨‹ID
 s_sis_thread_id_t sis_thread_self(); 
-// É±ËÀ
+// æ€æ­»
 #define sis_thread_kill kill
 #ifdef __cplusplus
 }
 #endif
 
-// »¥³âËø¶¨Òå
-// windowsÖ§³ÖµÄËø
-// PTHREAD_MUTEX_RECURSIVE_NP  ¼´Ç¶Ì×Ëø
-// linuxÖ§³ÖµÄËø
+// äº’æ–¥é”å®šä¹‰
+// windowsæ”¯æŒçš„é”
+// PTHREAD_MUTEX_RECURSIVE_NP  å³åµŒå¥—é”
+// linuxæ”¯æŒçš„é”
 #ifndef  __APPLE__
-#define  SIS_PTHREAD_MUTEX_NORMAL      PTHREAD_MUTEX_FAST_NP // ÆÕÍ¨Ëø
-#define  SIS_PTHREAD_MUTEX_RECURSIVE   PTHREAD_MUTEX_RECURSIVE_NP // Ç¶Ì×Ëø
-#define  SIS_PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP // ¾À´íËø
+#define  SIS_PTHREAD_MUTEX_NORMAL      PTHREAD_MUTEX_FAST_NP // æ™®é€šé”
+#define  SIS_PTHREAD_MUTEX_RECURSIVE   PTHREAD_MUTEX_RECURSIVE_NP // åµŒå¥—é”
+#define  SIS_PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP // çº é”™é”
 #define  SIS_PTHREAD_MUTEX_TIMED_NP    PTHREAD_MUTEX_TIMED_NP
-#define  SIS_PTHREAD_MUTEX_ADAPTIVE_NP PTHREAD_MUTEX_ADAPTIVE_NP  // ÊÊÓ¦Ëø
+#define  SIS_PTHREAD_MUTEX_ADAPTIVE_NP PTHREAD_MUTEX_ADAPTIVE_NP  // é€‚åº”é”
 #else
-#define  SIS_PTHREAD_MUTEX_NORMAL    PTHREAD_MUTEX_NORMAL // ÆÕÍ¨Ëø
-#define  SIS_PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE // Ç¶Ì×Ëø
-#define  SIS_PTHREAD_MUTEX_ERRORCHECK PTHREAD_MUTEX_ERRORCHECK // ¾À´íËø
+#define  SIS_PTHREAD_MUTEX_NORMAL    PTHREAD_MUTEX_NORMAL // æ™®é€šé”
+#define  SIS_PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE // åµŒå¥—é”
+#define  SIS_PTHREAD_MUTEX_ERRORCHECK PTHREAD_MUTEX_ERRORCHECK // çº é”™é”
 #endif
 
 typedef struct s_sis_wait {
-	unsigned char status; // 0 Õı³£ 1 ÍË³ö
-	bool          used;   // ÊÇ·ñÕıÔÚÊ¹ÓÃ
+	unsigned char status; // 0 æ­£å¸¸ 1 é€€å‡º
+	bool          used;   // æ˜¯å¦æ­£åœ¨ä½¿ç”¨
 	s_sis_cond_t  cond;  
 	s_sis_mutex_t mutex;
 } s_sis_wait;
-// °ÙË¼²»µÃ½â ²»ÄÜ¶¯Ì¬ÉêÇë
+// ç™¾æ€ä¸å¾—è§£ ä¸èƒ½åŠ¨æ€ç”³è¯·
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,7 +91,7 @@ int  sis_mutex_create(s_sis_mutex_t *mutex_);
 #define sis_mutex_lock    	pthread_mutex_lock
 #define sis_mutex_unlock  	pthread_mutex_unlock
 #define sis_mutex_init    	pthread_mutex_init
-// ·µ»Ø 0 ±íÊ¾Ëø³É¹¦
+// è¿”å› 0 è¡¨ç¤ºé”æˆåŠŸ
 #define sis_mutex_trylock   pthread_mutex_trylock
 
 int  sis_rwlock_init(s_sis_rwlock_t *rwlock_);
@@ -99,7 +99,7 @@ int  sis_rwlock_init(s_sis_rwlock_t *rwlock_);
 #define sis_rwlock_lock_r     pthread_rwlock_rdlock
 #define sis_rwlock_lock_w     pthread_rwlock_wrlock
 #define sis_rwlock_unlock  	  pthread_rwlock_unlock
-// ·µ»Ø 0 ±íÊ¾Ëø³É¹¦
+// è¿”å› 0 è¡¨ç¤ºé”æˆåŠŸ
 #define sis_rwlock_trylock_r   pthread_rwlock_tryrdlock
 #define sis_rwlock_trylock_w   pthread_rwlock_trywrlock
 
@@ -112,7 +112,7 @@ void sis_thread_wait_init(s_sis_wait *wait_);
 void sis_thread_wait_kill(s_sis_wait *wait_);
 void sis_thread_wait_notice(s_sis_wait *wait_);
 
-// ²ÉÓÃÕâÖÖÑÓÊ±·½Ê½Ò»°ãÑÓÊ±¶¼ÔÚ1ÃëÒÔÉÏ£¬·ñÔòÃ»ÓĞ±ØÒªÕâÃ´¸´ÔÓ£¬ËùÒÔdelayµ¥Î»ÎªÃë
+// é‡‡ç”¨è¿™ç§å»¶æ—¶æ–¹å¼ä¸€èˆ¬å»¶æ—¶éƒ½åœ¨1ç§’ä»¥ä¸Šï¼Œå¦åˆ™æ²¡æœ‰å¿…è¦è¿™ä¹ˆå¤æ‚ï¼Œæ‰€ä»¥delayå•ä½ä¸ºç§’
 int   sis_thread_wait_sleep(s_sis_wait *wait_, int delay_);
 int   sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_);
 void  sis_thread_wait_start(s_sis_wait *wait_);
@@ -121,41 +121,41 @@ void  sis_thread_wait_stop(s_sis_wait *wait_);
 //////////////////////////////////////
 //  unlock
 //////////////////////////////////////
-// **** Æµ·±·¢ËÍÌõ¼ş±äÁ¿¼¤»î ºÄÊ±Ôö¼Ó3±¶ Ôö¼Ó¸ü¸ßĞ§µÄËø»úÖÆ ***** // 
+// **** é¢‘ç¹å‘é€æ¡ä»¶å˜é‡æ¿€æ´» è€—æ—¶å¢åŠ 3å€ å¢åŠ æ›´é«˜æ•ˆçš„é”æœºåˆ¶ ***** // 
 
-// type¿ÉÒÔÊÇ1,2,4»ò8×Ö½Ú³¤¶ÈµÄintÀàĞÍ£¬¼´£º
+// typeå¯ä»¥æ˜¯1,2,4æˆ–8å­—èŠ‚é•¿åº¦çš„intç±»å‹ï¼Œå³ï¼š
 // int8_t / uint8_t
 // int16_t / uint16_t
 // int32_t / uint32_t
 // int64_t / uint64_t
 
-// ·µ»Ø¸üĞÂÇ°µÄÖµ£¨ÏÈfetchÔÙ¼ÆËã£©
+// è¿”å›æ›´æ–°å‰çš„å€¼ï¼ˆå…ˆfetchå†è®¡ç®—ï¼‰
 // type __sync_fetch_and_add (type *ptr, type value, ...)
 // type __sync_fetch_and_sub (type *ptr, type value, ...)
 // type __sync_fetch_and_or (type *ptr, type value, ...)
 // type __sync_fetch_and_and (type *ptr, type value, ...)
 // type __sync_fetch_and_xor (type *ptr, type value, ...)
 // type __sync_fetch_and_nand (type *ptr, type value, ...)
-// ·µ»Ø¸üĞÂºóµÄÖµ£¨ÏÈ¼ÆËãÔÙfetch£©
+// è¿”å›æ›´æ–°åçš„å€¼ï¼ˆå…ˆè®¡ç®—å†fetchï¼‰
 // type __sync_add_and_fetch (type *ptr, type value, ...)
 // type __sync_sub_and_fetch (type *ptr, type value, ...)
 // type __sync_or_and_fetch (type *ptr, type value, ...)
 // type __sync_and_and_fetch (type *ptr, type value, ...)
 // type __sync_xor_and_fetch (type *ptr, type value, ...)
 // type __sync_nand_and_fetch (type *ptr, type value, ...)
-// ºóÃæµÄ¿ÉÀ©Õ¹²ÎÊı(...)ÓÃÀ´Ö¸³öÄÄĞ©±äÁ¿ĞèÒªmemory barrier,ÒòÎªÄ¿Ç°gccÊµÏÖµÄÊÇfull barrier£¨
-// ÀàËÆÓÚlinux kernel ÖĞµÄmb(),±íÊ¾Õâ¸ö²Ù×÷Ö®Ç°µÄËùÓĞÄÚ´æ²Ù×÷²»»á±»ÖØÅÅĞòµ½Õâ¸ö²Ù×÷Ö®ºó£©,ËùÒÔ¿ÉÒÔÂÔµôÕâ¸ö²ÎÊı¡£
+// åé¢çš„å¯æ‰©å±•å‚æ•°(...)ç”¨æ¥æŒ‡å‡ºå“ªäº›å˜é‡éœ€è¦memory barrier,å› ä¸ºç›®å‰gccå®ç°çš„æ˜¯full barrierï¼ˆ
+// ç±»ä¼¼äºlinux kernel ä¸­çš„mb(),è¡¨ç¤ºè¿™ä¸ªæ“ä½œä¹‹å‰çš„æ‰€æœ‰å†…å­˜æ“ä½œä¸ä¼šè¢«é‡æ’åºåˆ°è¿™ä¸ªæ“ä½œä¹‹åï¼‰,æ‰€ä»¥å¯ä»¥ç•¥æ‰è¿™ä¸ªå‚æ•°ã€‚
 
 
-// Á½¸öº¯ÊıÌá¹©Ô­×ÓµÄ±È½ÏºÍ½»»»£¬Èç¹û*ptr == oldval,¾Í½«newvalĞ´Èë*ptr,
-// µÚÒ»¸öº¯ÊıÔÚÏàµÈ²¢Ğ´ÈëµÄÇé¿öÏÂ·µ»Øtrue.
-// µÚ¶ş¸öº¯ÊıÔÚ·µ»Ø²Ù×÷Ö®Ç°µÄÖµ¡£
+// ä¸¤ä¸ªå‡½æ•°æä¾›åŸå­çš„æ¯”è¾ƒå’Œäº¤æ¢ï¼Œå¦‚æœ*ptr == oldval,å°±å°†newvalå†™å…¥*ptr,
+// ç¬¬ä¸€ä¸ªå‡½æ•°åœ¨ç›¸ç­‰å¹¶å†™å…¥çš„æƒ…å†µä¸‹è¿”å›true.
+// ç¬¬äºŒä¸ªå‡½æ•°åœ¨è¿”å›æ“ä½œä¹‹å‰çš„å€¼ã€‚
 // bool __sync_bool_compare_and_swap (type *ptr, type oldval type newval, ...)
 // type __sync_val_compare_and_swap (type *ptr, type oldval type newval, ...)
 
-// ½«*ptrÉèÎªvalue²¢·µ»Ø*ptr²Ù×÷Ö®Ç°µÄÖµ¡£
+// å°†*ptrè®¾ä¸ºvalueå¹¶è¿”å›*ptræ“ä½œä¹‹å‰çš„å€¼ã€‚
 // type __sync_lock_test_and_set (type *ptr, type value, ...)
-// ½«*ptrÖÃ0
+// å°†*ptrç½®0
 // void __sync_lock_release (type *ptr, ...)
 #ifdef __cplusplus
 }
@@ -194,7 +194,7 @@ extern "C" {
 //         sis_sleep(1);
 //     }
 // }
-// // 0 Ëø×¡
+// // 0 é”ä½
 // static inline int sis_unlock_mutex_try_lock(s_sis_unlock_mutex *um_)
 // {
 //     if (BCAS(&(*um_), 0, 1))

@@ -51,7 +51,7 @@ size_t sis_size(s_sis_handle fp_);
 size_t sis_read(s_sis_handle fp_, char *in_, size_t len_);
 size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_);
 
-#define sis_fsync(a) FlushFileBuffers(a)
+#define sis_fsync(a) /*FlushFileBuffers(a)*/
 #define sis_fdatasync(a) 
 
 #define s_sis_file_handle FILE *
