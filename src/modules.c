@@ -3,6 +3,7 @@
 extern s_sis_modules sis_modules_trade_drive_wb;
 extern s_sis_modules sis_modules_demo_method;
 extern s_sis_modules sis_modules_demo_service;
+extern s_sis_modules sis_modules_source_server;
 extern s_sis_modules sis_modules_trade_drive_demo;
 extern s_sis_modules sis_modules_trade_drive_real;
 extern s_sis_modules sis_modules_trade_maker_t0;
@@ -28,6 +29,7 @@ s_sis_modules *__modules[] = {
     &sis_modules_trade_drive_wb,
     &sis_modules_demo_method,
     &sis_modules_demo_service,
+    &sis_modules_source_server,
     &sis_modules_trade_drive_demo,
     &sis_modules_trade_drive_real,
     &sis_modules_trade_maker_t0,
@@ -55,6 +57,7 @@ const char *__modules_name[] = {
     "trade_drive_wb",
     "demo_method",
     "demo_service",
+    "source_server",
     "trade_drive_demo",
     "trade_drive_real",
     "trade_maker_t0",
