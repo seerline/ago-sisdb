@@ -29,4 +29,8 @@ x64/
 !bin/Makefile
 !bin/Makefile.Mac
 !bin/sisdb
+<<<<<<< HEAD
 modules.c
+=======
+src/modules.c
+>>>>>>> 1e5ee82b3eedff264c54b0660dd70041404e0cc8

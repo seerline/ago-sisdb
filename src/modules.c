@@ -1,5 +1,6 @@
 #include <sis_modules.h>
 
+<<<<<<< HEAD
 extern s_sis_modules sis_modules_digger_bayes;
 extern s_sis_modules sis_modules_digger_core;
 extern s_sis_modules sis_modules_digger_ding;
@@ -31,6 +32,12 @@ extern s_sis_modules sis_modules_source_datayes;
 extern s_sis_modules sis_modules_source_demo;
 extern s_sis_modules sis_modules_source_server;
 extern s_sis_modules sis_modules_source_wind;
+=======
+extern s_sis_modules sis_modules_trade_drive_wb;
+extern s_sis_modules sis_modules_demo_method;
+extern s_sis_modules sis_modules_demo_service;
+extern s_sis_modules sis_modules_source_server;
+>>>>>>> 1e5ee82b3eedff264c54b0660dd70041404e0cc8
 extern s_sis_modules sis_modules_trade_drive_demo;
 extern s_sis_modules sis_modules_trade_drive_easy;
 extern s_sis_modules sis_modules_trade_drive_fast;
@@ -57,6 +64,7 @@ extern s_sis_modules sis_modules_sisdb_wsno;
 extern s_sis_modules sis_modules_snodb;
 
 s_sis_modules *__modules[] = {
+<<<<<<< HEAD
     &sis_modules_digger_bayes,
     &sis_modules_digger_core,
     &sis_modules_digger_ding,
@@ -88,6 +96,12 @@ s_sis_modules *__modules[] = {
     &sis_modules_source_demo,
     &sis_modules_source_server,
     &sis_modules_source_wind,
+=======
+    &sis_modules_trade_drive_wb,
+    &sis_modules_demo_method,
+    &sis_modules_demo_service,
+    &sis_modules_source_server,
+>>>>>>> 1e5ee82b3eedff264c54b0660dd70041404e0cc8
     &sis_modules_trade_drive_demo,
     &sis_modules_trade_drive_easy,
     &sis_modules_trade_drive_fast,
@@ -116,6 +130,7 @@ s_sis_modules *__modules[] = {
   };
 
 const char *__modules_name[] = {
+<<<<<<< HEAD
     "digger_bayes",
     "digger_core",
     "digger_ding",
@@ -147,6 +162,12 @@ const char *__modules_name[] = {
     "source_demo",
     "source_server",
     "source_wind",
+=======
+    "trade_drive_wb",
+    "demo_method",
+    "demo_service",
+    "source_server",
+>>>>>>> 1e5ee82b3eedff264c54b0660dd70041404e0cc8
     "trade_drive_demo",
     "trade_drive_easy",
     "trade_drive_fast",

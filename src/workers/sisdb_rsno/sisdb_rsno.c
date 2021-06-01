@@ -75,6 +75,7 @@ bool sisdb_rsno_init(void *worker_, void *node_)
             context->work_keys = sis_sdsnew("*");
         }    
     }
+    
     return true;
 }
 
