@@ -98,11 +98,13 @@ void sis_memory_grow(s_sis_memory *m_, size_t nsize_)
 		// m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
 		size_t newsize = nsize_ + grow;
 		char *newbuffer = sis_malloc(newsize);
-		if (m_->size)
+		size_t cursize = m_->size - m_->offset;
+		if (cursize > 0)
 		{
 			// printf("%p : %d,%d,%d,%d,%d \n", newbuffer, newsize, nsize_, m_->maxsize, m_->offset, m_->size);
-			memmove(newbuffer, m_->buffer + m_->offset, m_->size - m_->offset);
+			memmove(newbuffer, m_->buffer + m_->offset, cursize);
 		}
+		m_->size = cursize;
 		m_->offset = 0;
 		sis_free(m_->buffer);
 		m_->buffer = newbuffer;
@@ -375,10 +377,12 @@ size_t sis_memory_set_maxsize(s_sis_memory *m_, size_t len_)
 		// m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
 		size_t newsize = len_ + 256;
 		char *newbuffer = sis_malloc(newsize);
-		if (m_->size)
+		size_t cursize = m_->size - m_->offset;
+		if (cursize > 0)
 		{
-			memmove(newbuffer, m_->buffer + m_->offset, m_->size);
+			memmove(newbuffer, m_->buffer + m_->offset, cursize);
 		}
+		m_->size = cursize;
 		m_->offset = 0;
 		sis_free(m_->buffer);
 		m_->buffer = newbuffer;
