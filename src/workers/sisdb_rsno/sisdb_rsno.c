@@ -279,7 +279,6 @@ static void *_thread_snos_read_sub(void *argv_)
     sis_disk_class_destroy(context->read_class);
     context->read_class = NULL;
 
-    context->status = SIS_RSNO_NONE;
     // stop 放这里
     if (context->cb_sub_stop)
     {
@@ -287,6 +286,7 @@ static void *_thread_snos_read_sub(void *argv_)
         sis_llutoa(context->work_date, sdate, 32, 10);
         context->cb_sub_stop(context->cb_source, sdate);
     } 
+    context->status = SIS_RSNO_NONE;
 
     return NULL;
 }
@@ -346,7 +346,7 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
 
     printf("%s = %d\n", __func__, context->status);    
-    if (context->status != SIS_RSNO_NONE)
+    if (context->status != SIS_RSNO_NONE && context->status != SIS_RSNO_INIT)
     {
         return SIS_METHOD_ERROR;
     }
