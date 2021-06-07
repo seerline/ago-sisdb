@@ -1,6 +1,16 @@
 #定义工程名,必须在第一行
 PROJECT(sisdb)
 
+SET(MYMODE "mode_${MODE}")
+IF (MYMODE STREQUAL "mode_")
+    MESSAGE("need set MODE." ${MYMODE})
+ELSEIF (MYMODE STREQUAL "mode_TEST")
+    SET(PROJECT_NAME test)
+    ADD_DEFINITIONS(-DTEST_DEBUG)
+ELSE ()
+ENDIF ()
+MESSAGE("MODE:" ${MYMODE})
+
 #检查版本 必须大于等于2.6版本
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8) 
 
