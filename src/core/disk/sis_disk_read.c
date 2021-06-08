@@ -433,7 +433,7 @@ int cb_sis_disk_file_read_log(void *source_, s_sis_disk_head *head_, s_sis_memor
 //     return ((s_sis_disk_rcatch *)ptr1)->sno - ((s_sis_disk_rcatch *)ptr2)->sno;
 // }
 
-
+#if 1
 size_t _calc_sno_rcatch_size(s_sis_disk_class *cls_)
 {
     size_t size = 0;
@@ -526,19 +526,6 @@ int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
             // 申请了 sis_object_create 读 4G 文件 速度从 300秒 降低到 975秒 
             if (cls_->reader->callback->cb_read)
             {
-                // ??? 赋值操作会让速度慢3倍
-                // s_sis_memory *s2 = (s_sis_memory *)malloc(sizeof(s_sis_memory));
-                // s2->buffer = (char *)malloc(rsnop->unit->size + 1);
-                // s2->size = 0;
-                // s2->maxsize = rsnop->unit->size + 1;
-                // s2->offset = 0;
-                // s_sis_object *s3 = (s_sis_object *)malloc(sizeof(s_sis_object));
-                // s3->style = SIS_OBJECT_MEMORY;
-                // s3->ptr = s2;
-                // s3->refs = 1;
-                // free(s2->buffer);
-                // free(s2);
-                // free(s3);
                 /////////////////////////////////////
                 cls_->reader->callback->cb_read(cls_->reader->callback->source,
                     SIS_OBJ_SDS(rsnop->unit->keyn), SIS_OBJ_SDS(rsnop->unit->sdbn), 
@@ -612,6 +599,131 @@ int cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_memor
     }
     return 0;
 }
+#else
+static s_sis_subdb_cxt *_subdb_cxt = NULL;
+int _sis_disk_read_hid_sno(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_, s_sis_memory *omem_)
+{ 
+
+    s_sis_memory *memory = omem_;
+    int kidx = sis_memory_get_ssize(memory);
+    int sidx = sis_memory_get_ssize(memory);            
+    s_sis_disk_dict *kdict = (s_sis_disk_dict *)sis_map_list_geti(cls_->keys, kidx);
+    s_sis_disk_dict *sdict = (s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, sidx);
+    if (!kdict||!sdict)
+    {
+        return 0;
+    }
+    char key[255];
+    sis_sprintf(key, 255, "%s.%s", SIS_OBJ_SDS(kdict->name), SIS_OBJ_SDS(sdict->name));
+    sis_subdb_cxt_add_data(_subdb_cxt, key, sis_memory(omem_), sis_memory_get_size(omem_));
+    return 1;
+}
+ 
+int _sis_disk_read_hid_sno_end(s_sis_disk_class *cls_)
+{
+    // 这里新开一个线程来处理
+    if (cls_->isstop) // 数据读完了
+    {
+        return 0;
+    }
+    sis_subdb_cxt_sub_start(_subdb_cxt);
+
+    return 0;
+}
+static int cb_sub_start(void *cxt_, void *avgv_)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int cb_sub_stop(void *cxt, void *avgv_)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int cb_key_stop(void *cxt_, void *avgv_)
+{
+	// s_sis_subdb_cxt *cxt = (s_sis_subdb_cxt *)cxt_;
+	// s_sis_db_chars *chars = (s_sis_db_chars *)avgv_;
+	// LOG(0)("%s.%s stop.\n", chars->kname, chars->sname);
+	return 0;
+}
+static int cb_key_bytes(void *cxt_, void *avgv_)
+{
+	// printf("%s\n", __func__);
+	s_sis_disk_class *cls_ = (s_sis_disk_class *)cxt_;
+	s_sis_db_chars *chars = (s_sis_db_chars *)avgv_;
+
+    if (cls_->reader->callback->cb_read)
+    {
+        /////////////////////////////////////
+        cls_->reader->callback->cb_read(cls_->reader->callback->source,
+            chars->kname, chars->sname, 
+            chars->data, chars->size);
+        // printf("%s %s = %d\n",chars->kname, chars->sname, chars->size);
+    } 
+	return 0;
+}
+int cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_memory *omem_)
+{
+	if (!_subdb_cxt)
+    {
+        _subdb_cxt = sis_subdb_cxt_create(); 
+        _subdb_cxt->cb_source = source_;
+        _subdb_cxt->cb_sub_start = cb_sub_start;
+        _subdb_cxt->cb_sub_stop = cb_sub_stop;
+        _subdb_cxt->cb_key_stop = cb_key_stop;
+        _subdb_cxt->cb_key_bytes = cb_key_bytes;
+        printf("===create _subdb_cxt\n");
+    } 
+ 
+    s_sis_disk_class *cls_ = (s_sis_disk_class *)source_;
+    s_sis_disk_callback *callback = cls_->reader->callback; 
+    // 根据hid不同写入不同的数据到obj
+    // printf("hid=%d\n", head_->hid);
+    switch (head_->hid)
+    {
+    case SIS_DISK_HID_MSG_SNO: // 只有一个key + 可能多条数据
+        _sis_disk_read_hid_sno(cls_, NULL, omem_);
+        // printf("break sno. %d\n", cls_->isstop);
+        break;
+    case SIS_DISK_HID_SNO_END: 
+        // printf("hid=%d\n", head_->hid);
+        _sis_disk_read_hid_sno_end(cls_);
+        printf("break end. %d\n", cls_->isstop);
+        break;
+    case SIS_DISK_HID_DICT_KEY:
+        {
+            s_sis_memory *memory = _sis_disk_class_key_change(omem_);
+            // newkeys
+            sis_disk_class_set_key(cls_, false, sis_memory(memory), sis_memory_get_size(memory));
+            if(callback && callback->cb_key)
+            {
+                callback->cb_key(callback->source, sis_memory(memory), sis_memory_get_size(memory));
+            }
+            sis_memory_destroy(memory);
+        }        
+        break;
+    case SIS_DISK_HID_DICT_SDB:
+        {
+            sis_disk_class_set_sdb(cls_, false, sis_memory(omem_), sis_memory_get_size(omem_));
+            sis_subdb_cxt_init_sdbs(_subdb_cxt, sis_memory(omem_), sis_memory_get_size(omem_));
+            // printf("%s , cb_sdb = %p\n", __func__, callback->cb_sdb);
+            if(callback && callback->cb_sdb)
+            {
+                callback->cb_sdb(callback->source, sis_memory(omem_), sis_memory_get_size(omem_));
+            }
+        }
+        break;
+    default:
+        break;
+    }
+    if (cls_->isstop)
+    {
+        return -1;
+    }
+    return 0;
+}
+#endif
 int sis_read_unit_from_index(s_sis_disk_class *cls_, uint8 *hid_, s_sis_disk_index_unit *iunit_, s_sis_memory *out_)
 {
     // 此函数是否需要保存文件的原始位置
@@ -1390,11 +1502,12 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
     case SIS_DISK_TYPE_SNO:
         // 因为有索引，所以文件打开时就已经加载了keys和sdbs
         // 需要把同一时间块的数据全部读完后 排序播放后 才能读取下一个时间块的数据
-        
-        if (!sis_strcasecmp(reader_->keys, "*") && !sis_strcasecmp(reader_->sdbs, "*"))
+        // printf("|%s|%s|\n", reader_->keys, reader_->sdbs);
+        if (!sis_strncasecmp(reader_->keys, "*", 1) && !sis_strncasecmp(reader_->sdbs, "*", 1))
         {
             // 顺序读取所有文件
             sis_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_file_read_sno);
+            sis_subdb_cxt_destroy(_subdb_cxt);
         }
         else
         {

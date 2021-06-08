@@ -78,8 +78,9 @@ void _struct_list_grow(s_sis_struct_list *list_, int addlen_)
 	{
 		if (list_->count > 0)
 		{
-			memmove(newbuffer, list_->buffer, list_->count * list_->len);
+			memmove(newbuffer, list_->buffer + (list_->start * list_->len), list_->count * list_->len);
 		}
+		list_->start = 0;
 		sis_free(list_->buffer);
 	}
 	list_->buffer = newbuffer;

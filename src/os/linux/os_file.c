@@ -273,9 +273,10 @@ void sis_path_complete(char *path_, int maxlen_)
 		}
 	}
 }
+#ifndef __APPLE__
 #define FNM_FILE_NAME (1 << 0)
 #define FNM_CASEFOLD  (1 << 4)
-
+#endif
 char *sis_path_get_files(const char *path_, int mode_)
 {
 	char fname[255];

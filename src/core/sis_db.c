@@ -207,22 +207,13 @@ void sis_subdb_unit_destroy(void *unit_)
 	s_sis_subdb_unit *unit = (s_sis_subdb_unit *)unit_;
 	sis_struct_list_destroy(unit->vlist);
 	sis_struct_list_destroy(unit->vmsec);
+	sis_sdsfree(unit->kname);
 	sis_free(unit);
 }
 void sis_subdb_unit_clear(s_sis_subdb_unit *unit_)
 {
 	sis_struct_list_clear(unit_->vlist);
 	sis_struct_list_clear(unit_->vmsec);
-	sis_struct_list_pack(unit_->vlist);
-	sis_struct_list_pack(unit_->vmsec);
-	if (unit_->prev)
-	{
-		unit_->prev->next = unit_->next;
-	}
-	if (unit_->next)
-	{
-		unit_->next->prev = unit_->prev;
-	}
 	unit_->next = NULL;
 	unit_->prev = NULL;
 }
@@ -299,6 +290,17 @@ static inline msec_t _subdb_cxt_get_vmsec(s_sis_subdb_unit *unit)
 	msec_t *vmsec = (msec_t *)sis_struct_list_first(unit->vmsec);
 	return vmsec ? *vmsec : 0;
 }
+void _show_link(s_sis_subdb_cxt *cxt)
+{
+	s_sis_subdb_unit *next = cxt->head;
+	int index = 0;
+	while(next)
+	{
+		printf("-%3d-[%4d] %s.%s : %lld | %p %p | %p %p %p\n", index++, next->vlist->count, next->kname, next->db->name, 
+			_subdb_cxt_get_vmsec(next), cxt->head, cxt->tail, next->prev, next, next->next);
+		next = next->next;
+	}	
+}
 void _subdb_cxt_link_move(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
 {
 	// 抹掉unit
@@ -356,6 +358,11 @@ void _subdb_cxt_link_insert(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *nearunit, s_
 	}
 	else
 	{
+		// if (!nearunit->prev)
+		// {
+		// 	LOG(0)("--------------\n");
+		// }
+		// _show_link(cxt);
 		nearunit->prev->next = unit;
 		unit->prev = nearunit->prev;
 		nearunit->prev = unit;
@@ -467,18 +474,9 @@ void _subdb_cxt_del_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
 	{
 		cxt->tail = unit->prev;
 	}
+	// printf("unit= %p\n", unit);
 	sis_subdb_unit_clear(unit);
-}
-void _show_link(s_sis_subdb_cxt *cxt)
-{
-	s_sis_subdb_unit *next = cxt->head;
-	int index = 0;
-	while(next)
-	{
-		printf("-%3d-[%4d] %s.%s : %lld | %p %p | %p %p %p\n", index++, next->vlist->count, next->kname, next->db->name, 
-			_subdb_cxt_get_vmsec(next), cxt->head, cxt->tail, next->prev, next, next->next);
-		next = next->next;
-	}	
+	// sis_subdb_unit_destroy(unit);
 }
 // 增加的数据一定是从小到大排序的数据 新增的数据一定比以前的数据时间更晚
 // 没有时间字段的最先发布 有时间的字段找到小于或等于就插入
@@ -515,7 +513,7 @@ void sis_subdb_cxt_add_data(s_sis_subdb_cxt *cxt_, const char *key_, void *in_, 
 					vmsec = sis_dynamic_db_get_time(unit->db, i, in_, ilen_);
 					vmsec = sis_time_unit_convert(unit->db->field_time->style, cxt_->cur_scale, vmsec);
 				}
-				if (i==0) printf("%s = %lld\n", key_, vmsec);
+				// if (i==0) printf("%s = %lld\n", key_, vmsec);
 				sis_struct_list_push(unit->vmsec, &vmsec);
 			}
 			sis_struct_list_pushs(unit->vlist, in_, count);
@@ -529,7 +527,7 @@ void sis_subdb_cxt_add_data(s_sis_subdb_cxt *cxt_, const char *key_, void *in_, 
 			}
 		}
 	}
-	_show_link(cxt_);
+	// _show_link(cxt_);
 }
 int _subdb_cxt_get_data(s_sis_subdb_cxt *cxt, s_sis_db_chars *out)
 {
@@ -578,16 +576,16 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 			{
 				context->cb_key_bytes(context->cb_source, &data);
 			} 	
-			_show_link(context);		
+			// _show_link(context);		
 		}
 		else if (o == 1)  // 某个key数据读完
 		{
-			_show_link(context);		
+			// _show_link(context);		
 			if (context->cb_key_stop)
 			{
 				context->cb_key_stop(context->cb_source, &data);
 			} 
-			_show_link(context);		
+			// _show_link(context);		
 		}
 		else // 数据全部读完 或数据出错
 		{
@@ -595,11 +593,11 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 			break;
 		}
 	}
-	context->work_status = SIS_SUBDB_STOPED;
     if (isstop && context->cb_sub_stop)
     {
         context->cb_sub_stop(context->cb_source, NULL);
     } 
+	context->work_status = SIS_SUBDB_STOPED;
     return NULL;
 }
 // 开始订阅
@@ -610,7 +608,13 @@ void sis_subdb_cxt_sub_start(s_sis_subdb_cxt *cxt_)
 		return ;
 	}
 	// 启动一个线程 处理数据
-	sis_thread_create(_thread_subdb_cxt_sub, cxt_, &cxt_->work_thread);
+	// sis_thread_create(_thread_subdb_cxt_sub, cxt_, &cxt_->work_thread);
+	_thread_subdb_cxt_sub(cxt_);
+	// while (cxt_->work_status != SIS_SUBDB_STOPED)
+	// {
+	// 	sis_sleep(10);
+	// }
+	
 }
 // 结束或中断订阅
 void sis_subdb_cxt_sub_stop(s_sis_subdb_cxt *cxt_)
