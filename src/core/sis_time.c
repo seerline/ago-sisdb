@@ -697,6 +697,118 @@ int sis_time_get_time_from_shstr(const char *in_, int *date_, int *time_) //"201
 
 	return 1;
 }
+msec_t sis_time_get_msec_from_str(const char *sdate,const char *stime)
+{
+	msec_t curmsec = sis_time_get_now_msec();
+	if (strlen(sdate) < 10||strlen(stime) < 12)
+	{
+		return curmsec;
+	}
+	int i = 0, c = 0;
+	int year, mon, mday, hour, min, sec, msec;
+	// 检查日期格式
+	for (c = 0; c < 4; ++c, i++)
+	{
+		if (!isdigit(sdate[i]))
+		{
+			return curmsec;
+		}
+		year = c == 0 ? sdate[i] - '0' : 10 * year + sdate[i] - '0';
+	}
+	if (sdate[i++] != '-')
+	{
+		return curmsec;
+	}
+	for (c = 0; c < 2; ++c, i++)
+	{
+		if (!isdigit(sdate[i]))
+		{
+			return curmsec;
+		}
+		mon = c == 0 ? sdate[i] - '0' : 10 * mon + sdate[i] - '0';
+	}
+	if (mon < 1 || 12 < mon)
+	{
+		return curmsec;
+	}
+	if (sdate[i++] != '-')
+	{
+		return curmsec;
+	}
+	for (c = 0; c < 2; ++c, i++)
+	{
+		if (!isdigit(sdate[i]))
+		{
+			return curmsec;
+		}
+		mday = c == 0 ? sdate[i] - '0' : 10 * mday + sdate[i] - '0';
+	}
+	if (mday < 1 || 31 < mday)
+	{
+		return curmsec;
+	}
+	i = 0;
+	// 检查时间格式
+	for (c = 0; c < 2; ++c, i++)
+	{
+		if (!isdigit(stime[i]))
+		{
+			return curmsec;
+		}
+		hour = c == 0 ? stime[i] - '0' : 10 * hour + stime[i] - '0';
+	}
+	if (hour < 0 || hour > 23)
+	{
+		return curmsec;
+	}
+	if (stime[i++] != ':')
+	{
+		return curmsec;
+	}
+	for (c = 0; c < 2; ++c, i++)
+	{
+		if (!isdigit(stime[i]))
+		{
+			return curmsec;
+		}
+		min = c == 0 ? stime[i] - '0' : 10 * min + stime[i] - '0';
+	}
+	if (min < 0 || min > 59)
+	{
+		return curmsec;
+	}
+	if (stime[i++] != ':')
+	{
+		return curmsec;
+	}
+	for (c = 0; c < 2; ++c, i++)
+	{
+		if (!isdigit(stime[i]))
+		{
+			return curmsec;
+		}
+		sec = c == 0 ? stime[i] - '0' : 10 * sec + stime[i] - '0';
+	}
+	if (sec < 0 || sec > 59)
+	{
+		return curmsec;
+	}
+	if (stime[i++] != '.')
+	{
+		return curmsec;
+	}
+	for (c = 0; c < 3; ++c, i++)
+	{
+		if (!isdigit(stime[i]))
+		{
+			return curmsec;
+		}
+		msec = c == 0 ? stime[i] - '0' : 10 * msec + stime[i] - '0';
+	}
+	curmsec = sis_time_make_time(year * 10000 + mon * 100 + mday, hour * 10000 + min * 100 + sec);
+	return curmsec * 1000 + msec;
+
+}
 
 s_sis_time_delay *sis_delay_create(unsigned int msec)
 {

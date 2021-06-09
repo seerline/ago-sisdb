@@ -51,6 +51,8 @@ int sis_time_get_idate_from_shstr(const char* in_);//"2015-02-12" => 20150212
 int sis_time_get_time_from_longstr(const char* , int* , int* ); //"2015-10-20 12:30:38" => 20151020,123038
 int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:38.110" => 20151020,123038
 
+msec_t sis_time_get_msec_from_str(const char *sdate,const char *stime); // "2015-10-20" "12:30:38.110"
+
 #ifdef __cplusplus
 }
 #endif
