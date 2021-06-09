@@ -664,9 +664,9 @@ size_t sis_files_read_fulltext(s_sis_files *cls_, void *source_, cb_sis_files_re
                 LINEEND = true;
             } // while SIS_DISK_MIN_BUFFER
         } // while
-        // 读4G文件约60秒
-        // 解压缩 约 40秒
-        // 只解析数据 约 160秒
+        // 读4G文件约60秒 MAC 1秒
+        // 解压缩 约 40秒 MAC 21秒
+        // 只解析数据 约 160秒 
         // 排序花费时间 840秒- 2050秒 
         // 优化后 300秒
         // printf("%zu cost = %d\n", _mem_size, sis_time_get_now_msec() - _start_msec);

@@ -158,7 +158,7 @@ void sis_log(const char *fmt_, ...)
 	{	
 		va_start(args, fmt_);
 		sis_sprintf(_sis_log.buffer, 1023, "%s[%x]%s.%s", 
-			_sis_log.showtime, (unsigned int)_sis_log.id, _sis_log.funcname, fmt_);
+			_sis_log.showtime, sis_thread_handle(_sis_log.id), _sis_log.funcname, fmt_);
 		vfprintf(_sis_log.logfp, _sis_log.buffer, args);
 		fflush(_sis_log.logfp);
 		va_end(args);

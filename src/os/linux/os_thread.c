@@ -230,7 +230,17 @@ s_sis_thread_id_t sis_thread_self()
 {
 	return (s_sis_thread_id_t)pthread_self();
 }
-
+#ifdef __APPLE__
+unsigned int sis_thread_handle(s_sis_thread_id_t id_) 
+{
+	return id_->__sig;
+}
+#else
+unsigned int sis_thread_handle(s_sis_thread_id_t id_) 
+{
+	return (unsigned int)id_;
+}
+#endif
 /////////////////////////////////////
 //
 //////////////////////////////////////////
@@ -257,7 +267,16 @@ int  sis_rwlock_init(s_sis_rwlock_t *rwlock_)
 	return pthread_rwlock_init(rwlock_, NULL);
 
 }
-
+#ifdef __APPLE__
+int sis_mutex_wait_lock_r(s_sis_rwlock_t *rwlock_, int msec_)
+{
+	return 0;
+}
+int sis_mutex_wait_lock_w(s_sis_rwlock_t *rwlock_, int msec_)
+{
+	return 0;
+}
+#else
 int sis_mutex_wait_lock_r(s_sis_rwlock_t *rwlock_, int msec_)
 {
 	struct timeval tv;
@@ -276,7 +295,7 @@ int sis_mutex_wait_lock_w(s_sis_rwlock_t *rwlock_, int msec_)
 	ts.tv_nsec = tv.tv_usec * 1000;
 	return pthread_rwlock_timedwrlock(rwlock_, &ts);
 }
-
+#endif
 /////////////////////////////////////
 //
 //////////////////////////////////////////
