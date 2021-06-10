@@ -705,7 +705,7 @@ msec_t sis_time_get_msec_from_str(const char *sdate,const char *stime)
 		return curmsec;
 	}
 	int i = 0, c = 0;
-	int year, mon, mday, hour, min, sec, msec;
+	int year = 0, mon = 0, mday = 0, hour = 0, min = 0, sec = 0, msec = 0;
 	// 检查日期格式
 	for (c = 0; c < 4; ++c, i++)
 	{

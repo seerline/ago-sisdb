@@ -1507,7 +1507,7 @@ int sis_disk_file_read_sub(s_sis_disk_class *cls_, s_sis_disk_reader *reader_)
         {
             // 顺序读取所有文件
             sis_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_file_read_sno);
-            sis_subdb_cxt_destroy(_subdb_cxt);
+            // sis_subdb_cxt_destroy(_subdb_cxt);
         }
         else
         {
