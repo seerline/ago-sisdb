@@ -98,7 +98,7 @@ void sisdb_rsno_uninit(void *worker_)
 ///////////////////////////////////////////
 //  callback define begin
 ///////////////////////////////////////////
-void _send_rsno_compress(s_sisdb_rsno_cxt *context, int issend)
+static void _send_rsno_compress(s_sisdb_rsno_cxt *context, int issend)
 {
 	s_snodb_compress *zipmem = context->rsno_ziper->zip_bits;
 	zipmem->size = sis_bits_struct_getsize(context->rsno_ziper->cur_sbits);

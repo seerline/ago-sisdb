@@ -320,7 +320,7 @@ bool snodb_init(void *worker_, void *argv_)
  
 	context->outputs = sis_lock_list_create(context->catch_size);
 	// printf("context->outputs save = %d\n", context->outputs->save_mode);
-	context->cur_sbits = sis_bits_stream_create(NULL, 0);
+	context->cur_sbits = sis_bits_stream_v0_create(NULL, 0);
 
     context->keys = sis_map_list_create(sis_sdsfree_call); 
 	context->sdbs = sis_map_list_create(sis_dynamic_db_destroy);
@@ -428,7 +428,7 @@ void snodb_uninit(void *worker_)
 	{
 		sis_object_decr(snodb->cur_object);
 	}
-	sis_bits_stream_destroy(snodb->cur_sbits);
+	sis_bits_stream_v0_destroy(snodb->cur_sbits);
 
 	sis_pointer_list_destroy(snodb->readeres);
 	
@@ -486,7 +486,7 @@ bool _snodb_write_init(s_snodb_cxt *snodb_, int workdate_, s_sis_sds keys_, s_si
 		sis_object_decr(snodb_->cur_object);
 		snodb_->cur_object = NULL;
 	}
-	// sis_bits_stream_clear(snodb_->cur_sbits);
+	// sis_bits_stream_v0_clear(snodb_->cur_sbits);
 	snodb_->cur_size = 0;
 
 	// 清理输出缓存中可能存在的数据
@@ -501,7 +501,7 @@ bool _snodb_write_init(s_snodb_cxt *snodb_, int workdate_, s_sis_sds keys_, s_si
 	// 	return true;
 	// }
 	LOG(8)("_snodb_write_init : new. %d %d | %d\n", snodb_->work_date ,workdate_, snodb_->outputs->work_queue->rnums);
-	sis_bits_stream_clear(snodb_->cur_sbits);
+	sis_bits_stream_v0_clear(snodb_->cur_sbits);
 	// 有一个信息不匹配就全部重新初始化
 	{
 		s_sis_string_list *klist = sis_string_list_create();

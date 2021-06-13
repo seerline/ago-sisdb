@@ -14,7 +14,7 @@
 #include "sis_list.lock.h"
 #include "sis_json.h"
 #include "sis_dynamic.h"
-#include "sis_bits.h"
+#include "sis_bits_v0.h"
 #include "sis_obj.h"
 #include "sis_disk.h"
 #include "sis_net.io.h"
@@ -61,7 +61,7 @@ typedef struct s_snodb_worker
 	int      	          zip_size;    // 单个数据块的大小
 	int      	          cur_size;    // 缓存数据当前的尺寸
 
-	s_sis_bits_stream    *cur_sbits;   // 当前指向缓存的位操作类
+	s_sis_bits_stream_v0    *cur_sbits;   // 当前指向缓存的位操作类
 	s_sis_map_list       *keys;        // key 的结构字典表 s_sis_sds
 	s_sis_map_list       *sdbs;        // sdb 的结构字典表 s_sis_dynamic_db 包括
 } s_snodb_worker;
@@ -171,7 +171,7 @@ typedef struct s_snodb_cxt
 
 	s_sis_fast_queue   *inputs;    // 传入的数据链 s_snodb_compress
 
-	s_sis_bits_stream  *cur_sbits;   // 当前指向缓存的位操作类
+	s_sis_bits_stream_v0  *cur_sbits;   // 当前指向缓存的位操作类
 
 	s_sis_object       *cur_object;   // s_snodb_compress -> 映射为memory 当前用于写数据的缓存 
 	s_sis_object       *last_object;  // 最近一个其实数据包的指针

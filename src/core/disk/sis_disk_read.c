@@ -434,17 +434,17 @@ int cb_sis_disk_file_read_log(void *source_, s_sis_disk_head *head_, s_sis_memor
 // }
 
 #if 1
-size_t _calc_sno_rcatch_size(s_sis_disk_class *cls_)
-{
-    size_t size = 0;
-    for (int i = 0; i < cls_->sno_rcatch->count; i++)
-    {       
-        s_sis_disk_rcatch *catch = (s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);         
-        size += sizeof(s_sis_disk_rcatch) + sizeof(s_sis_memory);
-        size += catch->omem->maxsize; 
-    }
-    return size;
-}
+// static size_t _calc_sno_rcatch_size(s_sis_disk_class *cls_)
+// {
+//     size_t size = 0;
+//     for (int i = 0; i < cls_->sno_rcatch->count; i++)
+//     {       
+//         s_sis_disk_rcatch *catch = (s_sis_disk_rcatch *)sis_pointer_list_get(cls_->sno_rcatch, i);         
+//         size += sizeof(s_sis_disk_rcatch) + sizeof(s_sis_memory);
+//         size += catch->omem->maxsize; 
+//     }
+//     return size;
+// }
 
 static int _sort_sno_rsno(const void *arg1, const void *arg2 ) 
 { 
@@ -724,7 +724,7 @@ int cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_memor
     return 0;
 }
 #endif
-int sis_read_unit_from_index(s_sis_disk_class *cls_, uint8 *hid_, s_sis_disk_index_unit *iunit_, s_sis_memory *out_)
+static int sis_read_unit_from_index(s_sis_disk_class *cls_, uint8 *hid_, s_sis_disk_index_unit *iunit_, s_sis_memory *out_)
 {
     // 此函数是否需要保存文件的原始位置
     int o = sis_files_read(cls_->work_fps, iunit_->fidx, iunit_->offset, iunit_->size, hid_, out_);
@@ -1447,7 +1447,7 @@ int cb_sis_disk_file_read_index(void *source_, s_sis_disk_head *head_, s_sis_mem
     }
     return count;
 }
-void _disk_file_call_dict(s_sis_disk_class *cls_, s_sis_disk_callback *callback)
+static void _disk_file_call_dict(s_sis_disk_class *cls_, s_sis_disk_callback *callback)
 {
     if (callback->cb_key)
     {

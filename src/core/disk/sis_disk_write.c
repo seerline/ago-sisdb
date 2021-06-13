@@ -152,7 +152,7 @@ size_t sis_disk_file_write_sdb_sno(s_sis_disk_class *cls_,
     return 0;
 }
 
-int sis_write_sdb_merge(s_sis_disk_class *cls_, s_sis_disk_wcatch *wcatch_)
+static int sis_write_sdb_merge(s_sis_disk_class *cls_, s_sis_disk_wcatch *wcatch_)
 {
     s_sis_disk_index *node = sis_disk_index_get(cls_->index_infos, wcatch_->key, wcatch_->sdb);
 

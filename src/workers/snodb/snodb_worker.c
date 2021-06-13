@@ -5,7 +5,7 @@
 s_snodb_worker *snodb_worker_create()
 {
 	s_snodb_worker *o = SIS_MALLOC(s_snodb_worker, o);
-	o->cur_sbits = sis_bits_stream_create(NULL, 0);
+	o->cur_sbits = sis_bits_stream_v0_create(NULL, 0);
 	o->keys = sis_map_list_create(sis_sdsfree_call);
 	o->sdbs = sis_map_list_create(sis_dynamic_db_destroy);
 	o->zip_bits = NULL;
@@ -21,7 +21,7 @@ void snodb_worker_destroy(s_snodb_worker *worker)
 	{
 		sis_free(worker->zip_bits);
 	}
-	sis_bits_stream_destroy(worker->cur_sbits);
+	sis_bits_stream_v0_destroy(worker->cur_sbits);
 	sis_free(worker);
 }
 
@@ -49,7 +49,7 @@ void snodb_worker_clear(s_snodb_worker *worker)
 	LOG(5)("clear unzip reader\n");
 	sis_map_list_clear(worker->keys);
 	sis_map_list_clear(worker->sdbs);
-	sis_bits_stream_clear(worker->cur_sbits);
+	sis_bits_stream_v0_clear(worker->cur_sbits);
 	// 如果是压缩 清理后必须记得 init
 	// snodb_worker_zip_init(worker, worker->zip_size, worker->initsize);
 }

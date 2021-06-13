@@ -1,21 +1,21 @@
 ﻿
-#include "sis_bits.h"
+#include "sis_bits_v0.h"
 #include "sis_math.h"
 
 ////////////////////////////////////////////////////////
-// s_sis_bits_stream
+// s_sis_bits_stream_v0
 ////////////////////////////////////////////////////////
 
-s_sis_bits_stream *sis_bits_stream_create(uint8 *in_, size_t ilen_)
+s_sis_bits_stream_v0 *sis_bits_stream_v0_create(uint8 *in_, size_t ilen_)
 { 
-	s_sis_bits_stream *s = SIS_MALLOC(s_sis_bits_stream, s); 
+	s_sis_bits_stream_v0 *s = SIS_MALLOC(s_sis_bits_stream_v0, s); 
     s->units = sis_pointer_list_create();
     s->units->vfree = sis_free_call;
     s->cur_stream = in_;
     s->bit_maxsize = ilen_ * 8;
 	return s;
 }
-void sis_bits_stream_destroy(s_sis_bits_stream *s_)
+void sis_bits_stream_v0_destroy(s_sis_bits_stream_v0 *s_)
 {
     if (!s_)
     {
@@ -31,7 +31,7 @@ void sis_bits_stream_destroy(s_sis_bits_stream *s_)
     }
 	sis_free(s_);
 }
-void sis_bits_stream_init(s_sis_bits_stream *s_)
+void sis_bits_stream_v0_init(s_sis_bits_stream_v0 *s_)
 {
     // 不清理结构信息 
     s_->cur_stream = NULL;
@@ -48,9 +48,9 @@ void sis_bits_stream_init(s_sis_bits_stream *s_)
     s_->bags_curpos = 0;
     s_->bags_bytes = 0;
 }
-void sis_bits_stream_clear(s_sis_bits_stream *s_)
+void sis_bits_stream_v0_clear(s_sis_bits_stream_v0 *s_)
 {
-    sis_bits_stream_init(s_);
+    sis_bits_stream_v0_init(s_);
     if (s_->units)
     {
         sis_pointer_list_clear(s_->units);
@@ -58,13 +58,13 @@ void sis_bits_stream_clear(s_sis_bits_stream *s_)
     s_->sdbsize = 0;
     s_->max_keynum = 0;
 }
-size_t sis_bits_stream_getbytes(s_sis_bits_stream *s_)
+size_t sis_bits_stream_v0_getbytes(s_sis_bits_stream_v0 *s_)
 {
 	return (s_->bit_currpos + 7) / 8;
 }
 
 // 直接定位到新的位置
-int sis_bits_stream_moveto(s_sis_bits_stream *s_, int bitpos_)	
+int sis_bits_stream_v0_moveto(s_sis_bits_stream_v0 *s_, int bitpos_)	
 {
     s_->bit_currpos = bitpos_;
     // if (s_->bit_currpos < 0)
@@ -78,26 +78,26 @@ int sis_bits_stream_moveto(s_sis_bits_stream *s_, int bitpos_)
     return s_->bit_currpos;
 }
 //移动内部指针bits_位,可以为负，返回新的位置
-int sis_bits_stream_move(s_sis_bits_stream *s_, int bits_)
+int sis_bits_stream_v0_move(s_sis_bits_stream_v0 *s_, int bits_)
 { 
-    return sis_bits_stream_moveto(s_, s_->bit_currpos + bits_); 
+    return sis_bits_stream_v0_moveto(s_, s_->bit_currpos + bits_); 
 }
-int sis_bits_stream_move_bytes(s_sis_bits_stream *s_, int bytes_)
+int sis_bits_stream_v0_move_bytes(s_sis_bits_stream_v0 *s_, int bytes_)
 {
-    return sis_bits_stream_moveto(s_, s_->bit_currpos + bytes_ * 8); 
+    return sis_bits_stream_v0_moveto(s_, s_->bit_currpos + bytes_ * 8); 
 }
 //保存当前位置
-void sis_bits_stream_savepos(s_sis_bits_stream *s_)
+void sis_bits_stream_v0_savepos(s_sis_bits_stream_v0 *s_)
 { 
     s_->bit_savepos = s_->bit_currpos; 
 }		
 //回卷到上一次保存的位置
-int  sis_bits_stream_restore(s_sis_bits_stream *s_)
+int  sis_bits_stream_v0_restore(s_sis_bits_stream_v0 *s_)
 { 
-    return sis_bits_stream_moveto(s_, s_->bit_savepos); 
+    return sis_bits_stream_v0_moveto(s_, s_->bit_savepos); 
 }		
 
-uint64 sis_bits_stream_get(s_sis_bits_stream *s_, int bits_)
+uint64 sis_bits_stream_v0_get(s_sis_bits_stream_v0 *s_, int bits_)
 {
     uint64 u64 = 0;
     if (bits_ <= 0 || bits_ > 64 || s_->bit_maxsize <= s_->bit_currpos)
@@ -140,7 +140,7 @@ uint64 sis_bits_stream_get(s_sis_bits_stream *s_, int bits_)
     return u64;
 }
 
-int sis_bits_stream_put(s_sis_bits_stream *s_, uint64 in_, int bits_)
+int sis_bits_stream_v0_put(s_sis_bits_stream_v0 *s_, uint64 in_, int bits_)
 {
     if (bits_ > 0)
     {
@@ -174,15 +174,15 @@ int sis_bits_stream_put(s_sis_bits_stream *s_, uint64 in_, int bits_)
     }
     return bits_;
 }
-int sis_bits_stream_put_buffer(s_sis_bits_stream *s_, char *in_, size_t bytes_)
+int sis_bits_stream_v0_put_buffer(s_sis_bits_stream_v0 *s_, char *in_, size_t bytes_)
 {
 	for (int i = 0; i < (int)bytes_; i++)
 	{
-		sis_bits_stream_put(s_, in_[i], 8);
+		sis_bits_stream_v0_put(s_, in_[i], 8);
 	}
 	return (int)bytes_  * 8;
 }
-int sis_bits_stream_put_count(s_sis_bits_stream *s_, uint32 in_)
+int sis_bits_stream_v0_put_count(s_sis_bits_stream_v0 *s_, uint32 in_)
 {
 // 索引整数 正整数 1 - 0xFFFF
 // 0 --> 0 + 1
@@ -193,23 +193,23 @@ int sis_bits_stream_put_count(s_sis_bits_stream *s_, uint32 in_)
     if (dw & 0xFF00)
     {
         dw |= 0x30000;
-        sis_bits_stream_put(s_, dw, 18);
+        sis_bits_stream_v0_put(s_, dw, 18);
     }
     else
     {
         if (dw & 0xFF)
         {
             dw |= 0x200;
-            sis_bits_stream_put(s_, dw, 10);
+            sis_bits_stream_v0_put(s_, dw, 10);
         }
         else
         {
-            sis_bits_stream_put(s_, 0, 1);
+            sis_bits_stream_v0_put(s_, 0, 1);
         }        
     } 
     return offset; 
 }
-int sis_bits_stream_put_uint(s_sis_bits_stream *s_, uint32 in_)
+int sis_bits_stream_v0_put_uint(s_sis_bits_stream_v0 *s_, uint32 in_)
 {
 // 索引整数 正整数 0 - 0xFFFFFFFF
 // 00 --> 0-F
@@ -225,22 +225,22 @@ int sis_bits_stream_put_uint(s_sis_bits_stream *s_, uint32 in_)
         if (dw & 0xFF000000)
         {
             dw |= 0x700000000;
-            sis_bits_stream_put(s_, dw, 35);
+            sis_bits_stream_v0_put(s_, dw, 35);
         }
         else if (dw & 0xFF0000)
         {
             dw |= 0x6000000;
-            sis_bits_stream_put(s_, dw, 27);
+            sis_bits_stream_v0_put(s_, dw, 27);
         }
         else if (dw & 0xFF00)
         {
             dw |= 0x50000;
-            sis_bits_stream_put(s_, dw, 19);
+            sis_bits_stream_v0_put(s_, dw, 19);
         }
         else
         {
             dw |= 0x4000;
-            sis_bits_stream_put(s_, dw, 15);
+            sis_bits_stream_v0_put(s_, dw, 15);
         }
     }
     else
@@ -248,17 +248,17 @@ int sis_bits_stream_put_uint(s_sis_bits_stream *s_, uint32 in_)
         if (dw & 0xF0)
         {
             dw |= 0x100;
-            sis_bits_stream_put(s_, dw, 10);
+            sis_bits_stream_v0_put(s_, dw, 10);
         }
         else
         {
-            sis_bits_stream_put(s_, dw, 6);
+            sis_bits_stream_v0_put(s_, dw, 6);
         }        
     } 
     return offset; 
 }
 // 带符号长整数
-int sis_bits_stream_put_int(s_sis_bits_stream *s_, int64 in_)
+int sis_bits_stream_v0_put_int(s_sis_bits_stream_v0 *s_, int64 in_)
 {
 // 递增整数 带符号位
 // 0表示和前值一样
@@ -281,53 +281,53 @@ int sis_bits_stream_put_int(s_sis_bits_stream *s_, int64 in_)
     int64 dw = in_ < 0 ? -1 * in_ : in_;
     if (in_ < 0)
     {
-        sis_bits_stream_put(s_, 1, 1);
+        sis_bits_stream_v0_put(s_, 1, 1);
     }
     else
     {
-        sis_bits_stream_put(s_, 0, 1);
+        sis_bits_stream_v0_put(s_, 0, 1);
     }   
     if (dw & 0x7FFFFFFFFFF00000)
     {
         if (dw & 0x7F00000000000000)
         {
-            sis_bits_stream_put(s_, 0x3F, 6);
-            sis_bits_stream_put(s_, dw, 63);
+            sis_bits_stream_v0_put(s_, 0x3F, 6);
+            sis_bits_stream_v0_put(s_, dw, 63);
         }
         else if (dw & 0xFF000000000000)
         {
             dw |= 0x3E00000000000000;
-            sis_bits_stream_put(s_, dw, 62);
+            sis_bits_stream_v0_put(s_, dw, 62);
         }
         else if (dw & 0xFF0000000000)
         {
             dw |= 0x3D000000000000;
-            sis_bits_stream_put(s_, dw, 54);
+            sis_bits_stream_v0_put(s_, dw, 54);
         }
         else if (dw & 0xFF00000000)
         {
             dw |= 0x3C0000000000;
-            sis_bits_stream_put(s_, dw, 46);
+            sis_bits_stream_v0_put(s_, dw, 46);
         }
         else if (dw & 0xF00000000)
         {
             dw |= 0x3B000000000;
-            sis_bits_stream_put(s_, dw, 42);
+            sis_bits_stream_v0_put(s_, dw, 42);
         }
         else if (dw & 0xF0000000)
         {
             dw |= 0x3A00000000;
-            sis_bits_stream_put(s_, dw, 38);
+            sis_bits_stream_v0_put(s_, dw, 38);
         }
         else if (dw & 0xF000000)
         {
             dw |= 0x390000000;
-            sis_bits_stream_put(s_, dw, 34);
+            sis_bits_stream_v0_put(s_, dw, 34);
         }
         else
         {
             dw |= 0x38000000;
-            sis_bits_stream_put(s_, dw, 30);
+            sis_bits_stream_v0_put(s_, dw, 30);
         }
     }
     else if (dw & 0xFFFF0)
@@ -335,22 +335,22 @@ int sis_bits_stream_put_int(s_sis_bits_stream *s_, int64 in_)
         if (dw & 0xF0000)
         {
             dw |= 0x1B00000;
-            sis_bits_stream_put(s_, dw, 25);
+            sis_bits_stream_v0_put(s_, dw, 25);
         }
         else if (dw & 0xF000)
         {
             dw |= 0x1A0000;
-            sis_bits_stream_put(s_, dw, 21);
+            sis_bits_stream_v0_put(s_, dw, 21);
         }
         else if (dw & 0xF00)
         {
             dw |= 0x19000;
-            sis_bits_stream_put(s_, dw, 17);
+            sis_bits_stream_v0_put(s_, dw, 17);
         }
         else
         {
             dw |= 0x1800;
-            sis_bits_stream_put(s_, dw, 13);
+            sis_bits_stream_v0_put(s_, dw, 13);
         }
     }
     else
@@ -358,32 +358,32 @@ int sis_bits_stream_put_int(s_sis_bits_stream *s_, int64 in_)
         if (dw & 0xF)
         {
             dw |= 0x20;
-            sis_bits_stream_put(s_, dw, 6);
+            sis_bits_stream_v0_put(s_, dw, 6);
         }
         else
         {
-            sis_bits_stream_put(s_, 0, 1);
+            sis_bits_stream_v0_put(s_, 0, 1);
         }        
     }
     return offset; 
 }
-int sis_bits_stream_put_incr_int(s_sis_bits_stream *s_, int64 in_, int64 ago_)
+int sis_bits_stream_v0_put_incr_int(s_sis_bits_stream_v0 *s_, int64 in_, int64 ago_)
 {
-    return sis_bits_stream_put_int(s_, (in_ - ago_));
+    return sis_bits_stream_v0_put_int(s_, (in_ - ago_));
 }
 
-int sis_bits_stream_put_float(s_sis_bits_stream *s_, double in_, int dot_)
+int sis_bits_stream_v0_put_float(s_sis_bits_stream_v0 *s_, double in_, int dot_)
 {
     int64 dw = in_ * pow(10, dot_);
-    return sis_bits_stream_put_int(s_, dw);
+    return sis_bits_stream_v0_put_int(s_, dw);
 }
-int sis_bits_stream_put_incr_float(s_sis_bits_stream *s_, double in_, double ago_, int dot_)
+int sis_bits_stream_v0_put_incr_float(s_sis_bits_stream_v0 *s_, double in_, double ago_, int dot_)
 {
     double m = pow(10, dot_);
-    return sis_bits_stream_put_int(s_, (in_ - ago_) * m);
+    return sis_bits_stream_v0_put_int(s_, (in_ - ago_) * m);
 }
 
-int sis_bits_stream_put_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_)
+int sis_bits_stream_v0_put_chars(s_sis_bits_stream_v0 *s_, char *in_, size_t ilen_)
 {
 // 0 表示和前值一样
 // 1 + size长度+字符
@@ -391,58 +391,58 @@ int sis_bits_stream_put_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_)
     int offset = 0;
     if (ilen_ > 0 && in_)
     {
-        sis_bits_stream_put(s_, 1, 1);
+        sis_bits_stream_v0_put(s_, 1, 1);
         // sis_out_binary("...", sis_memory(s_->cur_stream), 16);
-        sis_bits_stream_put_uint(s_, ilen_);
+        sis_bits_stream_v0_put_uint(s_, ilen_);
         // sis_out_binary("...", sis_memory(s_->cur_stream), 16);
         for (int i = 0; i < (int)ilen_; i++)
         {
-            sis_bits_stream_put(s_, in_[i], 8);
+            sis_bits_stream_v0_put(s_, in_[i], 8);
         }
         // sis_out_binary("...", sis_memory(s_->cur_stream), 16);
     }
     else
     {
-        sis_bits_stream_put(s_, 0, 1);
+        sis_bits_stream_v0_put(s_, 0, 1);
     }
     return offset;
 }
-int sis_bits_stream_put_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)
+int sis_bits_stream_v0_put_incr_chars(s_sis_bits_stream_v0 *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)
 {
     int offset = 0;
     // printf("put char :%s, %s, %d, %d\n", in_, ago_, ilen_, alen_);
     if (ilen_ == alen_ && !sis_strncasecmp(in_, ago_, ilen_))
     {
-        sis_bits_stream_put_chars(s_, NULL, 0);
+        sis_bits_stream_v0_put_chars(s_, NULL, 0);
     }
     else
     {
-        sis_bits_stream_put_chars(s_, in_, ilen_);
+        sis_bits_stream_v0_put_chars(s_, in_, ilen_);
     }
     return offset;
 }
 
 // 短正整数
-int sis_bits_stream_get_count(s_sis_bits_stream *s_)
+int sis_bits_stream_v0_get_count(s_sis_bits_stream_v0 *s_)
 {
 // 索引整数 正整数 1 - 0xFFFF
 // 0 --> 0 + 1
 // 10 --> 1 + FF 
 // 11 --> 1 + FFFF  
-    uint32 level = sis_bits_stream_get(s_, 1);
+    uint32 level = sis_bits_stream_v0_get(s_, 1);
     if (!level)
     {
         return 1;
     }
-    level = sis_bits_stream_get(s_, 1);
+    level = sis_bits_stream_v0_get(s_, 1);
     if (level == 0)
     {
-        return 1 + sis_bits_stream_get(s_, 8);
+        return 1 + sis_bits_stream_v0_get(s_, 8);
     }
-    return 1 + sis_bits_stream_get(s_, 16);
+    return 1 + sis_bits_stream_v0_get(s_, 16);
 }
 // 短正整数
-uint32 sis_bits_stream_get_uint(s_sis_bits_stream *s_)
+uint32 sis_bits_stream_v0_get_uint(s_sis_bits_stream_v0 *s_)
 {
 // 索引整数 正整数 0 - 0xFFFF
 // 00 --> 0-F
@@ -451,29 +451,29 @@ uint32 sis_bits_stream_get_uint(s_sis_bits_stream *s_)
 // 101 --> 1000-FFFF  
 // 110 --> 10000-FFFFFF 
 // 111 --> 1000000-FFFFFFFF  
-    uint32 level = sis_bits_stream_get(s_, 1);
+    uint32 level = sis_bits_stream_v0_get(s_, 1);
     if (!level)
     {
-        level = sis_bits_stream_get(s_, 1);
-        return sis_bits_stream_get(s_, level == 0 ? 4 : 8);
+        level = sis_bits_stream_v0_get(s_, 1);
+        return sis_bits_stream_v0_get(s_, level == 0 ? 4 : 8);
     }
-    level = sis_bits_stream_get(s_, 2);
+    level = sis_bits_stream_v0_get(s_, 2);
     if (level == 0)
     {
-        return sis_bits_stream_get(s_, 12);
+        return sis_bits_stream_v0_get(s_, 12);
     }
     if (level == 1)
     {
-        return sis_bits_stream_get(s_, 16);
+        return sis_bits_stream_v0_get(s_, 16);
     }
     if (level == 2)
     {
-        return sis_bits_stream_get(s_, 24);
+        return sis_bits_stream_v0_get(s_, 24);
     }
-    return sis_bits_stream_get(s_, 32);
+    return sis_bits_stream_v0_get(s_, 32);
 }
 // 带符号长整数
-int64 sis_bits_stream_get_int(s_sis_bits_stream *s_)
+int64 sis_bits_stream_v0_get_int(s_sis_bits_stream_v0 *s_)
 {
 // 0表示和前值一样
 // 10 --> 0-F
@@ -491,76 +491,76 @@ int64 sis_bits_stream_get_int(s_sis_bits_stream *s_)
 //    101 :  -FFFFFFFFFFFF…FFFFFFFFFFFF
 //    110 :  -FFFFFFFFFFFFFF…FFFFFFFFFFFFFF
 //    111 :  -7FFFFFFFFFFFFFFF…7FFFFFFFFFFFFFFF
-    uint8 signbit = sis_bits_stream_get(s_, 1);
+    uint8 signbit = sis_bits_stream_v0_get(s_, 1);
     int64 dw = 0;
 
-    uint32 level = sis_bits_stream_get(s_, 1);
+    uint32 level = sis_bits_stream_v0_get(s_, 1);
     if (!level)
     {
         return 0;
     }
-    level = sis_bits_stream_get(s_, 1);
+    level = sis_bits_stream_v0_get(s_, 1);
     if (level == 0)
     {
-        dw = sis_bits_stream_get(s_, 4);
+        dw = sis_bits_stream_v0_get(s_, 4);
     }
     else
     {
-        level = sis_bits_stream_get(s_, 1);
+        level = sis_bits_stream_v0_get(s_, 1);
         if (level == 0)
         {
-            level = sis_bits_stream_get(s_, 2);
-            if (level == 0) dw = sis_bits_stream_get(s_, 8);
-            else if (level == 1) dw = sis_bits_stream_get(s_, 12);
-            else if (level == 2) dw = sis_bits_stream_get(s_, 16);
-            else dw = sis_bits_stream_get(s_, 20);
+            level = sis_bits_stream_v0_get(s_, 2);
+            if (level == 0) dw = sis_bits_stream_v0_get(s_, 8);
+            else if (level == 1) dw = sis_bits_stream_v0_get(s_, 12);
+            else if (level == 2) dw = sis_bits_stream_v0_get(s_, 16);
+            else dw = sis_bits_stream_v0_get(s_, 20);
         }
         else
         {
-            level = sis_bits_stream_get(s_, 3);
-            if (level == 0) dw = sis_bits_stream_get(s_, 24);
-            else if (level == 1) dw = sis_bits_stream_get(s_, 28);
-            else if (level == 2) dw = sis_bits_stream_get(s_, 32);
-            else if (level == 3) dw = sis_bits_stream_get(s_, 36);
-            else if (level == 4) dw = sis_bits_stream_get(s_, 40);
-            else if (level == 5) dw = sis_bits_stream_get(s_, 48);
-            else if (level == 6) dw = sis_bits_stream_get(s_, 56);
-            else dw = sis_bits_stream_get(s_, 63);
+            level = sis_bits_stream_v0_get(s_, 3);
+            if (level == 0) dw = sis_bits_stream_v0_get(s_, 24);
+            else if (level == 1) dw = sis_bits_stream_v0_get(s_, 28);
+            else if (level == 2) dw = sis_bits_stream_v0_get(s_, 32);
+            else if (level == 3) dw = sis_bits_stream_v0_get(s_, 36);
+            else if (level == 4) dw = sis_bits_stream_v0_get(s_, 40);
+            else if (level == 5) dw = sis_bits_stream_v0_get(s_, 48);
+            else if (level == 6) dw = sis_bits_stream_v0_get(s_, 56);
+            else dw = sis_bits_stream_v0_get(s_, 63);
         }       
     }
     return signbit ? -1 * dw : dw;
 }
-int64 sis_bits_stream_get_incr_int(s_sis_bits_stream *s_, int64 ago_)
+int64 sis_bits_stream_v0_get_incr_int(s_sis_bits_stream_v0 *s_, int64 ago_)
 {
-    int64 dw = sis_bits_stream_get_int(s_);
+    int64 dw = sis_bits_stream_v0_get_int(s_);
     return dw + ago_;
 }
 
-double sis_bits_stream_get_float(s_sis_bits_stream *s_, int dot_)
+double sis_bits_stream_v0_get_float(s_sis_bits_stream_v0 *s_, int dot_)
 {
-    double dw = (double)sis_bits_stream_get_int(s_);
+    double dw = (double)sis_bits_stream_v0_get_int(s_);
     return dw / pow(10, dot_);
 }
-double sis_bits_stream_get_incr_float(s_sis_bits_stream *s_, double ago_, int dot_)
+double sis_bits_stream_v0_get_incr_float(s_sis_bits_stream_v0 *s_, double ago_, int dot_)
 {
-    double dw = sis_bits_stream_get_float(s_, dot_);
+    double dw = sis_bits_stream_v0_get_float(s_, dot_);
     return dw + ago_;
 }
 
-int sis_bits_stream_get_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_)
+int sis_bits_stream_v0_get_chars(s_sis_bits_stream_v0 *s_, char *in_, size_t ilen_)
 {
 // 0 表示和前值一样
 // 1 + size长度+字符
-    uint8 signbit = sis_bits_stream_get(s_, 1);
+    uint8 signbit = sis_bits_stream_v0_get(s_, 1);
     if (signbit == 0)
     {
         return 0;
     }
-    int size = sis_bits_stream_get_uint(s_);
+    int size = sis_bits_stream_v0_get_uint(s_);
     int cursize = sis_min(size, ilen_);
     for (int i = 0; i < cursize; i++)
     {
-        in_[i] = sis_bits_stream_get(s_, 8);
+        in_[i] = sis_bits_stream_v0_get(s_, 8);
     }
     if (size > ilen_)
     {
@@ -568,9 +568,9 @@ int sis_bits_stream_get_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_)
     }
     return cursize;
 }
-int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)
+int sis_bits_stream_v0_get_incr_chars(s_sis_bits_stream_v0 *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)
 {
-    int size = sis_bits_stream_get_chars(s_, in_, ilen_);
+    int size = sis_bits_stream_v0_get_chars(s_, in_, ilen_);
     if (size == 0)
     {
         memmove(in_, ago_, ilen_);
@@ -582,7 +582,7 @@ int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen
 ////////////////////////////
 // 以下是结构化读取和写入的函数
 ////////////////////////////
-int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_)
+int sis_bits_struct_set_sdb(s_sis_bits_stream_v0 *s_, s_sis_dynamic_db *db_)
 {
     s_sis_struct_unit *unit = SIS_MALLOC(s_sis_struct_unit, unit);
     unit->sdb = db_;
@@ -591,58 +591,58 @@ int sis_bits_struct_set_sdb(s_sis_bits_stream *s_, s_sis_dynamic_db *db_)
     sis_pointer_list_push(s_->units, unit);
     return s_->units->count - 1;
 }
-int sis_bits_struct_set_key(s_sis_bits_stream *s_, int keynum_)
+int sis_bits_struct_set_key(s_sis_bits_stream_v0 *s_, int keynum_)
 {
     s_->max_keynum = keynum_;
     return keynum_;
 }
-// void sis_bits_struct_set_zipcb(s_sis_bits_stream *s_, void *source_, cb_sis_struct_encode *cb_zip_)
+// void sis_bits_struct_set_zipcb(s_sis_bits_stream_v0 *s_, void *source_, cb_sis_struct_encode *cb_zip_)
 // {
 //     s_->cb_zip_source = source_;
 //     s_->cb_zip_stream = cb_zip_;
 // }
 
-int  sis_bits_struct_get_bags(s_sis_bits_stream *s_, bool isread_)
+int  sis_bits_struct_get_bags(s_sis_bits_stream_v0 *s_, bool isread_)
 {
-    sis_bits_stream_savepos(s_);
+    sis_bits_stream_v0_savepos(s_);
     int count = 0;
-    // printf("1.1 = %d  %d %d\n",s_->bit_currpos, s_->bit_maxsize, sis_bits_stream_getbytes(s_));
+    // printf("1.1 = %d  %d %d\n",s_->bit_currpos, s_->bit_maxsize, sis_bits_stream_v0_getbytes(s_));
     if (isread_)
     {
-        sis_bits_stream_moveto(s_, s_->bit_maxsize - 16);
-        count = sis_bits_stream_get(s_, 32);
+        sis_bits_stream_v0_moveto(s_, s_->bit_maxsize - 16);
+        count = sis_bits_stream_v0_get(s_, 32);
     }
     else
     {
         int offset =  (8 - (s_->bit_currpos % 8)) % 8;   
         if (offset)
         {
-            sis_bits_stream_move(s_, offset);
+            sis_bits_stream_v0_move(s_, offset);
         }
-        count = sis_bits_stream_get(s_, 32);
+        count = sis_bits_stream_v0_get(s_, 32);
     }
-    sis_bits_stream_restore(s_);
+    sis_bits_stream_v0_restore(s_);
     s_->bags= count;
     return count;
 }
-void sis_bits_struct_set_bags(s_sis_bits_stream *s_)
+void sis_bits_struct_set_bags(s_sis_bits_stream_v0 *s_)
 {
-    sis_bits_stream_savepos(s_);
+    sis_bits_stream_v0_savepos(s_);
     // printf("3.1 = %d  %d\n",s_->bit_currpos, s_->bit_maxsize);
     int offset =  (8 - (s_->bit_currpos % 8)) % 8;   
     if (offset)
     {
-        sis_bits_stream_move(s_, offset);
+        sis_bits_stream_v0_move(s_, offset);
     }
-    sis_bits_stream_put(s_, s_->bags, 32);
+    sis_bits_stream_v0_put(s_, s_->bags, 32);
     s_->bags_bytes = 4;
-    sis_bits_stream_restore(s_);
+    sis_bits_stream_v0_restore(s_);
 }
-size_t sis_bits_struct_getsize(s_sis_bits_stream *s_)
+size_t sis_bits_struct_getsize(s_sis_bits_stream_v0 *s_)
 {
 	return (s_->bit_currpos + 7) / 8 + s_->bags_bytes;
 }
-void sis_bits_struct_link(s_sis_bits_stream *s_, uint8 *in_, size_t ilen_)
+void sis_bits_struct_link(s_sis_bits_stream_v0 *s_, uint8 *in_, size_t ilen_)
 {
     s_->cur_stream = in_;
     s_->bit_maxsize = ilen_ * 8;
@@ -651,7 +651,7 @@ void sis_bits_struct_link(s_sis_bits_stream *s_, uint8 *in_, size_t ilen_)
     s_->bags = 0;
     s_->bags_bytes = 0;
 }
-void sis_bits_struct_flush(s_sis_bits_stream *s_)
+void sis_bits_struct_flush(s_sis_bits_stream_v0 *s_)
 {
     if (s_->inited == 1)
     {
@@ -662,7 +662,7 @@ void sis_bits_struct_flush(s_sis_bits_stream *s_)
         
     }   
 }
-void _sis_bits_struct_init(s_sis_bits_stream *s_)
+void _sis_bits_struct_init(s_sis_bits_stream_v0 *s_)
 {
     if (s_->inited == 0)
     {
@@ -675,7 +675,7 @@ void _sis_bits_struct_init(s_sis_bits_stream *s_)
         s_->inited = 1;
     }    
 }
-uint8 *_sis_bits_struct_get_ago(s_sis_bits_stream *s_, int kid_, s_sis_struct_unit *unit_)
+uint8 *_sis_bits_struct_get_ago(s_sis_bits_stream_v0 *s_, int kid_, s_sis_struct_unit *unit_)
 {
     if (unit_ && kid_ < (int)s_->max_keynum)
     {
@@ -685,7 +685,7 @@ uint8 *_sis_bits_struct_get_ago(s_sis_bits_stream *s_, int kid_, s_sis_struct_un
 }
 
 // 
-static inline void _sis_bits_struct_encode_one(s_sis_bits_stream *s_, 
+static inline void _sis_bits_struct_encode_one(s_sis_bits_stream_v0 *s_, 
     const char *memory_, s_sis_dynamic_field *infield_, 
     const char *in_)
 {
@@ -695,7 +695,7 @@ static inline void _sis_bits_struct_encode_one(s_sis_bits_stream *s_,
         {
         case SIS_DYNAMIC_TYPE_INT:
             {
-                sis_bits_stream_put_incr_int(s_, 
+                sis_bits_stream_v0_put_incr_int(s_, 
                     _sis_field_get_int(infield_, in_, index),
                     _sis_field_get_int(infield_, memory_, index));
             }
@@ -706,7 +706,7 @@ static inline void _sis_bits_struct_encode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_UINT:
             {
-                sis_bits_stream_put_incr_int(s_, 
+                sis_bits_stream_v0_put_incr_int(s_, 
                     _sis_field_get_uint(infield_, in_, index),
                     _sis_field_get_uint(infield_, memory_, index));
             }
@@ -714,14 +714,14 @@ static inline void _sis_bits_struct_encode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_FLOAT:
         case SIS_DYNAMIC_TYPE_PRICE:
             {
-                sis_bits_stream_put_incr_float(s_, 
+                sis_bits_stream_v0_put_incr_float(s_, 
                     _sis_field_get_float(infield_, in_, index),
                     _sis_field_get_float(infield_, memory_, index), infield_->dot);
             }
             break;
         case SIS_DYNAMIC_TYPE_CHAR:
             {
-                sis_bits_stream_put_incr_chars(s_, 
+                sis_bits_stream_v0_put_incr_chars(s_, 
                     (char *)in_ + infield_->offset + index * infield_->len, infield_->len,
                     (char *)memory_ + infield_->offset + index * infield_->len, infield_->len);
             }
@@ -733,7 +733,7 @@ static inline void _sis_bits_struct_encode_one(s_sis_bits_stream *s_,
 }
 
 // 如果压缩长度大于原始数据长度 就用原始数据 第一位0表示原始数据 1 表示压缩数据
-int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_, size_t ilen_)
+int sis_bits_struct_encode(s_sis_bits_stream_v0 *s_, int kid_, int sid_, void *in_, size_t ilen_)
 {
     _sis_bits_struct_init(s_);
 
@@ -767,13 +767,13 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
     char *memory = (char *)&buffer[1];
     // sis_out_binary("buffer", (char *)buffer, unit->sdb->size + 1);
     // printf("zip %d %d %dkey= %d  %d\n", buffer[0], s_->bit_currpos, s_->bit_maxsize, s_->max_keynum, unit->sdb->size);
-    sis_bits_stream_put(s_, buffer[0] == 0 ? 0 : 1, 1);
+    sis_bits_stream_v0_put(s_, buffer[0] == 0 ? 0 : 1, 1);
     // printf("[%d %d] %s \n",kid_, sid_, unit->sdb->name);
-    sis_bits_stream_put_uint(s_, kid_);
+    sis_bits_stream_v0_put_uint(s_, kid_);
     // sis_out_binary("1", sis_memory(s_->cur_stream), sis_bits_struct_getsize(s_));
-    sis_bits_stream_put_uint(s_, sid_);
+    sis_bits_stream_v0_put_uint(s_, sid_);
     // sis_out_binary("2", sis_memory(s_->cur_stream), sis_bits_struct_getsize(s_));
-    sis_bits_stream_put_count(s_, count);
+    sis_bits_stream_v0_put_count(s_, count);
     // sis_out_binary("3", sis_memory(s_->cur_stream), sis_bits_struct_getsize(s_));
 
 	int fnums = sis_map_list_getsize(unit->sdb->fields);
@@ -797,13 +797,13 @@ int sis_bits_struct_encode(s_sis_bits_stream *s_, int kid_, int sid_, void *in_,
 		in += unit->sdb->size;
 	}
     s_->bags++;
-    // printf("encode nums= %d bytes %d\n", s_->bags, sis_bits_stream_getbytes(s_));
+    // printf("encode nums= %d bytes %d\n", s_->bags, sis_bits_stream_v0_getbytes(s_));
     sis_bits_struct_set_bags(s_);
-    // printf("encode nums= %d bytes %d\n", s_->bags, sis_bits_stream_getbytes(s_));
+    // printf("encode nums= %d bytes %d\n", s_->bags, sis_bits_stream_v0_getbytes(s_));
     return 1;
 }
 
-static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
+static inline void _sis_bits_struct_decode_one(s_sis_bits_stream_v0 *s_,
     const char *memory_, s_sis_dynamic_field *infield_, 
     char *in_)
 {
@@ -814,7 +814,7 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_INT:
             {
                 _sis_field_set_int(infield_, in_, 
-                    sis_bits_stream_get_incr_int(s_, memory_ ? _sis_field_get_int(infield_, memory_, index) : 0),
+                    sis_bits_stream_v0_get_incr_int(s_, memory_ ? _sis_field_get_int(infield_, memory_, index) : 0),
                     index);
             }
             break;
@@ -825,7 +825,7 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_UINT:
             {
                 _sis_field_set_uint(infield_, in_, 
-                    sis_bits_stream_get_incr_int(s_, memory_ ? _sis_field_get_uint(infield_, memory_, index) : 0),
+                    sis_bits_stream_v0_get_incr_int(s_, memory_ ? _sis_field_get_uint(infield_, memory_, index) : 0),
                     index);
             }
             break;
@@ -833,7 +833,7 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
         case SIS_DYNAMIC_TYPE_PRICE:
             {
                 _sis_field_set_float(infield_, in_, 
-                    sis_bits_stream_get_incr_float(s_, memory_ ? _sis_field_get_float(infield_, memory_, index) : 0.0, infield_->dot),
+                    sis_bits_stream_v0_get_incr_float(s_, memory_ ? _sis_field_get_float(infield_, memory_, index) : 0.0, infield_->dot),
                     index);
             }
             break;
@@ -841,13 +841,13 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream *s_,
             {
                 if (memory_)
                 {
-                    sis_bits_stream_get_incr_chars(s_, 
+                    sis_bits_stream_v0_get_incr_chars(s_, 
                         in_ + infield_->offset + index * infield_->len, infield_->len,
                         (char *)memory_ + infield_->offset + index * infield_->len, infield_->len);
                 }
                 else
                 {
-                    sis_bits_stream_get_chars(s_, 
+                    sis_bits_stream_v0_get_chars(s_, 
                         in_ + infield_->offset + index * infield_->len, infield_->len);
                 }               
             }
@@ -867,7 +867,7 @@ void _unzip_unit_free(s_sis_struct_list *list)
     sis_struct_list_destroy(list);
 }
 // 用回调来返回数据
-int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struct_decode *cb_read_)
+int sis_bits_struct_decode(s_sis_bits_stream_v0 *s_, void *cb_source_, cb_sis_struct_decode *cb_read_)
 {
     _sis_bits_struct_init(s_);
     // 去尾部取标志位
@@ -878,21 +878,21 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
         // printf("decode fail nums= %d\n", nums);
         return 0;
     }    
-    sis_bits_stream_savepos(s_);
+    sis_bits_stream_v0_savepos(s_);
     s_sis_struct_list *list = sis_struct_list_create(sizeof(s_unzip_unit));
     sis_struct_list_set_size(list, nums);
     
     while (list->count < nums)
     {        
-        int zip = sis_bits_stream_get(s_, 1);
+        int zip = sis_bits_stream_v0_get(s_, 1);
         // if(!zip)
         // {
         //     printf("...\n");
         // }
         s_unzip_unit unzip;
-        unzip.kidx = sis_bits_stream_get_uint(s_);
-        unzip.sidx = sis_bits_stream_get_uint(s_);
-        int count = sis_bits_stream_get_count(s_);
+        unzip.kidx = sis_bits_stream_v0_get_uint(s_);
+        unzip.sidx = sis_bits_stream_v0_get_uint(s_);
+        int count = sis_bits_stream_v0_get_count(s_);
 
         s_sis_struct_unit *unit = (s_sis_struct_unit *)sis_pointer_list_get(s_->units, unzip.sidx);
         uint8 *buffer = _sis_bits_struct_get_ago(s_, unzip.kidx, unit);
@@ -901,7 +901,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
             // printf("decode fail %d %d\n", unzip.kidx, unzip.sidx);
             // 如果解析失败
             _unzip_unit_free(list);
-            sis_bits_stream_restore(s_);
+            sis_bits_stream_v0_restore(s_);
             return 0;
         }
         char *memory = (char *)&buffer[1];
@@ -937,7 +937,7 @@ int sis_bits_struct_decode(s_sis_bits_stream *s_, void *cb_source_, cb_sis_struc
         }
     }
     _unzip_unit_free(list);
-    sis_bits_stream_restore(s_);
+    sis_bits_stream_v0_restore(s_);
     return nums;
 }
 
@@ -1060,7 +1060,7 @@ static struct _tick_ ticks[] = {
 int cb_sis_decode(void *src, int kid,int sid, char *in, size_t ilen)
 {
     // sis_out_binary("read", in, ilen);
-    s_sis_bits_stream *zip = (s_sis_bits_stream *)src;
+    s_sis_bits_stream_v0 *zip = (s_sis_bits_stream_v0 *)src;
     s_sis_struct_unit *unit=(s_sis_struct_unit *)sis_pointer_list_get(zip->units, sid);
 
     s_sis_sds out = sis_dynamic_db_to_array_sds(unit->sdb, unit->sdb->name, in, ilen);
@@ -1097,7 +1097,7 @@ int main()
     // 压缩
     s_sis_memory *out = sis_memory_create();
     sis_memory_set_maxsize(out, 1000*1000*256);
-    s_sis_bits_stream *zip = sis_bits_stream_create((uint8 *)sis_memory(out), sis_memory_get_size(out));
+    s_sis_bits_stream_v0 *zip = sis_bits_stream_v0_create((uint8 *)sis_memory(out), sis_memory_get_size(out));
 
     sis_bits_struct_set_key(zip, 2);
     int snapidx = sis_bits_struct_set_sdb(zip, snap);
@@ -1132,23 +1132,23 @@ int main()
     // 77700000 --> 24962531
     // 77700000 --> 23587531
     sis_memory_set_size(out, sis_bits_struct_getsize(zip));
-    printf("stop: %lld %d\n", sis_time_get_now_msec(), sis_bits_stream_getbytes(zip));
+    printf("stop: %lld %d\n", sis_time_get_now_msec(), sis_bits_stream_v0_getbytes(zip));
     size_t size = sis_bits_struct_getsize(zip);
     printf("zip : from %d --> %d %d\n", 
         zipnnums * (int)(snap_nums * sizeof(_snap_) + tick_nums* sizeof(_tick_) + 8 * (snap_nums + tick_nums)), 
         (int)size, (int)sis_memory_get_size(out));
     
     sis_out_binary("out", sis_memory(out), size);
-    sis_bits_stream_destroy(zip);
+    sis_bits_stream_v0_destroy(zip);
 
-    s_sis_bits_stream *unzip = sis_bits_stream_create((uint8 *)sis_memory(out), sis_memory_get_size(out));
+    s_sis_bits_stream_v0 *unzip = sis_bits_stream_v0_create((uint8 *)sis_memory(out), sis_memory_get_size(out));
     // 解压
     sis_bits_struct_set_key(unzip, 10);
     sis_bits_struct_set_sdb(unzip, snap);
     sis_bits_struct_set_sdb(unzip, tick);
 
     sis_bits_struct_decode(unzip, NULL, cb_sis_decode);
-    sis_bits_stream_destroy(unzip);
+    sis_bits_stream_v0_destroy(unzip);
 
     sis_memory_destroy(out);
     
