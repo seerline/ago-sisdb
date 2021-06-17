@@ -131,7 +131,7 @@ void _server_help()
 	printf("		-d           : debug mode run. \n");
 	printf("		-h           : help. \n");
 }
-
+// #define TEST_DEBUG
 #ifndef TEST_DEBUG 
 
 int _server_load_modules()

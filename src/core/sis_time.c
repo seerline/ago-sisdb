@@ -510,7 +510,7 @@ int sis_time_get_idate_from_shstr(const char *in_) //"2015-10-20" => 20151020
 
 	return year * 10000 + mon * 100 + mday;
 }
-int sis_time_get_time_from_longstr(const char *in_, int *date_, int *time_) //"2015-10-20 12:30:38" => 20151020,123038
+msec_t sis_time_get_time_from_longstr(const char *in_) //"2015-10-20 12:30:38"
 {
 	int out = 0;
 	if (strlen(in_) < 19)
@@ -608,11 +608,8 @@ int sis_time_get_time_from_longstr(const char *in_, int *date_, int *time_) //"2
 	{
 		return out;
 	}
+    return sis_time_make_time(year * 10000 + mon * 100 + mday, hour * 10000 + min * 100 + sec);
 
-	*date_ = year * 10000 + mon * 100 + mday;
-	*time_ = hour * 10000 + min * 100 + sec;
-
-	return 1;
 }
 
 int sis_time_get_time_from_shstr(const char *in_, int *date_, int *time_) //"20151020-12:30:38.110" => 20151020,123038
