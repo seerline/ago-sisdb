@@ -153,7 +153,6 @@ void sis_server_uninit()
 
 #ifndef TEST_DEBUG 
 
-
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 255, "%s.conf", argv[0]);
