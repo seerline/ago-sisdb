@@ -132,10 +132,10 @@ void _server_help()
 	printf("		-h           : help. \n");
 }
 
-#ifndef TEST_DEBUG 
-
-int _server_load_modules()
+int sis_server_init()
 {
+	// 加载模块
+	_server.modules = sis_map_pointer_create();
 	int i, count = 0;
     for (i = 0; __modules[i]; i++) 
 	{
@@ -146,6 +146,13 @@ int _server_load_modules()
 	printf("load modules ok. count = %d \n", count);
 	return sis_map_pointer_getsize(_server.modules);
 }
+void sis_server_uninit()
+{
+	sis_map_pointer_destroy(_server.modules);
+}
+
+#ifndef TEST_DEBUG 
+
 
 int main(int argc, char *argv[])
 {
@@ -180,10 +187,7 @@ int main(int argc, char *argv[])
 		printf("conf file %s load error.\n", _server.conf_name);
 		return 0;
 	}
-	// 加载模块
-	_server.modules = sis_map_pointer_create();
-	int modules = _server_load_modules();
-	if (modules < 1)
+	if (sis_server_init() < 1)
 	{
 		printf("no active modules.\n");
 		sis_map_pointer_destroy(_server.modules);
@@ -234,7 +238,7 @@ int main(int argc, char *argv[])
 	}
 	sis_map_pointer_destroy(_server.workers);
 	// 释放插件
-	sis_map_pointer_destroy(_server.modules);
+	sis_server_uninit();
 
 	LOG(3)("program exit.\n");
 

@@ -1643,37 +1643,37 @@ int snodb_reader_realtime_stop(s_snodb_reader *reader_)
 //     sis_llutoa(workdate_, fn, 32, 10);
 //     char work_path[512];
 //     sis_sprintf(work_path, 512, "%s%s/", sisdb_->fast_path, sisdb_->name);
-//     s_sis_disk_class *read_class = sis_disk_class_create(); 
-//     if (sis_disk_class_init(read_class, SIS_DISK_TYPE_SNO, work_path, fn) 
-//         || sis_disk_file_read_start(read_class))
+//     s_sis_disk_v1_class *read_class = sis_disk_v1_class_create(); 
+//     if (sis_disk_v1_class_init(read_class, SIS_DISK_TYPE_SNO, work_path, fn) 
+//         || sis_disk_v1_file_read_start(read_class))
 //     {
-//         sis_disk_class_destroy(read_class);
+//         sis_disk_v1_class_destroy(read_class);
 //         return NULL;
 //     }
 //     s_sis_sds kname = NULL; s_sis_sds sname = NULL; 
 //     int cmds = sis_str_divide_sds(key_, '.', &kname, &sname);
 //     if (cmds < 2)
 //     {
-//         sis_disk_class_destroy(read_class);
+//         sis_disk_v1_class_destroy(read_class);
 //         return NULL;
 //     }
 //     s_sisdb_table *tb = sis_map_list_get(sisdb_->sdbs, sname);
 
-//     s_sis_disk_reader *reader = sis_disk_reader_create(NULL);
+//     s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(NULL);
 //     // reader->issub = 0;
 //     // printf("%s| %s | %s\n", context->read_cb->sub_keys, context->work_sdbs, context->read_cb->sub_sdbs ? context->read_cb->sub_sdbs : "nil");
-//     sis_disk_reader_set_sdb(reader, sname);
-//     sis_disk_reader_set_key(reader, kname); 
+//     sis_disk_v1_reader_set_sdb(reader, sname);
+//     sis_disk_v1_reader_set_key(reader, kname); 
 //     sis_sdsfree(kname); sis_sdsfree(sname);
 
 //     // sub 是一条一条的输出
 //     // get 是所有符合条件的一次性输出
-//     s_sis_object *obj = sis_disk_file_read_get_obj(read_class, reader);
+//     s_sis_object *obj = sis_disk_v1_file_read_get_obj(read_class, reader);
 //     printf("obj = %p\n",obj);
-//     sis_disk_reader_destroy(reader);
+//     sis_disk_v1_reader_destroy(reader);
 
-//     sis_disk_file_read_stop(read_class);
-//     sis_disk_class_destroy(read_class); 
+//     sis_disk_v1_file_read_stop(read_class);
+//     sis_disk_v1_class_destroy(read_class); 
 
 //     if (obj)
 //     {

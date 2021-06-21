@@ -85,7 +85,7 @@ static inline s_sis_bits_stream *sis_bits_stream_create(uint8 *in_, size_t ilen_
 }
 static inline void sis_bits_stream_destroy(s_sis_bits_stream *s_)
 {
-    if (!s_)
+    if (s_)
     {
     	sis_free(s_);
     }

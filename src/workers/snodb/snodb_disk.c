@@ -2,7 +2,7 @@
 #include "sis_modules.h"
 #include "worker.h"
 #include "sis_method.h"
-#include "sis_disk.h"
+#include "sis_disk_v1.h"
 
 #include <snodb.h>
 

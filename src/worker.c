@@ -351,7 +351,6 @@ void sis_worker_destroy(void *worker_)
 {   
     s_sis_worker *worker =(s_sis_worker *)worker_;
 
-    LOG(5)("worker [%s] kill.\n", worker->workername);
     // 应该先释放 notice 再释放其他的
     worker->status = SIS_WORK_INIT_NONE;
     if (worker->service_thread)
@@ -378,9 +377,11 @@ void sis_worker_destroy(void *worker_)
     {
         worker->slots->uninit(worker);
     }
+    LOG(5)("worker [%s] kill.\n", worker->workername);
     sis_sdsfree(worker->workername);
     sis_sdsfree(worker->classname);
     sis_free(worker);
+
 }
 
 // 在 worker_ 下根据 node 配置生成多个子 worker, worker_ 为空表示依赖于 server

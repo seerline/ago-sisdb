@@ -212,7 +212,7 @@ static void cb_read(void *context_, const char *key_, const char *sdb_, void *ou
         _send_rsno_compress(context, 0);
     }
 
-    // int dbid = sis_disk_class_get_sdbi(context->read_class, sdb_); 
+    // int dbid = sis_disk_v1_class_get_sdbi(context->read_class, sdb_); 
 } 
 ///////////////////////////////////////////
 //  callback define end.
@@ -222,7 +222,7 @@ static void *_thread_snos_read_sub(void *argv_)
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)argv_;
     context->status = SIS_RSNO_WORK;
 	// 开始读盘
-    s_sis_disk_callback *callback = SIS_MALLOC(s_sis_disk_callback, callback);
+    s_sis_disk_v1_callback *callback = SIS_MALLOC(s_sis_disk_v1_callback, callback);
 
     char sdate[32];   
     sis_llutoa(context->work_date, sdate, 32, 10);
@@ -234,49 +234,49 @@ static void *_thread_snos_read_sub(void *argv_)
     callback->cb_read = cb_read;
     callback->cb_end = cb_end;
 
-    s_sis_disk_reader *reader = sis_disk_reader_create(callback);
+    s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(callback);
     // printf("%s| %s | %s\n", context->write_cb->sub_keys, context->work_sdbs, context->write_cb->sub_sdbs ? context->write_cb->sub_sdbs : "nil");
 	if (!sis_strcasecmp("*",context->work_keys) && sis_strcasecmp("*",context->work_sdbs))
 	{
-		sis_disk_reader_set_sdb(reader, "*");  
-		sis_disk_reader_set_key(reader, "*");
+		sis_disk_v1_reader_set_sdb(reader, "*");  
+		sis_disk_v1_reader_set_key(reader, "*");
 	}
 	else
 	{
 		// 获取真实的代码
-		s_sis_sds keys = sis_disk_file_get_keys(context->read_class, false);
+		s_sis_sds keys = sis_disk_v1_file_get_keys(context->read_class, false);
 		s_sis_sds sub_keys = sis_match_key(context->work_keys, keys);
         if (!sub_keys)
         {
             sub_keys =  sis_sdsdup(keys);
         } 
-		sis_disk_reader_set_key(reader, sub_keys);
+		sis_disk_v1_reader_set_key(reader, sub_keys);
 		sis_sdsfree(sub_keys);
 		sis_sdsfree(keys);
 
 		// 获取真实的表名
-		s_sis_sds sdbs = sis_disk_file_get_sdbs(context->read_class, false);
+		s_sis_sds sdbs = sis_disk_v1_file_get_sdbs(context->read_class, false);
 		s_sis_sds sub_sdbs = sis_match_sdb(context->work_sdbs, sdbs);
         printf("sub_sdbs :%s\n", sdbs);
         if (!sub_sdbs)
         {
             sub_sdbs =  sis_sdsdup(sdbs);
         } 
-		sis_disk_reader_set_sdb(reader, sub_sdbs);  
+		sis_disk_v1_reader_set_sdb(reader, sub_sdbs);  
 		sis_sdsfree(sub_sdbs);
 		sis_sdsfree(sdbs);
 	}
 
     // sub 是一条一条的输出
-    sis_disk_file_read_sub(context->read_class, reader);
+    sis_disk_v1_file_read_sub(context->read_class, reader);
     // get 是所有符合条件的一次性输出
-    // sis_disk_file_read_get(ctrl->disk_reader, reader);
-    sis_disk_reader_destroy(reader);
+    // sis_disk_v1_file_read_get(ctrl->disk_reader, reader);
+    sis_disk_v1_reader_destroy(reader);
     sis_free(callback);
 	// printf("rson sub end..\n");
-    sis_disk_file_read_stop(context->read_class);
+    sis_disk_v1_file_read_stop(context->read_class);
 
-    sis_disk_class_destroy(context->read_class);
+    sis_disk_v1_class_destroy(context->read_class);
     context->read_class = NULL;
 
     // stop 放这里
@@ -293,14 +293,14 @@ static void *_thread_snos_read_sub(void *argv_)
 
 void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context) 
 {
-    context->read_class = sis_disk_class_create(); 
+    context->read_class = sis_disk_v1_class_create(); 
     context->read_class->isstop = false;
 
     char sdate[32];   
     sis_llutoa(context->work_date, sdate, 32, 10);
 
-    if (sis_disk_class_init(context->read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, context->work_date)
-     || sis_disk_file_read_start(context->read_class))
+    if (sis_disk_v1_class_init(context->read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, context->work_date)
+     || sis_disk_v1_file_read_start(context->read_class))
     {
         sisdb_rsno_sub_stop(context);
         LOG(5)("sno file open fail.[%s]\n", sdate);
@@ -328,7 +328,7 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
 	}
     if (context->read_class)
     {
-        sis_disk_class_destroy(context->read_class);
+        sis_disk_v1_class_destroy(context->read_class);
         context->read_class = NULL;
     }
     if (context->rsno_ziper)
@@ -434,38 +434,38 @@ int cmd_sisdb_rsno_get(void *worker_, void *argv_)
     s_sis_message *msg = (s_sis_message *)argv_; 
 
     char *sdate = sis_message_get_str(msg, "get-date");
-    s_sis_disk_class *read_class = sis_disk_class_create(); 
-    if (sis_disk_class_init(read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, sis_atoll(sdate)) 
-        || sis_disk_file_read_start(read_class))
+    s_sis_disk_v1_class *read_class = sis_disk_v1_class_create(); 
+    if (sis_disk_v1_class_init(read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, sis_atoll(sdate)) 
+        || sis_disk_v1_file_read_start(read_class))
     {
-        sis_disk_class_destroy(read_class);
+        sis_disk_v1_class_destroy(read_class);
         return SIS_METHOD_ERROR;
     }
     char *kname = sis_message_get_str(msg, "get-keys");
     char *sname = sis_message_get_str(msg, "get-sdbs");
 
-    s_sis_disk_reader *reader = sis_disk_reader_create(NULL);
-    sis_disk_reader_set_sdb(reader, sname);
-    sis_disk_reader_set_key(reader, kname); 
+    s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(NULL);
+    sis_disk_v1_reader_set_sdb(reader, sname);
+    sis_disk_v1_reader_set_key(reader, kname); 
    // get 是所有符合条件的一次性输出
-    s_sis_object *obj = sis_disk_file_read_get_obj(read_class, reader);
-    sis_disk_reader_destroy(reader);
+    s_sis_object *obj = sis_disk_v1_file_read_get_obj(read_class, reader);
+    sis_disk_v1_reader_destroy(reader);
 
     if (obj)
     {
         sis_message_set(msg, "omem", obj, sis_object_destroy);
-        s_sis_disk_dict *sdict = sis_map_list_get(read_class->sdbs, sname);
+        s_sis_disk_v1_dict *sdict = sis_map_list_get(read_class->sdbs, sname);
         if (sdict)
         {
-            s_sis_disk_dict_unit *sunit = sis_disk_dict_last(sdict);
+            s_sis_disk_v1_dict_unit *sunit = sis_disk_v1_dict_last(sdict);
             s_sis_json_node *node = sis_dynamic_dbinfo_to_json(sunit->db);
             s_sis_dynamic_db *diskdb = sis_dynamic_db_create(node);
             sis_json_delete_node(node);
             sis_message_set(msg, "diskdb", diskdb, sis_dynamic_db_destroy);
         }
     }
-    sis_disk_file_read_stop(read_class);
-    sis_disk_class_destroy(read_class); 
+    sis_disk_v1_file_read_stop(read_class);
+    sis_disk_v1_class_destroy(read_class); 
     return SIS_METHOD_OK;
 }
 

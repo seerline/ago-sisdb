@@ -50,7 +50,7 @@ bool sisdb_wsno_init(void *worker_, void *node_)
     // context->page_size =  sis_json_get_int(node, "page-size", 0) * 1024*1024;   
     context->page_size =  sis_json_get_int(node, "page-size", 0) * 1024*1024;   
 
-    context->write_class = sis_disk_class_create(); 
+    context->write_class = sis_disk_v1_class_create(); 
     return true;
 }
 
@@ -60,7 +60,7 @@ void sisdb_wsno_uninit(void *worker_)
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
     sis_sdsfree(context->work_path);
 
-    sis_disk_class_destroy(context->write_class);
+    sis_disk_v1_class_destroy(context->write_class);
     if (context->wsno_unzip)
     {
         snodb_worker_destroy(context->wsno_unzip);
@@ -84,13 +84,13 @@ static int _write_head(s_sisdb_wsno_cxt *context, bool iszip)
         return 0;
     }
     int idate = sis_atoll(context->wsno_date);
-    sis_disk_class_init(context->write_class, SIS_DISK_TYPE_SNO , context->work_path, context->wsno_date, idate); 
+    sis_disk_v1_class_init(context->write_class, SIS_DISK_TYPE_SNO , context->work_path, context->wsno_date, idate); 
     if (context->page_size > 1024 * 1024)
     {
         context->write_class->work_fps->max_page_size = context->page_size; 
     }
-    sis_disk_file_delete(context->write_class);
-    int rtn = sis_disk_file_write_start(context->write_class);
+    sis_disk_v1_file_delete(context->write_class);
+    int rtn = sis_disk_v1_file_write_start(context->write_class);
 
     if (rtn)
     {
@@ -99,12 +99,12 @@ static int _write_head(s_sisdb_wsno_cxt *context, bool iszip)
     }
     {
         // printf("kkk = %s\n", context->wsno_keys);
-        int count = sis_disk_class_set_key(context->write_class, true, context->wsno_keys, sis_sdslen(context->wsno_keys));
+        int count = sis_disk_v1_class_set_key(context->write_class, true, context->wsno_keys, sis_sdslen(context->wsno_keys));
         LOG(5)
         ("keys = %d \n", count);
     }
     {
-        int count = sis_disk_class_set_sdb(context->write_class, true, context->wsno_sdbs, sis_sdslen(context->wsno_sdbs));
+        int count = sis_disk_v1_class_set_sdb(context->write_class, true, context->wsno_sdbs, sis_sdslen(context->wsno_sdbs));
         LOG(5)
         ("sdbs = %d \n", count);
     }
@@ -131,7 +131,7 @@ static int cb_sub_start(void *worker_, void *argv_)
     // 有可能没有收到订阅结束 但是文件已经被打开并写入了数据此时要关闭老的文件
      if (context->write_class->status == SIS_DISK_STATUS_OPENED)
     {
-        sis_disk_file_write_stop(context->write_class);
+        sis_disk_v1_file_write_stop(context->write_class);
     }
     context->iswhead = 1;
     return SIS_METHOD_OK;
@@ -142,7 +142,7 @@ static int cb_sub_stop(void *worker_, void *argv_)
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
 
-    sis_disk_file_write_stop(context->write_class);
+    sis_disk_v1_file_write_stop(context->write_class);
 
     if (context->wsno_unzip)
     {
@@ -180,7 +180,7 @@ static int cb_sisdb_bytes(void *worker_, void *argv_)
     _write_head(context, 0);
 	// printf("%s\n",__func__);
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
-    sis_disk_file_write_sdb(context->write_class, inmem->kname, inmem->sname, inmem->data, inmem->size);
+    sis_disk_v1_file_write_sdb(context->write_class, inmem->kname, inmem->sname, inmem->data, inmem->size);
     // s_v0_cf_snapshot *snapshot = (s_v0_cf_snapshot *)argv_;
         // snapshot->code, MARKET_SDB_CF_SNAPSHOT, 
         // snapshot->data, sizeof(s_v3_cf_snapshot));
@@ -212,7 +212,7 @@ static int cb_unzip_info(void *source, int kidx, int sidx, char *in, size_t ilen
     }
     // printf("%s %s\n",kname, db->name);
 
-    sis_disk_file_write_sdb(context->write_class, kname, db->name, in, ilen);
+    sis_disk_v1_file_write_sdb(context->write_class, kname, db->name, in, ilen);
     return 0;
 }
 

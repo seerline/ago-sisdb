@@ -198,7 +198,7 @@ void sis_out_percent_stop()
 	printf("\b\b\b\b100%%\n");
 }
 
-size_t sis_writefile(char *name, void *value, size_t len)
+size_t sis_writefile(const char *name, void *value, size_t len)
 {
 	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
 	if (fp)
@@ -209,7 +209,7 @@ size_t sis_writefile(char *name, void *value, size_t len)
 	}
 	return 0;
 }
-size_t sis_readfile(char *name, void *value, size_t len)
+size_t sis_readfile(const char *name, void *value, size_t len)
 {
 	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ, 0);
 	if (fp)

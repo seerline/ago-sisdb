@@ -53,6 +53,9 @@ s_sis_server *sis_get_server();
 
 s_sis_modules *sis_get_worker_slot(const char *);
 
+int sis_server_init();
+
+void sis_server_uninit();
 #ifdef __cplusplus
 }
 #endif

@@ -4,7 +4,7 @@
 #include "sis_method.h"
 
 #include "snodb.h"
-#include <sis_disk.h>
+#include <sis_disk_v1.h>
 
 #define  SIS_RSNO_NONE     0 // 订阅未开始
 #define  SIS_RSNO_INIT     1 // 自动运行初始化
@@ -15,7 +15,7 @@ typedef struct s_sisdb_rsno_cxt
 {
     int               status;        // 工作状态
 
-    s_sis_disk_class *read_class;    //
+    s_sis_disk_v1_class *read_class;    //
     s_sis_sds         work_path;     // 可配置 也可传入
 
     int               work_date;

@@ -146,15 +146,15 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
 
     if (sis_map_pointer_getsize(sisdb->work_keys) > 0)
     {
-        s_sis_disk_class *sdbfile = sis_disk_class_create();
-        sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->dbname, 0);
+        s_sis_disk_v1_class *sdbfile = sis_disk_v1_class_create();
+        sis_disk_v1_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->dbname, 0);
         // 不能删除老文件的信息
-        sis_disk_file_write_start(sdbfile);
+        sis_disk_v1_file_write_start(sdbfile);
         {
             s_sis_sds keys = _sisdb_get_keys(sisdb);
-            sis_disk_class_set_key(sdbfile, true, keys, sis_sdslen(keys));
+            sis_disk_v1_class_set_key(sdbfile, true, keys, sis_sdslen(keys));
             s_sis_sds sdbs = _sisdb_get_sdbs(sisdb);
-            sis_disk_class_set_sdb(sdbfile, true, sdbs, sis_sdslen(sdbs));
+            sis_disk_v1_class_set_sdb(sdbfile, true, sdbs, sis_sdslen(sdbs));
             sis_sdsfree(keys);
             sis_sdsfree(sdbs);
         }
@@ -171,7 +171,7 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
                 sis_str_divide(collect->name, '.', keyn, sdbn); 
                 if (collect->style == SISDB_COLLECT_TYPE_TABLE)
                 {
-                    sis_disk_file_write_sdb(sdbfile, keyn, collect->sdb->db->name, 
+                    sis_disk_v1_file_write_sdb(sdbfile, keyn, collect->sdb->db->name, 
                         SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
                 }
                 else 
@@ -180,14 +180,14 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
                     sis_memory_clear(memory);
                     sis_memory_cat_byte(memory, collect->style, 1);
                     sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-                    sis_disk_file_write_any(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
+                    sis_disk_v1_file_write_any(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
                 }
             }
             sis_dict_iter_free(di);
             sis_memory_destroy(memory);
         }
-        sis_disk_file_write_stop(sdbfile);
-        sis_disk_class_destroy(sdbfile);
+        sis_disk_v1_file_write_stop(sdbfile);
+        sis_disk_v1_class_destroy(sdbfile);
     }
 
     return SIS_METHOD_OK;
@@ -205,23 +205,23 @@ int cmd_sisdb_wsdb_pack(void *worker_, void *argv_)
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
     // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
-    s_sis_disk_class *srcfile = sis_disk_class_create();
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
-    sis_disk_file_move(srcfile, context->safe_path);
-    sis_disk_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname, 0);
+    s_sis_disk_v1_class *srcfile = sis_disk_v1_class_create();
+    sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
+    sis_disk_v1_file_move(srcfile, context->safe_path);
+    sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname, 0);
 
-    s_sis_disk_class *desfile = sis_disk_class_create();
-    sis_disk_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
+    s_sis_disk_v1_class *desfile = sis_disk_v1_class_create();
+    sis_disk_v1_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
 
-    size_t size = sis_disk_file_pack(srcfile, desfile);
+    size_t size = sis_disk_v1_file_pack(srcfile, desfile);
 
     if (size == 0)
     {
-        sis_disk_file_delete(desfile);
-        sis_disk_file_move(srcfile, context->work_path);
+        sis_disk_v1_file_delete(desfile);
+        sis_disk_v1_file_move(srcfile, context->work_path);
     }   
-    sis_disk_class_destroy(desfile);
-    sis_disk_class_destroy(srcfile);
+    sis_disk_v1_class_destroy(desfile);
+    sis_disk_v1_class_destroy(srcfile);
 
     if (size == 0)
     {

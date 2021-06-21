@@ -154,18 +154,18 @@ static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out
 } 
 int _sisdb_rsdb_load_sdb(const char *workpath, s_sisdb_cxt *sisdb, s_sisdb_catch *config)
 {
-    s_sis_disk_class *sdbfile = sis_disk_class_create();  
-    sis_disk_class_init(sdbfile, SIS_DISK_TYPE_SDB, workpath, sisdb->dbname, 0);
-    int ro = sis_disk_file_read_start(sdbfile);
+    s_sis_disk_v1_class *sdbfile = sis_disk_v1_class_create();  
+    sis_disk_v1_class_init(sdbfile, SIS_DISK_TYPE_SDB, workpath, sisdb->dbname, 0);
+    int ro = sis_disk_v1_file_read_start(sdbfile);
 
     printf("%s , ro = %d  %s\n", __func__, ro, workpath);
     if (ro != SIS_DISK_CMD_OK)
     {
-        sis_disk_class_destroy(sdbfile);
+        sis_disk_v1_class_destroy(sdbfile);
         // 文件不存在也认为正确
         return SIS_METHOD_OK;
     }
-    s_sis_disk_callback *callback = SIS_MALLOC(s_sis_disk_callback, callback);
+    s_sis_disk_v1_callback *callback = SIS_MALLOC(s_sis_disk_v1_callback, callback);
     callback->source = sisdb;
     callback->cb_begin = NULL;
     callback->cb_key = cb_key;
@@ -175,20 +175,20 @@ int _sisdb_rsdb_load_sdb(const char *workpath, s_sisdb_cxt *sisdb, s_sisdb_catch
 
     printf("%s , cb_sdb = %p\n", __func__, callback->cb_sdb);
 
-    s_sis_disk_reader *reader = sis_disk_reader_create(callback);
-    sis_disk_reader_set_key(reader, "*");
-    sis_disk_reader_set_sdb(reader, "*");
+    s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(callback);
+    sis_disk_v1_reader_set_key(reader, "*");
+    sis_disk_v1_reader_set_sdb(reader, "*");
     if (config->last_day > 0)
     {
         // 设置加载时间
     }
     reader->isone = 1; // 设置为一次性输出
-    sis_disk_file_read_sub(sdbfile, reader);
+    sis_disk_v1_file_read_sub(sdbfile, reader);
 
-    sis_disk_reader_destroy(reader);    
+    sis_disk_v1_reader_destroy(reader);    
     sis_free(callback);
-    sis_disk_file_read_stop(sdbfile);
-    sis_disk_class_destroy(sdbfile);
+    sis_disk_v1_file_read_stop(sdbfile);
+    sis_disk_v1_class_destroy(sdbfile);
     return SIS_METHOD_OK;
 }
 
