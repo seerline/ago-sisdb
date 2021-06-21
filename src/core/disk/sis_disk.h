@@ -11,7 +11,7 @@
 #include "sis_snappy.h"
 #include "sis_db.h"
 
-#define SIS_DISK_SDB_VER   3    // 数据结构版本
+#define SIS_DISK_SDB_VER   4    // 数据结构版本
 
 ////////////////////////////////////////////////////
 // 这是一个高效写入的模块，需要满足以下特性

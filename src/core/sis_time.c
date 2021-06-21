@@ -510,7 +510,7 @@ int sis_time_get_idate_from_shstr(const char *in_) //"2015-10-20" => 20151020
 
 	return year * 10000 + mon * 100 + mday;
 }
-msec_t sis_time_get_time_from_longstr(const char *in_) //"2015-10-20 12:30:38"
+time_t sis_time_get_time_from_longstr(const char *in_) //"2015-10-20 12:30:38"
 {
 	int out = 0;
 	if (strlen(in_) < 19)
