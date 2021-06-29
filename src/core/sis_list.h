@@ -192,7 +192,7 @@ extern "C" {
 #endif
 s_sis_pointer_list *sis_pointer_list_create(); 
 
-void sis_pointer_list_destroy(s_sis_pointer_list *list_);
+void sis_pointer_list_destroy(void *list_);
 void sis_pointer_list_clear(s_sis_pointer_list *list_);
 
 int sis_pointer_list_clone(s_sis_pointer_list *src_, s_sis_pointer_list *des_);

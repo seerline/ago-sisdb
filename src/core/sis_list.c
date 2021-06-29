@@ -889,16 +889,17 @@ s_sis_pointer_list *sis_pointer_list_create()
 	sbl->vfree = NULL;
 	return sbl;
 }
-void sis_pointer_list_destroy(s_sis_pointer_list *list_)
+void sis_pointer_list_destroy(void *list_)
 {
-	sis_pointer_list_clear(list_);
-	if (list_->buffer)
+	s_sis_pointer_list *list = (s_sis_pointer_list *)list_;
+	sis_pointer_list_clear(list);
+	if (list->buffer)
 	{
-		sis_free(list_->buffer);
+		sis_free(list->buffer);
 	}
-	list_->buffer = NULL;
-	list_->maxcount = 0;
-	sis_free(list_);
+	list->buffer = NULL;
+	list->maxcount = 0;
+	sis_free(list);
 }
 void sis_pointer_list_clear(s_sis_pointer_list *list_)
 {
