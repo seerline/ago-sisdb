@@ -283,7 +283,7 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
     {
         worker->classname = sis_sdsnew(node_->key);
     }
-    if (sis_str_substr_nums(node_->key, '.') > 1)
+    if (sis_str_substr_nums(node_->key, sis_strlen(node_->key), '.') > 1)
     {
         LOG(3)("workname [%s] cannot '.' !\n", node_->key);  
         sis_worker_destroy(worker);
@@ -495,7 +495,7 @@ s_sis_worker *sis_worker_search(const char *workname_)
     {
         return NULL;
     }
-    int count = sis_str_substr_nums(workname_, '.') - 1;
+    int count = sis_str_substr_nums(workname_, sis_strlen(workname_), '.') - 1;
     int index = 1;
     while(count > 0)
     {

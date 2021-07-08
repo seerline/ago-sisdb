@@ -42,6 +42,10 @@ static inline int sis_strcpy(char *out_, size_t olen_, const char *in_)
 
 static inline int sis_strncpy(char *out_, size_t olen_, const char *in_, size_t ilen_)
 {
+	if (out_) 
+	{
+		out_[0] = 0;
+	}
 	if (!in_ || !out_ || ilen_ <= 0)
 	{
 		return 0;

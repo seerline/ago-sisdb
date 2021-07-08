@@ -334,14 +334,14 @@ void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 		sis_strcpy(out_, olen_, in_);
 	}
 }
-int sis_str_substr_nums(const char *s, char c)
+int sis_str_substr_nums(const char *s, size_t ilen_, char c)
 {
 	if (!s)
 	{
 		return 0;
 	}
 	int i, len, count;
-	len = (int)strlen(s);
+	len = (int)ilen_;
 	for (i = 0, count = 0; i < len; i++)
 	{
 		if (s[i] == c)

@@ -67,7 +67,7 @@ int sis_strsub(char *big_, char *small_);
 bool sis_str_method(const char *minfo_, char *mname_, size_t mlen_, char *param_, size_t plen_);
 
 int sis_str_pos(const char *in_, size_t ilen_, char c);
-int sis_str_substr_nums(const char *s, char c);
+int sis_str_substr_nums(const char *s, size_t ilen_, char c);
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);
 // 下面的函数，在比较时，如果s串前导字符和sub匹配就会返回真 可用于头字符比较
 int sis_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
