@@ -466,7 +466,7 @@ size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_)
     size_t size = 0;
     // 写 键表
     s_sis_sds msg = sis_disk_file_get_keys(cls_, true);
-    printf("new key:%s\n", msg);
+    // printf("new key:%s\n", msg);
     if (sis_sdslen(msg) > 2)
     {
         s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_KEY));
@@ -513,7 +513,7 @@ size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_)
 {
     size_t size = 0;
     s_sis_sds msg = sis_disk_file_get_sdbs(cls_, true);
-    printf("new sdb:%s\n", msg);
+    // printf("new sdb:%s\n", msg);
     if (sis_sdslen(msg) > 2)
     {
         s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_SDB));
