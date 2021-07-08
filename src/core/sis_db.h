@@ -65,8 +65,8 @@ typedef struct s_sis_subdb_unit
 {
 	s_sis_sds          kname;    
 	s_sis_dynamic_db  *db;     // 指针
-	s_sis_struct_list *vlist;  // 数据区
-	s_sis_struct_list *vmsec;  // 转化后的序列号 每条记录一个数
+	s_sis_node_list *vlist;  // 数据区
+	s_sis_node_list *vmsec;  // 转化后的序列号 每条记录一个数
 	struct s_sis_subdb_unit *next;  // 下一个 unit 按第一个vmsec确定位置
 	struct s_sis_subdb_unit *prev;  // 下一个 unit 按第一个vmsec确定位置
 } s_sis_subdb_unit;
@@ -102,11 +102,23 @@ s_sis_subdb_cxt *sis_subdb_cxt_create();
 void sis_subdb_cxt_destroy(s_sis_subdb_cxt *);
 
 void sis_subdb_cxt_clear(s_sis_subdb_cxt *);
-
-// void sis_subdb_cxt_set_keys(s_sis_subdb_cxt *, s_sis_sds );
+// 以下直接传入结构体 自动解析
+// sis_subdb_cxt_init_sdbs
+// sis_subdb_cxt_push_sdbs
+// ...
 void sis_subdb_cxt_init_sdbs(s_sis_subdb_cxt *, const char *,size_t);
+void sis_subdb_cxt_push_sdbs(s_sis_subdb_cxt *, const char *key_, void *in_, size_t ilen_);
+// 以下传入自由数据
+// sis_subdb_cxt_init_data
+// sis_subdb_cxt_init_data
+// sis_subdb_cxt_init_data
+// sis_subdb_cxt_push_data
+// ...
+// 初始化数据名 和数据记录大小
+void sis_subdb_cxt_init_data(s_sis_subdb_cxt *, const char *name_, size_t size_);
+// 传入数据 必须设置数据微秒时间 仅仅跟一条数据
+void sis_subdb_cxt_push_data(s_sis_subdb_cxt *, const char *name_, msec_t msec_, void *in_, size_t ilen_);
 
-void sis_subdb_cxt_add_data(s_sis_subdb_cxt *, const char *key_, void *in_, size_t ilen_);
 // 开始订阅
 void sis_subdb_cxt_sub_start(s_sis_subdb_cxt *);
 // 结束或中断订阅

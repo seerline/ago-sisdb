@@ -225,7 +225,7 @@ int sis_file_csv_read_sub(const char *name_, char c_, void *cb_source, sis_metho
 	s_sis_memory *memory = sis_memory_create();
 	while (1)
 	{
-		size_t bytes = sis_memory_readfile(memory, o->fp, SIS_MEMORY_SIZE);
+		size_t bytes = sis_memory_readfile(memory, o->fp, SIS_MEMORY_SIZE * 1024);
 		if (bytes <= 0)
 		{
 			break;

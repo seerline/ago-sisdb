@@ -191,14 +191,27 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	LOG(5)("dyna->size ---%s %d %p\n", dyna->name, dyna->size, dyna);
 	return dyna;
 }
+s_sis_dynamic_db *sis_dynamic_db_create_none(const char *name_, size_t size_)
+{	
+	s_sis_dynamic_db *dyna = SIS_MALLOC(s_sis_dynamic_db, dyna);
+	dyna->name = sis_sdsnew(name_);
+	dyna->size = size_; 
+	return dyna;
+}
 
 void sis_dynamic_db_destroy(void *db_)
 {
 	s_sis_dynamic_db *db = (s_sis_dynamic_db *)db_;
 	// printf("dyna->free --- %s \n", db->name);
 	sis_sdsfree(db->name);
-	sis_map_list_destroy(db->fields);
-	sis_pointer_list_destroy(db->field_solely);
+	if (db->fields)
+	{
+		sis_map_list_destroy(db->fields);
+	}
+	if (db->field_solely)
+	{
+		sis_pointer_list_destroy(db->field_solely);
+	}
 	sis_free(db);
 }
 

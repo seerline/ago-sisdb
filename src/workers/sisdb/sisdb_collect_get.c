@@ -313,7 +313,7 @@ bool sisdb_collect_trans_of_count(s_sisdb_collect *collect_, int *start_, int *c
 	}
 	if (*count_ < 0)
 	{
-		*count_ = abs(*count_);
+		*count_ = sis_abs(*count_);
 		if (*count_ > (*start_ + 1))
 		{
 			*count_ = *start_ + 1;

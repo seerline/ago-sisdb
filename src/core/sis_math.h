@@ -29,6 +29,8 @@
 //限制返回值a在某个区域内
 #define  sis_between(a,min,max)    (((a) < (min)) ? (min) : (((a) > (max)) ? (max) : (a)))
 
+#define sis_abs(a) ((a) < 0 ? -1 * (a) : (a))
+
 static inline int64 sis_zoom10(int n)  // 3 ==> 1000
 {
 	int64 o = 1;

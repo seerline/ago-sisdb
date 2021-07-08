@@ -267,6 +267,8 @@ void sis_node_list_clear(s_sis_node_list *list_);
 int   sis_node_list_push(s_sis_node_list *, void *in_);
 void *sis_node_list_get(s_sis_node_list *, int index_);
 
+void *sis_node_list_pop(s_sis_node_list *);
+
 int   sis_node_list_get_size(s_sis_node_list *);
 #ifdef __cplusplus
 }

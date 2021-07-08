@@ -377,6 +377,27 @@ void *sis_node_list_get(s_sis_node_list *list_, int index_)
 		return NULL;
 	}
 }
+void *sis_node_list_pop(s_sis_node_list *list_)
+{
+	s_sis_struct_list *node = NULL;
+	for (int i = 0; i < list_->nodes->count; i++)
+	{
+		node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, i);
+		if (node->count == 0)
+		{
+			node = NULL;
+		}
+		else
+		{
+			break;
+		}
+	}
+	if (!node)
+	{
+		return NULL;
+	}
+	return sis_struct_list_pop(node);
+}
 
 int   sis_node_list_get_size(s_sis_node_list *list_)
 {

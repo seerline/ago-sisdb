@@ -615,7 +615,7 @@ int _sis_disk_read_hid_sno(s_sis_disk_class *cls_, s_sis_disk_index_unit *iunit_
     }
     char key[255];
     sis_sprintf(key, 255, "%s.%s", SIS_OBJ_SDS(kdict->name), SIS_OBJ_SDS(sdict->name));
-    sis_subdb_cxt_add_data(_subdb_cxt, key, sis_memory(omem_), sis_memory_get_size(omem_));
+    sis_subdb_cxt_push_sdbs(_subdb_cxt, key, sis_memory(omem_), sis_memory_get_size(omem_));
     return 1;
 }
  
