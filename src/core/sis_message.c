@@ -13,9 +13,6 @@ void _sis_message_unit_free(void *unit_)
         // printf("free msg :%p\n", unit->value);
         sis_sdsfree((s_sis_sds)unit->value);
         break;
-    case SIS_MESSGE_TYPE_STRLIST:
-        sis_string_list_destroy(unit->value);
-        break;
     case SIS_MESSGE_TYPE_OWNER:
         if (unit->free)
         {
@@ -77,13 +74,6 @@ void sis_message_set_str(s_sis_message *msg_, const char* key_, char *in_, size_
     unit->value = sis_sdsnewlen(in_, ilen_);
     sis_map_pointer_set(msg_, key_, unit);
 }
-// void sis_message_set_strlist(s_sis_message *msg_, const char* key_, s_sis_string_list *list_)
-// {
-//     s_sis_message_unit *unit = SIS_MALLOC(s_sis_message_unit, unit);
-//     unit->style = SIS_MESSGE_TYPE_STRLIST;
-//     unit->value = list_;
-//     sis_map_pointer_set(msg_, key_, unit);
-// }
 
 void sis_message_set_method(s_sis_message *msg_, const char *key_, sis_method_define *method_)
 {
@@ -148,15 +138,7 @@ s_sis_sds sis_message_get_str(s_sis_message *msg_, const char *key_)
     }
     return NULL;
 }
-// s_sis_string_list *sis_message_get_strlist(s_sis_message *msg_, const char *key_)
-// {
-//     s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_, key_);
-//     if (unit && unit->style == SIS_MESSGE_TYPE_STRLIST)
-//     {
-//         return (s_sis_string_list *)unit->value;
-//     }
-//     return NULL;
-// }
+
 sis_method_define *sis_message_get_method(s_sis_message *msg_, const char *key_)
 {
     s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_, key_);
@@ -177,3 +159,46 @@ void *sis_message_get(s_sis_message *msg_, const char *key_)
     return NULL;
 }
 
+#if 0
+// test speed
+#include "sis_math.h"
+#include "sis_time.h"
+int main()
+{
+    const char *keys[10] = {
+        "sh000001", "sh000011","sh001001","sh010001","sh100001",
+        "sz000001", "sz000011","sz001001","sz010001","sz100001",
+    };
+    sis_init_random();
+    int count = 1000*1000;
+    int mod = count/10;
+    msec_t nowmsec = sis_time_get_now_msec();
+    for (int i = 0; i < count; i++)
+    {
+        int index = sis_int_random(0,9);
+        if (i%mod==0)
+        {
+            printf("%10d : %10d : %s\n", i, index, keys[index]);
+        }
+    }
+    printf("cost : %lld\n", sis_time_get_now_msec() - nowmsec);
+
+    s_sis_message *msg = sis_message_create();
+    for (int i = 0; i < 10; i++)
+    {
+        sis_message_set(msg, keys[i], (void *)keys[i], NULL);
+    }
+    nowmsec = sis_time_get_now_msec();
+    for (int i = 0; i < count; i++)
+    {
+        const char *key = sis_message_get(msg, keys[i%10]);
+        if (i%mod==0)
+        {
+            printf("%10d : %s\n", i, key);
+        }
+    }
+    printf("cost : %lld\n", sis_time_get_now_msec() - nowmsec);
+    sis_message_destroy(msg);
+    return 0;
+}
+#endif

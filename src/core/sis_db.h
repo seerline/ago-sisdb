@@ -36,6 +36,25 @@ typedef struct s_sis_db_chars
 	void         *data;     
 } s_sis_db_chars;
 
+typedef struct s_sis_db_bytes
+{
+	int        kidx;
+	int        sidx;
+	uint32     size;
+	void      *data;     
+} s_sis_db_bytes;
+
+typedef struct s_sis_db_incrzip
+{
+	uint8      init;
+	uint32     size;
+	void      *data;     
+} s_sis_db_incrzip;
+
+#define SIS_DB_STREAM_CHARS    1
+#define SIS_DB_STREAM_BYTES    2
+#define SIS_DB_STREAM_INCRZIP  3
+
 // 得到参数中是字符串还是字节流
 int sis_db_get_format(s_sis_sds argv_);
 // 得到格式

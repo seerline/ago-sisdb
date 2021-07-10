@@ -115,7 +115,7 @@ typedef struct s_sis_dynamic_db {
     // 描述结构体的标志符号 // 类别 . 名称 . 版本 
 	s_sis_sds                 name;     
 	s_sis_map_list           *fields;         // 字段信息 s_sis_dynamic_field
-    unsigned short            size;           // 结构总长度
+    unsigned int              size;           // 结构总长度
     s_sis_dynamic_field      *field_time;     // 时间对应字段 根据字段类型对应 仅仅有一个
 	s_sis_dynamic_field      *field_mindex;   // 主索引字段 字段索引 仅仅有一个
 	s_sis_pointer_list       *field_solely;   // 唯一性字段集合 字段索引  

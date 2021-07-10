@@ -119,11 +119,11 @@ void sis_incrzip_set_bags(s_sis_incrzip_class *s_)
     }
     sis_bits_stream_restore(s_->cur_stream);
 }
-uint8 *_sis_incrzip_get_curmem(s_sis_incrzip_class *s_, int kid_, s_sis_incrzip_dbinfo *info_)
+uint8 *_sis_incrzip_get_curmem(s_sis_incrzip_class *s_, int kidx_, s_sis_incrzip_dbinfo *info_)
 {
-    if (info_ && kid_ < (int)s_->cur_keys)
+    if (info_ && kidx_ < (int)s_->cur_keys)
     {
-        return s_->cur_memory + kid_ * s_->sumdbsize + info_->offset;
+        return s_->cur_memory + kidx_ * s_->sumdbsize + info_->offset;
     }
     return NULL; 
 }
@@ -319,18 +319,18 @@ int sis_incrzip_compress(s_sis_incrzip_class *s_, char *in_, size_t ilen_, s_sis
 }
 
 // 如果压缩长度大于原始数据长度 就用原始数据 第一位0表示原始数据 1 表示压缩数据
-int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kid_, int sid_, char *in_, size_t ilen_)
+int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kidx_, int sidx_, char *in_, size_t ilen_)
 {
     if (s_->status != SIS_SIC_STATUS_ENCODE)
     {
         return -1;
     }
-    s_sis_incrzip_dbinfo *info = (s_sis_incrzip_dbinfo *)sis_pointer_list_get(s_->dbinfos, sid_);
+    s_sis_incrzip_dbinfo *info = (s_sis_incrzip_dbinfo *)sis_pointer_list_get(s_->dbinfos, sidx_);
     if (!info)
     {
         return -2;
     }
-    uint8 *buffer = _sis_incrzip_get_curmem(s_, kid_, info);
+    uint8 *buffer = _sis_incrzip_get_curmem(s_, kidx_, info);
     if (!buffer)
     {
         return -3;
@@ -355,7 +355,7 @@ int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kid_, int sid_, char 
         _incrzip_compress_next(s_);
     } 
 
-    _incrzip_compress(s_, buffer, kid_, sid_, count, info, in_, ilen_);
+    _incrzip_compress(s_, buffer, kidx_, sidx_, count, info, in_, ilen_);
     // sis_out_binary("one", s_->zip_memory, sis_incrzip_getsize(s_));
 
     return s_->zip_bags;
@@ -365,6 +365,7 @@ int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kid_, int sid_, char 
 ///////////////////
 // 解压缩相关
 ///////////////////
+// 获取数据包数量 默认最后4个字节为包数量
 int  sis_incrzip_get_bags(s_sis_incrzip_class *s_)
 {
     // 解压时 maxsize就是数据大小

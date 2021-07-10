@@ -1,145 +1,147 @@
-[
-  {
-    cmd   : create,  # 新建一个定制的数据集 
-    sdb   : after,   # 名字为after的数据集合
-    argv  : {
-      save-time : 400,       # 每天4点进行 数据清理和保存 # 没有该字段默认换天清理和保存
-      wlog: {                # 记录每条write信息
-        work-path : "data/"  # 这里定义会覆盖默认路径
-      },
-      wfile: {               # 写文件只从wlog读取数据 然后合并磁盘数据写盘
-        safe-path : "safe/", # 写文件的安全路径 这里定义会覆盖默认路径
-        work-path : "data/"  # 这里定义会覆盖默认路径
-      },
-      rfile: {               # 读文件配置
-        work-path : "data/"  # 这里定义会覆盖默认路径
-      },
-      style : sisdb  # 默认sisdb模式 还有memdb snodb两种模式 存储数据方式不同
-    }
-  },
+# 转换成net message直接处理 
+# sisdb-server 启动后 可使用初始化功能单独执行该脚本
+
+{
+  command   : create,  # 新建一个服务 
+  service   : access,   # 服务的名称
+  ask       : { 
+    classname : auth   # 权限管理服务类名
+  }
+}
+
+{
+  command   : create,  # 新建一个服务 
+  service   : after,   # 服务的名称
+  ask       : { 
+    save-time : 400,   # 每天4点进行 数据清理和保存 # 没有该字段默认换天清理和保存
+    classname : sisdb   # 权限管理服务类名
+  }
+}
 # 数据类型
 # I - 有符号整数 U - 无符号整数 C - 字符型 F - 浮点数 
 # W - 微秒  T - 毫秒  S - 秒   M - 分钟   D - 日期
 # 是否索引(不重复字段)
 # I - 表示以此为索引 O - 表示不可重复 IO - 表示即是索引又不可重复
-  {
-    cmd   : create_sdb,
-    # sdb   : info,      # 默认创建一个sisdb模式,名字为sisdb的数据集合 表名为info
-    sdb   : after.stk_info,  # 如果设置 sname.info 默认创建一个sisdb模式,名字为sname的数据集合 表名为info
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        code     : [C, 16, 1, 0, O],    # SH600600
-        name     : [C, 64],     # 青岛啤酒
-        market   : [C,  3],     # SH
-        type     : [U,  1],     # 类型
-        point    : [U,  1],     # 小数点 默认为 2
-        pzoom    : [U,  1],     # 价格最小分辨率 价格都要除以10^pzoom才是真正的价格 默认为 3
-        vunit    : [U,  1]      # 成交量单位 量都要乘以10^vunit才是真正的量 默认为 2 指数为 4 
-      }
-    }
-  },
-  {
-    cmd   : create_sdb,
-    sdb   : after.stk_min,  # 分钟线
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        time     : [M,  4, 1, 0, IO],     # 分钟
-        open     : [U,  4],     # 开盘价/ 10^pzoom
-        high     : [U,  4],     # 最高价/ 10^pzoom
-        low      : [U,  4],     # 最低价/ 10^pzoom
-        newp     : [U,  4],     # 收盘价/ 10^pzoom
-        volume   : [U,  4],     # 成交总量 * 10^vunit
-        money    : [U,  4]      # 成交总金额= * 10^vunit
-      }
-    }
-  },
-  {
-    cmd   : create_sdb,
-    sdb   : after.stk_day,  # 日线
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        time     : [D,  4, 1, 0, IO],     # 日期
-        open     : [U,  4],     # 开盘价/ 10^pzoom
-        high     : [U,  4],     # 最高价/ 10^pzoom
-        low      : [U,  4],     # 最低价/ 10^pzoom
-        newp     : [U,  4],     # 收盘价/ 10^pzoom
-        volume   : [U,  4],     # 成交总量 * 10^vunit
-        money    : [U,  4]      # 成交总金额= * 10^vunit
-      }
-    }
-  },
-  {
-    cmd   : create_sdb,
-    sdb   : after.stk_right,  # 除权
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        time      : [D,  4, 1, 0, IO],  # 日期
-        sgs       : [I,  4],  # 每十股送股数(股)  (*1000)
-        pgs       : [I,  4],  # 每十股配股数(股)  (*1000)
-        pgj       : [I,  4],  # 配股价(元)       (*1000)
-        pxs       : [I,  4]   # 每十股派息数(元)  (*1000)
-      }
-    }
-  },
-  {
-    cmd   : create_sdb,
-    sdb   : after.stk_finance,  # 基本财务报表
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        time   : [D,  4, 1, 0, IO],  # 日期
-        ssrq   : [U,  4],        # 上市日期(年月日)
-        zgb    : [U,  4],        # 总股本(百股)
-        ltag   : [U,  4],        # 流通A股(百股)
-        mgsy   : [F,  4, 1, 4],  # 每股收益(元)
-        mgjzc  : [F,  4, 1, 4],  # 每股净资产(元) 
-        jzcsyl : [F,  4, 1, 2],  # 净资产收益率(%) 
-        mggjj  : [F,  4, 1, 2],  # 每股公积金
-        mgwfp  : [F,  4, 1, 4],  # 每股未分配利润
-        mgxj   : [F,  4, 1, 4],  # 每股现金
-        yysr   : [I,  4],        # 营业收入(万元)  
-        jlr    : [I,  4],        # 净利润(万元)
-        tzsy   : [I,  4],        # 投资收益(万元) 
-        yszk   : [I,  4],        # 应收账款(万元)  
-        hbzj   : [I,  4],        # 货币资金(万元)  -- 总现金
-        ldzj   : [I,  4],        # 流动资金(万元)  -- 总现金
-        sykc   : [I,  4]         # 剩余库存(万元)   
-      }
-    }
-  },
-  {
-    cmd   : create_sdb,
-    sdb   : after.bkinfo,  # 板块信息 BK000000
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        code    : [C, 9, 1, 0, O],    # key值是market+code的组合，
-        name    : [C, 32] 
-      }
-    }
-  },
-  {
-    cmd   : create_sdb,
-    sdb   : after.bkcodes,  # 板块中包含股票的信息
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        code    : [C, 9, 1, 0, O]    # key值是market+code的组合，
-      }
-    }
-  },
-  {
-    cmd   : create_sdb,
-    sdb   : after.bkinside,  # 日线
-    argv  : {
-      fields: {
-        # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
-        code    : [C, 9, 1, 0, O]    # key值是market+code的组合，
-      }
+
+{
+  command   : new,     # 新建一个表 命令集跟随 service 的实际支持
+  service   : after,   # 服务的名称
+  ask       : { 
+    name      : info,  # 表的名字
+    fields: {          # 表的字段
+      # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+      code     : [C, 16, 1, 0, O],    # SH600600
+      name     : [C, 64],     # 青岛啤酒
+      market   : [C,  3],     # SH
+      type     : [U,  1],     # 类型
+      point    : [U,  1],     # 小数点 默认为 2
+      pzoom    : [U,  1],     # 价格最小分辨率 价格都要除以10^pzoom才是真正的价格 默认为 3
+      vunit    : [U,  1]      # 成交量单位 量都要乘以10^vunit才是真正的量 默认为 2 指数为 4 
     }
   }
-]
+}
+
+#   {
+#     cmd   : create_sdb,
+#     sdb   : after.stk_min,  # 分钟线
+#     argv  : {
+#       fields: {
+#         # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+#         time     : [M,  4, 1, 0, IO],     # 分钟
+#         open     : [U,  4],     # 开盘价/ 10^pzoom
+#         high     : [U,  4],     # 最高价/ 10^pzoom
+#         low      : [U,  4],     # 最低价/ 10^pzoom
+#         newp     : [U,  4],     # 收盘价/ 10^pzoom
+#         volume   : [U,  4],     # 成交总量 * 10^vunit
+#         money    : [U,  4]      # 成交总金额= * 10^vunit
+#       }
+#     }
+#   },
+#   {
+#     cmd   : create_sdb,
+#     sdb   : after.stk_day,  # 日线
+#     argv  : {
+#       fields: {
+#         # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+#         time     : [D,  4, 1, 0, IO],     # 日期
+#         open     : [U,  4],     # 开盘价/ 10^pzoom
+#         high     : [U,  4],     # 最高价/ 10^pzoom
+#         low      : [U,  4],     # 最低价/ 10^pzoom
+#         newp     : [U,  4],     # 收盘价/ 10^pzoom
+#         volume   : [U,  4],     # 成交总量 * 10^vunit
+#         money    : [U,  4]      # 成交总金额= * 10^vunit
+#       }
+#     }
+#   },
+#   {
+#     cmd   : create_sdb,
+#     sdb   : after.stk_right,  # 除权
+#     argv  : {
+#       fields: {
+#         # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+#         time      : [D,  4, 1, 0, IO],  # 日期
+#         sgs       : [I,  4],  # 每十股送股数(股)  (*1000)
+#         pgs       : [I,  4],  # 每十股配股数(股)  (*1000)
+#         pgj       : [I,  4],  # 配股价(元)       (*1000)
+#         pxs       : [I,  4]   # 每十股派息数(元)  (*1000)
+#       }
+#     }
+#   },
+#   {
+#     cmd   : create_sdb,
+#     sdb   : after.stk_finance,  # 基本财务报表
+#     argv  : {
+#       fields: {
+#         # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+#         time   : [D,  4, 1, 0, IO],  # 日期
+#         ssrq   : [U,  4],        # 上市日期(年月日)
+#         zgb    : [U,  4],        # 总股本(百股)
+#         ltag   : [U,  4],        # 流通A股(百股)
+#         mgsy   : [F,  4, 1, 4],  # 每股收益(元)
+#         mgjzc  : [F,  4, 1, 4],  # 每股净资产(元) 
+#         jzcsyl : [F,  4, 1, 2],  # 净资产收益率(%) 
+#         mggjj  : [F,  4, 1, 2],  # 每股公积金
+#         mgwfp  : [F,  4, 1, 4],  # 每股未分配利润
+#         mgxj   : [F,  4, 1, 4],  # 每股现金
+#         yysr   : [I,  4],        # 营业收入(万元)  
+#         jlr    : [I,  4],        # 净利润(万元)
+#         tzsy   : [I,  4],        # 投资收益(万元) 
+#         yszk   : [I,  4],        # 应收账款(万元)  
+#         hbzj   : [I,  4],        # 货币资金(万元)  -- 总现金
+#         ldzj   : [I,  4],        # 流动资金(万元)  -- 总现金
+#         sykc   : [I,  4]         # 剩余库存(万元)   
+#       }
+#     }
+#   },
+#   {
+#     cmd   : create_sdb,
+#     sdb   : after.bkinfo,  # 板块信息 BK000000
+#     argv  : {
+#       fields: {
+#         # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+#         code    : [C, 9, 1, 0, O],    # key值是market+code的组合，
+#         name    : [C, 32] 
+#       }
+#     }
+#   },
+#   {
+#     cmd   : create_sdb,
+#     sdb   : after.bkcodes,  # 板块中包含股票的信息
+#     argv  : {
+#       fields: {
+#         # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+#         code    : [C, 9, 1, 0, O]    # key值是market+code的组合，
+#       }
+#     }
+#   },
+#   {
+#     cmd   : create_sdb,
+#     sdb   : after.bkinside,  # 日线
+#     argv  : {
+#       fields: {
+#         # 字段名 | 数据类型 | 长度 | 数量(默认为1) | 小数点(默认为0) | 是否索引(不重复字段)
+#         code    : [C, 9, 1, 0, O]    # key值是market+code的组合，
+#       }
+#     }
+#   }
+# ]

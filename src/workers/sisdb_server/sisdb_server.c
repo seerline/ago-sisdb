@@ -81,7 +81,7 @@ bool sisdb_server_init(void *worker_, void *argv_)
     if (authnode)
     {
         context->user_auth = sis_map_pointer_create_v(sis_free_call);
-        context->user_access = sis_map_key_int_create(); // 不用释放
+        context->user_access = sis_map_kint_create(); // 不用释放
         s_sis_json_node *next = sis_json_first_node(authnode);
         while(next)
         {
@@ -197,7 +197,7 @@ void sisdb_server_uninit(void *worker_)
     }
     if (context->user_auth)
     {
-        sis_map_key_int_destroy(context->user_access);
+        sis_map_kint_destroy(context->user_access);
         sis_map_pointer_destroy(context->user_auth);
     }
     if (context->converts)
@@ -335,7 +335,7 @@ int sisdb_server_get_access(s_sisdb_server_cxt *context, s_sis_net_message *netm
     {
         return SIS_METHOD_ACCESS_ADMIN;
     }
-    s_sisdb_userinfo *info = sis_map_key_int_get(context->user_access, netmsg->cid);
+    s_sisdb_userinfo *info = sis_map_kint_get(context->user_access, netmsg->cid);
     return info->access;
 }
 bool sisdb_check_method_access(s_sis_method *method, int access)
@@ -487,7 +487,7 @@ bool sisdb_server_check_auth(s_sisdb_server_cxt *context, s_sis_net_message *net
     {
         return true;
     }
-    s_sisdb_userinfo *info = sis_map_key_int_get(context->user_access, netmsg->cid);
+    s_sisdb_userinfo *info = sis_map_kint_get(context->user_access, netmsg->cid);
     if (!info)
     {
         return false;
@@ -498,14 +498,14 @@ void sisdb_server_decr_auth(s_sisdb_server_cxt *context, int cid_)
 {
     if (context->user_auth)
     {
-        sis_map_key_int_del(context->user_access, cid_);
+        sis_map_kint_del(context->user_access, cid_);
     }
 }
 void sisdb_server_incr_auth(s_sisdb_server_cxt *context, int cid, s_sisdb_userinfo *info)
 {
     if (context->user_auth)
     {
-        sis_map_key_int_set(context->user_access, cid, info);
+        sis_map_kint_set(context->user_access, cid, info);
     }
 }
 int cmd_sisdb_server_auth(void *worker_, void *argv_)

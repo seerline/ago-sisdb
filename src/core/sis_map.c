@@ -264,18 +264,18 @@ int sis_map_int_set(s_sis_map_int *map_, const char *key_, int64 value_)
 	return sis_dict_set_int(map_, (void *)key_, value_);
 }
 //////////////////////////////////////////
-//  s_sis_map_key_int 基础定义
+//  s_sis_map_kint 基础定义
 //////////////////////////////////////////
 
-s_sis_map_key_int *sis_map_key_int_create()
+s_sis_map_kint *sis_map_kint_create()
 {
 	s_sis_dict_type *type = SIS_MALLOC(s_sis_dict_type, type);
 	memmove(type, &_sis_dict_type_int_key_s, sizeof(s_sis_dict_type));
-	s_sis_map_key_int *map = sis_dict_create(type, NULL);
+	s_sis_map_kint *map = sis_dict_create(type, NULL);
 	return map;
 
 }
-void *sis_map_key_int_get(s_sis_map_key_int *map_, int64 key_)
+void *sis_map_kint_get(s_sis_map_kint *map_, int64 key_)
 {
 	if (!map_)
 	{
@@ -289,12 +289,12 @@ void *sis_map_key_int_get(s_sis_map_key_int *map_, int64 key_)
 	return sis_dict_getval(he);
 
 }
-int sis_map_key_int_set(s_sis_map_key_int *map_, int64 key_, void *val_)
+int sis_map_kint_set(s_sis_map_kint *map_, int64 key_, void *val_)
 {
 	sis_dict_replace(map_, (void *)&key_, val_);	
 	return 0;
 }
-void sis_map_key_int_del(s_sis_map_key_int *map_, int64 key_)
+void sis_map_kint_del(s_sis_map_kint *map_, int64 key_)
 {
 	sis_dict_delete(map_, (void *)&key_);
 }
@@ -446,28 +446,28 @@ int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
 int main()
 {
 	safe_memory_start();
-	s_sis_map_key_int *map = sis_map_key_int_create();
+	s_sis_map_kint *map = sis_map_kint_create();
 	map->type->vfree = sis_free_call;
 
 	{
 		char *str = sis_malloc(200);
 		sis_sprintf(str, 100, "123456");
-		sis_map_key_int_set(map, 0, str);
+		sis_map_kint_set(map, 0, str);
 		printf("in %p %p\n", map, str);
-		char *sss = sis_map_key_int_get(map, 0);
+		char *sss = sis_map_kint_get(map, 0);
 		printf("out %p %p\n", map, sss);
 	}
 
 	{
 		char *str = sis_malloc(200);
 		sis_sprintf(str, 100, "654321");
-		sis_map_key_int_set(map, 0, str);
+		sis_map_kint_set(map, 0, str);
 		printf("in %p %p\n", map, str);
-		char *sss = sis_map_key_int_get(map, 0);
+		char *sss = sis_map_kint_get(map, 0);
 		printf("out %p %p\n", map, sss);
 	}
 
-	sis_map_key_int_destroy(map);
+	sis_map_kint_destroy(map);
 	safe_memory_stop();
 }
 

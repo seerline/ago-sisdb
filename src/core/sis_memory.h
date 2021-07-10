@@ -6,7 +6,7 @@
 #include <sis_malloc.h>
 #include <sis_str.h>
 
-#define SIS_MEMORY_SIZE  32768  // read buffer size
+#define SIS_MEMORY_SIZE  65536  // read buffer size
 // 传说中32K读取文件速度最快，千万不要改大了
 // 64位机似乎64K更快
 
@@ -28,6 +28,8 @@ s_sis_memory *sis_memory_create_size(size_t size_);
 void sis_memory_destroy(void *);
 
 void sis_memory_clone(s_sis_memory *src_, s_sis_memory *des_);
+
+void sis_memory_swap(s_sis_memory *m1_, s_sis_memory *m2_);
 
 void sis_memory_pack(s_sis_memory *m_);
 void sis_memory_clear(s_sis_memory *m_);

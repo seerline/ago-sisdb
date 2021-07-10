@@ -95,6 +95,7 @@ const char *sis_str_parse(const char *src_, const char *sign_, char *out_, size_
 bool sis_str_get_id(char *out_, size_t olen_);
 // olen < 16 返回
 // bool sis_str_get_id_long(char *out_, size_t olen_);
+void sis_str_get_random(char *out_, size_t olen_);
 
 bool sis_str_get_time_id(char *out_, size_t olen_);
 

@@ -17,14 +17,14 @@
 // 'D'  日  数据 4 
 
 // 每条命令的三种权限 具备写权限的才保留
-#define SISDB_ACCESS_READ       0
-#define SISDB_ACCESS_WRITE      1
-#define SISDB_ACCESS_PUBLISH    2   // 发布信息权限
-#define SISDB_ACCESS_ADMIN      7   // 超级用户 全部权限
+#define SIS_ACCESS_READ       0
+#define SIS_ACCESS_WRITE      1
+#define SIS_ACCESS_PUBLISH    2   // 发布信息权限
+#define SIS_ACCESS_ADMIN      7   // 超级用户 全部权限
 
-#define SISDB_ACCESS_SREAD       "read"   // read
-#define SISDB_ACCESS_SWRITE      "write"  // set sets
-#define SISDB_ACCESS_SADMIN      "admin"  // del pack save 
+#define SIS_ACCESS_SREAD       "read"   // read
+#define SIS_ACCESS_SWRITE      "write"  // set sets
+#define SIS_ACCESS_SADMIN      "admin"  // del pack save 
 
 #define SISDB_MAX_GET_SIZE   0xFFFF  // 最大数据块月64K 超过就启动线程 异步去发送
 

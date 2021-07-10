@@ -590,6 +590,15 @@ bool sis_str_get_time_id(char *out_, size_t olen_)
 	return true;
 }
 
+void sis_str_get_random(char *out_, size_t olen_)
+{
+	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+	int maxsize = (int)strlen(sign);
+	for (int i = 0; i < olen_; i++)
+	{
+		out_[i] = sign[rand() % maxsize];
+	}
+}
 bool sis_str_get_id(char *out_, size_t olen_)
 {
 	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";

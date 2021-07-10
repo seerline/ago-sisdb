@@ -4,6 +4,95 @@
 #include <sis_net.h>
 #include <sis_net.node.h>
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// 网络通讯协议 主要的关键字
+// ver     [非必要] 协议版本 默认 1.0
+// fmt     [必要] 数据格式 byte json http 二进制和json数据 为ws格式 http 会把请求和应答数据转换为标准http格式
+// name    [必要] 请求的名字 用户名+时间戳+序列号 唯一标志请求的名称 方便无状态接收数据
+// service [非必要]   对sisdb来说每个数据集都是一个service 这里指定去哪个service执行命令 http格式这里填路径
+// command [非必要]   我要干什么 
+// ask     [请求专用｜必要] 表示为请求包
+// ans     [应答专用｜必要] 表示为应答包
+// msg     [应答专用｜不必要] 表示为应答包
+// lnk     [不必要] 数据链路
+//////////////////////////////////////////////////////////////////////////////////////////
+// 对于 json 格式请求和应答
+// 例子 : 
+// command:login, ver: 1.0, fmt : bytes, ask : {name:guest, password: guest1234} // 登陆 以二进制格式返回数据
+//     默认格式为JSON字符串返回数据 需要支持二进制转BASE64 GBK格式字符串转UTF8才能写入返回数据
+//     如果是二进制返回 有什么数据写入什么数据
+// 
+// 任何时候的命令 如果带了
+// service:sisdb, command:create, ask:{ key: sh600600, sdb:info, fields:{...}}
+// service:sisdb, command:set,    ask:{ key: sh600600, sdb:info, data:{...}}
+// service:sisdb, command:get,    ask:{ key: sh600600, sdb:info, fields:{...}}
+// service:sisdb, command:sub,    ask:{ key: sh600600, sdb:info, fields:{...}}
+// ---- 应答 ----
+// ans : -1,  msg : xxxxx    # 表示失败 msg为失败原因 
+// ans :  0,                 # 表示成功 
+// ans :  1,  msg : 10       # 表示成功 msg中数据为整数
+// ans :  2,  msg : xxxxx    # 表示成功 msg中数据为字符串  
+// ans :  3,  msg : []       # 表示成功 msg中数据为1维array  
+// ans :  4,  msg : [[]]     # 表示成功 msg中数据为2维array  
+// ans :  5,  msg : {}       # 表示成功 msg中数据为json 
+// ans :  6,  msg : xxxx     # 表示成功 msg中数据为base64格式的二进制流
+//////////////////////////////////////////////////////////////////////////////////////////
+// 对于 二进制 格式请求和应答
+// name: + 数据 (name为空时只有而且必须有冒号) 方便数据快速发布
+// fmt体现在数据区的第一个字符 除B,J,H外暂不支持其他字符
+// *** 首字符为 B | 二进制格式 
+// *** 首字符为 { | JSON格式 
+// *** 首字符为 H ｜ HTTP格式 ..... 或者redis首字符为R
+// name不压缩以 : 分隔 方便数据广播
+// 一个字节表示 具备哪些字符 
+// ｜ 0 1 2 3 4 5 6 7 ｜
+//  0 --> 0 无扩展字段  1 表示有扩展字段
+//  1 --> 0 表示请求   1 表示应答
+//  10000000   -- > 是否有扩展字段 如果为 1 表示有扩展字段 后面跟1个字节表示扩展字段的个数
+//  01000000   -- > 应答包标记 - 表示该数据包为应答 如果其他字段都为0表示OK
+// ----------------------------  //
+//    000000   -- > 二进制数据 size + data
+//    000001   -- > 有 ver 字段
+//    000010   -- > 有 command
+//    000100   -- > 有 service
+//    001000   -- > 有 ask 字段
+//    010000   -- > 有 fmt 字段  // 只有请求包有该字段 要求返回的数据格式 
+//    100000   -- > 有 lnk 字段  // 表示来源路径 需要一级一级返回
+// ----------------------------  //
+//    000000   -- > 二进制数据 size+data
+//    000001   -- > 有 ver 字段
+//    000010   -- > 有 ans 字段
+//    000100   -- > 有 msg 字段
+//    001000   -- > 有 ask 字段 
+//    010000   -- > 备用
+//    100000   -- > 有 lnk 字段  // 表示返回路径 需要一级一级返回
+
+//  标准字段读完后 就需要读扩展字段 扩展字段最多255个
+//  标准字段格式 直接为数据区大小+数据区
+//  扩展字段格式 字段大小+字段名 数据区大小+数据区
+//////////////////////////////////////////////////////////////////////////////////////////
+// 对于http格式的请求和应答
+// 例如 https://api.com/data/v1/api/master/getSecID.json?assetClass=E&exchangeCD=XSHE,XSHG 
+// fmt = http
+// service = https://api.com/data/v1/api/master/ # 这里是链接的url 路由
+// command = getSecID.json  # 这里是api的方法
+// ask :{ assetClass: E, exchangeCD : "XSHE,XSHG", post:{...}, headers:{...}, ...}
+//       # ask 中 如果有 post字段表示 post 方式 否则以get方式获取数据
+//       # ask 中 如果有 headers字段表示 请求中国要增加 headers 字典中的内容
+// ---- 应答时 解析http返回数据为 JSON 应答格式----
+// 处理http流程：C端拼接标准json命令 传入中间件 如果fmt是http就解析为http请求包去获取数据 
+// 并解析返回数据为标准JSON应答格式数据提交给C端
+//////////////////////////////////////////////////////////////////////////////////////////
+
+// O为中间代理层 S为源头 C为接收
+// #define  SIS_NET_HID_OWNE         0x18  // SO 或 CO 的私有交互
+// #define  SIS_NET_HID_SUB          0x19  // C-->O 向O订阅需要的数据 以便O按需分配
+// #define  SIS_NET_HID_PUB          0x1A  // S-->O O缓存定量数据 数据随到随分发给 C 
+// #define  SIS_NET_HID_GET          0x1B  // C-->O 只能获取S端set的数据
+// #define  SIS_NET_HID_SET          0x1C  // S-->O O保存和更新该数据，等待C的get
+
+
+
 bool sis_net_is_ip4(const char *ip_)
 {
 	int size = sis_strlen(ip_);

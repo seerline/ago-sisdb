@@ -85,7 +85,7 @@ typedef struct s_sisdb_server_cxt
 	s_sis_map_pointer  *converts;       // 需要转换的表 (dataset+table) s_sis_pointer_list * --> s_sisdb_convert
 
 	s_sis_map_pointer  *user_auth;    // 用户账号密码 s_sisdb_userinfo 索引为 username
-	s_sis_map_key_int  *user_access;  // 用户权限信息 s_sisdb_userinfo 索引为 cid
+	s_sis_map_kint  *user_access;  // 用户权限信息 s_sisdb_userinfo 索引为 cid
 
 	bool                switch_wget;  // 设置后所有 get 会同时存盘 方便检查导出数据到文件
 

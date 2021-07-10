@@ -51,7 +51,7 @@ typedef struct s_sis_incrzip_class{
 	uint8                 status;       // 工作状态      
 	 
 	s_sis_pointer_list   *dbinfos;      // s_sis_incrzip_dbinfo
-	uint32                sumdbsize;       // 所有结构体的大小
+	uint32                sumdbsize;    // 所有结构体的大小
 	uint32                maxdbsize;    // 最大的结构体的大小
 
 	uint32                cur_keys;     // 最大key的数量 超出不处理
@@ -148,8 +148,6 @@ int sis_incrzip_uncompress(s_sis_incrzip_class *s_, char *cin_, size_t csize_, s
 //////////////////////
 //  多数据解开压缩
 //////////////////////
-// 获取数据包数量 默认最后4个字节为包数量
-int  sis_incrzip_get_bags(s_sis_incrzip_class *s_);
 // 设置解压回调
 int sis_incrzip_uncompress_start(s_sis_incrzip_class *, void *source_, cb_incrzip_decode *);
 // 解压 由于并不能事先知道解压的数据结构大小 所以

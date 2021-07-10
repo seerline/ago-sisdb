@@ -10,7 +10,7 @@
 #define s_sis_map_pointer s_sis_dict
 #define s_sis_map_int     s_sis_dict
 #define s_sis_map_sds     s_sis_dict
-#define s_sis_map_key_int s_sis_dict
+#define s_sis_map_kint    s_sis_dict
 
 // 定义一个指针类型的字典  string -- void*
 // 定义一个整数类型的字典  string -- int
@@ -90,13 +90,13 @@ s_sis_map_sds *sis_map_sds_create();
 int sis_map_sds_set(s_sis_map_sds *, const char *key_, char *val_);
 
 // key为整数
-s_sis_map_key_int *sis_map_key_int_create();
-#define sis_map_key_int_destroy sis_map_pointer_destroy
-#define sis_map_key_int_clear sis_map_pointer_clear
-void *sis_map_key_int_get(s_sis_map_key_int *, int64 );
-int sis_map_key_int_set(s_sis_map_key_int *, int64, void *value_);
-#define sis_map_key_int_getsize sis_dict_getsize
-void sis_map_key_int_del(s_sis_map_key_int *, int64);
+s_sis_map_kint *sis_map_kint_create();
+#define sis_map_kint_destroy sis_map_pointer_destroy
+#define sis_map_kint_clear sis_map_pointer_clear
+void *sis_map_kint_get(s_sis_map_kint *, int64 );
+int sis_map_kint_set(s_sis_map_kint *, int64, void *value_);
+#define sis_map_kint_getsize sis_dict_getsize
+void sis_map_kint_del(s_sis_map_kint *, int64);
 
 #ifdef __cplusplus
 }

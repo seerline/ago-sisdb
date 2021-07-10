@@ -31,9 +31,25 @@ void sis_memory_destroy(void *m_)
 }
 void sis_memory_clone(s_sis_memory *src_, s_sis_memory *des_)
 {
+	sis_memory_clear(des_);
 	sis_memory_cat(des_, sis_memory(src_), sis_memory_get_size(src_));
 }
-
+void sis_memory_swap(s_sis_memory *m1_, s_sis_memory *m2_)
+{
+	s_sis_memory m;
+	m.buffer    = m1_->buffer  ; 
+	m.size      = m1_->size    ; 
+	m.maxsize   = m1_->maxsize ; 
+	m.offset    = m1_->offset  ; 
+	m1_->buffer  = m2_->buffer  ; 
+	m1_->size    = m2_->size    ; 
+	m1_->maxsize = m2_->maxsize ; 
+	m1_->offset  = m2_->offset  ; 
+	m2_->buffer  = m.buffer  ; 
+	m2_->size    = m.size    ; 
+	m2_->maxsize = m.maxsize ; 
+	m2_->offset  = m.offset  ; 
+}
 // void sis_memory_pack(s_sis_memory *m_)
 // {
 // 	if (m_->val > m_->buffer)
@@ -54,7 +70,7 @@ void sis_memory_pack(s_sis_memory *m_)
 	{
 		return;
 	}
-	if (m_->offset > m_->size - 1)
+	if (m_->offset > m_->size - 1) // 数据用完
 	{
 		m_->size = 0;
 		m_->offset = 0;
