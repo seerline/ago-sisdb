@@ -323,6 +323,7 @@ s_sis_node_list *sis_node_list_create(int count_, int len_)
 	o->node_size = len_;
 	o->node_count = count_;
 	o->count = 0;
+	o->nouse = 0;
 
 	s_sis_struct_list *node = sis_struct_list_create(o->node_size);
 	sis_struct_list_set_size(node, o->node_count);
@@ -344,6 +345,7 @@ void sis_node_list_clear(s_sis_node_list *list_)
 	}
 	sis_struct_list_clear(sis_pointer_list_first(list_->nodes));
 	list_->count = 0;
+	list_->nouse = 0;
 }
 
 int   sis_node_list_push(s_sis_node_list *list_, void *in_)
@@ -366,26 +368,36 @@ int   sis_node_list_push(s_sis_node_list *list_, void *in_)
 
 void *sis_node_list_get(s_sis_node_list *list_, int index_)
 {
-	int index = index_ / list_->node_count;
-	s_sis_struct_list *node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, index);
-	if (node)
-	{
-		return sis_struct_list_get(node, index_ % list_->node_count);
-	}
-	else
+	if (index_ < 0 || index_ > list_->count - 1)
 	{
 		return NULL;
 	}
+	int offset = index_ + list_->nouse;
+	int nodeidx = offset / list_->node_count;
+	s_sis_struct_list *node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, nodeidx);
+	void *o = NULL;
+	if (node)
+	{
+		o = sis_struct_list_get(node, index_ % (list_->node_count - list_->nouse % list_->node_count));
+	}
+	// if (!o)
+	// {
+	// 	printf(":===1: %d %d | %d %d %d %d %d\n", nodeidx, offset, list_->nodes->count, 
+	// 		list_->node_count, list_->count, list_->nouse, node->count);
+	// }
+	return o;
 }
 void *sis_node_list_pop(s_sis_node_list *list_)
 {
 	s_sis_struct_list *node = NULL;
-	for (int i = 0; i < list_->nodes->count; i++)
+	int nodeidx = 0;
+	while (nodeidx < list_->nodes->count)
 	{
-		node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, i);
+		node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, nodeidx);
 		if (node->count == 0)
 		{
-			node = NULL;
+			sis_pointer_list_delete(list_->nodes, nodeidx, 1);
+			list_->nouse -= list_->node_count;
 		}
 		else
 		{
@@ -394,9 +406,21 @@ void *sis_node_list_pop(s_sis_node_list *list_)
 	}
 	if (!node)
 	{
+		printf(":1: %d %d\n", nodeidx, list_->nodes->count);
 		return NULL;
 	}
-	return sis_struct_list_pop(node);
+	void *o = sis_struct_list_pop(node);
+	if (o)
+	{ // 有实际数据弹出
+		list_->count--;
+		list_->nouse++;
+	}
+	else
+	{
+		printf(":2: %d %d\n", nodeidx, list_->nodes->count);
+		return NULL;
+	}
+	return o;
 }
 
 int   sis_node_list_get_size(s_sis_node_list *list_)

@@ -193,13 +193,13 @@ s_sis_sds sis_db_format_sds(s_sis_dynamic_db *db_, const char *key_, int iformat
 /////////////////////////////////////////////////////////
 // 多数据结构 统一排序输出的定义 
 /////////////////////////////////////////////////////////
-s_sis_subdb_unit *sis_subdb_unit_create(char *kname_, s_sis_dynamic_db *db_)
+s_sis_subdb_unit *sis_subdb_unit_create(char *kname_, s_sis_dynamic_db *db_, int pagesize_)
 {
 	s_sis_subdb_unit *o = SIS_MALLOC(s_sis_subdb_unit, o);
 	o->db = db_;
 	o->kname = sis_sdsnew(kname_);
-	o->vlist = sis_node_list_create(1000000, db_->size);
-	o->vmsec = sis_node_list_create(1000000, sizeof(msec_t));
+	o->vlist = sis_node_list_create(pagesize_, db_->size);
+	o->vmsec = sis_node_list_create(pagesize_, sizeof(msec_t));
 	return o;	
 }
 void sis_subdb_unit_destroy(void *unit_)
@@ -220,11 +220,12 @@ void sis_subdb_unit_clear(s_sis_subdb_unit *unit_)
 
 /////////////////////////////////////////////////////////
 
-s_sis_subdb_cxt *sis_subdb_cxt_create()
+s_sis_subdb_cxt *sis_subdb_cxt_create(int pagesize_)
 {
 	s_sis_subdb_cxt *o = SIS_MALLOC(s_sis_subdb_cxt, o);
 	o->work_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
 	o->work_units = sis_map_pointer_create_v(sis_subdb_unit_destroy);
+	o->pagesize = pagesize_ ? pagesize_ : 1000000;
 	return o;
 }
 void sis_subdb_cxt_destroy(s_sis_subdb_cxt *cxt_)
@@ -283,11 +284,16 @@ void sis_subdb_cxt_init_sdbs(s_sis_subdb_cxt *cxt_, const char *in_, size_t ilen
 	sis_json_close(injson);
 	// calc min scale
 	cxt_->cur_scale = sis_max(cxt_->cur_scale, scale);
+	printf("scale: %d\n", cxt_->cur_scale);
 }
 
 static inline msec_t _subdb_cxt_get_vmsec(s_sis_subdb_unit *unit)
 {
 	msec_t *vmsec = (msec_t *)sis_node_list_get(unit->vmsec, 0);
+	if (!vmsec)
+	{
+		LOG(0)("vmsec : %d %d  %d %d\n", unit->vmsec->count, unit->vlist->count, unit->vmsec->nouse, unit->vlist->nouse);
+	}
 	return vmsec ? *vmsec : 0;
 }
 void _show_link(s_sis_subdb_cxt *cxt)
@@ -296,8 +302,8 @@ void _show_link(s_sis_subdb_cxt *cxt)
 	int index = 0;
 	while(next)
 	{
-		printf("-%3d-[%4d] %s.%s : %lld | %p %p | %p %p %p\n", index++, next->vlist->count, next->kname, next->db->name, 
-			_subdb_cxt_get_vmsec(next), cxt->head, cxt->tail, next->prev, next, next->next);
+		printf("-%3d-[%4d] %s.%s : %lld| %p %p | %p %p %p\n", index++, next->vlist->count, next->kname, next->db->name, 
+			(int64)_subdb_cxt_get_vmsec(next), cxt->head, cxt->tail, next->prev, next, next->next);
 		next = next->next;
 	}	
 }
@@ -493,7 +499,7 @@ void sis_subdb_cxt_push_sdbs(s_sis_subdb_cxt *cxt_, const char *key_, void *in_,
 		s_sis_dynamic_db *db = sis_map_list_get(cxt_->work_sdbs, sname);
 		if (db)
 		{
-			unit = sis_subdb_unit_create(kname, db);
+			unit = sis_subdb_unit_create(kname, db, cxt_->pagesize);
 			sis_map_pointer_set(cxt_->work_units, key_, unit);
 			isnew = 1;
 		}
@@ -513,7 +519,7 @@ void sis_subdb_cxt_push_sdbs(s_sis_subdb_cxt *cxt_, const char *key_, void *in_,
 					vmsec = sis_dynamic_db_get_time(unit->db, i, in_, ilen_);
 					vmsec = sis_time_unit_convert(unit->db->field_time->style, cxt_->cur_scale, vmsec);
 				}
-				// if (i==0) printf("%s = %lld\n", key_, vmsec);
+				if (i==0) printf("%s = %lld\n", key_, vmsec);
 				sis_node_list_push(unit->vmsec, &vmsec);
 				sis_node_list_push(unit->vlist, (void *)((const char*)in_ + i * unit->db->size));
 			}
@@ -551,7 +557,7 @@ void sis_subdb_cxt_push_data(s_sis_subdb_cxt *cxt_, const char *key_, msec_t mse
 		s_sis_dynamic_db *db = sis_map_list_get(cxt_->work_sdbs, sname);
 		if (db)
 		{
-			unit = sis_subdb_unit_create(kname, db);
+			unit = sis_subdb_unit_create(kname, db, cxt_->pagesize);
 			sis_map_pointer_set(cxt_->work_units, key_, unit);
 			isnew = 1;
 		}
@@ -595,7 +601,13 @@ int _subdb_cxt_get_data(s_sis_subdb_cxt *cxt, s_sis_db_chars *out)
 	msec_t agov = _subdb_cxt_get_vmsec(unit); 
 	sis_node_list_pop(unit->vmsec);
 	msec_t curv = _subdb_cxt_get_vmsec(unit); 
-	if (agov != curv) // 这里修改指针 时间相同下次还传该key数据
+	if (agov == 0|| curv == 0)
+	{
+		LOG(1)("vmsec : %lld | %d %d  %d %d\n", agov, unit->vmsec->count, unit->vlist->count, unit->vmsec->nouse, unit->vlist->nouse);
+		return 1;
+	}
+	// if (agov != curv) // 这里修改指针 时间相同下次还传该key数据
+	if (curv > 0 && agov < curv) // 这里修改指针 时间相同下次还传该key数据
 	{
 		_subdb_cxt_next_link(cxt, unit);
 	}
@@ -617,8 +629,14 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 	{
 		s_sis_db_chars data = {0};
 		int o = _subdb_cxt_get_data(context, &data);
+		// _show_link(context);	
+
+		// printf("==== stop 1 %p %d\n", context->cb_key_stop, o);
 		if (o == 0)
 		{
+			// _show_link(context);		
+			// printf("stop 2 %p\n", context->cb_key_stop);
+			// printf("==== stop 1 ====\n");
 			if (context->cb_key_bytes)
 			{
 				context->cb_key_bytes(context->cb_source, &data);
@@ -628,6 +646,7 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 		else if (o == 1)  // 某个key数据读完
 		{
 			// _show_link(context);		
+			// printf("stop 0 %p\n", context->cb_key_stop);
 			if (context->cb_key_stop)
 			{
 				context->cb_key_stop(context->cb_source, &data);
@@ -742,18 +761,18 @@ int main()
 		\"sssec\":{\"fields\":{\"time\":[\"S\",4],\"value\":[\"I\",4]}},\
 		\"smsec\":{\"fields\":{\"time\":[\"T\",8],\"value\":[\"I\",4]}}}";
 
-	s_sis_subdb_cxt *cxt = sis_subdb_cxt_create();
+	s_sis_subdb_cxt *cxt = sis_subdb_cxt_create(10);
 	
 	sis_subdb_cxt_init_sdbs(cxt, indbstr, strlen(indbstr));
 	cxt->cb_source = cxt;
 	cxt->cb_sub_start = cb_sub_start;
 	cxt->cb_sub_stop = cb_sub_stop;
-	cxt->cb_key_stop = cb_key_stop;
+	// cxt->cb_key_stop = cb_key_stop;
 	cxt->cb_key_bytes = cb_key_bytes;
 
 	
 	_date_info vdate = {20210512, 1000};
-	// sis_subdb_cxt_push_sdbs(cxt, "600600.sdate", &vdate, sizeof(_date_info));
+	sis_subdb_cxt_push_sdbs(cxt, "600600.sdate", &vdate, sizeof(_date_info));
 
 	msec_t nowsec = sis_time_get_now();
 

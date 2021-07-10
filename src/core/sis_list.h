@@ -253,8 +253,9 @@ int sis_index_list_del(s_sis_index_list *list_, int index_);
 typedef struct s_sis_node_list {
 	int                 node_size;
 	int                 node_count; // 单结点最大数量
-	int                 count;
-	s_sis_pointer_list *nodes;     // 数据列表 s_sis_struct_list
+	int                 count;      // 实际的数据量
+	int                 nouse;      // 被弹出的数量
+	s_sis_pointer_list *nodes;      // 数据列表 s_sis_struct_list
 } s_sis_node_list;
 
 #ifdef __cplusplus

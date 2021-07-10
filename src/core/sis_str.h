@@ -100,6 +100,18 @@ bool sis_str_get_time_id(char *out_, size_t olen_);
 
 int64 sis_str_read_long(char *s);
 
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH --> .SSE ==> 600600.SSE
+// 600600.SSE .SSE --> SH ==> SH600600
+void sis_str_swap_ht(const char *v1_, int v1len_, const char *v1sign_, int v1slen_,
+	char *v2_, int v2len_, const char *v2sign_, int v2slen_);
+
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH SZ--> .SSE .SZE ==> 600600.SSE
+// 600600.SSE .SSE .SZE --> SH SZ ==> SH600600
+void sis_str_swap_ht2(const char *v1_, int v1len_, const char *v1sign1_, const char *v1sign2_,
+	char *v2_, int v2len_, const char *v2sign1_, const char *v2sign2_);
+
 #ifdef __cplusplus
 }
 #endif

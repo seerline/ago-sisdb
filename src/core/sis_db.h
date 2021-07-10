@@ -87,7 +87,8 @@ typedef struct s_sis_subdb_cxt
 
 	int                  work_status;   // 0 初始化 1 start 2 wait stop 3 stoped
 	s_sis_thread         work_thread;  // 工作线程
-	
+
+	int                  pagesize;	       // 分页大小 每块的记录数
 	void                *cb_source;
 	sis_method_define   *cb_sub_start;     // 全部数据开始
 	sis_method_define   *cb_sub_stop;      // 全部数据结束
@@ -98,7 +99,7 @@ typedef struct s_sis_subdb_cxt
 
 } s_sis_subdb_cxt;
 
-s_sis_subdb_cxt *sis_subdb_cxt_create();
+s_sis_subdb_cxt *sis_subdb_cxt_create(int pagesize_);
 void sis_subdb_cxt_destroy(s_sis_subdb_cxt *);
 
 void sis_subdb_cxt_clear(s_sis_subdb_cxt *);

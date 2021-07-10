@@ -667,7 +667,7 @@ int cb_sis_disk_file_read_sno(void *source_, s_sis_disk_head *head_, s_sis_memor
 {
 	if (!_subdb_cxt)
     {
-        _subdb_cxt = sis_subdb_cxt_create(); 
+        _subdb_cxt = sis_subdb_cxt_create(100000); 
         _subdb_cxt->cb_source = source_;
         _subdb_cxt->cb_sub_start = cb_sub_start;
         _subdb_cxt->cb_sub_stop = cb_sub_stop;
