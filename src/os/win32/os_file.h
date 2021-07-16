@@ -74,9 +74,9 @@ void sis_file_getname(const char *fn_, char *out_, int olen_);
 bool sis_file_exists(const char *fn_);
 bool sis_path_exists(const char *path_);
 
-void sis_file_rename(char *oldn_, char *newn_);
+int sis_file_rename(char *oldn_, char *newn_);
 
-void sis_file_delete(const char *fn_);
+int sis_file_delete(const char *fn_);
 
 void sis_path_complete(char *path_,int maxlen_);
 bool sis_path_mkdir(const char *path_);

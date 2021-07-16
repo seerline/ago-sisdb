@@ -81,8 +81,8 @@
 #define SIS_DYNAMIC_TYPE_PRICE  'P'
 // 时间类型 定义
 #define SIS_DYNAMIC_TYPE_WSEC   'W'  // 微秒 8  
-#define SIS_DYNAMIC_TYPE_TICK   'T'  // 毫秒 8  
-#define SIS_DYNAMIC_TYPE_SEC    'S'  // 秒   4 8  
+#define SIS_DYNAMIC_TYPE_MSEC   'T'  // 毫秒 8  
+#define SIS_DYNAMIC_TYPE_TSEC    'S'  // 秒   4 8  
 #define SIS_DYNAMIC_TYPE_MINU   'M'  // 分钟 4 time_t/60
 #define SIS_DYNAMIC_TYPE_DATE   'D'  // 天 4 20010101
 
@@ -359,8 +359,8 @@ static inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_fi
 			case SIS_DYNAMIC_TYPE_INT:
 				in_ = sis_csv_make_int(in_, _sis_field_get_int(field_, val_, index));
 				break;
-			case SIS_DYNAMIC_TYPE_SEC:
-			case SIS_DYNAMIC_TYPE_TICK:
+			case SIS_DYNAMIC_TYPE_TSEC:
+			case SIS_DYNAMIC_TYPE_MSEC:
 			case SIS_DYNAMIC_TYPE_MINU:
 			case SIS_DYNAMIC_TYPE_DATE:
 			case SIS_DYNAMIC_TYPE_UINT:
@@ -399,8 +399,8 @@ static inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynami
 			case SIS_DYNAMIC_TYPE_INT:
 				sis_json_array_add_int(in_, _sis_field_get_int(field_, val_, index));
 				break;
-			case SIS_DYNAMIC_TYPE_SEC:
-			case SIS_DYNAMIC_TYPE_TICK:
+			case SIS_DYNAMIC_TYPE_TSEC:
+			case SIS_DYNAMIC_TYPE_MSEC:
 			case SIS_DYNAMIC_TYPE_MINU:
 			case SIS_DYNAMIC_TYPE_DATE:
 			case SIS_DYNAMIC_TYPE_UINT:
@@ -449,8 +449,8 @@ static inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynami
 		}
 		// sis_out_binary("update 0 ", in_, 60);
 		break;
-    case SIS_DYNAMIC_TYPE_SEC:
-    case SIS_DYNAMIC_TYPE_TICK:
+    case SIS_DYNAMIC_TYPE_TSEC:
+    case SIS_DYNAMIC_TYPE_MSEC:
     case SIS_DYNAMIC_TYPE_MINU:
     case SIS_DYNAMIC_TYPE_DATE:
     case SIS_DYNAMIC_TYPE_UINT:

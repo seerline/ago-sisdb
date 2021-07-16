@@ -91,32 +91,36 @@ void sis_disk_files_close(s_sis_disk_files *cls_)
     }
 }
 
-void sis_disk_files_init(s_sis_disk_files *cls_, char *fname_)
+int sis_disk_files_init(s_sis_disk_files *cls_, char *fname_)
 {
     sis_sdsfree(cls_->cur_name);
     cls_->cur_name = sis_sdsnew(fname_);
     // 此时需要初始化list 设置最少1个文件
     sis_pointer_list_clear(cls_->lists);
+    // 初始化基础文件
+    sis_disk_files_inc_unit(cls_);
+    
     int count = 1;
     // LOG 文件没有尾部
     if (cls_->main_head.style != SIS_DISK_TYPE_LOG)
     {
-        if(sis_file_exists(cls_->cur_name))
+        char fn[1024];
+        while (1)
         {
-            // SIS_FILE_IO_RSYNC | 
-            int fp = sis_open(cls_->cur_name, SIS_FILE_IO_BINARY | SIS_FILE_IO_READ , 0);
-            s_sis_disk_main_tail tail;
-            sis_seek(fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);  
-            sis_read(fp, (char *)&tail, sizeof(s_sis_disk_main_tail));
-            count = tail.fcount;
-            LOG(3)("init files [%s] %d count = %d\n", cls_->cur_name, tail.hid, count);
-            sis_close(fp);      
+            sis_sprintf(fn, 1024, "%s.%d", cls_->cur_name, count);
+            if(sis_file_exists(fn))
+            {
+                count++;
+                sis_disk_files_inc_unit(cls_);
+            }
+            else
+            {
+                break;
+            }
         }
+        LOG(3)("init files [%s] count = %d\n", cls_->cur_name, count);
     }
-    for (int i = 0; i < count; i++)
-    {
-        sis_disk_files_inc_unit(cls_);
-    }
+    return count;
 }    
 
 int sis_disk_files_inc_unit(s_sis_disk_files *cls_)
@@ -124,7 +128,7 @@ int sis_disk_files_inc_unit(s_sis_disk_files *cls_)
     s_sis_disk_files_unit *unit = sis_disk_files_unit_create();
     unit->fp = -1;
     // 有新增 一定是有新文件产生
-    sis_sdsfree(cls_->unit->fn);
+    sis_sdsfree(unit->fn);
     unit->fn = sis_sdsdup(cls_->cur_name);
     if(cls_->lists->count >= 1)
     {
@@ -177,8 +181,6 @@ int sis_disk_files_open_append(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
         sis_read(unit->fp, (char *)&cls_->main_tail, sizeof(s_sis_disk_main_tail));
         unit->validly = cls_->main_tail.validly;
         unit->invalid = cls_->main_tail.invalid;
-        unit->fcount  = cls_->main_tail.fcount;
-        unit->offset = sis_seek(unit->fp, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);
         // ??? 可以在这里检查文件是否合法
     }
     else
@@ -349,7 +351,7 @@ size_t sis_disk_files_write(s_sis_disk_files *cls_, s_sis_disk_head  *head_, voi
     {
         return 0;
     }
-    sis_memory_cat(unit->wcatch, (char *)head, sizeof(s_sis_disk_head));
+    sis_memory_cat(unit->wcatch, (char *)head_, sizeof(s_sis_disk_head));
     sis_memory_cat_ssize(unit->wcatch, ilen_);
     size_t size = sis_safe_write(head_->hid, unit->wcatch, unit->fp, in_, ilen_);
     unit->offset += size;
@@ -364,13 +366,9 @@ size_t sis_disk_files_write_saveidx(s_sis_disk_files *cls_, s_sis_disk_wcatch *w
     {
         return 0;
     }
-    s_sis_disk_head head;
-    head.fin = 1;
-    head.hid = wcatch_->head.hid;
-    head.zip = wcatch_->head.zip;
     size_t insize = sis_memory_get_size(wcatch_->memory);
-    // 压缩要在外部 到这里只管写数据
-    if (cls_->max_file_size > 0 && (unit->offset + insize + 1) > cls_->max_file_size)
+    // 压缩要在外部 到这里只管写数据 新进的块如果过大就开新文件
+    if (cls_->max_file_size > 0 && (unit->offset + insize + SIS_DISK_MIN_WSIZE) > cls_->max_file_size)
     {
         sis_disk_files_write_sync(cls_);
         sis_disk_files_inc_unit(cls_);
@@ -382,14 +380,15 @@ size_t sis_disk_files_write_saveidx(s_sis_disk_files *cls_, s_sis_disk_wcatch *w
             return 0;
         } 
     }
-    sis_memory_cat(unit->wcatch, (char *)&head, sizeof(s_sis_disk_head));
+    // 如果块大于PAGE 就会分块写入 fin = 0 直到 fin = 1 才是一个完整块
+    sis_memory_cat(unit->wcatch, (char *)&wcatch_->head, sizeof(s_sis_disk_head));
     sis_memory_cat_ssize(unit->wcatch, insize);
-    size_t size = sis_safe_write(head.hid, unit->wcatch, unit->fp, sis_memory(wcatch_->memory), insize);
+    size_t size = sis_safe_write(wcatch_->head.hid, unit->wcatch, unit->fp, sis_memory(wcatch_->memory), insize);
     wcatch_->winfo.fidx = cls_->cur_unit;
     wcatch_->winfo.offset = unit->offset;
     wcatch_->winfo.size = size; // 因为是索引的长度 因此这里的长度包含头和size
     unit->offset += size;
-    // LOG(8)("%d zip = %d size = %zu %zu\n", unit->fp, head.zip, size, unit->offset);
+    // LOG(8)("%d zip = %d size = %zu %zu\n", unit->fp, wcatch_->head.zip, size, unit->offset);
     return size;
 }
 //////////////////////////
@@ -434,7 +433,7 @@ size_t sis_disk_files_read_fulltext(s_sis_disk_files *cls_, void *source_, cb_si
             {
                 continue;
             }
-            while (sis_memory_get_size(imem) >= SIS_DISK_MIN_BUFFER && !READSTOP)
+            while (sis_memory_get_size(imem) >= SIS_DISK_MIN_RSIZE && !READSTOP)
             {
                 if (LINEEND)
                 {
@@ -443,7 +442,7 @@ size_t sis_disk_files_read_fulltext(s_sis_disk_files *cls_, void *source_, cb_si
                     if (head.hid == SIS_DISK_HID_TAIL)
                     {
                         // 结束
-                        size = SIS_DISK_MIN_BUFFER - 1;
+                        size = SIS_DISK_MIN_RSIZE - 1;
                         FILEEND = true; 
                         break;
                     }
@@ -468,7 +467,7 @@ size_t sis_disk_files_read_fulltext(s_sis_disk_files *cls_, void *source_, cb_si
                 sis_memory_move(imem, size);
                 size = 0;
                 LINEEND = true;
-            } // while SIS_DISK_MIN_BUFFER
+            } // while SIS_DISK_MIN_RSIZE
         } // while
 #ifdef  _READ_SPEED_
         // 读4G文件约60秒 MAC 1秒
@@ -512,6 +511,6 @@ size_t sis_disk_files_read_fromidx(s_sis_disk_files *cls_, s_sis_disk_rcatch *rc
 {
     // 此函数是否需要保存文件的原始位置
     size_t size = sis_disk_files_read(cls_, rcatch_->rinfo->fidx, rcatch_->rinfo->offset, 
-        rcatch_->rinfo->size, &rcatch_->rhead, rcatch_->memory);
+        rcatch_->rinfo->size, &rcatch_->head, rcatch_->memory);
     return size;
 }

@@ -212,8 +212,8 @@ static inline void _sis_incrzip_compress_one(s_sis_incrzip_class *s_,
                     _sis_field_get_int(infield_, memory_, index));
             }
             break;
-        case SIS_DYNAMIC_TYPE_SEC:
-        case SIS_DYNAMIC_TYPE_TICK:
+        case SIS_DYNAMIC_TYPE_TSEC:
+        case SIS_DYNAMIC_TYPE_MSEC:
         case SIS_DYNAMIC_TYPE_MINU:
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_UINT:
@@ -437,8 +437,8 @@ static inline void _sis_incrzip_uncompress_one(s_sis_incrzip_class *s_,
                     index);
             }
             break;
-        case SIS_DYNAMIC_TYPE_SEC:
-        case SIS_DYNAMIC_TYPE_TICK:
+        case SIS_DYNAMIC_TYPE_TSEC:
+        case SIS_DYNAMIC_TYPE_MSEC:
         case SIS_DYNAMIC_TYPE_MINU:
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_UINT:

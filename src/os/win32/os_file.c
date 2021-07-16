@@ -206,17 +206,17 @@ bool sis_path_mkdir(const char *path_)
 	}
 }
 
-void sis_file_rename(char *oldn_, char *newn_)
+int sis_file_rename(char *oldn_, char *newn_)
 {
 	sis_file_fixpath(oldn_);
 	sis_file_fixpath(newn_);
-	rename(oldn_, newn_);
+	return rename(oldn_, newn_);
 }
 
-void sis_file_delete(const char *fn_)
+int sis_file_delete(const char *fn_)
 {
 	sis_file_fixpath((char *)fn_);
-	unlink(fn_);
+	return unlink(fn_);
 	// remove(fn_);
 }
 

@@ -20,7 +20,7 @@ size_t sis_disk_io_write_log(s_sis_disk_ctrl *cls_, void *in_, size_t ilen_)
         head.fin = 1;
         head.hid = SIS_DISK_HID_MSG_LOG;
         head.zip = SIS_DISK_ZIP_NOZIP;
-        size = sis_disk_files_write(cls_->work_fps, &head, in_, ilen_;)
+        size = sis_disk_files_write(cls_->work_fps, &head, in_, ilen_);
     }
     return size;
 }
@@ -28,7 +28,7 @@ size_t sis_disk_io_write_log(s_sis_disk_ctrl *cls_, void *in_, size_t ilen_)
 int cb_sis_disk_io_read_log(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source_;
-    s_sis_disk_reader_cb *callback = ctrl->reader->callback; 
+    s_sis_disk_reader_cb *callback = ctrl->rcatch->callback; 
     // 根据hid不同写入不同的数据到obj
     if(head_->hid != SIS_DISK_HID_MSG_LOG)
     {
@@ -48,16 +48,16 @@ int cb_sis_disk_io_read_log(void *source_, s_sis_disk_head *head_, char *imem_, 
     return 0;
 }
 
-int sis_disk_io_sub_log(s_sis_disk_ctrl *cls_, s_sis_disk_reader *reader_)
+int sis_disk_io_sub_log(s_sis_disk_ctrl *cls_, void *cb_)
 {
-    if (!reader_ || !reader_->callback)
+    if (!cb_)
     {
         return -1;
     }
-    cls_->reader = reader_;
+    sis_disk_rcatch_init_of_sub(cls_->rcatch, NULL, NULL, NULL, cb_);
     cls_->isstop = false;  // 用户可以随时中断
 
-    s_sis_disk_reader_cb *callback = reader_->callback;   
+    s_sis_disk_reader_cb *callback = cls_->rcatch->callback;   
     if(callback->cb_start)
     {
         callback->cb_start(callback->cb_source, cls_->open_date);
@@ -70,6 +70,5 @@ int sis_disk_io_sub_log(s_sis_disk_ctrl *cls_, s_sis_disk_reader *reader_)
     {
         callback->cb_stop(callback->cb_source, cls_->stop_date);
     }
-    cls_->reader = NULL;
     return 0;
 }

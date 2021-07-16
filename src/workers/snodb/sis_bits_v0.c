@@ -700,8 +700,8 @@ static inline void _sis_bits_struct_encode_one(s_sis_bits_stream_v0 *s_,
                     _sis_field_get_int(infield_, memory_, index));
             }
             break;
-        case SIS_DYNAMIC_TYPE_SEC:
-        case SIS_DYNAMIC_TYPE_TICK:
+        case SIS_DYNAMIC_TYPE_TSEC:
+        case SIS_DYNAMIC_TYPE_MSEC:
         case SIS_DYNAMIC_TYPE_MINU:
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_UINT:
@@ -818,8 +818,8 @@ static inline void _sis_bits_struct_decode_one(s_sis_bits_stream_v0 *s_,
                     index);
             }
             break;
-        case SIS_DYNAMIC_TYPE_SEC:
-        case SIS_DYNAMIC_TYPE_TICK:
+        case SIS_DYNAMIC_TYPE_TSEC:
+        case SIS_DYNAMIC_TYPE_MSEC:
         case SIS_DYNAMIC_TYPE_MINU:
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_UINT:
