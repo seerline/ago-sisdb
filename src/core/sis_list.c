@@ -1140,7 +1140,88 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_)
 	return 0;
 }
 
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_fsort_list --------------------------------//
+///////////////////////////////////////////////////////////////////////////
 
+s_sis_fsort_list *sis_fsort_list_create(void *vfree_)
+{
+	s_sis_fsort_list *o = SIS_MALLOC(s_sis_fsort_list, o);
+	o->key = sis_struct_list_create(sizeof(double));
+	o->value = sis_pointer_list_create();
+	o->value->vfree = vfree_;
+	return o;
+}
+void sis_fsort_list_destroy(void *list_)
+{
+	s_sis_fsort_list *list = (s_sis_fsort_list *)list_;
+	sis_struct_list_destroy(list->key);
+	sis_pointer_list_destroy(list->value);
+	sis_free(list);
+}
+void sis_fsort_list_clear(s_sis_fsort_list *list_)
+{
+	sis_struct_list_clear(list_->key);
+	sis_pointer_list_clear(list_->value);
+}
+int _fsort_list_find(s_sis_fsort_list *list_, double key_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->key->count; i++)
+	{
+		double *midv = (double *)sis_struct_list_get(list_->key, i);
+		if (*midv < key_)
+		{
+			return i;
+		}
+		index = i + 1;
+	}
+	return index;
+}
+int sis_fsort_list_set(s_sis_fsort_list *list_, double key_, void *in_)
+{
+	int index = _fsort_list_find(list_, key_);
+	if (index < 0 || index > list_->key->count - 1)
+	{
+		sis_struct_list_push(list_->key, &key_);
+		sis_pointer_list_push(list_->value, in_);
+	}
+	else
+	{
+		sis_struct_list_insert(list_->key, index, &key_);
+		sis_pointer_list_insert(list_->value, index, in_);
+	}
+	return list_->key->count;
+}
+int sis_fsort_list_find(s_sis_fsort_list *list_, void *value_)
+{
+	for (int i = 0; i < list_->value->count; i++)
+	{
+		void *v = sis_pointer_list_get(list_->value, i);
+		if (v < value_)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+void *sis_fsort_list_get(s_sis_fsort_list *list_, int index_)
+{
+	return sis_pointer_list_get(list_->value, index_);
+}
+double sis_fsort_list_getkey(s_sis_fsort_list *list_, int index_)
+{
+	return *(double *)sis_struct_list_get(list_->key, index_);
+}
+void sis_fsort_list_del(s_sis_fsort_list *list_, int index_)
+{
+	sis_struct_list_delete(list_->key, index_, 1);
+	sis_pointer_list_delete(list_->value, index_, 1);
+}
+int sis_fsort_list_getsize(s_sis_fsort_list *list_)
+{
+	return sis_min(list_->key->count, list_->value->count);
+}
 ///////////////////////////////////////////////////////////////////////////
 //----------------------s_sis_index_list --------------------------------//
 //  以整数为索引 存储指针的列表

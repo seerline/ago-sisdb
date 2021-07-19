@@ -290,10 +290,10 @@ void sis_subdb_cxt_init_sdbs(s_sis_subdb_cxt *cxt_, const char *in_, size_t ilen
 static inline msec_t _subdb_cxt_get_vmsec(s_sis_subdb_unit *unit)
 {
 	msec_t *vmsec = (msec_t *)sis_node_list_get(unit->vmsec, 0);
-	if (!vmsec)
-	{
-		LOG(0)("vmsec : %d %d  %d %d\n", unit->vmsec->count, unit->vlist->count, unit->vmsec->nouse, unit->vlist->nouse);
-	}
+	// if (!vmsec)
+	// {
+	// 	LOG(0)("vmsec : %d %d  %d %d\n", unit->vmsec->count, unit->vlist->count, unit->vmsec->nouse, unit->vlist->nouse);
+	// }
 	return vmsec ? *vmsec : 0;
 }
 void _show_link(s_sis_subdb_cxt *cxt)

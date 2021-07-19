@@ -216,6 +216,35 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 #endif
 
 ///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_fsort_list ---------------------------------//
+//  以浮点数排序的指针类型数据
+//////////////////////////////////////////////////////////////////////////
+
+typedef struct s_sis_fsort_list {
+	s_sis_struct_list  *key;     // int 类型
+	s_sis_pointer_list *value;   // 结构类型
+} s_sis_fsort_list;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+s_sis_fsort_list *sis_fsort_list_create(void *vfree_); 
+void sis_fsort_list_destroy(void *);
+void sis_fsort_list_clear(s_sis_fsort_list *list_);
+int  sis_fsort_list_set(s_sis_fsort_list *, double key_, void *in_);
+void *sis_fsort_list_get(s_sis_fsort_list *, int index_);
+
+double sis_fsort_list_getkey(s_sis_fsort_list *, int index_);
+
+// 找对应数据指针
+int sis_fsort_list_find(s_sis_fsort_list *, void *value_);
+
+void sis_fsort_list_del(s_sis_fsort_list *list_, int index_);
+int sis_fsort_list_getsize(s_sis_fsort_list *list_);
+#ifdef __cplusplus
+}
+#endif
+///////////////////////////////////////////////////////////////////////////
 //----------------------s_sis_index_list --------------------------------//
 //  以整数为索引 存储指针的列表
 ///////////////////////////////////////////////////////////////////////////
