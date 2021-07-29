@@ -82,7 +82,7 @@
 // 时间类型 定义
 #define SIS_DYNAMIC_TYPE_WSEC   'W'  // 微秒 8  
 #define SIS_DYNAMIC_TYPE_MSEC   'T'  // 毫秒 8  
-#define SIS_DYNAMIC_TYPE_TSEC    'S'  // 秒   4 8  
+#define SIS_DYNAMIC_TYPE_TSEC   'S'  // 秒   4 8  
 #define SIS_DYNAMIC_TYPE_MINU   'M'  // 分钟 4 time_t/60
 #define SIS_DYNAMIC_TYPE_DATE   'D'  // 天 4 20010101
 
@@ -113,6 +113,7 @@ typedef struct s_sis_dynamic_field {
 ////////////////////////////////////////////////////
 typedef struct s_sis_dynamic_db {
     // 描述结构体的标志符号 // 类别 . 名称 . 版本 
+	int                       refs;           // 引用数
 	s_sis_sds                 name;     
 	s_sis_map_list           *fields;         // 字段信息 s_sis_dynamic_field
     unsigned int              size;           // 结构总长度
@@ -496,6 +497,9 @@ int sis_dynamic_field_scale(int style_);
 
 s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
 void sis_dynamic_db_destroy(void *db_);
+
+void sis_dynamic_db_incr(s_sis_dynamic_db *db_);
+void sis_dynamic_db_decr(s_sis_dynamic_db *db_);
 
 s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_);
 

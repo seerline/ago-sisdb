@@ -55,6 +55,8 @@ typedef struct s_sis_db_incrzip
 #define SIS_DB_STREAM_BYTES    2
 #define SIS_DB_STREAM_INCRZIP  3
 
+int sis_is_multiple_sub(const char *key, size_t len);
+
 // 得到参数中是字符串还是字节流
 int sis_db_get_format(s_sis_sds argv_);
 // 得到格式
@@ -117,6 +119,7 @@ typedef struct s_sis_subdb_cxt
 
 } s_sis_subdb_cxt;
 
+
 s_sis_subdb_cxt *sis_subdb_cxt_create();
 void sis_subdb_cxt_destroy(s_sis_subdb_cxt *);
 
@@ -124,6 +127,8 @@ void sis_subdb_cxt_clear(s_sis_subdb_cxt *);
 
 // void sis_subdb_cxt_set_keys(s_sis_subdb_cxt *, s_sis_sds );
 void sis_subdb_cxt_init_sdbs(s_sis_subdb_cxt *, const char *,size_t);
+
+void sis_subdb_cxt_set_sdbs(s_sis_subdb_cxt *, s_sis_dynamic_db *sdb_);
 
 void sis_subdb_cxt_add_data(s_sis_subdb_cxt *, const char *key_, void *in_, size_t ilen_);
 // 开始订阅

@@ -1,6 +1,19 @@
 ﻿
 #include "sis_db.h"
 
+int sis_is_multiple_sub(const char *key, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (key[i] == '*' || key[i] == ',')
+        // if (key[i] == '*')
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 int sis_db_get_format(s_sis_sds argv_)
 {
     int iformat = SISDB_FORMAT_JSON;
@@ -284,7 +297,18 @@ void sis_subdb_cxt_init_sdbs(s_sis_subdb_cxt *cxt_, const char *in_, size_t ilen
 	// calc min scale
 	cxt_->cur_scale = sis_max(cxt_->cur_scale, scale);
 }
-
+void sis_subdb_cxt_set_sdbs(s_sis_subdb_cxt *cxt_, s_sis_dynamic_db *sdb_)
+{
+	if (!sis_map_list_get(cxt_->work_sdbs, sdb_->name))
+	{
+		sis_dynamic_db_incr(sdb_);
+		sis_map_list_set(cxt_->work_sdbs, sdb_->name, sdb_);
+		if (sdb_->field_time)
+		{
+			cxt_->cur_scale = sis_max(sdb_->field_time->style, cxt_->cur_scale);
+		}
+	}
+}
 static inline msec_t _subdb_cxt_get_vmsec(s_sis_subdb_unit *unit)
 {
 	msec_t *vmsec = (msec_t *)sis_struct_list_first(unit->vmsec);
@@ -478,6 +502,7 @@ void _subdb_cxt_del_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
 	sis_subdb_unit_clear(unit);
 	// sis_subdb_unit_destroy(unit);
 }
+
 // 增加的数据一定是从小到大排序的数据 新增的数据一定比以前的数据时间更晚
 // 没有时间字段的最先发布 有时间的字段找到小于或等于就插入
 void sis_subdb_cxt_add_data(s_sis_subdb_cxt *cxt_, const char *key_, void *in_, size_t ilen_)
@@ -574,8 +599,9 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 		{
 			if (context->cb_key_bytes)
 			{
-				context->cb_key_bytes(context->cb_source, &data);
-			} 	
+				o = context->cb_key_bytes(context->cb_source, &data);
+			} 
+			isstop = o == -1 ? true : isstop; 	
 			// _show_link(context);		
 		}
 		else if (o == 1)  // 某个key数据读完
@@ -583,8 +609,9 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 			// _show_link(context);		
 			if (context->cb_key_stop)
 			{
-				context->cb_key_stop(context->cb_source, &data);
+				o = context->cb_key_stop(context->cb_source, &data);
 			} 
+			isstop = o == -1 ? true : isstop; 
 			// _show_link(context);		
 		}
 		else // 数据全部读完 或数据出错

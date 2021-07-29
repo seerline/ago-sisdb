@@ -1291,7 +1291,7 @@ bool sis_socket_client_send(s_sis_socket_client *client_, s_sis_object *inobj_)
 	return true;
 }
 
-#if 1
+#if 0
 // 下面是多线程的收发包例子 基本能跑满带宽
 #include "sis_list.lock.h"
 

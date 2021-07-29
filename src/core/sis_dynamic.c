@@ -193,17 +193,33 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		dyna->field_mindex = dyna->field_time;
 	}
 	LOG(5)("dyna->size ---%s %d %p\n", dyna->name, dyna->size, dyna);
+	dyna->refs = 1;
 	return dyna;
 }
-
-void sis_dynamic_db_destroy(void *db_)
+void sis_dynamic_db_decr(s_sis_dynamic_db *db_)
 {
-	s_sis_dynamic_db *db = (s_sis_dynamic_db *)db_;
-	// printf("dyna->free --- %s \n", db->name);
-	sis_sdsfree(db->name);
-	sis_map_list_destroy(db->fields);
-	sis_pointer_list_destroy(db->field_solely);
-	sis_free(db);
+	if (db_->refs == 1)
+	{
+		sis_sdsfree(db_->name);
+		sis_map_list_destroy(db_->fields);
+		sis_pointer_list_destroy(db_->field_solely);
+		sis_free(db_);
+	}
+	else
+	{
+		db_->refs--;
+	}
+}
+void sis_dynamic_db_incr(s_sis_dynamic_db *db_)
+{
+	printf("++++ %s %d %p\n", db_->name, db_->refs, db_);
+	db_->refs++;
+}
+void sis_dynamic_db_destroy(void *db)
+{
+	s_sis_dynamic_db *db_ = (s_sis_dynamic_db *)db;
+	printf("--- %s %d %p\n", db_->name, db_->refs, db_);
+	sis_dynamic_db_decr((s_sis_dynamic_db *)db);
 }
 
 s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_)

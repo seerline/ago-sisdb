@@ -580,19 +580,6 @@ int cmd_sisdb_dels(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int is_multiple_sub(const char *key, size_t len)
-{
-    for (size_t i = 0; i < len; i++)
-    {
-        if (key[i] == '*' || key[i] == ',')
-        // if (key[i] == '*')
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 int cmd_sisdb_sub(void *worker_, void *argv_)
 {
     // 只订阅最后一条记录 不开线程 
@@ -603,7 +590,7 @@ int cmd_sisdb_sub(void *worker_, void *argv_)
     int o = 0;
     if (netmsg->key && sis_sdslen(netmsg->key) > 0)
     {
-        if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+        if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
         {
             o = sisdb_multiple_sub(context, netmsg);
         }
@@ -629,7 +616,7 @@ int cmd_sisdb_unsub(void *worker_, void *argv_)
         {
             o = sisdb_unsub_whole(context, netmsg->cid);
         }    
-        else if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+        else if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
         {
             o = sisdb_multiple_unsub(context, netmsg);
         }
@@ -656,7 +643,7 @@ int cmd_sisdb_playback(void *worker_, void *argv_)
     int o = 0;
     // if (netmsg->key && sis_sdslen(netmsg->key) > 0)
     // {
-    //     if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+    //     if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
     //     {
     //         o = sisdb_multiple_sub(context, netmsg);
     //     }
@@ -682,7 +669,7 @@ int cmd_sisdb_unplayback(void *worker_, void *argv_)
     //     {
     //         o = sisdb_unsub_whole(context, netmsg->cid);
     //     }    
-    //     else if (is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+    //     else if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
     //     {
     //         o = sisdb_multiple_unsub(context, netmsg);
     //     }
