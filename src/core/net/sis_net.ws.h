@@ -41,9 +41,9 @@ int sis_net_ws_get_key(s_sis_memory *in_, char *key_);
 // 客户端收到回应后 判断服务器是否可用
 int sis_net_ws_chk_ans(s_sis_memory *in_);
 // 打包时可能数据会拆分多个包 一起写到一个缓存中 
-int sis_net_pack_ws(s_sis_memory* in_, s_sis_memory_info *, s_sis_memory *out_);
+int sis_net_pack_ws(s_sis_memory* in_, s_sis_net_tail *, s_sis_memory *out_);
 
-int sis_net_unpack_ws(s_sis_memory* in_, s_sis_memory_info *, s_sis_memory *out_);
+int sis_net_unpack_ws(s_sis_memory* in_, s_sis_net_tail *, s_sis_memory *out_);
 
 #define sis_net_pack_tcp sis_net_pack_ws
 #define sis_net_unpack_tcp sis_net_unpack_ws

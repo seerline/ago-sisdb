@@ -41,10 +41,10 @@ static int cb_snodb_wlog_load(void *worker_, void *argv_)
 		return SIS_METHOD_ERROR;
 	}
     // printf("cb_snodb_wlog_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
-    //         netmsg->serial? netmsg->serial : "nil",
+    //         netmsg->name? netmsg->name : "nil",
     //         netmsg->cmd ?   netmsg->cmd : "nil",
     //         netmsg->key?    netmsg->key : "nil",
-    //         netmsg->val?    netmsg->val : "nil");   
+    //         netmsg->ask?    netmsg->ask : "nil");   
 
 	if (!sis_strcasecmp("zpub", netmsg->cmd))
 	{
@@ -59,12 +59,12 @@ static int cb_snodb_wlog_load(void *worker_, void *argv_)
 		if (!sis_strcasecmp("_keys_", netmsg->key))
 		{
 			sis_sdsfree(context->wlog_keys);
-			context->wlog_keys = sis_sdsdup(netmsg->val);
+			context->wlog_keys = sis_sdsdup(netmsg->ask);
 		}
 		if (!sis_strcasecmp("_sdbs_", netmsg->key))
 		{
 			sis_sdsfree(context->wlog_sdbs);
-			context->wlog_sdbs = sis_sdsdup(netmsg->val);			
+			context->wlog_sdbs = sis_sdsdup(netmsg->ask);			
 		}
 		if (context->wlog_keys && context->wlog_sdbs)
 		{
@@ -175,10 +175,10 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
 		return SIS_METHOD_ERROR;
 	}
     // printf("cb_snodb_wfile_load: %d %s \n%s \n%s \n%s \n", netmsg->style,
-    //         netmsg->serial? netmsg->serial : "nil",
+    //         netmsg->name? netmsg->name : "nil",
     //         netmsg->cmd ?   netmsg->cmd : "nil",
     //         netmsg->key?    netmsg->key : "nil",
-    //         netmsg->val?    netmsg->val : "nil");   
+    //         netmsg->ask?    netmsg->ask : "nil");   
 	if (!sis_strcasecmp("zpub", netmsg->cmd))
 	{
 		// printf("%p %d\n", context->wfile_cb_snodb_compress, netmsg->argvs->count);
@@ -197,14 +197,14 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
 		{
 			if (context->wfile_cb_dict_keys)
 			{
-				context->wfile_cb_dict_keys(context->wfile_worker, netmsg->val);
+				context->wfile_cb_dict_keys(context->wfile_worker, netmsg->ask);
 			}
 		}
 		if (!sis_strcasecmp("_sdbs_", netmsg->key))
 		{
 			if (context->wfile_cb_dict_sdbs)
 			{
-				context->wfile_cb_dict_sdbs(context->wfile_worker, netmsg->val);
+				context->wfile_cb_dict_sdbs(context->wfile_worker, netmsg->ask);
 			}
 		}
 	}

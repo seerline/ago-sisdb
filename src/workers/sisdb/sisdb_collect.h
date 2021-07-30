@@ -56,7 +56,6 @@ typedef struct s_sis_step_index
 #define SISDB_COLLECT_TYPE_TABLE   0   // s_sis_struct_list
 #define SISDB_COLLECT_TYPE_CHARS   1   // s_sis_sds
 #define SISDB_COLLECT_TYPE_BYTES   2   // s_sis_sds
-#define SISDB_COLLECT_TYPE_LIST    3   // s_sis_list s_sis_sds
 
 // 对于TICK类型的数据表 存储方式不同 是一个nodelist 单元包含 块号+时间区间+索引列表+数据列表 s_struct_list
 // 获取数据时根据不同块号 分批按索引列表 排序后发送数据 需要独立启动一个线程 

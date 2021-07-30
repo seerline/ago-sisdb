@@ -18,7 +18,6 @@
 #define SIS_OBJECT_MEMORY  1  // sis_memory 结构体的指针
 #define SIS_OBJECT_LIST    2  // sis_struct_list 结构体的指针
 #define SIS_OBJECT_NETMSG  3  // s_sis_net_message 指针
-#define SIS_OBJECT_NODES   4  // 节点列表
 
 typedef struct s_sis_object {
     unsigned char           style;

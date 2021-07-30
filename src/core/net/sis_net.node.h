@@ -6,85 +6,93 @@
 #include "sis_malloc.h"
 #include "sis_memory.h"
 
-//------------------------sdsnode ------------------------------//
-// 非常好的数据结构，基本可以满足所有网络通许所有的信息了                //
 //--------------------------------------------------------------//
-
-#define SIS_NET_SERIAL   0x01    // 有 serial
-#define SIS_NET_CMD      0x02    // 有 cmd
-#define SIS_NET_KEY      0x04    // 有 key
-#define SIS_NET_VAL      0x08    // 有 val
-#define SIS_NET_ARGVS    0x10    // 有 argvs
-#define SIS_NET_INSIDE   0x20    // 内部通信
-#define SIS_NET_ASK      0x40    // 请求
-// #define SIS_NET_ANS      0x80    // 应答
-#define SIS_NET_RCMD     0x80    // 应答标志
-
-#define SIS_NET_ANS_NIL         -1  // 数据为空
-#define SIS_NET_ANS_OK           0  // 数据正确
-#define SIS_NET_ANS_ERROR        1  // 数据错误
-#define SIS_NET_ANS_NOAUTH       2  // 未登录验证
-#define SIS_NET_ANS_SUB_START    5  // 订阅开始
-#define SIS_NET_ANS_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
-#define SIS_NET_ANS_SUB_STOP     7  // 订阅结束
-
-
+// 正常网络包处理流程
+// 1.收到数据 判断包是否完整 完整就切断数据原样放到队列中
+// 2.处理完整包 以name+:为头 之后第一个字符决定后面数据格式
+// 3.{ 表示为字符串的请求 B表示后面数据为二进制格式 这样设计可以无缝对接网页的请求和响应
+// 转发网络包处理流程
+// 1.如果是转发订阅 直接根据name 从网络层收到数据就转发给其他客户端了 
+//--------------------------------------------------------------//
 // request 方决定网络数据传输方式 是按字节流还是 JSON 字符串
 #define SIS_NET_FORMAT_CHARS   0 
 #define SIS_NET_FORMAT_BYTES   1 
+// 只有ver和fmt 会作为请求方的默认值保留 除非客户再次更新ver和fmt否则按 默认->上次传送值
+
+// ans 的定义
+#define SIS_NET_ANS_INVALID   -100  // 请求已经失效
+#define SIS_NET_ANS_NIL         -3  // 数据为空
+#define SIS_NET_ANS_ERROR       -2  // 未知原因错误 
+#define SIS_NET_ANS_NOAUTH      -1  // 未登录验证
+
+#define SIS_NET_ANS_OK           0  // 数据正确
+#define SIS_NET_ANS_SUB_OPEN     5  // 订阅开始
+#define SIS_NET_ANS_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
+#define SIS_NET_ANS_SUB_STOP     7  // 订阅结束
+
+// 如果把网络类比与找小明拿一份5月的工作计划，那么：
+// service 找什么人 - 找小明
+// cmd 找小明干什么 - 拿东西
+// key 拿什么东西 - 拿工作计划
+// ask 什么样的工作计划 - 5月份的工作计划 
+typedef struct s_sis_net_switch {
+	unsigned char is_publish  : 1;  // 是否为广播包 如果是 不再解析其他 直接准备传递 
+	unsigned char is_inside   : 1;  // 是否为内部包 如果是 不扩散
+	unsigned char is_reply    : 1;  // 表示为应答包  应答有  ans ** 字符格式以此来判定是否为应答
+	unsigned char is_1        : 1;  // 备用
+	unsigned char has_ver     : 1;  // 请求有 ver     应答有  ver
+	unsigned char has_fmt     : 1;  // 请求有 fmt     应答有  fmt
+	unsigned char has_service : 1;  // 请求有 service 应答有  --- 
+	unsigned char has_cmd     : 1;  // 请求有 cmd     应答有  ---
+
+	unsigned char has_key     : 1;  // 请求有 key     应答有  key
+	unsigned char has_ask     : 1;  // 请求有 ask     应答有  ---
+	unsigned char has_msg     : 1;  // 请求有 ---     应答有  msg
+	unsigned char has_next    : 1;  // 请求有 ---     应答有  next 有后续包
+	unsigned char has_argvs   : 1;  // 请求有 argvs   应答有  argvs
+	unsigned char has_more    : 1;  // 表示有扩展字段  0 - 无扩展
+	unsigned char fmt_msg     : 1;  // 信息格式 0 - 字符 1 - 二进制
+	unsigned char fmt_argv    : 1;  // 数据格式 0 - 字符 1 - 二进制
+} s_sis_net_switch;
+
+// 定义错误信息返回
+typedef struct s_sis_net_errinfo {
+	int      rno;
+	char    *rinfo;
+} s_sis_net_errinfo;
 
 // 把请求和应答统一结合到 s_sis_net_message 中
 // 应答目前约定只支持一级数组，
+// 说明：没有和组件通讯合并 是担心耦合度过高 和 交互信息过重
+//      建议到了实际请求可以把 s_sis_net_message 作为参数传递到 s_sis_message 中以实现信息共享
 typedef struct s_sis_net_message {
-	int                 cid;       // 哪个客户端的信息 -1 表示向所有用户发送
-	// 通常server等待消息然后再回送消息 但不排除在某些网络限制情况下 server向client请求数据
+    // 公共部分
+    int                 cid;       // 哪个客户端的信息 -1 表示向所有用户发送
+    int8                ver;       // [非必要] 协议版本
 	uint32              refs;      // 引用次数
+    s_sis_sds	        name;      // [必要] 请求的名字 用户名+时间戳+序列号 唯一标志请求的名称，需要原样返回；
+	// 用户请求的投递地址 方便无状态接收数据  不超过128个字符    
+    int8                comp;      // 如果包不完整需要等到完整包到达再解析
+	s_sis_memory       *memory;    // 网络来去的原始数据包 转发时直接发送该数据
 
-	s_sis_sds	        serial;    // 来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址 s_sis_object   
+    int8                format;    // 根据此标记进行打包和拆包 默认SIS_NET_FORMAT_CHARS
 
-	uint8               format;    // 数据是字符串还是字节流 根据此标记进行打包和拆包
-	//
-	uint8               style;     // 是应答还是请求 提供给二进制数据使用
-   
-	s_sis_sds	        cmd;       // 请求信息专用,当前消息的cmd  sisdb.get 
-	s_sis_sds	        key;       // 请求信息专用,当前消息的key  sh600600,sh600601.day,info  
-	s_sis_sds	        val;       // 请求信息的参数，为json格式 
-
-	int64               rcmd;      // 应答的类型 由这个整数确定应答为什么类型
-	s_sis_sds	        rval;      // 应答缓存
-	uint16              rfmt;      // 返回数据格式 临时变量
-
-	// 存放字节流数据 ??? 没必要用s_sis_object 等待修改为 s_sis_sds
-	s_sis_pointer_list *argvs;     // 按顺序获取 s_sis_sds 
-
-	// s_sis_message      *msg;       // 用于方法传递参数使用 
+    s_sis_net_switch    switchs;   // 字典开关
+    // 当发送和接收到的是不定长列表数据时 写入argvs中 
+    s_sis_pointer_list *argvs;     // 按顺序获取 s_sis_object -> s_sis_sds 
+    // 请求相关部分
+	s_sis_sds	        service;   // [非必要] 请求信息专用,指定去哪个service执行命令 http格式这里填路径
+	s_sis_sds	        cmd;       // [非必要] 请求信息专用,要执行什么命令  get set....
+    s_sis_sds	        key;       // [请求专用｜不必要] 对谁执行命令
+    s_sis_sds	        ask;       // [请求专用｜不必要] 执行命令的参数，必须为字符类型 
+    // 应答相关部分
+    int                 rans;      // [应答专用｜必要] 表示为应答编号 整数
+	int                 rnext;     // 后续的数据
+    s_sis_sds           rmsg;      // [应答专用｜不必要] 表示为字符类型的返回数据
+    int8                rfmt;      // [应答专用] rmsg 数据的类型和格式 特指 rmsg 整数 数组 ...
+	// 有扩展字典时有值
+	// s_sis_message      *map; 
 } s_sis_net_message;
-
-
-// typedef struct s_sis_net_message {
-// 	uint32              refs;      // 引用次数
-// 	int                 cid;       // 哪个客户端的信息 -1 表示向所有用户发送
-
-//  s_sis_memory       *memory;    // 网络来去的原始数据包 转发时直接发送该数据
-//                                 // 为完整数据包 转发时可能需要拆包
-//  --- 以下是数据包解析后的信息 -- //
-// 	s_sis_sds	        name;      // 数据来源信息，需要原样返回 用户唯一投递地址    
-// 	uint8               sfmt;      // 数据是字符串还是字节流 根据此标记进行打包和拆包
-// 	uint8               rfmt;      // 返回数据格式 [临时变量]
-// 						如果返回数据格式为chars但数据中有二进制数据 需要把二进制数据转换BASE64的JSON格式返回
-//                      以便调试时方便
-//                      返回格式为bytes 按参数字典一个一个写入缓存区
-// 	s_sis_message      *argv;      // 参数字典 用message虽然效率稍低 但会和进程间通信保持统一
-//  scmd - 字符串
-//  skey - key名
-//  ssdb - sdb名
-//  sval - 字节流 值
-//  
-//  rkey - 
-//  rsdb - 
-//  rval -  
-
-// } s_sis_net_message;
 
 ////////////////////////////////////////////////////////
 //  所有的线程和网络端数据交换统统用这个格式的消息结构
@@ -100,13 +108,12 @@ void sis_net_message_decr(void *);
 void sis_net_message_clear(s_sis_net_message *);
 size_t sis_net_message_get_size(s_sis_net_message *);
 
-s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_);
-
 ////////////////////////////////////////////////////////
 //  解码函数
 ////////////////////////////////////////////////////////
-
+// 总是返回真
 bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_);
+// 返回失败 表示数据出错 断开链接 重新开始
 bool sis_net_decoded_normal(s_sis_memory* in_, s_sis_net_message *out_);
 
 #endif

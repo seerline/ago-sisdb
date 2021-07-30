@@ -26,17 +26,17 @@
 #define SIS_NET_ROLE_REQUEST   0  // client 发起请求方 request
 #define SIS_NET_ROLE_ANSWER    1  // server 等待请求，相应请求 answer
 
-// request 方决定网络数据压缩方式 
+// 请求 方决定网络数据压缩方式 
 #define SIS_NET_ZIP_NONE       0
 #define SIS_NET_ZIP_ZBIT       1
 
-// request 方决定网络数据加密编码方式 
+// 请求 方决定网络数据加密编码方式 
 #define SIS_NET_CRYPT_NONE     0
 #define SIS_NET_CRYPT_SSL      1
 
 // 网络协议 最外层的数据包
 #define SIS_NET_PROTOCOL_TCP   0  // 默认为TCP打包协议 仍然是WS包协议
-#define SIS_NET_PROTOCOL_WS    1  // 可扩展为WS打包协议 如果是字符串就是原文 如果是字节流 最后必然有一个描述结构体 s_sis_memory_info
+#define SIS_NET_PROTOCOL_WS    1  // 可扩展为WS打包协议 如果是字符串就是原文 如果是字节流 最后必然有一个描述结构体 s_sis_net_tail
 #define SIS_NET_PROTOCOL_RDS   2  // 可扩展为redis协议 此时 format compress coded 全部失效
 
 #define SIS_NET_NONE			(0)  // 初始状态
@@ -52,35 +52,32 @@
 #pragma pack(push,1)
 // 从配置文件中获取的数据
 typedef struct s_sis_url {
-	uint8     io;     // 连接方式 等待连接 主动去连接两种方式
-	uint8     role;        // 角色 client server 两种方式 由客户端发起请求 server 响应请求
-	uint8     version;     // 数据交换协议版本号 协议格式变更在这里处理 默认为 1 ws的协议 
-    uint8     protocol;    // 通讯协议 -- 默认为 0 tcp 协议     
-	uint8     compress;    // 压缩方式 默认不压缩
-	uint8     crypt;       // 加密方式 默认不加密   
-	char      ip4[16];      // ip地址 
-	char      name[128];   // 域名地址 
-    int       port;        // 端口号
-    // bool      auth;        // 是否需要用户验证 放在外层实际业务中处理
-    // char      username[128];    // username 
-    // char      password[128];    // 密码
+	uint8          io;     // 连接方式 等待连接 主动去连接两种方式
+	uint8          role;        // 角色 client server 两种方式 由客户端发起请求 server 响应请求
+	uint8          version;     // 数据交换协议版本号 协议格式变更在这里处理 默认为 1 ws的协议 
+    uint8          protocol;    // 通讯协议 -- 默认为 0 tcp 协议     
+	uint8          compress;    // 压缩方式 默认不压缩
+	uint8          crypt;       // 加密方式 默认不加密   
+	char           ip4[16];     // ip地址 
+	char           name[128];   // 域名地址 
+    int            port;        // 端口号
 	s_sis_map_sds *dict;  // 其他字段的对应表 用于不常用的字典数据
 } s_sis_url;
 
 // 二进制协议会在每个数据包最后放入此结构 解包时先从最后取出该结构 
 // 该结构可以增加crc数据校验等功能
 // 因为数据是否被压缩只有压缩后才能直到是否成功 不成功用原文 所以这个结构必须放到数据末尾
-// 也可用次数据判断二进制数据是否合法
+// 也可用此数据判断二进制数据是否合法
 // 字符串数据没有该结构 统一不压缩 不加密
 // 如果需要压缩加密把字符串当字节流处理就可以了
 // 根据ws协议头就知道后面的数据是什么格式 二进制就跟这个结构 字符出就没有这个结构
-typedef struct s_sis_memory_info {
+typedef struct s_sis_net_tail {
 	unsigned char is_bytes : 1;     // 数据以什么格式传播
 	unsigned char is_compress : 1;  // 数据是否被压缩
 	unsigned char is_crypt : 1;     // 数据是否被加密 
 	unsigned char is_crc16 : 1;     // 是否有crc16校验 如果有去前面取16个字节用于校验
-	unsigned char other : 4;     // 备用
-} s_sis_memory_info;
+	unsigned char other : 4;        // 备用
+} s_sis_net_tail;
 
 // 序列化和反序列化 程序内部的数据和网络通讯协议互转
 typedef bool (*sis_net_encoded_define)(s_sis_net_message *in_, s_sis_memory *out_);
@@ -93,8 +90,8 @@ typedef bool (*sis_net_compress_define)(s_sis_memory *in_, s_sis_memory *out_);
 #define sis_net_decrypt_define sis_net_compress_define
 // 把数据根据协议打包写入队列中 第四道工序 
 // 把来源乱序数据 解包后放入队列中 需要传送的数据可能会拆包也这样处理
-typedef int (*sis_net_pack_define)(s_sis_memory *in_, s_sis_memory_info *, s_sis_memory *out_);
-typedef int (*sis_net_unpack_define)(s_sis_memory *in_, s_sis_memory_info *, s_sis_memory *out_);
+typedef int (*sis_net_pack_define)(s_sis_memory *in_, s_sis_net_tail *, s_sis_memory *out_);
+typedef int (*sis_net_unpack_define)(s_sis_memory *in_, s_sis_net_tail *, s_sis_memory *out_);
 
 typedef struct s_sis_net_slot {
 // 先编码 再压缩 最后再加密
@@ -114,23 +111,15 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 typedef void (*cb_net_reply)(void *, s_sis_net_message *);
 
 typedef struct s_sis_net_context {
-	uint8              status;  // 当前的工作状态 SIS_NET_WORKING...HANDING DISCONNECT
-
-	int                rid;     // 对端的 socket ID 
-	s_sis_url          rurl;    // 客户端的相关信息
-
+	uint8              status;       // 当前的工作状态 SIS_NET_WORKING...HANDING DISCONNECT
+	int                rid;          // 对端的 socket ID 
+	s_sis_url          rurl;         // 客户端的相关信息
 	// 网络收到的内容 脱壳 解压 解密 后放入recv_buffer 解析后把完整的数据包 放入主队列 剩余数据保留等待下次收到数据
-	s_sis_memory      *recv_buffer;   // 接收数据的残余缓存
-	// s_sis_memory      *unpack_memory; // 接收数据如果为不完整的包就把数据放这里 等待数据全部收完再拷贝给处理数据
-
-	void              *father;   // s_sis_net_class *的指针
-
-	// s_sis_wait_queue   *send_cxts; 
-	s_sis_net_slot    *slots;     // 根据协议对接不同功能函数	
-
+	s_sis_memory      *recv_buffer;  // 接收数据的残余缓存
+	void              *father;       // s_sis_net_class *的指针
+	s_sis_net_slot    *slots;        // 根据协议对接不同功能函数	
 	void              *cb_source;    // 回调句柄
 	cb_net_reply       cb_reply;     // 应答回调
-
 } s_sis_net_context;
 
 
@@ -148,16 +137,16 @@ typedef struct s_sis_net_class {
 	s_sis_url            *url;      // 本机需要监听的ip地址
 
 	uint64                ask_sno;
-	uint8                 work_status;    // 当前的工作状态 SIS_NET_WORKING...NONE EXIT 3 种状态
+	uint8                 work_status;  // 当前的工作状态 SIS_NET_WORKING...NONE EXIT 3 种状态
 	// s_sis_net_slot        slots;     // 请求方使用 	
 	
-	s_sis_socket_client  *client;    // 二选一 cxts 只有一条记录
+	s_sis_socket_client  *client;       // 二选一 cxts 只有一条记录
 	s_sis_socket_server  *server;    
 	// 对应的连接客户的集合 s_sis_net_context
-	s_sis_map_pointer    *cxts;      // 连接服务器的 s_sis_net_context
+	s_sis_map_pointer    *cxts;         // 连接服务器的 s_sis_net_context
 	// s_sis_net_context    *client_cxt;       // 客户端的上下文信息
 	// 发出的请求,以时间顺序保存 回来的数据一一对应调用回调
-	s_sis_pointer_list   *ask_lists;  // s_sis_net_message - s_sis_object
+	s_sis_pointer_list   *ask_lists;    // s_sis_net_message - s_sis_object
 
 	// recv放的是解包后的数据 send 放的是打包后的数据
 	// 刚出队列的数据 等待处理成功后释放 
@@ -169,7 +158,6 @@ typedef struct s_sis_net_class {
 	// 当前正在发送的信息 刚出队列的 发送成功后释放
 	// s_sis_object         *after_send_cxt;  // 已经发送的数据 等待发送成功后删除 s_sis_memory
 	// 发送队列自行释放内存
-
 	void                 *cb_source;     // 回调句柄
 	cb_socket_connect     cb_connected;  // 链接成功
 	cb_socket_connect     cb_disconnect; // 链接断开

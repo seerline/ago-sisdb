@@ -64,7 +64,6 @@ void sis_object_decr(void *obj_)
             }
             case SIS_OBJECT_NETMSG: sis_net_message_destroy(obj->ptr); break;
             case SIS_OBJECT_LIST: sis_struct_list_destroy(obj->ptr); break;
-            case SIS_OBJECT_NODES: sis_list_destroy(obj->ptr); break;
             case SIS_OBJECT_INT : break;
             default: LOG(5)("unknown object type.\n"); break;
         }
@@ -91,18 +90,6 @@ size_t sis_object_getsize(void *obj)
             {
                 s_sis_struct_list *list = (s_sis_struct_list *)obj_->ptr;
                 size = list->len * list->count;
-            }
-            break;
-        case SIS_OBJECT_NODES:
-            {
-                s_sis_list *list = (s_sis_list *)obj_->ptr;
-                size = 0;
-                s_sis_list_node *node = sis_list_first(list);
-                while (node->next)
-                {
-                    size += sis_sdslen((s_sis_sds)node->value);
-                    node = node->next;
-                }
             }
             break;
         case SIS_OBJECT_INT : break;

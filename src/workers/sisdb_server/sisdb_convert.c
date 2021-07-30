@@ -98,19 +98,20 @@ int sisdb_convert_working(s_sisdb_server_cxt *server_, s_sis_net_message *netmsg
     for (int i = 0; i < sublist->count; i++)
     {
         s_sisdb_convert *unit = (s_sisdb_convert *)sis_pointer_list_get(sublist, i);
-        size_t size = sis_dynamic_convert_length(unit->convert, netmsg->val, sis_sdslen(netmsg->val));
+        size_t size = sis_dynamic_convert_length(unit->convert, netmsg->ask, sis_sdslen(netmsg->ask));
         char *out = sis_malloc(size + 1);
-        sis_dynamic_convert(unit->convert, netmsg->val, sis_sdslen(netmsg->val), out, size);
-        s_sis_net_message *newmsg = sis_net_message_clone(netmsg);
-        newmsg->style |= SIS_NET_INSIDE; // 内部传递
+        sis_dynamic_convert(unit->convert, netmsg->ask, sis_sdslen(netmsg->ask), out, size);
+        sis_net_message_incr(netmsg);
+        s_sis_net_message *newmsg = netmsg;
+        newmsg->switchs.is_inside = 1; // 内部传递
         sis_sdsfree(newmsg->cmd);
         newmsg->cmd = sis_sdsnew(unit->dateset);
         newmsg->cmd = sis_sdscatfmt(newmsg->cmd , ".%s", command);
         sis_sdsfree(newmsg->key);
         newmsg->key = sis_sdsnew(key);
         newmsg->key = sis_sdscatfmt(newmsg->key , ".%s", unit->convert->out->name);
-        sis_sdsfree(newmsg->val);
-        newmsg->val = sis_sdsnewlen(out, size);
+        sis_sdsfree(newmsg->ask);
+        newmsg->ask = sis_sdsnewlen(out, size);
         // 向上层队列发送信息
         s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, newmsg);
         sis_lock_list_push(context->recv_list, obj);

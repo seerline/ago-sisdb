@@ -554,7 +554,7 @@ int sis_disk_io_read_sdb_mks(s_sis_disk_ctrl *cls_)
     return SIS_DISK_CMD_NO_IDX;
 }
 
-#if 1
+#if 0
 #include "sis_disk.h"
 // 测试SNO文件读写
 static int    __read_nums = 0;

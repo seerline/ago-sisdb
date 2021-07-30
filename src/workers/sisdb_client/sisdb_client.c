@@ -109,7 +109,7 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
 {
     s_sis_net_message *msg = sis_net_message_create();
     msg->cid = context->cid;
-    msg->serial = sis_sdsnew(ask->serial);
+    msg->name = sis_sdsnew(ask->serial);
 
     if  (ask->format == SIS_NET_FORMAT_CHARS)
     {
@@ -135,9 +135,9 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
     s_sisdb_client_cxt *context = (s_sisdb_client_cxt *)source_;
     if (context->status == SIS_CLI_STATUS_WORK)
     {
-        s_sisdb_client_ask *ask = sisdb_client_ask_get(context, msg_->serial);
+        s_sisdb_client_ask *ask = sisdb_client_ask_get(context, msg_->name);
         // 清理上次返回的信息
-        if (ask && msg_->style & SIS_NET_RCMD)
+        if (ask && msg_->switchs.is_reply)
         {
             // printf("_cb_recv ask : %p msg: %p\n", ask, ask->cb_source);
             // printf("recv msg: [%d] %x : %s %s %s\n %s\n", msg_->cid, msg_->style, 
@@ -145,24 +145,24 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
             //     msg_->key ? msg_->key : "nil",
             //     msg_->val ? msg_->val : "nil",
             //     msg_->rval ? msg_->rval : "nil");
-            switch (msg_->rcmd)
+            switch (msg_->rans)
             {
-            case SIS_NET_ANS_SUB_START:
+            case SIS_NET_ANS_SUB_OPEN:
                 if(ask->cb_sub_start)
                 {
-                    ask->cb_sub_start(ask->cb_source, msg_->rval);
+                    ask->cb_sub_start(ask->cb_source, msg_->rmsg);
                 }        
                 break;
             case SIS_NET_ANS_SUB_WAIT:
                 if(ask->cb_sub_realtime)
                 {
-                    ask->cb_sub_realtime(ask->cb_source, msg_->rval);
+                    ask->cb_sub_realtime(ask->cb_source, msg_->rmsg);
                 }        
                 break;
             case SIS_NET_ANS_SUB_STOP:
                 if(ask->cb_sub_stop)
                 {
-                    ask->cb_sub_stop(ask->cb_source, msg_->rval);
+                    ask->cb_sub_stop(ask->cb_source, msg_->rmsg);
                 } 
                 // 取消订阅
                 {
@@ -184,7 +184,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
             case SIS_NET_ANS_OK:
                 if(ask->cb_reply)
                 {
-                    if (msg_->style & SIS_NET_ARGVS)
+                    if (msg_->switchs.has_argvs)
                     {
                         if (ask->cb_reply)
                         {
@@ -199,7 +199,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
                     {
                         if(ask->cb_reply)
                         {
-                            ask->cb_reply(ask->cb_source, SIS_NET_ANS_OK, msg_->key, msg_->rval); 
+                            ask->cb_reply(ask->cb_source, SIS_NET_ANS_OK, msg_->key, msg_->rmsg); 
                         }                                                      
                     }
                     
@@ -218,7 +218,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
                 if(ask->cb_reply)
                 {
                     // 其他返回NULL
-                    ask->cb_reply(ask->cb_source, SIS_NET_ANS_ERROR, msg_->key, msg_->rval);
+                    ask->cb_reply(ask->cb_source, SIS_NET_ANS_ERROR, msg_->key, msg_->rmsg);
                     // 返回 NULL 表示可不理会返回值 需要错误信息调用函数
                 }        
                 break;
@@ -233,7 +233,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
     if (context->status == SIS_CLI_STATUS_AUTH)
     {
         // 判断是否验证通过
-        if((msg_->style & SIS_NET_RCMD) && msg_->rcmd == SIS_NET_ANS_OK)
+        if(msg_->switchs.is_reply && msg_->rans == SIS_NET_ANS_OK)
         {        
             // 发送订阅信息
             sis_safe_map_lock(context->asks);

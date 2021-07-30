@@ -193,6 +193,8 @@ static inline void sis_sdssetalloc(s_sis_sds s, size_t newlen) {
     }
 }
 
+#define SIS_SDS_SIZE(s) (s ? sis_sdslen(s) : 0)
+
 s_sis_sds sis_sdsnewlen(const void *init, size_t initlen);
 s_sis_sds sis_sdsnew(const char *init);
 s_sis_sds sis_sdsempty(void);

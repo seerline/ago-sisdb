@@ -439,7 +439,7 @@ void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_co
     // 赋新值
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = info_->cid;
-    newinfo->serial = sis_sdsdup(info_->serial);
+    newinfo->name = sis_sdsdup(info_->name);
     newinfo->key = sis_sdsdup(collect_->name);
 
     if(info_->rfmt & SISDB_FORMAT_CHARS)
@@ -587,7 +587,7 @@ int sisdb_one_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 		s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
 		if (info->cid ==  netmsg_->cid)
 		{
-            info->rfmt = sis_db_get_format(netmsg_->val);
+            info->rfmt = sis_db_get_format(netmsg_->ask);
         	isnew = false;
 			break;
 		}
@@ -595,7 +595,7 @@ int sisdb_one_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 	if (isnew)
 	{
 		sis_net_message_incr(netmsg_);
-        netmsg_->rfmt = sis_db_get_format(netmsg_->val);
+        netmsg_->rfmt = sis_db_get_format(netmsg_->ask);
     // printf("sublist sub: %s [%d] format = %d, %d, %d\n",netmsg_->key, isnew, SISDB_FORMAT_CHARS, netmsg_->rfmt, sis_db_get_format(netmsg_->val));
 		sis_pointer_list_push(sublist->netmsgs, netmsg_);
 	}
@@ -691,7 +691,7 @@ int sisdb_multiple_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 		s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
 		if (info->cid ==  netmsg_->cid)
 		{
-            info->rfmt = sis_db_get_format(netmsg_->val);
+            info->rfmt = sis_db_get_format(netmsg_->ask);
 			isnew = false;
 			break;
 		}
@@ -699,7 +699,7 @@ int sisdb_multiple_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
 	if (isnew)
 	{
 		sis_net_message_incr(netmsg_);
-        netmsg_->rfmt = sis_db_get_format(netmsg_->val);
+        netmsg_->rfmt = sis_db_get_format(netmsg_->ask);
 		sis_pointer_list_push(sublist->netmsgs, netmsg_);
 	}
     return isnew ? 1 : 0;

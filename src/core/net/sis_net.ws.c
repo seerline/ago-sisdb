@@ -86,13 +86,13 @@ int sis_net_ws_chk_ans(s_sis_memory *in_)
     return 0;
 }
 
-int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s_sis_memory_info *info)
+int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s_sis_net_tail *info)
 {
     size_t insize = sis_memory_get_size(in_);
     size_t infosize = 0;
     if (info) 
     {
-        infosize = sizeof(s_sis_memory_info);
+        infosize = sizeof(s_sis_net_tail);
     }
     int count = (insize + infosize) / WS_MAX_SEND_BUFF;
     count += (insize + infosize) % WS_MAX_SEND_BUFF ? 1 : 0;
@@ -399,7 +399,7 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
     return 1;
 }
 
-int sis_net_pack_ws(s_sis_memory *in_, s_sis_memory_info *info, s_sis_memory *out_)
+int sis_net_pack_ws(s_sis_memory *in_, s_sis_net_tail *info, s_sis_memory *out_)
 {
     if (info->is_bytes == 0)
     {
@@ -408,12 +408,12 @@ int sis_net_pack_ws(s_sis_memory *in_, s_sis_memory_info *info, s_sis_memory *ou
     else
     {
         sis_net_pack_ws_message(0, in_, out_, info);
-        // sis_memory_cat(out_, (char *)info, sizeof(s_sis_memory_info));
+        // sis_memory_cat(out_, (char *)info, sizeof(s_sis_net_tail));
     }
     return 1;
 }
 // 需要增加处理多包的能力
-int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory *out_)
+int sis_net_unpack_ws(s_sis_memory *in_, s_sis_net_tail *info_, s_sis_memory *out_)
 {
     s_sis_ws_header wshead = {0};
 
@@ -438,12 +438,12 @@ int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory 
     if (wshead.opcode == 2)
     {
         size_t size = sis_memory_get_size(out_);
-        memmove(info_, sis_memory(out_) + size - sizeof(s_sis_memory_info),sizeof(s_sis_memory_info));
+        memmove(info_, sis_memory(out_) + size - sizeof(s_sis_net_tail),sizeof(s_sis_net_tail));
         if (info_->is_crc16)
         {
             // 这里处理crc16验证 如果不匹配返回错误
         }
-        sis_memory_set_size(out_, size - sizeof(s_sis_memory_info));
+        sis_memory_set_size(out_, size - sizeof(s_sis_net_tail));
         // 这里可以判断数据包是否可识别 不能识别就返回 -1  
     }
     else
@@ -453,44 +453,3 @@ int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory 
     }
     return 1;
 }
-
-// int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory *out_)
-// {
-//     s_sis_ws_header wshead = {0};
-
-//     if (!sis_net_unpack_ws_message(&wshead, in_, out_))
-//     {
-//         // 没有成功解析 应该合并数据
-//         return 0;
-//     }
-//     else
-//     {
-//         // 其他值表示数据获取完整        
-//     }
-    
-//     if (wshead.opcode == 1)
-//     {
-//         info_->is_bytes = 0;   // 字符串
-//         info_->is_compress = 0;
-//         info_->is_crypt = 0;
-//         info_->is_crc16 = 0;
-//     }
-//     else 
-//     if (wshead.opcode == 2)
-//     {
-//         size_t size = sis_memory_get_size(out_);
-//         memmove(info_, sis_memory(out_) + size - sizeof(s_sis_memory_info), sizeof(s_sis_memory_info));
-//         if (info_->is_crc16)
-//         {
-//             // 这里处理crc16验证 如果不匹配返回错误
-//         }
-//         sis_memory_set_size(out_, size - sizeof(s_sis_memory_info));
-//         // 这里可以判断数据包是否可识别 不能识别就返回 -1  
-//     }
-//     else
-//     {
-//         LOG(5)("opcode error = %d.\n", wshead.opcode);
-//         return -1;
-//     }
-//     return 1;
-// }

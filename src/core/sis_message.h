@@ -25,27 +25,16 @@ typedef struct s_sis_message_unit {
 /////////////////////////////////////////////////
 //  message
 /////////////////////////////////////////////////
-// 分开定义是为了解决key同民问题，支持同一个名字下各种类型数据
 #define s_sis_message s_sis_map_pointer
 
-// typedef struct s_sis_message1 {
+// // 分开定义是为了解决key同民问题，支持同一个名字下各种类型数据
+// typedef struct s_sis_message {
+//     unsigned int        refs;      // 引用次数
+//     // 其他未事先定义的字典表
 //     s_sis_map_pointer  *map;       // 标准消息体的数据 模块间通讯基本都靠这个
-
-// 	int                 cid;       // 哪个客户端的信息 -1 表示向所有用户发送
-// 	uint32              refs;      // 引用次数
-// 	uint8               style;     // 是应答还是请求 提供给二进制数据使用
-// 	s_sis_sds	        name;      // 来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址 s_sis_object   
-// 	s_sis_sds	        command;   // 请求信息专用,当前消息的cmd  sisdb.get 
-// 	s_sis_sds	        service;   // 请求信息专用,当前消息的key  sh600600,sh600601.day,info  
-// 	s_sis_sds	        ask;       // 请求信息的参数，为json格式 
-//     uint16              fmt;       // 数据是字符串还是字节流 根据此标记进行打包和拆包
-
-// 	int      	        rans;      // 请求信息的参数，为json格式 
-// 	s_sis_sds	        rmsg;      // 请求信息的参数，为json格式 
-//     uint16              rfmt;      // 返回数据格式 临时变量
-
-//     s_sis_pointer_list *argvs;     // 按顺序获取 s_sis_sds 
-// } s_sis_message1;
+//     // 网络传递
+//     s_sis_net_message  *netmsg;    // 网络节点信息
+// } s_sis_message;
 
 #ifdef __cplusplus
 extern "C" {

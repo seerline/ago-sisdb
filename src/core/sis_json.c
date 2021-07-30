@@ -447,14 +447,6 @@ s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 	{
 		return NULL;
 	}
-	if (len_ <= 0)
-	{
-		len_ = strlen(content_);
-	}
-	if (len_ <= 0)
-	{
-		return NULL;
-	}
 	struct s_sis_json_handle *handle = (s_sis_json_handle *)sis_malloc(sizeof(s_sis_json_handle));
 	memset(handle, 0, sizeof(s_sis_json_handle));
 

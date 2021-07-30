@@ -559,16 +559,16 @@ int cmd_snodb_set(void *worker_, void *argv_)
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-	if (!sis_strcasecmp(netmsg->key, "_keys_") && netmsg->val)
+	if (!sis_strcasecmp(netmsg->key, "_keys_") && netmsg->ask)
 	{
 		sis_sdsfree(context->init_keys);
-		context->init_keys = sis_sdsdup(netmsg->val);
+		context->init_keys = sis_sdsdup(netmsg->ask);
 	}
-	if (!sis_strcasecmp(netmsg->key, "_sdbs_") && netmsg->val)
+	if (!sis_strcasecmp(netmsg->key, "_sdbs_") && netmsg->ask)
 	{
 		sis_sdsfree(context->init_sdbs);
 		// 从外界过来的sdbs可能格式不对，需要转换
-		s_sis_json_handle *injson = sis_json_load(netmsg->val, sis_sdslen(netmsg->val));
+		s_sis_json_handle *injson = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
 		if (!injson)
 		{
 			return SIS_METHOD_ERROR;
@@ -595,11 +595,11 @@ int cmd_snodb_start(void *worker_, void *argv_)
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	// 这里的keys和sdbs必须为真实值
-	if (!netmsg->val)
+	if (!netmsg->ask)
 	{
 		return SIS_METHOD_ERROR;
 	}
-	int work_date = sis_atoll(netmsg->val);
+	int work_date = sis_atoll(netmsg->ask);
     if (!_snodb_write_init(context, work_date, context->init_keys, context->init_sdbs))
 	{
 		LOG(5)("snodb init fail.\n");
@@ -627,7 +627,7 @@ int cmd_snodb_start(void *worker_, void *argv_)
 		}
 		snodb_reader_realtime_start(reader);
 		LOG(5)("snodb start. [%d] cid : %d disk: %d workdate : %d = %s\n", 
-			i,  reader->cid, reader->sub_disk, context->work_date, netmsg->val);
+			i,  reader->cid, reader->sub_disk, context->work_date, netmsg->ask);
 	}
 	return SIS_METHOD_OK;
 }
@@ -639,7 +639,7 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 	// printf("cmd_snodb_stop, curmemory : %d\n", context->cur_object->size);
 	
 	LOG(5)("snodb stop. wlog : %d readers : %d workdate : %d = %s\n", 
-		context->wlog_worker, context->readeres->count, context->work_date, netmsg->val);
+		context->wlog_worker, context->readeres->count, context->work_date, netmsg->ask);
 	for (int i = 0; i < context->readeres->count; i++)
 	{
 		s_snodb_reader *reader = (s_snodb_reader *)sis_pointer_list_get(context->readeres, i);
@@ -648,7 +648,7 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 			continue;
 		}
 		LOG(5)("snodb stop. [%d] cid : %d workdate : %d = %s\n", 
-			i,  reader->cid, context->work_date, netmsg->val);
+			i,  reader->cid, context->work_date, netmsg->ask);
 		snodb_reader_realtime_stop(reader);
 	}
 	if (context->wlog_worker)
@@ -795,17 +795,17 @@ int _snodb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 	s_snodb_reader *reader = snodb_reader_create();
 	reader->iszip = iszip;
 	reader->cid = netmsg->cid;
-	if (netmsg->serial)
+	if (netmsg->name)
 	{
-		reader->serial = sis_sdsdup(netmsg->serial);
+		reader->serial = sis_sdsdup(netmsg->name);
 	}
 	reader->rfmt = SISDB_FORMAT_JSON;
     reader->snodb_worker = worker;
     reader->ishead = 0;
 	reader->sub_date = context->work_date;
-    if (netmsg->val)
+    if (netmsg->ask)
     {
-        s_sis_json_handle *argnode = sis_json_load(netmsg->val, sis_sdslen(netmsg->val));
+        s_sis_json_handle *argnode = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
         if (argnode)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
@@ -949,17 +949,17 @@ int _snodb_get(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 	s_snodb_reader *reader = snodb_reader_create();
 	reader->iszip = iszip;
 	reader->cid = netmsg->cid;
-	if (netmsg->serial)
+	if (netmsg->name)
 	{
-		reader->serial = sis_sdsdup(netmsg->serial);
+		reader->serial = sis_sdsdup(netmsg->name);
 	}
 	reader->rfmt = SISDB_FORMAT_JSON;
     reader->snodb_worker = worker;
     reader->ishead = 1;
 	reader->sub_date = context->work_date;
-    if (netmsg->val)
+    if (netmsg->ask)
     {
-        s_sis_json_handle *argnode = sis_json_load(netmsg->val, sis_sdslen(netmsg->val));
+        s_sis_json_handle *argnode = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
         if (argnode)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
@@ -1158,7 +1158,7 @@ static int cb_snodb_compress(void *source, void *argv)
     s_snodb_compress *inmem = (s_snodb_compress *)argv;
     // 向对应的socket发送数据
     s_sis_net_message *newinfo = sis_net_message_create();
-    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
     newinfo->cid = reader->cid;
 #ifdef MSERVER_DEBUG
     _bitzip_nums++;
@@ -1190,7 +1190,7 @@ static int cb_sisdb_bytes(void *source, void *argv)
     // printf("%s %d %s\n", __func__, reader->rfmt, inmem->sname);
 
 	s_sis_net_message *newinfo = sis_net_message_create();
-	newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+	newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
 	newinfo->cid = reader->cid;
 	sis_net_ans_set_key(newinfo, inmem->kname, inmem->sname);
 	if (reader->rfmt & SISDB_FORMAT_BYTES)
@@ -1221,7 +1221,7 @@ static int cb_sub_start(void *source, void *argv)
     // 向对应的socket发送数据
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
-    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
     sis_net_ans_with_sub_start(newinfo, workdate);
     if (context->cb_net_message)
 	{
@@ -1239,7 +1239,7 @@ static int cb_sub_realtime(void *source, void *argv)
     // 向对应的socket发送数据
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
-    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
     sis_net_ans_with_sub_wait(newinfo, workdate);
     if (context->cb_net_message)
 	{
@@ -1259,7 +1259,7 @@ static int cb_sub_stop(void *source, void *argv)
     // 向对应的socket发送数据
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
-    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
     sis_net_ans_with_sub_stop(newinfo, workdate);
     if (context->cb_net_message)
 	{
@@ -1278,7 +1278,7 @@ static int cb_dict_keys(void *source, void *argv)
     // 向对应的socket发送数据
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
-    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
     newinfo->key = sis_sdsnew("_keys_");
     sis_net_ans_with_chars(newinfo, keys, sis_strlen(keys));
 	if (context->cb_net_message)
@@ -1312,7 +1312,7 @@ static int cb_dict_sdbs(void *source, void *argv)
     // 向对应的socket发送数据
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
-    newinfo->serial = reader->serial ? sis_sdsdup(reader->serial) : NULL;
+    newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
     newinfo->key = sis_sdsnew("_sdbs_");
     sis_net_ans_with_chars(newinfo, sdbs, sis_strlen(sdbs));
 	if (context->cb_net_message)

@@ -382,14 +382,14 @@ int cmd_sisdb_get(void *worker_, void *argv_)
     if (cmds == 1)
     {
         // 单
-        o = sisdb_one_get_sds(context, kname, &format, netmsg->val);
+        o = sisdb_one_get_sds(context, kname, &format, netmsg->ask);
     }
     else
     {
         s_sisdb_table *tb = sis_map_list_get(context->work_sdbs, sname);
         if (tb)
         {
-            o = sisdb_get_sds(context, netmsg->key, &format, netmsg->val);
+            o = sisdb_get_sds(context, netmsg->key, &format, netmsg->ask);
         }
     }
     sis_sdsfree(kname);    sis_sdsfree(sname);
@@ -414,7 +414,7 @@ int cmd_sisdb_set(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
-    if (!netmsg->val && sis_sdslen(netmsg->val) > 0)
+    if (!netmsg->ask && sis_sdslen(netmsg->ask) > 0)
     {
         return SIS_METHOD_ERROR;
     }
@@ -426,11 +426,11 @@ int cmd_sisdb_set(void *worker_, void *argv_)
     if (cmds == 1)
     {
         // 单
-        o = sisdb_one_set(context, kname, SISDB_COLLECT_TYPE_CHARS, netmsg->val);
+        o = sisdb_one_set(context, kname, SISDB_COLLECT_TYPE_CHARS, netmsg->ask);
     }
     else
     {
-        o = sisdb_set_chars(context, netmsg->key, netmsg->val);
+        o = sisdb_set_chars(context, netmsg->key, netmsg->ask);
     }
     sis_sdsfree(kname);    sis_sdsfree(sname);
 	if (!o)
@@ -453,11 +453,11 @@ int cmd_sisdb_del(void *worker_, void *argv_)
     int o = 0;
     if (cmds == 1)
     {
-        o = sisdb_one_del(context, kname, netmsg->val);
+        o = sisdb_one_del(context, kname, netmsg->ask);
     }
     else
     {
-        o = sisdb_del(context, netmsg->key, netmsg->val);
+        o = sisdb_del(context, netmsg->key, netmsg->ask);
     }
     sis_sdsfree(kname);    sis_sdsfree(sname);
     sis_net_ans_with_int(netmsg, o);
@@ -481,11 +481,11 @@ int cmd_sisdb_gets(void *worker_, void *argv_)
     // printf("cmd_sisdb_gets: %d %s %s \n", cmds, kname, sname);
     if (cmds == 1)
     {
-        o = sisdb_one_gets_sds(context, kname, netmsg->val);
+        o = sisdb_one_gets_sds(context, kname, netmsg->ask);
     }
     else
     {
-        o = sisdb_gets_sds(context, kname, sname, netmsg->val);
+        o = sisdb_gets_sds(context, kname, sname, netmsg->ask);
     }
     sis_sdsfree(kname);    sis_sdsfree(sname);
     
@@ -512,7 +512,7 @@ int cmd_sisdb_keys(void *worker_, void *argv_)
     }
     else
     {
-        o = sisdb_keys_sds(context, netmsg->key, netmsg->val);        
+        o = sisdb_keys_sds(context, netmsg->key, netmsg->ask);        
     }
     
 	if (o)
@@ -569,11 +569,11 @@ int cmd_sisdb_dels(void *worker_, void *argv_)
     int o = 0;
     if (cmds == 1)
     {
-        o = sisdb_one_dels(context, kname, netmsg->val);
+        o = sisdb_one_dels(context, kname, netmsg->ask);
     }
     else
     {
-        o = sisdb_dels(context, kname, sname, netmsg->val);
+        o = sisdb_dels(context, kname, sname, netmsg->ask);
     }
     sis_sdsfree(kname);    sis_sdsfree(sname);
     sis_net_ans_with_int(netmsg, o);
@@ -737,11 +737,11 @@ static int cb_rlog_recv(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    printf("cb_rlog_recv: %d %s \n%s \n%s \n%s \n", netmsg->style,
-            netmsg->serial? netmsg->serial : "nil",
+    printf("cb_rlog_recv: %d %s \n%s \n%s \n%s \n", netmsg->switchs.is_reply,
+            netmsg->name? netmsg->name : "nil",
             netmsg->cmd ?   netmsg->cmd : "nil",
             netmsg->key?    netmsg->key : "nil",
-            netmsg->val?    netmsg->val : "nil");   
+            netmsg->ask?    netmsg->ask : "nil");   
 
     char argv[2][128]; 
     int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);

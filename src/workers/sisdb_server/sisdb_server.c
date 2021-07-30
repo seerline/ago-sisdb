@@ -457,7 +457,7 @@ static int cb_reader_convert(void *worker_, s_sis_object *in_)
         return 0;
     }
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);    
-    if(netmsg->style & SIS_NET_INSIDE)
+    if(netmsg->switchs.is_inside)
     {
         // 不嵌套播报数据 根据style来判断
         return 0;
@@ -520,7 +520,7 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
         return SIS_METHOD_OK;
     }
     s_sisdb_userinfo *uinfo = (s_sisdb_userinfo *)sis_map_pointer_get(context->user_auth, netmsg->key);
-    if (!uinfo || sis_strcasecmp(uinfo->password, netmsg->val))
+    if (!uinfo || sis_strcasecmp(uinfo->password, netmsg->ask))
     {
         sis_net_ans_with_error(netmsg, "auth fail.", 10);
     }

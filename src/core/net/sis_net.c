@@ -1044,7 +1044,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 	s_sis_memory *inmem = sis_memory_create();
 	s_sis_memory *inmemptr = inmem;
 	// 成功或者不成功 in_ 都会移动位置到新的位置
-	s_sis_memory_info info;
+	s_sis_net_tail info;
 	int rtn = call->slot_net_unpack(in_, &info, inmemptr);
 	if (rtn == 0)
 	{
@@ -1101,7 +1101,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 // 	}
 // 	s_sis_memory *inmem = cxt_->unpack_memory;
 // 	s_sis_memory *inmemptr = inmem;
-// 	s_sis_memory_info info;
+// 	s_sis_net_tail info;
 // 	int complete = call->slot_net_unpack(in_, &info, inmemptr);
 // 	if (rtn == 0)
 // 	{
@@ -1168,7 +1168,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	s_sis_memory *outmem = sis_memory_create();
 	s_sis_memory *outmemptr = outmem;
 
-	s_sis_memory_info info;
+	s_sis_net_tail info;
 	info.is_bytes = mess_->format == SIS_NET_FORMAT_BYTES ? 1 : 0;
 	info.is_compress = 0;
 	info.is_crypt = 0;
@@ -1206,7 +1206,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	return obj;
 }
 
-#if 0
+#if 1
 // 
 #include "sis_net.io.h"
 
@@ -1232,18 +1232,21 @@ void exithandle(int sig)
 void cb_recv(void *sock_, s_sis_net_message *msg)
 {
 	s_sis_net_class *socket = (s_sis_net_class *)sock_;
-	if (msg->style & SIS_NET_ASK)
+	if (!msg->switchs.is_reply)
 	{
-		printf("recv query: [%d] %d : %s %s %s [++%d++]\n", msg->cid, __sno, 
+		printf("recv query: [%d] %d : %s %s %s %s [++%d++]\n", msg->cid, __sno, 
+			msg->service ? msg->service : "nil",
 			msg->cmd ? msg->cmd : "nil",
 			msg->key ? msg->key : "nil",
-			msg->val ? msg->val : "nil",
+			msg->ask ? msg->ask : "nil",
 			(int)sis_map_pointer_getsize(socket->cxts));
 		s_sis_sds reply = sis_sdsempty();
 		reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
 		
 		// sis_net_ans_with_chars(msg, reply, sis_sdslen(reply));
-		sis_net_ans_with_bytes(msg, reply);
+		sis_net_ans_with_bytes(msg, reply, sis_sdslen(reply));
+
+		sis_sdsfree(reply);
 		// sis_sleep(3000);
 		sis_net_class_send(socket, msg);
 		// sis_net_class_send(socket, msg);
@@ -1253,7 +1256,7 @@ void cb_recv(void *sock_, s_sis_net_message *msg)
 	}
 	else
 	{
-		printf("recv msg: [%d] %d : %s\n", msg->cid, msg->style, msg->rval ? msg->rval : "nil");
+		printf("recv msg: [%d] %d : %s\n", msg->cid, msg->switchs.is_reply, msg->rmsg ? msg->rmsg : "nil");
 	}
 	
 }
@@ -1315,8 +1318,8 @@ int main(int argc, const char **argv)
 
 	signal(SIGINT, exithandle);
 
-	s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_SIP, TEST_PORT, NULL};
-	s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, TEST_PORT, NULL};
+	s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_SIP, "", TEST_PORT, NULL};
+	s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, "", TEST_PORT, NULL};
 	// s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, TEST_PORT, NULL};
 	// s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, TEST_PORT, NULL};
 	// s_sis_url url_srv = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_ANSWER, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};
@@ -1332,7 +1335,7 @@ int main(int argc, const char **argv)
 	{
 		session = sis_net_class_create(&url_cli);
 	}
-	printf("%s:%d\n",session->url->ip, session->url->port);
+	printf("%s:%d\n",session->url->ip4, session->url->port);
 
 	session->cb_connected = _cb_connected;
 	session->cb_disconnect = _cb_disconnect;
@@ -1349,8 +1352,9 @@ int main(int argc, const char **argv)
 			msg->cid = 1;
 		}
 		s_sis_sds reply = sis_sdsnew("this ok.");
-		sis_net_ans_with_bytes(msg, reply);
+		sis_net_ans_with_bytes(msg, reply, sis_sdslen(reply));
 		// sis_net_ask_with_bytes(msg, "pub", "info", "ding", 4);
+		sis_sdsfree(reply);
 		for (int i = 0; i < 100000; i++)
 		{
 			printf("------- %d ------\n", i);
