@@ -44,10 +44,9 @@
 // 在多CPU测试 经常会剩余几个包发不出去 这个可能和 wait_queue 有关 避免问题 做一个裸的测试
 
 /////////////////////////////////////////////////
-//  s_sis_net_queue
-// 专门处理uv多线程写入时 async不能1对1返回的错误
+//  s_sis_net_uv_nodes
 /////////////////////////////////////////////////
-
+// 速度测试
 
 #if 0
 
@@ -69,8 +68,11 @@ s_test_client *client[MAX_TEST_CLIENT];
 
 void exithandle(int sig)
 {
-	printf("exit .1. \n");
-	
+	printf("--- exit .%d. %d\n", __exit, sig);
+	if (__exit == 1)
+	{
+		exit(0);
+	}
 	__exit = 1;
 	if (__isclient)
 	{
@@ -82,15 +84,14 @@ void exithandle(int sig)
 				sis_free(client[i]);
 			}
 			/* code */
-		}
-		
+		}	
 	}
 	else
 	{
 		sis_socket_server_destroy(server);
 	}
 	__exit = 2;
-	printf("exit .ok . \n");
+	printf("--- exit .ok . \n");
 }
 #define SPEED_SERVER 1 
 // 测试服务端发送数据的速度 client记录收到字节数
@@ -100,11 +101,12 @@ size_t speed_recv_size = 0;
 size_t speed_recv_curr = 0;
 msec_t speed_recv_msec = 0;
 
-#define ACTIVE_CLIENT 1 // client主动发请求
+// #define ACTIVE_CLIENT 1 // client主动发请求
 
 int sno = 0;
 static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen_)
 {
+	printf("--- server recv [%d]:%zu \n", sid_, ilen_);
 	// printf("server recv [%d]:%zu [%s]\n", sid_, ilen_, in_);	
 #ifdef ACTIVE_CLIENT
 	if (sno == 0)
@@ -120,7 +122,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 }
 static void cb_client_send_after(void* handle_, int cid, int status)
 {
-	s_test_client *cli = (s_test_client *)handle_;
+	// s_test_client *cli = (s_test_client *)handle_;
 	// if (cli->sno < 10*1000)
 	// {
 	// 	cli->sno++;
@@ -135,6 +137,11 @@ static void cb_client_send_after(void* handle_, int cid, int status)
 static void cb_client_recv_after(void* handle_, int cid, char* in_, size_t ilen_)
 {
 	speed_recv_size += ilen_;
+	int nums = speed_recv_size/16384;
+	if (nums % 100000 == 0)
+	{
+		printf("client recv [%d]:%zu %d\n", cid, ilen_, nums);
+	}
 	if (speed_recv_msec == 0) 
 	{
 		speed_recv_msec = sis_time_get_now_msec();
@@ -145,34 +152,45 @@ static void cb_client_recv_after(void* handle_, int cid, char* in_, size_t ilen_
 		if (sis_time_get_now_msec() - speed_recv_msec > 1000)
 		{
 			speed_recv_msec = sis_time_get_now_msec();
-			printf("cost : %5d recv : %12zu, %10zu speed(k/s): %d\n", offset, speed_recv_size, speed_recv_curr, (int)speed_recv_curr/offset);
+			printf("--- cost : %5d recv : %12zu, %10zu speed(M/s): %zu\n", offset, speed_recv_size, speed_recv_curr, speed_recv_curr/offset/1000);
 			speed_recv_curr = 0; 
 		}
 	}
 	speed_recv_curr += ilen_;
 }
+uv_thread_t server_thread;
 
-
-static void cb_new_connect(void *handle_, int sid_)
+void _thread_write(void* arg)
 {
-	printf("new connect . sid_ = %d \n", sid_);	
-	s_sis_socket_server *srv = (s_sis_socket_server *)handle_;
-	sis_socket_server_set_rwcb(srv, sid_, cb_server_recv_after, NULL);
+	s_test_client *client = (s_test_client *)arg;
+	int id = client->sno;
 	int count = 1000*1000;
 	int sendsize = 16384;
 	s_sis_sds str = sis_sdsnewlen(NULL, sendsize);
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, str);
 	for (int i = 0; i < count; i++)
 	{
-		sis_socket_server_send(srv, sid_, obj);
+		sis_socket_server_send(server, id, obj);
 	}
 	sis_object_destroy(obj);
-	printf("send end. %d \n", sid_);	
+	printf("--- send end. %p %d \n", client, id);	
+	sis_free(client);
+}
+static void cb_new_connect(void *handle_, int sid_)
+{
+	printf("--- new connect . sid_ = %d \n", sid_);	
+	s_sis_socket_server *srv = (s_sis_socket_server *)handle_;
+	sis_socket_server_set_rwcb(srv, sid_, cb_server_recv_after, NULL);
+	
+	s_test_client *client = SIS_MALLOC(s_test_client, client);
+	client->sno = sid_;
+	printf("--- send start. %p %d \n", client, sid_);	
+	uv_thread_create(&server_thread, _thread_write, client);
 }
 
 static void cb_connected(void *handle_, int sid_)
 {
-	printf("client connect\n");	
+	printf("--- client connect\n");	
 }
 #else
 static void cb_client_recv_after(void* handle_, int cid, char* in_, size_t ilen_)
@@ -219,10 +237,9 @@ static void cb_connected(void *handle_, int sid_)
 
 static void cb_disconnected(void *handle_, int sid_)
 {
-	printf("client disconnect\n");	
+	printf("--- client disconnect\n");	
 	s_test_client *cli = (s_test_client *)handle_;
 	cli->status = 0;
-
 }
 
 uv_thread_t connect_thread;
@@ -230,7 +247,14 @@ int main(int argc, char **argv)
 {
 	safe_memory_start();
 
-	signal(SIGINT, exithandle);
+	sis_signal(SIGINT, exithandle);
+	// sis_signal(SIGKILL, exithandle);
+	// // sis_sigignore(SIGPIPE);
+	// for (int i = 0; i < 1000000; i++)
+	// {
+	// 	sis_signal(i, exithandle);
+	// }
+	// sis_sigignore(SIGPIPE);
 
 	if (argc < 2)
 	{
@@ -246,7 +270,7 @@ int main(int argc, char **argv)
 
 		sis_socket_server_open(server);
 
-		printf("server working ... \n");
+		printf("--- server working ... \n");
 
 	}
 	else
@@ -265,14 +289,14 @@ int main(int argc, char **argv)
 
 			sis_socket_client_open(client[i]->client);
 
-			printf("client working ... %d \n", client[i]->status);
+			printf("--- client working ... %d \n", client[i]->status);
 			/* code */
 		}
 		
 
 	}
 
-	while (!__exit)
+	while (__exit != 2)
 	{
 		// if (__isclient)
 		// {
@@ -287,10 +311,6 @@ int main(int argc, char **argv)
 		// }
 		sis_sleep(50);
 	}
-	while(__exit != 2)
-	{
-		sis_sleep(300);
-	}	
 	safe_memory_stop();
 	return 0;	
 }

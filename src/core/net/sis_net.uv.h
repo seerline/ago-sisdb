@@ -18,95 +18,136 @@ typedef void (*cb_socket_connect)(void *, int sid_); // 客户端永远sid == 0 
 typedef void (*cb_socket_recv_after)(void *, int sid_, char *in_, size_t ilen_);
 typedef void (*cb_socket_send_after)(void *, int sid_, int status);
 
-void sis_socket_close_handle(uv_handle_t *handle_, uv_close_cb close_cb_);
-
-/////////////////////////////////////////////////////////////
-// s_sis_socket_server define 
-/////////////////////////////////////////////////////////////
-
-struct s_sis_socket_server;
+// 0 表示已经关闭 1 表示等待关闭
+int sis_socket_close_handle(uv_handle_t *handle_, uv_close_cb close_cb_);
 
 /////////////////////////////////////////////////
-//  s_sis_net_queue
+//  s_sis_net_uv_nodes
 /////////////////////////////////////////////////
 
 // 队列结点
 typedef struct s_sis_net_node {
-	int                    cid;
     s_sis_object          *obj;    // 数据区
     struct s_sis_net_node *next;
 } s_sis_net_node;
 
-// 发起始结点 全部处理完再返回
-typedef int (cb_net_reader)(void *);
+typedef struct s_sis_net_uv_nodes {
+    int64              nums;
+	s_sis_mutex_t      lock;  
+    s_sis_net_node    *whead;
+    s_sis_net_node    *wtail;
 
-typedef struct s_sis_net_queue {
+    s_sis_net_node    *rhead;  // 已经被pop出去 保存在这里 除非下一次pop或free
+	s_sis_net_node    *rtail;
 
-    s_sis_mutex_t      lock;  
-    int                count;
-
-	void              *source; // server : s_sis_socket_server || s_sis_socket_client
-
-    s_sis_net_node    *head;
-    s_sis_net_node    *tail;
-
-    s_sis_net_node    *live;  // 当前激活的节点 只能一个一个处理
-
-    cb_net_reader     *cb_reader;
-    s_sis_wait_thread *work_thread;  // 工作线程
-} s_sis_net_queue;
+	int                maxsends;
+	int                sendnums;
+	uv_buf_t          *readbuff;
+} s_sis_net_uv_nodes;
 
 
-s_sis_net_queue *sis_net_queue_create(void *source_, cb_net_reader *cb_reader_, int wait_nums_);
-void sis_net_queue_destroy(s_sis_net_queue *queue_);
-s_sis_net_node *sis_net_queue_push(s_sis_net_queue *queue_, int cid_, s_sis_object *obj_);
-void sis_net_queue_stop(s_sis_net_queue *queue_);
+s_sis_net_uv_nodes *sis_net_uv_nodes_create(int);
+void sis_net_uv_nodes_destroy(s_sis_net_uv_nodes *nodes_);
+int  sis_net_uv_nodes_push(s_sis_net_uv_nodes *nodes_, s_sis_object *obj_);
+int  sis_net_uv_nodes_read(s_sis_net_uv_nodes *nodes_);
+void sis_net_uv_nodes_free_read(s_sis_net_uv_nodes *nodes_);
+
+///////////////////////////////////////////////////////////////////////////
+//----------------------s_sis_net_list --------------------------------//
+//  以整数为索引 存储指针的列表
+///////////////////////////////////////////////////////////////////////////
+#define SIS_NET_NOUSE  0  // 可以使用
+#define SIS_NET_USEED  1  // 正在使用
+#define SIS_NET_CLOSE  2  // 已经关闭
+
+typedef struct s_sis_net_list {
+	time_t         wait_sec;     // 是否等待 300 秒 0 就是直接分配
+	time_t        *stop_sec;     // stop_time 上次删除时的时间 
+	int		       max_count;    // 当前最大个数
+	int		       cur_count;    // 当前有效个数
+	unsigned char *used;         // 是否有效 初始为 0 
+	void          *buffer;       // used 为 0 需调用vfree
+	void (*vfree)(void *);       // == NULL 不释放对应内存
+} s_sis_net_list;
+
+s_sis_net_list *sis_net_list_create(void *); 
+void sis_net_list_destroy(s_sis_net_list *list_);
+void sis_net_list_clear(s_sis_net_list *list_);
+
+int sis_net_list_new(s_sis_net_list *list_, void *in_);
+void *sis_net_list_get(s_sis_net_list *, int index_);
+
+int sis_net_list_first(s_sis_net_list *);
+int sis_net_list_next(s_sis_net_list *, int index_);
+int sis_net_list_uses(s_sis_net_list *);
+
+int sis_net_list_stop(s_sis_net_list *list_, int index_);
+
+/////////////////////////////////////////////////////////////
+// s_sis_socket_session  
+/////////////////////////////////////////////////////////////
 
 // 用于服务器的会话单元
 typedef struct s_sis_socket_session
 {
-	int sid;   //会话 
+	int                   sid;              // 会话ID 
+	void                 *father;           // 服务器句柄(保存是因为某些回调函数需要到)
+	int                   write_stop;       // 是否正在停止
 
-	uv_tcp_t *work_handle;	//客户端句柄
-	uv_buf_t  read_buffer;  // 接受数据的 buffer 有真实的数据区
-	uv_buf_t  write_buffer; // 写数据的 buffer 没有真实的数据区 直接使用传入的数据缓存指针
-	
-	int        write_stop; // 是否已经关闭
-	uv_async_t write_async;
-	uv_write_t write_req;   // 写时请求
+	uv_tcp_t              uv_w_handle;	    // 客户端tcp句柄
+	uv_buf_t              uv_r_buffer;      // 接受数据的 buffer 有真实的数据区
+  
+	s_sis_net_uv_nodes      *send_nodes;       // 发送队列  
 
-	volatile int    _uv_send_async_nums;
-	volatile int    _uv_recv_async_nums;
+	cb_socket_recv_after  cb_recv_after;    // 接收数据回调给用户的函数
+	cb_socket_send_after  cb_send_after;    // 回调函数
 
-	struct s_sis_socket_server *server; //服务器句柄(保存是因为某些回调函数需要到)
-
-	cb_socket_recv_after cb_recv_after; // 接收数据回调给用户的函数
-	cb_socket_send_after cb_send_after; // 回调函数
 } s_sis_socket_session;
+
+//////////////////////////////////////////////////////////////
+// s_sis_socket_session
+//////////////////////////////////////////////////////////////
+
+s_sis_socket_session *sis_socket_session_create(void *);
+
+void sis_socket_session_set_rwcb(s_sis_socket_session *session_,
+								cb_socket_recv_after cb_recv_, 
+								cb_socket_send_after cb_send_);
+
+void sis_socket_session_destroy(void *session_);
+
+void sis_socket_session_init(s_sis_socket_session *session_);
+
+/////////////////////////////////////////////////////////////
+// s_sis_socket_server  
+/////////////////////////////////////////////////////////////
 
 typedef struct s_sis_socket_server
 {
+	char               ip[128];
+	int                port;
 
-	uv_loop_t *loop;
-	uv_tcp_t server_handle;			  //服务器链接
-	uv_thread_t server_thread_handle; // server 线程句柄
+	uv_loop_t         *uv_s_worker;
+	uv_tcp_t           uv_s_handle;		   // 服务器链接
+	uv_thread_t        uv_s_thread;        // server 线程句柄
 	
-	bool isinit; // 是否已初始化，用于 close 函数中判断
-	bool isexit;
-	// ??? 客户断线后 删除了对象 却没清理发送队列
-	s_sis_net_queue  *write_list; // 发送队列   
-	s_sis_index_list *sessions; // 子客户端链接 s_sis_socket_session
+	bool               isinit;             // 是否已初始化，用于 close 函数中判断
+	bool               isexit;
 
-	char ip[128];
-	int port;
+	int                cur_send_idx;       // 当前发送索引 
 
-	void *cb_source;			// 回调时作为第一个参数传出
+	int                write_may;          // 可写标识
+	s_sis_mutex_t      write_may_lock;     // 可写锁
+	s_sis_wait_thread *write_thread;      
 
-	cb_socket_connect cb_connected_s2c;  // 新连接处理回调
-	cb_socket_connect cb_disconnect_s2c; // 新连接处理回调
+	s_sis_net_list    *sessions;           // 子客户端链接 s_sis_socket_session
+
+	void              *cb_source;	       // 回调时作为第一个参数传出
+	cb_socket_connect  cb_connected_s2c;   // 新连接处理回调
+	cb_socket_connect  cb_disconnect_s2c;  // 新连接处理回调
 
 } s_sis_socket_server;
-
+ 
 s_sis_socket_server *sis_socket_server_create();
 void sis_socket_server_destroy(s_sis_socket_server *);
 
@@ -141,36 +182,29 @@ void sis_socket_server_set_cb(s_sis_socket_server *,
 
 typedef struct s_sis_socket_client
 {
-	uv_loop_t    *loop;
-	uv_tcp_t     client_handle;			   // 客户端句柄
-	uv_thread_t  client_thread_handle; // 线程句柄
-	uv_connect_t connect_req;		   // 连接时请求 主要传递当前类
-
-	uv_buf_t read_buffer;  // 接受数据的 buffer 有真实的数据区
-	uv_buf_t write_buffer; // 写数据的 buffer 没有真实的数据区 直接使用传入的数据缓存指针
-
-	uv_async_t write_async;
-	uv_write_t write_req;  // 写时请求
-
-	int work_status; // 连接状态
-
-	int keep_connect_status; // 连接状态
-	// 千万不要用uv的时间片 是因为退出时 uv_run 会异常
-	uv_thread_t keep_connect_thread_handle; //  断开重新连接的线程句柄
-
-	bool isinit; // 是否已初始化，用于 close 函数中判断
-	bool isexit; // 避免多次进入
-
-	s_sis_net_queue  *write_list; // 发送队列   
-
 	char  ip[128];
 	int   port;
-	void *cb_source;						 // 回调时作为第一个参数传出
-	cb_socket_connect cb_connected_c2s;  // 链接成功
-	cb_socket_connect cb_disconnect_c2s; // 链接断开
 
-	cb_socket_recv_after cb_recv_after; // 回调函数
-	cb_socket_send_after cb_send_after; // 回调函数
+	uv_loop_t            *uv_c_worker;
+	uv_thread_t           uv_c_thread;      // 线程句柄
+
+	bool                  isinit;           // 是否已初始化，用于 close 函数中判断
+	bool                  isexit;           // 避免多次进入
+
+	int                   work_status;      // 连接状态
+	int                   reconn_status;    // 连接状态
+	uv_thread_t           uv_reconn_thread;  //  断开重新连接的线程句柄
+	// 千万不要用uv的时间片 是因为退出时 uv_run 会异常
+
+	int                   write_may;        // 可写标识
+	s_sis_mutex_t         write_may_lock;   // 可写锁
+	s_sis_wait_thread    *write_thread;      
+
+	s_sis_socket_session *session;          // 链接后的实例 断开链接 = sid = -1 来判断
+
+	void                 *cb_source;						 // 回调时作为第一个参数传出
+	cb_socket_connect     cb_connected_c2s;  // 链接成功
+	cb_socket_connect     cb_disconnect_c2s; // 链接断开
 
 } s_sis_socket_client;
 

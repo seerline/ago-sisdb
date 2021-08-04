@@ -44,6 +44,7 @@ void *sis_struct_list_next(s_sis_struct_list *list_, void *);
 void *sis_struct_list_offset(s_sis_struct_list *list_, void *, int offset_);
 
 void sis_struct_list_set_size(s_sis_struct_list *list_, int len_);
+void sis_struct_list_set_maxsize(s_sis_struct_list *list_, int maxlen_);
 int sis_struct_list_set(s_sis_struct_list *, void *in_, int inlen_);
 
 int sis_struct_list_setone(s_sis_struct_list *, int index_, void *in_);
@@ -211,41 +212,6 @@ int sis_pointer_list_delete(s_sis_pointer_list *src_, int start_, int count_);
 int sis_pointer_list_indexof(s_sis_pointer_list *list_, void *in_);
 int sis_pointer_list_find_and_update(s_sis_pointer_list *, void *finder_, void *in_);
 int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
-#ifdef __cplusplus
-}
-#endif
-
-///////////////////////////////////////////////////////////////////////////
-//----------------------s_sis_index_list --------------------------------//
-//  以整数为索引 存储指针的列表
-///////////////////////////////////////////////////////////////////////////
-
-typedef struct s_sis_index_list {
-	fsec_t         wait_sec; // 是否等待 300 毫秒 0 就是直接分配
-	fsec_t        *stop_sec; // stop_time 上次删除时的时间 
-	int		       count;    // 当前个数
-	unsigned char *used;     // 是否有效 初始为 0 
-	void          *buffer;   // used 为 0 需调用vfree
-	void (*vfree)(void *);  // == NULL 不释放对应内存
-} s_sis_index_list;
-#ifdef __cplusplus
-extern "C" {
-#endif
-s_sis_index_list *sis_index_list_create(int count_); 
-void sis_index_list_destroy(s_sis_index_list *list_);
-void sis_index_list_clear(s_sis_index_list *list_);
-
-int sis_index_list_set(s_sis_index_list *, int index_, void *in_);
-// 从list找一个无用的索引 返回索引号 -1 表示列表满
-int sis_index_list_new(s_sis_index_list *list_);
-void *sis_index_list_get(s_sis_index_list *, int index_);
-
-int sis_index_list_first(s_sis_index_list *);
-int sis_index_list_next(s_sis_index_list *, int index_);
-int sis_index_list_uses(s_sis_index_list *);
-
-int sis_index_list_del(s_sis_index_list *list_, int index_);
-
 #ifdef __cplusplus
 }
 #endif

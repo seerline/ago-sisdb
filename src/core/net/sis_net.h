@@ -110,12 +110,33 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 // 收到消息后的回调 s_sis_net_message - 
 typedef void (*cb_net_reply)(void *, s_sis_net_message *);
 
+// 一个写入和读取隔离的类
+typedef struct s_sis_net_wnodes {
+    int64              nums;
+	s_sis_mutex_t      lock;  
+    s_sis_net_node    *whead;
+    s_sis_net_node    *wtail;
+
+    s_sis_net_node    *rhead;  
+	s_sis_net_node    *rtail;
+} s_sis_net_wnodes;
+
+
+s_sis_net_uv_nodes *sis_net_uv_nodes_create(int);
+void sis_net_uv_nodes_destroy(s_sis_net_uv_nodes *nodes_);
+int  sis_net_uv_nodes_push(s_sis_net_uv_nodes *nodes_, s_sis_object *obj_);
+int  sis_net_uv_nodes_read(s_sis_net_uv_nodes *nodes_);
+void sis_net_uv_nodes_free_read(s_sis_net_uv_nodes *nodes_);
+
 typedef struct s_sis_net_context {
 	uint8              status;       // 当前的工作状态 SIS_NET_WORKING...HANDING DISCONNECT
 	int                rid;          // 对端的 socket ID 
 	s_sis_url          rurl;         // 客户端的相关信息
 	// 网络收到的内容 脱壳 解压 解密 后放入recv_buffer 解析后把完整的数据包 放入主队列 剩余数据保留等待下次收到数据
 	s_sis_memory      *recv_buffer;  // 接收数据的残余缓存
+
+	s_sis_net_wnodes   recv_nodes;   // s_sis_memory 链表
+
 	void              *father;       // s_sis_net_class *的指针
 	s_sis_net_slot    *slots;        // 根据协议对接不同功能函数	
 	void              *cb_source;    // 回调句柄
@@ -136,24 +157,15 @@ typedef struct s_sis_net_context {
 typedef struct s_sis_net_class {
 	s_sis_url            *url;      // 本机需要监听的ip地址
 
-	uint64                ask_sno;
 	uint8                 work_status;  // 当前的工作状态 SIS_NET_WORKING...NONE EXIT 3 种状态
-	// s_sis_net_slot        slots;     // 请求方使用 	
 	
 	s_sis_socket_client  *client;       // 二选一 cxts 只有一条记录
 	s_sis_socket_server  *server;    
 	// 对应的连接客户的集合 s_sis_net_context
-	s_sis_map_pointer    *cxts;         // 连接服务器的 s_sis_net_context
-	// s_sis_net_context    *client_cxt;       // 客户端的上下文信息
-	// 发出的请求,以时间顺序保存 回来的数据一一对应调用回调
-	s_sis_pointer_list   *ask_lists;    // s_sis_net_message - s_sis_object
+	s_sis_map_kint       *cxts;         // 连接服务器的 s_sis_net_context
 
-	// recv放的是解包后的数据 send 放的是打包后的数据
-	// 刚出队列的数据 等待处理成功后释放 
-	// s_sis_object         *after_recv_cxt;  // 当前接收到的数据 等待处理成功后删除 s_sis_net_message 
-	// 可能在一个数据包中有多个请求 一次解析逐个放入队列 
-	s_sis_lock_list     *ready_recv_cxts; // 接收到的数据  s_sis_net_message - s_sis_object
-	s_sis_lock_reader   *reader_recv;  // 读取接收队列
+	s_sis_lock_list      *ready_recv_cxts;    // 接收到的数据  s_sis_net_message - s_sis_object
+	s_sis_lock_reader    *reader_recv;  // 读取接收队列
 
 	// 当前正在发送的信息 刚出队列的 发送成功后释放
 	// s_sis_object         *after_send_cxt;  // 已经发送的数据 等待发送成功后删除 s_sis_memory
@@ -169,7 +181,6 @@ typedef struct s_sis_net_class {
 
 bool sis_net_is_ip4(const char *ip_);
 
-
 /////////////////////////////////////////////////////////////
 // s_sis_url define 
 /////////////////////////////////////////////////////////////
@@ -177,11 +188,11 @@ bool sis_net_is_ip4(const char *ip_);
 s_sis_url *sis_url_create(); 
 void sis_url_destroy(void *);
 
-void sis_url_set_ip4(s_sis_url *, const char *ip_);
-
 void sis_url_clone(s_sis_url *scr_, s_sis_url *des_);
 void sis_url_set(s_sis_url *, const char *key, char *val);
 char *sis_url_get(s_sis_url *, const char *key);
+
+void sis_url_set_ip4(s_sis_url *, const char *ip_);
 
 bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_);
 
@@ -220,64 +231,6 @@ int sis_net_class_set_slot(s_sis_net_class *, int sid_, char *compress, char * c
 // 不阻塞 不要释放传进来的 s_sis_net_message 系统自己会处理
 int sis_net_class_send(s_sis_net_class *, s_sis_net_message *);
 
-// 阻塞直到有返回 超过 wait_msec 没有数据返回就超时退出
-// int sis_net_class_ask_wait(s_sis_net_class *, s_sis_object *send_, s_sis_object *recv_);
-
-/////////////////////////////////////////////////////////////
-// 协议说明
-/////////////////////////////////////////////////////////////
-// 1、底层协议格式 以ws为基础协议 实际数据协议 二进制和JSON混杂格式两种
-// 客户端发起连接 连接认证通过后, 
-// 客户端 发送 1:{ cmd:login, argv:{version : 1, compress : snappy, format: json, username : xxx, password : xxx}}
-// 服务端 成功返回 1: { login : ok }
-//       失败返回 1: { logout : "format 不支持."}
-// 对回调没有要求的 不填来源 则包以:开头
-// 所有标志符不能带 :
-
-// 2、二进制协议格式 主要应用于快速数据交互 
-// 二进制协议交互 握手后 必须交互一次结构化数据的字典表 
-// 客户端凡事需要发送的二进制结构体都需要首先发送给服务端 并唯一命名 服务器亦然 以便对方能认识自己
-// 客户端 发送 2: { cmd:dict, argv:{info:{fields:[[],[]]},market:{fields:[[],[]]},trade:{fields:[[],[]]}} }
-// 服务端 发送 2: { cmd:dict, argv:{info:{fields:[[],[]]},market:{fields:[[],[]]},trade:{fields:[[],[]]}} }
-// 之后客户端发送格式为 3:set:key:sdb:+..... 对应json的几个参数 key sdb 
-
-// 这些交互底层处理掉 上层收到的就是字符串数据 
-
-// 3、JSON协议格式 主要应用于 ws 协议下的web应用 
-// 基于json数据格式，通过驱动来转换数据格式，从协议层来说相当于底层协议的解释层，
-
-// 格式说明：
-// id: 以冒号为ID结束符，以确定信息的一一对应关系 不能有{}():符号
-// {} json 数据 -- 字符串
-// [] array 数据 -- 字符串
-	
-	// id  -- 谁干的事结果给谁 针对异步问题数据的对应关系问题 [必选]
-	// cmd -- 干什么 [必选]
-	// key -- 对谁干 [可选]
-	// sdb -- 对什么属性干 [可选] 
-	// argv -- 怎么干... [可选]
-
-// 请求格式例子:
-// id:{"cmd":"sisdb.get","key":"sh600601","sdb":"info","argv":[11,"sssss",{"min":16}]}
-	// argv参数只能为数值、字符串，[],{}，必须能够被js解析，
-// id:{"cmd":"sisdb.set","key":"sh600601","sdb":"info","argv":[{"time":100,"newp":100.01}]}
-
-// 应答格式例子:
-// id:{} 通常返回信息类查询
-// id:[[],[]] 单key单sdb
-// id:{"000001.info":[[],[]],"000002.info":[[],[]]} 多key或多sdb 
-// id:{"info.fields":[[],[]]} 返回字段信息 也可以混合在以上的返回结构
-
-
-// id的意义如下：
-// 	所有的消息都以字符串或数字为开始，以冒号为结束；
-// 	system:为系统类消息，比如链接、登录、PING等信息；
-// 	不放在{}中的原因是解析简单，快速定位转发
-// 	1.作为转发中间件时，aaa.bbb.ccc的方式一级一级下去，返回数据后再一级一级上来，最后返回给发出请求的端口，
-// 	  方便做分布式应用的链表；因为该值会有变化，和请求数据分开放置；只有内存拷贝没有json解析
-// 	2.作为订阅和发布，当客户订阅了某一类数据，异步返回数据时可以准确的定位数据源，
-// 	3.对于一应一答的阻塞请求，基本可以忽略不用；
-//  4.对于客户端发出多个请求，服务端返回数据时以stock来定位请求；
 
 
 #endif //_SIS_NET_H

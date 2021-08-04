@@ -147,7 +147,7 @@ void sis_net_ans_with_int(s_sis_net_message *netmsg_, int iint_)
     netmsg_->rans = SIS_NET_ANS_OK;
     char sint[32];
     sis_lldtoa(iint_, sint, 32, 10);
-    SIS_NET_SET_STR(netmsg_->switchs.has_msg, netmsg_->rmsg, sint);
+    SIS_NET_SET_STR(netmsg_->switchs.has_msg, netmsg_->rmsg, &sint[0]);
 }
 void sis_net_ans_with_ok(s_sis_net_message *netmsg_)
 {

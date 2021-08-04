@@ -4,96 +4,6 @@
 #include <sis_net.h>
 #include <sis_net.node.h>
 
-//////////////////////////////////////////////////////////////////////////////////////////
-// 网络通讯协议 主要的关键字
-// ver     [非必要] 协议版本 默认 1.0
-// fmt     [必要] 数据格式 byte json http 二进制和json数据 为ws格式 http 会把请求和应答数据转换为标准http格式
-// name    [必要] 请求的名字 用户名+时间戳+序列号 唯一标志请求的名称 方便无状态接收数据
-// service [非必要]   对sisdb来说每个数据集都是一个service 这里指定去哪个service执行命令 http格式这里填路径
-// command [非必要]   我要干什么 
-// ask     [请求专用｜必要] 表示为请求包
-// ans     [应答专用｜必要] 表示为应答包
-// msg     [应答专用｜不必要] 表示为应答包
-// fuc     [应答专用｜不必要] 表示为后续还有多少数量包
-// lnk     [不必要] 数据链路
-//////////////////////////////////////////////////////////////////////////////////////////
-// 对于 json 格式请求和应答
-// 例子 : 
-// command:login, ver: 1.0, fmt : bytes, ask : {name:guest, password: guest1234} // 登陆 以二进制格式返回数据
-//     默认格式为JSON字符串返回数据 需要支持二进制转BASE64 GBK格式字符串转UTF8才能写入返回数据
-//     如果是二进制返回 有什么数据写入什么数据
-// 
-// 任何时候的命令 如果带了
-// service:sisdb, command:create, ask:{ key: sh600600, sdb:info, fields:{...}}
-// service:sisdb, command:set,    ask:{ key: sh600600, sdb:info, data:{...}}
-// service:sisdb, command:get,    ask:{ key: sh600600, sdb:info, fields:{...}}
-// service:sisdb, command:sub,    ask:{ key: sh600600, sdb:info, fields:{...}}
-// ---- 应答 ----
-// ans : -100,               # 表示请求号已经失效 对于有连续数据的请求
-// ans : -1,  msg : xxxxx    # 表示失败 msg为失败原因 
-// ans :  0,                 # 表示成功 
-// ans :  1,  msg : 10       # 表示成功 msg中数据为整数
-// ans :  2,  msg : xxxxx    # 表示成功 msg中数据为字符串  
-// ans :  3,  msg : []       # 表示成功 msg中数据为1维array  
-// ans :  4,  msg : [[]]     # 表示成功 msg中数据为2维array  
-// ans :  5,  msg : {}       # 表示成功 msg中数据为json 
-// ans :  6,  msg : xxxx     # 表示成功 msg中数据为base64格式的二进制流
-//////////////////////////////////////////////////////////////////////////////////////////
-// 对于 二进制 格式请求和应答
-// name: + 数据 (name为空时只有而且必须有冒号) 方便数据快速发布和传递
-// fmt体现在数据区的第一个字符 除B,J,H外暂不支持其他字符
-// *** 首字符为 B | 二进制格式 
-// *** 首字符为 { | JSON格式 
-// *** 首字符为 H ｜ HTTP格式 ..... 或者redis首字符为R
-// name不压缩以 : 分隔 方便数据广播
-// 一个字节表示 具备哪些字符 
-// ｜ 0 1 2 3 4 5 6 7 ｜
-//  0 --> 0 无扩展字段  1 表示有扩展字段
-//  1 --> 0 表示请求   1 表示应答
-//  10000000   -- > 是否有扩展字段 如果为 1 表示有扩展字段 后面跟1个字节表示扩展字段的个数
-//  01000000   -- > 应答包标记 - 表示该数据包为应答 如果其他字段都为0表示OK
-// ----------------------------  //
-//    000000   -- > 二进制数据 size + data
-//    000001   -- > 有 ver 字段
-//    000010   -- > 有 command
-//    000100   -- > 有 service
-//    001000   -- > 有 ask 字段
-//    010000   -- > 有 fmt 字段  // 只有请求包有该字段 要求返回的数据格式 
-//    100000   -- > 有 lnk 字段  // 表示来源路径 需要一级一级返回
-// ----------------------------  //
-//    000000   -- > 二进制数据 size+data
-//    000001   -- > 有 ver 字段
-//    000010   -- > 有 ans 字段
-//    000100   -- > 有 msg 字段
-//    001000   -- > 有 fuc 字段
-//    010000   -- > 备用
-//    100000   -- > 有 lnk 字段  // 表示返回路径 需要一级一级返回
-
-//  标准字段读完后 就需要读扩展字段 扩展字段最多255个
-//  标准字段格式 直接为数据区大小+数据区
-//  扩展字段格式 字段大小+字段名 数据区大小+数据区
-//////////////////////////////////////////////////////////////////////////////////////////
-// 对于http格式的请求和应答
-// 例如 https://api.com/data/v1/api/master/getSecID.json?assetClass=E&exchangeCD=XSHE,XSHG 
-// fmt = http
-// service = https://api.com/data/v1/api/master/ # 这里是链接的url 路由
-// command = getSecID.json  # 这里是api的方法
-// ask :{ assetClass: E, exchangeCD : "XSHE,XSHG", post:{...}, headers:{...}, ...}
-//       # ask 中 如果有 post字段表示 post 方式 否则以get方式获取数据
-//       # ask 中 如果有 headers字段表示 请求中国要增加 headers 字典中的内容
-// ---- 应答时 解析http返回数据为 JSON 应答格式----
-// 处理http流程：C端拼接标准json命令 传入中间件 如果fmt是http就解析为http请求包去获取数据 
-// 并解析返回数据为标准JSON应答格式数据提交给C端
-//////////////////////////////////////////////////////////////////////////////////////////
-// 解决代理数据传递的问题 - 类比于分布式数据传递机制
-// C发送请求 O 增加一级 oname:cname:{} 后传递给 S
-// S响应后 返回给 O ， O脱壳oname后 返回 :cname:{} 传递给 C
-// 其中如果 C 的请求信息完全一致 O 代理层 会把返回的数据分发给相同请求的客户端
-// 此时后续的C请求公用一个 oname 
-// 同时这也是解决分布式重复计算的方案
-// 注意对于有分包数据返回或订阅数据返回 需要在O端保持一定时间的catch
-
-
 
 bool sis_net_is_ip4(const char *ip_)
 {
@@ -355,12 +265,9 @@ static int cb_sis_reader_recv(void *cls_, s_sis_object *in_)
 	// 	mess->val ? mess->val : "nil",
 	// 	mess->rval ? mess->rval : "nil");
 
-	char key[16];
-	sis_llutoa(SIS_OBJ_NETMSG(in_)->cid, key, 16, 10);
-
 	// printf("recv argv: %x key = %s [%p] %d\n", mess->style, key, mess->argvs, mess->argvs ? mess->argvs->count : 0);
 
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, SIS_OBJ_NETMSG(in_)->cid);
 	if (!cxt)
 	{
 		sis_object_decr(in_);
@@ -406,7 +313,8 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 		SIS_UNLOCK_READER_HEAD, o, cb_sis_reader_recv, NULL);
 	sis_lock_reader_open(o->reader_recv);
 
-	o->cxts = sis_map_pointer_create_v(sis_net_context_destroy);
+	o->cxts = sis_map_kint_create();
+	o->cxts->type->vfree = sis_net_context_destroy;
 
 	o->cb_source = o;
 	o->work_status = SIS_NET_NONE;
@@ -433,7 +341,7 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 	sis_lock_reader_close(cls->reader_recv);
 	sis_lock_list_destroy(cls->ready_recv_cxts);
 
-	sis_map_pointer_destroy(cls->cxts);
+	sis_map_kint_destroy(cls->cxts);
 	LOG(5)("net_class exit .\n");
 	sis_free(cls);
 }
@@ -481,18 +389,12 @@ int sis_ws_recv_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 	// int so = 0;
 	if (cls->url->io == SIS_NET_IO_WAITCNT)
 	{
-		// so = 
-		printf("wait send count = %d\n", cls->server->write_list->count);
 		sis_socket_server_send(cls->server, cxt->rid, obj);
 	}
 	else
 	{
-		// so = 
-		printf("wait send count = %d\n", cls->client->write_list->count);
 		sis_socket_client_send(cls->client, obj);
 	}
-	printf("wait send count = %d\n", cls->server->write_list->count);
-	// sis_memory_move(cxt->recv_buffer, size);
 	sis_object_destroy(obj);	
 	return 1; // 成功 
 }
@@ -527,13 +429,11 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 		printf("server recv from [%d] %d client : %d:||%s\n", sid_, __send_hand,(int)ilen_, in_);	
 	}
 
-	// sis_out_binary("recv", in_, ilen_);
+	sis_out_binary("recv", in_, ilen_);
 
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 
-	char key[32];
-	sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (!cxt)
 	{
 		return ;
@@ -570,11 +470,12 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
 			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
 			// printf("recv decoded rtn.[%d] size = %zu\n", rtn, sis_memory_get_size(cxt->recv_buffer));
-            // printf("recv mess: [%d] %x : %s %s %s\n %s\n", mess->cid, mess->style, 
-            //     mess->cmd ? mess->cmd : "nil",
-            //     mess->key ? mess->key : "nil",
-            //     mess->val ? mess->val : "nil",
-            //     mess->rval ? mess->rval : "nil");
+            printf("recv mess: [%d] %x : %s %s %s %s\n %s\n", mess->cid, mess->switchs.is_reply, 
+                mess->cmd ? mess->cmd : "nil",
+				mess->service ? mess->service : "nil",
+                mess->key ? mess->key : "nil",
+                mess->ask ? mess->ask : "nil",
+                mess->rmsg ? mess->rmsg : "nil");
 
 			if (rtn == 1)
 			{
@@ -612,9 +513,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	{
 		printf("server send after [%d] %d\n", sid_, __send_hand);	
 	}
-	char key[32];
-	sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (cxt)
 	{
 		if (cxt->status == SIS_NET_HANDING)
@@ -634,7 +533,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 	} 
 	else
 	{
-		LOG(5)("no find context. [%d]\n", (int)sis_map_pointer_getsize(cls->cxts));
+		LOG(5)("no find context. [%d]\n", (int)sis_map_kint_getsize(cls->cxts));
 	}
 	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
@@ -679,7 +578,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 {
 	// LOG(8)("client recv from [%d] server : %d:||%s status = %d\n", sid_, (int)ilen_, in_, cxt->status);
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
 	if (!cxt)
 	{
 		return ;
@@ -787,13 +686,11 @@ static void cb_server_connected(void *handle_, int sid_)
 	printf("new connect . sid_ = %d \n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 
-	char key[32];
-	sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (!cxt)
 	{
 		cxt = (s_sis_net_context *)sis_net_context_create(cls, sid_); 
-		sis_map_pointer_set(cls->cxts, key, cxt);
+		sis_map_kint_set(cls->cxts, sid_, cxt);
 	}
 	else
 	{
@@ -824,9 +721,7 @@ static void cb_server_disconnect(void *handle_, int sid_)
 
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 
-	char key[32];
-	sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (cxt)
 	{
 		if (cxt->status == SIS_NET_WORKING)
@@ -846,11 +741,11 @@ static void cb_client_connected(void *handle_, int sid_)
 {
 	printf("client connected . sid_ = %d \n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
 	if (!cxt)
 	{
 		cxt = (s_sis_net_context *)sis_net_context_create(cls, sid_); 
-		sis_map_pointer_set(cls->cxts, "0", cxt);
+		sis_map_kint_set(cls->cxts, 0, cxt);
 	}
 	else
 	{
@@ -887,7 +782,7 @@ static void cb_client_disconnect(void *handle_, int sid_)
 {
 	printf("client disconnect\n");	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-	s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
 	if (cxt)
 	{
 		if (cxt->status == SIS_NET_WORKING)
@@ -911,15 +806,13 @@ void sis_net_class_delete(s_sis_net_class *cls_, int sid_)
 {
 	if (sid_ == 0)
 	{
-		sis_map_pointer_del(cls_->cxts, "0");
+		sis_map_kint_del(cls_->cxts, 0);
 	}
 	else
 	{
-		char key[32];
-		sis_llutoa(sid_, key, 32, 10);
-		sis_map_pointer_del(cls_->cxts, key);
+		sis_map_kint_del(cls_->cxts, sid_);
 	}
-	printf("connect count del = %d \n", (int)sis_map_pointer_getsize(cls_->cxts));	
+	printf("connect count del = %d \n", (int)sis_map_kint_getsize(cls_->cxts));	
 }
 bool sis_net_class_open(s_sis_net_class *cls_)
 {
@@ -966,9 +859,7 @@ void sis_net_class_close(s_sis_net_class *cls_)
 // 未连接时也需要设置
 int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_reply cb_)
 {
-	char key[32];
-	sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, sid_);
 	if (cxt)
 	{
 		cxt->cb_source = source_;
@@ -978,9 +869,7 @@ int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_
 }
 int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, char * crypt_, char * protocol_)
 {
-	char key[32];
-	sis_llutoa(sid_, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, sid_);
 	uint8 compress = SIS_NET_ZIP_NONE;
 	uint8 crypt = SIS_NET_CRYPT_NONE;
 	uint8 protocol = SIS_NET_PROTOCOL_TCP;
@@ -1009,9 +898,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 		return -1;
 	}
 	sis_net_message_incr(mess_);
-	char key[32];
-	sis_llutoa(mess_->cid, key, 32, 10);
-	s_sis_net_context *cxt = sis_map_pointer_get(cls_->cxts, key);
+	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, mess_->cid);
 	if (cxt)
 	{
 		// printf("reader read +++ [%d] %d | %p \n", mess_->cid, cxt->send_cxts->count ,cxt->send_cxts);
@@ -1207,7 +1094,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 }
 
 #if 1
-// 
+// 测试网络通讯协议是否正常
 #include "sis_net.io.h"
 
 #define TEST_PORT 7329
@@ -1220,13 +1107,13 @@ int __exit = 0;
 
 void exithandle(int sig)
 {
-	printf("exit .1. \n");	
+	printf("--- exit .1. \n");	
 	__exit = 1;
 	if (session)
 	{
 		sis_net_class_destroy(session);
 	}
-	printf("exit .ok. \n");
+	printf("--- exit .ok. \n");
 	__exit = 2;
 }
 void cb_recv(void *sock_, s_sis_net_message *msg)
@@ -1234,34 +1121,31 @@ void cb_recv(void *sock_, s_sis_net_message *msg)
 	s_sis_net_class *socket = (s_sis_net_class *)sock_;
 	if (!msg->switchs.is_reply)
 	{
-		printf("recv query: [%d] %d : %s %s %s %s [++%d++]\n", msg->cid, __sno, 
+		printf("--- recv ask: [%d] %d : %s %s %s %s [++%d++]\n", msg->cid, __sno, 
 			msg->service ? msg->service : "nil",
 			msg->cmd ? msg->cmd : "nil",
 			msg->key ? msg->key : "nil",
 			msg->ask ? msg->ask : "nil",
-			(int)sis_map_pointer_getsize(socket->cxts));
+			(int)sis_map_kint_getsize(socket->cxts));
 		s_sis_sds reply = sis_sdsempty();
 		reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
 		
-		// sis_net_ans_with_chars(msg, reply, sis_sdslen(reply));
 		sis_net_ans_with_bytes(msg, reply, sis_sdslen(reply));
-
-		sis_sdsfree(reply);
-		// sis_sleep(3000);
 		sis_net_class_send(socket, msg);
-		// sis_net_class_send(socket, msg);
-		// sis_net_class_send(socket, msg);
-				
-		// sis_net_class_send(socket, msg); // 连续发送会出错
+		// 测试连续发送 会出错
+		sis_net_ans_with_chars(msg, reply, sis_sdslen(reply));
+		sis_net_class_send(socket, msg);
+		sis_sdsfree(reply);
 	}
 	else
 	{
-		printf("recv msg: [%d] %d : %s\n", msg->cid, msg->switchs.is_reply, msg->rmsg ? msg->rmsg : "nil");
+		printf("--- recv ans: [%d] %d : %s\n", msg->cid, msg->rans, msg->rmsg ? msg->rmsg : "nil");
 	}
 	
 }
 static void _cb_connected(void *handle_, int sid)
 {
+	LOG(5)("--- connect ok. [%d]\n", sid);
 	s_sis_net_class *socket = (s_sis_net_class *)handle_;
 	
 	sis_net_class_set_cb(socket, sid, socket, cb_recv);
@@ -1270,9 +1154,8 @@ static void _cb_connected(void *handle_, int sid)
 	{		
 		s_sis_net_message *msg = sis_net_message_create();
 	    msg->cid = sid;
-		// sis_net_ask_with_chars(msg, "set", "myname", "ding", 4);
-		sis_net_ask_with_bytes(msg, "set", "myname", "ding", 4);
-
+		sis_net_ask_with_chars(msg, "set", "myname", "ding", 4);
+		// // sis_net_ask_with_bytes(msg, "set", "myname", "ding", 4);
 		int rtn = sis_net_class_send(socket, msg);
 
 		// s_sis_net_message *msg1 = sis_net_message_create();
@@ -1286,12 +1169,7 @@ static void _cb_connected(void *handle_, int sid)
 		// sis_net_message_destroy(msg2);
 
 		sis_net_message_destroy(msg);
-		LOG(5)("client [%d] connect ok. rtn = [%d]\n", sid, rtn);	
-	}
-	else
-	{
-		LOG(5)("client connect ok. [%d]\n", sid);
-
+		LOG(5)("--- client [%d] send ok. rtn = [%d]\n", sid, 0);	
 	}
 }
 static void _cb_disconnect(void *handle_, int sid)
@@ -1299,11 +1177,11 @@ static void _cb_disconnect(void *handle_, int sid)
 	s_sis_net_class *socket = (s_sis_net_class *)handle_;
 	if (socket->url->role== SIS_NET_ROLE_REQUEST)
 	{
-		LOG(5)("client disconnect.\n");	
+		LOG(5)("--- client disconnect.\n");	
 	}
 	else
 	{
-		LOG(5)("server disconnect.\n");	
+		LOG(5)("--- server disconnect.\n");	
 	}
 }
 
@@ -1320,12 +1198,6 @@ int main(int argc, const char **argv)
 
 	s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_SIP, "", TEST_PORT, NULL};
 	s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, "", TEST_PORT, NULL};
-	// s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, TEST_PORT, NULL};
-	// s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, TEST_PORT, NULL};
-	// s_sis_url url_srv = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_ANSWER, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};
-	// s_sis_url url_cli = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_REQUEST, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};
-	// s_sis_url url_srv = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_REQUEST, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};
-	// s_sis_url url_cli = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_ANSWER, 1, 0, 0, 0, 0, TEST_IP, TEST_PORT, NULL};
 
 	if (argv[1][0] == 's')
 	{	
@@ -1335,35 +1207,34 @@ int main(int argc, const char **argv)
 	{
 		session = sis_net_class_create(&url_cli);
 	}
-	printf("%s:%d\n",session->url->ip4, session->url->port);
+	printf("--- %s:%d\n",session->url->ip4, session->url->port);
 
 	session->cb_connected = _cb_connected;
 	session->cb_disconnect = _cb_disconnect;
 
 	sis_net_class_open(session);
 
-	sis_sleep(5000);
-	if (session->url->role == SIS_NET_ROLE_REQUEST)
-	{
-		s_sis_net_message *msg = sis_net_message_create();
-		msg->cid = 0;
-		if(argv[1][0] == 's') 
-		{
-			msg->cid = 1;
-		}
-		s_sis_sds reply = sis_sdsnew("this ok.");
-		sis_net_ans_with_bytes(msg, reply, sis_sdslen(reply));
-		// sis_net_ask_with_bytes(msg, "pub", "info", "ding", 4);
-		sis_sdsfree(reply);
-		for (int i = 0; i < 100000; i++)
-		{
-			printf("------- %d ------\n", i);
-			sis_net_class_send(session, msg);
-		}
-		// sis_sleep(5000);
-		sis_net_message_destroy(msg);
-	}
-
+	// sis_sleep(5000);
+	// if (session->url->role == SIS_NET_ROLE_REQUEST)
+	// {
+	// 	s_sis_net_message *msg = sis_net_message_create();
+	// 	msg->cid = 0;
+	// 	if(argv[1][0] == 's') 
+	// 	{
+	// 		msg->cid = 1;
+	// 	}
+	// 	s_sis_sds reply = sis_sdsnew("this ok.");
+	// 	sis_net_ans_with_bytes(msg, reply, sis_sdslen(reply));
+	// 	// sis_net_ask_with_bytes(msg, "pub", "info", "ding", 4);
+	// 	sis_sdsfree(reply);
+	// 	for (int i = 0; i < 100000; i++)
+	// 	{
+	// 		printf("------- %d ------\n", i);
+	// 		sis_net_class_send(session, msg);
+	// 	}
+	// 	// sis_sleep(5000);
+	// 	sis_net_message_destroy(msg);
+	// }
 	
 	// sis_sleep(10000);
 	// if (sis_map_pointer_getsize(session->cxts) == 2)
@@ -1425,7 +1296,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 
 	if (socket->url->role== SIS_NET_ROLE_REQUEST)
 	{		
-		if (msg->style & (SIS_NET_RCMD | SIS_NET_ARGVS))
+		if (msg->switchs.is_reply && msg->switchs.has_argvs)
 		{
 			msec_t now_time = sis_time_get_now_msec();
 			s_sis_sds reply = SIS_OBJ_GET_CHAR(sis_pointer_list_get(msg->argvs, 0)); 
@@ -1437,12 +1308,12 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 		}
 		else
 		{
-			printf("=1=recv no type. %x\n", msg->style);
+			printf("=1=recv no type. %x\n", msg->format);
 		}
 	}
 	else
 	{	
-		if (msg->style & (SIS_NET_ASK | SIS_NET_ARGVS))
+		if (!msg->switchs.is_reply && msg->switchs.has_argvs)
 		{
 			msec_t now_time = sis_time_get_now_msec();
 			s_sis_sds reply = SIS_OBJ_GET_CHAR(sis_pointer_list_get(msg->argvs, 0)); 
@@ -1470,7 +1341,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 		}
 		else
 		{
-			printf("=2=recv no type. %x\n", msg->style);
+			printf("=2=recv no type. %x\n", msg->format);
 		}		
 	}
 }
@@ -1544,21 +1415,12 @@ void exithandle(int sig)
 	}
 	exit_ = 1;
 }
-void breakhandle(int sig)
-{
-	printf("..................break......%d \n", sig);
-	// abort();
-}
+
 int main(int argc, const char **argv)
 {
 	if (argc < 2)
 	{
 		return 0;
-	}
-	for (int i = 1; i < 100000; i++)
-	{
-		if (i!=SIGSEGV)
-		signal(i, breakhandle);
 	}
 	sis_socket_init();
 	signal(SIGINT, exithandle);

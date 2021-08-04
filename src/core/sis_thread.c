@@ -174,7 +174,10 @@ void sis_wait_thread_destroy(s_sis_wait_thread *swt_)
 // 通知执行
 void sis_wait_thread_notice(s_sis_wait_thread *swt_)
 {
-    sis_thread_wait_notice(swt_->work_wait);
+    if (swt_)
+	{
+		sis_thread_wait_notice(swt_->work_wait);
+	}
 }
 bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void *source_)
 {
