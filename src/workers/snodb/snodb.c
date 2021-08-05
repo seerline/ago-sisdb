@@ -5,7 +5,7 @@
 #include "sis_method.h"
 
 #include <snodb.h>
-#include <sis_net.io.h>
+#include <sis_net.msg.h>
 
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //

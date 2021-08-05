@@ -3,7 +3,7 @@
 //*******************************************************
 
 #include "sisdb_io.h"
-#include "sis_net.io.h"
+#include "sis_net.msg.h"
 #include "sisdb_collect.h"
 
 s_sis_sds sisdb_one_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)

@@ -1,7 +1,120 @@
 ﻿
-#include <sis_net.io.h>
+#include <sis_net.msg.h>
 #include <sis_malloc.h>
 #include <sis_net.node.h>
+
+// static s_sis_net_errinfo _rinfo[] = {
+// 	{ SIS_NET_ANS_INVALID, "ask is invalid."},
+// 	{ SIS_NET_ANS_NOAUTH,  "need auth."},
+// 	{ SIS_NET_ANS_NIL,     "ask data is nil."},
+// 	{ SIS_NET_ANS_ERROR,   "noknown error."},
+// };
+
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_net_message -----------------------------//
+///////////////////////////////////////////////////////////////////////////
+
+s_sis_net_message *sis_net_message_create()
+{
+	s_sis_net_message *o = (s_sis_net_message *)sis_malloc(sizeof(s_sis_net_message));
+	memset(o, 0, sizeof(s_sis_net_message));
+	o->refs = 1;
+	return o;
+}
+
+void sis_net_message_destroy(void *in_)
+{
+	sis_net_message_decr(in_);
+}
+void sis_net_message_incr(s_sis_net_message *in_)
+{
+    if (in_ && in_->refs != 0xFFFFFFFF) 
+    {
+        in_->refs++;
+    }
+}
+void sis_net_message_decr(void *in_)
+{
+    s_sis_net_message *in = (s_sis_net_message *)in_;
+    if (!in)
+    {
+        return ;
+    }
+    if (in->refs == 1) 
+    {
+        sis_net_message_clear(in_);
+		sis_free(in_);	
+    } 
+    else 
+    {
+        in->refs--;
+    }	
+}
+
+void sis_net_message_clear(s_sis_net_message *in_)
+{
+	in_->cid = -1;
+	in_->ver = 0;
+	// refs 不能改
+	sis_sdsfree(in_->name);
+	in_->name = NULL;
+
+	in_->comp = 0;
+	if(in_->memory)
+	{
+		sis_memory_clear(in_->memory);
+	}
+	in_->format = SIS_NET_FORMAT_CHARS;
+	memset(&in_->switchs, 0, sizeof(s_sis_net_switch));
+	if(in_->argvs)
+	{
+		sis_pointer_list_destroy(in_->argvs);
+		in_->argvs = NULL;
+	}
+	sis_sdsfree(in_->service);
+	in_->service = NULL;
+	sis_sdsfree(in_->cmd);
+	in_->cmd = NULL;
+	sis_sdsfree(in_->key);
+	in_->key = NULL;
+	sis_sdsfree(in_->ask);
+	in_->ask = NULL;
+	in_->rans = 0;
+	sis_sdsfree(in_->rmsg);
+	in_->rmsg = NULL;
+	in_->rfmt = SIS_NET_FORMAT_CHARS;
+}
+static size_t _net_message_list_size(s_sis_pointer_list *list_)
+{
+	size_t size = 0;
+	if (list_)
+	{
+		size += list_->count * sizeof(void *);
+		for (int i = 0; i < list_->count; i++)
+		{
+			s_sis_object *obj = (s_sis_object *)sis_pointer_list_get(list_, i);
+			size += SIS_OBJ_GET_SIZE(obj);
+		}
+	}
+	return size;
+}
+size_t sis_net_message_get_size(s_sis_net_message *msg_)
+{
+	size_t size = sizeof(s_sis_net_message);
+	size += msg_->name ? sis_sdslen(msg_->name) : 0;
+	size += msg_->service ? sis_sdslen(msg_->service) : 0;
+	size += msg_->cmd ? sis_sdslen(msg_->cmd) : 0;
+	size += msg_->key ? sis_sdslen(msg_->key) : 0;
+	size += msg_->ask ? sis_sdslen(msg_->ask) : 0;
+	size += msg_->rmsg ? sis_sdslen(msg_->rmsg) : 0;
+	size += msg_->memory ? sis_memory_get_maxsize(msg_->memory) : 0;
+	size += _net_message_list_size(msg_->argvs);
+	return size;
+}
+
+////////////////////////////////////////////////////////
+//  s_sis_net_message 操作类函数
+////////////////////////////////////////////////////////
 
 static inline void sis_net_set_cmd(s_sis_net_message *netmsg_, char *cmd_)
 {
@@ -104,20 +217,13 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t 
     netmsg_->rans = SIS_NET_ANS_OK;
     SIS_NET_SET_BUF(netmsg_->switchs.has_msg, netmsg_->rmsg, in_, ilen_);
     netmsg_->switchs.has_key = netmsg_->key ? 1 : 0;
-
-    netmsg_->switchs.has_argvs = 1;
-    // 可能in来源于argvs 所以先拷贝
-    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
-    sis_net_new_argvs(netmsg_, obj, 1);
 }
 void sis_net_ans_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
     netmsg_->format = SIS_NET_FORMAT_BYTES;
     netmsg_->switchs.is_reply = 1;
     netmsg_->rans = SIS_NET_ANS_OK;
-    SIS_NET_SET_BUF(netmsg_->switchs.has_msg, netmsg_->rmsg, in_, ilen_);
     netmsg_->switchs.has_key = netmsg_->key ? 1 : 0;
-
     netmsg_->switchs.has_argvs = 1;
     s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
     sis_net_new_argvs(netmsg_, obj, 0);

@@ -43,6 +43,55 @@
 // --- SIGPIPE 需要忽略这个信号 ----
 // 在多CPU测试 经常会剩余几个包发不出去 这个可能和 wait_queue 有关 避免问题 做一个裸的测试
 #define SIS_UV_WRITE_WAIT  5000
+
+//////////////////////////////////////////////////////////////
+// s_sis_socket_session
+//////////////////////////////////////////////////////////////
+
+s_sis_socket_session *sis_socket_session_create(void *father_)
+{
+	s_sis_socket_session *session = SIS_MALLOC(s_sis_socket_session, session); 
+	session->sid = -1;
+	session->father = father_;
+	session->uv_w_handle.data = session;
+	session->uv_r_buffer = uv_buf_init((char*)sis_malloc(MAX_NET_UV_BUFFSIZE), MAX_NET_UV_BUFFSIZE);
+	session->send_nodes = sis_net_nodes_create();
+	session->sendnums = 64 * 1024;
+	session->sendbuff = sis_malloc(sizeof(uv_buf_t) * session->sendnums);
+	memset(session->sendbuff, 0, sizeof(uv_buf_t) * session->sendnums);
+	return session;	
+}
+void sis_socket_session_set_rwcb(s_sis_socket_session *session_,
+								cb_socket_recv_after cb_recv_, 
+								cb_socket_send_after cb_send_)
+{
+	session_->cb_recv_after = cb_recv_;
+	session_->cb_send_after = cb_send_;
+}
+
+void sis_socket_session_destroy(void *session_)
+{
+	s_sis_socket_session *session = (s_sis_socket_session *)session_;
+	if (session->uv_r_buffer.base)
+	{
+		sis_free(session->uv_r_buffer.base);
+	}
+	session->uv_r_buffer.base = NULL;
+	session->uv_r_buffer.len = 0;
+	sis_free(session->sendbuff);
+	sis_net_nodes_destroy(session->send_nodes);
+	sis_free(session);
+}
+
+void sis_socket_session_init(s_sis_socket_session *session_)
+{
+	session_->sid = -1;
+	memset(&session_->uv_w_handle, 0, sizeof(uv_tcp_t));
+	session_->uv_w_handle.data = session_;
+	sis_net_nodes_clear(session_->send_nodes);
+	memset(session_->sendbuff, 0, sizeof(uv_buf_t) * session_->sendnums);
+}
+
 /////////////////////////////////////////////////
 //  
 /////////////////////////////////////////////////
@@ -122,7 +171,7 @@ static void cb_session_closed(uv_handle_t *handle)
 	s_sis_socket_session *session = (s_sis_socket_session *)handle->data;
 	s_sis_socket_server *server = (s_sis_socket_server *)session->father;
 	sis_net_list_stop(server->sessions, session->sid - 1);
-	LOG(5)("server of session close ok.[%p] %d\n", session, session->sid);
+	LOG(5)("server of session close ok.[%p] %d %d\n", session, session->sid, server->sessions->cur_count);
 }
 
 void sis_socket_server_close(s_sis_socket_server *server_)
@@ -149,10 +198,9 @@ void sis_socket_server_close(s_sis_socket_server *server_)
 			sis_net_list_stop(server_->sessions, session->sid - 1);
 		}
 		index = sis_net_list_next(server_->sessions, index);
-		// LOG(5)("server close %d. %d\n", index, server_->sessions->cur_count);
+		LOG(5)("server close %d. %d\n", index, server_->sessions->cur_count);
 	}
 	// 关闭发送数据的线程
-
 	sis_socket_close_handle((uv_handle_t *)&server_->uv_s_handle, NULL);
 	// LOG(0)("server close. %d %d\n", server_->uv_s_worker->active_handles, server_->uv_s_worker->active_reqs.count);
 	uv_stop(server_->uv_s_worker); 
@@ -437,7 +485,7 @@ static void cb_server_write_after(uv_write_t *writer_, int status)
 		_server_write_may(server);
 		return;
 	}
-	sis_net_uv_nodes_free_read(session->send_nodes);
+	sis_net_nodes_free_read(session->send_nodes);
 
 	if (status < 0) 
 	{
@@ -455,13 +503,22 @@ static void cb_server_write_after(uv_write_t *writer_, int status)
 }
 static int _server_send_data(s_sis_socket_server *server, s_sis_socket_session *session)
 {
-	int count = sis_net_uv_nodes_read(session->send_nodes);
+	int count = sis_net_nodes_read(session->send_nodes, session->sendnums);
 	if (count > 0)
 	{
+		int index = 0;
+		s_sis_net_node *next = session->send_nodes->rhead;
+		while (next)
+		{
+			session->sendbuff[index].base = SIS_OBJ_GET_CHAR(next->obj);
+			session->sendbuff[index].len = SIS_OBJ_GET_SIZE(next->obj);
+			index++;	
+			next = next->next;
+		}
 		uv_write_t  uv_whandle; 
 		uv_whandle.data = server;
 		if (uv_write(&uv_whandle, (uv_stream_t *)&session->uv_w_handle, 
-			session->send_nodes->readbuff, count, cb_server_write_after)) 
+			session->sendbuff, index, cb_server_write_after)) 
 		{
 			printf("server write fail.\n");
 			return -1;
@@ -552,7 +609,7 @@ bool sis_socket_server_send(s_sis_socket_server *server_, int sid_, s_sis_object
 		return false;
 	}
 	// 放入队列就返回 其他交给内部处理
-	sis_net_uv_nodes_push(session->send_nodes, inobj_);
+	sis_net_nodes_push(session->send_nodes, inobj_);
 	sis_wait_thread_notice(server_->write_thread);
 	return true;
 }
@@ -969,7 +1026,7 @@ static void cb_client_write_after(uv_write_t *writer_, int status)
 		return;
 	}
 	// 释放已经发送完毕的内存数据
-	sis_net_uv_nodes_free_read(session->send_nodes);
+	sis_net_nodes_free_read(session->send_nodes);
 	if (session->cb_send_after)
 	{
 		session->cb_send_after(client->cb_source, 0, status);
@@ -995,13 +1052,22 @@ void *_thread_client_write(void* argv)
 			sis_mutex_unlock(&client->write_may_lock);
 		}
 		s_sis_socket_session *session = client->session;
-		int count = sis_net_uv_nodes_read(session->send_nodes);
+		int count = sis_net_nodes_read(session->send_nodes, session->sendnums);
 		if (count > 0)
 		{
+			int index = 0;
+			s_sis_net_node *next = session->send_nodes->rhead;
+			while (next)
+			{
+				session->sendbuff[index].base = SIS_OBJ_GET_CHAR(next->obj);
+				session->sendbuff[index].len = SIS_OBJ_GET_SIZE(next->obj);
+				index++;	
+				next = next->next;
+			}
 			uv_write_t  uv_whandle; 
 			uv_whandle.data = client;
 			if (uv_write(&uv_whandle, (uv_stream_t *)&session->uv_w_handle, 
-				session->send_nodes->readbuff, count, cb_client_write_after)) 
+						session->sendbuff, index, cb_client_write_after)) 
 			{
 				// 关闭链接 从新开始
 				sis_socket_client_close(client);
@@ -1029,7 +1095,7 @@ bool sis_socket_client_send(s_sis_socket_client *client_, s_sis_object *inobj_)
 	{
 		return false;
 	}
-	sis_net_uv_nodes_push(client_->session->send_nodes, inobj_);
+	sis_net_nodes_push(client_->session->send_nodes, inobj_);
 	sis_wait_thread_notice(client_->write_thread);
 	return true;
 }

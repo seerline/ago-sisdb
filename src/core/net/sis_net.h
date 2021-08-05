@@ -5,7 +5,7 @@
 #include <sis_net.uv.h>
 #include <sis_malloc.h>
 #include <sis_str.h>
-#include <sis_net.node.h>
+#include <sis_net.msg.h>
 #include <sis_method.h>
 #include <sis_memory.h>
 #include <sis_thread.h>
@@ -28,7 +28,7 @@
 
 // 请求 方决定网络数据压缩方式 
 #define SIS_NET_ZIP_NONE       0
-#define SIS_NET_ZIP_ZBIT       1
+#define SIS_NET_ZIP_SNAPPY     1
 
 // 请求 方决定网络数据加密编码方式 
 #define SIS_NET_CRYPT_NONE     0
@@ -110,32 +110,14 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 // 收到消息后的回调 s_sis_net_message - 
 typedef void (*cb_net_reply)(void *, s_sis_net_message *);
 
-// 一个写入和读取隔离的类
-typedef struct s_sis_net_wnodes {
-    int64              nums;
-	s_sis_mutex_t      lock;  
-    s_sis_net_node    *whead;
-    s_sis_net_node    *wtail;
-
-    s_sis_net_node    *rhead;  
-	s_sis_net_node    *rtail;
-} s_sis_net_wnodes;
-
-
-s_sis_net_uv_nodes *sis_net_uv_nodes_create(int);
-void sis_net_uv_nodes_destroy(s_sis_net_uv_nodes *nodes_);
-int  sis_net_uv_nodes_push(s_sis_net_uv_nodes *nodes_, s_sis_object *obj_);
-int  sis_net_uv_nodes_read(s_sis_net_uv_nodes *nodes_);
-void sis_net_uv_nodes_free_read(s_sis_net_uv_nodes *nodes_);
-
 typedef struct s_sis_net_context {
 	uint8              status;       // 当前的工作状态 SIS_NET_WORKING...HANDING DISCONNECT
 	int                rid;          // 对端的 socket ID 
 	s_sis_url          rurl;         // 客户端的相关信息
 	// 网络收到的内容 脱壳 解压 解密 后放入recv_buffer 解析后把完整的数据包 放入主队列 剩余数据保留等待下次收到数据
-	s_sis_memory      *recv_buffer;  // 接收数据的残余缓存
+	s_sis_memory      *recv_memory;  // 接收数据的残余缓存
 
-	s_sis_net_wnodes   recv_nodes;   // s_sis_memory 链表
+	s_sis_net_nodes   *recv_nodes;   // s_sis_memory 链表
 
 	void              *father;       // s_sis_net_class *的指针
 	s_sis_net_slot    *slots;        // 根据协议对接不同功能函数	
@@ -163,6 +145,8 @@ typedef struct s_sis_net_class {
 	s_sis_socket_server  *server;    
 	// 对应的连接客户的集合 s_sis_net_context
 	s_sis_map_kint       *cxts;         // 连接服务器的 s_sis_net_context
+
+	s_sis_wait_thread    *read_thread;  // 为保证每次只处理一个请求 用该线程统一处理收到的消息
 
 	s_sis_lock_list      *ready_recv_cxts;    // 接收到的数据  s_sis_net_message - s_sis_object
 	s_sis_lock_reader    *reader_recv;  // 读取接收队列
@@ -201,6 +185,7 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_);
 ////////////////////////////////////////////////////////
 
 s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *mess_);
+int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_message *mess_);
 
 /////////////////////////////////////////////////////////////
 // s_sis_net_context define 
@@ -219,7 +204,7 @@ void sis_net_class_destroy(s_sis_net_class *);
 bool sis_net_class_open(s_sis_net_class *);
 void sis_net_class_close(s_sis_net_class *);
 
-void sis_net_class_delete(s_sis_net_class *cls_, int sid_);
+void sis_net_class_close_cxt(s_sis_net_class *cls_, int sid_);
 
 int sis_net_class_set_cb(s_sis_net_class *, int sid_, void *source_, cb_net_reply cb_);
 // 放到外部交互时使用

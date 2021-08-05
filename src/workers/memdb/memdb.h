@@ -2,7 +2,7 @@
 #define _MEMDB_H
 
 #include "sis_method.h"
-#include "sis_net.node.h"
+#include "sis_net.msg.h"
 #include "sis_list.lock.h"
 #include "worker.h"
 

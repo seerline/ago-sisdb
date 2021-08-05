@@ -17,7 +17,7 @@
 #include "sis_bits_v0.h"
 #include "sis_obj.h"
 #include "sis_disk_v1.h"
-#include "sis_net.io.h"
+#include "sis_net.msg.h"
 #include "sis_db.h"
 
 #include "worker.h"

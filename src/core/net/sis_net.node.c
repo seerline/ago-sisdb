@@ -5,114 +5,341 @@
 #include "sis_obj.h"
 #include "os_str.h"
 
-// static s_sis_net_errinfo _rinfo[] = {
-// 	{ SIS_NET_ANS_INVALID, "ask is invalid."},
-// 	{ SIS_NET_ANS_NOAUTH,  "need auth."},
-// 	{ SIS_NET_ANS_NIL,     "ask data is nil."},
-// 	{ SIS_NET_ANS_ERROR,   "noknown error."},
-// };
 
-///////////////////////////////////////////////////////////////////////////
-//------------------------s_sis_net_message -----------------------------//
-///////////////////////////////////////////////////////////////////////////
 
-s_sis_net_message *sis_net_message_create()
+/////////////////////////////////////////////////
+//  s_sis_net_node
+/////////////////////////////////////////////////
+s_sis_net_node *sis_net_node_create(s_sis_object *obj_)
 {
-	s_sis_net_message *o = (s_sis_net_message *)sis_malloc(sizeof(s_sis_net_message));
-	memset(o, 0, sizeof(s_sis_net_message));
-	o->refs = 1;
+    s_sis_net_node *node = SIS_MALLOC(s_sis_net_node, node);
+    if (obj_)
+    {
+        sis_object_incr(obj_);
+        node->obj = obj_;
+    }
+    node->next = NULL;
+    return node;    
+}
+void sis_net_node_destroy(s_sis_net_node *node_)
+{
+    if(node_->obj)
+    {
+        sis_object_decr(node_->obj);
+    }
+    sis_free(node_);
+}
+s_sis_net_nodes *sis_net_nodes_create()
+{
+    s_sis_net_nodes *o = SIS_MALLOC(s_sis_net_nodes, o);
+	sis_mutex_init(&o->lock, NULL);
 	return o;
 }
-
-void sis_net_message_destroy(void *in_)
+void _net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
-	sis_net_message_decr(in_);
-}
-void sis_net_message_incr(s_sis_net_message *in_)
-{
-    if (in_ && in_->refs != 0xFFFFFFFF) 
-    {
-        in_->refs++;
-    }
-}
-void sis_net_message_decr(void *in_)
-{
-    s_sis_net_message *in = (s_sis_net_message *)in_;
-    if (!in)
-    {
-        return ;
-    }
-    if (in->refs == 1) 
-    {
-        sis_net_message_clear(in_);
-		sis_free(in_);	
-    } 
-    else 
-    {
-        in->refs--;
-    }	
-}
-
-void sis_net_message_clear(s_sis_net_message *in_)
-{
-	in_->cid = -1;
-	in_->ver = 0;
-	// refs 不能改
-	sis_sdsfree(in_->name);
-	in_->name = NULL;
-
-	in_->comp = 0;
-	if(in_->memory)
+	if (nodes_->rhead)
 	{
-		sis_memory_clear(in_->memory);
-	}
-	in_->format = SIS_NET_FORMAT_CHARS;
-	memset(&in_->switchs, 0, sizeof(s_sis_net_switch));
-	if(in_->argvs)
-	{
-		sis_pointer_list_destroy(in_->argvs);
-		in_->argvs = NULL;
-	}
-	sis_sdsfree(in_->service);
-	in_->service = NULL;
-	sis_sdsfree(in_->cmd);
-	in_->cmd = NULL;
-	sis_sdsfree(in_->key);
-	in_->key = NULL;
-	sis_sdsfree(in_->ask);
-	in_->ask = NULL;
-	in_->rans = 0;
-	sis_sdsfree(in_->rmsg);
-	in_->rmsg = NULL;
-	in_->rfmt = SIS_NET_FORMAT_CHARS;
-}
-static size_t _net_message_list_size(s_sis_pointer_list *list_)
-{
-	size_t size = 0;
-	if (list_)
-	{
-		size += list_->count * sizeof(void *);
-		for (int i = 0; i < list_->count; i++)
+		s_sis_net_node *next = nodes_->rhead;	
+		while (next)
 		{
-			s_sis_object *obj = (s_sis_object *)sis_pointer_list_get(list_, i);
-			size += SIS_OBJ_GET_SIZE(obj);
+			s_sis_net_node *node = next->next;
+			sis_net_node_destroy(next);
+			next = node;
+		}
+		nodes_->rhead = NULL;
+	}
+	nodes_->rtail = NULL;	
+	nodes_->rnums = 0;	
+}
+void sis_net_nodes_destroy(s_sis_net_nodes *nodes_)
+{
+    sis_mutex_lock(&nodes_->lock);
+	_net_nodes_free_read(nodes_);
+	s_sis_net_node *next = nodes_->whead;	
+	while (next)
+	{
+		s_sis_net_node *node = next->next;
+		sis_net_node_destroy(next);
+		next = node;
+	}
+    sis_mutex_unlock(&nodes_->lock);
+	sis_mutex_destroy(&nodes_->lock);
+	sis_free(nodes_);
+}
+void sis_net_nodes_clear(s_sis_net_nodes *nodes_)
+{
+    sis_mutex_lock(&nodes_->lock);
+	_net_nodes_free_read(nodes_);
+	s_sis_net_node *next = nodes_->whead;	
+	while (next)
+	{
+		s_sis_net_node *node = next->next;
+		sis_net_node_destroy(next);
+		next = node;
+	}
+	nodes_->whead = NULL;
+	nodes_->wtail = NULL;
+	nodes_->wnums = 0;
+    sis_mutex_unlock(&nodes_->lock);
+}
+int  sis_net_nodes_push(s_sis_net_nodes *nodes_, s_sis_object *obj_)
+{
+	s_sis_net_node *newnode = sis_net_node_create(obj_);
+	sis_mutex_lock(&nodes_->lock);
+	nodes_->wnums++;
+	if (!nodes_->whead)
+	{
+		nodes_->whead = newnode;
+		nodes_->wtail = newnode;
+	}
+	else if (nodes_->whead == nodes_->wtail)
+	{
+		nodes_->whead->next = newnode;
+		nodes_->wtail = newnode;
+	}
+	else
+	{
+		nodes_->wtail->next = newnode;
+		nodes_->wtail = newnode;
+	}
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wnums;
+}
+
+int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
+{
+	if (nodes_->rnums >= readnums_)
+	{
+		return nodes_->rnums;
+	}
+    sis_mutex_lock(&nodes_->lock);
+	s_sis_net_node *next = nodes_->whead;	
+	while (next)
+	{
+		nodes_->rnums++;
+		nodes_->wnums--;
+		if (!nodes_->rhead)
+		{
+			nodes_->rhead = next;
+			nodes_->rtail = next;
+		} 
+		else
+		{
+			nodes_->rtail->next = next;
+			nodes_->rtail = next;
+		}
+		next = next->next;
+		if (next)
+		{
+			nodes_->whead = next;
+		}
+		else
+		{
+			nodes_->whead = NULL;
+			nodes_->wtail = NULL;
+		}
+		nodes_->rtail->next = NULL;
+		if (nodes_->rnums >= readnums_)
+		{
+			break;
 		}
 	}
-	return size;
+	sis_mutex_unlock(&nodes_->lock);
+	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
+	return 	nodes_->rnums;
 }
-size_t sis_net_message_get_size(s_sis_net_message *msg_)
+void sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
-	size_t size = sizeof(s_sis_net_message);
-	size += msg_->name ? sis_sdslen(msg_->name) : 0;
-	size += msg_->service ? sis_sdslen(msg_->service) : 0;
-	size += msg_->cmd ? sis_sdslen(msg_->cmd) : 0;
-	size += msg_->key ? sis_sdslen(msg_->key) : 0;
-	size += msg_->ask ? sis_sdslen(msg_->ask) : 0;
-	size += msg_->rmsg ? sis_sdslen(msg_->rmsg) : 0;
-	size += msg_->memory ? sis_memory_get_maxsize(msg_->memory) : 0;
-	size += _net_message_list_size(msg_->argvs);
-	return size;
+    sis_mutex_lock(&nodes_->lock);
+	_net_nodes_free_read(nodes_);
+    sis_mutex_unlock(&nodes_->lock);
 }
+
+
+///////////////////////////////////////////////////////////////////////////
+//----------------------s_sis_net_list --------------------------------//
+//  以整数为索引 存储指针的列表
+//  如果有wait就说明释放index需要等待一个超时
+///////////////////////////////////////////////////////////////////////////
+s_sis_net_list *sis_net_list_create(void *vfree_)
+{
+	s_sis_net_list *o = SIS_MALLOC(s_sis_net_list, o);
+	o->max_count = 1024;
+	o->used = sis_malloc(o->max_count);
+	memset(o->used, SIS_NET_NOUSE ,o->max_count);
+	o->stop_sec = sis_malloc(sizeof(time_t) * o->max_count);
+	memset(o->stop_sec, 0 ,sizeof(time_t) * o->max_count);
+	o->buffer = sis_malloc(sizeof(void *) * o->max_count);
+	memset(o->buffer, 0 ,sizeof(void *) * o->max_count);
+	o->vfree = vfree_;
+	o->wait_sec = 180; // 默认3分钟后释放资源
+	return o;
+}
+void sis_net_list_destroy(s_sis_net_list *list_)
+{
+	sis_net_list_clear(list_);
+	sis_free(list_->used);
+	sis_free(list_->buffer);
+	sis_free(list_->stop_sec);
+	sis_free(list_);
+}
+void sis_net_list_clear(s_sis_net_list *list_)
+{
+	char **ptr = (char **)list_->buffer;
+	for (int i = 0; i < list_->max_count; i++)
+	{
+		if (list_->vfree && ptr[i])
+		{
+			list_->vfree(ptr[i]);
+			ptr[i] = NULL;
+		}
+		list_->used[i] = SIS_NET_NOUSE;
+		list_->stop_sec[i] = 0;
+	}
+	list_->cur_count = 0;
+}
+
+int _net_list_set_grow(s_sis_net_list *list_, int count_)
+{
+	if (count_ > list_->max_count)
+	{
+		int maxcount = (count_ / 1024 + 1) * 1024;
+		unsigned char *used = sis_malloc(maxcount);
+		memset(used, SIS_NET_NOUSE , maxcount);
+		time_t *stop_sec = sis_malloc(sizeof(time_t) * maxcount);
+		memset(stop_sec, 0 ,sizeof(time_t) * maxcount);
+		void *buffer = sis_malloc(sizeof(void *) * maxcount);
+		memset(buffer, 0 ,sizeof(void *) * maxcount);
+
+		memmove(list_->used, used, list_->max_count);
+		memmove(list_->stop_sec, stop_sec, sizeof(time_t) * list_->max_count);
+		memmove(list_->buffer, buffer, sizeof(void *) * list_->max_count);
+		list_->max_count = maxcount;
+	}
+	return list_->max_count;
+}
+
+void _index_list_free(s_sis_net_list *list_, int index_)
+{
+	char **ptr = (char **)list_->buffer;
+	if (list_->vfree && ptr[index_])
+	{
+		list_->vfree(ptr[index_]);
+		ptr[index_] = NULL;
+	}
+	list_->stop_sec[index_] = 0;
+}
+
+int sis_net_list_new(s_sis_net_list *list_, void *in_)
+{
+	time_t now_sec = sis_time_get_now();
+	int index = -1;
+	for (int i = 0; i < list_->max_count; i++)
+	{
+		if (list_->used[i] == SIS_NET_NOUSE)
+		{
+			index = i;
+			break;
+		}
+		if (list_->wait_sec > 0 && list_->used[i] == SIS_NET_CLOSE && 
+			(now_sec - list_->stop_sec[i]) > list_->wait_sec)
+		{
+			_index_list_free(list_, i);
+			list_->used[i] = SIS_NET_NOUSE;
+			index = i;
+			break;
+		}
+	}
+	if (index < 0)
+	{
+		index = list_->max_count;
+		_net_list_set_grow(list_, list_->max_count + 1);
+	}
+	char **ptr = (char **)list_->buffer;
+	ptr[index] = (char *)in_;
+	list_->used[index] = SIS_NET_USEED;
+	list_->cur_count++;
+	return index;
+}
+void *sis_net_list_get(s_sis_net_list *list_, int index_)
+{
+	if (index_ < 0 || index_ >= list_->max_count)
+	{
+		return NULL;
+	}	
+	if (list_->used[index_] != SIS_NET_USEED)
+	{
+		return NULL;
+	}
+	char **ptr = (char **)list_->buffer;
+	return ptr[index_];
+}
+int sis_net_list_first(s_sis_net_list *list_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->max_count; i++)
+	{
+		if (list_->used[i] == SIS_NET_USEED)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index;
+}
+int sis_net_list_next(s_sis_net_list *list_, int index_)
+{
+	if (list_->cur_count < 1)
+	{
+		return -1;
+	}
+	int index = index_;
+	int start = index_ + 1;
+	while (start != index_)
+	{
+		if (start > list_->max_count - 1)
+		{
+			start = 0;
+		}
+		if (list_->used[start] == SIS_NET_USEED)
+		{
+			index = start;
+			break;
+		}
+		start++;		
+	}
+	return index;
+}
+int sis_net_list_uses(s_sis_net_list *list_)
+{
+	return list_->cur_count;
+}
+
+int sis_net_list_stop(s_sis_net_list *list_, int index_)
+{
+	if (index_ < 0 || index_ >= list_->max_count)
+	{
+		return -1;
+	}	
+	if (list_->used[index_] != SIS_NET_USEED)
+	{
+		return -1;
+	}
+	if (list_->wait_sec > 0)
+	{
+		list_->stop_sec[index_] = sis_time_get_now();
+		list_->used[index_] = SIS_NET_CLOSE;
+		list_->cur_count--;
+	}
+	else
+	{
+		_index_list_free(list_, index_);
+		list_->used[index_] = SIS_NET_NOUSE;
+		list_->cur_count--;
+	}
+	return index_;
+}
+
 
 ////////////////////////////////////////////////////////
 //  解码函数

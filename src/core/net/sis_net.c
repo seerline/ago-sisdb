@@ -2,7 +2,7 @@
 #include <sis_net.ws.h>
 #include <sis_net.rds.h>
 #include <sis_net.h>
-#include <sis_net.node.h>
+#include <sis_net.msg.h>
 
 
 bool sis_net_is_ip4(const char *ip_)
@@ -47,10 +47,6 @@ void sis_url_clone(s_sis_url *src_, s_sis_url *des_)
 	sis_strcpy(des_->ip4, 16, src_->ip4);
 	sis_strcpy(des_->name, 128, src_->name);
 	des_->port = src_->port;
-	// sis_strcpy(des_->username, 128, src_->username);
-	// sis_strcpy(des_->password, 128, src_->password);
-	// des_->wait_msec = src_->wait_msec;
-	// des_->wait_size = src_->wait_size;
 	sis_map_sds_clear(des_->dict);
 	if (src_->dict)
 	{
@@ -121,7 +117,7 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 	}
 	{
 		const char *str = sis_json_get_str(node_, "compress");
-	    url_->compress = str && !sis_strcasecmp(str, "zbit") ? SIS_NET_ZIP_ZBIT : SIS_NET_ZIP_NONE;
+	    url_->compress = str && !sis_strcasecmp(str, "snappy") ? SIS_NET_ZIP_SNAPPY : SIS_NET_ZIP_NONE;
 	}
 	{
 		const char *str = sis_json_get_str(node_, "crypt");
@@ -139,20 +135,6 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 		}
 	}
 	url_->port = sis_json_get_int(node_, "port", 7329);
-	// {
-	// 	const char *str = sis_json_get_str(node_, "username");
-	// 	if (str)
-	// 	{
-	// 		sis_strcpy(url_->username, 128, str);
-	// 	}
-	// }
-	// {
-	// 	const char *str = sis_json_get_str(node_, "password");
-	// 	if (str)
-	// 	{
-	// 		sis_strcpy(url_->password, 128, str);
-	// 	}
-	// }
     s_sis_json_node *argvs = sis_json_cmp_child_node(node_, "argvs");
 	if (argvs)
 	{
@@ -175,7 +157,8 @@ s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 	s_sis_net_context *o =SIS_MALLOC(s_sis_net_context, o);
 	o->rid = rid_;
 	o->father = cls_;
-	o->recv_buffer = sis_memory_create();
+	o->recv_memory = sis_memory_create();
+	o->recv_nodes = sis_net_nodes_create();
 	o->slots = SIS_MALLOC(s_sis_net_slot, o->slots);
 	// 初始化过程全部用 json 交互
 	return o;
@@ -184,21 +167,16 @@ s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 void sis_net_context_destroy(void *cxt_)
 {
 	s_sis_net_context *cxt = (s_sis_net_context *)cxt_;
-
-	sis_memory_destroy(cxt->recv_buffer);
-	// if(cxt->unpack_memory)
-	// {
-	// 	sis_memory_destroy(cxt->unpack_memory);
-	// }
+	sis_memory_destroy(cxt->recv_memory);
+	sis_net_nodes_destroy(cxt->recv_nodes);
 	sis_free(cxt->slots);
 	sis_free(cxt);
 }
 
 void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 protocol)
 {
-	// coded 必须有值
-	// slots->slot_net_encoded = NULL;
-	// slots->slot_net_decoded = NULL;		
+	// slots->slot_net_encoded = NULL; // coded 必须有值
+	// slots->slot_net_decoded = NULL; // coded 必须有值	
 	slots->slot_net_encrypt = NULL;
 	slots->slot_net_decrypt = NULL;
 	slots->slot_net_compress = NULL;
@@ -207,7 +185,7 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 	// slots->slot_net_unpack = NULL; 必须有值	
 
 	// 设置回调 这个应该在收到客户端请求后设置 应该针对每个客户进行设置
-	if (compress == SIS_NET_ZIP_ZBIT)
+	if (compress == SIS_NET_ZIP_SNAPPY)
 	{
 		// 暂时不支持
 		slots->slot_net_compress = NULL;
@@ -248,44 +226,6 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 //////////////////////////
 // s_sis_net_class
 //////////////////////////
-s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *mess_);
-int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_message *mess_);
-
-static int cb_sis_reader_recv(void *cls_, s_sis_object *in_)
-{
-	sis_object_incr(in_);
-	// 从队列中来 往上层用户而去
-	s_sis_net_class *cls = (s_sis_net_class *)cls_;
-
-	// LOG(8)("reader recv. %d count = %d\n", SIS_OBJ_NETMSG(in_)->cid, cls->ready_recv_cxts->work_queue->rnums);
-	// s_sis_net_message *mess = SIS_OBJ_NETMSG(in_);
-	// printf("recv mess: [%d] %x : %s %s %s\n %s\n", mess->cid, mess->style, 
-	// 	mess->cmd ? mess->cmd : "nil",
-	// 	mess->key ? mess->key : "nil",
-	// 	mess->val ? mess->val : "nil",
-	// 	mess->rval ? mess->rval : "nil");
-
-	// printf("recv argv: %x key = %s [%p] %d\n", mess->style, key, mess->argvs, mess->argvs ? mess->argvs->count : 0);
-
-	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, SIS_OBJ_NETMSG(in_)->cid);
-	if (!cxt)
-	{
-		sis_object_decr(in_);
-		return -1;
-	}
-	// 无论是请求数据或者是订阅数据 只要是返回的数据统一转为 net_message 传给上层 并及时销毁
-	if (cxt->cb_reply)
-	{
-		cxt->cb_reply(cxt->cb_source, SIS_OBJ_NETMSG(in_));
-	}
-	sis_object_decr(in_);
-	return 0;
-}
-
-//////////////////////////
-// s_sis_net_class
-//////////////////////////
-
 s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 {
 	s_sis_net_class *o = SIS_MALLOC(s_sis_net_class, o);
@@ -308,11 +248,6 @@ s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 		sis_strcpy(o->client->ip, 128, o->url->ip4);
 	}
 
-	o->ready_recv_cxts = sis_lock_list_create(16*1024*1024);
-    o->reader_recv = sis_lock_reader_create(o->ready_recv_cxts, 
-		SIS_UNLOCK_READER_HEAD, o, cb_sis_reader_recv, NULL);
-	sis_lock_reader_open(o->reader_recv);
-
 	o->cxts = sis_map_kint_create();
 	o->cxts->type->vfree = sis_net_context_destroy;
 
@@ -327,7 +262,13 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 	s_sis_net_class *cls = (s_sis_net_class *)cls_;
 
 	cls->work_status = SIS_NET_EXIT;
-
+	LOG(5)("net_class exit 1.\n");
+	if (cls->read_thread)
+	{
+		sis_wait_thread_destroy(cls->read_thread);
+        cls->read_thread = NULL;
+	}	
+	LOG(5)("net_class exit 2.\n");
 	if (cls->server)
 	{
 		sis_socket_server_destroy(cls->server);
@@ -337,9 +278,6 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 		sis_socket_client_destroy(cls->client);
 	}
 	sis_url_destroy(cls->url);
-
-	sis_lock_reader_close(cls->reader_recv);
-	sis_lock_list_destroy(cls->ready_recv_cxts);
 
 	sis_map_kint_destroy(cls->cxts);
 	LOG(5)("net_class exit .\n");
@@ -366,14 +304,14 @@ int sis_ws_send_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 // 接收握手请求 并回应
 int sis_ws_recv_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 {
-	int size = sis_net_ws_head_complete(cxt->recv_buffer);
+	int size = sis_net_ws_head_complete(cxt->recv_memory);
 	if (size < 0)
 	{
 		return 0; // 数据不全
 	}
 	s_sis_memory *ans = sis_memory_create();
-	sis_memory_cat(ans, sis_memory(cxt->recv_buffer), size);
-	sis_memory_move(cxt->recv_buffer, size);
+	sis_memory_cat(ans, sis_memory(cxt->recv_memory), size);
+	sis_memory_move(cxt->recv_memory, size);
 	char key[32];
 	if (sis_net_ws_get_key(ans, key))
 	{
@@ -382,8 +320,8 @@ int sis_ws_recv_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 	}
 	sis_net_ws_get_ans(key, ans);
 
-	printf("send hand ans: %d\n", cxt->rid);
-	sis_out_binary("ans",sis_memory(ans), sis_memory_get_size(ans));
+	// printf("send hand ans: %d\n", cxt->rid);
+	// sis_out_binary("ans",sis_memory(ans), sis_memory_get_size(ans));
 	
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, ans); 
 	// int so = 0;
@@ -402,279 +340,131 @@ int sis_ws_recv_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 // 收到回应 判断后返回 这里默认 有101 就是返回正确 不校验key 有空再说
 int sis_ws_match_hand_ans(s_sis_net_class *cls, s_sis_net_context *cxt)
 {
-	int size = sis_net_ws_head_complete(cxt->recv_buffer);
+	int size = sis_net_ws_head_complete(cxt->recv_memory);
 	if (size < 0)
 	{
 		return 0; // 数据不全
 	}
 	s_sis_memory *ans = sis_memory_create();
-	sis_memory_cat(ans, sis_memory(cxt->recv_buffer), size);
-	sis_memory_move(cxt->recv_buffer, size);
+	sis_memory_cat(ans, sis_memory(cxt->recv_memory), size);
+	sis_memory_move(cxt->recv_memory, size);
 	if (sis_net_ws_chk_ans(ans))
 	{
 		sis_memory_destroy(ans);
 		return -1; // 失败
 	}
 	sis_memory_destroy(ans);
-	// sis_memory_move(cxt->recv_buffer, size);	
 	return 1; // 成功 
 }
 
-int  __send_hand = 0;
-
 static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen_)
 {
-	if (__send_hand > 0)
-	{
-		printf("server recv from [%d] %d client : %d:||%s\n", sid_, __send_hand,(int)ilen_, in_);	
-	}
-
-	sis_out_binary("recv", in_, ilen_);
+	// sis_out_binary("recv", in_, ilen_);
 
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (!cxt)
 	{
 		return ;
 	}
-	sis_memory_cat(cxt->recv_buffer, in_, ilen_);
-	if (cxt->status == SIS_NET_HANDING)
-	{
-		// 未初始化的客户端
-		int rtn = sis_ws_recv_hand_ask(cls, cxt);
-		if (rtn == 1) // 收到正确的握手信息
-		{
-			printf("server hand ok wait.\n");
-			__send_hand ++;
-			// 此时仅仅是收到握手正确 还未发送信息给client 等发送应答包成功后才设置状态
-			// 这里发送登录信息 
-			// if (cls->cb_connected)
-			// {
-			// 	cls->cb_connected(cls->cb_source, sid_);
-			// }			
-			// cxt->status = SIS_NET_WORKING;
-		}
-		else if (rtn != 0) // 收到错误的握手信息
-		{
-			// 如果返回<零 就说明数据出错
-			sis_socket_server_delete(cls->server,sid_);
-		} // == 0 还没有收到数据
-	}
 	if (cxt->status == SIS_NET_WORKING)
 	{
-		// 需要脱壳 拼接成完整包就写入队列
-		while(sis_memory_get_size(cxt->recv_buffer) > 0) 
-		{
-			s_sis_net_message *mess = sis_net_message_create();
-			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
-			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
-			// printf("recv decoded rtn.[%d] size = %zu\n", rtn, sis_memory_get_size(cxt->recv_buffer));
-            printf("recv mess: [%d] %x : %s %s %s %s\n %s\n", mess->cid, mess->switchs.is_reply, 
-                mess->cmd ? mess->cmd : "nil",
-				mess->service ? mess->service : "nil",
-                mess->key ? mess->key : "nil",
-                mess->ask ? mess->ask : "nil",
-                mess->rmsg ? mess->rmsg : "nil");
-
-			if (rtn == 1)
-			{
-				mess->cid = sid_;
-				sis_lock_list_push(cls->ready_recv_cxts, obj);
-				// LOG(8)("server list recv. %d count = %d\n", sid_, cls->ready_recv_cxts->work_queue->rnums);
-			}
-			else if (rtn == 0)
-			{
-				// 如果返回零 就说明数据不够 等下一个数据过来再处理
-				sis_object_destroy(obj);
-				break;				
-			}
-			else
-			{
-				// 如果返回<零 就说明数据格式有问题 断开连接
-				sis_object_destroy(obj);
-				sis_socket_server_delete(cls->server,sid_);
-				break;
-			}		
-			sis_object_destroy(obj);
-		}
-		if (sis_memory_get_size(cxt->recv_buffer) == 0)
-		{
-			sis_memory_clear(cxt->recv_buffer);
-		}
+		s_sis_memory *memory = sis_memory_create_size(ilen_ + 1);
+		sis_memory_cat(memory, in_, ilen_);
+		s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
+		sis_net_nodes_push(cxt->recv_nodes, obj);
+		sis_object_destroy(obj);
+		// 发送通知
+		sis_wait_thread_notice(cls->read_thread);
 	}
-}
-// int _send_nums = 0;
-// msec_t _send_msec = 0;
-static void cb_server_send_after(void* handle_, int sid_, int status_)
-{
-	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-	if (__send_hand > 0)
+	else if (cxt->status == SIS_NET_HANDING)
 	{
-		printf("server send after [%d] %d\n", sid_, __send_hand);	
-	}
-	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
-	if (cxt)
-	{
-		if (cxt->status == SIS_NET_HANDING)
+		sis_memory_cat(cxt->recv_memory, in_, ilen_);
+		int o = sis_ws_recv_hand_ask(cls, cxt);
+		if (o == 1) // 收到正确的握手信息
 		{
-			printf("server hand ok.\n");
-			__send_hand = 0;
+			LOG(8)("server hand ok. [%d]\n", sid_);
+			// 这里发送登录信息 
 			if (cls->cb_connected)
 			{
 				cls->cb_connected(cls->cb_source, sid_);
-			}
+			}	
+			// 设置工作状态		
 			cxt->status = SIS_NET_WORKING;
+			// 如果握手包后有数据就直接通知处理
+			if (sis_memory_get_size(cxt->recv_memory) > 0)
+			{
+				sis_wait_thread_notice(cls->read_thread);
+			}
 		}
-		if (cxt->status != SIS_NET_WORKING)
+		else if (o != 0) // 收到错误的握手信息
 		{
-			LOG(5)("wait working. [%d]\n", cxt->status);
-		}
-	} 
-	else
-	{
-		LOG(5)("no find context. [%d]\n", (int)sis_map_kint_getsize(cls->cxts));
+			// 如果返回<零 就说明数据出错
+			sis_net_class_close_cxt(cls, sid_);
+		} // == 0 还没有收到数据		
 	}
-	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
-	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, key);
-	// if (cxt)
-	// {
-	// 	if (cxt->status == SIS_NET_WORKING)
-	// 	{
-	// 		_send_nums++;
-	// 		if (_send_nums % 1000 == 0)
-	// 		{
-	// 			printf("server send : %d wait :%d cost :%d\n", _send_nums, cxt->send_cxts->count, sis_time_get_now_msec() - _send_msec);
-	// 			_send_msec = sis_time_get_now_msec();
-	// 		}
-	// 		sis_wait_queue_set_busy(cxt->send_cxts, 0);	
-	// 	}
-	// 	else if (cxt->status == SIS_NET_HANDANS)
-	// 	{
-	// 		cxt->status = SIS_NET_WORKING;
-	// 		sis_wait_queue_set_busy(cxt->send_cxts, 0);	
-	// 		LOG(5)("server ans hand. status = %d wait = %d\n", cxt->status, cxt->send_cxts->count);
-	// 	}
-	// 	else
-	// 	{
-	// 		LOG(5)("server send fail.\n");
-	// 	}
-		
-	// }
-	// else
-	// {
-	// 	LOG(5)("server send fail. %s\n", key);
-	// }
-	// printf("server send to [%d] client. %p %d | %d \n", sid_, cxt, status_, 0);	
-	// printf("server send to client. %d [%d]\n", sid_, status_);	
+}
 
+static void cb_server_send_after(void* handle_, int sid_, int status_)
+{
+	s_sis_net_class *cls = (s_sis_net_class *)handle_;
+	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
+	if (!cxt)
+	{
+		LOG(5)("no find context. [%d:%d]\n", (int)sis_map_kint_getsize(cls->cxts), sid_);
+	}
 	if (status_)
 	{
 		LOG(5)("send to client fail. [%d:%d]\n", sid_, status_);
 	}	
 }
-// int __count = 0;
 static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen_)
 {
-	// LOG(8)("client recv from [%d] server : %d:||%s status = %d\n", sid_, (int)ilen_, in_, cxt->status);
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
 	if (!cxt)
 	{
 		return ;
 	}
-	sis_memory_cat(cxt->recv_buffer, in_, ilen_);
-	if (cxt->status == SIS_NET_HANDING && cls->url->protocol == SIS_NET_PROTOCOL_WS)
+	if (cxt->status == SIS_NET_WORKING)
 	{
-		int rtn = sis_ws_match_hand_ans(cls, cxt);
-		if (rtn == 1)
+		s_sis_memory *memory = sis_memory_create_size(ilen_ + 1);
+		sis_memory_cat(memory, in_, ilen_);
+		s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
+		sis_net_nodes_push(cxt->recv_nodes, obj);
+		sis_object_destroy(obj);
+		// 发送通知
+		sis_wait_thread_notice(cls->read_thread);
+	}
+	else if (cxt->status == SIS_NET_HANDING)
+	{
+		sis_memory_cat(cxt->recv_memory, in_, ilen_);
+		int o = sis_ws_match_hand_ans(cls, cxt);
+		if (o == 1)
 		{
-			printf("client hand ok.\n");
-			// sis_wait_queue_set_busy(cxt->send_cxts, 0);	
-			// sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
+			LOG(8)("client hand ok.\n");
 			// 这里发送登录信息 
 			if (cls->cb_connected)
 			{
 				cls->cb_connected(cls->cb_source, sid_);
 			}			
+			// 设置工作状态		
 			cxt->status = SIS_NET_WORKING;
+			// 如果握手包后有数据就直接通知处理
+			if (sis_memory_get_size(cxt->recv_memory) > 0)
+			{
+				sis_wait_thread_notice(cls->read_thread);
+			}
 		}
-		else if (rtn != 0)
+		else if (o != 0)
 		{
 			// 如果返回<零 就说明数据出错
 			sis_socket_client_close(cls->client);
-		}
-	}
-	if (cxt->status == SIS_NET_WORKING)
-	{
-		// 需要脱壳 拼接成完整包就写入队列
-		while(sis_memory_get_size(cxt->recv_buffer) > 0) 
-		{
-			s_sis_net_message *mess = sis_net_message_create();
-			s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, mess);
-			int rtn = sis_net_recv_message(cxt, cxt->recv_buffer, mess);
-			// if (sis_memory_get_size(cxt->recv_buffer) == 130 || sis_memory_get_size(cxt->recv_buffer) == 131)
-			// {
-			// 	sis_out_binary("wait", sis_memory(cxt->recv_buffer), sis_memory_get_size(cxt->recv_buffer));
-			// 	printf("client recv decoded rtn.[%d] %d %zu size = %zu\n", mess->cid, rtn, ilen_, sis_memory_get_size(cxt->recv_buffer));
-			// }
-
-			if (rtn == 1)
-			{
-				mess->cid = sid_;
-				// printf("[%zu %zu] size= %zu\n", cxt->recv_buffer->maxsize / 1000, sis_memory_get_size(cxt->recv_buffer), SIS_OBJ_GET_SIZE(obj));
-				sis_lock_list_push(cls->ready_recv_cxts, obj);
-				// LOG(8)("client list recv. %d count = %d\n", sid_, cls->ready_recv_cxts->work_queue->rnums);
-			}			
-			else if (rtn == 0)
-			{
-				// 如果返回非零 就说明数据不够 等下一个数据过来再处理
-				sis_object_destroy(obj);
-				break;
-			}
-			else
-			{
-				LOG(5)("data error.\n");
-				// 如果返回<零 就说明数据出错
-				sis_object_destroy(obj);
-				sis_lock_list_clear(cls->ready_recv_cxts);
-				sis_socket_client_close(cls->client);
-				break;				
-			}
-			sis_object_destroy(obj);
-		}
-		// 定时清理接收缓存
-		if (sis_memory_get_size(cxt->recv_buffer) == 0)
-		{
-			sis_memory_clear(cxt->recv_buffer);
-		}
+		}   // == 0 还没有收到数据		
 	}
 }
 static void cb_client_send_after(void* handle_, int sid_, int status_)
 {
-	// s_sis_net_class *cls = (s_sis_net_class *)handle_;
-
-	// // char key[32];
-	// // sis_llutoa(sid_, key, 32, 10);
-	// s_sis_net_context *cxt = sis_map_pointer_get(cls->cxts, "0");
-	// if (cxt)
-	// {
-	// 	if (cxt->status == SIS_NET_WORKING)
-	// 	{
-	// 		_send_nums++;
-	// 		if (_send_nums % 1000 == 0)
-	// 		{
-	// 			printf("send : %d wait :%d cost :%d\n", _send_nums, cxt->send_cxts->count, sis_time_get_now_msec() - _send_msec);
-	// 			_send_msec = sis_time_get_now_msec();
-	// 		}
-	// 		sis_wait_queue_set_busy(cxt->send_cxts, 0);	
-	// 	}
-	// 	else
-	// 	{
-	// 		LOG(5)("client send hand. status = %d\n", cxt->status);
-	// 	}
-	// }
-	// printf("client send to server. %d [%d]\n", sid_, status_);	
 	if (status_)
 	{
 		LOG(5)("send to server fail. [%d:%d]\n", sid_, status_);
@@ -683,9 +473,8 @@ static void cb_client_send_after(void* handle_, int sid_, int status_)
 
 static void cb_server_connected(void *handle_, int sid_)
 {
-	printf("new connect . sid_ = %d \n", sid_);	
+	LOG(5)("connected. [%d]\n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (!cxt)
 	{
@@ -694,17 +483,15 @@ static void cb_server_connected(void *handle_, int sid_)
 	}
 	else
 	{
-		sis_memory_clear(cxt->recv_buffer);
+		LOG(1)("connect already exists. [%d]\n", sid_);	
+		sis_memory_clear(cxt->recv_memory);
+		sis_net_nodes_clear(cxt->recv_nodes);
 	}
 	sis_socket_server_set_rwcb(cls->server, sid_, cb_server_recv_after, cb_server_send_after);
-	// sis_socket_server_set_rwcb(cls->server, sid_, cb_server_recv_after, NULL);
 	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 	if (cls->url->protocol == SIS_NET_PROTOCOL_WS)
 	{
-		cxt->status = SIS_NET_HANDING;
-		__send_hand = 0;
-		// sis_wait_queue_set_busy(cxt->send_cxts, 1); //  此时不发客户的正式数据
-		// 暂时不发送连接信号 等待客户端验证后才发送
+		cxt->status = SIS_NET_HANDING; // 等待握手包
 	}
 	else
 	{
@@ -717,10 +504,8 @@ static void cb_server_connected(void *handle_, int sid_)
 }
 static void cb_server_disconnect(void *handle_, int sid_)
 {
-	printf("client disconnect . sid_ = %d \n", sid_);	
-
+	LOG(5)("disconnect . [%d]\n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
-
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (cxt)
 	{
@@ -732,14 +517,14 @@ static void cb_server_disconnect(void *handle_, int sid_)
 				cls->cb_disconnect(cls->cb_source, sid_);
 			}
 		}
-		// 清理发送队列
-		sis_net_class_delete(cls, sid_);
+		// 关闭对应实例
+		sis_net_class_close_cxt(cls, sid_);
 	}
 
 }
 static void cb_client_connected(void *handle_, int sid_)
 {
-	printf("client connected . sid_ = %d \n", sid_);	
+	// printf("client connected . sid_ = %d \n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
 	if (!cxt)
@@ -749,7 +534,8 @@ static void cb_client_connected(void *handle_, int sid_)
 	}
 	else
 	{
-		sis_memory_clear(cxt->recv_buffer);
+		sis_memory_clear(cxt->recv_memory);
+		sis_net_nodes_clear(cxt->recv_nodes);
 	}
 	// printf("connect count = %d \n", sis_map_pointer_getsize(cls->cxts));	
 	sis_socket_client_set_rwcb(cls->client, cb_client_recv_after, cb_client_send_after);
@@ -760,12 +546,10 @@ static void cb_client_connected(void *handle_, int sid_)
 	{
 		cls->work_status = SIS_NET_WORKING;
 	}
-
 	if (cls->url->protocol == SIS_NET_PROTOCOL_WS)
 	{
 		// 发送握手请求
 		cxt->status = SIS_NET_HANDING;
-		// sis_wait_queue_set_busy(cxt->send_cxts, 1);
 		sis_ws_send_hand_ask(cls, cxt);
 	}
 	else
@@ -780,7 +564,7 @@ static void cb_client_connected(void *handle_, int sid_)
 }
 static void cb_client_disconnect(void *handle_, int sid_)
 {
-	printf("client disconnect\n");	
+	// printf("client disconnect\n");	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
 	if (cxt)
@@ -793,7 +577,7 @@ static void cb_client_disconnect(void *handle_, int sid_)
 				cls->cb_disconnect(cls->cb_source, sid_);
 			}
 		}
-		sis_net_class_delete(cls, 0);
+		sis_net_class_close_cxt(cls, 0);
 	}
 
 	if (cls->url->io == SIS_NET_IO_CONNECT)
@@ -802,20 +586,108 @@ static void cb_client_disconnect(void *handle_, int sid_)
 	}
 
 }
-void sis_net_class_delete(s_sis_net_class *cls_, int sid_)
+void sis_net_class_close_cxt(s_sis_net_class *cls_, int sid_)
 {
-	if (sid_ == 0)
+	sis_map_kint_del(cls_->cxts, sid_);
+	LOG(8)("cxt %d close, now cxt count = %d \n", sid_, (int)sis_map_kint_getsize(cls_->cxts));	
+}
+
+void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
+{
+	int count = sis_net_nodes_read(cxt->recv_nodes, 1024);
+	if (count > 0)
 	{
-		sis_map_kint_del(cls_->cxts, 0);
+		s_sis_net_node *next = cxt->recv_nodes->rhead;
+		int status = 0;
+		while (next)
+		{
+			// sis_out_binary("recv_memory", sis_memory(cxt->recv_memory), sis_memory_get_size(cxt->recv_memory));
+			s_sis_net_message *netmsg = sis_net_message_create();
+			if (status == 0)
+			{
+				if (sis_memory_get_size(cxt->recv_memory) == 0)
+				{
+					sis_memory_swap(SIS_OBJ_MEMORY(next->obj), cxt->recv_memory);
+				}
+				else
+				{
+					sis_memory_cat(cxt->recv_memory, SIS_OBJ_GET_CHAR(next->obj), SIS_OBJ_GET_SIZE(next->obj));
+				}
+			}
+			// sis_out_binary("recv_memory", sis_memory(cxt->recv_memory), sis_memory_get_size(cxt->recv_memory));
+			status = sis_net_recv_message(cxt, cxt->recv_memory, netmsg);
+			// printf("recv netmsg: %d %d\n", count, status);
+			if (status == 1)
+			{
+				SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
+				netmsg->cid = cxt->rid;
+				if (cxt->cb_reply)
+				{
+					cxt->cb_reply(cxt->cb_source, netmsg);
+				}
+				sis_net_message_destroy(netmsg);
+				continue;
+			}			
+			else if (status == 0)
+			{
+				// 如果返回非零 就说明数据不够 等下一个数据过来再处理
+				next = next->next;
+				sis_net_message_destroy(netmsg);
+				continue;
+			}
+			else
+			{
+				LOG(5)("read data error.[%d]\n", cxt->rid);
+				// 如果返回<零 就说明数据出错
+				// 这里要检查循环中删除会不会出问题
+				sis_net_class_close_cxt(cls, cxt->rid);
+				break;				
+			}
+			next = next->next;
+		}
+		sis_net_nodes_free_read(cxt->recv_nodes);
 	}
-	else
-	{
-		sis_map_kint_del(cls_->cxts, sid_);
-	}
-	printf("connect count del = %d \n", (int)sis_map_kint_getsize(cls_->cxts));	
+}
+void *_thread_net_class_read(void* argv)
+{
+	s_sis_net_class *cls = (s_sis_net_class *)argv;
+    sis_wait_thread_start(cls->read_thread);
+	// cls->cur_read_cxt = NULL;
+    while (sis_wait_thread_noexit(cls->read_thread))
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(cls->cxts);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+			s_sis_net_context *cxt = (s_sis_net_context *)sis_dict_getval(de);
+			// if (!cls->cur_read_cxt)
+			// {
+			// 	cls->cur_read_cxt = cxt;
+			// }
+			if (cxt->status == SIS_NET_WORKING)
+			{
+				_make_read_data(cls, cxt);
+			}
+        }
+        sis_dict_iter_free(di);
+       	sis_wait_thread_wait(cls->read_thread, cls->read_thread->wait_msec);
+    }
+    sis_wait_thread_stop(cls->read_thread);
+	return NULL;
 }
 bool sis_net_class_open(s_sis_net_class *cls_)
 {
+	if (!cls_->read_thread)
+	{
+		cls_->read_thread = sis_wait_thread_create(1000);
+		if (!sis_wait_thread_open(cls_->read_thread, _thread_net_class_read, cls_))
+		{
+			sis_wait_thread_destroy(cls_->read_thread);
+			cls_->read_thread = NULL;
+			LOG(1)("can't start read thread.\n");
+			return false;
+		}
+	}
 	if (cls_->url->io == SIS_NET_IO_WAITCNT)
 	{
 		sis_socket_server_set_cb(cls_->server, cb_server_connected, cb_server_disconnect);
@@ -831,12 +703,7 @@ bool sis_net_class_open(s_sis_net_class *cls_)
 	}
 	else
 	{
-		cls_->client->cb_source = cls_;
-		cls_->client->port = cls_->url->port;
-		sis_strcpy(cls_->client->ip, 128, cls_->url->ip4);
-
 		sis_socket_client_set_cb(cls_->client, cb_client_connected, cb_client_disconnect);
-
 		if (!sis_socket_client_open(cls_->client))
 		{
 			LOG(5)("open client fail.\n");
@@ -847,6 +714,11 @@ bool sis_net_class_open(s_sis_net_class *cls_)
 }
 void sis_net_class_close(s_sis_net_class *cls_)
 {
+	if (cls_->read_thread)
+	{
+		sis_wait_thread_destroy(cls_->read_thread);
+        cls_->read_thread = NULL;
+	}
 	if (cls_->url->io == SIS_NET_IO_WAITCNT)
 	{
 		sis_socket_server_close(cls_->server);
@@ -882,7 +754,7 @@ int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, cha
 	{
 		protocol = SIS_NET_PROTOCOL_WS;
 	}
-	compress = compress_ && !sis_strcasecmp(compress_, "zbit") ? SIS_NET_ZIP_ZBIT : SIS_NET_ZIP_NONE;
+	compress = compress_ && !sis_strcasecmp(compress_, "snappy") ? SIS_NET_ZIP_SNAPPY : SIS_NET_ZIP_NONE;
 	crypt = crypt_ && !sis_strcasecmp(crypt_, "ssl") ? SIS_NET_CRYPT_SSL : SIS_NET_CRYPT_NONE;
 
 	sis_net_slot_set(cxt->slots, compress, crypt, protocol);
@@ -914,7 +786,6 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 			{
 				sis_socket_client_send(cls_->client, sendobj);
 			}
-			// 这里要等待发送完毕
 			sis_object_destroy(sendobj);
 		}	
 	}
@@ -925,6 +796,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 ////////////////////////////////////////////////
 //    s_sis_net_class other define     
 ////////////////////////////////////////////////
+
 int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_message *mess_)
 {
 	s_sis_net_slot *call = cxt_->slots;
@@ -932,14 +804,14 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 	s_sis_memory *inmemptr = inmem;
 	// 成功或者不成功 in_ 都会移动位置到新的位置
 	s_sis_net_tail info;
-	int rtn = call->slot_net_unpack(in_, &info, inmemptr);
-	if (rtn == 0)
+	int o = call->slot_net_unpack(in_, &info, inmemptr);
+	if (o == 0)
 	{
 		// 数据不完整 拼接数据
 		sis_memory_destroy(inmemptr);
 		return 0;
 	} 
-	else if (rtn == -1)
+	else if (o == -1)
 	{
 		sis_memory_destroy(inmemptr);
 		return -1;
@@ -979,66 +851,6 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 	return 1;
 }
 
-// int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_message *mess_)
-// {
-// 	s_sis_net_slot *call = cxt_->slots;
-// 	if (!cxt_->unpack_memory)
-// 	{
-// 		cxt_->unpack_memory = sis_memory_create();
-// 	}
-// 	s_sis_memory *inmem = cxt_->unpack_memory;
-// 	s_sis_memory *inmemptr = inmem;
-// 	s_sis_net_tail info;
-// 	int complete = call->slot_net_unpack(in_, &info, inmemptr);
-// 	if (rtn == 0)
-// 	{
-// 		// 数据不完整 等待拼接下一块数据
-// 		return 0;
-// 	} 
-// 	else if (rtn == -1)
-// 	{
-// 		goto _xx_;
-// 	}
-// 	// rtn == 1 表示数据完整 
-// 	if (info.is_bytes)
-// 	{
-// 		s_sis_memory *outmem = sis_memory_create();
-// 		s_sis_memory *outmemptr = outmem;
-// 		if (info.is_crypt && call->slot_net_decrypt)
-// 		{
-// 			if (call->slot_net_decrypt(inmemptr, outmemptr))
-// 			{
-// 				SIS_MEMORY_SWAP(inmemptr, outmemptr);
-// 			}
-// 		}
-// 		if (info.is_compress && call->slot_net_uncompress)
-// 		{
-// 			if (call->slot_net_uncompress(inmemptr, outmemptr))
-// 			{
-// 				SIS_MEMORY_SWAP(inmemptr, outmemptr);
-// 			}
-// 		}
-// 		sis_memory_destroy(outmemptr);
-// 	}
-
-// 	mess_->format = info.is_bytes;  // 这里设置数据区格式
-
-//  	if (call->slot_net_decoded)
-// 	{
-// 		if (!(call->slot_net_decoded(inmemptr, mess_)))
-// 		{
-// 			goto _xx_;
-// 		}
-// 	}
-// _ok_:  // 完全正确
-// 	sis_memory_destroy(inmemptr);
-// 	cxt_->unpack_memory = NULL;	
-// 	return 1;
-// _xx_:  // 出现错误
-// 	sis_memory_destroy(inmemptr);
-// 	cxt_->unpack_memory = NULL;	
-// 	return -1;
-// }
 s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *mess_)
 {
 	s_sis_net_slot *call = cxt_->slots;
@@ -1095,7 +907,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 
 #if 1
 // 测试网络通讯协议是否正常
-#include "sis_net.io.h"
+#include "sis_net.msg.h"
 
 #define TEST_PORT 7329
 #define TEST_SIP "0.0.0.0"
@@ -1107,6 +919,10 @@ int __exit = 0;
 
 void exithandle(int sig)
 {
+	if (__exit == 1)
+	{
+		exit(0);
+	}
 	printf("--- exit .1. \n");	
 	__exit = 1;
 	if (session)
@@ -1156,7 +972,8 @@ static void _cb_connected(void *handle_, int sid)
 	    msg->cid = sid;
 		sis_net_ask_with_chars(msg, "set", "myname", "ding", 4);
 		// // sis_net_ask_with_bytes(msg, "set", "myname", "ding", 4);
-		int rtn = sis_net_class_send(socket, msg);
+		// int rtn = 
+		sis_net_class_send(socket, msg);
 
 		// s_sis_net_message *msg1 = sis_net_message_create();
 		// sis_net_ask_with_bytes(msg1, "set", "myname1", "ding", 4);
@@ -1177,11 +994,11 @@ static void _cb_disconnect(void *handle_, int sid)
 	s_sis_net_class *socket = (s_sis_net_class *)handle_;
 	if (socket->url->role== SIS_NET_ROLE_REQUEST)
 	{
-		LOG(5)("--- client disconnect.\n");	
+		LOG(5)("--- client disconnect. %d\n", sid);	
 	}
 	else
 	{
-		LOG(5)("--- server disconnect.\n");	
+		LOG(5)("--- server disconnect. %d \n", sid);	
 	}
 }
 
@@ -1265,7 +1082,7 @@ int main(int argc, const char **argv)
 #if 0
 // 测试打包数据的网络最大流量
 // 约每秒30M
-#include "sis_net.io.h"
+#include "sis_net.msg.h"
 
 #define TEST_PORT 7329
 #define TEST_SIP "0.0.0.0"

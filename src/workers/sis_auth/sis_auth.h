@@ -2,7 +2,7 @@
 #define _SIS_AUTH_H
 
 #include "sis_method.h"
-#include "sis_net.node.h"
+#include "sis_net.msg.h"
 #include "worker.h"
 
 // 每条命令的三种权限 具备写权限的才保留

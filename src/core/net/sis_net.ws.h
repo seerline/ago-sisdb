@@ -3,7 +3,7 @@
 #include "sis_sds.h"
 #include "sis_list.h"
 #include "sis_obj.h"
-#include "sis_net.node.h"
+#include "sis_net.msg.h"
 #include "sis_net.h"
 #include "sis_math.h"
 #include "sis_sha1.h"

@@ -11,6 +11,7 @@
 #include <sis_str.h>
 #include <sis_obj.h>
 #include <sis_thread.h>
+#include <sis_net.node.h>
 
 #define MAX_NET_UV_BUFFSIZE (16 * 1024 * 1024)
 
@@ -21,67 +22,7 @@ typedef void (*cb_socket_send_after)(void *, int sid_, int status);
 // 0 表示已经关闭 1 表示等待关闭
 int sis_socket_close_handle(uv_handle_t *handle_, uv_close_cb close_cb_);
 
-/////////////////////////////////////////////////
-//  s_sis_net_uv_nodes
-/////////////////////////////////////////////////
 
-// 队列结点
-typedef struct s_sis_net_node {
-    s_sis_object          *obj;    // 数据区
-    struct s_sis_net_node *next;
-} s_sis_net_node;
-
-typedef struct s_sis_net_uv_nodes {
-    int64              nums;
-	s_sis_mutex_t      lock;  
-    s_sis_net_node    *whead;
-    s_sis_net_node    *wtail;
-
-    s_sis_net_node    *rhead;  // 已经被pop出去 保存在这里 除非下一次pop或free
-	s_sis_net_node    *rtail;
-
-	int                maxsends;
-	int                sendnums;
-	uv_buf_t          *readbuff;
-} s_sis_net_uv_nodes;
-
-
-s_sis_net_uv_nodes *sis_net_uv_nodes_create(int);
-void sis_net_uv_nodes_destroy(s_sis_net_uv_nodes *nodes_);
-int  sis_net_uv_nodes_push(s_sis_net_uv_nodes *nodes_, s_sis_object *obj_);
-int  sis_net_uv_nodes_read(s_sis_net_uv_nodes *nodes_);
-void sis_net_uv_nodes_free_read(s_sis_net_uv_nodes *nodes_);
-
-///////////////////////////////////////////////////////////////////////////
-//----------------------s_sis_net_list --------------------------------//
-//  以整数为索引 存储指针的列表
-///////////////////////////////////////////////////////////////////////////
-#define SIS_NET_NOUSE  0  // 可以使用
-#define SIS_NET_USEED  1  // 正在使用
-#define SIS_NET_CLOSE  2  // 已经关闭
-
-typedef struct s_sis_net_list {
-	time_t         wait_sec;     // 是否等待 300 秒 0 就是直接分配
-	time_t        *stop_sec;     // stop_time 上次删除时的时间 
-	int		       max_count;    // 当前最大个数
-	int		       cur_count;    // 当前有效个数
-	unsigned char *used;         // 是否有效 初始为 0 
-	void          *buffer;       // used 为 0 需调用vfree
-	void (*vfree)(void *);       // == NULL 不释放对应内存
-} s_sis_net_list;
-
-s_sis_net_list *sis_net_list_create(void *); 
-void sis_net_list_destroy(s_sis_net_list *list_);
-void sis_net_list_clear(s_sis_net_list *list_);
-
-int sis_net_list_new(s_sis_net_list *list_, void *in_);
-void *sis_net_list_get(s_sis_net_list *, int index_);
-
-int sis_net_list_first(s_sis_net_list *);
-int sis_net_list_next(s_sis_net_list *, int index_);
-int sis_net_list_uses(s_sis_net_list *);
-
-int sis_net_list_stop(s_sis_net_list *list_, int index_);
 
 /////////////////////////////////////////////////////////////
 // s_sis_socket_session  
@@ -97,7 +38,9 @@ typedef struct s_sis_socket_session
 	uv_tcp_t              uv_w_handle;	    // 客户端tcp句柄
 	uv_buf_t              uv_r_buffer;      // 接受数据的 buffer 有真实的数据区
   
-	s_sis_net_uv_nodes      *send_nodes;       // 发送队列  
+	int                   sendnums;         // 一次发送数量 64 * 1024
+	uv_buf_t             *sendbuff;         // 缓存
+	s_sis_net_nodes      *send_nodes;       // 发送队列  
 
 	cb_socket_recv_after  cb_recv_after;    // 接收数据回调给用户的函数
 	cb_socket_send_after  cb_send_after;    // 回调函数

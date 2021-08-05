@@ -4,7 +4,7 @@
 #include "sis_memory.h"
 #include "snappy-c.h"
 
-#include "sis_net.node.h"
+#include "sis_net.msg.h"
 ///////////////////////////
 //  snappy compress
 ///////////////////////////

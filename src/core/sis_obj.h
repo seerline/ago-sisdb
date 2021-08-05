@@ -4,7 +4,7 @@
 #include "sis_core.h"
 #include "sis_malloc.h"
 #include "sis_memory.h"
-#include "sis_net.node.h"
+#include "sis_net.msg.h"
 #include "sis_list.h"
 #include "sis_nodelist.h"
 

@@ -4,7 +4,7 @@
 
 #include "sisdb.h"
 #include "sisdb_io.h"
-#include "sis_net.io.h"
+#include "sis_net.msg.h"
 #include "sisdb_collect.h"
 
 ///////////////////////////////////////////////////

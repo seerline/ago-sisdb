@@ -4,6 +4,7 @@
 #include "sis_method.h"
 
 #include "sisdb_wlog.h"
+#include "sis_net.node.h"
 
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //

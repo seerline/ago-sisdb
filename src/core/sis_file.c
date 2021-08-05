@@ -72,7 +72,7 @@ void sis_cat_fixed_path(char *srcpath_, const char *inpath_, char *outpath_, int
         }
     }
     // 创建目录
-    sis_path_complete(outpath_,SIS_PATH_LEN);
+    sis_path_complete(outpath_, SIS_PATH_LEN);
     if(!sis_path_mkdir(outpath_))
     {
 		LOG(3)("cann't create dir [%s].\n", outpath_);   
