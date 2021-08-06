@@ -193,7 +193,7 @@ extern "C" {
 #endif
 s_sis_pointer_list *sis_pointer_list_create(); 
 
-void sis_pointer_list_destroy(s_sis_pointer_list *list_);
+void sis_pointer_list_destroy(void *list_);
 void sis_pointer_list_clear(s_sis_pointer_list *list_);
 
 int sis_pointer_list_clone(s_sis_pointer_list *src_, s_sis_pointer_list *des_);
@@ -216,11 +216,76 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 }
 #endif
 
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_fsort_list ---------------------------------//
+//  以浮点数排序的指针类型数据
+//////////////////////////////////////////////////////////////////////////
+
+typedef struct s_sis_fsort_list {
+	s_sis_struct_list  *key;     // int 类型
+	s_sis_pointer_list *value;   // 结构类型
+} s_sis_fsort_list;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+s_sis_fsort_list *sis_fsort_list_create(void *vfree_); 
+void sis_fsort_list_destroy(void *);
+void sis_fsort_list_clear(s_sis_fsort_list *list_);
+int  sis_fsort_list_set(s_sis_fsort_list *, double key_, void *in_);
+void *sis_fsort_list_get(s_sis_fsort_list *, int index_);
+
+double sis_fsort_list_getkey(s_sis_fsort_list *, int index_);
+
+// 找对应数据指针
+int sis_fsort_list_find(s_sis_fsort_list *, void *value_);
+
+void sis_fsort_list_del(s_sis_fsort_list *list_, int index_);
+int sis_fsort_list_getsize(s_sis_fsort_list *list_);
+#ifdef __cplusplus
+}
+#endif
+///////////////////////////////////////////////////////////////////////////
+//----------------------s_sis_index_list --------------------------------//
+//  以整数为索引 存储指针的列表
+///////////////////////////////////////////////////////////////////////////
+
+typedef struct s_sis_index_list {
+	fsec_t         wait_sec; // 是否等待 300 毫秒 0 就是直接分配
+	fsec_t        *stop_sec; // stop_time 上次删除时的时间 
+	int		       count;    // 当前个数
+	unsigned char *used;     // 是否有效 初始为 0 
+	void          *buffer;   // used 为 0 需调用vfree
+	void (*vfree)(void *);  // == NULL 不释放对应内存
+} s_sis_index_list;
+#ifdef __cplusplus
+extern "C" {
+#endif
+s_sis_index_list *sis_index_list_create(int count_); 
+void sis_index_list_destroy(s_sis_index_list *list_);
+void sis_index_list_clear(s_sis_index_list *list_);
+
+int sis_index_list_set(s_sis_index_list *, int index_, void *in_);
+// 从list找一个无用的索引 返回索引号 -1 表示列表满
+int sis_index_list_new(s_sis_index_list *list_);
+void *sis_index_list_get(s_sis_index_list *, int index_);
+
+int sis_index_list_first(s_sis_index_list *);
+int sis_index_list_next(s_sis_index_list *, int index_);
+int sis_index_list_uses(s_sis_index_list *);
+
+int sis_index_list_del(s_sis_index_list *list_, int index_);
+
+#ifdef __cplusplus
+}
+#endif
+
 typedef struct s_sis_node_list {
 	int                 node_size;
 	int                 node_count; // 单结点最大数量
-	int                 count;
-	s_sis_pointer_list *nodes;     // 数据列表 s_sis_struct_list
+	int                 count;      // 实际的数据量
+	int                 nouse;      // 被弹出的数量
+	s_sis_pointer_list *nodes;      // 数据列表 s_sis_struct_list
 } s_sis_node_list;
 
 #ifdef __cplusplus
@@ -232,6 +297,8 @@ void sis_node_list_clear(s_sis_node_list *list_);
 
 int   sis_node_list_push(s_sis_node_list *, void *in_);
 void *sis_node_list_get(s_sis_node_list *, int index_);
+
+void *sis_node_list_pop(s_sis_node_list *);
 
 int   sis_node_list_get_size(s_sis_node_list *);
 #ifdef __cplusplus

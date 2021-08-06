@@ -206,7 +206,8 @@ int sis_disk_files_open_rdonly(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
         return -1;
     }
     // SIS_FILE_IO_RSYNC
-    unit->fp = sis_open(unit->fn, SIS_FILE_IO_BINARY | SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ, 0 );
+    // unit->fp = sis_open(unit->fn, SIS_FILE_IO_BINARY | SIS_FILE_IO_RSYNC | SIS_FILE_IO_READ, 0 );
+    unit->fp = sis_open(unit->fn, SIS_FILE_IO_BINARY | SIS_FILE_IO_READ, 0 );
     if (unit->fp < 0)
     {
         return -2;

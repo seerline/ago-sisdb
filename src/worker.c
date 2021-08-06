@@ -33,11 +33,6 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
 	{
-		if (!task_->isfirst)
-		{
-			task_->isfirst = true;
-			return true;
-		}	
 		// printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
 		int o = sis_wait_thread_wait(task_->work_thread, task_->work_gap.delay);
 		// printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
@@ -283,7 +278,7 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
     {
         worker->classname = sis_sdsnew(node_->key);
     }
-    if (sis_str_substr_nums(node_->key, '.') > 1)
+    if (sis_str_substr_nums(node_->key, sis_strlen(node_->key), '.') > 1)
     {
         LOG(3)("workname [%s] cannot '.' !\n", node_->key);  
         sis_worker_destroy(worker);
@@ -351,6 +346,7 @@ void sis_worker_destroy(void *worker_)
 {   
     s_sis_worker *worker =(s_sis_worker *)worker_;
 
+    LOG(5)("worker [%s] kill.\n", worker->workername);
     // 应该先释放 notice 再释放其他的
     worker->status = SIS_WORK_INIT_NONE;
     if (worker->service_thread)
@@ -377,11 +373,9 @@ void sis_worker_destroy(void *worker_)
     {
         worker->slots->uninit(worker);
     }
-    LOG(5)("worker [%s] kill.\n", worker->workername);
     sis_sdsfree(worker->workername);
     sis_sdsfree(worker->classname);
     sis_free(worker);
-
 }
 
 // 在 worker_ 下根据 node 配置生成多个子 worker, worker_ 为空表示依赖于 server
@@ -496,7 +490,7 @@ s_sis_worker *sis_worker_search(const char *workname_)
     {
         return NULL;
     }
-    int count = sis_str_substr_nums(workname_, '.') - 1;
+    int count = sis_str_substr_nums(workname_, sis_strlen(workname_), '.') - 1;
     int index = 1;
     while(count > 0)
     {

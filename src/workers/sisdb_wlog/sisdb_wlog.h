@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 #include "sis_map.h"
-#include "sis_disk_v1.h"
+#include "sis_disk.h"
 
 typedef struct s_sisdb_wlog_cxt
 {
@@ -11,7 +11,7 @@ typedef struct s_sisdb_wlog_cxt
 
 	s_sis_sds           work_path;
 
-	s_sis_disk_v1_class   *wlog;
+	s_sis_disk_class   *wlog;
 
 	void               *cb_source;
 	sis_method_define  *cb_recv;

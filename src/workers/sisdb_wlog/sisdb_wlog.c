@@ -61,8 +61,8 @@ void sisdb_wlog_uninit(void *worker_)
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;
     if (context->wlog)
     {
-        sis_disk_v1_file_write_stop(context->wlog);
-        sis_disk_v1_class_destroy(context->wlog);  
+        sis_disk_file_write_stop(context->wlog);
+        sis_disk_class_destroy(context->wlog);  
     }
 
     sis_sdsfree(context->work_path);
@@ -121,14 +121,14 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_)
     s_sis_message *message = (s_sis_message *)argv_;
     s_sis_sds dbname = sis_message_get_str(message, "dbname");
 
-    s_sis_disk_v1_class *rfile = sis_disk_v1_class_create();
+    s_sis_disk_class *rfile = sis_disk_class_create();
     char fn[255];
     sis_sprintf(fn, 255, "%s.log", dbname);
-    sis_disk_v1_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
-    int ok = sis_disk_v1_file_read_start(rfile);
+    sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
+    int ok = sis_disk_file_read_start(rfile);
     if (ok)
     {
-        sis_disk_v1_class_destroy(rfile);
+        sis_disk_class_destroy(rfile);
         return SIS_METHOD_ERROR;
     }
     context->cb_source =  sis_message_get(message, "source");
@@ -136,19 +136,19 @@ int cmd_sisdb_wlog_read(void *worker_, void *argv_)
     context->cb_sub_stop =  sis_message_get_method(message, "cb_sub_stop");
     context->cb_recv =  sis_message_get_method(message, "cb_recv");
 
-    s_sis_disk_v1_callback cb;
-    memset(&cb, 0, sizeof(s_sis_disk_v1_callback));
+    s_sis_disk_callback cb;
+    memset(&cb, 0, sizeof(s_sis_disk_callback));
     cb.source = context; 
     cb.cb_begin = cb_begin;
     cb.cb_end = cb_end;
     cb.cb_read = cb_read;
-    s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(&cb); 
+    s_sis_disk_reader *reader = sis_disk_reader_create(&cb); 
 
-    sis_disk_v1_file_read_sub(rfile, reader);
+    sis_disk_file_read_sub(rfile, reader);
 
-    sis_disk_v1_reader_destroy(reader);
-    sis_disk_v1_file_read_stop(rfile);
-    sis_disk_v1_class_destroy(rfile);
+    sis_disk_reader_destroy(reader);
+    sis_disk_file_read_stop(rfile);
+    sis_disk_class_destroy(rfile);
 
     return SIS_METHOD_OK;
 }
@@ -165,12 +165,12 @@ int cmd_sisdb_wlog_open(void *worker_, void *argv_)
     }
     char fn[255];
     sis_sprintf(fn, 255, "%s.log", sis_message_get_str(msg, "log-name"));
-    context->wlog = sis_disk_v1_class_create();
-    sis_disk_v1_class_init(context->wlog, SIS_DISK_TYPE_STREAM, context->work_path, fn, sis_message_get_int(msg, "log-date"));
+    context->wlog = sis_disk_class_create();
+    sis_disk_class_init(context->wlog, SIS_DISK_TYPE_STREAM, context->work_path, fn, sis_message_get_int(msg, "log-date"));
 
     // 立即写盘 且不限制文件大小
-    sis_disk_v1_class_set_size(context->wlog, 0, 0);
-    sis_disk_v1_file_write_start(context->wlog);
+    sis_disk_class_set_size(context->wlog, 0, 0);
+    sis_disk_file_write_start(context->wlog);
     return SIS_METHOD_OK;
 }
 
@@ -182,8 +182,8 @@ int cmd_sisdb_wlog_close(void *worker_, void *argv_)
     {
         return SIS_METHOD_ERROR;
     }
-    sis_disk_v1_file_write_stop(context->wlog);
-    sis_disk_v1_class_destroy(context->wlog);  
+    sis_disk_file_write_stop(context->wlog);
+    sis_disk_class_destroy(context->wlog);  
     context->wlog = NULL;
     return SIS_METHOD_OK;
 }
@@ -200,7 +200,7 @@ int cmd_sisdb_wlog_write(void *worker_, void *argv_)
     }
     s_sis_memory *memory = sis_memory_create();
     sis_net_encoded_normal(netmsg, memory);
-    sis_disk_v1_file_write_stream(context->wlog, sis_memory(memory), sis_memory_get_size(memory));
+    sis_disk_file_write_stream(context->wlog, sis_memory(memory), sis_memory_get_size(memory));
     sis_memory_destroy(memory);
 
     return SIS_METHOD_OK;
@@ -213,19 +213,19 @@ int cmd_sisdb_wlog_move(void *worker_, void *argv_)
 
     if (context->wlog)
     {
-        sis_disk_v1_file_write_stop(context->wlog);  
-        sis_disk_v1_file_delete(context->wlog);
-        sis_disk_v1_class_destroy(context->wlog);
+        sis_disk_file_write_stop(context->wlog);  
+        sis_disk_file_delete(context->wlog);
+        sis_disk_class_destroy(context->wlog);
         context->wlog = NULL;
     }
     else
     {
-        s_sis_disk_v1_class *rfile = sis_disk_v1_class_create();
+        s_sis_disk_class *rfile = sis_disk_class_create();
         char fn[255];
         sis_sprintf(fn, 255, "%s.log", (char *)argv_);
-        sis_disk_v1_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
-        sis_disk_v1_file_delete(rfile);
-        sis_disk_v1_class_destroy(rfile);
+        sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
+        sis_disk_file_delete(rfile);
+        sis_disk_class_destroy(rfile);
     }
     return SIS_METHOD_OK;
 }
@@ -235,12 +235,12 @@ int cmd_sisdb_wlog_exist(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wlog_cxt *context = (s_sisdb_wlog_cxt *)worker->context;
 
-    s_sis_disk_v1_class *rfile = sis_disk_v1_class_create();
+    s_sis_disk_class *rfile = sis_disk_class_create();
     char fn[255];
     sis_sprintf(fn, 255, "%s.log", (char *)argv_);
-    sis_disk_v1_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
-    int ok = sis_disk_v1_file_read_start(rfile) == 0 ? SIS_METHOD_OK : SIS_METHOD_ERROR;
-    sis_disk_v1_file_read_stop(rfile);
-    sis_disk_v1_class_destroy(rfile);
+    sis_disk_class_init(rfile, SIS_DISK_TYPE_STREAM, context->work_path, fn, 0);
+    int ok = sis_disk_file_read_start(rfile) == 0 ? SIS_METHOD_OK : SIS_METHOD_ERROR;
+    sis_disk_file_read_stop(rfile);
+    sis_disk_class_destroy(rfile);
     return ok;
 }

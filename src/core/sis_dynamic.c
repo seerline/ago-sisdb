@@ -196,6 +196,14 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	dyna->refs = 1;
 	return dyna;
 }
+s_sis_dynamic_db *sis_dynamic_db_create_none(const char *name_, size_t size_)
+{	
+	s_sis_dynamic_db *dyna = SIS_MALLOC(s_sis_dynamic_db, dyna);
+	dyna->name = sis_sdsnew(name_);
+	dyna->size = size_; 
+	return dyna;
+}
+
 void sis_dynamic_db_decr(s_sis_dynamic_db *db_)
 {
 	if (db_->refs == 1)

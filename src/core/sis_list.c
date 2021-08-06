@@ -331,6 +331,7 @@ s_sis_node_list *sis_node_list_create(int count_, int len_)
 	o->node_size = len_;
 	o->node_count = count_;
 	o->count = 0;
+	o->nouse = 0;
 
 	s_sis_struct_list *node = sis_struct_list_create(o->node_size);
 	sis_struct_list_set_size(node, o->node_count);
@@ -352,6 +353,7 @@ void sis_node_list_clear(s_sis_node_list *list_)
 	}
 	sis_struct_list_clear(sis_pointer_list_first(list_->nodes));
 	list_->count = 0;
+	list_->nouse = 0;
 }
 
 int   sis_node_list_push(s_sis_node_list *list_, void *in_)
@@ -374,16 +376,59 @@ int   sis_node_list_push(s_sis_node_list *list_, void *in_)
 
 void *sis_node_list_get(s_sis_node_list *list_, int index_)
 {
-	int index = index_ / list_->node_count;
-	s_sis_struct_list *node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, index);
-	if (node)
-	{
-		return sis_struct_list_get(node, index_ % list_->node_count);
-	}
-	else
+	if (index_ < 0 || index_ > list_->count - 1)
 	{
 		return NULL;
 	}
+	int offset = index_ + list_->nouse;
+	int nodeidx = offset / list_->node_count;
+	s_sis_struct_list *node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, nodeidx);
+	void *o = NULL;
+	if (node)
+	{
+		o = sis_struct_list_get(node, index_ % (list_->node_count - list_->nouse % list_->node_count));
+	}
+	// if (!o)
+	// {
+	// 	printf(":===1: %d %d | %d %d %d %d %d\n", nodeidx, offset, list_->nodes->count, 
+	// 		list_->node_count, list_->count, list_->nouse, node->count);
+	// }
+	return o;
+}
+void *sis_node_list_pop(s_sis_node_list *list_)
+{
+	s_sis_struct_list *node = NULL;
+	int nodeidx = 0;
+	while (nodeidx < list_->nodes->count)
+	{
+		node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, nodeidx);
+		if (node->count == 0)
+		{
+			sis_pointer_list_delete(list_->nodes, nodeidx, 1);
+			list_->nouse -= list_->node_count;
+		}
+		else
+		{
+			break;
+		}
+	}
+	if (!node)
+	{
+		printf(":1: %d %d\n", nodeidx, list_->nodes->count);
+		return NULL;
+	}
+	void *o = sis_struct_list_pop(node);
+	if (o)
+	{ // 有实际数据弹出
+		list_->count--;
+		list_->nouse++;
+	}
+	else
+	{
+		printf(":2: %d %d\n", nodeidx, list_->nodes->count);
+		return NULL;
+	}
+	return o;
 }
 
 int   sis_node_list_get_size(s_sis_node_list *list_)
@@ -897,16 +942,17 @@ s_sis_pointer_list *sis_pointer_list_create()
 	sbl->vfree = NULL;
 	return sbl;
 }
-void sis_pointer_list_destroy(s_sis_pointer_list *list_)
+void sis_pointer_list_destroy(void *list_)
 {
-	sis_pointer_list_clear(list_);
-	if (list_->buffer)
+	s_sis_pointer_list *list = (s_sis_pointer_list *)list_;
+	sis_pointer_list_clear(list);
+	if (list->buffer)
 	{
-		sis_free(list_->buffer);
+		sis_free(list->buffer);
 	}
-	list_->buffer = NULL;
-	list_->maxcount = 0;
-	sis_free(list_);
+	list->buffer = NULL;
+	list->maxcount = 0;
+	sis_free(list);
 }
 void sis_pointer_list_clear(s_sis_pointer_list *list_)
 {
@@ -1100,6 +1146,262 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_)
 		}
 	}
 	return 0;
+}
+
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_fsort_list --------------------------------//
+///////////////////////////////////////////////////////////////////////////
+
+s_sis_fsort_list *sis_fsort_list_create(void *vfree_)
+{
+	s_sis_fsort_list *o = SIS_MALLOC(s_sis_fsort_list, o);
+	o->key = sis_struct_list_create(sizeof(double));
+	o->value = sis_pointer_list_create();
+	o->value->vfree = vfree_;
+	return o;
+}
+void sis_fsort_list_destroy(void *list_)
+{
+	s_sis_fsort_list *list = (s_sis_fsort_list *)list_;
+	sis_struct_list_destroy(list->key);
+	sis_pointer_list_destroy(list->value);
+	sis_free(list);
+}
+void sis_fsort_list_clear(s_sis_fsort_list *list_)
+{
+	sis_struct_list_clear(list_->key);
+	sis_pointer_list_clear(list_->value);
+}
+int _fsort_list_find(s_sis_fsort_list *list_, double key_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->key->count; i++)
+	{
+		double *midv = (double *)sis_struct_list_get(list_->key, i);
+		if (*midv < key_)
+		{
+			return i;
+		}
+		index = i + 1;
+	}
+	return index;
+}
+int sis_fsort_list_set(s_sis_fsort_list *list_, double key_, void *in_)
+{
+	int index = _fsort_list_find(list_, key_);
+	if (index < 0 || index > list_->key->count - 1)
+	{
+		sis_struct_list_push(list_->key, &key_);
+		sis_pointer_list_push(list_->value, in_);
+	}
+	else
+	{
+		sis_struct_list_insert(list_->key, index, &key_);
+		sis_pointer_list_insert(list_->value, index, in_);
+	}
+	return list_->key->count;
+}
+int sis_fsort_list_find(s_sis_fsort_list *list_, void *value_)
+{
+	for (int i = 0; i < list_->value->count; i++)
+	{
+		void *v = sis_pointer_list_get(list_->value, i);
+		if (v < value_)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+void *sis_fsort_list_get(s_sis_fsort_list *list_, int index_)
+{
+	return sis_pointer_list_get(list_->value, index_);
+}
+double sis_fsort_list_getkey(s_sis_fsort_list *list_, int index_)
+{
+	return *(double *)sis_struct_list_get(list_->key, index_);
+}
+void sis_fsort_list_del(s_sis_fsort_list *list_, int index_)
+{
+	sis_struct_list_delete(list_->key, index_, 1);
+	sis_pointer_list_delete(list_->value, index_, 1);
+}
+int sis_fsort_list_getsize(s_sis_fsort_list *list_)
+{
+	return sis_min(list_->key->count, list_->value->count);
+}
+///////////////////////////////////////////////////////////////////////////
+//----------------------s_sis_index_list --------------------------------//
+//  以整数为索引 存储指针的列表
+//  如果有wait就说明释放index需要等待一个超时
+///////////////////////////////////////////////////////////////////////////
+s_sis_index_list *sis_index_list_create(int count_)
+{
+	s_sis_index_list *o = (s_sis_index_list *)sis_malloc(sizeof(s_sis_index_list));
+	o->count = count_ < 1024 ? 1024 : count_;
+	o->used = sis_malloc(o->count);
+	memset(o->used, 0 ,o->count);
+	o->stop_sec = sis_malloc(sizeof(fsec_t) * o->count);
+	memset(o->stop_sec, 0 ,sizeof(fsec_t) * o->count);
+	o->buffer = sis_malloc(sizeof(void *) * o->count);
+	memset(o->buffer, 0 ,sizeof(void *) * o->count);
+	o->vfree = NULL;
+	// o->wait_sec == 0 表示立即释放 否则等待时间到再释放
+	return o;
+}
+void sis_index_list_destroy(s_sis_index_list *list_)
+{
+	sis_index_list_clear(list_);
+	sis_free(list_->used);
+	sis_free(list_->buffer);
+	sis_free(list_->stop_sec);
+	sis_free(list_);
+}
+void sis_index_list_clear(s_sis_index_list *list_)
+{
+	char **ptr = (char **)list_->buffer;
+	fsec_t *stop_sec = (fsec_t *)list_->stop_sec;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->vfree && ptr[i])
+		{
+			list_->vfree(ptr[i]);
+			ptr[i] = NULL;
+		}
+		list_->used[i] = 0;
+		stop_sec[i] = 0;
+	}
+	list_->count = 0;
+}
+int sis_index_list_set(s_sis_index_list *list_, int index_, void *in_)
+{
+	if (index_ < 0 || index_ >= list_->count)
+	{
+		return -1;
+	}
+	sis_index_list_del(list_, index_);
+	char **ptr = (char **)list_->buffer;
+	ptr[index_] = (char *)in_;
+	list_->used[index_] = 1;
+	return index_;
+}
+void _index_list_free(s_sis_index_list *list_, int index_)
+{
+	char **ptr = (char **)list_->buffer;
+	if (list_->vfree && ptr[index_])
+	{
+		list_->vfree(ptr[index_]);
+		ptr[index_] = NULL;
+	}
+	list_->used[index_] = 0;
+}
+int sis_index_list_new(s_sis_index_list *list_)
+{
+	// 先检查超时的
+    if(list_->wait_sec > 0)
+	{
+		fsec_t *stop_sec = (fsec_t *)list_->stop_sec;
+		fsec_t now_sec = sis_time_get_now();
+		for (int i = 0; i < list_->count; i++)
+		{
+			if (list_->used[i] == 2 && (now_sec - stop_sec[i]) > list_->wait_sec)
+			{
+				_index_list_free(list_, i);
+			}
+		}
+	}
+	int index = -1;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->used[i] == 0)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index;
+}
+void *sis_index_list_get(s_sis_index_list *list_, int index_)
+{
+	if (index_ < 0 || index_ >= list_->count)
+	{
+		return NULL;
+	}	
+	if (list_->used[index_] != 1)
+	{
+		return NULL;
+	}
+	// printf("list_->used[%d] = %d\n", index_, list_->used[index_]);
+	char **ptr = (char **)list_->buffer;
+	return ptr[index_];;
+}
+int sis_index_list_first(s_sis_index_list *list_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->used[i] == 1)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index;
+}
+int sis_index_list_next(s_sis_index_list *list_, int index_)
+{
+	int index = -1;
+	for (int i = index_ + 1; i < list_->count; i++)
+	{
+		if (list_->used[i] == 1)
+		{
+			index = i;
+			break;
+		}
+	}
+	return index;
+}
+int sis_index_list_uses(s_sis_index_list *list_)
+{
+	int count = 0;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->used[i] == 1)
+		{
+			count++;
+		}
+	}
+	return count;	
+}
+
+int sis_index_list_del(s_sis_index_list *list_, int index_)
+{
+	if (index_ < 0 || index_ >= list_->count)
+	{
+		return -1;
+	}	
+	if (list_->used[index_] != 1)
+	{
+		return -1;
+	}
+	// char **ptr = (char **)list_->buffer;
+	// if (list_->vfree && ptr[index_])
+	// {
+	// 	list_->vfree(ptr[index_]);
+	// 	ptr[index_] = NULL;
+	// }
+	if (list_->wait_sec > 0)
+	{
+		fsec_t *stop_sec = (fsec_t *)list_->stop_sec;
+		stop_sec[index_] = sis_time_get_now();
+		list_->used[index_] = 2;
+	}
+	else
+	{
+		_index_list_free(list_, index_);
+	}
+	// printf("list_->used[%d] = %d\n", index_, list_->used[index_]);
+	return index_;
 }
 
 ///////////////////////////////////////////////////////////////////////////

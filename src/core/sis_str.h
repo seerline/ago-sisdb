@@ -67,7 +67,7 @@ int sis_strsub(char *big_, char *small_);
 bool sis_str_method(const char *minfo_, char *mname_, size_t mlen_, char *param_, size_t plen_);
 
 int sis_str_pos(const char *in_, size_t ilen_, char c);
-int sis_str_substr_nums(const char *s, char c);
+int sis_str_substr_nums(const char *s, size_t ilen_, char c);
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);
 // 下面的函数，在比较时，如果s串前导字符和sub匹配就会返回真 可用于头字符比较
 int sis_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
@@ -100,6 +100,18 @@ void sis_str_get_random(char *out_, size_t olen_);
 bool sis_str_get_time_id(char *out_, size_t olen_);
 
 int64 sis_str_read_long(char *s);
+
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH --> .SSE ==> 600600.SSE
+// 600600.SSE .SSE --> SH ==> SH600600
+void sis_str_swap_ht(const char *v1_, int v1len_, const char *v1sign_, int v1slen_,
+	char *v2_, int v2len_, const char *v2sign_, int v2slen_);
+
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH SZ--> .SSE .SZE ==> 600600.SSE
+// 600600.SSE .SSE .SZE --> SH SZ ==> SH600600
+void sis_str_swap_ht2(const char *v1_, int v1len_, const char *v1sign1_, const char *v1sign2_,
+	char *v2_, int v2len_, const char *v2sign1_, const char *v2sign2_);
 
 #ifdef __cplusplus
 }

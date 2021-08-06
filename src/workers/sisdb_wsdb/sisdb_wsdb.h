@@ -2,7 +2,7 @@
 #define _SISDB_WSDB_H
 
 #include "sis_method.h"
-#include "sis_disk_v1.h"
+#include "sis_disk.h"
 
 typedef struct s_sisdb_wsdb_cxt
 {
