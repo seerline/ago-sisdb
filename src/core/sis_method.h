@@ -28,7 +28,6 @@ typedef int (sis_method_define)(void *, void *);
 #define SIS_METHOD_ACCESS_READ      1  // 1    可读
 #define SIS_METHOD_ACCESS_WRITE     2  // 1    可写
 #define SIS_METHOD_ACCESS_DEL       4  // 1    可删
-// #define SIS_METHOD_ACCESS_SUB       8  // 1    订阅
 #define SIS_METHOD_ACCESS_NONET   0x100  // 禁止网络数据包 仅限于进程间调用
 
 #define SIS_METHOD_ACCESS_RDWR    3  // 11   可写

@@ -92,7 +92,7 @@
 #define  SIS_DISK_CMD_NO_CREATE       -105
 // 文件长度预定义
 // #define  SIS_DISK_MAXLEN_FILE      0x7F000000  // 数据文件专用  4G - 83M
-#define  SIS_DISK_MAXLEN_FILE      0x7F00000  // 数据文件专用  4G - 83M
+#define  SIS_DISK_MAXLEN_FILE      0x7F000000  // 数据文件专用  4G - 83M
 #define  SIS_DISK_MAXLEN_SDBPAGE   0x00FFFFFF  // 16M SDB文件块大小 超过需分块存储
 
 #define  SIS_DISK_MAXLEN_SNOPART   0x00004000  // 16K 实时压缩包大小

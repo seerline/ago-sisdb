@@ -20,10 +20,10 @@ typedef struct s_sis_disk_reader_cb {
     void (*cb_dict_sdbs)(void *, void *sdb_, size_t);  // 返回属性信息
     // 返回解压后的数据(可能一条或多条数据)
     // 支持 SDB SNO 不支持 LOG IDX
-    void (*cb_userdate)(void *, const char *kname_, const char *sname_, void *out_, size_t olen_); 
+    void (*cb_chardata)(void *, const char *kname_, const char *sname_, void *out_, size_t olen_); 
     // 返回解压后的数据(可能一条或多条数据)
     // 支持 SDB SNO 不支持 LOG IDX
-    void (*cb_realdate)(void *, int kidx_, int sidx_, void *out_, size_t olen_); 
+    void (*cb_bytedata)(void *, int kidx_, int sidx_, void *out_, size_t olen_); 
     // 返回原始头标记后的原始数据(未解压) PACK时返回该数据结构 速度快
     // 支持 LOG SNO SDB IDX 
     void (*cb_original)(void *, s_sis_disk_head *, void *out_, size_t olen_); // 头描述 实际返回的数据区和大小
@@ -138,6 +138,7 @@ void sis_disk_writer_stop(s_sis_disk_writer *);
 // ....
 // sis_disk_writer_stop
 // sis_disk_writer_close
+// map速度最快 2500万次查询 耗时1秒 
 int sis_disk_writer_sno(s_sis_disk_writer *, const char *kname_, const char *sname_, void *in_, size_t ilen_);
 //////////////////////////////////////////
 //  sdb 
@@ -170,8 +171,8 @@ void sis_disk_reader_destroy(void *);
 // 顺序读取 仅支持 LOG  通过回调的 cb_original 返回数据
 int sis_disk_reader_sub_log(s_sis_disk_reader *, int idate_);
 
-// 顺序读取 仅支持 SNO  通过回调的 cb_original 或 cb_realdate 返回数据
-// 如果定义了 cb_realdate 就解压数据再返回
+// 顺序读取 仅支持 SNO  通过回调的 cb_original 或 cb_bytedata 返回数据
+// 如果定义了 cb_bytedata 就解压数据再返回
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
 int sis_disk_reader_sub_sno(s_sis_disk_reader *, const char *keys_, const char *sdbs_, int idate_);
 
@@ -202,7 +203,7 @@ s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *, const char *kname_, c
 
 // 以流的方式读取文件 从文件中一条一条发出 按时序 无时序的会最先发出 只支持 SDB 时间范围单位为毫秒
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
-// 按磁盘存储的块 所有键无时序的先发 然后有时序读取第一块 然后排序返回 依次回调 cb_realdate 直到所有数据发送完毕 
+// 按磁盘存储的块 所有键无时序的先发 然后有时序读取第一块 然后排序返回 依次回调 cb_bytedata 直到所有数据发送完毕 
 // sis_disk_reader_open
 // sis_disk_reader_sub
 // sis_disk_reader_close
@@ -212,8 +213,12 @@ int sis_disk_reader_sub_sdb(s_sis_disk_reader *, const char *keys_, const char *
 ///////////////////////////
 //  s_sis_disk_control
 ///////////////////////////
-// 不论该目录下有任何类型文件 全部删除
-int sis_disk_control_clear(const char *path_, const char *name_);
+// 删除 log 或 sno 文件
+int sis_disk_control_move(const char *path_, const char *name_, int style_, int idate_);
+// 判断指定日期的log是否存在
+int sis_disk_log_exist(const char *path_, const char *name_, int idate_);
+// 判断指定日期的sno是否存在
+int sis_disk_sno_exist(const char *path_, const char *name_, int idate_);
 
 
 #endif

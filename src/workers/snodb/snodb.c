@@ -59,9 +59,9 @@ static void cb_output_reader_send(s_snodb_reader *reader, s_snodb_compress *memo
 	if (reader->sub_whole)
 	{
 		// 订阅全部就直接发送
-		if (reader->cb_snodb_compress)
+		if (reader->cb_sub_inctzip)
 		{	
-			reader->cb_snodb_compress(reader, memory);
+			reader->cb_sub_inctzip(reader, memory);
 		}
 	}
 	else
@@ -780,8 +780,8 @@ int cmd_snodb_zpub(void *worker_, void *argv_)
     return SIS_METHOD_ERROR;
 }
 
-static int cb_snodb_compress(void *source, void *argv);
-static int cb_sisdb_bytes(void *source, void *argv);
+static int cb_sub_inctzip(void *source, void *argv);
+static int cb_sub_chars(void *source, void *argv);
 static int cb_sub_start(void *source, void *argv);
 static int cb_sub_realtime(void *source, void *argv);
 static int cb_sub_stop(void *source, void *argv);
@@ -817,11 +817,11 @@ int _snodb_sub(s_sis_worker *worker, s_sis_net_message *netmsg, bool iszip)
 	}
 	if (reader->iszip)
 	{
-		reader->cb_snodb_compress = cb_snodb_compress;
+		reader->cb_sub_inctzip = cb_sub_inctzip;
 	}
 	else
 	{
-		reader->cb_sisdb_bytes 	= cb_sisdb_bytes;
+		reader->cb_sub_chars 	= cb_sub_chars;
 	}
 	reader->cb_sub_start 		= cb_sub_start;
 	reader->cb_sub_realtime 	= cb_sub_realtime;  // 当日
@@ -1149,7 +1149,7 @@ static int _bitzip_nums = 0;
 static int64 _bitzip_size = 0;
 static msec_t _bitzip_msec = 0;
 #endif
-static int cb_snodb_compress(void *source, void *argv)
+static int cb_sub_inctzip(void *source, void *argv)
 {
     // printf("%s\n", __func__);
     s_snodb_reader *reader = (s_snodb_reader *)source;
@@ -1178,7 +1178,7 @@ static int cb_snodb_compress(void *source, void *argv)
     return SIS_METHOD_OK;
 }
 
-static int cb_sisdb_bytes(void *source, void *argv)
+static int cb_sub_chars(void *source, void *argv)
 {
     // printf("%s %d\n", __func__, reader->rfmt);
     s_snodb_reader *reader = (s_snodb_reader *)source;
@@ -1369,7 +1369,7 @@ void snodb_reader_destroy(void *reader_)
 // 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
 // 	s_snodb_compress *zipmem = reader->sub_ziper->zip_bits;
 // 	zipmem->size = sis_bits_struct_getsize(reader->sub_ziper->cur_sbits);
-// 	reader->cb_snodb_compress(reader, zipmem);
+// 	reader->cb_sub_inctzip(reader, zipmem);
 // 	if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
 // 	{
 // 		snodb_worker_zip_flush(reader->sub_ziper, 1);
@@ -1384,7 +1384,7 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 {
 	s_snodb_reader *reader = (s_snodb_reader *)source_;
 	// return; // 只解压什么也不干
-	if (reader->cb_sisdb_bytes)
+	if (reader->cb_sub_chars)
 	{
 		if (!in_)
 		{
@@ -1409,9 +1409,9 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 		inmem.sname = db->name;
 		inmem.data = in_;
 		inmem.size = ilen_;
-		reader->cb_sisdb_bytes(reader, &inmem);
+		reader->cb_sub_chars(reader, &inmem);
 	}
-	if (reader->cb_snodb_compress)
+	if (reader->cb_sub_inctzip)
 	{
 		if (!in_)
 		{
@@ -1423,7 +1423,7 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 
 			if (zipmem->size > 0)
 			{
-				reader->cb_snodb_compress(reader, zipmem);
+				reader->cb_sub_inctzip(reader, zipmem);
 				if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
 				{
 					snodb_worker_zip_flush(reader->sub_ziper, 1);
@@ -1461,7 +1461,7 @@ static int cb_unzip_reply(void *source_, int kidx_, int sidx_, char *in_, size_t
 		if (zipmem->size > reader->sub_ziper->zip_size)
 		{
 			printf("zipbit size= %d\n", reader->sub_ziper->zip_bits->size);
-			reader->cb_snodb_compress(reader, zipmem);
+			reader->cb_sub_inctzip(reader, zipmem);
 			if (reader->sub_ziper->cur_size > reader->sub_ziper->initsize)
 			{
 				snodb_worker_zip_flush(reader->sub_ziper, 1);

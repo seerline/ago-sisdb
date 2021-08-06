@@ -10,7 +10,6 @@
 static s_sis_method _sisdb_rsno_methods[] = {
   {"sub",    cmd_sisdb_rsno_sub, 0, NULL},
   {"unsub",  cmd_sisdb_rsno_unsub, 0, NULL},
-  {"get",    cmd_sisdb_rsno_get, 0, NULL},
   {"setcb",  cmd_sisdb_rsno_setcb, 0, NULL}
 };
 
@@ -41,7 +40,6 @@ bool sisdb_rsno_init(void *worker_, void *node_)
     worker->context = context;
 
     context->work_date = sis_json_get_int(node, "work-date", sis_time_get_idate(0));
-
     {
         s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
         if (sonnode)
@@ -51,6 +49,17 @@ bool sisdb_rsno_init(void *worker_, void *node_)
         else
         {
             context->work_path = sis_sdsnew("data/");
+        }  
+    }
+    {
+        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-name");
+        if (sonnode)
+        {
+            context->work_name = sis_sdsnew(sonnode->value);
+        }
+        else
+        {
+            context->work_name = sis_sdsnew("snodb");
         }  
     }
     {
@@ -85,8 +94,10 @@ void sisdb_rsno_uninit(void *worker_)
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
 
     sisdb_rsno_sub_stop(context);
+    context->status = SIS_RSNO_EXIT;
 
     sis_sdsfree(context->work_path);
+    sis_sdsfree(context->work_name);
     sis_sdsfree(context->work_keys);
     sis_sdsfree(context->work_sdbs);
 
@@ -98,54 +109,32 @@ void sisdb_rsno_uninit(void *worker_)
 ///////////////////////////////////////////
 //  callback define begin
 ///////////////////////////////////////////
-static void _send_rsno_compress(s_sisdb_rsno_cxt *context, int issend)
-{
-	s_snodb_compress *zipmem = context->rsno_ziper->zip_bits;
-	zipmem->size = sis_bits_struct_getsize(context->rsno_ziper->cur_sbits);
-	if ((issend && zipmem->size > 0 ) || (int)zipmem->size > context->rsno_ziper->zip_size - 256)
-	{
-		if (context->cb_snodb_compress)
-		{	
-			context->cb_snodb_compress(context->cb_source, zipmem);
-		}
-		if (context->rsno_ziper->cur_size > context->rsno_ziper->initsize)
-		{
-			snodb_worker_zip_flush(context->rsno_ziper, 1);
-		}
-		else
-		{
-			snodb_worker_zip_flush(context->rsno_ziper, 0);
-		}
-	}
-}
-static void cb_begin(void *context_, msec_t tt)
+static msec_t _speed_sno = 0;
+
+static void cb_start(void *context_, int idate)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
     if (context->cb_sub_start)
     {
         char sdate[32];
-        sis_llutoa(tt, sdate, 32, 10);
+        sis_llutoa(idate, sdate, 32, 10);
         context->cb_sub_start(context->cb_source, sdate);
     } 
+    _speed_sno = sis_time_get_now_msec();
 }
-static void cb_end(void *context_, msec_t tt)
+static void cb_stop(void *context_, int idate)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
-    
-    if (context->cb_snodb_compress)
+    sprintf("sno read ok. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
+     // stop 放这里
+    if (context->cb_sub_stop)
     {
-       // 检查是否有剩余数据
-	    _send_rsno_compress(context, 1); 
-    }	
-
-    // if (context->cb_sub_stop)
-    // {
-    //     char sdate[32];
-    //     sis_llutoa(tt, sdate, 32, 10);
-    //     context->cb_sub_stop(context->cb_source, sdate);
-    // } 
+        char sdate[32];
+        sis_llutoa(idate, sdate, 32, 10);
+        context->cb_sub_stop(context->cb_source, sdate);
+    } 
 }
-static void cb_key(void *context_, void *key_, size_t size) 
+static void cb_dict_keys(void *context_, void *key_, size_t size) 
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
 	s_sis_sds srckeys = sis_sdsnewlen((char *)key_, size);
@@ -158,14 +147,14 @@ static void cb_key(void *context_, void *key_, size_t size)
     {
         context->cb_dict_keys(context->cb_source, keys);
     } 
-    if (context->cb_snodb_compress)
+    if (context->cb_sub_inctzip)
     {
-    	snodb_worker_set_keys(context->rsno_ziper, keys);
+    	sisdb_worker_set_keys(context->work_ziper, keys);
     }
 	sis_sdsfree(keys);
 	sis_sdsfree(srckeys);
 }
-static void cb_sdb(void *context_, void *sdb_, size_t size)  
+static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)  
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
 	s_sis_sds srcsdbs = sis_sdsnewlen((char *)sdb_, size);
@@ -178,41 +167,49 @@ static void cb_sdb(void *context_, void *sdb_, size_t size)
     {
         context->cb_dict_sdbs(context->cb_source, sdbs);
     } 
-    if (context->cb_snodb_compress)
+    if (context->cb_sub_inctzip)
     {
-    	snodb_worker_set_sdbs(context->rsno_ziper, sdbs);
+    	sisdb_worker_set_sdbs(context->work_ziper, sdbs);
     }
 	sis_sdsfree(sdbs);
 	sis_sdsfree(srcsdbs); 
 }
 
-static void cb_read(void *context_, const char *key_, const char *sdb_, void *out_, size_t olen_)
+static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
-
-    if (context->cb_sisdb_bytes)
+    if (context->cb_sub_chars)
     {
         s_sis_db_chars inmem = {0};
-        inmem.kname= key_;
-        inmem.sname= sdb_;
+        inmem.kname= kname_;
+        inmem.sname= sname_;
         inmem.data = out_;
         inmem.size = olen_;
-        context->cb_sisdb_bytes(context->cb_source, &inmem);
+        context->cb_sub_chars(context->cb_source, &inmem);
     }
-    if (context->cb_snodb_compress)
+    if (context->cb_sub_inctzip)
     {
-        int kidx = sis_map_list_get_index(context->rsno_ziper->keys, key_);
-        int sidx = sis_map_list_get_index(context->rsno_ziper->sdbs, sdb_);
+        int kidx = sisdb_worker_get_kidx(context->work_ziper, kname_);
+        int sidx = sisdb_worker_get_sidx(context->work_ziper, sname_);
         if (kidx < 0 || sidx < 0)
         {
             return ;
         }
-        snodb_worker_zip_set(context->rsno_ziper, kidx, sidx, out_, olen_);
-
-        _send_rsno_compress(context, 0);
+        sisdb_worker_zip_set(context->work_ziper, kidx, sidx, out_, olen_);
     }
+} 
 
-    // int dbid = sis_disk_v1_class_get_sdbi(context->read_class, sdb_); 
+static int cb_encode(void *context_, char *in_, size_t ilen_)
+{
+    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
+    if (context->cb_sub_inctzip)
+    {
+        s_sis_db_incrzip inmem = {0};
+        inmem.data = (uint8 *)in_;
+        inmem.size = ilen_;
+        context->cb_sub_inctzip(context->cb_source, &inmem);
+    }
+    return 0;
 } 
 ///////////////////////////////////////////
 //  callback define end.
@@ -220,143 +217,88 @@ static void cb_read(void *context_, const char *key_, const char *sdb_, void *ou
 static void *_thread_snos_read_sub(void *argv_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)argv_;
-    context->status = SIS_RSNO_WORK;
-	// 开始读盘
-    s_sis_disk_v1_callback *callback = SIS_MALLOC(s_sis_disk_v1_callback, callback);
 
-    char sdate[32];   
-    sis_llutoa(context->work_date, sdate, 32, 10);
+    s_sis_disk_reader_cb *rsno_cb = SIS_MALLOC(s_sis_disk_reader_cb, rsno_cb);
+    rsno_cb->cb_source = context;
+    rsno_cb->cb_start = cb_start;
+    rsno_cb->cb_dict_keys = cb_dict_keys;
+    rsno_cb->cb_dict_sdbs = cb_dict_sdbs;
+    rsno_cb->cb_chardata = cb_chardata;
+    rsno_cb->cb_stop = cb_stop;
+    rsno_cb->cb_break = cb_stop;
 
-    callback->source = context;
-    callback->cb_begin = cb_begin;
-    callback->cb_key = cb_key;
-    callback->cb_sdb = cb_sdb;
-    callback->cb_read = cb_read;
-    callback->cb_end = cb_end;
+    context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SNO, rsno_cb);
 
-    s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(callback);
-    // printf("%s| %s | %s\n", context->write_cb->sub_keys, context->work_sdbs, context->write_cb->sub_sdbs ? context->write_cb->sub_sdbs : "nil");
-	if (!sis_strcasecmp("*",context->work_keys) && sis_strcasecmp("*",context->work_sdbs))
-	{
-		sis_disk_v1_reader_set_sdb(reader, "*");  
-		sis_disk_v1_reader_set_key(reader, "*");
-	}
-	else
-	{
-		// 获取真实的代码
-		s_sis_sds keys = sis_disk_v1_file_get_keys(context->read_class, false);
-		s_sis_sds sub_keys = sis_match_key(context->work_keys, keys);
-        if (!sub_keys)
-        {
-            sub_keys =  sis_sdsdup(keys);
-        } 
-		sis_disk_v1_reader_set_key(reader, sub_keys);
-		sis_sdsfree(sub_keys);
-		sis_sdsfree(keys);
-
-		// 获取真实的表名
-		s_sis_sds sdbs = sis_disk_v1_file_get_sdbs(context->read_class, false);
-		s_sis_sds sub_sdbs = sis_match_sdb(context->work_sdbs, sdbs);
-        printf("sub_sdbs :%s\n", sdbs);
-        if (!sub_sdbs)
-        {
-            sub_sdbs =  sis_sdsdup(sdbs);
-        } 
-		sis_disk_v1_reader_set_sdb(reader, sub_sdbs);  
-		sis_sdsfree(sub_sdbs);
-		sis_sdsfree(sdbs);
-	}
-
-    // sub 是一条一条的输出
-    sis_disk_v1_file_read_sub(context->read_class, reader);
-    // get 是所有符合条件的一次性输出
-    // sis_disk_v1_file_read_get(ctrl->disk_reader, reader);
-    sis_disk_v1_reader_destroy(reader);
-    sis_free(callback);
-	// printf("rson sub end..\n");
-    sis_disk_v1_file_read_stop(context->read_class);
-
-    sis_disk_v1_class_destroy(context->read_class);
-    context->read_class = NULL;
-
-    // stop 放这里
-    if (context->cb_sub_stop)
+    if (context->cb_sub_inctzip)
     {
-        char sdate[32];
-        sis_llutoa(context->work_date, sdate, 32, 10);
-        context->cb_sub_stop(context->cb_source, sdate);
-    } 
-    context->status = SIS_RSNO_NONE;
+        context->work_ziper = sisdb_worker_create();
+        sisdb_worker_zip_start(context->work_ziper, context, cb_encode);
+    }
 
+    LOG(5)("sub sno open. [%d]\n", context->work_date);
+    sis_disk_reader_sub_sno(context->work_reader, context->work_keys, context->work_sdbs, context->work_date);
+    LOG(5)("sub sno stop. [%d]\n", context->work_date);
+
+    sis_disk_reader_destroy(context->work_reader);
+    context->work_reader = NULL;
+
+    sis_free(rsno_cb);
+
+    if (context->cb_sub_inctzip)
+    {
+        sisdb_worker_zip_stop(context->work_ziper);
+        sisdb_worker_destroy(context->work_ziper);
+        context->work_ziper = NULL;
+    }
+
+    context->status = SIS_RSNO_NONE;
     return NULL;
 }
 
 void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context) 
 {
-    context->read_class = sis_disk_v1_class_create(); 
-    context->read_class->isstop = false;
-
-    char sdate[32];   
-    sis_llutoa(context->work_date, sdate, 32, 10);
-
-    if (sis_disk_v1_class_init(context->read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, context->work_date)
-     || sis_disk_v1_file_read_start(context->read_class))
+    // 有值就干活 完毕后释放
+    if (context->status == SIS_RSNO_WORK)
     {
-        sisdb_rsno_sub_stop(context);
-        LOG(5)("sno file open fail.[%s]\n", sdate);
-        if (context->cb_sub_stop)
-        {
-            context->cb_sub_stop(context->cb_source, sdate);
-        }
-        return ;
+        _thread_snos_read_sub(context);
     }
-	// 启动订阅线程 到这里已经保证了文件存在
-	sis_thread_create(_thread_snos_read_sub, context, &context->rsno_thread);
-
+    else
+    {
+        sis_thread_create(_thread_snos_read_sub, context, &context->work_thread);
+    }
 }
 void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
 {
-
-	if (context->status == SIS_RSNO_WORK)
-	{
-		context->read_class->isstop = true;
-		while (context->status != SIS_RSNO_NONE)
-		{
-			// 等待读盘退出
-			sis_sleep(100);
-		}
-	}
-    if (context->read_class)
+    if (context->work_reader)
     {
-        sis_disk_v1_class_destroy(context->read_class);
-        context->read_class = NULL;
-    }
-    if (context->rsno_ziper)
-    {
-        snodb_worker_destroy(context->rsno_ziper);
-        context->rsno_ziper = NULL;
+        sis_disk_reader_unsub(context->work_reader);
+        while (context->status != SIS_RSNO_NONE)
+        {
+            sis_sleep(30);
+        }
     }
 }
 ///////////////////////////////////////////
 //  method define
 /////////////////////////////////////////
-int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
+void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
-
-    printf("%s = %d\n", __func__, context->status);    
-    if (context->status != SIS_RSNO_NONE && context->status != SIS_RSNO_INIT)
     {
-        return SIS_METHOD_ERROR;
+        s_sis_sds str = sis_message_get_str(msg, "work-path");
+        if (str)
+        {
+            sis_sdsfree(context->work_path);
+            context->work_path = sis_sdsdup(str);
+        }
     }
-
-    s_sis_message *msg = (s_sis_message *)argv_; 
-    if (!msg)
     {
-        return SIS_METHOD_ERROR;
+        s_sis_sds str = sis_message_get_str(msg, "work-name");
+        if (str)
+        {
+            sis_sdsfree(context->work_name);
+            context->work_name = sis_sdsdup(str);
+        }
     }
-    // 保存订阅的内容, 回调函数地址, 然后开始订阅
     {
         s_sis_sds str = sis_message_get_str(msg, "sub-keys");
         if (str)
@@ -381,38 +323,31 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
     {
         context->work_date = sis_time_get_idate(0);
     }
-
-    context->cb_source          = sis_message_get(msg, "source");
-    context->cb_sub_start       = sis_message_get_method(msg, "cb_sub_start"     );
-    context->cb_sub_stop        = sis_message_get_method(msg, "cb_sub_stop"      );
-    context->cb_dict_sdbs       = sis_message_get_method(msg, "cb_dict_sdbs"     );
-    context->cb_dict_keys       = sis_message_get_method(msg, "cb_dict_keys"     );
-    context->cb_snodb_compress  = sis_message_get_method(msg, "cb_snodb_compress");
-    context->cb_sisdb_bytes     = sis_message_get_method(msg, "cb_sisdb_bytes"   );
-
-    LOG(5)("sub market start. [%d]\n", context->work_date);
-    if (context->cb_snodb_compress)
+    context->cb_source      = sis_message_get(msg, "source");
+    context->cb_sub_start   = sis_message_get_method(msg, "cb_sub_start"  );
+    context->cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop"   );
+    context->cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs"  );
+    context->cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys"  );
+    context->cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_inctzip");
+    context->cb_sub_chars   = sis_message_get_method(msg, "cb_sub_chars"  );
+}
+int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
+    if (context->status != SIS_RSNO_NONE)
     {
-        int zip_size = ZIPMEM_MAXSIZE;
-        if (sis_message_exist(msg, "zip-size"))
-        {
-            zip_size = sis_message_get_int(msg, "zip-size");
-        }
-        int initsize = 4 * 1024 * 1024;
-        if (sis_message_exist(msg, "init-size"))
-        {
-            initsize = sis_message_get_int(msg, "init-size");
-        }
-        if (!context->rsno_ziper)
-        {
-            context->rsno_ziper = snodb_worker_create();
-        }
-        else
-        {
-            snodb_worker_clear(context->rsno_ziper);
-        }
-        snodb_worker_zip_init(context->rsno_ziper, zip_size, initsize);
+        return SIS_METHOD_ERROR;
     }
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    if (!msg)
+    {
+        return SIS_METHOD_ERROR;
+    }
+    _sisdb_rsno_init(context, msg);
+    
+    context->status = SIS_RSNO_CALL;
+    
     sisdb_rsno_sub_start(context);
 
     return SIS_METHOD_OK;
@@ -427,74 +362,24 @@ int cmd_sisdb_rsno_unsub(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_rsno_get(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_; 
-
-    char *sdate = sis_message_get_str(msg, "get-date");
-    s_sis_disk_v1_class *read_class = sis_disk_v1_class_create(); 
-    if (sis_disk_v1_class_init(read_class, SIS_DISK_TYPE_SNO, context->work_path, sdate, sis_atoll(sdate)) 
-        || sis_disk_v1_file_read_start(read_class))
-    {
-        sis_disk_v1_class_destroy(read_class);
-        return SIS_METHOD_ERROR;
-    }
-    char *kname = sis_message_get_str(msg, "get-keys");
-    char *sname = sis_message_get_str(msg, "get-sdbs");
-
-    s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(NULL);
-    sis_disk_v1_reader_set_sdb(reader, sname);
-    sis_disk_v1_reader_set_key(reader, kname); 
-   // get 是所有符合条件的一次性输出
-    s_sis_object *obj = sis_disk_v1_file_read_get_obj(read_class, reader);
-    sis_disk_v1_reader_destroy(reader);
-
-    if (obj)
-    {
-        sis_message_set(msg, "omem", obj, sis_object_destroy);
-        s_sis_disk_v1_dict *sdict = sis_map_list_get(read_class->sdbs, sname);
-        if (sdict)
-        {
-            s_sis_disk_v1_dict_unit *sunit = sis_disk_v1_dict_last(sdict);
-            s_sis_json_node *node = sis_dynamic_dbinfo_to_json(sunit->db);
-            s_sis_dynamic_db *diskdb = sis_dynamic_db_create(node);
-            sis_json_delete_node(node);
-            sis_message_set(msg, "diskdb", diskdb, sis_dynamic_db_destroy);
-        }
-    }
-    sis_disk_v1_file_read_stop(read_class);
-    sis_disk_v1_class_destroy(read_class); 
-    return SIS_METHOD_OK;
-}
-
 int cmd_sisdb_rsno_setcb(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
 
-    if (context->status != SIS_RSNO_INIT && context->status != SIS_RSNO_NONE)
+    if (context->status != SIS_RSNO_NONE)
     {
         return SIS_METHOD_ERROR;
     }
     s_sis_message *msg = (s_sis_message *)argv_; 
-
-    s_sis_sds wpath = sis_message_get_str(msg, "work-path");
-    if (wpath)
+    if (!msg)
     {
-        sis_sdsfree(context->work_path);
-        context->work_path = sis_sdsdup(wpath);
+        return SIS_METHOD_ERROR;
     }
-    context->cb_source          = sis_message_get(msg, "source");
-    context->cb_sub_start       = sis_message_get_method(msg, "cb_sub_start"     );
-    context->cb_sub_stop        = sis_message_get_method(msg, "cb_sub_stop"      );
-    context->cb_dict_sdbs       = sis_message_get_method(msg, "cb_dict_sdbs"     );
-    context->cb_dict_keys       = sis_message_get_method(msg, "cb_dict_keys"     );
-    context->cb_snodb_compress  = sis_message_get_method(msg, "cb_snodb_compress");
-    context->cb_sisdb_bytes     = sis_message_get_method(msg, "cb_sisdb_bytes"   );
+    _sisdb_rsno_init(context, msg);
+    
+    context->status = SIS_RSNO_WORK;
 
-    context->status = SIS_RSNO_INIT;
     return SIS_METHOD_OK;
 }
 
@@ -503,15 +388,12 @@ void sisdb_rsno_working(void *worker_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
     
-    SIS_WAIT_OR_EXIT(context->status == SIS_RSNO_INIT);  
-
-    if (context->status == SIS_RSNO_INIT)
+    // SIS_WAIT_OR_EXIT(context->status == SIS_RSNO_WORK);  
+    context->status = SIS_RSNO_WORK;
+    if (context->status == SIS_RSNO_WORK)
     {
-        if (context->work_date > 20100101 && context->work_date < 20250101)
-        {
-            LOG(5)("sub history start. [%d]\n", context->work_date);
-            sisdb_rsno_sub_start(context);
-            LOG(5)("sub history end. [%d]\n", context->work_date);
-        }
+        LOG(5)("sub history start. [%d]\n", context->work_date);
+        sisdb_rsno_sub_start(context);
+        LOG(5)("sub history end. [%d]\n", context->work_date);
     }
 }

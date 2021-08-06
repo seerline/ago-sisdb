@@ -250,7 +250,7 @@ int snodb_wlog_save_snos(s_snodb_cxt *snodb_)
 		snodb_->wfile_cb_sub_stop  = sis_message_get_method(msg, "cb_sub_stop");
 		snodb_->wfile_cb_dict_keys = sis_message_get_method(msg, "cb_dict_keys");
 		snodb_->wfile_cb_dict_sdbs = sis_message_get_method(msg, "cb_dict_sdbs");
-		snodb_->wfile_cb_snodb_compress = sis_message_get_method(msg, "cb_snodb_compress");
+		snodb_->wfile_cb_snodb_compress = sis_message_get_method(msg, "cb_sub_inctzip");
 		sis_message_destroy(msg);
 	}
 	// 从wlog直接取数据
@@ -309,11 +309,11 @@ s_snodb_disk_worker *snodb_snos_read_start(s_sis_json_node *config_, s_snodb_rea
 		s_snodb_cxt *snodb = ((s_sis_worker *)worker->snodb_reader->snodb_worker)->context;
 		sis_message_set_int(msg, "zip-size" , snodb->zip_size);
 		sis_message_set_int(msg, "init-size", snodb->initsize);
-		sis_message_set_method(msg, "cb_snodb_compress", worker->snodb_reader->cb_snodb_compress);
+		sis_message_set_method(msg, "cb_sub_inctzip", worker->snodb_reader->cb_sub_inctzip);
 	}
 	else
 	{
-		sis_message_set_method(msg, "cb_sisdb_bytes", worker->snodb_reader->cb_sisdb_bytes);
+		sis_message_set_method(msg, "cb_sub_chars", worker->snodb_reader->cb_sub_chars);
 	}
 
 	if(sis_worker_command(worker->rdisk_worker, "sub", msg) != SIS_METHOD_OK)

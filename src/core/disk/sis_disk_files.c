@@ -325,7 +325,7 @@ size_t sis_disk_files_write_sync(s_sis_disk_files *cls_)
         size = sis_write(unit->fp, sis_memory(unit->fcatch), sis_memory_get_size(unit->fcatch));
         sis_memory_clear(unit->fcatch);
     }
-    sis_fsync(unit->fp);
+    // sis_fsync(unit->fp);
     LOG(5)("sync: %d %zu\n", unit->fp, sis_seek(unit->fp, 0, SEEK_CUR));
     return size;
 }
@@ -350,7 +350,7 @@ size_t sis_disk_files_write_sync(s_sis_disk_files *cls_)
 //     } 
 //     return _osize_; 
 // } 
-static size_t sis_safe_write(s_sis_disk_head *__h__,s_sis_memory *__m__,s_sis_handle __f__,
+static inline size_t sis_safe_write(s_sis_disk_head *__h__,s_sis_memory *__m__,s_sis_handle __f__,
     const char *__v__, size_t __z__)
 {
     size_t _osize_ = 0;   
@@ -401,7 +401,7 @@ size_t sis_disk_files_write_saveidx(s_sis_disk_files *cls_, s_sis_disk_wcatch *w
     // 压缩要在外部 到这里只管写数据 新进的块如果过大就开新文件
     if (cls_->max_file_size > 0 && (unit->offset + insize + SIS_DISK_MIN_WSIZE) > cls_->max_file_size)
     {
-        LOG(5)("new file: %d %zu %zu\n", cls_->cur_unit, unit->offset, sis_seek(unit->fp, 0, SEEK_CUR));
+        LOG(5)("new file: %d %zu %zu\n", cls_->cur_unit, unit->offset, cls_->max_file_size);
         sis_disk_files_write_sync(cls_);
         sis_disk_files_inc_unit(cls_);
         // 创建文件并打开
@@ -418,7 +418,7 @@ size_t sis_disk_files_write_saveidx(s_sis_disk_files *cls_, s_sis_disk_wcatch *w
     wcatch_->winfo.offset = unit->offset;
     wcatch_->winfo.size = size; // 因为是索引的长度 因此这里的长度包含头和size
     unit->offset += size;
-    // LOG(8)("%d hid = %d zip = %d size = %zu | %zu %zu\n", unit->fp, wcatch_->head.hid, wcatch_->head.zip, size, unit->offset, sis_seek(unit->fp, 0, SEEK_CUR));
+    // LOG(8)("%d hid = %d zip = %d size = %zu | %zu \n", unit->fp, wcatch_->head.hid, wcatch_->head.zip, size, unit->offset);
     return size;
 }
 //////////////////////////

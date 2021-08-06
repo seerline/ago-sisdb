@@ -98,9 +98,9 @@ typedef struct s_snodb_reader
 
 	s_sis_lock_reader  *reader;       // 每个读者一个订阅者
 	// 返回数据 s_sis_db_chars
-	sis_method_define  *cb_sisdb_bytes;
+	sis_method_define  *cb_sub_chars;
 	// 返回压缩的数据 
-	sis_method_define  *cb_snodb_compress;      // s_snodb_compress
+	sis_method_define  *cb_sub_inctzip;      // s_snodb_compress
 
     sis_method_define  *cb_sub_start;    // char *
     sis_method_define  *cb_sub_realtime; // char *

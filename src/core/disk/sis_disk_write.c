@@ -229,14 +229,19 @@ void sis_disk_writer_stop(s_sis_disk_writer *writer_)
         break;
     } 
 }
-
+// int __tempnums = 0;
 // 写入数据 仅支持 SNO 
 int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
 {
     if (writer_->style != SIS_DISK_TYPE_SNO) 
     {
         return -1;
-    }   
+    }  
+    // __tempnums++;
+    // if (__tempnums % 1000 == 0)
+    // {
+    // printf("%d %d %d\n", __tempnums, sis_map_list_getsize(writer_->munit->map_sdicts), sis_map_list_getsize(writer_->munit->map_kdicts));
+    // } 
     s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(writer_->munit->map_sdicts, sname_);
     if (!sdict)
     {
@@ -245,6 +250,7 @@ int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const ch
     s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
     if (!kdict)
     {
+        LOG(8)("new key: %s\n", kname_);
         kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
         sis_disk_ctrl_write_kdict(writer_->munit);
     }
@@ -559,8 +565,8 @@ size_t sis_disk_writer_mul(s_sis_disk_writer *writer_, const char *kname_, s_sis
 //  s_sis_disk_control
 ///////////////////////////
 
-// 不论该目录下有任何类型文件 全部删除
-int sis_disk_control_clear(const char *path_, const char *name_)
+// 这个函数专门清理 SBD 扩展类型的数据
+int sis_disk_control_move_sdbs(const char *path_, const char *name_)
 {
     // 暂时不支持
     // 1.检索目录下面所有相关文件 生成文件列表
@@ -569,4 +575,42 @@ int sis_disk_control_clear(const char *path_, const char *name_)
     // 4.如果有文件移动失败 就等待继续 直到全部移动完成
     // -- 不直接删除 避免误操作 数据库文件存储已经做到所有不同组文件分离 -- //
     return 0;
+}
+// 这里函数只能删除 SNO 和 LOG
+int sis_disk_control_move(const char *path_, const char *name_, int style_, int idate_)
+{
+    // if (style_ != SIS_DISK_TYPE_SNO && style_ != SIS_DISK_TYPE_LOG)
+    // {
+    //     return 0;
+    // }
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, path_, name_, idate_);
+    sis_disk_ctrl_delete(munit);
+    sis_disk_ctrl_destroy(munit);
+    return 1;
+}
+
+int sis_disk_log_exist(const char *path_, const char *name_, int idate_)
+{
+    int isok = 0;
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_LOG, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    if (o == SIS_DISK_CMD_NO_IDX)
+    {
+        isok = 1;
+    }
+    sis_disk_ctrl_destroy(munit);
+    return isok;
+}
+
+int sis_disk_sno_exist(const char *path_, const char *name_, int idate_)
+{
+    int isok = 0;
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SNO, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    if (o == SIS_DISK_CMD_OK)
+    {
+        isok = 1;
+    }
+    sis_disk_ctrl_destroy(munit);
+    return isok;
 }

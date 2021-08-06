@@ -22,6 +22,9 @@ size_t sis_disk_io_write_sno_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcat
     }
     return size;
 }
+int _write_nums = 0;
+size_t _write_size = 0;
+
 
 int cb_incrzip_encode_sno(void *source, char *in, size_t ilen)
 {
@@ -29,7 +32,11 @@ int cb_incrzip_encode_sno(void *source, char *in, size_t ilen)
     s_sis_disk_wcatch *wcatch = ctrl->wcatch;
     wcatch->head.hid = SIS_DISK_HID_MSG_SNO;
     wcatch->head.zip = SIS_DISK_ZIP_INCRZIP;
-    sis_memory_cat(wcatch->memory, in, ilen);        
+    sis_memory_cat(wcatch->memory, in, ilen);   
+    _write_nums++;
+    _write_size+=ilen;
+    printf("write: %d %zu\n", _write_nums, _write_size);
+    sis_out_binary("write", in, 16);     
     size_t size = sis_disk_io_write_sno_work(ctrl, wcatch);
     sis_disk_wcatch_init(wcatch);
     ctrl->sno_zipsize += size;
@@ -84,6 +91,8 @@ int sis_disk_io_write_sno(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
     {
         return 0;
     }
+    // cls_->work_fps->max_page_size = 10*1024*1024;
+
     _set_disk_io_sno_msec(cls_, sdb, in_, ilen_);
     if ((cls_->sno_zipsize == 0 && cls_->sno_count == 0) || 
          cls_->sno_zipsize > cls_->work_fps->max_page_size)
@@ -104,6 +113,7 @@ int sis_disk_io_write_sno(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
 
         cls_->sno_zipsize = 0;
         sis_incrzip_compress_restart(cls_->sno_incrzip);
+        printf("write: %d %d %s\n", kdict_->index, sdict_->index, SIS_OBJ_GET_CHAR(sdict_->name));
     }
     int count = ilen_ / sdb->size;
     for (int i = 0; i < count; i++)
@@ -192,20 +202,21 @@ static int cb_incrzip_decode_sno(void *source_, int kidx, int sidx, char *in, si
         sis_str_subcmp(SIS_OBJ_SDS(kname), ctrl->rcatch->sub_keys, ',') >= 0 &&
         sis_str_subcmp(SIS_OBJ_SDS(sname), ctrl->rcatch->sub_sdbs, ',') >= 0))
     {
-        if (callback->cb_realdate)
+        if (callback->cb_bytedata)
         {
-            callback->cb_realdate(callback->cb_source, kidx, sidx, in, ilen);
+            callback->cb_bytedata(callback->cb_source, kidx, sidx, in, ilen);
         }
-        if (callback->cb_userdate)
+        if (callback->cb_chardata)
         {
-            callback->cb_userdate(callback->cb_source, SIS_OBJ_SDS(kname), SIS_OBJ_SDS(sname), in, ilen);     
+            callback->cb_chardata(callback->cb_source, SIS_OBJ_SDS(kname), SIS_OBJ_SDS(sname), in, ilen);     
         }
     }
     sis_object_decr(kname);
     sis_object_decr(sname);
     return 0;
 }
-
+int _read_nums = 0;
+size_t _read_size = 0;
 int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source_;
@@ -218,8 +229,12 @@ int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, 
         {
             callback->cb_original(callback->cb_source, head_, imem_, isize_);
         }
-        if (callback->cb_realdate || callback->cb_userdate)
+        if (callback->cb_bytedata || callback->cb_chardata)
         {
+            _read_nums++;
+            _read_size+=isize_;
+            printf("read: %d %zu\n", _read_nums,_read_size );
+            sis_out_binary("read", imem_, 16);
             sis_incrzip_uncompress_step(ctrl->sno_incrzip, imem_, isize_);
         }
         break;
@@ -263,7 +278,7 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
     cls_->isstop = false;  // 用户可以随时中断
     s_sis_disk_reader_cb *callback = cls_->rcatch->callback;   
 
-    if (callback->cb_realdate || callback->cb_userdate)
+    if (callback->cb_bytedata || callback->cb_chardata)
     {
         cls_->sno_incrzip = sis_incrzip_class_create();
         sis_incrzip_set_key(cls_->sno_incrzip, sis_map_list_getsize(cls_->map_kdicts));
@@ -298,7 +313,7 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
             callback->cb_stop(callback->cb_source, cls_->stop_date);
         }
     }
-    if (callback->cb_realdate || callback->cb_userdate)
+    if (callback->cb_bytedata || callback->cb_chardata)
     {
         sis_incrzip_uncompress_stop(cls_->sno_incrzip);
         sis_incrzip_class_destroy(cls_->sno_incrzip);
@@ -460,30 +475,28 @@ static void cb_break(void *src, int tt)
 {
     printf("%s : %d\n", __func__, tt);
 }
+static int    __read_nums1 = 0;
 static void cb_original(void *src, s_sis_disk_head *head_, void *out_, size_t olen_)
 {
-    __read_nums++;
-    if (__read_nums % sis_max((__write_nums / 10), 1) == 0 || __read_nums < 10)
+    __read_nums1++;
+    if (__read_nums1 % 1000 == 0 || __read_nums1 < 10)
     {
-        printf("%s : %zu %d\n", __func__, olen_, __read_nums);
+        printf("%s : %zu %d\n", __func__, olen_, __read_nums1);
     }
 }
-static void cb_userdate(void *src, const char *kname_, const char *sname_, void *out_, size_t olen_)
+static void cb_chardata(void *src, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     __read_nums++;
     if (__read_nums % sis_max((__write_nums / 10), 1) == 0 || __read_nums < 10)
     {
         printf("%s : %s.%s %zu %d\n", __func__, kname_, sname_, olen_, __read_nums);
     }
-    if (__read_nums == 300000)
-    {
-        sis_disk_reader_unsub((s_sis_disk_reader *)src);
-    }
+    // if (__read_nums == 300000)
+    // {
+    //     sis_disk_reader_unsub((s_sis_disk_reader *)src);
+    // }
 }
-void read_sno(s_sis_disk_reader *cxt)
-{
-    sis_disk_reader_sub_sno(cxt, NULL, NULL, 0);
-}
+
 void write_sno(s_sis_disk_writer *cxt)
 {
     s_info info_data[3] = { 
@@ -510,7 +523,6 @@ void write_sno(s_sis_disk_writer *cxt)
     sis_disk_writer_start(cxt);
     int count = __write_nums;
     __write_msec = sis_time_get_now_msec();
-
     __write_size += sis_disk_writer_sno(cxt, "k1", "info", &info_data[0], sizeof(s_info));
     __write_size += sis_disk_writer_sno(cxt, "k2", "info", &info_data[1], sizeof(s_info));
     __write_size += sis_disk_writer_sno(cxt, "k3", "info", &info_data[2], sizeof(s_info));
@@ -533,11 +545,40 @@ void write_sno(s_sis_disk_writer *cxt)
     sis_disk_writer_close(cxt);
     printf("write end %d %zu | cost: %lld.\n", __write_nums, __write_size, sis_time_get_now_msec() - __write_msec);
 }
+void test_map_list_speed()
+{
+    char *info[7] = {
+         "k1",   
+         "k2",   
+         "k3",   
+         "smsec",
+         "sdate",
+         "sminu",
+         "sssec",
+    };
+    s_sis_map_list *slist = sis_map_list_create(NULL);
+    sis_map_list_set(slist, info[0], info[0]);
+    sis_map_list_set(slist, info[1], info[1]);
+    sis_map_list_set(slist, info[2], info[2]);
+    sis_map_list_set(slist, info[3], info[3]);
+    sis_map_list_set(slist, info[4], info[4]);
+    sis_map_list_set(slist, info[5], info[5]);
+    sis_map_list_set(slist, info[6], info[6]);
 
+    __write_msec = sis_time_get_now_msec();
+    for (int i = 0; i < __write_nums * 20; i++)
+    {
+        int k = sis_int_random(0, 6);
+        sis_map_list_get_index(slist, info[k]);
+    }
+    printf("stop cost: %lld.\n", sis_time_get_now_msec() - __write_msec);
+    sis_map_list_destroy(slist);
+}
 int main(int argc, char **argv)
 {
     safe_memory_start();
 
+    test_map_list_speed();
     if (argc < 2)
     {
         s_sis_disk_writer *wcxt = sis_disk_writer_create(".", "wlog", SIS_DISK_TYPE_SNO);
@@ -553,11 +594,13 @@ int main(int argc, char **argv)
         cb.cb_dict_keys = cb_key;
         cb.cb_dict_sdbs = cb_sdb;
         cb.cb_break = cb_break;
-        cb.cb_original = cb_original;
-        cb.cb_userdate  = cb_userdate;
+        // cb.cb_original = cb_original;
+        cb.cb_chardata  = cb_chardata;
         s_sis_disk_reader *rcxt = sis_disk_reader_create(".", "wlog", SIS_DISK_TYPE_SNO, &cb);
+        // s_sis_disk_reader *rcxt = sis_disk_reader_create("../../data/", "test4", SIS_DISK_TYPE_SNO, &cb);
         cb.cb_source = rcxt;
-        read_sno(rcxt);
+        sis_disk_reader_sub_sno(rcxt, NULL, NULL, 0);
+        // sis_disk_reader_sub_sno(rcxt, "*", "*", 20210531);
         sis_disk_reader_destroy(rcxt);
     }
 

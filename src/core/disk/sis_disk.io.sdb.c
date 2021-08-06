@@ -622,7 +622,7 @@ static void cb_original(void *src, s_sis_disk_head *head_, void *out_, size_t ol
         printf("%s : %zu %d\n", __func__, olen_, __read_nums);
     }
 }
-static void cb_userdate(void *src, const char *kname_, const char *sname_, void *out_, size_t olen_)
+static void cb_chardata(void *src, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     __read_nums++;
     if (__read_nums % sis_max((__write_nums / 10), 1) == 0 || __read_nums < 10)
@@ -747,7 +747,7 @@ int main(int argc, char **argv)
         cb.cb_dict_sdbs = cb_sdb;
         cb.cb_break = cb_break;
         cb.cb_original = cb_original;
-        cb.cb_userdate  = cb_userdate;
+        cb.cb_chardata  = cb_chardata;
         s_sis_disk_reader *rcxt = sis_disk_reader_create(".", "wlog", SIS_DISK_TYPE_SDB, &cb);
         cb.cb_source = rcxt;
         read_sdb(rcxt);

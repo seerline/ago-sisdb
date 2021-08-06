@@ -495,7 +495,7 @@ int sis_incrzip_uncompress(s_sis_incrzip_class *s_, char *in_, size_t ilen_, s_s
         LOG(5)("decode fail 1 != %d\n", bags);
         return 0;
     }    
-
+    // 默认为整块数据 第一字节表示当前块是否压缩
     sis_bits_stream_get(s_->cur_stream, 1);
     sis_bits_stream_get_uint(s_->cur_stream);
     sis_bits_stream_get_uint(s_->cur_stream);
@@ -544,15 +544,15 @@ int sis_incrzip_uncompress_step(s_sis_incrzip_class *s_, char *in_, size_t ilen_
         int kidx = sis_bits_stream_get_uint(s_->cur_stream);
         int sidx = sis_bits_stream_get_uint(s_->cur_stream);
         int count = sis_bits_stream_get_uint(s_->cur_stream);
-
+        
         s_sis_incrzip_dbinfo *info = (s_sis_incrzip_dbinfo *)sis_pointer_list_get(s_->dbinfos, sidx);
-        uint8 *buffer = _sis_incrzip_get_curmem(s_, kidx, info);
-        if (!buffer)
+        uint8 *agomem = _sis_incrzip_get_curmem(s_, kidx, info);
+        if (!agomem)
         {
-            printf("decode fail %d %d\n", kidx, sidx);
+            printf("decode fail %d %d | %d %d | %d : %d\n", kidx, sidx , zip, count, nums, bags);
             return 0;
         }
-        char *memory = (char *)&buffer[1];
+        char *memory = (char *)&agomem[1];
         for (int k = 0; k < count; k++)
         {
             for (int i = 0; i < info->fnums; i++)
@@ -562,8 +562,16 @@ int sis_incrzip_uncompress_step(s_sis_incrzip_class *s_, char *in_, size_t ilen_
             }
             // sis_out_binary("mm", memory, info->lpdb->size);
             // sis_out_binary("ii", in, info->lpdb->size);
-            s_->cb_uncompress(s_->cb_source, kidx, sidx, s_->unzip_catch, info->lpdb->size);    
-            memmove(memory, s_->unzip_catch, info->lpdb->size);
+            // if (zip == 1 && agomem[0] == 0)
+            // {
+            //     // 这里要判断 如果 zip = 1 而缓存为 0 就放弃当前数据 这样就可以从任何块拿数据了
+            // }   
+            // else
+            {
+                s_->cb_uncompress(s_->cb_source, kidx, sidx, s_->unzip_catch, info->lpdb->size);    
+                memmove(memory, s_->unzip_catch, info->lpdb->size);
+                // agomem[0] = 1;
+            }
         }
         nums++;
     }
@@ -677,7 +685,7 @@ int cb_sis_encode(void *src, char *in, size_t ilen)
     // sis_memory_set_size(memory, __size);
     // sis_out_binary("encode", in, ilen);
     __zipsize += ilen;
-    if (memorys->count % 1000 == 0)
+    // if (memorys->count % 1000 == 0)
     {
         printf("%d %d %d\n", __zipsize, (int)ilen, memorys->count);
     }
@@ -708,14 +716,14 @@ int main()
         {
             _snap_ cursnap;
             memmove(&cursnap, &snaps[i],sizeof(_snap_));
-            cursnap.open += sis_int_random(-100,100);
-            cursnap.high += sis_int_random(-100,100);
-            cursnap.lowp += sis_int_random(-10,10);
-            cursnap.newp += sis_int_random(-10,10);
-            cursnap.vols += sis_int_random(-100000,1000000);
-            cursnap.mony += sis_int_random(-1000000,10000000);
-            cursnap.askp[0] += sis_int_random(-1,1);
-            cursnap.askp[1] += sis_int_random(-1,1);
+            // cursnap.open += sis_int_random(-100,100);
+            // cursnap.high += sis_int_random(-100,100);
+            // cursnap.lowp += sis_int_random(-10,10);
+            // cursnap.newp += sis_int_random(-10,10);
+            // cursnap.vols += sis_int_random(-100000,1000000);
+            // cursnap.mony += sis_int_random(-1000000,10000000);
+            // cursnap.askp[0] += sis_int_random(-1,1);
+            // cursnap.askp[1] += sis_int_random(-1,1);
             sis_memory_cat(memory, (char *)&cursnap, sizeof(_snap_));
         }
     }
@@ -753,19 +761,19 @@ int main()
     sis_memory_destroy(unzipmemory);
     sis_incrzip_class_destroy(zip);
     ////////// snappy 对比
-    unzipmemory = sis_memory_create();
-    sis_memory_set_maxsize(unzipmemory, zipnnums * snap_nums * sizeof(_snap_) + 16*1024*1024);
-    nowmsec = sis_time_get_now_usec();
-    printf("snappy start: %lld\n", nowmsec);
-    sis_snappy_compress(sis_memory(memory), sis_memory_get_size(memory), zipmemory);
-    printf("snappy compress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
-    printf("zip : from %zu --> %zu\n", sis_memory_get_size(memory), sis_memory_get_size(zipmemory));
+    // unzipmemory = sis_memory_create();
+    // sis_memory_set_maxsize(unzipmemory, zipnnums * snap_nums * sizeof(_snap_) + 16*1024*1024);
+    // nowmsec = sis_time_get_now_usec();
+    // printf("snappy start: %lld\n", nowmsec);
+    // sis_snappy_compress(sis_memory(memory), sis_memory_get_size(memory), zipmemory);
+    // printf("snappy compress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
+    // printf("zip : from %zu --> %zu\n", sis_memory_get_size(memory), sis_memory_get_size(zipmemory));
 
-    nowmsec = sis_time_get_now_usec();
-    sis_snappy_uncompress(sis_memory(zipmemory), sis_memory_get_size(zipmemory), unzipmemory);
-    printf("snappy uncompress stop: cost : %zu %lld\n", sis_memory_get_size(unzipmemory), sis_time_get_now_usec() - nowmsec);
+    // nowmsec = sis_time_get_now_usec();
+    // sis_snappy_uncompress(sis_memory(zipmemory), sis_memory_get_size(zipmemory), unzipmemory);
+    // printf("snappy uncompress stop: cost : %zu %lld\n", sis_memory_get_size(unzipmemory), sis_time_get_now_usec() - nowmsec);
 
-    sis_memory_destroy(unzipmemory);
+    // sis_memory_destroy(unzipmemory);
     ////   --- 结束 --- ///
     sis_memory_destroy(zipmemory);
     sis_memory_destroy(memory);

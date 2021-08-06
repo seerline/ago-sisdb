@@ -2,33 +2,39 @@
 #define _SISDB_WSNO_H
 
 #include "sis_method.h"
+#include "sis_disk.h"
+#include "sisdb_worker.h"
 
-#include "snodb.h"
-#include <sis_disk_v1.h>
+#define  SIS_WSNO_NONE     0 // 
+#define  SIS_WSNO_INIT     1 // 是否初始化
+#define  SIS_WSNO_OPEN     2 // 是否打开
+#define  SIS_WSNO_HEAD     3 // 是否写了头
+#define  SIS_WSNO_EXIT     4 // 退出
 
 typedef struct s_sisdb_wsno_cxt
 {
- 
-    s_sis_disk_v1_class  *write_class;   // 写盘类
+    int                status;
     s_sis_sds          work_path;     // 可配置 也可传入
-    int                page_size;    
-
-    int                iswhead;       // 是否写了头
+    s_sis_sds          work_name;     // 可配置 也可传入
+    s_sis_disk_writer *writer;        // 写盘类
  
-	s_sis_sds          wsno_date;    // 文件名      
-	s_sis_sds          wsno_keys;    
-	s_sis_sds          wsno_sdbs; 
+	int                work_date;     // 工作日期  
+	s_sis_sds          work_keys;     // 筛选后的 
+	s_sis_sds          work_sdbs;     // 筛选后的
 
-	s_snodb_worker    *wsno_unzip;     // 解压 s_snodb_compress 中来的数据
+	s_sis_sds          wsno_keys;     // 外部写入的keys
+	s_sis_sds          wsno_sdbs;     // 外部写入的sdbs
+
+	s_sisdb_worker    *work_unzip;    // 解压 s_snodb_compress 中来的数据
 
 }s_sisdb_wsno_cxt;
 
 bool sisdb_wsno_init(void *, void *);
 void sisdb_wsno_uninit(void *);
 
-void market_file_method_init(void *);
-
-int cmd_sisdb_wsno_init(void *worker_, void *argv_);
 int cmd_sisdb_wsno_getcb(void *worker_, void *argv_);
+
+void sisdb_wsno_start(s_sisdb_wsno_cxt *context);
+void sisdb_wsno_stop(s_sisdb_wsno_cxt *context);
 
 #endif

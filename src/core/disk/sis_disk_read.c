@@ -169,14 +169,15 @@ int sis_disk_reader_sub_log(s_sis_disk_reader *reader_, int idate_)
     return 0;
 }
 
-// 顺序读取 仅支持 SNO  通过回调的 cb_original 或 cb_realdate 返回数据
-// 如果定义了 cb_realdate 就解压数据再返回
+// 顺序读取 仅支持 SNO  通过回调的 cb_original 或 cb_bytedata 返回数据
+// 如果定义了 cb_bytedata 就解压数据再返回
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
 int sis_disk_reader_sub_sno(s_sis_disk_reader *reader_, const char *keys_, const char *sdbs_, int idate_)
 {
-    if (_disk_reader_open(reader_, SIS_DISK_TYPE_SNO, idate_))
+    int o = _disk_reader_open(reader_, SIS_DISK_TYPE_SNO, idate_);
+    if (o)
     {
-        LOG(5)("no open %s.\n", reader_->fname);
+        LOG(5)("no open %s. %d\n", reader_->fname, o);
         return 0;
     }
     reader_->status_sub = 1;
@@ -698,9 +699,9 @@ static int cb_key_bytes(void *reader_, void *avgv_)
     {
         return -1;
     }
-    if (reader->callback->cb_userdate)
+    if (reader->callback->cb_chardata)
     {
-        reader->callback->cb_userdate(reader->callback->cb_source,
+        reader->callback->cb_chardata(reader->callback->cb_source,
             chars->kname, chars->sname, 
             chars->data, chars->size);
     } 

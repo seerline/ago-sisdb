@@ -905,7 +905,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	return obj;
 }
 
-#if 1
+#if 0
 // 测试网络通讯协议是否正常
 #include "sis_net.msg.h"
 

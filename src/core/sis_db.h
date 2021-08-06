@@ -46,9 +46,8 @@ typedef struct s_sis_db_bytes
 
 typedef struct s_sis_db_incrzip
 {
-	uint8      init;
 	uint32     size;
-	void      *data;     
+	uint8     *data; 
 } s_sis_db_incrzip;
 
 #define SIS_DB_STREAM_CHARS    1
