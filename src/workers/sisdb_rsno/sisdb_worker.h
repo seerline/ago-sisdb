@@ -6,8 +6,8 @@
 #include "sis_disk.h"
 #include "sis_incrzip.h"
 
-#define  SISDB_ZIP_PART_SIZE  SIS_DISK_MAXLEN_SNOPART
-#define  SISDB_ZIP_PAGE_SIZE  SIS_DISK_MAXLEN_SNOPAGE
+#define  SISDB_ZIP_PART_SIZE  SIS_DISK_MAXLEN_NETPART
+#define  SISDB_ZIP_PAGE_SIZE  SIS_DISK_MAXLEN_NETPAGE
 
 // 对获取的数据压缩或解压
 // 对待sdb多记录压缩 需要一次性把单类数据压缩进去

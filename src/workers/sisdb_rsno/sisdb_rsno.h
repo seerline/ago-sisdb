@@ -4,6 +4,8 @@
 #include "sis_method.h"
 #include "sisdb_worker.h"
 
+// 需要支持读取的数据直接压缩好返回 根据回调函数
+
 #define  SIS_RSNO_NONE     0 // 订阅未开始
 #define  SIS_RSNO_WORK     1 // 自动运行模式
 #define  SIS_RSNO_CALL     2 // 订阅运行模式

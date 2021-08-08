@@ -10,27 +10,50 @@ void _disk_ctrl_init(s_sis_disk_ctrl *o)
     o->work_fps->main_head.index = 0;
     o->work_fps->main_head.wdate = o->open_date;
 
+    o->net_count = 0;
+    o->net_msec = 0;
+    o->net_pages = 0;
+    o->net_zipsize = 0;
+    o->net_incrzip = NULL;
+
     o->sno_count = 0;
+    o->sno_pages = 0;
     o->sno_msec = 0;
-    o->sno_zipsize = 0;
-    o->sno_incrzip = NULL;
+    o->sno_series = 0;
+    o->sno_size = 0;
+    o->sno_wcatch = NULL;
+    o->sno_subcxt = NULL;
 
     char work_fn[1024];
     char widx_fn[1024];
     switch (o->style)
     {
+    case SIS_DISK_TYPE_NET: 
+        {
+            int nyear = o->open_date / 10000;
+            sis_sprintf(work_fn, 1024, "%s/%s/%s.%d/%d.%s",
+                    o->fpath, o->fname, SIS_DISK_NET_CHAR, nyear, o->open_date, SIS_DISK_NET_CHAR);
+            // 这里虽然没有设置压缩方式 实际传入的数据就已经按增量压缩好了
+            o->work_fps->main_head.index = 1;
+            o->work_fps->max_page_size = SIS_DISK_MAXLEN_NETPAGE;
+            o->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
+            o->work_fps->main_head.zip = SIS_DISK_ZIP_INCRZIP;
+            sis_sprintf(widx_fn, 1024, "%s/%s/%s.%d/%d.%s",
+                    o->fpath, o->fname, SIS_DISK_NET_CHAR, nyear, o->open_date, SIS_DISK_IDX_CHAR);
+        }
+        break;
     case SIS_DISK_TYPE_SNO: 
         {
             int nyear = o->open_date / 10000;
-            sis_sprintf(work_fn, 1024, "%s/%s/%d/%d.%s",
-                    o->fpath, o->fname, nyear, o->open_date, SIS_DISK_SNO_CHAR);
+            sis_sprintf(work_fn, 1024, "%s/%s/%s.%d/%d.%s",
+                    o->fpath, o->fname, SIS_DISK_SNO_CHAR, nyear, o->open_date, SIS_DISK_SNO_CHAR);
             // 这里虽然没有设置压缩方式 实际传入的数据就已经按增量压缩好了
             o->work_fps->main_head.index = 1;
             o->work_fps->max_page_size = SIS_DISK_MAXLEN_SNOPAGE;
             o->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
-            o->work_fps->main_head.zip = SIS_DISK_ZIP_INCRZIP;
-            sis_sprintf(widx_fn, 1024, "%s/%s/%d/%d.%s",
-                    o->fpath, o->fname, nyear, o->open_date, SIS_DISK_IDX_CHAR);
+            o->work_fps->main_head.zip = SIS_DISK_ZIP_SNAPPY;
+            sis_sprintf(widx_fn, 1024, "%s/%s/%s.%d/%d.%s",
+                    o->fpath, o->fname, SIS_DISK_SNO_CHAR, nyear, o->open_date, SIS_DISK_IDX_CHAR);
         }
         break;
     case SIS_DISK_TYPE_SDB_YEAR:  // name/year/2000-2009.sdb
@@ -246,7 +269,7 @@ int sis_disk_ctrl_read_kdict(s_sis_disk_ctrl *cls_, s_sis_disk_idx *node_)
         sis_disk_rcatch_init_of_idx(cls_->rcatch, unit);
         if (sis_disk_files_read_fromidx(cls_->work_fps, cls_->rcatch) > 0)
         {
-            sis_disk_ctrl_unzip_work(cls_, cls_->rcatch);
+            sis_disk_ctrl_unzip_sdb(cls_, cls_->rcatch);
             sis_disk_reader_set_kdict(cls_->map_kdicts, sis_memory(cls_->rcatch->memory), sis_memory_get_size(cls_->rcatch->memory));
         }
     }
@@ -265,7 +288,7 @@ int sis_disk_ctrl_read_sdict(s_sis_disk_ctrl *cls_, s_sis_disk_idx *node_)
         sis_disk_rcatch_init_of_idx(cls_->rcatch, unit);
         if (sis_disk_files_read_fromidx(cls_->work_fps, cls_->rcatch) > 0)
         {
-            sis_disk_ctrl_unzip_work(cls_, cls_->rcatch);
+            sis_disk_ctrl_unzip_sdb(cls_, cls_->rcatch);
             sis_disk_reader_set_sdict(cls_->map_sdicts, sis_memory(cls_->rcatch->memory), sis_memory_get_size(cls_->rcatch->memory));
         }
     }
@@ -324,17 +347,22 @@ void sis_disk_ctrl_cmp_sdict(s_sis_disk_ctrl *munit_, s_sis_disk_ctrl *sunit_)
 size_t sis_disk_io_write_dict(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_)
 {
     size_t osize = 0;
-    if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_SNO) // sno
+    switch (cls_->work_fps->main_head.style)
     {
-        osize = sis_disk_io_write_sno_work(cls_, wcatch_);
-    }
-    else if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_SDB) // sno
-    {
+    case SIS_DISK_TYPE_NET:
+        osize = sis_disk_io_write_net_work(cls_, wcatch_);
+        break;
+    case SIS_DISK_TYPE_SNO:
         osize = sis_disk_io_write_sdb_work(cls_, wcatch_);
-    }
-    else if (SIS_DISK_IS_SDB(cls_->work_fps->main_head.style)) // sdb
-    {
+        break;
+    case SIS_DISK_TYPE_SDB:
+    case SIS_DISK_TYPE_SDB_NOTS:
+    case SIS_DISK_TYPE_SDB_YEAR:
+    case SIS_DISK_TYPE_SDB_DATE:
         osize = sis_disk_io_write_sdb_work(cls_, wcatch_);
+        break;
+    default:
+        break;
     }
     return osize;
 }
@@ -402,6 +430,42 @@ void sis_disk_ctrl_write_sdict(s_sis_disk_ctrl *cls_)
     sis_pointer_list_clear(cls_->new_sinfos);
 }
 
+// 读取keys信息
+s_sis_sds sis_disk_ctrl_get_keys_sds(s_sis_disk_ctrl *cls_)
+{
+    s_sis_sds msg = NULL;
+    int count = sis_map_list_getsize(cls_->map_kdicts);
+    for(int i = 0; i < count; i++)
+    {
+        s_sis_disk_kdict *kdict = (s_sis_disk_kdict *)sis_map_list_geti(cls_->map_kdicts, i);
+        if (msg)
+        {
+            msg = sis_sdscatfmt(msg, ",%S", SIS_OBJ_SDS(kdict->name));
+        }
+        else
+        {
+            msg = sis_sdsnew(SIS_OBJ_SDS(kdict->name));
+        }    
+    }
+    return msg;
+}
+// 读取sdbs信息
+s_sis_sds sis_disk_ctrl_get_sdbs_sds(s_sis_disk_ctrl *cls_)
+{
+    int count = sis_map_list_getsize(cls_->map_sdicts);
+    s_sis_json_node *sdbs_node = sis_json_create_object();
+    {
+        for(int i = 0; i < count; i++)
+        {
+            s_sis_disk_sdict *sdict = (s_sis_disk_sdict *)sis_map_list_geti(cls_->map_sdicts, i);
+            s_sis_dynamic_db *sdb = sis_disk_sdict_last(sdict);
+            sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(sdict->name), sis_dynamic_dbinfo_to_json(sdb));
+        }
+    }
+    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
+    sis_json_delete_node(sdbs_node);
+    return msg;
+}
 
 s_sis_disk_kdict *sis_disk_ctrl_set_kdict(s_sis_disk_ctrl *cls_, const char *kname_)
 {
@@ -448,8 +512,28 @@ s_sis_disk_sdict *sis_disk_ctrl_set_sdict(s_sis_disk_ctrl *cls_, s_sis_dynamic_d
     }
     return sdict;   
 }
-
-size_t sis_disk_ctrl_unzip_work(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
+size_t sis_disk_ctrl_unzip(s_sis_disk_ctrl *cls_, s_sis_disk_head *head_, char *imem_, size_t isize_, s_sis_memory *out_)
+{
+    size_t size = 0;
+    if (head_->zip == SIS_DISK_ZIP_NOZIP)
+    {
+        sis_memory_cat(out_, imem_, isize_);
+        return sis_memory_get_size(out_);
+    }
+    if (head_->zip == SIS_DISK_ZIP_SNAPPY)
+    {
+        if(sis_snappy_uncompress(imem_, isize_, out_))
+        {
+            size = sis_memory_get_size(out_);
+        }
+        else
+        {
+            LOG(5)("snappy_uncompress fail. %d %zu \n", head_->hid, isize_);
+        }
+    }
+    return size;
+}
+size_t sis_disk_ctrl_unzip_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
 {
     size_t size = 0;
     if (rcatch_->head.zip == SIS_DISK_ZIP_NOZIP)
@@ -469,7 +553,7 @@ size_t sis_disk_ctrl_unzip_work(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch
             LOG(5)("snappy_uncompress fail. %d %zu \n", rcatch_->head.hid, sis_memory_get_size(rcatch_->memory));
         }
         sis_memory_destroy(memory);
-        switch (rcatch_->rinfo->style)
+        switch (rcatch_->rinfo->ktype)
         {
         case SIS_SDB_STYLE_MUL:
         {
@@ -513,42 +597,6 @@ size_t sis_disk_ctrl_unzip_work(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch
         }
         return size;
     }
-    // 以下基本不会用到 暂时注释
-    // if (rcatch_->head.zip == SIS_DISK_ZIP_INCRZIP)
-    // {
-    //     if (rcatch_->rinfo->style == SIS_SDB_STYLE_SDB)
-    //     {
-    //         rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
-    //         rcatch_->sidx = sis_memory_get_ssize(rcatch_->memory);
-    //         s_sis_disk_kdict *kdict = (s_sis_disk_kdict *)sis_map_list_geti(cls_->map_kdicts, rcatch_->kidx);
-    //         s_sis_disk_sdict *sdict = (s_sis_disk_sdict *)sis_map_list_geti(cls_->map_sdicts, rcatch_->sidx);
-    //         if (!kdict || !sdict)
-    //         {
-    //             LOG(8)("no find .kid = %d : %d  sid = %d : %d\n", 
-    //                 rcatch_->kidx, sis_map_list_getsize(cls_->map_kdicts), 
-    //                 rcatch_->sidx, sis_map_list_getsize(cls_->map_sdicts));
-    //             return 0;
-    //         }             
-    //         s_sis_dynamic_db *db = sis_disk_sdict_get(sdict, rcatch_->rinfo->sdict); 
-    //         if (!db)
-    //         {
-    //             db = sis_disk_sdict_last(sdict); 
-    //         }
-    //         s_sis_memory *unzipmemory = sis_memory_create();
-    //         sis_incrzip_class_clear(cls_->sdb_incrzip);
-    //         sis_incrzip_set_sdb(cls_->sdb_incrzip, db);
-    //         if(sis_incrzip_uncompress(cls_->sdb_incrzip, sis_memory(rcatch_->memory), sis_memory_get_size(rcatch_->memory), unzipmemory) > 0)
-    //         {
-    //             sis_memory_swap(rcatch_->memory, unzipmemory);
-    //             size = sis_memory_get_size(rcatch_->memory);
-    //         }
-    //         else
-    //         {
-    //             LOG(8)("incrzip uncompress fail.\n"); 
-    //         }
-    //         sis_memory_destroy(unzipmemory); 
-    //     }
-    // }
     return size;
 }
 
@@ -600,6 +648,14 @@ int sis_disk_ctrl_read_start(s_sis_disk_ctrl *cls_)
             return o;
         }
     }    
+    else if (cls_->style == SIS_DISK_TYPE_NET)
+    {
+        o = sis_disk_io_read_net_widx(cls_);
+        if (o != SIS_DISK_CMD_OK)
+        {
+            return o;
+        }
+    } 
     else if (cls_->style == SIS_DISK_TYPE_SNO)
     {
         o = sis_disk_io_read_sno_widx(cls_);
@@ -691,6 +747,14 @@ int sis_disk_ctrl_write_start(s_sis_disk_ctrl *cls_)
                 return vo;
             }
         } 
+        else if (cls_->style == SIS_DISK_TYPE_NET)
+        {
+            vo = sis_disk_io_read_net_widx(cls_);
+            if (vo != SIS_DISK_CMD_OK)
+            {
+                return vo;
+            }
+        } 
         else if (cls_->style == SIS_DISK_TYPE_SNO)
         {
             vo = sis_disk_io_read_sno_widx(cls_);
@@ -745,6 +809,14 @@ int sis_disk_ctrl_write_stop(s_sis_disk_ctrl *cls_)
                 return -3;
             }
         }
+        else if (cls_->style == SIS_DISK_TYPE_NET)
+        {
+            if (sis_disk_io_write_net_widx(cls_) == 0)
+            {
+                LOG(5)("write netidx fail.[%s]\n", cls_->widx_fps->cur_name);
+                return -4;
+            }
+        } 
         else if (cls_->style == SIS_DISK_TYPE_SNO)
         {
             if (sis_disk_io_write_sno_widx(cls_) == 0)
@@ -777,7 +849,7 @@ void sis_disk_ctrl_delete(s_sis_disk_ctrl *cls_)
 
 int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_)
 {
-    if (src_->style == SIS_DISK_TYPE_LOG || src_->style == SIS_DISK_TYPE_SNO)
+    if (src_->style == SIS_DISK_TYPE_LOG || src_->style == SIS_DISK_TYPE_NET || src_->style == SIS_DISK_TYPE_SNO)
     {
         return 0;
     }

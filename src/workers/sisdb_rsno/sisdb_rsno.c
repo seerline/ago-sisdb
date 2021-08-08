@@ -125,8 +125,12 @@ static void cb_start(void *context_, int idate)
 static void cb_stop(void *context_, int idate)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
-    sprintf("sno read ok. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
+    printf("sno read ok. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
      // stop 放这里
+    if (context->cb_sub_inctzip)
+    {
+        sisdb_worker_zip_stop(context->work_ziper);
+    }
     if (context->cb_sub_stop)
     {
         char sdate[32];
@@ -246,7 +250,7 @@ static void *_thread_snos_read_sub(void *argv_)
 
     if (context->cb_sub_inctzip)
     {
-        sisdb_worker_zip_stop(context->work_ziper);
+        // sisdb_worker_zip_stop(context->work_ziper);
         sisdb_worker_destroy(context->work_ziper);
         context->work_ziper = NULL;
     }

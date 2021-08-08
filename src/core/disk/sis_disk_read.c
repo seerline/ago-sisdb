@@ -169,9 +169,27 @@ int sis_disk_reader_sub_log(s_sis_disk_reader *reader_, int idate_)
     return 0;
 }
 
-// 顺序读取 仅支持 SNO  通过回调的 cb_original 或 cb_bytedata 返回数据
+// 顺序读取 仅支持 NET  通过回调的 cb_original 或 cb_bytedata 返回数据
 // 如果定义了 cb_bytedata 就解压数据再返回
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
+int sis_disk_reader_sub_net(s_sis_disk_reader *reader_, const char *keys_, const char *sdbs_, int idate_)
+{
+    int o = _disk_reader_open(reader_, SIS_DISK_TYPE_NET, idate_);
+    if (o)
+    {
+        LOG(5)("no open %s. %d\n", reader_->fname, o);
+        return 0;
+    }
+    reader_->status_sub = 1;
+    // 按顺序输出 keys_ sdbs_ = NULL 实际表示 *
+    sis_disk_io_sub_net(reader_->munit, keys_, sdbs_, NULL, reader_->callback);
+    // 订阅结束
+    reader_->status_sub = 0;
+
+    _disk_reader_close(reader_);
+    return 0;
+}
+
 int sis_disk_reader_sub_sno(s_sis_disk_reader *reader_, const char *keys_, const char *sdbs_, int idate_)
 {
     int o = _disk_reader_open(reader_, SIS_DISK_TYPE_SNO, idate_);
@@ -189,7 +207,6 @@ int sis_disk_reader_sub_sno(s_sis_disk_reader *reader_, const char *keys_, const
     _disk_reader_close(reader_);
     return 0;
 }
-
 // 取消一个正在订阅的任务 只有处于非订阅状态下才能订阅 避免重复订阅
 void sis_disk_reader_unsub(s_sis_disk_reader *reader_)
 {
@@ -294,7 +311,7 @@ int sis_disk_reader_filters(s_sis_disk_reader *reader_, s_sis_disk_reader_unit *
         for (int k = 0; k < nums; k++)
         {
             s_sis_disk_idx *subidx = (s_sis_disk_idx *)sis_map_list_geti(unit_->ctrl->map_idxs, k);
-            if (!subidx->kname) //表示为key sdb 或 sno
+            if (!subidx->kname) //表示为key sdb 或 sno net
             {
                 continue;
             }
@@ -562,10 +579,9 @@ s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const c
     sis_pointer_list_destroy(obj);
     return NULL;
 }
-// 从对应文件中获取数据 拼成完整的数据返回 只支持 SDB 单键单表 
 // 时间范围 日期以上可以多日 日期以下只能当日
 // 多表按时序输出通过该函数获取全部数据后 排序输出
-s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
+s_sis_object *_disk_reader_get_sdb_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
 {
     if (reader_->status_open == 0 || reader_->status_sub == 1 || !kname_ || !sname_)
     {
@@ -614,6 +630,110 @@ s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *reader_, const char *kn
         sis_object_destroy(obj);
     }
     return NULL;
+}
+
+void sis_disk_reader_make_sno(s_sis_disk_reader *reader_)
+{
+    // 时间 = 0 表示取最近的数据块 
+    // 先确定时间的日期区间 找到对应时区的文件 打开不成功就下一个
+    // 成功就读取索引 并做匹配 匹配到的就加入索引列表
+    // 索引列表不为空该文件有效 添加到文件列表 并且每个文件都是打开状态
+    {
+        int open = sis_time_get_idate(reader_->search_msec.start / 1000);
+        int stop = sis_time_get_idate(reader_->search_msec.stop / 1000);
+        while (open <= stop)
+        {
+            int isok = true;
+            s_sis_disk_reader_unit *unit = sis_disk_reader_unit_create(reader_, SIS_DISK_TYPE_SNO);
+            unit->idate = open;
+            if (!sis_disk_reader_unit_open(unit))
+            {
+                if (sis_disk_reader_filters(reader_, unit) == 0)
+                {
+                    // 没有相关订阅记录
+                    isok = false;
+                }
+            }
+            else
+            {
+                isok = false;
+            }
+            if (isok)
+            {
+                sis_pointer_list_push(reader_->sunits, unit);
+            }
+            else
+            {
+                sis_disk_reader_unit_destroy(unit);
+            }
+            open = sis_time_next_work_day(open, 1);
+        }
+    }
+}
+s_sis_object *_disk_reader_get_sno_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
+{
+    if (reader_->status_open == 0 || reader_->status_sub == 1 || !kname_ || !sname_)
+    {
+        return NULL;
+    }
+    if (sis_is_multiple_sub(kname_, sis_strlen(kname_)) || sis_is_multiple_sub(sname_, sis_strlen(sname_)))
+    {
+        LOG(5)("no mul key or sdb: %s\n", kname_, sname_);
+        return NULL;
+    }
+    reader_->isone = 1;
+    sis_disk_reader_init(reader_, kname_, sname_, smsec_, 0);
+
+    // 只读结构化数据
+    sis_disk_reader_make_sno(reader_);
+
+    if (sis_map_list_getsize(reader_->subidxs) > 0)
+    {
+        s_sis_memory *memory = sis_memory_create();
+        s_sis_object * obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
+        reader_->status_sub = 1;
+        // 只有一个键
+        s_sis_disk_reader_sub *subwork = (s_sis_disk_reader_sub *)sis_map_list_geti(reader_->subidxs, 0);
+        int count = sis_disk_reader_sub_getsize(subwork);
+        for (int j = 0; j < count; j++)
+        {
+            s_sis_disk_reader_unit *runit = (s_sis_disk_reader_unit *)sis_pointer_list_get(subwork->units, j);
+            s_sis_disk_rcatch *rcatch = runit->ctrl->rcatch;
+            s_sis_disk_idx *subidx = (s_sis_disk_idx *)sis_pointer_list_get(subwork->kidxs, j);
+            for (int k = 0; k < subidx->idxs->count; k++)
+            {
+                s_sis_disk_idx_unit *idxunit = (s_sis_disk_idx_unit *)sis_struct_list_get(subidx->idxs, k);
+                sis_disk_rcatch_init_of_idx(rcatch, idxunit);
+                sis_disk_io_read_sno(runit->ctrl, rcatch);
+                // printf("%d %d | %d %d\n", rcatch->rinfo->offset, rcatch->rinfo->size, kidx, sidx);
+                // sis_out_binary(".out.",sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+                sis_memory_cat(memory, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+            }
+        }
+        // 订阅结束
+        reader_->status_sub = 0;
+        if (sis_memory_get_size(memory) > 0)
+        {
+            return obj;
+        }
+        sis_object_destroy(obj);
+    }
+    return NULL;
+}
+// 从对应文件中获取数据 拼成完整的数据返回 只支持 SNO SDB 单键单表 
+s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
+{
+    s_sis_object * obj = NULL;
+    if (reader_->style == SIS_DISK_TYPE_SNO)
+    {
+        // 只支持根据日期获取
+        obj = _disk_reader_get_sno_obj(reader_, kname_, sname_, smsec_);
+    }
+    else if (reader_->style == SIS_DISK_TYPE_SDB)
+    {
+        obj = _disk_reader_get_sdb_obj(reader_, kname_, sname_, smsec_);
+    }
+    return obj;
 }
 //////////////////////////////////
 // 订阅的相关函数
@@ -678,7 +798,7 @@ _sub_next:
             s_sis_disk_rcatch *rcatch = runit->ctrl->rcatch;
             sis_disk_rcatch_init_of_idx(rcatch, idxunit);
             sis_disk_io_read_sdb(runit->ctrl, rcatch);
-            sis_subdb_cxt_add_data(reader->subcxt, skey, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+            sis_subdb_cxt_push_sdbs(reader->subcxt, skey, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
         }
         else
         {
@@ -689,7 +809,7 @@ _sub_next:
     }
     return 0;
 }
-static int cb_key_bytes(void *reader_, void *avgv_)
+static int cb_key_chars(void *reader_, void *avgv_)
 {
     s_sis_disk_reader *reader = (s_sis_disk_reader *)reader_; 
 	s_sis_db_chars *chars = (s_sis_db_chars *)avgv_;
@@ -737,7 +857,7 @@ void _disk_reader_sub_work(s_sis_disk_reader *reader_)
         s_sis_disk_idx_unit *idxunit = (s_sis_disk_idx_unit *)sis_struct_list_get(subidx->idxs, subwork->kidx_cursor);
         sis_disk_rcatch_init_of_idx(rcatch, idxunit);
         sis_disk_io_read_sdb(runit->ctrl, rcatch);
-        sis_subdb_cxt_add_data(reader_->subcxt, subwork->skey, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+        sis_subdb_cxt_push_sdbs(reader_->subcxt, subwork->skey, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
     }
     sis_subdb_cxt_sub_start(reader_->subcxt);
 }
@@ -769,12 +889,12 @@ int sis_disk_reader_sub_sdb(s_sis_disk_reader *reader_, const char *keys_, const
     if (sis_map_list_getsize(reader_->subidxs) > 0)
     {
         reader_->status_sub = 1;
-        reader_->subcxt = sis_subdb_cxt_create(); 
+        reader_->subcxt = sis_subdb_cxt_create(0); 
         reader_->subcxt->cb_source = reader_;
         reader_->subcxt->cb_sub_start = cb_sub_start;
         reader_->subcxt->cb_sub_stop = cb_sub_stop;
         reader_->subcxt->cb_key_stop = cb_key_stop;
-        reader_->subcxt->cb_key_bytes = cb_key_bytes;
+        reader_->subcxt->cb_key_chars = cb_key_chars;
 
         _disk_reader_sub_work(reader_);
 

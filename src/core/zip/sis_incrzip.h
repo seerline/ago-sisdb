@@ -35,7 +35,7 @@ typedef struct s_unzip_unit
 // 一个数据结构的定义
 typedef struct s_sis_incrzip_dbinfo{
 	uint32               offset;  // 当前偏移位置
-	uint16               fnums;    // 字段数
+	uint16               fnums;   // 字段数
 	s_sis_dynamic_db    *lpdb;    // 不用释放       
 }s_sis_incrzip_dbinfo;
 

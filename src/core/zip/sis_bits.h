@@ -529,21 +529,66 @@ static inline int sis_bits_stream_put_chars(s_sis_bits_stream *s_, char *in_, si
     }
     return offset;
 }
+// 返回 0 表示字符串一样 -1 表示有一个为 NULL > 0 表示字符有效部分相同 
+static inline int sis_bits_stream_charcmp(const char *s1_, size_t l1_, const char *s2_, size_t l2_)
+{
+	if (!s2_ || l2_ == 0 || !s1_ || l1_ == 0)
+	{
+		return l1_;
+	}
+    int isize = 0;
+    const char *ptr = s1_;
+    while (*ptr)
+    {
+        ptr++; isize++;
+    } 
+    int size = 0;
+    while(*s1_ == *s2_)
+    {
+        if (*s1_ == 0 && *s2_ == 0)
+        {
+            break;
+        }
+        size++;
+		if (size == isize)
+		{
+            if (size == l2_ || *(s2_ + 1) == 0)
+			{
+                return 0;
+            }
+            else
+            {
+                return isize;
+            }
+		}
+        s1_++; s2_++;
+    }
+	return isize;
+	//tolower(*(const unsigned char *)s1_) - tolower(*(const unsigned char *)s2_);
+}
 static inline int sis_bits_stream_put_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)
 {
-    int offset = 0;
-    // printf("put char :%s, %s, %d, %d\n", in_, ago_, ilen_, alen_);
-    if (ilen_ == alen_ && !sis_strncasecmp(in_, ago_, ilen_))
+    int size = sis_bits_stream_charcmp(in_, ilen_, ago_, alen_);
+    printf("put char : %d [%s], [%s], %zu, %zu\n", size, in_, ago_, ilen_, alen_);
+    if (size == 0)
     {
         sis_bits_stream_put_chars(s_, NULL, 0);
     }
-    else
+    else 
     {
-        sis_bits_stream_put_chars(s_, in_, ilen_);
+        sis_bits_stream_put_chars(s_, in_, size);
     }
-    return offset;
+    return size;
 }
 
+static inline int sis_bits_stream_get_buffer(s_sis_bits_stream *s_, char *in_, size_t ilen_)
+{
+    for (int i = 0; i < ilen_; i++)
+    {
+        in_[i] = sis_bits_stream_get(s_, 8);
+    }
+    return ilen_;
+}
 // 短正整数
 static inline uint32 sis_bits_stream_get_sint(s_sis_bits_stream *s_)
 {
@@ -704,29 +749,35 @@ static inline int sis_bits_stream_get_chars(s_sis_bits_stream *s_, char *in_, si
 // 0 表示和前值一样
 // 1 + size长度+字符
     uint8 signbit = sis_bits_stream_get(s_, 1);
+     printf("signbit : %d\n", signbit);
     if (signbit == 0)
     {
         return 0;
     }
+    int len = 0;
     int size = sis_bits_stream_get_uint(s_);
-    int cursize = sis_min(size, ilen_);
-    for (int i = 0; i < cursize; i++)
+    for (int i = 0; i < size; i++)
     {
-        in_[i] = sis_bits_stream_get(s_, 8);
+        char ch = sis_bits_stream_get(s_, 8);
+        // printf("readchar --  : %d\n", s_->currpos);
+        if (i < ilen_)
+        {
+            in_[i] = ch;
+            len++;
+        }
     }
-    if (size > ilen_)
-    {
-        in_[ilen_] = 0;
-    }
-    return cursize;
+    in_[ilen_ - 1] = 0;
+    printf("readchar : %d %s\n", size, in_);
+    return size;
 }
 static inline int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)
 {
     int size = sis_bits_stream_get_chars(s_, in_, ilen_);
     if (size == 0)
     {
-        memmove(in_, ago_, ilen_);
-        size = ilen_;
+        size = sis_min(ilen_, alen_);
+        memmove(in_, ago_, size);
+        in_[size - 1] = 0;
     }
     return size;
 }

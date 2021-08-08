@@ -243,39 +243,26 @@ static inline void _sis_incrzip_compress_one(s_sis_incrzip_class *s_,
         }
     }
 }
+
 void _incrzip_compress(s_sis_incrzip_class *s_, uint8 *agomem_, int kidx_, int sidx_, int nums_,
-    s_sis_incrzip_dbinfo *info_, char *in_, size_t ilen_)
+    s_sis_incrzip_dbinfo *info_, char *in_)
 {
-    sis_bits_stream_savepos(s_->cur_stream);
     char *memory = (char *)&agomem_[1];
     sis_bits_stream_put(s_->cur_stream, agomem_[0] == 0 ? 0 : 1, 1);
     sis_bits_stream_put_uint(s_->cur_stream, kidx_);
     sis_bits_stream_put_uint(s_->cur_stream, sidx_);
     sis_bits_stream_put_uint(s_->cur_stream, nums_);
-
-    size_t cur_size = sis_bits_stream_getbytes(s_->cur_stream);
-    char *in = in_;
-	for (int k = 0; k < nums_; k++)
-	{
-		for (int i = 0; i < info_->fnums; i++)
-		{
-			s_sis_dynamic_field *infield = (s_sis_dynamic_field *)sis_map_list_geti(info_->lpdb->fields, i);
-			_sis_incrzip_compress_one(s_, memory, infield, in);
-		}
-        memmove(memory, in, info_->lpdb->size);
-        agomem_[0] = 1;
-		in += info_->lpdb->size;
-	}
-    // 压缩了反而大就用原文
-    if (sis_bits_stream_getbytes(s_->cur_stream) - cur_size > ilen_ + nums_)
+    char *ptr = in_;
+    for (int k = 0; k < nums_; k++)
     {
-        // printf("encode too big. %d %d\n", sis_bits_stream_getbytes(s_->cur_stream) - cur_size, ilen_ + nums_);
-        sis_bits_stream_restore(s_->cur_stream);
-        sis_bits_stream_put(s_->cur_stream, 0, 1);
-        sis_bits_stream_put_uint(s_->cur_stream, kidx_);
-        sis_bits_stream_put_uint(s_->cur_stream, sidx_);
-        sis_bits_stream_put_uint(s_->cur_stream, nums_);
-        sis_bits_stream_put_buffer(s_->cur_stream, in_, ilen_);
+        for (int i = 0; i < info_->fnums; i++)
+        {
+            s_sis_dynamic_field *infield = (s_sis_dynamic_field *)sis_map_list_geti(info_->lpdb->fields, i);
+            _sis_incrzip_compress_one(s_, memory, infield, ptr);
+        }
+        memmove(memory, ptr, info_->lpdb->size);
+        agomem_[0] = 1;
+        ptr += info_->lpdb->size;
     }
     s_->zip_bags++;
     sis_incrzip_set_bags(s_);
@@ -308,7 +295,7 @@ int sis_incrzip_compress(s_sis_incrzip_class *s_, char *in_, size_t ilen_, s_sis
     sis_memory_set_maxsize(out_, zipsize);
     sis_bits_stream_link(s_->cur_stream, (uint8 *)sis_memory(out_), zipsize);
     // 开始压缩
-    _incrzip_compress(s_, buffer, 0, 0, count, info, in_, ilen_);
+    _incrzip_compress(s_, buffer, 0, 0, count, info, in_);
 
     sis_memory_set_size(out_, sis_incrzip_getsize(s_));
     // sis_out_binary("one", sis_memory(out_), sis_incrzip_getsize(s_));
@@ -355,7 +342,7 @@ int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kidx_, int sidx_, cha
         _incrzip_compress_next(s_);
     } 
 
-    _incrzip_compress(s_, buffer, kidx_, sidx_, count, info, in_, ilen_);
+    _incrzip_compress(s_, buffer, kidx_, sidx_, count, info, in_);
     // sis_out_binary("one", s_->zip_memory, sis_incrzip_getsize(s_));
 
     return s_->zip_bags;
@@ -492,11 +479,16 @@ int sis_incrzip_uncompress(s_sis_incrzip_class *s_, char *in_, size_t ilen_, s_s
     int bags = sis_incrzip_get_bags(s_);
     if (bags != 1)
     {
-        LOG(5)("decode fail 1 != %d\n", bags);
+        LOG(5)("decode fail bags[%d] != 1 \n", bags);
         return 0;
     }    
     // 默认为整块数据 第一字节表示当前块是否压缩
-    sis_bits_stream_get(s_->cur_stream, 1);
+    int zip = sis_bits_stream_get(s_->cur_stream, 1);
+    if (zip)
+    {
+        LOG(5)("decode fail zip != 0\n");
+        return 0;
+    }
     sis_bits_stream_get_uint(s_->cur_stream);
     sis_bits_stream_get_uint(s_->cur_stream);
     int count = sis_bits_stream_get_uint(s_->cur_stream);
@@ -540,18 +532,29 @@ int sis_incrzip_uncompress_step(s_sis_incrzip_class *s_, char *in_, size_t ilen_
     int nums = 0;
     while (nums < bags)
     {        
+        // printf("move === %zu, %d\n",sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
         int zip = sis_bits_stream_get(s_->cur_stream, 1);
+        // printf("move %zu, %d\n",sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
         int kidx = sis_bits_stream_get_uint(s_->cur_stream);
+        // printf("move %zu, %d\n",sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
         int sidx = sis_bits_stream_get_uint(s_->cur_stream);
+        // printf("move %zu, %d\n",sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
         int count = sis_bits_stream_get_uint(s_->cur_stream);
-        
+        // printf("move %zu, %d\n",sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
+
+        // printf("decode %d %d | %d %d | %d : %d | %zu, %d\n", kidx, sidx , zip, count, nums, bags, sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
         s_sis_incrzip_dbinfo *info = (s_sis_incrzip_dbinfo *)sis_pointer_list_get(s_->dbinfos, sidx);
+        // if (info) printf("decode %d %d | %d %d | %s %d\n",kidx, sidx , zip, count,info->lpdb->name , info->lpdb->size );
+
         uint8 *agomem = _sis_incrzip_get_curmem(s_, kidx, info);
-        if (!agomem)
-        {
-            printf("decode fail %d %d | %d %d | %d : %d\n", kidx, sidx , zip, count, nums, bags);
-            return 0;
-        }
+        // if (!agomem || !info)
+        // {
+        //     printf("decode fail %p \n",info );
+        //     // printf("decode fail %d %d | %d %p | %d : %d | %zu, %d\n", kidx, sidx , info->offset, info->lpdb, 0, info->fnums, sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
+        //     // sis_out_binary("newsno", memory, info->lpdb->size);
+        //     exit(0);
+        //     // return 0;
+        // }
         char *memory = (char *)&agomem[1];
         for (int k = 0; k < count; k++)
         {
@@ -559,18 +562,20 @@ int sis_incrzip_uncompress_step(s_sis_incrzip_class *s_, char *in_, size_t ilen_
             {
                 s_sis_dynamic_field *infield = (s_sis_dynamic_field *)sis_map_list_geti(info->lpdb->fields, i);
                 _sis_incrzip_uncompress_one(s_, zip == 0 ? NULL : memory, infield, s_->unzip_catch);
+                // printf("move %s %d %zu, %d\n",infield->fname, infield->len, sis_bits_stream_getbytes(s_->cur_stream), s_->cur_stream->currpos);
             }
             // sis_out_binary("mm", memory, info->lpdb->size);
             // sis_out_binary("ii", in, info->lpdb->size);
-            // if (zip == 1 && agomem[0] == 0)
-            // {
-            //     // 这里要判断 如果 zip = 1 而缓存为 0 就放弃当前数据 这样就可以从任何块拿数据了
-            // }   
-            // else
+            if (zip == 1 && agomem[0] == 0)
+            {
+                LOG(8)("decode no agomem : %s %d.\n", info->lpdb->name , info->lpdb->size);
+                // 这里要判断 如果 zip = 1 而缓存为 0 就放弃当前数据 这样就可以从任何块拿数据了
+            }
+            else
             {
                 s_->cb_uncompress(s_->cb_source, kidx, sidx, s_->unzip_catch, info->lpdb->size);    
                 memmove(memory, s_->unzip_catch, info->lpdb->size);
-                // agomem[0] = 1;
+                agomem[0] = 1;
             }
         }
         nums++;

@@ -25,12 +25,10 @@
 //    确认物理写盘后才返回写入成功 重新加载时从头顺序读 直到最后一个合法的数据块
 //    通常会在一天结束后 转换为磁盘其他数据格式 并清理删除
 #define  SIS_DISK_TYPE_LOG         1 // name.20210121.log
-// 2. 顺序SNO日记文件 方便网络直接传输 采用增量压缩方式存储数据
-//    此类文件只能追加结构化数据 按时序压缩写入 无索引 有文件尾 此类文件只能追加数据
-//    存在的价值主要用于历史全盘数据回放 以避免解压压缩过程提高读取速度 以天为一个文件
-//    文件可以直接提取磁盘数据进行网络传输  支持压缩期间增加key和sdb
-//    文件以16K一个数据块 以1024个数据块为一个数据包 以SIS_DISK_HID_SNO_END 分隔
-//    数据从头开始的加载 直到读取到文件尾 由于可能定位读取数据 文件分块存储
+// 2. 带序号的SNO日记文件  有索引 有文件尾 此类文件只能追加数据
+//    此类文件只能追加结构化数据 分页条件达成时 压缩所有股票数据 然后写入
+//    可以全部或单独获取某个key+sdb得到数据 以天为一个文件
+//    每超过 500兆 分页处理 以SIS_DISK_HID_SNO_END 分隔页面
 #define  SIS_DISK_TYPE_SNO         2  // name/2021/20210121.sno
 ////////////////////////////////////////////////////
 //    同一文件组中 一个key+sdb只有一个数据块，如果有修改后写的会替代新的 不pack新旧数据都在 区别是内存索引会变
@@ -38,33 +36,44 @@
 //    索引文件对每个key需要保存一个 active 字节 0..255 每次写盘时如果没有增加就减 1 以此来判断key的热度  
 //    文件一律分块存储
 ////////////////////////////////////////////////////
-// 统一管理 4 5 6 类型文件 只保留 所有key和sdb最新的结构体 只有两个块 key和sdb  
+// 2. 统一管理 4 5 6 类型文件 只保留 所有key和sdb最新的结构体 只有两个块 key和sdb  
 #define  SIS_DISK_TYPE_SDB         3   // name/name.sdb
-// 3. 标准SDB数据文件 无时序 有索引 有文件尾 name.sdb 会有[所有]的key [最新]的结构体名和结构sdb
+// 4. 标准SDB数据文件 无时序 有索引 有文件尾 name.sdb 会有[所有]的key [最新]的结构体名和结构sdb
 //    但name的索引只有无时序的数据索引 加载时仅仅加载key和sdb 以方便确定数据是否可能存在
 //    根据查询时间再打开对应目录时序文件 才能得到真实的数据节点
 #define  SIS_DISK_TYPE_SDB_NOTS    4   // name/nots/name.sdb name.idx
-// 4. 大尺度SDB数据文件 有时序 有索引 有文件尾 时间字段为日和以上级别的按每10年为一个区间存储数据
+// 5. 大尺度SDB数据文件 有时序 有索引 有文件尾 时间字段为日和以上级别的按每10年为一个区间存储数据
 // 按5000key算 一条100 一年250天 = 1.25G 原始数据 支持增量写入 时间有重叠需要合并后写入 PACK时合并数据
 #define  SIS_DISK_TYPE_SDB_YEAR    5   // name/year/2010-2019.sdb
-// 5. 小尺度SDB数据文件 有时序 有索引 有文件尾 时间字段为日以下的按每天为一个区间存储数据
+// 6. 小尺度SDB数据文件 有时序 有索引 有文件尾 时间字段为日以下的按每天为一个区间存储数据
 // 按5000key算 一条100 一天5000条 = 2.5G 原始数据 通常KEY对应一块数据 PACK时清理过期数据块 保留最后一块数据
-#define  SIS_DISK_TYPE_SDB_DATE    6  // name/date/2021/20210606.sdb
 // 没有对分钟线专门处理 是因为正常分析时通常以天总览 以天为细节分析
+#define  SIS_DISK_TYPE_SDB_DATE    6  // name/date/2021/20210606.sdb
+// 7. 顺序NET日记文件 方便网络直接传输 采用增量压缩方式存储数据
+//    此类文件只能追加结构化数据 按时序压缩写入 有索引 有文件尾 此类文件只能追加数据
+//    存在的价值主要用于历史全盘数据回放 以避免解压压缩过程提高读取速度 以天为一个文件
+//    文件可以直接提取磁盘数据进行网络传输  支持压缩期间增加key和sdb
+//    文件以16K一个数据块 以1024个数据块为一个数据包 以SIS_DISK_HID_NET_NEW 分隔
+//    数据从头开始的加载 直到读取到文件尾 由于可能定位读取数据 文件分块存储
+#define  SIS_DISK_TYPE_NET         7  // name/2021/20210121.net
 ////////////////////////////////////////////////////
 // 1. sno的索引文件 记录key和sdb的信息 以及每个段的 以SIS_DISK_HID_SNO_END 信息 方便按时间点获取数据 时间为毫秒
 //    索引文件由于必须全部加载 不分块存储
 #define  SIS_DISK_TYPE_SNO_IDX    10 
-// 2. ssb的索引文件 记录key和sdb的信息 以及每个key+sdb的位置信息 时间统一为毫秒
+// 2. sdb的索引文件 记录key和sdb的信息 以及每个key+sdb的位置信息 时间统一为毫秒
 //    索引文件由于必须全部加载 不分块存储
 #define  SIS_DISK_TYPE_SDB_IDX    11
+// 3. sno的索引文件 记录key和sdb的信息 以及每个段的 以SIS_DISK_HID_NET_NEW 信息 方便按时间点获取数据 时间为毫秒
+//    索引文件由于必须全部加载 不分块存储
+#define  SIS_DISK_TYPE_NET_IDX    12 
 ////////////////////////////////////////////////////
 
-#define  SIS_DISK_IS_IDX(t) (t == SIS_DISK_TYPE_SNO_IDX||t == SIS_DISK_TYPE_SDB_IDX)
+#define  SIS_DISK_IS_IDX(t) (t == SIS_DISK_TYPE_SNO_IDX||t == SIS_DISK_TYPE_SDB_IDX||t == SIS_DISK_TYPE_NET_IDX)
 #define  SIS_DISK_IS_SDB(t) (t == SIS_DISK_TYPE_SDB_NOTS || t == SIS_DISK_TYPE_SDB_YEAR || t == SIS_DISK_TYPE_SDB_DATE)
 // 文件后缀名
 #define  SIS_DISK_LOG_CHAR      "log"
 #define  SIS_DISK_SNO_CHAR      "sno"
+#define  SIS_DISK_NET_CHAR      "net"
 #define  SIS_DISK_SDB_CHAR      "sdb"
 #define  SIS_DISK_MAP_CHAR      "map"
 #define  SIS_DISK_IDX_CHAR      "idx"
@@ -77,7 +86,8 @@
 // key和sdb的关键字 
 #define  SIS_DISK_SIGN_KEY      "_keys_"   // 用于索引文件的关键字
 #define  SIS_DISK_SIGN_SDB      "_sdbs_"   // 用于索引文件的关键字
-#define  SIS_DISK_SIGN_SNO      "_snos_"   // 用于索引文件的关键字 记录数据块的时间
+#define  SIS_DISK_SIGN_NEW      "_news_"   // 用于索引文件的关键字 记录数据块的开始时间
+#define  SIS_DISK_SIGN_END      "_ends_"   // 用于索引文件的关键字 记录数据块的结束时间
 
 // 文件合法性检查
 #define  SIS_DISK_CMD_NO_IDX             1
@@ -92,11 +102,13 @@
 #define  SIS_DISK_CMD_NO_CREATE       -105
 // 文件长度预定义
 // #define  SIS_DISK_MAXLEN_FILE      0x7F000000  // 数据文件专用  4G - 83M
-#define  SIS_DISK_MAXLEN_FILE      0x7F000000  // 数据文件专用  4G - 83M
+#define  SIS_DISK_MAXLEN_FILE      0xFF000000  // 数据文件专用  4G - 83M
 #define  SIS_DISK_MAXLEN_SDBPAGE   0x00FFFFFF  // 16M SDB文件块大小 超过需分块存储
 
-#define  SIS_DISK_MAXLEN_SNOPART   0x00004000  // 16K 实时压缩包大小
-#define  SIS_DISK_MAXLEN_SNOPAGE   0x00FFFFFF  // 16M 实时文件块大小 不超过连续压缩 超过重新开始压缩
+#define  SIS_DISK_MAXLEN_NETPART   0x00004000  // 16K 每个压缩包大小
+#define  SIS_DISK_MAXLEN_NETPAGE   0x00FFFFFF  // 16M 文件块大小 不超过连续压缩 超过重新开始压缩
+
+#define  SIS_DISK_MAXLEN_SNOPAGE   0x1FFFFFFF  // 536M 文件块大小
 
 #define  SIS_DISK_MAXLEN_IDXPAGE   0x00FFFFFF  // 16M 索引文件块大小 
 
@@ -120,10 +132,10 @@
 #define  SIS_DISK_HID_DICT_SDB    0x3  // size(dsize)+sdb的结构描述 x:{},y:{},z:{} 可以多个sdb 根据顺序得到索引
 // LOG的自由数据块                    
 #define  SIS_DISK_HID_MSG_LOG     0x4  // size(dsize)+datastream 自行决定数据区数据格式
-// SNO的数据块 默认多key多sdb压缩数据   
-#define  SIS_DISK_HID_MSG_SNO     0x5  // size(dsize)+incrzipstream 
-// SNO数据块结束符 收到此消息后 表明数据压缩重新开始
-#define  SIS_DISK_HID_SNO_NEW     0x6  // size(dsize)+最新时间+序号(dsize)
+// SNO的数据块 增加序列号的数据块 默认多个数据
+#define  SIS_DISK_HID_MSG_SNO     0x5  // size(dsize)+kid(dsize)+dbid(dsize)+[sno(dsize)+datastream] 一个key+N条记录 
+// SNO数据块结束符 收到此消息后 表明数据开始新的一页
+#define  SIS_DISK_HID_SNO_END     0x6  // size(dsize)+最新时间+pages(dsize)+序号(dsize)
 ////// 无时序的 ////////
 // 无时序的结构数据 单key单sdb的 通用压缩数据
 // 需要有 SIS_DISK_HID_DICT_KEY 和 SIS_DISK_HID_DICT_SDB
@@ -136,6 +148,10 @@
 // SDB的通用数据块 单key单sdb的增量压缩数据
 // 需要有 SIS_DISK_HID_DICT_KEY 和 SIS_DISK_HID_DICT_SDB
 #define  SIS_DISK_HID_MSG_SDB     0xA  // size(dsize)+kid(dsize)+dbid(dsize)+[incrzipstream] 一个key+N条记录
+// SNO的数据块 默认多key多sdb压缩数据   
+#define  SIS_DISK_HID_MSG_NET     0xB  // size(dsize)+incrzipstream 
+// SNO数据块结束符 收到此消息后 表明数据压缩重新开始
+#define  SIS_DISK_HID_NET_NEW     0xC  // size(dsize)+最新时间+pages(dsize)+序号(dsize)
 
 /////////////////////////////////////////////////////////
 // 读取索引文件必须加载全部数据 *** 特别重要 *** 数据文件才有意义
@@ -145,8 +161,8 @@
 #define  SIS_DISK_HID_INDEX_KEY   0x10 // size(dsize)+
 // 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)]...
 #define  SIS_DISK_HID_INDEX_SDB   0x11 // size(dsize)+
-// SNO的块结束索引 存储当前是第几个块 用于断点续传时使用
-// 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)+snoid(dsize)]
+// 格式为 klen(dsize)+key+dblen(dsize)+dbn+blocks(dsize)
+//         +[active(1)+kdict(dsize)+sdict(dsize)+fidx(dsize)+offset(dsize)+size(dsize)+start(dsize)+page(dsize)]...
 #define  SIS_DISK_HID_INDEX_SNO   0x12 // size(dsize)+
 // 结构化数据索引 style = 0
 // 非结构化数据索引 style != 0
@@ -155,11 +171,19 @@
 // 格式为 klen(dsize)+kname+dblen(dsize)+dname+blocks(dsize)
 //         +[active(1)+kdict(dsize)+style(dsize)+sdict(dsize)+fidx(dsize)+offset(dsize)+size(dsize)+start(dsize)+stop(dsize)]...
 #define  SIS_DISK_HID_INDEX_MSG   0x13 // size(dsize)+
+// NET的块开始块索引 存储当前是第几个块 用于断点续传时使用
+// 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)+openmsec(dsize)]
+#define  SIS_DISK_HID_INDEX_NEW   0x15 // size(dsize)+
+// NET的块开始块索引 存储当前是第几个块 用于断点续传时使用
+// 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)+stopmsec(dsize)]
+#define  SIS_DISK_HID_INDEX_END   0x14 // size(dsize)+
 
 // 文件结束块
 #define  SIS_DISK_HID_TAIL        0x1F  // 结束块标记
 
 // 定义压缩方法
+// 由于 incrzip 的解压速度稍逊于 snappy 所以通用格式采用 snappy 压缩 
+// incrzip 仅仅用于 SIS_DISK_TYPE_NET 类型文件
 #define  SIS_DISK_ZIP_NOZIP       0
 #define  SIS_DISK_ZIP_SNAPPY      1
 #define  SIS_DISK_ZIP_INCRZIP     2
@@ -177,6 +201,7 @@
 #define SIS_SDB_STYLE_NON      1  // 无时序结构数据
 #define SIS_SDB_STYLE_ONE      2  // 无时序单一数据
 #define SIS_SDB_STYLE_MUL      3  // 无时序列表数据
+#define SIS_SDB_STYLE_SNO      4  // 有时序结构数据 
 
 // 位域定义长度必须和类型匹配 否则长度不对
 typedef struct s_sis_disk_main_head {
@@ -187,7 +212,7 @@ typedef struct s_sis_disk_main_head {
     uint16   style         :   5; // 文件类型 最多 32 种类型
     uint16   iszip         :   2; // 是否压缩 0 其后的数据都不压缩 1 按文件类型不同用不同的压缩方式
     uint16   index         :   1; // [数据文件专用] 1 有索引 0 没有索引文件 
-    uint16   nouse         :   3; // 开关类保留 (9)
+    uint16   nouse         :   3; // 开关类保留 (3)
     uint16   workers;             // [索引文件专用] 对应work文件数量
     uint8    switchs[4];          // 开关类保留 (9)
 }s_sis_disk_main_head;            // 16个字节头 128
@@ -198,7 +223,7 @@ typedef struct s_sis_disk_main_tail {
     uint32   fcount;       // 当前关联文件总数 
     uint32   invalid;      // 无效块数 最小的块一定大于1个字节 根据该值判定是否需要pack
     uint32   validly;      // 有效块数 
-    uint8    other[3];     // 备用 
+    uint8    other[19];    // 备用 多留16字节备用
     char     crc[16];      // 数据检验 索引应该和工作crc一致 创建时生成 后面不变 比较IDX和SDB可以大致知道文件是否匹配
 }s_sis_disk_main_tail;     // 32个字节尾
 
@@ -261,19 +286,19 @@ typedef struct s_sis_disk_files {
 typedef struct s_sis_disk_idx_unit
 {
     uint8             active; // 活跃记数 据此可判断是否需要加载到内存
-    uint8             kdict;  // key对应的索引 sdict>0时无用 仅用于单key无sdb的索引定义
+    uint8             ktype;  // key对应异构类型时的 数据类型 0 标准结构体 1 one 2 mul
     uint8             sdict;  // 结构字典对应的索引 - 默认为一个文件同一个键值不超过255次改变 0 表示没有sdb
-    uint8             style;  // 异构类型时的数据类型 0 标准结构体 1 one 2 mul
     uint16            fidx;   // 在哪个文件中 文件序号 文件名.1
     uint64            offset; // 文件偏移位置
     uint64            size;   // 数据长度
     uint64            start;  // 开始时间 不同时间尺度 全部转换为毫秒
     uint64            stop;   // 结束时间 检索时也全部转换为毫秒 统一单位
+    uint16            ipage;  // sno专用 页面索引
 } s_sis_disk_idx_unit;
 
 // 索引依赖于字典表 索引文件总是会把字典表写在前面 读取字典后 后续数据才能正确获取和读取 
 typedef struct s_sis_disk_idx {
-    // uint32              cursor;    // 当前读到第几条记录
+    uint32              cursor;    // 当前读到第几条记录
     s_sis_object       *kname;     // 可能多次引用 - 指向dict表的name
     s_sis_object       *sname;     // 可能多次引用 - 指向dict表的name
     s_sis_struct_list  *idxs;      // 索引的列表 s_sis_disk_idx_unit
@@ -307,6 +332,7 @@ typedef struct s_sis_disk_rcatch {
     s_sis_disk_head              head;     // 块头信息
     int                          kidx;     // key的索引信息
     int                          sidx;     // sdb的索引信息
+    int                          series;   // sno的索引信息
     s_sis_memory                *memory;   // 数据缓存指针
     s_sis_pointer_list          *mlist;    // 异构类型时的数据链表
 }s_sis_disk_rcatch;
@@ -342,7 +368,7 @@ typedef struct s_sis_disk_ctrl {
     int                  stop_date;   // 数据时间 - 日期
     int                  status;
 
-    ////// sno sdb 都会用的到 ////////
+    ////// sno sdb net 都会用的到 ////////
     bool                 isstop;       // 是否中断读取 读文件期间是否停止 如果为 1 立即退出
     // 读时为本地字典 写时为新旧合计字典
 	s_sis_map_list      *map_kdicts;   // s_sis_disk_kdict
@@ -362,10 +388,19 @@ typedef struct s_sis_disk_ctrl {
     ///// sdb 专用工具 //////
     s_sis_incrzip_class *sdb_incrzip;   // 需要初始化
     ///// sno 专用工具 //////
-    int                  sno_count;   
+    int                  sno_pages;     // 最大的分页数
+    int                  sno_series;    // SIS_DISK_HID_MSG_SNO 当前最新计数
     msec_t               sno_msec;      // 最后一条有时间序列记录的时间  
-    size_t               sno_zipsize;   // sno 当前压缩的尺寸
-    s_sis_incrzip_class *sno_incrzip;   // 增量压缩组件 用后即释放
+    int64                sno_count;     // 记录数
+    size_t               sno_size;      // SIS_DISK_HID_MSG_SNO 当前累计数据量
+    s_sis_map_list      *sno_wcatch;    // 从实时文件转盘后文件 临时存放数据 s_sis_disk_wcatch
+    s_sis_subdb_cxt     *sno_subcxt;    // 分块读取时的缓存 根据sno进行排序
+    ///// net 专用工具 //////
+    int                  net_pages;     // 块数
+    msec_t               net_msec;      // 第一条有时间序列记录的时间  
+    int64                net_count;     // 记录数
+    size_t               net_zipsize;   // net 当前压缩的尺寸
+    s_sis_incrzip_class *net_incrzip;   // 增量压缩组件 用后即释放
 } s_sis_disk_ctrl;
 
 #pragma pack(pop)
@@ -499,12 +534,19 @@ void sis_disk_ctrl_write_kdict(s_sis_disk_ctrl *cls_);
 // 写入新增字典信息到磁盘 写后清空新增列
 void sis_disk_ctrl_write_sdict(s_sis_disk_ctrl *cls_);
 
+// 读取keys信息
+s_sis_sds sis_disk_ctrl_get_keys_sds(s_sis_disk_ctrl *cls_);
+// 读取sdbs信息
+s_sis_sds sis_disk_ctrl_get_sdbs_sds(s_sis_disk_ctrl *cls_);
+
 // 调用以下函数要检查是否为新键 时序是否一致 结构是否有变化
 s_sis_disk_kdict *sis_disk_ctrl_set_kdict(s_sis_disk_ctrl *cls_, const char *kname_);
 s_sis_disk_sdict *sis_disk_ctrl_set_sdict(s_sis_disk_ctrl *cls_, s_sis_dynamic_db *sdb_);
 
+// 解压数据块
+size_t sis_disk_ctrl_unzip(s_sis_disk_ctrl *cls_, s_sis_disk_head *head_, char *imem_, size_t isize_, s_sis_memory *out_);
 // 解压work文件读取的内容
-size_t sis_disk_ctrl_unzip_work(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_);
+size_t sis_disk_ctrl_unzip_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_);
 
 // 读文件操作
 int sis_disk_ctrl_read_start(s_sis_disk_ctrl *cls_);
@@ -531,22 +573,22 @@ size_t sis_disk_io_write_log(s_sis_disk_ctrl *cls_, void *in_, size_t ilen_);
 int sis_disk_io_sub_log(s_sis_disk_ctrl *cls_, void *cb_);
 
 ///////////////////////////
-//  sis_disk.io.sno.c
+//  sis_disk.io.net.c
 ///////////////////////////
 // 读取时 可由外部通过 s_sis_disk_reader 直接访问数据
 ////////////////////////////////////////////
 // write
-size_t sis_disk_io_write_sno_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_);
+size_t sis_disk_io_write_net_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_);
 
-int sis_disk_io_write_sno_start(s_sis_disk_ctrl *cls_);
-int sis_disk_io_write_sno(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
-int sis_disk_io_write_sno_stop(s_sis_disk_ctrl *cls_);
-size_t sis_disk_io_write_sno_widx(s_sis_disk_ctrl *cls_);
+int sis_disk_io_write_net_start(s_sis_disk_ctrl *cls_);
+int sis_disk_io_write_net(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
+int sis_disk_io_write_net_stop(s_sis_disk_ctrl *cls_);
+size_t sis_disk_io_write_net_widx(s_sis_disk_ctrl *cls_);
 // read
-int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_,
+int sis_disk_io_sub_net(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_,
                     s_sis_msec_pair *search_, void *cb_);
 // 读所有索引信息
-int sis_disk_io_read_sno_widx(s_sis_disk_ctrl *cls_);
+int sis_disk_io_read_net_widx(s_sis_disk_ctrl *cls_);
 
 ///////////////////////////
 //  sis_disk.io.sdb.c
@@ -554,6 +596,7 @@ int sis_disk_io_read_sno_widx(s_sis_disk_ctrl *cls_);
 // 读取时 不能被外部直接访问 必须由高层获取数据处理后返回
 ////////////////////////////////////////////
 // write
+size_t sis_disk_io_write_noidx(s_sis_disk_files *files_, s_sis_disk_wcatch *wcatch_);
 size_t sis_disk_io_write_sdb_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_);
 
 int sis_disk_io_write_one(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, void *in_, size_t ilen_);
@@ -561,7 +604,11 @@ int sis_disk_io_write_mul(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
 
 int sis_disk_io_write_non(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
 int sis_disk_io_write_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
+
 size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_);
+
+void sis_disk_io_write_widx_tail(s_sis_disk_ctrl *cls_);
+
 // read
 // 只支持获取一个键值的数据
 int sis_disk_io_read_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_);
@@ -571,6 +618,26 @@ int sis_disk_io_sub_sdb(s_sis_disk_ctrl *cls_, void *cb_);
 int sis_disk_io_read_sdb_widx(s_sis_disk_ctrl *cls_);
 // 读取map文件信息
 int sis_disk_io_read_sdb_mks(s_sis_disk_ctrl *cls_);
+
+///////////////////////////
+//  sis_disk.io.sno.c
+///////////////////////////
+// 读取时 可由外部通过 s_sis_disk_reader 直接访问数据
+////////////////////////////////////////////
+// write
+#define sis_disk_io_write_sno_work sis_disk_io_write_sdb_work
+
+int sis_disk_io_write_sno_start(s_sis_disk_ctrl *cls_);
+int sis_disk_io_write_sno(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
+int sis_disk_io_write_sno_stop(s_sis_disk_ctrl *cls_);
+size_t sis_disk_io_write_sno_widx(s_sis_disk_ctrl *cls_);
+// read
+// 只支持获取一个键值的数据
+#define sis_disk_io_read_sno sis_disk_io_read_sdb
+// 订阅文件 中符合条件的数据 返回真实数据 只订阅SNO单文件时有效
+int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_, s_sis_msec_pair *search_, void *cb_);
+// 读所有索引信息
+int sis_disk_io_read_sno_widx(s_sis_disk_ctrl *cls_);
 
 #endif
 

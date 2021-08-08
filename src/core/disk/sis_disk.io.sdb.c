@@ -3,29 +3,9 @@
 
 // 这里是关于 sdb 时序结构化数据 的读写函数
 // 这里的函数只管读写 默认在上层已经分配好了数据归属
-
-size_t sis_disk_io_write_sdb_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_)
+size_t sis_disk_io_write_noidx(s_sis_disk_files *files_, s_sis_disk_wcatch *wcatch_)
 { 
-    // 由于 SIS_DISK_ZIP_INCRZIP 的解压速度稍逊于snappy所以通用格式采用 snappy 压缩 
-    // 只有sno文件使用 增量压缩存储
-    // if (wcatch_->head.zip == SIS_DISK_ZIP_INCRZIP)
-    // {
-    //     s_sis_memory *zipmem = sis_memory_create();
-    //     s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(cls_->map_sdicts, SIS_OBJ_SDS(wcatch_->sname));
-    //     s_sis_dynamic_db *db = sis_disk_sdict_last(sdict);
-    //     sis_incrzip_class_clear(cls_->sdb_incrzip);
-    //     sis_incrzip_set_sdb(cls_->sdb_incrzip, db);
-    //     if(sis_incrzip_compress(cls_->sdb_incrzip, sis_memory(wcatch_->memory), sis_memory_get_size(wcatch_->memory), zipmem) > 0)
-    //     {
-    //         sis_memory_swap(wcatch_->memory, zipmem);
-    //     }
-    //     else
-    //     {
-    //         wcatch_->head.zip = SIS_DISK_ZIP_NOZIP;
-    //     }
-    //     sis_memory_destroy(zipmem);        
-    // }
-    // else 
+    // printf("%d %zu -> ", wcatch_->head.zip, sis_memory_get_size(wcatch_->memory));
     if (wcatch_->head.zip == SIS_DISK_ZIP_SNAPPY)
     {
         s_sis_memory *zipmem = sis_memory_create();
@@ -39,33 +19,20 @@ size_t sis_disk_io_write_sdb_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcat
         }
         sis_memory_destroy(zipmem);        
     }
+    // printf("%d %zu\n", wcatch_->head.zip, sis_memory_get_size(wcatch_->memory));
     wcatch_->head.fin = 1;
-    size_t size = sis_disk_files_write_saveidx(cls_->work_fps, wcatch_); 
+    size_t size = sis_disk_files_write_saveidx(files_, wcatch_); 
+    return size;
+}
+size_t sis_disk_io_write_sdb_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_)
+{ 
+    size_t size = sis_disk_io_write_noidx(cls_->work_fps, wcatch_);
     if (cls_->work_fps->main_head.index)
     {
         s_sis_disk_idx *node = sis_disk_idx_get(cls_->map_idxs, wcatch_->kname, wcatch_->sname);
         wcatch_->winfo.active++;
         sis_disk_idx_set_unit(node, &wcatch_->winfo);
     }
-    return size;
-}
-size_t _disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_)
-{ 
-    if (wcatch_->head.zip == SIS_DISK_ZIP_SNAPPY)
-    {
-        s_sis_memory *zipmem = sis_memory_create();
-        if(sis_snappy_compress(sis_memory(wcatch_->memory), sis_memory_get_size(wcatch_->memory), zipmem))
-        {
-            sis_memory_swap(wcatch_->memory, zipmem);
-        }
-        else
-        {
-            wcatch_->head.zip = SIS_DISK_ZIP_NOZIP;
-        }
-        sis_memory_destroy(zipmem);        
-    }
-    wcatch_->head.fin = 1;
-    size_t size = sis_disk_files_write_saveidx(cls_->widx_fps, wcatch_); 
     return size;
 }
 
@@ -112,7 +79,7 @@ int sis_disk_io_write_non(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
     sis_memory_cat_ssize(wcatch->memory, sdict_->index);
     sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
 
-    wcatch->winfo.style = SIS_SDB_STYLE_NON;
+    wcatch->winfo.ktype = SIS_SDB_STYLE_NON;
     wcatch->head.hid = SIS_DISK_HID_MSG_NON;
     wcatch->head.zip = sis_disk_ctrl_work_zipmode(cls_);
     // size_t size = 
@@ -131,7 +98,7 @@ int sis_disk_io_write_one(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, void 
     sis_memory_cat_ssize(wcatch->memory, ilen_);
     sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
 
-    wcatch->winfo.style = SIS_SDB_STYLE_ONE;
+    wcatch->winfo.ktype = SIS_SDB_STYLE_ONE;
     wcatch->head.hid = SIS_DISK_HID_MSG_ONE;
     wcatch->head.zip = sis_disk_ctrl_work_zipmode(cls_);
     // size_t size = 
@@ -154,7 +121,7 @@ int sis_disk_io_write_mul(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
         sis_memory_cat_ssize(wcatch->memory, sis_sdslen(in));
         sis_memory_cat(wcatch->memory, (char *)in, sis_sdslen(in));
     }
-    wcatch->winfo.style = SIS_SDB_STYLE_MUL;
+    wcatch->winfo.ktype = SIS_SDB_STYLE_MUL;
     wcatch->head.hid = SIS_DISK_HID_MSG_MUL;
     wcatch->head.zip = sis_disk_ctrl_work_zipmode(cls_);
     // size_t size = 
@@ -181,7 +148,7 @@ int sis_disk_io_write_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
     sis_memory_cat_ssize(wcatch->memory, sdict_->index);
     sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
 
-    wcatch->winfo.style = SIS_SDB_STYLE_SDB;
+    wcatch->winfo.ktype = SIS_SDB_STYLE_SDB;
     wcatch->head.hid = SIS_DISK_HID_MSG_SDB;
     wcatch->head.zip = sis_disk_ctrl_work_zipmode(cls_);
     // size_t size = 
@@ -190,6 +157,12 @@ int sis_disk_io_write_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
 
     return 0;
 }
+void sis_disk_io_write_widx_tail(s_sis_disk_ctrl *cls_)
+{
+    // 同步尾信息
+    memmove(&cls_->widx_fps->main_tail, &cls_->work_fps->main_tail, sizeof(s_sis_disk_main_tail));
+}
+
 size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_)
 {
     s_sis_disk_wcatch *wcatch = cls_->wcatch;
@@ -212,7 +185,7 @@ size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_)
             sis_memory_cat_ssize(memory, unit->size);
         }
         wcatch->head.hid = SIS_DISK_HID_INDEX_KEY;
-        size += _disk_io_write_sdb_widx(cls_, wcatch);
+        size += sis_disk_io_write_noidx(cls_->widx_fps, wcatch);
     }
     sis_memory_clear(memory);
     s_sis_disk_idx *sdbnode = (s_sis_disk_idx *)sis_map_list_get(cls_->map_idxs, SIS_DISK_SIGN_SDB);
@@ -227,7 +200,7 @@ size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_)
             sis_memory_cat_ssize(memory, unit->size);
         }
         wcatch->head.hid = SIS_DISK_HID_INDEX_SDB;
-        size += _disk_io_write_sdb_widx(cls_, wcatch);
+        size += sis_disk_io_write_noidx(cls_->widx_fps, wcatch);
     }
     sis_memory_clear(memory);
     wcatch->head.hid = SIS_DISK_HID_INDEX_MSG;
@@ -259,8 +232,7 @@ size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_)
         {
             s_sis_disk_idx_unit *unit = (s_sis_disk_idx_unit *)sis_struct_list_get(node->idxs, k);
             sis_memory_cat_byte(memory, unit->active, 1);
-            sis_memory_cat_byte(memory, unit->kdict, 1);
-            sis_memory_cat_byte(memory, unit->style, 1);
+            sis_memory_cat_byte(memory, unit->ktype, 1);
             sis_memory_cat_byte(memory, unit->sdict, 1);
             sis_memory_cat_ssize(memory, unit->fidx);
             sis_memory_cat_ssize(memory, unit->offset);
@@ -270,15 +242,16 @@ size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_)
         }
         if (sis_memory_get_size(memory) > SIS_DISK_MAXLEN_IDXPAGE)
         {
-            size += _disk_io_write_sdb_widx(cls_, wcatch);
+            size += sis_disk_io_write_noidx(cls_->widx_fps, wcatch);
             sis_memory_clear(memory);
         }
     }   
     if (sis_memory_get_size(memory) > 0)
     {
-        size += _disk_io_write_sdb_widx(cls_, wcatch);
+        size += sis_disk_io_write_noidx(cls_->widx_fps, wcatch);
         sis_memory_clear(memory);
     }
+    sis_disk_io_write_widx_tail(cls_);
     sis_disk_files_write_sync(cls_->widx_fps);
     LOG(5)("write_index end %zu \n", size);
     return size;
@@ -287,7 +260,7 @@ size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_)
 ////////      read      ////////
 ////////////////////////////////
 
-// 不能做IO直通车 只有SNO和LOG才能做直通车
+// 不能做IO直通车 只有LOG才能做直通车
 // 返回原始数据 
 int sis_disk_io_read_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
 {
@@ -295,7 +268,7 @@ int sis_disk_io_read_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     {
         return -1;
     }     
-    if (sis_disk_ctrl_unzip_work(cls_, rcatch_) == 0)
+    if (sis_disk_ctrl_unzip_sdb(cls_, rcatch_) == 0)
     {
         return -2;
     }
@@ -313,6 +286,11 @@ int sis_disk_io_read_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
         rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
         rcatch_->sidx = sis_memory_get_ssize(rcatch_->memory);
         break;
+    case SIS_DISK_HID_MSG_SNO:
+        rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
+        rcatch_->sidx = sis_memory_get_ssize(rcatch_->memory);
+        rcatch_->series = sis_memory_get_ssize(rcatch_->memory);
+        break;
     }
     return 0;
 }
@@ -325,6 +303,7 @@ int cb_sis_disk_io_read_sdb(void *source_, s_sis_disk_head *head_, char *imem_, 
 {
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source_;
     s_sis_disk_reader_cb *callback = ctrl->rcatch->callback; 
+
     // 根据hid不同写入不同的数据到obj
     switch (head_->hid)
     {
@@ -459,7 +438,7 @@ int cb_sis_disk_io_read_sdb_widx(void *source_, s_sis_disk_head *head_, char *im
                     sis_sprintf(name, 255, "%s", kname);
                 }
                 sis_sdsfree(kname);
-                printf("%d %s %s\n", cls_->style, cls_->work_fps->cur_name, name);
+                // printf("%d %s %s\n", cls_->style, cls_->work_fps->cur_name, name);
 
                 s_sis_disk_idx *node = sis_disk_idx_create(kdict->name, sdict ? sdict->name : NULL);
                 int blocks = sis_memory_get_ssize(memory);
@@ -468,14 +447,14 @@ int cb_sis_disk_io_read_sdb_widx(void *source_, s_sis_disk_head *head_, char *im
                     s_sis_disk_idx_unit unit;
                     memset(&unit, 0, sizeof(s_sis_disk_idx_unit));
                     unit.active = sis_memory_get_byte(memory, 1);
-                    unit.kdict = sis_memory_get_byte(memory, 1);
-                    unit.style = sis_memory_get_byte(memory, 1);
+                    unit.ktype = sis_memory_get_byte(memory, 1);
                     unit.sdict = sis_memory_get_byte(memory, 1);
                     unit.fidx = sis_memory_get_ssize(memory);
                     unit.offset = sis_memory_get_ssize(memory);
                     unit.size = sis_memory_get_ssize(memory);
                     unit.start = sis_memory_get_ssize(memory);
-                    unit.stop = unit.start + sis_memory_get_ssize(memory);    
+                    unit.stop = unit.start + sis_memory_get_ssize(memory);   
+                    unit.ipage = 0; 
                     sis_struct_list_push(node->idxs, &unit);
                     // printf("::: %d %d %s %s\n", i, unit.style, (char *)node->kname->ptr, (char *)node->sname->ptr);
 
@@ -484,7 +463,7 @@ int cb_sis_disk_io_read_sdb_widx(void *source_, s_sis_disk_head *head_, char *im
             }        
             break;    
         default:
-            LOG(5)("other hid : %d at idx.\n", head_->hid);
+            LOG(5)("other hid : %d at sdbidx.\n", head_->hid);
             break;
         }
         count++;

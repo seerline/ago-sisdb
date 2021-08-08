@@ -496,6 +496,8 @@ void sis_dynamic_field_destroy(void *db_);
 int sis_dynamic_field_scale(int style_);
 
 s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
+// 一种无结构的动态表
+s_sis_dynamic_db *sis_dynamic_db_create_none(const char *name_, size_t size_);
 void sis_dynamic_db_destroy(void *db_);
 
 void sis_dynamic_db_incr(s_sis_dynamic_db *db_);

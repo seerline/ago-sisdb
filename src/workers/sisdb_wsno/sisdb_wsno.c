@@ -4,7 +4,7 @@
 #include <sis_modules.h>
 #include <sisdb_wsno.h>
 
-// 从行情流文件中获取数据源
+// 从行情流文件中获取数据源 需要支持直接写压缩数据然后解压写入
 static s_sis_method _sisdb_wsno_methods[] = {
   {"getcb",  cmd_sisdb_wsno_getcb, 0, NULL},
 };

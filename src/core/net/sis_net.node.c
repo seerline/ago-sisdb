@@ -219,7 +219,7 @@ int _net_list_set_grow(s_sis_net_list *list_, int count_)
 	return list_->max_count;
 }
 
-void _index_list_free(s_sis_net_list *list_, int index_)
+void _net_list_free(s_sis_net_list *list_, int index_)
 {
 	char **ptr = (char **)list_->buffer;
 	if (list_->vfree && ptr[index_])
@@ -244,7 +244,7 @@ int sis_net_list_new(s_sis_net_list *list_, void *in_)
 		if (list_->wait_sec > 0 && list_->used[i] == SIS_NET_CLOSE && 
 			(now_sec - list_->stop_sec[i]) > list_->wait_sec)
 		{
-			_index_list_free(list_, i);
+			_net_list_free(list_, i);
 			list_->used[i] = SIS_NET_NOUSE;
 			index = i;
 			break;
@@ -333,7 +333,7 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_)
 	}
 	else
 	{
-		_index_list_free(list_, index_);
+		_net_list_free(list_, index_);
 		list_->used[index_] = SIS_NET_NOUSE;
 		list_->cur_count--;
 	}

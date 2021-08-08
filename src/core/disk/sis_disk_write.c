@@ -51,6 +51,9 @@ int sis_disk_writer_open(s_sis_disk_writer *writer_, int idate_)
     }
     switch (writer_->style)
     {
+    case SIS_DISK_TYPE_NET:
+        writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_NET, writer_->fpath, writer_->fname, idate_);
+        break;   
     case SIS_DISK_TYPE_SNO:
         writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SNO, writer_->fpath, writer_->fname, idate_);
         break;   
@@ -77,7 +80,7 @@ void sis_disk_writer_close(s_sis_disk_writer *writer_)
     {
         if (writer_->style == SIS_DISK_TYPE_SDB)
         {
-            printf("%d %d\n", writer_->munit->new_kinfos->count, writer_->munit->new_sinfos->count);
+            // printf("%d %d\n", writer_->munit->new_kinfos->count, writer_->munit->new_sinfos->count);
             sis_disk_ctrl_write_kdict(writer_->munit);
             sis_disk_ctrl_write_sdict(writer_->munit);
         }
@@ -136,7 +139,7 @@ void sis_disk_writer_sdict_changed(s_sis_disk_writer *writer_, s_sis_dynamic_db 
     }
 }
 
-// 写入键值信息 - 可以多次写 新增的添加到末尾 仅支持 SNO SDB 
+// 写入键值信息 - 可以多次写 新增的添加到末尾 仅支持 SNO SDB NET
 // 打开一个文件后 强制同步一下当前的KS,然后每次更新KS都同步
 // 以保证后续写入数据时MAP是最新的
 int sis_disk_writer_set_kdict(s_sis_disk_writer *writer_, const char *in_, size_t ilen_)
@@ -157,7 +160,7 @@ int sis_disk_writer_set_kdict(s_sis_disk_writer *writer_, const char *in_, size_
     sis_string_list_destroy(klist);
     return  sis_map_list_getsize(writer_->munit->map_kdicts);  
 }    
-// 设置表结构体 - 根据不同的时间尺度设置不同的标记 仅支持 SNO SDB
+// 设置表结构体 - 根据不同的时间尺度设置不同的标记 仅支持 SNO SDB NET
 // 只传递增量和变动的DB
 int sis_disk_writer_set_sdict(s_sis_disk_writer *writer_, const char *in_, size_t ilen_)
 {
@@ -194,15 +197,20 @@ size_t sis_disk_writer_log(s_sis_disk_writer *writer_, void *in_, size_t ilen_)
     return  sis_disk_io_write_log(writer_->munit, in_, ilen_);
 }
 //////////////////////////////////////////
-//   sno 
+//   net sno
 //////////////////////////////////////////
 
-// 开始写入数据 后面的数据只有符合条件才会写盘 仅支持 SNO SDB
+// 开始写入数据 后面的数据只有符合条件才会写盘 仅支持 SNO SDB NET
 int sis_disk_writer_start(s_sis_disk_writer *writer_)
 {
     int o = -1;
     switch (writer_->style)
     {
+    case SIS_DISK_TYPE_NET:
+        sis_disk_ctrl_write_kdict(writer_->munit);
+        sis_disk_ctrl_write_sdict(writer_->munit);
+        o = sis_disk_io_write_net_start(writer_->munit);
+        break;
     case SIS_DISK_TYPE_SNO:
         sis_disk_ctrl_write_kdict(writer_->munit);
         sis_disk_ctrl_write_sdict(writer_->munit);
@@ -215,11 +223,14 @@ int sis_disk_writer_start(s_sis_disk_writer *writer_)
     }
     return o;
 }
-// 数据传入结束 剩余全部写盘 仅支持 SNO SDB
+// 数据传入结束 剩余全部写盘 仅支持 SNO SDB NET
 void sis_disk_writer_stop(s_sis_disk_writer *writer_)
 {
     switch (writer_->style)
     {
+    case SIS_DISK_TYPE_NET:
+        sis_disk_io_write_net_stop(writer_->munit);
+        break;
     case SIS_DISK_TYPE_SNO:
         sis_disk_io_write_sno_stop(writer_->munit);
         break;
@@ -230,10 +241,10 @@ void sis_disk_writer_stop(s_sis_disk_writer *writer_)
     } 
 }
 // int __tempnums = 0;
-// 写入数据 仅支持 SNO 
-int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
+// 写入数据 仅支持 NET 
+int sis_disk_writer_net(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
 {
-    if (writer_->style != SIS_DISK_TYPE_SNO) 
+    if (writer_->style != SIS_DISK_TYPE_NET) 
     {
         return -1;
     }  
@@ -254,9 +265,29 @@ int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const ch
         kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
         sis_disk_ctrl_write_kdict(writer_->munit);
     }
-    return sis_disk_io_write_sno(writer_->munit, kdict, sdict, in_, ilen_);
+    return sis_disk_io_write_net(writer_->munit, kdict, sdict, in_, ilen_);
 }
 
+int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SNO) 
+    {
+        return -1;
+    }  
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(writer_->munit->map_sdicts, sname_);
+    if (!sdict)
+    {
+        return 0;
+    }
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        LOG(8)("new key: %s\n", kname_);
+        kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
+        sis_disk_ctrl_write_kdict(writer_->munit);
+    }
+    return sis_disk_io_write_sno(writer_->munit, kdict, sdict, in_, ilen_);
+}
 //////////////////////////////////////////
 //   sdb 
 //////////////////////////////////////////
@@ -576,13 +607,9 @@ int sis_disk_control_move_sdbs(const char *path_, const char *name_)
     // -- 不直接删除 避免误操作 数据库文件存储已经做到所有不同组文件分离 -- //
     return 0;
 }
-// 这里函数只能删除 SNO 和 LOG
+// 这里函数只能删除 SNO 和 LOG NET
 int sis_disk_control_move(const char *path_, const char *name_, int style_, int idate_)
 {
-    // if (style_ != SIS_DISK_TYPE_SNO && style_ != SIS_DISK_TYPE_LOG)
-    // {
-    //     return 0;
-    // }
     s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, path_, name_, idate_);
     sis_disk_ctrl_delete(munit);
     sis_disk_ctrl_destroy(munit);
@@ -595,6 +622,19 @@ int sis_disk_log_exist(const char *path_, const char *name_, int idate_)
     s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_LOG, path_, name_, idate_);
     int o = sis_disk_ctrl_read_start(munit);
     if (o == SIS_DISK_CMD_NO_IDX)
+    {
+        isok = 1;
+    }
+    sis_disk_ctrl_destroy(munit);
+    return isok;
+}
+
+int sis_disk_net_exist(const char *path_, const char *name_, int idate_)
+{
+    int isok = 0;
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_NET, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    if (o == SIS_DISK_CMD_OK)
     {
         isok = 1;
     }
