@@ -334,14 +334,14 @@ void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 		sis_strcpy(out_, olen_, in_);
 	}
 }
-int sis_str_substr_nums(const char *s, char c)
+int sis_str_substr_nums(const char *s, size_t ilen_, char c)
 {
 	if (!s)
 	{
 		return 0;
 	}
 	int i, len, count;
-	len = (int)strlen(s);
+	len = (int)ilen_;
 	for (i = 0, count = 0; i < len; i++)
 	{
 		if (s[i] == c)
@@ -655,6 +655,54 @@ int64 sis_str_read_long(char *s)
 
     return mult*v;
 }
+
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH --> .SSE ==> 600600.SSE
+// 600600.SSE .SSE --> SH ==> SH600600
+void sis_str_swap_ht(const char *v1_, int v1len_, const char *v1sign_, int v1slen_,
+	char *v2_, int v2len_, const char *v2sign_, int v2slen_)
+{
+    v2_[0] = 0;
+	char *ptr = strstr(v1_, v1sign_);
+	if (!ptr || !v2_ || v2len_ < v1len_ - v1slen_ + v2slen_)
+	{
+		return ;
+	}
+	if (ptr == v1_)
+	{
+		// 原始标记在头 -- 换到尾部
+		int size = v1len_ - v1slen_;
+		memmove(v2_, ptr + v1slen_, size);
+		memmove(v2_ + size, v2sign_, v2slen_);
+		v2_[size + v2slen_] = 0;
+	}
+	else
+	{
+		// 原始标记在尾部 -- 换到头部
+		int size = ptr - v1_;
+		memmove(v2_, v2sign_, v2slen_);
+		memmove(v2_ + v2slen_,  v1_, size);
+		v2_[size + v2slen_] = 0;
+	}
+}
+
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH SZ--> .SSE .SZE ==> 600600.SSE
+// 600600.SSE .SSE .SZE --> SH SZ ==> SH600600
+void sis_str_swap_ht2(const char *v1_, int v1len_, const char *v1sign1_, const char *v1sign2_,
+	char *v2_, int v2len_, const char *v2sign1_, const char *v2sign2_)
+{
+	v2_[0] = 0;
+	if (strstr(v1_, v1sign1_))
+	{
+		sis_str_swap_ht(v1_, v1len_, v1sign1_, sis_strlen(v1sign1_), v2_, v2len_, v2sign1_, sis_strlen(v2sign1_));
+	}
+	if (strstr(v1_, v1sign2_))
+	{
+		sis_str_swap_ht(v1_, v1len_, v1sign2_, sis_strlen(v1sign2_), v2_, v2len_, v2sign2_, sis_strlen(v2sign2_));
+	}
+}
+
 #if 0
 #include <sis_time.h>
 

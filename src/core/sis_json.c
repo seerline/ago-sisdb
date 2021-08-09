@@ -205,9 +205,23 @@ static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node
 	}
 	return ptr;
 }
-static const char *_sis_parse_bool(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *str_)
+// static const char *_sis_parse_bool(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *str_)
+// {
+// 	node_->type = SIS_JSON_BOOL;
+// 	const char *ptr = str_;
+
+// 	int len = 0;
+// 	while (*ptr && *ptr != ','&& *ptr != ' ')
+// 	{
+// 		ptr++;
+// 		len++;
+// 	}
+// 	node_->value = sis_strdup(str_, len);
+// 	return ptr;
+// }
+static const char *_sis_parse_info(s_sis_json_handle *handle_, int type, s_sis_json_node *node_, const char *str_)
 {
-	node_->type = SIS_JSON_BOOL;
+	node_->type = type;
 	const char *ptr = str_;
 
 	int len = 0;
@@ -347,10 +361,6 @@ static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node 
 		handle_->error = value_;
 		return 0;
 	} /* Fail on null. */
-	if (*value_ == 'f'||*value_ == 't')
-	{
-		return _sis_parse_bool(handle_, node_, value_);
-	}
 	if (*value_ == '\"')
 	{
 		return _sis_parse_string(handle_, node_, value_);
@@ -366,6 +376,14 @@ static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node 
 	if (*value_ == '{')
 	{
 		return _sis_parse_object(handle_, node_, value_);
+	}
+	if (!sis_strncasecmp(value_, "false", 5)||!sis_strncasecmp(value_, "true", 4))
+	{
+		return _sis_parse_info(handle_, SIS_JSON_BOOL, node_, value_);
+	}
+	if (!sis_strncasecmp(value_, "NaN", 3))
+	{
+		return _sis_parse_info(handle_, SIS_JSON_DOUBLE, node_, value_);
 	}
 	return 0;
 }
@@ -1396,7 +1414,7 @@ int64 sis_json_get_int(s_sis_json_node *root_, const char *key_, int64 defaultva
 double sis_json_get_double(s_sis_json_node *root_, const char *key_, double defaultvalue_)
 {
 	s_sis_json_node *c = sis_json_find_node(root_, key_);
-	if (c)
+	if (c && sis_strcasecmp(c->value, "NaN"))
 	{
 		return atof(c->value);
 	}
