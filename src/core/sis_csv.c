@@ -342,7 +342,7 @@ int main(int n, const char *argv[])
 }
 #endif
 
-#if 1
+#if 0
 
 int main(int n, const char *argv[])
 {
