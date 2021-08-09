@@ -1472,6 +1472,7 @@ int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen
 			curr += signsize;
 			size += signsize;
 			move = curr;
+			sis_trim(newp);
 			sis_pointer_list_push(list_->strlist, newp);
 		}
 		else
@@ -1493,6 +1494,7 @@ int sis_string_list_load(s_sis_string_list *list_, const char *in_, size_t inlen
 		{
 			newp = move;
 		}
+		sis_trim(newp);
 		sis_pointer_list_push(list_->strlist, newp);
 	}
 	if (list_->permissions == STRING_LIST_WR)
