@@ -155,7 +155,7 @@ size_t sis_disk_io_write_net_widx(s_sis_disk_ctrl *cls_)
         }
         wcatch->head.fin = 1;
         wcatch->head.hid = SIS_DISK_HID_INDEX_KEY;
-        size += sis_disk_files_write_saveidx(cls_->widx_fps, wcatch);
+        size += sis_disk_io_write_noidx(cls_->widx_fps, wcatch);
     }
     sis_memory_clear(memory);
     s_sis_disk_idx *sdbnode = (s_sis_disk_idx *)sis_map_list_get(cls_->map_idxs, SIS_DISK_SIGN_SDB);
@@ -171,7 +171,7 @@ size_t sis_disk_io_write_net_widx(s_sis_disk_ctrl *cls_)
         }
         wcatch->head.fin = 1;
         wcatch->head.hid = SIS_DISK_HID_INDEX_SDB;
-        size += sis_disk_files_write_saveidx(cls_->widx_fps, wcatch);
+        size += sis_disk_io_write_noidx(cls_->widx_fps, wcatch);
     }
     sis_memory_clear(memory);
     s_sis_disk_idx *netnode = (s_sis_disk_idx *)sis_map_list_get(cls_->map_idxs, SIS_DISK_SIGN_NEW);
@@ -188,7 +188,7 @@ size_t sis_disk_io_write_net_widx(s_sis_disk_ctrl *cls_)
         }
         wcatch->head.fin = 1;
         wcatch->head.hid = SIS_DISK_HID_INDEX_NEW;
-        size += sis_disk_files_write_saveidx(cls_->widx_fps, wcatch);
+        size += sis_disk_io_write_noidx(cls_->widx_fps, wcatch);
     } 
     sis_disk_io_write_widx_tail(cls_);
     sis_disk_files_write_sync(cls_->widx_fps);
@@ -433,7 +433,7 @@ int sis_disk_io_read_net_widx(s_sis_disk_ctrl *cls_)
     return SIS_DISK_CMD_NO_IDX;
 }
 
-#if 1
+#if 0
 #include "sis_disk.h"
 // 测试NET文件读写
 static int    __read_nums = 0;

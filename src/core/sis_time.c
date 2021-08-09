@@ -33,6 +33,16 @@ int sis_time_get_itime(time_t ttime) //103020
 	sis_time_check(ttime, &ptm);
 	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
+int sis_msec_get_itime(msec_t msec) //103020
+{
+	if (msec == 0)
+	{
+		return 0;
+	}
+	struct tm ptm = {0};
+	sis_time_check((time_t)(msec/1000), &ptm);
+	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
+}
 int sis_time_get_iminute(time_t ttime) //1030
 {
 	struct tm ptm = {0};
@@ -203,16 +213,14 @@ void sis_time_format_minute(char *out_, size_t olen_, time_t tt_) //"930"
 	sis_sprintf(out_, olen_, "%02d%02d", ptm.tm_hour, ptm.tm_min);
 }
 
-void sis_time_format_date(char *out_, size_t olen_, time_t tt_) //"20150912"
+void sis_time_format_date(char *out_, size_t olen_, int date_) //"2015-09-12"
 {
 	if (!out_)
 	{
 		return;
 	}
-	struct tm ptm = {0};
-	sis_time_check(tt_, &ptm);
-	sis_llutoa((ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday, out_, olen_, 10);	
-	// sis_sprintf(out_, olen_, "%d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
+	int date = date_ % 10000;
+	sis_sprintf(out_, olen_, "%04d-%02d-%02d", date_ / 10000, date / 100, date % 100);
 }
 void sis_time_format_datetime(char *out_, size_t olen_, time_t tt_) //"20150912103000"
 {
@@ -239,6 +247,21 @@ void sis_time_format_datetime_longstr(char *out_, size_t olen_, int idate_, int 
 	sis_sprintf(out_, olen_, "%04d-%02d-%02d %02d:%02d:%02d",
 				ptm.tm_year + 1900, ptm.tm_mon + 1, ptm.tm_mday,
 				ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
+}
+void sis_time_format_msec_longstr(char * out_, size_t olen_, msec_t msec_) // "2008-12-13 09:30:00.000"
+{
+	if (!out_)
+	{
+		return;
+	}	
+	int msec = msec_ % 1000;
+	time_t tt = msec_ / 1000;
+	struct tm ptm = {0};
+	sis_time_check(tt, &ptm);
+
+	sis_sprintf(out_, olen_, "%04d-%02d-%02d %02d:%02d:%02d.%03d",
+				ptm.tm_year + 1900, ptm.tm_mon + 1, ptm.tm_mday,
+				ptm.tm_hour, ptm.tm_min, ptm.tm_sec, msec);
 }
 int sis_time_get_minute_from_shortstr(char *time) //"12:30" => 1230
 {
@@ -510,9 +533,9 @@ int sis_time_get_idate_from_shstr(const char *in_) //"2015-10-20" => 20151020
 
 	return year * 10000 + mon * 100 + mday;
 }
-time_t sis_time_get_time_from_longstr(const char *in_) //"2015-10-20 12:30:38"
+msec_t sis_time_get_msec_from_longstr(const char *in_) //"2015-10-20 12:30:38"
 {
-	int out = 0;
+	msec_t out = 0;
 	if (strlen(in_) < 19)
 	{
 		return out;
@@ -552,7 +575,7 @@ time_t sis_time_get_time_from_longstr(const char *in_) //"2015-10-20 12:30:38"
 		}
 	}
 
-	int year, mon, mday, hour, min, sec; // , millis;
+	int year, mon, mday, hour, min, sec, msec = 0;
 
 	i = 0;
 	//2015-12-20 09:12:00
@@ -608,8 +631,16 @@ time_t sis_time_get_time_from_longstr(const char *in_) //"2015-10-20 12:30:38"
 	{
 		return out;
 	}
-    return sis_time_make_time(year * 10000 + mon * 100 + mday, hour * 10000 + min * 100 + sec);
 
+	if (in_[i] && in_[i] == '.')
+	{
+		++i;
+		msec = in_[i++] - '0';
+		msec = 10 * msec + in_[i++] - '0';
+		msec = 10 * msec + in_[i++] - '0';
+	}
+	out = sis_time_make_time(year * 10000 + mon * 100 + mday, hour * 10000 + min * 100 + sec);
+    return  out * 1000 + msec;
 }
 
 int sis_time_get_time_from_shstr(const char *in_, int *date_, int *time_) //"20151020-12:30:38.110" => 20151020,123038

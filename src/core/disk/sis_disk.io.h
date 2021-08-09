@@ -356,6 +356,21 @@ typedef struct s_sis_disk_sdict {
 }s_sis_disk_sdict;
 
 //////////////////////////////////////////////////////
+// s_sis_disk_sno sno读取文件控制类
+//////////////////////////////////////////////////////
+// 既然读取的数据都有序号那么就直接写到对应位置
+// 
+typedef struct s_sis_disk_sno_rctrl {
+    ///// sno 专用工具 //////
+    int                 count;
+    int                 pagenums;     // 
+    int                 cursor_blk;   // 第几个数据块
+    int                 cursor_rec;   // 数据块的第几条记录
+    s_sis_pointer_list *rsno_idxs;    // 读数据区 s_sis_struct_list s_sis_db_chars 都是指针
+    s_sis_pointer_list *rsno_mems;    // 读数据区 s_sis_memory 内存区
+} s_sis_disk_sno_rctrl;
+
+//////////////////////////////////////////////////////
 // s_sis_disk_ctrl  单组文件控制类
 //////////////////////////////////////////////////////
 
@@ -394,7 +409,7 @@ typedef struct s_sis_disk_ctrl {
     int64                sno_count;     // 记录数
     size_t               sno_size;      // SIS_DISK_HID_MSG_SNO 当前累计数据量
     s_sis_map_list      *sno_wcatch;    // 从实时文件转盘后文件 临时存放数据 s_sis_disk_wcatch
-    s_sis_subdb_cxt     *sno_subcxt;    // 分块读取时的缓存 根据sno进行排序
+    s_sis_disk_sno_rctrl*sno_rctrl;    // 分块读取时的缓存 根据sno进行排序
     ///// net 专用工具 //////
     int                  net_pages;     // 块数
     msec_t               net_msec;      // 第一条有时间序列记录的时间  
@@ -638,6 +653,22 @@ size_t sis_disk_io_write_sno_widx(s_sis_disk_ctrl *cls_);
 int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_, s_sis_msec_pair *search_, void *cb_);
 // 读所有索引信息
 int sis_disk_io_read_sno_widx(s_sis_disk_ctrl *cls_);
+
+///////////////////////////
+//  sis_disk.io.sno.c
+///////////////////////////
+
+s_sis_disk_sno_rctrl *sis_disk_sno_rctrl_create(int pagenums_);
+void sis_disk_sno_rctrl_destroy(s_sis_disk_sno_rctrl *);
+// 清理所有数据
+void sis_disk_sno_rctrl_clear(s_sis_disk_sno_rctrl *);
+
+// 放入一个标准块 返回实际的数量
+int sis_disk_sno_rctrl_push(s_sis_disk_sno_rctrl *, const char *kname_, const char *sname_, int dbsize_, s_sis_memory *imem_);
+// 从头开始读数据
+void sis_disk_sno_rctrl_init(s_sis_disk_sno_rctrl *);
+// 弹出一条记录 只是移动 cursor 指针 
+s_sis_db_chars *sis_disk_sno_rctrl_rpop(s_sis_disk_sno_rctrl *);
 
 #endif
 

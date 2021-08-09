@@ -22,7 +22,7 @@ void _disk_ctrl_init(s_sis_disk_ctrl *o)
     o->sno_series = 0;
     o->sno_size = 0;
     o->sno_wcatch = NULL;
-    o->sno_subcxt = NULL;
+    o->sno_rctrl = NULL;
 
     char work_fn[1024];
     char widx_fn[1024];
@@ -514,6 +514,7 @@ s_sis_disk_sdict *sis_disk_ctrl_set_sdict(s_sis_disk_ctrl *cls_, s_sis_dynamic_d
 }
 size_t sis_disk_ctrl_unzip(s_sis_disk_ctrl *cls_, s_sis_disk_head *head_, char *imem_, size_t isize_, s_sis_memory *out_)
 {
+    sis_memory_clear(out_);
     size_t size = 0;
     if (head_->zip == SIS_DISK_ZIP_NOZIP)
     {

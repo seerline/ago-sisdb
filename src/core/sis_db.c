@@ -238,7 +238,7 @@ s_sis_subdb_cxt *sis_subdb_cxt_create(int pagesize_)
 	s_sis_subdb_cxt *o = SIS_MALLOC(s_sis_subdb_cxt, o);
 	o->work_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
 	o->work_units = sis_map_pointer_create_v(sis_subdb_unit_destroy);
-	o->pagesize = pagesize_ ? pagesize_ : 1000000;
+	o->pagesize = pagesize_ ? pagesize_ : 1024;
 	return o;
 }
 void sis_subdb_cxt_destroy(s_sis_subdb_cxt *cxt_)
@@ -297,7 +297,7 @@ void sis_subdb_cxt_init_sdbs(s_sis_subdb_cxt *cxt_, const char *in_, size_t ilen
 	sis_json_close(injson);
 	// calc min scale
 	cxt_->cur_scale = sis_max(cxt_->cur_scale, scale);
-	printf("scale: %d\n", cxt_->cur_scale);
+	// printf("scale: %d\n", cxt_->cur_scale);
 }
 void sis_subdb_cxt_set_sdbs(s_sis_subdb_cxt *cxt_, s_sis_dynamic_db *sdb_)
 {
@@ -543,7 +543,7 @@ void sis_subdb_cxt_push_sdbs(s_sis_subdb_cxt *cxt_, const char *key_, void *in_,
 					vmsec = sis_dynamic_db_get_time(unit->db, i, in_, ilen_);
 					vmsec = sis_time_unit_convert(unit->db->field_time->style, cxt_->cur_scale, vmsec);
 				}
-				if (i==0) printf("%s = %lld\n", key_, vmsec);
+				// if (i==0) printf("%s = %lld\n", key_, vmsec);
 				sis_node_list_push(unit->vmsec, &vmsec);
 				sis_node_list_push(unit->vlist, (void *)((const char*)in_ + i * unit->db->size));
 			}
@@ -605,7 +605,48 @@ void sis_subdb_cxt_push_data(s_sis_subdb_cxt *cxt_, const char *key_, msec_t mse
 		}
 	}
 }
-
+void sis_subdb_cxt_push_muldata(s_sis_subdb_cxt *cxt_, const char *key_, int count_, msec_t *msec_, char *in_)
+{
+	int isnew = 0;
+	int ischange = 0;
+	s_sis_subdb_unit *unit = sis_map_pointer_get(cxt_->work_units, key_);
+	if (!unit)
+	{
+		char kname[128];
+		char sname[128];
+		sis_str_divide(key_, '.', kname, sname);
+		s_sis_dynamic_db *db = sis_map_list_get(cxt_->work_sdbs, sname);
+		if (db)
+		{
+			unit = sis_subdb_unit_create(kname, db, cxt_->pagesize);
+			sis_map_pointer_set(cxt_->work_units, key_, unit);
+			isnew = 1;
+		}
+	}
+	if (unit)
+	{
+		// add data
+		if (count_ > 0)
+		{
+			ischange = (sis_node_list_get_size(unit->vlist) < 1);
+			for (int i = 0; i < count_; i++)
+			{
+				printf("szie=%d %d ｜ %d %d \n", unit->vmsec->node_count,unit->vlist->node_count, ischange, isnew);
+				sis_node_list_push(unit->vmsec, msec_ + i);
+				sis_node_list_push(unit->vlist, (void *)((const char*)in_ + i * unit->db->size));
+			}
+			// 下面代码在大量插入时很耗时 要查查
+			if (isnew)
+			{
+				_subdb_cxt_add_link(cxt_, unit);
+			}
+			else if (ischange) // 数据没有必定不在链中
+			{
+				_subdb_cxt_push_link(cxt_, unit);
+			}
+		}
+	}
+}
 int _subdb_cxt_get_data(s_sis_subdb_cxt *cxt, s_sis_db_chars *out)
 {
 	if (!cxt->head || !cxt->tail)

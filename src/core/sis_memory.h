@@ -39,6 +39,9 @@ size_t sis_memory_cat(s_sis_memory *, char *, size_t);  // memory tail cat, and 
 size_t sis_memory_cat_int(s_sis_memory *, int);  // memory tail cat, and repack buffer
 int sis_memory_get_int(s_sis_memory *);
 
+size_t sis_memory_cat_int64(s_sis_memory *, int64);  // memory tail cat, and repack buffer
+int64 sis_memory_get_int64(s_sis_memory *);
+
 size_t sis_memory_cat_double(s_sis_memory *, double);  // memory tail cat, and repack buffer
 double sis_memory_get_double(s_sis_memory *);
 

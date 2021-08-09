@@ -151,6 +151,20 @@ int sis_memory_get_int(s_sis_memory *m_)
 	sis_memory_move(m_, sizeof(int));
 	return o;
 }
+size_t sis_memory_cat_int64(s_sis_memory *m_, int64 in_)
+{
+	sis_memory_grow(m_, sizeof(int64) + m_->size);
+	memmove(m_->buffer + m_->size, &in_, sizeof(int64));
+	m_->size += sizeof(int64);
+	return sizeof(int64);
+}  
+int64 sis_memory_get_int64(s_sis_memory *m_)
+{
+	int64 o = 0;
+	memmove(&o, sis_memory(m_), sizeof(int64));
+	sis_memory_move(m_, sizeof(int64));
+	return o;
+}
 
 //////////////////
 //

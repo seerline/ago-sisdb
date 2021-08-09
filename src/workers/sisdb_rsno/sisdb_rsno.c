@@ -178,10 +178,29 @@ static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)
 	sis_sdsfree(sdbs);
 	sis_sdsfree(srcsdbs); 
 }
-
+#include "stk_struct.v3.h"
+int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
+    _read_nums++;
+    if (_read_nums % 100000 == 0)
+    {
+        printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
+    }
+    // if (!sis_strcasecmp(kname_, "SH600600") && !sis_strcasecmp(sname_, "stk_snapshot"))
+    if (!sis_strcasecmp(kname_, "SH600600")|| !sis_strcasecmp(kname_,"SZ000001"))
+    {
+        if (!sis_strcasecmp(sname_, "stk_snapshot"))
+        {
+            s_v3_stk_snapshot *snapshot = (s_v3_stk_snapshot *)out_;
+            printf("--%s %s %zu | %6d %5d %10d\n", kname_, sname_, olen_, sis_time_get_itime(snapshot->time/1000), snapshot->newp, snapshot->volume);
+        }
+        else
+        {
+            printf("--%s %s %zu \n", kname_, sname_, olen_);
+        }
+    }
     if (context->cb_sub_chars)
     {
         s_sis_db_chars inmem = {0};
