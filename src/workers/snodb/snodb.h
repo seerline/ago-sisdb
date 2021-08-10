@@ -156,7 +156,7 @@ typedef struct s_snodb_cxt
 	sis_method_define  *wfile_cb_sub_stop ;
 	sis_method_define  *wfile_cb_dict_keys;
 	sis_method_define  *wfile_cb_dict_sdbs;
-	sis_method_define  *wfile_cb_snodb_compress;
+	sis_method_define  *wfile_cb_sub_inctzip;
 	s_sis_worker       *wfile_worker; // 当前使用的写文件类
 
 	s_sis_json_node    *rfile_config;

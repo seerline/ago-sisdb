@@ -181,13 +181,13 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
     //         netmsg->ask?    netmsg->ask : "nil");   
 	if (!sis_strcasecmp("zpub", netmsg->cmd))
 	{
-		// printf("%p %d\n", context->wfile_cb_snodb_compress, netmsg->argvs->count);
+		// printf("%p %d\n", context->wfile_cb_sub_inctzip, netmsg->argvs->count);
 		for (int i = 0; i < netmsg->argvs->count; i++)
 		{ 
 			s_sis_object *obj = sis_pointer_list_get(netmsg->argvs, i);
-			if (context->wfile_cb_snodb_compress)
+			if (context->wfile_cb_sub_inctzip)
 			{
-				context->wfile_cb_snodb_compress(context->wfile_worker, SIS_OBJ_SDS(obj));
+				context->wfile_cb_sub_inctzip(context->wfile_worker, SIS_OBJ_SDS(obj));
 			}
 		}
 	}
@@ -250,7 +250,7 @@ int snodb_wlog_save_snos(s_snodb_cxt *snodb_)
 		snodb_->wfile_cb_sub_stop  = sis_message_get_method(msg, "cb_sub_stop");
 		snodb_->wfile_cb_dict_keys = sis_message_get_method(msg, "cb_dict_keys");
 		snodb_->wfile_cb_dict_sdbs = sis_message_get_method(msg, "cb_dict_sdbs");
-		snodb_->wfile_cb_snodb_compress = sis_message_get_method(msg, "cb_sub_inctzip");
+		snodb_->wfile_cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_inctzip");
 		sis_message_destroy(msg);
 	}
 	// 从wlog直接取数据
