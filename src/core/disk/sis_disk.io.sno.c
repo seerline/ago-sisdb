@@ -51,6 +51,7 @@ void sis_disk_sno_rctrl_set(s_sis_disk_sno_rctrl *rctrl_, int sno_, s_sis_db_cha
         slist->count = irec + 1;
     }
 }
+#include "stk_struct.v3.h"
 // 放入一个标准块 返回实际的数量
 int sis_disk_sno_rctrl_push(s_sis_disk_sno_rctrl *rctrl_, const char *kname_, const char *sname_, int dbsize_, s_sis_memory *imem_)
 {
@@ -75,9 +76,10 @@ int sis_disk_sno_rctrl_push(s_sis_disk_sno_rctrl *rctrl_, const char *kname_, co
         {
             chars.data = sis_memory(memory) + i * dbsize_;
             int *sno = sis_struct_list_get(snos, i);
+            s_v3_stk_snapshot *snap = (s_v3_stk_snapshot *)chars.data;
+        printf(":::%s %s %d %d\n", kname_, sname_, *sno, sis_msec_get_itime(snap->time));
             sis_disk_sno_rctrl_set(rctrl_, *sno, &chars);            
-        }
-        
+        }       
         sis_pointer_list_push(rctrl_->rsno_mems ,memory);
     }  
     else
@@ -234,7 +236,7 @@ int sis_disk_io_write_sno(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
         cls_->sno_size += sis_memory_cat(wcatch->memory, (char *)in_ + i * sdb->size, sdb->size);
     }
     _set_disk_io_net_msec(cls_, sdb, count - 1, in_, ilen_);
-    // printf("%zu --> %zu\n", cls_->sno_size ,cls_->work_fps->max_page_size);
+    printf("%zu %s %lld %d--> %zu\n", cls_->sno_size , snoname, cls_->sno_count, cls_->sno_series, cls_->work_fps->max_page_size);
     if (cls_->sno_size > cls_->work_fps->max_page_size)
     {
         // printf("%zu %zu %zu %d\n", cls_->sno_size, cls_->work_fps->max_page_size, cls_->sno_series, cls_->sno_pages);
@@ -525,6 +527,7 @@ int sis_disk_io_sub_sno_part(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     s_sis_memory *imem = sis_memory_create();
     for (uint32 page = minpage; page < cls_->sno_pages; page++)
     {
+        LOG(5)("sno === ipage = %d : %d.\n", page, cls_->sno_pages);
         for (int i = 0; i < subparts->count; i++)
         {
             s_sis_disk_idx *subidx = (s_sis_disk_idx *)sis_pointer_list_get(subparts, i);

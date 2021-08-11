@@ -97,7 +97,7 @@ int sis_file_csv_getsize(s_sis_file_csv *csv_)
 	{
 		return 0;
 	}
-	return csv_->list->count;
+	return csv_->list->count - 1;
 }
 int64 sis_file_csv_fget_int(s_sis_file_csv *csv_, int idx_, int field, int64 defaultvalue_)
 {

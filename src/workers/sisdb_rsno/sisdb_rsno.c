@@ -189,7 +189,7 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
         printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
     }
     // if (!sis_strcasecmp(kname_, "SH600600") && !sis_strcasecmp(sname_, "stk_snapshot"))
-    if (!sis_strcasecmp(kname_, "SH600600")|| !sis_strcasecmp(kname_,"SZ000001"))
+    if (!sis_strcasecmp(kname_, "SH601318")|| !sis_strcasecmp(kname_, "SH688981")||!sis_strcasecmp(kname_,"SZ300987"))
     {
         if (!sis_strcasecmp(sname_, "stk_snapshot"))
         {
@@ -200,6 +200,10 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
         {
             printf("--%s %s %zu \n", kname_, sname_, olen_);
         }
+    }
+    else
+    {
+        return ;
     }
     if (context->cb_sub_chars)
     {
