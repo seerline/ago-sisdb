@@ -234,7 +234,7 @@ int sis_disk_io_write_sno(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
         cls_->sno_size += sis_memory_cat(wcatch->memory, (char *)in_ + i * sdb->size, sdb->size);
     }
     _set_disk_io_net_msec(cls_, sdb, count - 1, in_, ilen_);
-    // printf("%zu --> %zu\n", cls_->sno_size ,cls_->work_fps->max_page_size);
+    // printf("%zu %s %lld %d %d--> %zu\n", cls_->sno_size , snoname, cls_->sno_count, count, cls_->sno_series, cls_->work_fps->max_page_size);
     if (cls_->sno_size > cls_->work_fps->max_page_size)
     {
         // printf("%zu %zu %zu %d\n", cls_->sno_size, cls_->work_fps->max_page_size, cls_->sno_series, cls_->sno_pages);
