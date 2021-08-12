@@ -189,22 +189,22 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
         printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
     }
     // if (!sis_strcasecmp(kname_, "SH600600") && !sis_strcasecmp(sname_, "stk_snapshot"))
-    if (!sis_strcasecmp(kname_, "SH601318")|| !sis_strcasecmp(kname_, "SH688981")||!sis_strcasecmp(kname_,"SZ300987"))
-    {
-        if (!sis_strcasecmp(sname_, "stk_snapshot"))
-        {
-            s_v3_stk_snapshot *snapshot = (s_v3_stk_snapshot *)out_;
-            printf("--%s %s %zu | %6d %5d %10d\n", kname_, sname_, olen_, sis_time_get_itime(snapshot->time/1000), snapshot->newp, snapshot->volume);
-        }
-        else
-        {
-            printf("--%s %s %zu \n", kname_, sname_, olen_);
-        }
-    }
-    else
-    {
-        return ;
-    }
+    // if (!sis_strcasecmp(kname_, "SH601318")|| !sis_strcasecmp(kname_, "SH688981")||!sis_strcasecmp(kname_,"SZ300987"))
+    // {
+    //     if (!sis_strcasecmp(sname_, "stk_snapshot"))
+    //     {
+    //         s_v3_stk_snapshot *snapshot = (s_v3_stk_snapshot *)out_;
+    //         printf("--%s %s %zu | %6d %5d %10d\n", kname_, sname_, olen_, sis_time_get_itime(snapshot->time/1000), snapshot->newp, snapshot->volume);
+    //     }
+    //     else
+    //     {
+    //         printf("--%s %s %zu \n", kname_, sname_, olen_);
+    //     }
+    // }
+    // else
+    // {
+    //     return ;
+    // }
     if (context->cb_sub_chars)
     {
         s_sis_db_chars inmem = {0};
@@ -415,7 +415,7 @@ void sisdb_rsno_working(void *worker_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
     
-    // SIS_WAIT_OR_EXIT(context->status == SIS_RSNO_WORK);  
+    SIS_WAIT_OR_EXIT(context->status == SIS_RSNO_WORK);  
     context->status = SIS_RSNO_WORK;
     if (context->status == SIS_RSNO_WORK)
     {

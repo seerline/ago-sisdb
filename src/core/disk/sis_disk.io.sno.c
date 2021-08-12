@@ -76,8 +76,8 @@ int sis_disk_sno_rctrl_push(s_sis_disk_sno_rctrl *rctrl_, const char *kname_, co
         {
             chars.data = sis_memory(memory) + i * dbsize_;
             int *sno = sis_struct_list_get(snos, i);
-            s_v3_stk_snapshot *snap = (s_v3_stk_snapshot *)chars.data;
-        printf(":::%s %s %d %d\n", kname_, sname_, *sno, sis_msec_get_itime(snap->time));
+            // s_v3_stk_snapshot *snap = (s_v3_stk_snapshot *)chars.data;
+            // printf("::: %s %s %d %d\n", kname_, sname_, *sno, sis_msec_get_itime(snap->time));
             sis_disk_sno_rctrl_set(rctrl_, *sno, &chars);            
         }       
         sis_pointer_list_push(rctrl_->rsno_mems ,memory);
@@ -527,7 +527,7 @@ int sis_disk_io_sub_sno_part(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     s_sis_memory *imem = sis_memory_create();
     for (uint32 page = minpage; page < cls_->sno_pages; page++)
     {
-        LOG(5)("sno === ipage = %d : %d.\n", page, cls_->sno_pages);
+        // LOG(5)("sno === ipage = %d : %d.\n", page, cls_->sno_pages);
         for (int i = 0; i < subparts->count; i++)
         {
             s_sis_disk_idx *subidx = (s_sis_disk_idx *)sis_pointer_list_get(subparts, i);

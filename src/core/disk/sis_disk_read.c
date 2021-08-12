@@ -195,8 +195,12 @@ int sis_disk_reader_sub_sno(s_sis_disk_reader *reader_, const char *keys_, const
     int o = _disk_reader_open(reader_, SIS_DISK_TYPE_SNO, idate_);
     if (o)
     {
+        if (reader_->callback->cb_stop)
+        {
+            reader_->callback->cb_stop(reader_->callback->cb_source, idate_);
+        }
         LOG(5)("no open %s. %d\n", reader_->fname, o);
-        return 0;
+        return o;
     }
     reader_->status_sub = 1;
     // 按顺序输出 keys_ sdbs_ = NULL 实际表示 *
