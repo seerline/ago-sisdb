@@ -3,7 +3,7 @@ db*/
 deps/
 o/
 out/
-macos/
+mac/
 log/
 logs/
 __pycache__/
@@ -21,7 +21,6 @@ core.*
 *.pdb
 *.ilk
 *.exp
-macos/
 win/
 x64/
 !*.script
