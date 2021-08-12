@@ -178,7 +178,7 @@ static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)
 	sis_sdsfree(sdbs);
 	sis_sdsfree(srcsdbs); 
 }
-#include "stk_struct.v3.h"
+// #include "stk_struct.v3.h"
 int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
