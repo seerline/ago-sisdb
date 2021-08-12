@@ -43,6 +43,10 @@ int sis_msec_get_itime(msec_t msec) //103020
 	sis_time_check((time_t)(msec/1000), &ptm);
 	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
+int sis_sec_get_itime(time_t ttime) //103020
+{
+	return ttime ? sis_time_get_itime(ttime) : 0;
+}
 int sis_time_get_iminute(time_t ttime) //1030
 {
 	struct tm ptm = {0};

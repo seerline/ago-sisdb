@@ -17,6 +17,7 @@ int sis_time_get_id(int id); // 233035-000
 
 int sis_time_get_itime(time_t ttime); //103020
 int sis_msec_get_itime(msec_t msec); //103020
+int sis_sec_get_itime(time_t ttime); //103020
 int sis_time_get_iminute(time_t ttime); //1030
 int sis_time_get_isec(time_t ttime); // 20
 int sis_time_get_showtime(time_t ttime); //0212103020 月日时间

@@ -9,7 +9,6 @@
         sis_net.rds.h 协议层  
     sis_net.node.c 应用层  
     sis_net.node.h 应用层  
-sis_net.io.h   提供给外部用户访问的包生成函数
 sis_net.c   提供给外部用户访问的函数定义
 sis_net.h   提供给外部用户访问的接口和类型
 
