@@ -651,7 +651,7 @@ int _subdb_cxt_get_data(s_sis_subdb_cxt *cxt, s_sis_db_chars *out)
 {
 	if (!cxt->head || !cxt->tail)
 	{
-		return 3;
+		return 2;
 	}
 	s_sis_subdb_unit *unit = cxt->head;
 	out->sname = unit->db->name;
@@ -691,7 +691,7 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 		int o = _subdb_cxt_get_data(context, &data);
 		// _show_link(context);	
 
-		// printf("==== stop 1 %p %d %p %p\n", context->cb_key_stop, o, context->head , context->tail);
+		printf("==== stop 1 %p %d %p %p\n", context->cb_key_stop, o, context->head , context->tail);
 		if (o == 0)
 		{
 			// _show_link(context);		
