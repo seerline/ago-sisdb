@@ -362,10 +362,9 @@ int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
-    if (context->status != SIS_RSNO_NONE)
-    {
-        return SIS_METHOD_ERROR;
-    }
+
+    SIS_WAIT_OR_EXIT(context->status == SIS_RSNO_NONE);  
+
     s_sis_message *msg = (s_sis_message *)argv_; 
     if (!msg)
     {
