@@ -3,40 +3,40 @@
 #include "server.h"
 #include "sis_method.h"
 
-#include "sisdb_netlog.h"
+#include "sisdb_flog.h"
 #include "sis_net.node.h"
 
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
 ///////////////////////////////////////////////////
 
-struct s_sis_method sisdb_netlog_methods[] = {
-    {"sub",     cmd_sisdb_netlog_sub,    0, NULL},  
-    {"unsub",   cmd_sisdb_netlog_unsub,  0, NULL}, 
-    {"open",    cmd_sisdb_netlog_open,    0, NULL},   
-    {"write",   cmd_sisdb_netlog_write,   0, NULL},  
-    {"close",   cmd_sisdb_netlog_close,   0, NULL},   
-    {"move",    cmd_sisdb_netlog_move,    0, NULL},  
+struct s_sis_method sisdb_flog_methods[] = {
+    {"sub",     cmd_sisdb_flog_sub,    0, NULL},  
+    {"unsub",   cmd_sisdb_flog_unsub,  0, NULL}, 
+    {"open",    cmd_sisdb_flog_open,    0, NULL},   
+    {"write",   cmd_sisdb_flog_write,   0, NULL},  
+    {"close",   cmd_sisdb_flog_close,   0, NULL},   
+    {"move",    cmd_sisdb_flog_move,    0, NULL},  
 };
 // 共享内存数据库
-s_sis_modules sis_modules_sisdb_netlog = {
-    sisdb_netlog_init,
+s_sis_modules sis_modules_sisdb_flog = {
+    sisdb_flog_init,
     NULL,
     NULL,
     NULL,
-    sisdb_netlog_uninit,
+    sisdb_flog_uninit,
     NULL,
     NULL,
-    sizeof(sisdb_netlog_methods) / sizeof(s_sis_method),
-    sisdb_netlog_methods,
+    sizeof(sisdb_flog_methods) / sizeof(s_sis_method),
+    sisdb_flog_methods,
 };
 
-bool sisdb_netlog_init(void *worker_, void *argv_)
+bool sisdb_flog_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sis_json_node *node = (s_sis_json_node *)argv_;
 
-    s_sisdb_netlog_cxt *context = SIS_MALLOC(s_sisdb_netlog_cxt, context);
+    s_sisdb_flog_cxt *context = SIS_MALLOC(s_sisdb_flog_cxt, context);
     worker->context = context;
 
     context->work_date = sis_time_get_idate(0);
@@ -65,25 +65,25 @@ bool sisdb_netlog_init(void *worker_, void *argv_)
     return true;
 }
 
-void sisdb_netlog_stop(s_sis_worker *worker)
+void sisdb_flog_stop(s_sis_worker *worker)
 {
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
-    if (context->status == SIS_NETLOG_READ)
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
+    if (context->status == SIS_FLOG_READ)
     {
-        cmd_sisdb_netlog_unsub(worker, NULL);
+        cmd_sisdb_flog_unsub(worker, NULL);
     }
-    if (context->status == SIS_NETLOG_WRITE)
+    if (context->status == SIS_FLOG_WRITE)
     {
-        cmd_sisdb_netlog_close(worker, NULL);
+        cmd_sisdb_flog_close(worker, NULL);
     }
 }
 
-void sisdb_netlog_uninit(void *worker_)
+void sisdb_flog_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
 
-    sisdb_netlog_stop(worker);
+    sisdb_flog_stop(worker);
 
     sis_sdsfree(context->work_path);
     sis_sdsfree(context->work_name);
@@ -94,7 +94,7 @@ void sisdb_netlog_uninit(void *worker_)
 //////////////////////////////////////
 static void cb_start(void *source_, int idate)
 {
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)source_;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)source_;
     if (context->cb_sub_start)
     {
         char sdate[32];
@@ -104,7 +104,7 @@ static void cb_start(void *source_, int idate)
 }
 static void cb_stop(void *source_, int idate)
 {
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)source_;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)source_;
     if (context->cb_sub_stop)
     {
         char sdate[32];
@@ -114,7 +114,7 @@ static void cb_stop(void *source_, int idate)
 }
 static void cb_original(void *source_, s_sis_disk_head *head_, void *out_, size_t olen_)
 {
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)source_;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)source_;
     if (context->cb_netmsg)
     {
         s_sis_net_message *netmsg = sis_net_message_create();
@@ -127,11 +127,11 @@ static void cb_original(void *source_, s_sis_disk_head *head_, void *out_, size_
     }
     // 这里通过回调把数据传递出去 
 } 
-int cmd_sisdb_netlog_sub(void *worker_, void *argv_)
+int cmd_sisdb_flog_sub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
-    if (context->status != SIS_NETLOG_NONE)
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
+    if (context->status != SIS_FLOG_NONE)
     {
         return SIS_METHOD_ERROR;
     }
@@ -165,7 +165,7 @@ int cmd_sisdb_netlog_sub(void *worker_, void *argv_)
     context->cb_sub_stop =  sis_message_get_method(msg, "cb_sub_stop");
     context->cb_netmsg =  sis_message_get_method(msg, "cb_netmsg");
 
-    context->status = SIS_NETLOG_READ;
+    context->status = SIS_FLOG_READ;
 
     s_sis_disk_reader_cb *rlog_cb = SIS_MALLOC(s_sis_disk_reader_cb, rlog_cb);
     rlog_cb->cb_source = context;
@@ -184,18 +184,18 @@ int cmd_sisdb_netlog_sub(void *worker_, void *argv_)
     context->reader = NULL;
     sis_free(rlog_cb);
 
-    context->status = SIS_NETLOG_NONE;
+    context->status = SIS_FLOG_NONE;
 
     return SIS_METHOD_OK;
 }
-int cmd_sisdb_netlog_unsub(void *worker_, void *argv_)
+int cmd_sisdb_flog_unsub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
     if (context->reader)
     {
         sis_disk_reader_unsub(context->reader);
-        while (context->status != SIS_NETLOG_NONE)
+        while (context->status != SIS_FLOG_NONE)
         {
             sis_sleep(30);
         }
@@ -205,12 +205,12 @@ int cmd_sisdb_netlog_unsub(void *worker_, void *argv_)
 //////////////////////////////////////
 //  write log callback
 //////////////////////////////////////
-int cmd_sisdb_netlog_open(void *worker_, void *argv_)
+int cmd_sisdb_flog_open(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
 
-    if (context->status != SIS_NETLOG_NONE)
+    if (context->status != SIS_FLOG_NONE)
     {
         return SIS_METHOD_ERROR;
     }
@@ -239,7 +239,7 @@ int cmd_sisdb_netlog_open(void *worker_, void *argv_)
     {
         context->work_date = sis_time_get_idate(0);
     }
-    context->status = SIS_NETLOG_WRITE;
+    context->status = SIS_FLOG_WRITE;
     context->writer = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_LOG);
     
     sis_disk_writer_open(context->writer, context->work_date);
@@ -247,24 +247,24 @@ int cmd_sisdb_netlog_open(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_netlog_close(void *worker_, void *argv_)
+int cmd_sisdb_flog_close(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
     if (context->writer)
     {
         sis_disk_writer_close(context->writer);
         sis_disk_writer_destroy(context->writer);
         context->writer = NULL;
     }
-    context->status = SIS_NETLOG_NONE;
+    context->status = SIS_FLOG_NONE;
 
     return SIS_METHOD_OK;
 }
-int cmd_sisdb_netlog_write(void *worker_, void *argv_)
+int cmd_sisdb_flog_write(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     if (context->writer)
     {
@@ -276,11 +276,11 @@ int cmd_sisdb_netlog_write(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_netlog_move(void *worker_, void *argv_)
+int cmd_sisdb_flog_move(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_netlog_cxt *context = (s_sisdb_netlog_cxt *)worker->context;
-    if (context->status != SIS_NETLOG_NONE)
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
+    if (context->status != SIS_FLOG_NONE)
     {
         return SIS_METHOD_ERROR;
     }
