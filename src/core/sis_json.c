@@ -411,8 +411,11 @@ bool _sis_json_parse(s_sis_json_handle *handle_, const char *content_)
 
 s_sis_json_handle *sis_json_open(const char *fn_)
 {
+	if (!fn_)
+	{
+		return NULL;
+	}
 	s_sis_json_handle *handle = NULL;
-
 	s_sis_sds buffer = sis_file_read_to_sds(fn_);
 	if (!buffer)
 	{

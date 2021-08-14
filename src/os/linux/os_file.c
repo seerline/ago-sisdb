@@ -55,41 +55,74 @@ size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_)
 	return write(fp_, in_, len_);
 }
 
+// s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
+// {
+// 	sis_file_fixpath((char *)fn_);
+// 	s_sis_file_handle fp = NULL;
+// 	char mode[5];
+// 	int index = 0;
+// 	if (mode_ & SIS_FILE_IO_TRUNC)
+// 	{
+// 		mode[index] = 'w';
+// 		index++;
+// 	}
+// 	else
+// 	{
+// 		if (mode_ & SIS_FILE_IO_CREATE)
+// 		{
+// 			mode[index] = 'a';
+// 			index++;
+// 		}
+// 	}
+// 	if (index == 0)
+// 	{
+// 		mode[index] = 'r';
+// 		index++;
+// 	}
+// 	// mode[index] = 'b';
+// 	// index++;
+// 	// if ((mode_ & SIS_FILE_IO_READ && mode_ & SIS_FILE_IO_WRITE) || mode_ & SIS_FILE_IO_RDWR)
+// 	if (mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
+// 	{
+// 		mode[index] = '+';
+// 		index++;
+// 	}
+// 	mode[index] = 0;
+
+// 	fp = fopen(fn_, mode);
+
+// 	// printf("[%p] %s %s \n ",fp,  fn_, mode);
+
+// 	return fp;
+// }
+
 s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 {
 	sis_file_fixpath((char *)fn_);
 	s_sis_file_handle fp = NULL;
-	char mode[5];
-	int index = 0;
-	if (mode_ & SIS_FILE_IO_TRUNC)
+	if (sis_file_exists(fn_))
 	{
-		mode[index] = 'w';
-		index++;
+		if (mode_ & SIS_FILE_IO_TRUNC)
+		{
+			fp = fopen(fn_, "w");
+			fclose(fp);
+		}
+		if (mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
+		{
+			fp = fopen(fn_, "a+");
+		}
+		else
+		{
+			fp = fopen(fn_, "r");
+		}	
 	}
 	else
 	{
-		if (mode_ & SIS_FILE_IO_CREATE)
+		if (mode_ & SIS_FILE_IO_CREATE || mode_ & SIS_FILE_IO_TRUNC || mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
 		{
-			mode[index] = 'a';
-			index++;
+			fp = fopen(fn_, "a+");
 		}
 	}
-	mode[index] = 'r';
-	index++;
-	mode[index] = 'b';
-	index++;
-	// if ((mode_ & SIS_FILE_IO_READ && mode_ & SIS_FILE_IO_WRITE) || mode_ & SIS_FILE_IO_RDWR)
-	if (mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
-	{
-		mode[index] = '+';
-		index++;
-	}
-	mode[index] = 0;
-
-	fp = fopen(fn_, mode);
-
-	// printf("[%d] %s %s \n ",(int)fp,  fn_, mode);
-
 	return fp;
 }
 long long sis_file_seek(s_sis_file_handle fp_, size_t offset_, int where_)
