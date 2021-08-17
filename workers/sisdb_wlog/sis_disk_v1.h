@@ -11,7 +11,7 @@
 #include "sis_snappy.h"
 #include "sis_db.h"
 
-#define SIS_DISK_SDB_VER   3    // 数据结构版本
+#define SIS_DISK_SDB_VER1   3    // 数据结构版本
 
 ////////////////////////////////////////////////////
 // 这是一个高效写入的模块，需要满足以下特性
@@ -57,7 +57,7 @@
 // 若单个文件过大 就会生成新的文件.1.2.3 但索引不变，
 // 索引文件对每个key需要保存一个hot字节 0..255 每次写盘时如果没有增加就减 1  
 // 当索引过大时，会自动取最近更新的数据，除非该key只有一个数据包，其他历史数据放在.1为名的索引文件中
-#define  SIS_DISK_TYPE_SDB         5 
+#define  SIS_DISK_TYPE_SDB1         5 
 ////////////////////////////////////////////////////
 // 5. 一键值一个数据块文件 每个键值对应一组[start,stop]表示数据的开始结束时间
 // 一个key一个数据块，是较为常用的文件格式 键值一样就覆盖旧的
@@ -120,7 +120,7 @@
 
 // #define  SIS_DISK_MAXLEN_FILE      0x7FFFFFFF  // 2G - 2147483647 
 // #define  SIS_DISK_MAXLEN_INDEX     0x07FFFFFF  // 2G -  134217727
-#define  SIS_DISK_MAXLEN_FILE      0xFFFFFFFF  //   4G  数据文件专用
+#define  SIS_DISK_MAXLEN_FILE1      0xFFFFFFFF  //   4G  数据文件专用
 #define  SIS_DISK_MAXLEN_INDEX     0x08FFFFFF  // 150M  索引文件专用
 #define  SIS_DISK_MAXLEN_MINPAGE   0x000FFFFF  //   1M 索引文件块大小
 #define  SIS_DISK_MAXLEN_MIDPAGE   0x00FFFFFF  //  16M 实时文件块大小
@@ -138,7 +138,7 @@
 // 第一个字节为252, 后面跟2个字节X 250 + X为实际数量
 // 第一个字节为253, 后面跟4个字节X X为实际数量
 
-#define SIS_DISK_BLOCK_HEAD  \
+#define SIS_DISK_BLOCK_HEAD1  \
 		uint8 fin : 1;    \
 		uint8 zip : 1;    \
 		uint8 hid : 6;    \
@@ -159,7 +159,7 @@
 // 增加序列号的数据块结束符 收到此消息排序后发送信息
 #define  SIS_DISK_HID_SNO_END     0x6  // pages(dsize)
 // 增加不带序列号的数据块
-#define  SIS_DISK_HID_MSG_SDB     0x8  // kid(dsize)+dbid(dsize)+[datastream] 一个key+N条记录
+#define  SIS_DISK_HID_MSG_SDB1     0x8  // kid(dsize)+dbid(dsize)+[datastream] 一个key+N条记录
 // 所有的sdb文件 最多就4种格式 
 // 一种是有key和sdb字典的 
 // 一种是只有key字典的 
@@ -186,17 +186,17 @@
 // 读取索引文件必须先加载dict模块 *** 特别重要 ***
 // 格式为 klen(dsize)+key+dblen(dsize)+dbn+blocks(dsize)
 //         +[active(1)+kdict(dsize)+sdict(dsize)+fidx(dsize)+offset(dsize)+size(dsize)+start(dsize)+stop(dsize)]...
-#define  SIS_DISK_HID_INDEX_MSG   0x30 
+#define  SIS_DISK_HID_INDEX_MSG1   0x30 
 // 格式为 klen(dsize)+key+dblen(dsize)+dbn+blocks(dsize)
 //         +[active(1)+kdict(dsize)+sdict(dsize)+fidx(dsize)+offset(dsize)+size(dsize)+start(dsize)+page(dsize)]...
-#define  SIS_DISK_HID_INDEX_SNO   0x31
+#define  SIS_DISK_HID_INDEX_SNO1   0x31
 // 一个文件可能会出现多次字典信息写入 每次写入都会先写字典表，读取时也是先读字典 后续索引才能一一匹配
 // 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)]...
-#define  SIS_DISK_HID_INDEX_KEY   SIS_DISK_HID_DICT_KEY
+#define  SIS_DISK_HID_INDEX_KEY1   SIS_DISK_HID_DICT_KEY
 // 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)]...
-#define  SIS_DISK_HID_INDEX_SDB   SIS_DISK_HID_DICT_SDB
+#define  SIS_DISK_HID_INDEX_SDB1   SIS_DISK_HID_DICT_SDB
 
-#define  SIS_DISK_HID_TAIL        0x3F  // 结束块标记
+#define  SIS_DISK_HID_TAIL1        0x3F  // 结束块标记
 
 // 定义压缩方法
 #define  SIS_DISK_ZIP_NONE        0
@@ -204,7 +204,7 @@
 
 // 位域定义长度必须和类型匹配 否则长度不对
 typedef struct s_sis_disk_v1_main_head {
-	SIS_DISK_BLOCK_HEAD
+	SIS_DISK_BLOCK_HEAD1
     char     sign[3];        // 标志符 "SIS" (4)
     uint16   version       :   5; // 版本号 最多 32 个版本
     uint16   style         :   4; // 文件类型 最多 16 种类型
@@ -223,7 +223,7 @@ typedef struct s_sis_disk_v1_main_head {
 
 // 索引或者工作文件的总数只有在关闭文件时才能确定 所以尾部保存总的文件数
 typedef struct s_sis_disk_v1_main_tail {
-	SIS_DISK_BLOCK_HEAD
+	SIS_DISK_BLOCK_HEAD1
     uint8    count;        // 当前关联文件总数 编号大的比前一个文件大一倍 2^(n-1)
     char     crc[16];      // 数据检验
 }s_sis_disk_v1_main_tail;     // 18个字节尾
@@ -235,7 +235,7 @@ typedef struct s_sis_disk_v1_main_tail {
 // 公用头 1 个字节
 
 typedef struct s_sis_disk_v1_head {
-    SIS_DISK_BLOCK_HEAD
+    SIS_DISK_BLOCK_HEAD1
 }s_sis_disk_v1_head;
 
 

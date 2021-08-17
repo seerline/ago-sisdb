@@ -222,7 +222,7 @@ int sis_disk_v1_class_init(s_sis_disk_v1_class *cls_, int style_, const char *fp
             cls_->work_fps->main_head.wtime = sis_time_get_idate_from_str(fname_, 0);
             cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MAXPAGE;
             // cls_->work_fps->max_page_size = SIS_DISK_MAXLEN_MIDPAGE;
-            cls_->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
+            cls_->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE1;
             sis_sprintf(index_fn, SIS_DISK_NAME_LEN, "%s/%d/%s.%s",
                                        fpath_, nyear, fname_, SIS_DISK_IDX_CHAR);
         }
@@ -232,12 +232,12 @@ int sis_disk_v1_class_init(s_sis_disk_v1_class *cls_, int style_, const char *fp
             return -2;
         }
         break;
-    case SIS_DISK_TYPE_SDB:
+    case SIS_DISK_TYPE_SDB1:
         sis_sprintf(work_fn, SIS_DISK_NAME_LEN, "%s/%s.%s",
                                       fpath_, fname_, SIS_DISK_SDB_CHAR);
         cls_->work_fps->main_head.index = 1;
         cls_->work_fps->max_page_size = 0;
-        cls_->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
+        cls_->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE1;
         sis_sprintf(index_fn, SIS_DISK_NAME_LEN, "%s/%s.%s",
                                        fpath_, fname_, SIS_DISK_IDX_CHAR);
         break;
@@ -876,8 +876,8 @@ void rewrite_sdb(s_sis_disk_v1_class *rwf)
 }
 void pack_sdb(s_sis_disk_v1_class *src)
 {
-    s_sis_disk_v1_class *des = sis_disk_v1_class_create(SIS_DISK_TYPE_SDB ,"dbs", "20200101");  
-    sis_disk_v1_class_init(des, SIS_DISK_TYPE_SDB, "debug1", "db");
+    s_sis_disk_v1_class *des = sis_disk_v1_class_create(SIS_DISK_TYPE_SDB1 ,"dbs", "20200101");  
+    sis_disk_v1_class_init(des, SIS_DISK_TYPE_SDB1, "debug1", "db");
     sis_disk_v1_file_pack(src, des);
     sis_disk_v1_class_destroy(des);
 }
@@ -902,8 +902,8 @@ int main(int argc, char **argv)
     // sis_disk_v1_class_destroy(rwf);
 
 // test sdb
-    s_sis_disk_v1_class *rwf = sis_disk_v1_class_create(SIS_DISK_TYPE_SDB ,"dbs", "20200101");  
-    sis_disk_v1_class_init(rwf, SIS_DISK_TYPE_SDB, "debug", "db");
+    s_sis_disk_v1_class *rwf = sis_disk_v1_class_create(SIS_DISK_TYPE_SDB1 ,"dbs", "20200101");  
+    sis_disk_v1_class_init(rwf, SIS_DISK_TYPE_SDB1, "debug", "db");
     // 测试写入后再写出错问题
     // rewrite_sdb(rwf);
     // pack_sdb(rwf);

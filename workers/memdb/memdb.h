@@ -4,35 +4,27 @@
 #include "sis_method.h"
 #include "sis_net.msg.h"
 #include "sis_list.lock.h"
+#include "sisdb_worker.h"
 #include "worker.h"
 
-typedef struct s_memdb_reader
-{
-	s_sis_sds             sub_mkey; // 匹配字符
-	s_sis_pointer_list   *netmsgs;    // s_sis_net_message
-} s_memdb_reader;
 
 typedef struct s_memdb_cxt
 {
 	int                 status;      // 工作状态
 
 	s_sis_sds           dbname;      // 数据库名字 memdb
-	s_sis_map_pointer  *work_keys;   // 数据集合的字典表 char -> sis_object
+	s_sis_map_kobj     *work_keys;   // 数据集合的字典表 sis_object -> 
+
+	s_sis_map_kobj     *msub_keys;   // 订阅对应的字典表 sis_object -> s_sis_sub_cxt
 
 	// 多个 client 订阅的列表 需要一一对应发送
-	// 同一 mkey 可能有多个用户订阅 如果一个用户有单键值订阅并且和模糊订阅重叠 从单键值订阅表中删除
-	s_sis_pointer_list  *msub_readers; // s_memdb_reader 
-	// 以 key 为索引的 s_memdb_reader 同一key可能有多个用户订阅
-	s_sis_map_pointer   *sub_readers;   // s_memdb_reader
+	// s_sisdb_sub_cxt      *sub_readers; // 除非序列号 客户号 订阅信息都一样 才直接覆盖 否则都当成新的订阅处理
 
 	// 直接回调组装好的 s_sis_net_message
 	void               *cb_source;       // 
 	sis_method_define  *cb_net_message;  // s_sis_net_message 
 
-}s_memdb_cxt;
-
-s_memdb_reader *memdb_reader_create(s_sis_net_message *netmsg_);
-void memdb_reader_destroy(void *);
+} s_memdb_cxt;
 
 bool  memdb_init(void *, void *);
 void  memdb_uninit(void *);

@@ -296,6 +296,20 @@ bool sis_str_method(const char *minfo_, char *mname_, size_t mlen_, char *param_
 	}
 	return o == 2;
 }
+bool sis_str_exist_ch(const char *in_, size_t ilen_, const char *ic_, size_t clen_)
+{
+    for (size_t i = 0; i < ilen_; i++)
+    {
+		for (size_t j = 0; j < clen_; j++)
+        {
+			if (in_[i] == ic_[j])
+			{
+				return true;
+			}
+		}
+    }
+    return false;	
+}
 
 int sis_str_pos(const char *in_, size_t ilen_, char c)
 {

@@ -5,6 +5,7 @@
 #include <sis_core.h>
 #include <sis_memory.h>
 #include <sis_list.h>
+#include <sis_map.h>
 
 //--------------------------------------------------------------//
 // 正常网络包处理流程
@@ -75,7 +76,7 @@ typedef struct s_sis_net_message {
     int8                comp;      // 如果包不完整需要等到完整包到达再解析
 	s_sis_memory       *memory;    // 网络来去的原始数据包 转发时直接发送该数据
 
-    int8                format;    // 根据此标记进行打包和拆包 默认SIS_NET_FORMAT_CHARS
+    int8                format;    // 根据此标记进行打包和拆包 默认 SIS_NET_FORMAT_CHARS
 
     s_sis_net_switch    switchs;   // 字典开关
     // 当发送和接收到的是不定长列表数据时 写入argvs中 
@@ -91,7 +92,7 @@ typedef struct s_sis_net_message {
     s_sis_sds           rmsg;      // [应答专用｜不必要] 表示为字符类型的返回数据
     int8                rfmt;      // [应答专用] rmsg 数据的类型和格式 特指 rmsg 整数 数组 ...
 	// 有扩展字典时有值
-	// s_sis_message      *map; 
+	s_sis_map_pointer  *map;       // 
 } s_sis_net_message;
 
 #define SIS_NET_SHOW_MSG(_s_,_n_) { uint16 *sw = (uint16 *)&netmsg->switchs; \
@@ -122,6 +123,8 @@ void sis_net_message_decr(void *);
 
 void sis_net_message_clear(s_sis_net_message *);
 size_t sis_net_message_get_size(s_sis_net_message *);
+
+void sis_net_message_copy(s_sis_net_message *, s_sis_net_message *, int , s_sis_sds);
 
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数

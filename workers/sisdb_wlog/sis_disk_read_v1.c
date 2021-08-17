@@ -1136,7 +1136,7 @@ size_t sis_disk_v1_file_read_of_index(s_sis_disk_v1_class *cls_, uint8 hid_, s_s
     // printf("+++ %d %zu\n", hid_, iunit_->offset);
     switch (hid_)
     {
-    case SIS_DISK_HID_MSG_SDB: // 只有一个key + 可能多条数据
+    case SIS_DISK_HID_MSG_SDB1: // 只有一个key + 可能多条数据
         _sis_disk_v1_read_hid_sdb(cls_, iunit_, inmem_);
         break;
     case SIS_DISK_HID_MSG_KDB:
@@ -1163,7 +1163,7 @@ size_t sis_disk_v1_file_rget_of_index(s_sis_disk_v1_class *cls_, uint8 hid_, s_s
     case SIS_DISK_HID_MSG_SNO: // 只有一个key + 可能多条数据
         _sis_disk_v1_rget_hid_sno(cls_, iunit_, inmem_, obj_);
         break;
-    case SIS_DISK_HID_MSG_SDB: // 只有一个key + 可能多条数据
+    case SIS_DISK_HID_MSG_SDB1: // 只有一个key + 可能多条数据
         _sis_disk_v1_rget_hid_sdb(cls_, iunit_, inmem_, obj_);
         break;
     case SIS_DISK_HID_MSG_KDB:
@@ -1364,7 +1364,7 @@ int cb_sis_disk_v1_file_read_index(void *source_, s_sis_disk_v1_head *head_, s_s
     s_sis_memory *memory = omem_;
     while(sis_memory_get_size(memory) > 0)
     {
-        if (head_->hid == SIS_DISK_HID_INDEX_KEY)
+        if (head_->hid == SIS_DISK_HID_INDEX_KEY1)
         {            
             s_sis_disk_v1_index *node = sis_disk_v1_index_create(NULL, NULL);
             
@@ -1380,7 +1380,7 @@ int cb_sis_disk_v1_file_read_index(void *source_, s_sis_disk_v1_head *head_, s_s
             }
             sis_map_list_set(cls_->index_infos, SIS_DISK_SIGN_KEY, node);   
         }
-        else if (head_->hid == SIS_DISK_HID_INDEX_SDB)
+        else if (head_->hid == SIS_DISK_HID_INDEX_SDB1)
         {
             s_sis_disk_v1_index *node = sis_disk_v1_index_create(NULL, NULL);
             int blocks = sis_memory_get_ssize(memory);
@@ -1425,7 +1425,7 @@ int cb_sis_disk_v1_file_read_index(void *source_, s_sis_disk_v1_head *head_, s_s
                 unit.offset = sis_memory_get_ssize(memory);
                 unit.size = sis_memory_get_ssize(memory);
                 unit.start = sis_memory_get_ssize(memory);
-                if (head_->hid == SIS_DISK_HID_INDEX_SNO)
+                if (head_->hid == SIS_DISK_HID_INDEX_SNO1)
                 {
                     unit.ipage = sis_memory_get_ssize(memory);  
                     maxpages = sis_max(maxpages, unit.ipage);
@@ -1521,7 +1521,7 @@ int sis_disk_v1_file_read_sub(s_sis_disk_v1_class *cls_, s_sis_disk_v1_reader *r
             sis_disk_v1_read_sub_sno(cls_, reader_);  
         }
         break;
-    default:  // SIS_DISK_TYPE_SDB
+    default:  // SIS_DISK_TYPE_SDB1
     // sdb 因为有废弃的数据 所以只能通过索引去读取数据
     // 如果索引丢弃 原则是后面的key覆盖前面的key
         {
@@ -1545,7 +1545,7 @@ int sis_disk_v1_file_read_sub(s_sis_disk_v1_class *cls_, s_sis_disk_v1_reader *r
 s_sis_object *sis_disk_v1_file_read_get_obj(s_sis_disk_v1_class *cls_, s_sis_disk_v1_reader *reader_)
 {
     if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SNO &&
-        cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB)
+        cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB1)
     {
         return NULL;
     }

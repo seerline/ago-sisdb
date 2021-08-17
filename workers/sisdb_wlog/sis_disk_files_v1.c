@@ -53,14 +53,14 @@ void sis_disk_v1_clear(s_sis_disk_v1 *in_)
     o->main_head.fin = 1;
     o->main_head.zip = 0;
     o->main_head.hid = SIS_DISK_HID_HEAD;
-    o->main_head.version = SIS_DISK_SDB_VER;
+    o->main_head.version = SIS_DISK_SDB_VER1;
     o->main_head.style = SIS_DISK_TYPE_STREAM;
     o->main_head.compress = SIS_DISK_ZIP_SNAPPY;
     memmove(o->main_head.sign, "SIS", 3);
 
     o->main_tail.fin = 1;
     o->main_tail.zip = 0;
-    o->main_tail.hid = SIS_DISK_HID_TAIL;  
+    o->main_tail.hid = SIS_DISK_HID_TAIL1;  
     o->main_tail.count = 1; 
 }
 void sis_disk_v1_close(s_sis_disk_v1 *cls_)
@@ -629,7 +629,7 @@ size_t sis_disk_v1_read_fulltext(s_sis_disk_v1 *cls_, void *source_, cb_sis_disk
                         LINEEND = true; 
                         continue;
                     }
-                    if (head.hid == SIS_DISK_HID_TAIL)
+                    if (head.hid == SIS_DISK_HID_TAIL1)
                     {
                         // 结束
                         size = SIS_DISK_V1_MIN_BUFFER - 1;

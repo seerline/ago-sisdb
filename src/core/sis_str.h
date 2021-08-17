@@ -68,6 +68,8 @@ int sis_strsub(char *big_, char *small_);
 // 得到方法的字符串 method(11,22,33)
 bool sis_str_method(const char *minfo_, char *mname_, size_t mlen_, char *param_, size_t plen_);
 
+bool sis_str_exist_ch(const char *in_, size_t ilen_, const char *ic_, size_t clen_);
+
 int sis_str_pos(const char *in_, size_t ilen_, char c);
 int sis_str_substr_nums(const char *s, size_t ilen_, char c);
 void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_);

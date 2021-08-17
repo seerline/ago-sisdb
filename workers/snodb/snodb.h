@@ -16,7 +16,7 @@
 #include "sis_dynamic.h"
 #include "sis_bits_v0.h"
 #include "sis_obj.h"
-#include "sis_disk_v1.h"
+#include "sis_disk.h"
 #include "sis_net.msg.h"
 #include "sis_db.h"
 

@@ -204,13 +204,13 @@ size_t sis_disk_v1_file_write_sdb_one(s_sis_disk_v1_class *cls_,
         sis_memory_cat_ssize(wcatch->memory, key->index);
         sis_memory_cat_ssize(wcatch->memory, sdb->index);
         sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
-        size = sis_disk_v1_write_work(cls_, SIS_DISK_HID_MSG_SDB, wcatch);
+        size = sis_disk_v1_write_work(cls_, SIS_DISK_HID_MSG_SDB1, wcatch);
         sis_disk_v1_wcatch_destroy(wcatch);
     }
     return size;
 }
 
-#define CHECK_IS_SDB(s) (s == SIS_DISK_TYPE_LOG || s == SIS_DISK_TYPE_SNO || s == SIS_DISK_TYPE_SDB) ? 1 : 0
+#define CHECK_IS_SDB(s) (s == SIS_DISK_TYPE_LOG || s == SIS_DISK_TYPE_SNO || s == SIS_DISK_TYPE_SDB1) ? 1 : 0
 
 
 size_t _sis_disk_v1_file_write_sdb(s_sis_disk_v1_class *cls_,
@@ -227,7 +227,7 @@ size_t _sis_disk_v1_file_write_sdb(s_sis_disk_v1_class *cls_,
     case SIS_DISK_TYPE_SNO:
         size = sis_disk_v1_file_write_sdb_sno(cls_, key_, sdb_, in_, ilen_);
         break;
-    default: // SIS_DISK_TYPE_SDB
+    default: // SIS_DISK_TYPE_SDB1
         size = sis_disk_v1_file_write_sdb_one(cls_, key_, sdb_, in_, ilen_);
         break;
     }
@@ -367,7 +367,7 @@ size_t sis_disk_v1_file_write_kdb(s_sis_disk_v1_class *cls_,
     {
         return 0;
     }
-    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB)
+    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB1)
     {
         return 0;
     }
@@ -387,7 +387,7 @@ size_t sis_disk_v1_file_write_key(s_sis_disk_v1_class *cls_,
     {
         return 0;
     }
-    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB)
+    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB1)
     {
         return 0;
     }
@@ -413,7 +413,7 @@ size_t sis_disk_v1_file_write_any(s_sis_disk_v1_class *cls_,
     {
         return 0;
     }
-    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB)
+    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB1)
     {
         return 0;
     }
@@ -550,7 +550,7 @@ size_t sis_disk_v1_file_write_index(s_sis_disk_v1_class *cls_)
             sis_memory_cat_ssize(memory, unit->offset);
             sis_memory_cat_ssize(memory, unit->size);
         }
-        size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_KEY, cls_->src_wcatch);
+        size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_KEY1, cls_->src_wcatch);
     }
     sis_memory_clear(memory);
     s_sis_disk_v1_index *sdbnode = (s_sis_disk_v1_index *)sis_map_list_get(cls_->index_infos, SIS_DISK_SIGN_SDB);
@@ -564,7 +564,7 @@ size_t sis_disk_v1_file_write_index(s_sis_disk_v1_class *cls_)
             sis_memory_cat_ssize(memory, unit->offset);
             sis_memory_cat_ssize(memory, unit->size);
         }
-        size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_SDB, cls_->src_wcatch);
+        size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_SDB1, cls_->src_wcatch);
     }
     int count = sis_map_list_getsize(cls_->index_infos);
     sis_memory_clear(memory);
@@ -614,11 +614,11 @@ size_t sis_disk_v1_file_write_index(s_sis_disk_v1_class *cls_)
         {
             if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_SNO)
             {
-                size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_SNO, cls_->src_wcatch);
+                size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_SNO1, cls_->src_wcatch);
             }
             else
             {
-                size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_MSG, cls_->src_wcatch);    
+                size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_MSG1, cls_->src_wcatch);    
             }           
             sis_memory_clear(memory);
         }   
@@ -627,11 +627,11 @@ size_t sis_disk_v1_file_write_index(s_sis_disk_v1_class *cls_)
     {
         if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_SNO)
         {
-            size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_SNO, cls_->src_wcatch);
+            size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_SNO1, cls_->src_wcatch);
         }
         else
         {
-            size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_MSG, cls_->src_wcatch);    
+            size += sis_disk_v1_write(cls_->index_fps, SIS_DISK_HID_INDEX_MSG1, cls_->src_wcatch);    
         }
         sis_memory_clear(memory);
     }   
@@ -669,7 +669,7 @@ size_t sis_disk_v1_file_write_surplus(s_sis_disk_v1_class *cls_)
         LOG(5)("write sno : %zu\n", size);
     }
     break;
-    default: // SIS_DISK_TYPE_SDB  // 所有数据及时写入，
+    default: // SIS_DISK_TYPE_SDB1  // 所有数据及时写入，
 
         break;
     }

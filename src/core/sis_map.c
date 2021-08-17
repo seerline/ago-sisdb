@@ -1,6 +1,7 @@
 ﻿
 #include "sis_map.h"
 #include "sis_list.h"
+#include "sis_obj.h"
 
 uint64_t _sis_dict_str_hash(const void *key)
 {
@@ -14,6 +15,10 @@ uint64_t _sis_dict_int_hash(const void *key) // 只能是 int64
 {
 	return sis_dict_get_casehash_func((unsigned char *)key, sizeof(int64));
 }
+uint64_t _sis_dict_obj_hash(const void *key)
+{
+	return sis_dict_get_casehash_func((unsigned char *)SIS_OBJ_GET_CHAR((s_sis_object *)key), SIS_OBJ_GET_SIZE((s_sis_object *)key));
+}
 int _sis_dict_strcase_compare(const void *key1, const void *key2)
 {
 	return sis_strcasecmp((const char *)key1, (const char *)key2) == 0;
@@ -21,6 +26,10 @@ int _sis_dict_strcase_compare(const void *key1, const void *key2)
 int _sis_dict_int_compare(const void *key1, const void *key2)
 {
 	return *((int64 *)key1) == *((int64 *)key2);
+}
+int _sis_dict_obj_compare(const void *key1, const void *key2)
+{
+	return sis_strcasecmp(SIS_OBJ_GET_CHAR((s_sis_object *)key1), SIS_OBJ_GET_CHAR((s_sis_object *)key2)) == 0;
 }
 void *_sis_dict_sds_dup(const void *val)
 {
@@ -39,6 +48,12 @@ void *_sis_dict_int_dup(const void *val)
 	memmove(o, val, sizeof(int64));	
 	return o;
 }
+void *_sis_dict_obj_dup(const void *val)
+{
+	s_sis_object *obj = (s_sis_object *)val;
+	sis_object_incr(obj);
+	return obj;
+}
 void _sis_dict_sds_free(void *val)
 {
 	sis_sdsfree((s_sis_sds)val);
@@ -46,6 +61,11 @@ void _sis_dict_sds_free(void *val)
 void _sis_dict_str_free(void *val)
 {
 	sis_free(val);
+}
+void _sis_dict_obj_free(void *val)
+{
+	s_sis_object *obj = (s_sis_object *)val;
+	sis_object_decr(obj);
 }
 
 s_sis_dict_type _sis_dict_type_nofree_val_s = {
@@ -62,6 +82,14 @@ s_sis_dict_type _sis_dict_type_int_key_s = {
 	NULL,					   /* val dup */
 	_sis_dict_int_compare,     /* key compare */
 	_sis_dict_str_free,		   /* key destructor */
+	NULL					   /* val destructor */
+};
+s_sis_dict_type _sis_dict_type_obj_key_s = {
+	_sis_dict_obj_hash,	       /* hash function */
+	_sis_dict_obj_dup,		   /* key dup */
+	NULL,					   /* val dup */
+	_sis_dict_obj_compare,     /* key compare */
+	_sis_dict_obj_free,		   /* key destructor */
 	NULL					   /* val destructor */
 };
 
@@ -264,6 +292,22 @@ int sis_map_int_set(s_sis_map_int *map_, const char *key_, int64 value_)
 	return sis_dict_set_int(map_, (void *)key_, value_);
 }
 //////////////////////////////////////////
+//  s_sis_map_sds 基础定义
+//////////////////////////////////////////
+s_sis_map_sds *sis_map_sds_create()
+{
+	s_sis_dict_type *type = SIS_MALLOC(s_sis_dict_type, type);
+	memmove(type, &_sis_dict_type_sds_s, sizeof(s_sis_dict_type));
+	s_sis_map_sds *map = sis_dict_create(type, NULL);
+	return map;
+};
+int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
+{
+	sis_dict_replace(map_, (void *)key_, val_);
+	return 0;
+}
+
+//////////////////////////////////////////
 //  s_sis_map_kint 基础定义
 //////////////////////////////////////////
 
@@ -299,19 +343,16 @@ void sis_map_kint_del(s_sis_map_kint *map_, int64 key_)
 	sis_dict_delete(map_, (void *)&key_);
 }
 //////////////////////////////////////////
-//  s_sis_map_sds 基础定义
+//  s_sis_map_kobj 基础定义
 //////////////////////////////////////////
-s_sis_map_sds *sis_map_sds_create()
+
+s_sis_map_kobj *sis_map_kobj_create()
 {
 	s_sis_dict_type *type = SIS_MALLOC(s_sis_dict_type, type);
-	memmove(type, &_sis_dict_type_sds_s, sizeof(s_sis_dict_type));
-	s_sis_map_sds *map = sis_dict_create(type, NULL);
+	memmove(type, &_sis_dict_type_obj_key_s, sizeof(s_sis_dict_type));
+	s_sis_map_kobj *map = sis_dict_create(type, NULL);
 	return map;
-};
-int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
-{
-	sis_dict_replace(map_, (void *)key_, val_);
-	return 0;
+
 }
 
 // int main()

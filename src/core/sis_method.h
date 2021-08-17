@@ -20,6 +20,7 @@ typedef int (sis_method_define)(void *, void *);
 #define SIS_METHOD_NOCMD   -1
 #define SIS_METHOD_NOWORK  -2
 #define SIS_METHOD_NULL    -3
+#define SIS_METHOD_REPEAT  -5
 
 #define SIS_INT_TO_VOID(n)  ((void *)(uint64)n)
 #define SIS_VOID_TO_INT(v)  ((int)(uint64)v)

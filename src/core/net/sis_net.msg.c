@@ -112,6 +112,45 @@ size_t sis_net_message_get_size(s_sis_net_message *msg_)
 	return size;
 }
 
+void sis_net_message_copy(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_, int cid_, s_sis_sds name_)
+{
+    newmsg_->cid = cid_;
+    newmsg_->ver = agomsg_->ver;
+    newmsg_->name = name_ ? sis_sdsdup(name_) : NULL;
+
+    newmsg_->format = agomsg_->format;
+    memmove(&newmsg_->switchs, &agomsg_->switchs, sizeof(s_sis_net_switch));
+
+    if (agomsg_->argvs && agomsg_->argvs->count > 0)
+    {
+        if (!newmsg_->argvs)
+        {
+            newmsg_->argvs = sis_pointer_list_create();
+            newmsg_->argvs->vfree = sis_object_decr;
+        }
+        else
+        {
+            sis_pointer_list_clear(newmsg_->argvs);
+        }
+        for (int i = 0; i < agomsg_->argvs->count; i++)
+        {
+            s_sis_object *obj = sis_pointer_list_get(agomsg_->argvs, i);
+            sis_object_incr(obj);
+            sis_pointer_list_push(newmsg_->argvs, obj);
+        }
+    }
+    newmsg_->service = agomsg_->service ? sis_sdsdup(agomsg_->service) : NULL;
+    newmsg_->cmd = agomsg_->cmd ? sis_sdsdup(agomsg_->cmd) : NULL;
+    newmsg_->key = agomsg_->key ? sis_sdsdup(agomsg_->key) : NULL;
+    newmsg_->ask = agomsg_->ask ? sis_sdsdup(agomsg_->ask) : NULL;
+
+    newmsg_->rans = agomsg_->rans;
+    newmsg_->rnext = agomsg_->rnext;
+    newmsg_->rmsg = agomsg_->rmsg ? sis_sdsdup(agomsg_->rmsg) : NULL;
+    newmsg_->rfmt = agomsg_->rfmt;
+   
+}
+
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数
 ////////////////////////////////////////////////////////

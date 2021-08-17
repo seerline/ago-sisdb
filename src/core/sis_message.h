@@ -6,6 +6,7 @@
 #include <sis_map.h>
 #include <sis_list.h>
 #include <sis_method.h>
+#include <sis_net.msg.h>
 
 #define SIS_MESSGE_TYPE_OWNER    0  // 自定义
 #define SIS_MESSGE_TYPE_INT      1
@@ -25,16 +26,9 @@ typedef struct s_sis_message_unit {
 /////////////////////////////////////////////////
 //  message
 /////////////////////////////////////////////////
-#define s_sis_message s_sis_map_pointer
-
-// // 分开定义是为了解决key同民问题，支持同一个名字下各种类型数据
-// typedef struct s_sis_message {
-//     unsigned int        refs;      // 引用次数
-//     // 其他未事先定义的字典表
-//     s_sis_map_pointer  *map;       // 标准消息体的数据 模块间通讯基本都靠这个
-//     // 网络传递
-//     s_sis_net_message  *netmsg;    // 网络节点信息
-// } s_sis_message;
+// #define s_sis_message s_sis_map_pointer
+// 直接利用 s_sis_net_message 仅仅对map进行操作
+#define s_sis_message s_sis_net_message
 
 #ifdef __cplusplus
 extern "C" {

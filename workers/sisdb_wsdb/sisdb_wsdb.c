@@ -22,8 +22,8 @@ s_sis_modules sis_modules_sisdb_wsdb = {
     NULL,
     NULL,
     sisdb_wsdb_uninit,
-    sisdb_wsdb_method_init,
-    sisdb_wsdb_method_uninit,
+    NULL,
+    NULL,
     sizeof(sisdb_wsdb_methods) / sizeof(s_sis_method),
     sisdb_wsdb_methods,
 };
@@ -45,9 +45,16 @@ bool sisdb_wsdb_init(void *worker_, void *argv_)
         {
             context->work_path = sis_sdsnew("data/");
         }
-        if (!sis_path_exists(context->work_path))
+    }
+    {
+        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-name");
+        if (sonnode)
         {
-            sis_path_mkdir(context->work_path);
+            context->work_name = sis_sdsnew(sonnode->value);
+        }
+        else
+        {
+            context->work_name = sis_sdsempty();
         }
     }
     {
@@ -60,13 +67,7 @@ bool sisdb_wsdb_init(void *worker_, void *argv_)
         {
             context->safe_path = sis_sdsnew("data/safe/");
         }
-        if (!sis_path_exists(context->safe_path))
-        {
-            sis_path_mkdir(context->safe_path);
-        }
     }
-    context->page_size = sis_json_get_int(node, "page-size", 500) * 1000000;
-
     return true;
 }
 void sisdb_wsdb_uninit(void *worker_)
@@ -74,15 +75,10 @@ void sisdb_wsdb_uninit(void *worker_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
     sis_sdsfree(context->work_path);
+    sis_sdsfree(context->work_name);
     sis_sdsfree(context->safe_path);
     sis_free(context);
 
-}
-void sisdb_wsdb_method_init(void *worker_)
-{
-}
-void sisdb_wsdb_method_uninit(void *worker_)
-{
 }
 
 s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
@@ -146,15 +142,14 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
 
     if (sis_map_pointer_getsize(sisdb->work_keys) > 0)
     {
-        s_sis_disk_v1_class *sdbfile = sis_disk_v1_class_create();
-        sis_disk_v1_class_init(sdbfile, SIS_DISK_TYPE_SDB, context->work_path, sisdb->dbname, 0);
+        s_sis_disk_writer *sdbfile = sis_disk_writer_create(context->work_path, sisdb->dbname, SIS_DISK_TYPE_SDB);
         // 不能删除老文件的信息
-        sis_disk_v1_file_write_start(sdbfile);
+        sis_disk_writer_open(sdbfile, 0);
         {
             s_sis_sds keys = _sisdb_get_keys(sisdb);
-            sis_disk_v1_class_set_key(sdbfile, true, keys, sis_sdslen(keys));
+            sis_disk_writer_set_kdict(sdbfile, keys, sis_sdslen(keys));
             s_sis_sds sdbs = _sisdb_get_sdbs(sisdb);
-            sis_disk_v1_class_set_sdb(sdbfile, true, sdbs, sis_sdslen(sdbs));
+            sis_disk_writer_set_sdict(sdbfile, sdbs, sis_sdslen(sdbs));
             sis_sdsfree(keys);
             sis_sdsfree(sdbs);
         }
@@ -171,7 +166,7 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
                 sis_str_divide(collect->name, '.', keyn, sdbn); 
                 if (collect->style == SISDB_COLLECT_TYPE_TABLE)
                 {
-                    sis_disk_v1_file_write_sdb(sdbfile, keyn, collect->sdb->db->name, 
+                    sis_disk_writer_sdb(sdbfile, keyn, collect->sdb->db->name, 
                         SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
                 }
                 else 
@@ -180,14 +175,14 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
                     sis_memory_clear(memory);
                     sis_memory_cat_byte(memory, collect->style, 1);
                     sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-                    sis_disk_v1_file_write_any(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
+                    sis_disk_writer_one(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
                 }
             }
             sis_dict_iter_free(di);
             sis_memory_destroy(memory);
         }
-        sis_disk_v1_file_write_stop(sdbfile);
-        sis_disk_v1_class_destroy(sdbfile);
+        sis_disk_writer_close(sdbfile);
+        sis_disk_writer_destroy(sdbfile);
     }
 
     return SIS_METHOD_OK;
@@ -195,38 +190,38 @@ int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
 
 int cmd_sisdb_wsdb_pack(void *worker_, void *argv_)
 {
-    s_sis_message *msg = (s_sis_message *)argv_;
-    s_sis_sds dbname = sis_message_get_str(msg, "dbname");
-    if (!dbname)
-    {
-        return SIS_METHOD_ERROR;
-    }
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
+    // s_sis_message *msg = (s_sis_message *)argv_;
+    // s_sis_sds dbname = sis_message_get_str(msg, "dbname");
+    // if (!dbname)
+    // {
+    //     return SIS_METHOD_ERROR;
+    // }
+    // s_sis_worker *worker = (s_sis_worker *)worker_; 
+    // s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
-    // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
-    s_sis_disk_v1_class *srcfile = sis_disk_v1_class_create();
-    sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
-    sis_disk_v1_file_move(srcfile, context->safe_path);
-    sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname, 0);
+    // // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
+    // s_sis_disk_v1_class *srcfile = sis_disk_v1_class_create();
+    // sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
+    // sis_disk_v1_file_move(srcfile, context->safe_path);
+    // sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname, 0);
 
-    s_sis_disk_v1_class *desfile = sis_disk_v1_class_create();
-    sis_disk_v1_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
+    // s_sis_disk_v1_class *desfile = sis_disk_v1_class_create();
+    // sis_disk_v1_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
 
-    size_t size = sis_disk_v1_file_pack(srcfile, desfile);
+    // size_t size = sis_disk_v1_file_pack(srcfile, desfile);
 
-    if (size == 0)
-    {
-        sis_disk_v1_file_delete(desfile);
-        sis_disk_v1_file_move(srcfile, context->work_path);
-    }   
-    sis_disk_v1_class_destroy(desfile);
-    sis_disk_v1_class_destroy(srcfile);
+    // if (size == 0)
+    // {
+    //     sis_disk_v1_file_delete(desfile);
+    //     sis_disk_v1_file_move(srcfile, context->work_path);
+    // }   
+    // sis_disk_v1_class_destroy(desfile);
+    // sis_disk_v1_class_destroy(srcfile);
 
-    if (size == 0)
-    {
-        return SIS_METHOD_ERROR;
-    }
+    // if (size == 0)
+    // {
+    //     return SIS_METHOD_ERROR;
+    // }
     return SIS_METHOD_OK;
 }
 

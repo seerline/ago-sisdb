@@ -7,11 +7,11 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method memdb_methods[] = {
-  {"get",    memdb_get, 0, NULL},
-  {"set",    memdb_set, 0, NULL},
-  {"sub",    memdb_sub, 0, NULL},
-  {"pub",    memdb_pub, 0, NULL},
-  {"msub",   memdb_msub, 0, NULL},
+  {"get",    memdb_get,   0, NULL},
+  {"set",    memdb_set,   0, NULL},
+  {"sub",    memdb_sub,   0, NULL},
+  {"pub",    memdb_pub,   0, NULL},
+  {"msub",   memdb_msub,  0, NULL},  // 默认头匹配多键值查询
   {"unsub",  memdb_unsub, 0, NULL},
 };
 // 共享内存数据库 不落盘
@@ -27,16 +27,7 @@ s_sis_modules sis_modules_memdb = {
   memdb_methods,
 };
 
-s_memdb_reader *memdb_reader_create(s_sis_net_message *netmsg_)
-{
-    s_memdb_reader *o = SIS_MALLOC(s_memdb_reader, o);
-    return o;
-}
-void memdb_reader_destroy(void *reader_)
-{
-    s_memdb_reader *reader = (s_memdb_reader *)reader_;
-    sis_free(reader);
-}
+
 
 bool  memdb_init(void *worker_, void *node_)
 {
