@@ -227,8 +227,6 @@ void sis_subdb_unit_clear(s_sis_subdb_unit *unit_)
 {
 	sis_node_list_clear(unit_->vlist);
 	sis_node_list_clear(unit_->vmsec);
-	unit_->next = NULL;
-	unit_->prev = NULL;
 }
 
 /////////////////////////////////////////////////////////
@@ -237,7 +235,7 @@ s_sis_subdb_cxt *sis_subdb_cxt_create(int pagesize_)
 {
 	s_sis_subdb_cxt *o = SIS_MALLOC(s_sis_subdb_cxt, o);
 	o->work_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
-	o->work_units = sis_map_pointer_create_v(sis_subdb_unit_destroy);
+	o->work_units = sis_map_list_create(sis_subdb_unit_destroy);
 	o->pagesize = pagesize_ ? pagesize_ : 1024;
 	return o;
 }
@@ -252,26 +250,22 @@ void sis_subdb_cxt_destroy(s_sis_subdb_cxt *cxt_)
 		}	
 	}
 	sis_map_list_destroy(cxt_->work_sdbs);
-	sis_map_pointer_destroy(cxt_->work_units);
+	sis_map_list_destroy(cxt_->work_units);
 	sis_free(cxt_);
 }
 
 void sis_subdb_cxt_clear(s_sis_subdb_cxt *cxt_)
 {
-	if (cxt_->work_status == SIS_SUBDB_STOPED)
+	int count = sis_map_list_getsize(cxt_->work_units);
+	for (int i = 0; i < count; i++)
 	{
-		s_sis_dict_entry *de;
-		s_sis_dict_iter *di = sis_dict_get_iter(cxt_->work_units);
-		while ((de = sis_dict_next(di)) != NULL)
-		{
-			s_sis_subdb_unit *unit = (s_sis_subdb_unit *)sis_dict_getval(de);
-			sis_subdb_unit_clear(unit);
-		}
-		sis_dict_iter_free(di);
+		s_sis_subdb_unit *unit = sis_map_list_geti(cxt_->work_units, i);
+		sis_subdb_unit_clear(unit);
 	}
+	cxt_->new_msec = 0;
+	cxt_->new_sums = 0;
 }
 
-// void sis_subdb_cxt_set_keys(s_sis_subdb_cxt *, s_sis_sds );
 void sis_subdb_cxt_init_sdbs(s_sis_subdb_cxt *cxt_, const char *in_, size_t ilen_)
 {
 	s_sis_json_handle *injson = sis_json_load(in_, ilen_);
@@ -320,202 +314,22 @@ static inline msec_t _subdb_cxt_get_vmsec(s_sis_subdb_unit *unit)
 	// }
 	return vmsec ? *vmsec : 0;
 }
-void _show_link(s_sis_subdb_cxt *cxt)
-{
-	s_sis_subdb_unit *next = cxt->head;
-	int index = 0;
-	while(next)
-	{
-		printf("-%3d-[%4d] %s.%s : %lld| %p %p | %p %p %p\n", index++, next->vlist->count, next->kname, next->db->name, 
-			(int64)_subdb_cxt_get_vmsec(next), cxt->head, cxt->tail, next->prev, next, next->next);
-		next = next->next;
-	}	
-}
-void _subdb_cxt_link_move(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
-{
-	// 抹掉unit
-	if (unit->prev)
-	{
-		unit->prev->next = unit->next;
-	}
-	if (unit->next)
-	{
-		unit->next->prev = unit->prev;
-	}
-	if (unit == cxt->head)
-	{
-		cxt->head = unit->next;
-		if (unit->next)
-		{
-			unit->next->prev = NULL;
-		}
-	}
-	if (unit == cxt->tail)
-	{
-		cxt->tail = unit->prev;
-		if (unit->prev)
-		{
-			unit->prev->next = NULL;
-		}
-	}
-}
-void _subdb_cxt_link_tail(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
-{
-	_subdb_cxt_link_move(cxt, unit);
-	// 到尾部
-	if (cxt->tail)
-	{
-		cxt->tail->next = unit;
-	}
-	unit->prev = cxt->tail;
-	unit->next = NULL;
-	cxt->tail = unit;
-	if (!cxt->head)
-	{
-		cxt->head = unit;
-	}
-}
-void _subdb_cxt_link_insert(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *nearunit, s_sis_subdb_unit *unit)
-{
-	_subdb_cxt_link_move(cxt, unit);
-	// 插入到 nearunit 前
-	if (nearunit == cxt->head)
-	{
-		nearunit->prev = unit;
-		unit->next = nearunit;
-		unit->prev = NULL;
-		cxt->head = unit;
-	}
-	else
-	{
-		// if (!nearunit->prev)
-		// {
-		// 	LOG(0)("--------------\n");
-		// }
-		// _show_link(cxt);
-		nearunit->prev->next = unit;
-		unit->prev = nearunit->prev;
-		nearunit->prev = unit;
-		unit->next = nearunit;
 
-	}
-}
-void _subdb_cxt_next_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
+static inline void  _subdb_cxt_set_msec(s_sis_subdb_cxt *cxt, msec_t vmsec)
 {
-	// 从下一记录开始查找
-	int mode = SIS_SUBDB_NONE; 
-	msec_t agov = _subdb_cxt_get_vmsec(unit);
-	s_sis_subdb_unit *nearunit = unit->next;
-	while (nearunit)
+	if (vmsec < cxt->new_msec || cxt->new_sums == 0)
 	{
-		msec_t curv = _subdb_cxt_get_vmsec(nearunit);
-		if (agov <= curv)
-		{
-			break;
-		}
-		else
-		{
-			mode = nearunit->next ? SIS_SUBDB_INSERT : SIS_SUBDB_TAIL; 
-		}
-		nearunit = nearunit->next;
-	};
-	if (mode == SIS_SUBDB_TAIL)
-	{ // 到尾部
-		_subdb_cxt_link_tail(cxt, unit);
+		cxt->new_msec = vmsec;
 	}
-	else if (mode == SIS_SUBDB_INSERT)
-	{ 
-		_subdb_cxt_link_insert(cxt, nearunit, unit);
-	}	
-}
-void _subdb_cxt_push_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
-{
-	// 从下一记录开始查找
-	int mode = SIS_SUBDB_NONE; 
-	s_sis_subdb_unit *nearunit = NULL;
-	if (cxt->head && cxt->tail)
-	{
-		msec_t agov = _subdb_cxt_get_vmsec(unit);
-		nearunit = cxt->head;
-		while (nearunit)
-		{
-			msec_t curv = _subdb_cxt_get_vmsec(nearunit);
-			if (agov <= curv)
-			{
-				mode = SIS_SUBDB_INSERT;
-				break;
-			}
-			nearunit = nearunit->next;
-		};
-	}
-	if (mode == SIS_SUBDB_INSERT)
-	{ 
-		_subdb_cxt_link_insert(cxt, nearunit, unit);
-	}
-	else
-	{  // 到尾部
-		_subdb_cxt_link_tail(cxt, unit);
-	}	
 }
 
-void _subdb_cxt_add_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
-{
-	if (!unit->db->field_time)
-	{
-		if (cxt->head)
-		{
-			cxt->head->prev = unit;
-			unit->next = cxt->head;
-		}
-		if (!cxt->tail)
-		{
-			cxt->tail = unit;
-		}
-		cxt->head = unit;
-	}
-	else
-	{
-		if (!cxt->head || !cxt->tail)
-		{
-			cxt->head = unit;
-			cxt->tail = unit;
-		}
-		else
-		{
-			_subdb_cxt_push_link(cxt, unit);
-		}
-	}
-}
-void _subdb_cxt_del_link(s_sis_subdb_cxt *cxt, s_sis_subdb_unit *unit)
-{
-	if (unit->prev)
-	{
-		unit->prev->next = unit->next;
-	}
-	if (unit->next)
-	{
-		unit->next->prev = unit->prev;
-	}
-	if (unit == cxt->head)
-	{
-		cxt->head = unit->next;
-	}
-	if (unit == cxt->tail)
-	{
-		cxt->tail = unit->prev;
-	}
-	// printf("unit= %p\n", unit);
-	sis_subdb_unit_clear(unit);
-	// sis_subdb_unit_destroy(unit);
-}
 // 增加的数据一定是从小到大排序的数据 新增的数据一定比以前的数据时间更晚
 // 没有时间字段的最先发布 有时间的字段找到小于或等于就插入
 void sis_subdb_cxt_push_sdbs(s_sis_subdb_cxt *cxt_, const char *key_, void *in_, size_t ilen_)
 {
-	int isnew = 0;
-	int ischange = 0;
-	s_sis_subdb_unit *unit = sis_map_pointer_get(cxt_->work_units, key_);
-	if (!unit)
+	s_sis_subdb_unit *unit = NULL;
+	int uidx = sis_map_list_get_index(cxt_->work_units, key_);
+	if (uidx < 0)
 	{
 		char kname[128];
 		char sname[128];
@@ -524,14 +338,16 @@ void sis_subdb_cxt_push_sdbs(s_sis_subdb_cxt *cxt_, const char *key_, void *in_,
 		if (db)
 		{
 			unit = sis_subdb_unit_create(kname, db, cxt_->pagesize);
-			sis_map_pointer_set(cxt_->work_units, key_, unit);
-			isnew = 1;
+			uidx = sis_map_list_set(cxt_->work_units, key_, unit);
 		}
+	}
+	else
+	{
+		unit = sis_map_list_geti(cxt_->work_units, uidx);
 	}
 	if (unit)
 	{
 		// add data
-		ischange = (sis_node_list_get_size(unit->vlist) < 1);
 		int count = ilen_ / unit->db->size;
 		if (count > 0)
 		{
@@ -543,18 +359,15 @@ void sis_subdb_cxt_push_sdbs(s_sis_subdb_cxt *cxt_, const char *key_, void *in_,
 					vmsec = sis_dynamic_db_get_time(unit->db, i, in_, ilen_);
 					vmsec = sis_time_unit_convert(unit->db->field_time->style, cxt_->cur_scale, vmsec);
 				}
+				if (unit->vmsec->count == 0)
+				{
+					_subdb_cxt_set_msec(cxt_, vmsec);
+				}
 				// if (i==0) printf("%s = %lld\n", key_, vmsec);
 				sis_node_list_push(unit->vmsec, &vmsec);
 				sis_node_list_push(unit->vlist, (void *)((const char*)in_ + i * unit->db->size));
 			}
-			if (isnew)
-			{
-				_subdb_cxt_add_link(cxt_, unit);
-			}
-			else if (ischange) // 数据没有必定不在链中
-			{
-				_subdb_cxt_push_link(cxt_, unit);
-			}
+			cxt_->new_sums += count;
 		}
 	}
 	// _show_link(cxt_);
@@ -570,10 +383,9 @@ void sis_subdb_cxt_init_data(s_sis_subdb_cxt *cxt_, const char *sname_, size_t s
 // 传入数据 必须设置数据微秒时间 仅仅跟一条数据
 void sis_subdb_cxt_push_data(s_sis_subdb_cxt *cxt_, const char *key_, msec_t msec_, void *in_, size_t ilen_)
 {
-	int isnew = 0;
-	int ischange = 0;
-	s_sis_subdb_unit *unit = sis_map_pointer_get(cxt_->work_units, key_);
-	if (!unit)
+	s_sis_subdb_unit *unit = NULL;
+	int uidx = sis_map_list_get_index(cxt_->work_units, key_);
+	if (uidx < 0)
 	{
 		char kname[128];
 		char sname[128];
@@ -582,94 +394,92 @@ void sis_subdb_cxt_push_data(s_sis_subdb_cxt *cxt_, const char *key_, msec_t mse
 		if (db)
 		{
 			unit = sis_subdb_unit_create(kname, db, cxt_->pagesize);
-			sis_map_pointer_set(cxt_->work_units, key_, unit);
-			isnew = 1;
+			sis_map_list_set(cxt_->work_units, key_, unit);
 		}
+	}
+	else
+	{
+		unit = sis_map_list_geti(cxt_->work_units, uidx);
 	}
 	if (unit)
 	{
 		// add data
-		ischange = (sis_node_list_get_size(unit->vlist) < 1);
 		if (ilen_ == unit->db->size)
 		{
+			if (unit->vmsec->count == 0)
+			{
+				_subdb_cxt_set_msec(cxt_, msec_);
+			}
 			sis_node_list_push(unit->vmsec, &msec_);
 			sis_node_list_push(unit->vlist, in_);
-			if (isnew)
-			{
-				_subdb_cxt_add_link(cxt_, unit);
-			}
-			else if (ischange) // 数据没有必定不在链中
-			{
-				_subdb_cxt_push_link(cxt_, unit);
-			}
+			cxt_->new_sums ++;
 		}
 	}
 }
-void sis_subdb_cxt_push_muldata(s_sis_subdb_cxt *cxt_, const char *key_, int count_, msec_t *msec_, char *in_)
+
+int _subdb_cxt_sub_data(s_sis_subdb_cxt *cxt)
 {
-	int isnew = 0;
-	int ischange = 0;
-	s_sis_subdb_unit *unit = sis_map_pointer_get(cxt_->work_units, key_);
-	if (!unit)
+	msec_t  curr_msec = cxt->new_msec; 
+	int     next_nums = 0;
+	msec_t  next_msec = 0; 
+	int count = sis_map_list_getsize(cxt->work_units);
+	for (int i = 0; i < count; i++)
 	{
-		char kname[128];
-		char sname[128];
-		sis_str_divide(key_, '.', kname, sname);
-		s_sis_dynamic_db *db = sis_map_list_get(cxt_->work_sdbs, sname);
-		if (db)
+		s_sis_subdb_unit *unit = sis_map_list_geti(cxt->work_units, i);
+		int nums = sis_node_list_get_size(unit->vlist);
+		for (int k = 0; k < nums; k++)
 		{
-			unit = sis_subdb_unit_create(kname, db, cxt_->pagesize);
-			sis_map_pointer_set(cxt_->work_units, key_, unit);
-			isnew = 1;
-		}
-	}
-	if (unit)
-	{
-		// add data
-		if (count_ > 0)
-		{
-			ischange = (sis_node_list_get_size(unit->vlist) < 1);
-			for (int i = 0; i < count_; i++)
+			msec_t curv = _subdb_cxt_get_vmsec(unit); 
+			if (curv <= curr_msec)
 			{
-				printf("szie=%d %d ｜ %d %d \n", unit->vmsec->node_count,unit->vlist->node_count, ischange, isnew);
-				sis_node_list_push(unit->vmsec, msec_ + i);
-				sis_node_list_push(unit->vlist, (void *)((const char*)in_ + i * unit->db->size));
+				s_sis_db_chars chars = {0};
+				chars.sname = unit->db->name;
+				chars.kname = unit->kname;
+				chars.size = unit->db->size;
+				chars.data = sis_node_list_pop(unit->vlist);
+				sis_node_list_pop(unit->vmsec);
+				cxt->new_sums --;
+				if (cxt->cb_key_chars)
+				{
+					cxt->cb_key_chars(cxt->cb_source, &chars);
+				} 				
 			}
-			// 下面代码在大量插入时很耗时 要查查
-			if (isnew)
+			else
 			{
-				_subdb_cxt_add_link(cxt_, unit);
-			}
-			else if (ischange) // 数据没有必定不在链中
-			{
-				_subdb_cxt_push_link(cxt_, unit);
+				if (curv < next_msec || next_nums == 0)
+				{
+					next_msec = curv;
+					next_nums = 1;
+				}
+				break;
 			}
 		}
+		if (nums > 0 && sis_node_list_get_size(unit->vlist) < 1)
+		{
+			if (cxt->cb_key_stop)
+			{
+				s_sis_db_chars chars = {0};
+				chars.sname = unit->db->name;
+				chars.kname = unit->kname;
+				chars.data = NULL;
+				chars.size = 0;
+				cxt->cb_key_stop(cxt->cb_source, &chars);
+			} 
+		}
 	}
-}
-int _subdb_cxt_get_data(s_sis_subdb_cxt *cxt, s_sis_db_chars *out)
-{
-	if (!cxt->head || !cxt->tail)
+	if (cxt->new_sums == 0)
 	{
-		return 2;
-	}
-	s_sis_subdb_unit *unit = cxt->head;
-	out->sname = unit->db->name;
-	out->kname = unit->kname;
-	if (sis_node_list_get_size(unit->vlist) < 1)
-	{
-		_subdb_cxt_del_link(cxt, unit);
 		return 1;
 	}
-	out->size = unit->db->size;
-	out->data = sis_node_list_pop(unit->vlist);
-	msec_t agov = _subdb_cxt_get_vmsec(unit); 
-	sis_node_list_pop(unit->vmsec);
-	msec_t curv = _subdb_cxt_get_vmsec(unit); 
-	// 这里修改指针 时间相同下次还传该key数据
-	if (curv > 0 && agov < curv) 
+	// 还未结束
+	// next_msec 必定大于 curr_msec  curr_msec >= cxt->new_msec
+	if (curr_msec == cxt->new_msec)
 	{
-		_subdb_cxt_next_link(cxt, unit);
+		 cxt->new_msec = next_msec;
+	}
+	else if (curr_msec > cxt->new_msec)
+	{
+		// 如果时序提前 就用提前的时间再过一遍
 	}
 	return 0;
 }
@@ -687,42 +497,12 @@ static void *_thread_subdb_cxt_sub(void *argv_)
 	bool isstop = false;
 	while (context->work_status == SIS_SUBDB_START)
 	{
-		s_sis_db_chars data = {0};
-		int o = _subdb_cxt_get_data(context, &data);
-		// _show_link(context);	
-
-		printf("==== stop 1 %p %d %p %p\n", context->cb_key_stop, o, context->head , context->tail);
-		if (o == 0)
+		int o = _subdb_cxt_sub_data(context);
+		// printf("==== stop 1 %p %d %p %p\n", context->cb_key_stop, o, context->head , context->tail);
+		if (o == 1)
 		{
-			// _show_link(context);		
-			// printf("stop 2 %p\n", context->cb_key_stop);
-			// printf("==== stop 1 ====\n");
-			if (context->cb_key_chars)
-			{
-				context->cb_key_chars(context->cb_source, &data);
-			} 	
-			// _show_link(context);		
-		}
-		else if (o == 1)  // 某个key数据读完
-		{
-			// _show_link(context);		
-			// printf("stop 0 %p\n", context->cb_key_stop);
-			// if (context->cb_key_chars)
-			// {
-			// 	context->cb_key_chars(context->cb_source, &data);
-			// } 	
-			if (context->cb_key_stop)
-			{
-				data.data = NULL;
-				data.size = 0;
-				context->cb_key_stop(context->cb_source, &data);
-			} 
-			// _show_link(context);		
-		}
-		else // 数据全部读完 或数据出错
-		{
-			isstop = (o == 2);
-			break;
+			isstop = (o == 1);
+			break;				
 		}
 	}
     if (isstop && context->cb_sub_stop)

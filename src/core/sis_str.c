@@ -148,7 +148,7 @@ void sis_str_merge(char *in_, size_t ilen_, char ch_, const char *one_, const ch
 	in_ += s1;  *in_ = ch_; in_++;
 	size_t s2 = sis_strlen(two_);
 	memmove(in_, two_, s2);
-	in_ += s1;  *in_ = 0;
+	in_ += s2;  *in_ = 0;
 }
 
 int sis_str_divide(const char *in_, char ch_, char *one_, char *two_)

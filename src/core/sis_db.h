@@ -83,8 +83,6 @@ typedef struct s_sis_subdb_unit
 	s_sis_dynamic_db  *db;     // 指针
 	s_sis_node_list   *vlist;  // 数据区
 	s_sis_node_list   *vmsec;  // 转化后的序列号 每条记录一个数
-	struct s_sis_subdb_unit *next;  // 下一个 unit 按第一个vmsec确定位置
-	struct s_sis_subdb_unit *prev;  // 下一个 unit 按第一个vmsec确定位置
 } s_sis_subdb_unit;
 
 #define SIS_SUBDB_NONE     0
@@ -97,9 +95,11 @@ typedef struct s_sis_subdb_cxt
 	char                 cur_scale;  // == 0 init 后更新
 	s_sis_map_list      *work_sdbs;  // s_sis_dynamic_db 数据表格式定义
 
-	s_sis_subdb_unit    *head;
-	s_sis_subdb_unit    *tail;
-	s_sis_map_pointer   *work_units; // s_sis_subdb_unit 来源数据定义 key.sdb 为键值
+	// 用链表更新无论是写入时排序 还是后续提取 在Key数量超过30000后效率极低 采用轮询简单处理
+	msec_t               new_msec;   // 写入时记录的最小的时间 = 每轮过后的最小时间
+	uint32               new_sums;   // 总共的数量
+
+	s_sis_map_list      *work_units; // s_sis_subdb_unit 来源数据定义 key.sdb 为键值
 
 	int                  work_status;   // 0 初始化 1 start 2 wait stop 3 stoped
 	s_sis_thread         work_thread;  // 工作线程
