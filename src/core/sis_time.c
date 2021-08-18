@@ -65,6 +65,14 @@ int sis_time_get_showtime(time_t ttime)
 	sis_time_check(ttime, &ptm);
 	return (ptm.tm_mon + 1) * 10000 * 10000 + ptm.tm_mday * 100 * 10000 + ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
+msec_t sis_msec_get_showtime(msec_t ttime) //20211030 103050123 月日时间
+{
+	int msec = ttime % 1000;
+	struct tm ptm = {0};
+	sis_time_check(ttime / 1000, &ptm);
+	msec_t o = ((ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday);
+	return o * 1000000000 + ptm.tm_hour * 10000000 + ptm.tm_min * 100000 + ptm.tm_sec * 1000 + msec;
+}
 short sis_time_get_offset_iminute(short nMin, int offsec)
 {
 	time_t tt = sis_time_make_time(0, nMin * 100);
@@ -237,6 +245,20 @@ void sis_time_format_datetime(char *out_, size_t olen_, time_t tt_) //"201509121
 
 	sis_sprintf(out_, olen_, "%d%02d%02d%02d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday,
 				ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
+}
+void sis_msec_format_datetime(char * out_, size_t olen_, msec_t msec_) //"20150912103059000"
+{
+	if (!out_)
+	{
+		return;
+	}
+	int msec = msec_ % 1000;
+	time_t tt = msec_ / 1000;
+	struct tm ptm = {0};
+	sis_time_check(tt, &ptm);
+	sis_sprintf(out_, olen_, "%d%02d%02d%02d%03d", (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday,
+				ptm.tm_hour, ptm.tm_min, ptm.tm_sec, msec);
+
 }
 void sis_time_format_datetime_longstr(char *out_, size_t olen_, int idate_, int itime_)
 {
@@ -841,7 +863,20 @@ msec_t sis_time_get_msec_from_str(const char *sdate,const char *stime)
 	return curmsec * 1000 + msec;
 
 }
-
+msec_t sis_time_get_msec_from_int(int64 inmsec) // "20151020123038110"
+{
+	int msec = 0;
+	// if (inmsec > 1020123038110)
+	if (inmsec > 9999999999999)
+	{
+		msec = inmsec % 1000;
+	}
+	msec_t curmsec = inmsec / 1000;
+	int idate = curmsec / 1000000;
+	int itime = curmsec % 1000000;
+	curmsec = sis_time_make_time(idate, itime);	
+	return curmsec * 1000 + msec;
+}
 s_sis_time_delay *sis_delay_create(unsigned int msec)
 {
 	s_sis_time_delay *m = sis_malloc(sizeof(*m));

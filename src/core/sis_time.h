@@ -21,6 +21,7 @@ int sis_sec_get_itime(time_t ttime); //103020
 int sis_time_get_iminute(time_t ttime); //1030
 int sis_time_get_isec(time_t ttime); // 20
 int sis_time_get_showtime(time_t ttime); //0212103020 月日时间
+msec_t sis_msec_get_showtime(msec_t ttime); //20211030103050123 月日时间
 
 short sis_time_get_offset_iminute(short nMin, int offsec);
 time_t sis_time_get_offset_time(time_t curTime, int offsec);  //增加或减少秒，返回time_t
@@ -43,6 +44,7 @@ bool sis_time_str_is_date(char* date); //判断字符串是不是日期20150212
 void sis_time_format_minute(char * out_, size_t olen_, time_t tt_); //"930"
 void sis_time_format_date(char * out_, size_t olen_, int date_); //"2015-09-12"
 void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_); //"20150912103000"
+void sis_msec_format_datetime(char * out_, size_t olen_, msec_t tt_); //"20150912103059000"
 void sis_time_format_datetime_longstr(char * out_, size_t olen_, int idate_, int itime_); // "2008-12-13 09:30:00"
 
 void sis_time_format_msec_longstr(char * out_, size_t olen_, msec_t msec_); // "2008-12-13 09:30:00.000"
@@ -56,6 +58,7 @@ int sis_time_get_time_from_shstr(const char* , int* , int* ); //"20151020-12:30:
 
 msec_t sis_time_get_msec_from_longstr(const char* ); //"2015-10-20 12:30:38" | //"2015-10-20 12:30:38.100" 
 msec_t sis_time_get_msec_from_str(const char *sdate,const char *stime); // "2015-10-20" "12:30:38.110"
+msec_t sis_time_get_msec_from_int(int64 ); // "20151020123038110"
 
 #ifdef __cplusplus
 }
