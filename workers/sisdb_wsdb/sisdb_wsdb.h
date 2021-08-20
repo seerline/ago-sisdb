@@ -15,7 +15,6 @@ typedef struct s_sisdb_wsdb_cxt
 bool  sisdb_wsdb_init(void *, void *);
 void  sisdb_wsdb_uninit(void *);
 
-int cmd_sisdb_wsdb_load(void *worker_, void *argv_);
 int cmd_sisdb_wsdb_save(void *worker_, void *argv_);
 int cmd_sisdb_wsdb_pack(void *worker_, void *argv_);
 

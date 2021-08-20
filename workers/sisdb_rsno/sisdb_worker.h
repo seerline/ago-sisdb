@@ -16,8 +16,8 @@ typedef struct s_sisdb_worker
 {
 	s_sis_incrzip_class  *incrzip;      // 
 
-	void                 *cb_source;   // 返回对象
-	cb_incrzip_encode    *cb_encode;   // 数据以回调方式返回 
+	void                 *cb_source;    // 返回对象
+	cb_incrzip_encode    *cb_encode;    // 数据以回调方式返回 
 	int      	          page_size;    // 超过多大数据重新初始化 字节
 	int      	          part_size;    // 单个数据块的大小
 	int      	          curr_size;    // 缓存数据当前的尺寸

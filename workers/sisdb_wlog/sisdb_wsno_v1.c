@@ -181,9 +181,9 @@ static int cb_sub_chars(void *worker_, void *argv_)
 	// printf("%s\n",__func__);
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
     sis_disk_v1_file_write_sdb(context->write_class, inmem->kname, inmem->sname, inmem->data, inmem->size);
-    // s_v0_cf_snapshot *snapshot = (s_v0_cf_snapshot *)argv_;
-        // snapshot->code, MARKET_SDB_CF_SNAPSHOT, 
-        // snapshot->data, sizeof(s_v3_cf_snapshot));
+    // s_v0_cff_snapshot *snapshot = (s_v0_cff_snapshot *)argv_;
+        // snapshot->code, MARKET_SDB_cff_snapshot, 
+        // snapshot->data, sizeof(s_v3_cff_snapshot));
 
 	return SIS_METHOD_OK;
 }

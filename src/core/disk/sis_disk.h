@@ -216,7 +216,8 @@ s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *, const char *kn
 // 返回值为 s_sis_memory
 s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_);
 
-// 以流的方式读取文件 从文件中一条一条发出 按时序 无时序的会最先发出 只支持 SDB 时间范围单位为毫秒
+// 仅仅支持同一个数据集合的订阅 多集合订阅需要通过 sis_disk_reader_get_obj 合并后输出
+// 以流的方式读取文件 从文件中一条一条发出 按时序 无时序的会最先发出 只支持 SDB SNO 时间范围单位为毫秒
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
 // 按磁盘存储的块 所有键无时序的先发 然后有时序读取第一块 然后排序返回 依次回调 cb_bytedata 直到所有数据发送完毕 
 // sis_disk_reader_open
