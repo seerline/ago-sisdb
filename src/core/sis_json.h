@@ -5,6 +5,7 @@
 #include <sis_core.h>
 #include <sis_file.h>
 #include <sis_str.h>
+#include <sis_memory.h>
 
 #define SIS_JSON_NULL    0
 #define SIS_JSON_ROOT    1 // 根节点
@@ -32,6 +33,8 @@ typedef struct s_sis_json_handle
 	char  *content;    // json内容
 	struct s_sis_json_node *node;
 } s_sis_json_handle; //专门提供给读json的快速结构体
+
+typedef int (cb_sis_sub_json)(void *, s_sis_json_node *);
 
 #ifdef __cplusplus
 extern "C" {

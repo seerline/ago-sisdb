@@ -14,7 +14,9 @@
 #define SISDB_STATUS_WORK  2
 #define SISDB_STATUS_EXIT  3
 
-// sisdb 会把当日数据全部放在内存 savetime时间到后合并磁盘数据自动保存
+// 启动时只加载LOG 通过LOG的写入指令 加载磁盘的相应数据 
+// 所有key值都会描述其数据类型 对应数据区 以及提取时间 有效时间 方便超过时间后自动清理
+// 
 // snodb 根据缓存大小保存压缩数据在内存 收到stop后把数据保存到磁盘中 历史数据从磁盘获取 
 
 

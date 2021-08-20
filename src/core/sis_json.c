@@ -1557,6 +1557,118 @@ void sis_json_show(s_sis_json_node *node_, int *i)
 			node_->key, node_->value);
 }
 
+// 寻到匹配的{} 忽略引号中的 {}
+size_t sis_json_get_match_sign(s_sis_memory *m_)
+{
+	if (!m_)
+	{
+		return 0;
+	}
+	char *in = sis_memory(m_);
+	size_t move = 0;
+	int note = 0;
+	int sign = 0;
+	while ((m_->offset + move) < m_->size)
+	{
+		if (note == 1)
+		{
+			if (in && *in && (unsigned char)*in == '"')
+			{
+				note = 0; goto next;
+			}
+		}
+		else
+		{
+			if (in && *in && (unsigned char)*in == '"')
+			{
+				note = 1;  goto next;
+			}
+			if (sign == 0)
+			{
+				if (in && *in && (unsigned char)*in == '{')
+				{
+					sign = 1; goto next;
+				}
+			}
+			else
+			{
+				if (in && *in && (unsigned char)*in == '{')
+				{
+					sign ++; goto next;
+				}
+				if (in && *in && (unsigned char)*in == '}')
+				{
+					sign --; 
+					if (sign == 0)
+					{
+						return move + 1;
+					}
+					goto next;
+				}
+			}
+		}
+next:
+		in++;
+		move++;
+	}
+	return 0;
+}
+int sis_json_sub(const char *fn_, void *source_, cb_sis_sub_json *cb_)
+{
+	s_sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);
+	if (!fp || !cb_)
+	{
+        LOG(5)("open json file fail [%s].\n", fn_); 
+		return -1;
+	}
+	sis_file_seek(fp, 0, SEEK_SET);
+	s_sis_memory *mfile = sis_memory_create();
+	while (1)
+	{
+		size_t bytes = sis_memory_readfile(mfile, fp, SIS_MEMORY_SIZE);
+		if (bytes <= 0)
+		{
+			break;
+		}
+		// printf("----\n");
+		size_t offset = sis_json_get_match_sign(mfile);
+		// 偏移位置包括回车字符 0 表示没有回车符号，需要继续读
+		while (offset)
+		{
+			s_sis_json_handle *handle = sis_json_load(sis_memory(mfile), offset);
+			// sis_out_binary("---",sis_memory(mfile), offset);
+			if (handle)
+			{
+				cb_(source_, handle->node);
+				sis_json_close(handle);
+			}
+			sis_memory_move(mfile, offset);
+			offset = sis_json_get_match_sign(mfile);
+		}
+	}
+	sis_memory_destroy(mfile);     
+    sis_file_close(fp);
+	return 0;
+}
+#if 0
+static int cb_json_sub(void *source, s_sis_json_node *node)
+{
+	size_t len = 0;
+	char *str = sis_json_output_zip(node, &len);
+	printf("[%zu]  |%s|\n", len, str);
+	sis_free(str);
+	return 0;
+}
+int main()
+{
+	// const char *fn = "../bin/sisdb.values.conf";
+	// const char *fn = "market.conf";
+	const char *fn = "../sisdb/test/sisa.json";
+
+	sis_json_sub(fn, NULL, cb_json_sub);
+
+}
+#endif
 #if 0
 
 int main1()
