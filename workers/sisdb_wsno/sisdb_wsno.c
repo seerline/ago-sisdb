@@ -192,8 +192,10 @@ static int _write_wsno_head(s_sisdb_wsno_cxt *context, int iszip)
         sis_disk_writer_set_sdict(context->writer, newsdbs, sis_sdslen(newsdbs));
         sis_disk_writer_start(context->writer);
         context->work_unzip = sisdb_worker_create(); 
-        sisdb_worker_set_keys(context->work_unzip, newkeys);
-        sisdb_worker_set_sdbs(context->work_unzip,  newsdbs);
+        sisdb_worker_set_keys(context->work_unzip, context->wsno_keys);
+        sisdb_worker_set_sdbs(context->work_unzip,  context->wsno_sdbs);
+        // sisdb_worker_set_keys(context->work_unzip, newkeys);
+        // sisdb_worker_set_sdbs(context->work_unzip,  newsdbs);
         sisdb_worker_unzip_start(context->work_unzip, context, cb_decode);
 
         sis_sdsfree(newkeys); 
@@ -214,7 +216,6 @@ static int cb_sub_chars(void *worker_, void *argv_)
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
 
     _write_wsno_head(context, 0);
-    printf("------%s %s %zu-\n", inmem->kname, inmem->sname, inmem->size);
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
     sis_disk_writer_sno(context->writer, inmem->kname, inmem->sname, inmem->data, inmem->size);
 	return SIS_METHOD_OK;
