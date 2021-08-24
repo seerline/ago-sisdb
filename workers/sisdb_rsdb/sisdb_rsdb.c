@@ -1,18 +1,19 @@
-﻿#include "sis_modules.h"
-#include "worker.h"
+﻿#include "worker.h"
 #include "server.h"
-#include "sis_method.h"
 
+#include "sis_modules.h"
 #include "sisdb_rsdb.h"
-#include "sisdb.h"
-#include "sisdb_server.h"
-#include "sisdb_collect.h"
+#include <sis_obj.h>
+
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
 ///////////////////////////////////////////////////
 
-struct s_sis_method sisdb_rsdb_methods[] = {
-    {"load", cmd_sisdb_rsdb_load, 0, NULL},  // json 格式
+struct s_sis_method _sisdb_rsdb_methods[] = {
+    {"get",    cmd_sisdb_rsdb_get,   0, NULL},
+    {"sub",    cmd_sisdb_rsdb_sub,   0, NULL},
+    {"unsub",  cmd_sisdb_rsdb_unsub, 0, NULL},
+    {"setcb",  cmd_sisdb_rsdb_setcb, 0, NULL},
 };
 // 通用文件存取接口
 s_sis_modules sis_modules_sisdb_rsdb = {
@@ -23,8 +24,8 @@ s_sis_modules sis_modules_sisdb_rsdb = {
     sisdb_rsdb_uninit,
     NULL,
     NULL,
-    sizeof(sisdb_rsdb_methods) / sizeof(s_sis_method),
-    sisdb_rsdb_methods,
+    sizeof(_sisdb_rsdb_methods) / sizeof(s_sis_method),
+    _sisdb_rsdb_methods,
 };
 
 bool sisdb_rsdb_init(void *worker_, void *argv_)
@@ -34,6 +35,13 @@ bool sisdb_rsdb_init(void *worker_, void *argv_)
 
     s_sisdb_rsdb_cxt *context = SIS_MALLOC(s_sisdb_rsdb_cxt, context);
     worker->context = context;
+
+    s_sis_json_node *work_date = sis_json_cmp_child_node(node, "work-date");
+    if (work_date)
+    {
+        context->work_date.start = sis_json_get_int(work_date, "0", 0);
+        context->work_date.stop  = sis_json_get_int(work_date, "1", 0);
+    }
     {
         s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
         if (sonnode)
@@ -53,8 +61,30 @@ bool sisdb_rsdb_init(void *worker_, void *argv_)
         }
         else
         {
-            context->work_name = sis_sdsempty();
+            context->work_name = sis_sdsnew("sisdb");
         }
+    }
+    {
+        const char *str = sis_json_get_str(node, "sub-sdbs");
+        if (str)
+        {
+            context->work_sdbs = sis_sdsnew(str);
+        }
+        else
+        {
+            context->work_sdbs = sis_sdsnew("*");
+        }
+    }
+    {     
+        const char *str = sis_json_get_str(node, "sub-keys");
+        if (str)
+        {
+            context->work_keys = sis_sdsnew(str);
+        }
+        else
+        {
+            context->work_keys = sis_sdsnew("*");
+        }    
     }
     return true;
 }
@@ -62,151 +92,400 @@ void sisdb_rsdb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
+    sisdb_rsdb_sub_stop(context);
+    context->status = SIS_RSDB_EXIT;
+
     sis_sdsfree(context->work_path);
     sis_sdsfree(context->work_name);
+    sis_sdsfree(context->work_keys);
+    sis_sdsfree(context->work_sdbs);
+
     sis_free(context);
-
+    worker->context = NULL;
 }
 
-int _sisdb_set_keys(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
-{
+///////////////////////////////////////////
+//  callback define begin
+///////////////////////////////////////////
+static msec_t _speed_sno = 0;
 
-    return 0; 
-}
-// 设置结构体
-int _sisdb_set_sdbs(s_sisdb_cxt *cxt, const char *in_, size_t ilen_)
+static void cb_start(void *context_, int idate)
 {
-    s_sis_json_handle *injson = sis_json_load(in_, ilen_);
-    if (!injson)
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+    if (context->cb_sub_start)
     {
-        return 0;
-    }
-    s_sis_json_node *innode = sis_json_first_node(injson->node); 
-    while (innode)
+        char sdate[32];
+        sis_llutoa(idate, sdate, 32, 10);
+        context->cb_sub_start(context->cb_source, sdate);
+    } 
+    _speed_sno = sis_time_get_now_msec();
+}
+static void cb_stop(void *context_, int idate)
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+    printf("sdb sub ok. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
+     // stop 放这里
+    if (context->cb_sub_inctzip)
     {
-        s_sisdb_table *table = sisdb_table_create(innode);
-        sis_map_list_set(cxt->work_sdbs, innode->key, table);
-        innode = sis_json_next_node(innode);
+        sisdb_worker_zip_stop(context->work_ziper);
     }
-    sis_json_close(injson);    
-    return  sis_map_list_getsize(cxt->work_sdbs);    
+    if (context->cb_sub_stop)
+    {
+        char sdate[32];
+        sis_llutoa(idate, sdate, 32, 10);
+        context->cb_sub_stop(context->cb_source, sdate);
+    } 
+    context->work_date.move = idate;
+}
+static void cb_dict_keys(void *context_, void *key_, size_t size) 
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+	s_sis_sds srckeys = sis_sdsnewlen((char *)key_, size);
+	s_sis_sds keys = sis_match_key(context->work_keys, srckeys);
+    if (!keys)
+    {
+        keys =  sis_sdsdup(srckeys);
+    } 
+    if (context->cb_dict_keys)
+    {
+        context->cb_dict_keys(context->cb_source, keys);
+    } 
+    if (context->cb_sub_inctzip)
+    {
+    	sisdb_worker_set_keys(context->work_ziper, keys);
+    }
+	sis_sdsfree(keys);
+	sis_sdsfree(srckeys);
+}
+static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)  
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+	s_sis_sds srcsdbs = sis_sdsnewlen((char *)sdb_, size);
+	s_sis_sds sdbs = sis_match_sdb_of_sds(context->work_sdbs, srcsdbs);
+    if (!sdbs)
+    {
+        sdbs =  sis_sdsdup(srcsdbs);
+    } 
+    if (context->cb_dict_sdbs)
+    {
+        context->cb_dict_sdbs(context->cb_source, sdbs);
+    } 
+    if (context->cb_sub_inctzip)
+    {
+    	sisdb_worker_set_sdbs(context->work_ziper, sdbs);
+    }
+	sis_sdsfree(sdbs);
+	sis_sdsfree(srcsdbs); 
+}
+// #include "stk_struct.v3.h"
+static int _read_nums = 0;
+static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+    _read_nums++;
+    if (_read_nums % 100000 == 0)
+    {
+        printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
+    }
+    // if (!sis_strcasecmp(kname_, "SH600600") && !sis_strcasecmp(sname_, "stk_snapshot"))
+    // if (!sis_strcasecmp(kname_, "SH601318")|| !sis_strcasecmp(kname_, "SH688981")||!sis_strcasecmp(kname_,"SZ300987"))
+    // {
+    //     if (!sis_strcasecmp(sname_, "stk_snapshot"))
+    //     {
+    //         s_v3_stk_snapshot *snapshot = (s_v3_stk_snapshot *)out_;
+    //         printf("--%s %s %zu | %6d %5d %10d\n", kname_, sname_, olen_, sis_time_get_itime(snapshot->time/1000), snapshot->newp, snapshot->volume);
+    //     }
+    //     else
+    //     {
+    //         printf("--%s %s %zu \n", kname_, sname_, olen_);
+    //     }
+    // }
+    // else
+    // {
+    //     return ;
+    // }
+    if (context->cb_sub_chars)
+    {
+        s_sis_db_chars inmem = {0};
+        inmem.kname= kname_;
+        inmem.sname= sname_;
+        inmem.data = out_;
+        inmem.size = olen_;
+        context->cb_sub_chars(context->cb_source, &inmem);
+    }
+    if (context->cb_sub_inctzip)
+    {
+        int kidx = sisdb_worker_get_kidx(context->work_ziper, kname_);
+        int sidx = sisdb_worker_get_sidx(context->work_ziper, sname_);
+        if (kidx < 0 || sidx < 0)
+        {
+            return ;
+        }
+        sisdb_worker_zip_set(context->work_ziper, kidx, sidx, out_, olen_);
+    }
+} 
+
+static int cb_encode(void *context_, char *in_, size_t ilen_)
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+    if (context->cb_sub_inctzip)
+    {
+        s_sis_db_incrzip inmem = {0};
+        inmem.data = (uint8 *)in_;
+        inmem.size = ilen_;
+        context->cb_sub_inctzip(context->cb_source, &inmem);
+    }
+    return 0;
+} 
+///////////////////////////////////////////
+//  callback define end.
+///////////////////////////////////////////
+static void *_thread_rsdb_read_sub(void *argv_)
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)argv_;
+
+    s_sis_disk_reader_cb *rsdb_cb = SIS_MALLOC(s_sis_disk_reader_cb, rsdb_cb);
+    rsdb_cb->cb_source = context;
+    rsdb_cb->cb_start = cb_start;
+    rsdb_cb->cb_dict_keys = cb_dict_keys;
+    rsdb_cb->cb_dict_sdbs = cb_dict_sdbs;
+    rsdb_cb->cb_chardata = cb_chardata;
+    rsdb_cb->cb_stop = cb_stop;
+    rsdb_cb->cb_break = cb_stop;
+
+    context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB, rsdb_cb);
+
+    if (context->cb_sub_inctzip)
+    {
+        context->work_ziper = sisdb_worker_create();
+        sisdb_worker_zip_start(context->work_ziper, context, cb_encode);
+    }
+
+    LOG(5)("sub sno open. [%d]\n", context->work_date);
+    s_sis_msec_pair smsec;
+    smsec.start = sis_time_make_time(context->work_date.start, 1) * 1000;
+    smsec.stop = sis_time_make_time(context->work_date.stop, 235959) * 1000;
+    sis_disk_reader_sub_sdb(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
+    LOG(5)("sub sno stop. [%d]\n", context->work_date);
+
+    sis_disk_reader_destroy(context->work_reader);
+    context->work_reader = NULL;
+
+    sis_free(rsdb_cb);
+
+    if (context->cb_sub_inctzip)
+    {
+        // sisdb_worker_zip_stop(context->work_ziper);
+        sisdb_worker_destroy(context->work_ziper);
+        context->work_ziper = NULL;
+    }
+
+    context->status = SIS_RSDB_NONE;
+    return NULL;
 }
 
-// static void cb_key(void *worker_, void *key_, size_t size) 
-// {
-//     printf("key %s : %s\n", __func__, (char *)key_);
-//     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
-//     _sisdb_set_keys(sisdb, key_, size);
-// }
-
-// static void cb_sdb(void *worker_, void *sdb_, size_t size)  
-// {
-//     printf("sdb %s : %s\n", __func__, (char *)sdb_);
-//     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
-//     _sisdb_set_sdbs(sisdb, sdb_, size);
-// }
-
-// static void cb_read(void *worker_, const char *key_, const char *sdb_, void *out_, size_t olen_)
-// {
-//     // printf("load cb_read : %s %s.\n", key_, sdb_);
-//     s_sisdb_cxt *sisdb = (s_sisdb_cxt *)worker_; 
-//     if (sdb_)
-//     {
-//         // 写sdb
-//         char key[255];
-//         sis_sprintf(key, 255, "%s.%s", key_, sdb_);
-//         s_sisdb_collect *collect = sisdb_get_collect(sisdb, key);
-//         if (!collect)
-//         {
-//             collect = sisdb_collect_create(sisdb, key);
-//             if (!collect)
-//             {
-//                 LOG(5)("load %s fail.\n", key);
-//                 return ;
-//             }    
-//         }
-//         sisdb_collect_wpush(collect, out_, olen_);
-//     }
-//     else
-//     {
-//         if (olen_ > 1)
-//         {
-//             // 写any
-//             uint8 *out  = (uint8 *)out_;
-//             uint8 style = out[0];
-//             s_sisdb_collect *info = sisdb_kv_create(style, key_, (char *)&out[1], olen_ - 1);
-//             sis_map_pointer_set(sisdb->work_keys, key_, info);
-//         }
-//     }
-
-// } 
-int _sisdb_rsdb_load_sdb(const char *workpath, s_sisdb_cxt *sisdb, s_sisdb_catch *config)
+void sisdb_rsdb_sub_start(s_sisdb_rsdb_cxt *context) 
 {
-    // s_sis_disk_v1_class *sdbfile = sis_disk_v1_class_create();  
-    // sis_disk_v1_class_init(sdbfile, SIS_DISK_TYPE_SDB, workpath, sisdb->dbname, 0);
-    // int ro = sis_disk_v1_file_read_start(sdbfile);
+    // 有值就干活 完毕后释放
+    if (context->status == SIS_RSDB_WORK)
+    {
+        _thread_rsdb_read_sub(context);
+    }
+    else
+    {
+        sis_thread_create(_thread_rsdb_read_sub, context, &context->work_thread);
+    }
+}
+void sisdb_rsdb_sub_stop(s_sisdb_rsdb_cxt *context)
+{
+    if (context->work_reader)
+    {
+        sis_disk_reader_unsub(context->work_reader);
+        while (context->status != SIS_RSDB_NONE)
+        {
+            sis_sleep(30);
+        }
+    }
+}
+s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context)
+{
+    context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB, NULL);
 
-    // printf("%s , ro = %d  %s\n", __func__, ro, workpath);
-    // if (ro != SIS_DISK_CMD_OK)
-    // {
-    //     sis_disk_v1_class_destroy(sdbfile);
-    //     // 文件不存在也认为正确
-    //     return SIS_METHOD_OK;
-    // }
-    // s_sis_disk_reader_cb *callback = SIS_MALLOC(s_sis_disk_reader_cb, callback);
-    // callback->cb_source = sisdb;
-    // callback->cb_dict_keys = cb_key;
-    // callback->cb_dict_sdbs = cb_sdb;
-    // callback->cb_chardata = cb_read;
+    LOG(5)("get sdb open. [%d]\n", context->work_date.start);
+    s_sis_msec_pair smsec;
+    smsec.start = sis_time_make_time(context->work_date.start, 1) * 1000;
+    smsec.stop = sis_time_make_time(context->work_date.stop, 235959) * 1000;
+    s_sis_object *obj = sis_disk_reader_get_obj(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
+    LOG(5)("get sdb stop. [%d]\n", context->work_date.stop);
 
-    // printf("%s , cb_sdb = %p\n", __func__, callback->cb_sdb);
+    sis_disk_reader_destroy(context->work_reader);
+    context->work_reader = NULL;
+    return obj;
+}
+///////////////////////////////////////////
+//  method define
+/////////////////////////////////////////
+void _sisdb_rsdb_init(s_sisdb_rsdb_cxt *context, s_sis_message *msg)
+{
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-path");
+        if (str)
+        {
+            sis_sdsfree(context->work_path);
+            context->work_path = sis_sdsdup(str);
+        }
+    }
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-name");
+        if (str)
+        {
+            sis_sdsfree(context->work_name);
+            context->work_name = sis_sdsdup(str);
+        }
+    }
+    {
+        s_sis_sds str = sis_message_get_str(msg, "sub-keys");
+        if (str)
+        {
+            sis_sdsfree(context->work_keys);
+            context->work_keys = sis_sdsdup(str);
+        }
+    }
+    {
+        s_sis_sds str = sis_message_get_str(msg, "sub-sdbs");
+        if (str)
+        {
+            sis_sdsfree(context->work_sdbs);
+            context->work_sdbs = sis_sdsdup(str);
+        }
+    }
+    if (sis_message_exist(msg, "start-date"))
+    {
+        context->work_date.start = sis_message_get_int(msg, "start-date");
+    }
+    else
+    {
+        context->work_date.start = sis_time_get_idate(0);
+    }
+    if (sis_message_exist(msg, "stop-date"))
+    {
+        context->work_date.stop = sis_message_get_int(msg, "stop-date");
+    }
+    else
+    {
+        context->work_date.stop = sis_time_get_idate(0);
+    }
+    context->cb_source      = sis_message_get(msg, "source");
+    context->cb_sub_start   = sis_message_get_method(msg, "cb_sub_start"  );
+    context->cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop"   );
+    context->cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs"  );
+    context->cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys"  );
+    context->cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_inctzip");
+    context->cb_sub_chars   = sis_message_get_method(msg, "cb_sub_chars"  );
+}
+int cmd_sisdb_rsdb_get(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
 
-    // s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(callback);
-    // sis_disk_v1_reader_set_key(reader, "*");
-    // sis_disk_v1_reader_set_sdb(reader, "*");
-    // if (config->last_day > 0)
-    // {
-    //     // 设置加载时间
-    // }
-    // reader->isone = 1; // 设置为一次性输出
-    // sis_disk_v1_file_read_sub(sdbfile, reader);
+    SIS_WAIT_OR_EXIT(context->status == SIS_RSDB_NONE); 
 
-    // sis_disk_v1_reader_destroy(reader);    
-    // sis_free(callback);
-    // sis_disk_v1_file_read_stop(sdbfile);
-    // sis_disk_v1_class_destroy(sdbfile);
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    if (!msg)
+    {
+        return SIS_METHOD_ERROR;
+    }
+    _sisdb_rsdb_init(context, msg);
+    context->status = SIS_RSDB_CALL;
+
+    s_sis_object *obj = sisdb_rsdb_get_obj(context);
+    if (obj)
+    {
+        sis_message_set(msg, "info", obj, sis_object_destroy);
+    }
+
+    context->status = SIS_RSDB_NONE;
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_rsdb_sub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
+
+    SIS_WAIT_OR_EXIT(context->status == SIS_RSDB_NONE);  
+
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    if (!msg)
+    {
+        return SIS_METHOD_ERROR;
+    }
+    _sisdb_rsdb_init(context, msg);
+    
+    context->status = SIS_RSDB_CALL;
+    
+    sisdb_rsdb_sub_start(context);
+
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_rsdb_unsub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
+
+    sisdb_rsdb_sub_stop(context);
+
     return SIS_METHOD_OK;
 }
 
-
-int cmd_sisdb_rsdb_load(void *worker_, void *argv_)
+int cmd_sisdb_rsdb_setcb(void *worker_, void *argv_)
 {
-    s_sis_message *msg = (s_sis_message *)argv_;
-    LOG(5)("load disk ...\n");
-    s_sisdb_cxt *sisdb = (s_sisdb_cxt *)sis_message_get(msg, "sisdb");
-    if (!sisdb)
-    {
-        return SIS_METHOD_ERROR;
-    }
-    s_sisdb_catch config;
-    config.last_day = 0;
-    config.last_min = 0;
-    config.last_sec = 0;
-    config.last_sno = 0;
-    if (sis_message_get(msg, "config"))
-    {
-        memmove(&config, sis_message_get(msg, "config"), sizeof(s_sisdb_catch));
-    }
-
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
-    ///////////////////////////////////////
-    // 再读sdb数据  
-    ///////////////////////////////////////
-    if (_sisdb_rsdb_load_sdb(context->work_path, sisdb, &config) != SIS_METHOD_OK)
+
+    if (context->status != SIS_RSDB_NONE)
     {
         return SIS_METHOD_ERROR;
     }
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    if (!msg)
+    {
+        return SIS_METHOD_ERROR;
+    }
+    _sisdb_rsdb_init(context, msg);
+    
+    context->status = SIS_RSDB_WORK;
 
-    return SIS_METHOD_OK;    
+    return SIS_METHOD_OK;
+}
+
+void sisdb_rsdb_working(void *worker_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
+    
+    SIS_WAIT_OR_EXIT(context->status == SIS_RSDB_WORK);  
+
+	// if (context->work_date.start > 0 && context->work_date.stop >= context->work_date.start)
+	// {
+	// 	int start = context->work_date.start;
+	// 	int stop = context->work_date.stop;
+    //     while (start <= stop)
+    //     {
+    //         SIS_EXIT_SIGNAL
+    //         msec_t costmsec = sis_time_get_now_msec();
+    //         LOG(5)("sub history start. [%d]\n", start);
+    //         if (market_file_3t4_sub(worker, start))
+    //         {
+    //             SIS_WAIT_OR_EXIT(context->work_date.move == start);
+    //         }
+    //         LOG(5)("sub history end. [%d] cost :%lld\n", start, sis_time_get_now_msec() - costmsec);
+    //         start = sis_time_get_offset_day(start, 1);
+    //     }
+	// }
+    if (context->status == SIS_RSDB_WORK)
+    {
+        LOG(5)("sub history start. [%d]\n", context->work_date.start);
+        sisdb_rsdb_sub_start(context);
+        LOG(5)("sub history end. [%d]\n", context->work_date.start);
+    }
 }

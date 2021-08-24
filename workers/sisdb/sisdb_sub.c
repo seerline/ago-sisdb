@@ -1,28 +1,7 @@
 #include "sis_modules.h"
 #include "worker.h"
 
-#include "sis_notice.h"
-///////////////////////////////////////////////////
-// *** s_sis_modules sis_modules_[dir name]  *** //
-///////////////////////////////////////////////////
-
-struct s_sis_method sis_notice_methods[] = {
-    {"sub",   sis_notice_sub, 0, NULL},
-    {"unsub", sis_notice_unsub, 0, NULL},
-    {"pub",   sis_notice_pub, 0, NULL},
-};
-// 共享内存数据库 不落盘
-s_sis_modules sis_modules_sis_notice = {
-    sis_notice_init,
-    NULL,
-    NULL,
-    NULL,
-    sis_notice_uninit,
-    NULL,
-    NULL,
-    sizeof(sis_notice_methods) / sizeof(s_sis_method),
-    sis_notice_methods,
-};
+#include "sisdb_sub.h"
 
 //////////////////////////////////////////////////////////////////
 //------------------------s_sisdb_sub_unit -----------------------//
@@ -108,24 +87,23 @@ void sisdb_sub_unit_destroy(void *reader_)
     sis_free(o);
 }
 
-
-bool  sis_notice_init(void *worker_, void *node_)
+s_sisdb_sub_cxt *sisdb_sub_cxt_create()
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sis_notice_cxt *context = SIS_MALLOC(s_sis_notice_cxt, context);
-    worker->context = context;
+    s_sisdb_sub_cxt *context = SIS_MALLOC(s_sisdb_sub_cxt, context);
     context->sub_onekeys = sis_map_pointer_create_v(sisdb_sub_unit_destroy);
     context->sub_mulkeys = sis_map_pointer_create_v(sisdb_sub_unit_destroy);
-
-    return true;
+    return context;
 }
-void  sis_notice_uninit(void *worker_)
+void  sisdb_sub_cxt_destroy(s_sisdb_sub_cxt *cxt_)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sis_notice_cxt *context = (s_sis_notice_cxt *)worker->context;
-    sis_map_pointer_destroy(context->sub_onekeys);
-    sis_map_pointer_destroy(context->sub_mulkeys);
-    sis_free(context);
+    sis_map_pointer_destroy(cxt_->sub_onekeys);
+    sis_map_pointer_destroy(cxt_->sub_mulkeys);
+    sis_free(cxt_);
+}
+void  sisdb_sub_cxt_init(s_sisdb_sub_cxt *cxt_, void *source_, sis_method_define *cb_)
+{
+    cxt_->cb_source = source_;
+    cxt_->cb_net_message = cb_;
 }
 
 static int sisdb_sub_notice(s_sis_map_pointer *map, s_sis_net_message *msg)
@@ -149,26 +127,22 @@ static int sisdb_sub_notice(s_sis_map_pointer *map, s_sis_net_message *msg)
     return 1;
 }
 
-int sis_notice_sub(void *worker_, void *argv_)
+int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sis_notice_cxt *context = (s_sis_notice_cxt *)worker->context;
-  // s_sis_worker *worker = (s_sis_worker *)worker_;
-    s_sis_message *msg = (s_sis_message *)argv_;
-
-    if (msg->key && sis_sdslen(msg->key) > 0)
+    int o = 0;
+    if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
     {
-        if (sis_str_exist_ch(msg->key, sis_sdslen(msg->key), "*,", 2))
+        if (sis_str_exist_ch(netmsg_->key, sis_sdslen(netmsg_->key), "*,", 2))
         {
-            sisdb_sub_notice(context->sub_mulkeys, msg);
+            o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_);
         }
         else
         {
             // 单键
-            sisdb_sub_notice(context->sub_onekeys, msg);
+            o = sisdb_sub_notice(cxt_->sub_onekeys, netmsg_);
         }
     }
-    return SIS_METHOD_OK;
+    return o;
 }
 
 static int sisdb_unsub_notice(s_sis_map_pointer *map, int cid_)
@@ -211,19 +185,38 @@ static int sisdb_unsub_notice(s_sis_map_pointer *map, int cid_)
     return count;
 }
 
-int sis_notice_unsub(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sis_notice_cxt *context = (s_sis_notice_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_;
-    // 直接取消某客户所有订阅 后续有需求再定制化
-    sisdb_unsub_notice(context->sub_onekeys, msg->cid);
-    sisdb_unsub_notice(context->sub_mulkeys, msg->cid);
+    // if (netmsg->key && sis_sdslen(netmsg->key) > 0)
+    // {
+    //     if (!sis_strcasecmp(netmsg->key, "*")||!sis_strcasecmp(netmsg->key, "*.*"))
+    //     {
+    //         o = sisdb_unsub_whole(context, netmsg->cid);
+    //     }    
+    //     else if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+    //     {
+    //         o = sisdb_multiple_unsub(context, netmsg);
+    //     }
+    //     else
+    //     {
+    //         o = sisdb_one_unsub(context, netmsg);
+    //     }
+    // }
+    // else
+    // {
+    //     // 没有键值就取消所有订阅
+    //     o = sisdb_unsub_whole(context, netmsg->cid);
+    // }
 
-    return SIS_METHOD_OK;
+int sisdb_sub_cxt_unsub(s_sisdb_sub_cxt *cxt_, int cid_)
+{
+    // 直接取消某客户所有订阅 后续有需求再定制化
+    int o = 0;
+    o += sisdb_unsub_notice(cxt_->sub_onekeys, cid_);
+    o += sisdb_unsub_notice(cxt_->sub_mulkeys, cid_);
+
+    return o;
 }
 
-static void _make_notice_send(s_sis_notice_cxt *context, s_sis_net_message *inetmsg, s_sis_net_message *onetmsg)
+static void _make_notice_send(s_sisdb_sub_cxt *context, s_sis_net_message *inetmsg, s_sis_net_message *onetmsg)
 {
     s_sis_net_message *newmsg = sis_net_message_create();
 
@@ -237,11 +230,12 @@ static void _make_notice_send(s_sis_notice_cxt *context, s_sis_net_message *inet
         context->cb_net_message(context->cb_source, newmsg);
     }
 }
-static void _make_notice(s_sis_notice_cxt *context, s_sis_message *imsg)
+
+int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
 {
     // 先处理单键值订阅
     {
-        s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_map_pointer_get(context->sub_onekeys, imsg->key);
+        s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_map_pointer_get(cxt_->sub_onekeys, netmsg_->key);
         // printf("subunit pub: %p %s\n", subunit, collect_->name);
         if (subunit)
         {
@@ -249,14 +243,14 @@ static void _make_notice(s_sis_notice_cxt *context, s_sis_message *imsg)
             {
                 s_sis_net_message *omsg = (s_sis_net_message *)sis_pointer_list_get(subunit->netmsgs, i);
                 // printf("subunit one: %d  %s  format = %d\n", subunit->netmsgs->count, info->key, info->rfmt);
-                _make_notice_send(context, imsg, omsg);
+                _make_notice_send(cxt_, netmsg_, omsg);
             }
         }
     }
     // 再处理多键值订阅 这个可能耗时 先这样处理
     {
         s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(context->sub_mulkeys);
+        s_sis_dict_iter *di = sis_dict_get_iter(cxt_->sub_mulkeys);
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_dict_getval(de);
@@ -269,13 +263,13 @@ static void _make_notice(s_sis_notice_cxt *context, s_sis_message *imsg)
                 notice = true;
                 break;
             case SIS_SUB_ONEKEY_CMP:
-                if (sis_str_subcmp(imsg->key,  subunit->sub_keys, ',') >= 0)
+                if (sis_str_subcmp(netmsg_->key,  subunit->sub_keys, ',') >= 0)
                 {
                     notice = true;
                 }
                 break;
             case SIS_SUB_ONEKEY_MUL:
-                if (sis_str_subcmp_strict(imsg->key,  subunit->sub_keys, ',') >= 0)
+                if (sis_str_subcmp_strict(netmsg_->key,  subunit->sub_keys, ',') >= 0)
                 {
                     notice = true;
                 }
@@ -284,7 +278,7 @@ static void _make_notice(s_sis_notice_cxt *context, s_sis_message *imsg)
                 {
                     // 都是小串
                     char kname[128], sname[128]; 
-                    int cmds = sis_str_divide(imsg->key, '.', kname, sname);
+                    int cmds = sis_str_divide(netmsg_->key, '.', kname, sname);
                     if (cmds == 2 && 
                         (!sis_strcasecmp(subunit->sub_keys, "*") || sis_str_subcmp(kname, subunit->sub_keys, ',') >= 0) &&
                         (!sis_strcasecmp(subunit->sub_sdbs, "*") || sis_str_subcmp_strict(sname, subunit->sub_sdbs, ',') >= 0))
@@ -297,7 +291,7 @@ static void _make_notice(s_sis_notice_cxt *context, s_sis_message *imsg)
                 {
                     // 都是小串
                     char kname[128], sname[128]; 
-                    int cmds = sis_str_divide(imsg->key, '.', kname, sname);
+                    int cmds = sis_str_divide(netmsg_->key, '.', kname, sname);
                     if (cmds == 2 && 
                         (!sis_strcasecmp(subunit->sub_keys, "*") || sis_str_subcmp_strict(kname, subunit->sub_keys, ',') >= 0) &&
                         (!sis_strcasecmp(subunit->sub_sdbs, "*") || sis_str_subcmp_strict(sname, subunit->sub_sdbs, ',') >= 0))
@@ -315,25 +309,11 @@ static void _make_notice(s_sis_notice_cxt *context, s_sis_message *imsg)
                 {
                     s_sis_net_message *omsg = (s_sis_net_message *)sis_pointer_list_get(subunit->netmsgs, i);
                     // printf("subunit sdb: %d  %s  format = %d\n", subunit->netmsgs->count, info->key, info->rfmt);
-                    _make_notice_send(context, imsg, omsg);
+                    _make_notice_send(cxt_, netmsg_, omsg);
                 }
             }
         }
         sis_dict_iter_free(di);
     }    
-}
-
-int sis_notice_pub(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sis_notice_cxt *context = (s_sis_notice_cxt *)worker->context;
-
-    s_sis_message *msg = (s_sis_message *)argv_;
-    context->cb_source = sis_message_get(msg, "source");
-    context->cb_net_message = sis_message_get_method(msg, "cb_net_message");
-
-    // 根据输入数据生成广播数据然后通过回调返回 可使用线程来处理
-    _make_notice(context, msg);
-
     return SIS_METHOD_OK;
 }

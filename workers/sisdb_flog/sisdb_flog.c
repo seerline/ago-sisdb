@@ -10,12 +10,12 @@
 // *** s_sis_modules sis_modules_[dir name]  *** //
 ///////////////////////////////////////////////////
 
-struct s_sis_method sisdb_flog_methods[] = {
+struct s_sis_method _sisdb_flog_methods[] = {
     {"sub",     cmd_sisdb_flog_sub,    0, NULL},  
     {"unsub",   cmd_sisdb_flog_unsub,  0, NULL}, 
     {"open",    cmd_sisdb_flog_open,    0, NULL},   
     {"write",   cmd_sisdb_flog_write,   0, NULL},  
-    {"close",   cmd_sisdb_flog_close,   0, NULL},   
+    {"stop",    cmd_sisdb_flog_stop,   0, NULL},   
     {"move",    cmd_sisdb_flog_move,    0, NULL},  
 };
 // 共享内存数据库
@@ -27,8 +27,8 @@ s_sis_modules sis_modules_sisdb_flog = {
     sisdb_flog_uninit,
     NULL,
     NULL,
-    sizeof(sisdb_flog_methods) / sizeof(s_sis_method),
-    sisdb_flog_methods,
+    sizeof(_sisdb_flog_methods) / sizeof(s_sis_method),
+    _sisdb_flog_methods,
 };
 
 bool sisdb_flog_init(void *worker_, void *argv_)
@@ -74,7 +74,7 @@ void sisdb_flog_stop(s_sis_worker *worker)
     }
     if (context->status == SIS_FLOG_WRITE)
     {
-        cmd_sisdb_flog_close(worker, NULL);
+        cmd_sisdb_flog_stop(worker, NULL);
     }
 }
 
@@ -247,7 +247,7 @@ int cmd_sisdb_flog_open(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_flog_close(void *worker_, void *argv_)
+int cmd_sisdb_flog_stop(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;

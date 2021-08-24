@@ -44,7 +44,7 @@
 #define  SIS_DISK_TYPE_SDB_NOTS    4   // name/nots/name.sdb name.idx
 // 5. 大尺度SDB数据文件 有时序 有索引 有文件尾 时间字段为日和以上级别的按每10年为一个区间存储数据
 // 按5000key算 一条100 一年250天 = 1.25G 原始数据 支持增量写入 时间有重叠需要合并后写入 PACK时合并数据
-#define  SIS_DISK_TYPE_SDB_YEAR    5   // name/year/2010-2019.sdb
+#define  SIS_DISK_TYPE_SDB_YEAR    5   // name/year/2010.sdb
 // 6. 小尺度SDB数据文件 有时序 有索引 有文件尾 时间字段为日以下的按每天为一个区间存储数据
 // 按5000key算 一条100 一天5000条 = 2.5G 原始数据 通常KEY对应一块数据 PACK时清理过期数据块 保留最后一块数据
 // 没有对分钟线专门处理 是因为正常分析时通常以天总览 以天为细节分析

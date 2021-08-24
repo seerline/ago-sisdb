@@ -291,10 +291,20 @@ int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const ch
 //////////////////////////////////////////
 //   sdb 
 //////////////////////////////////////////
-int _disk_writer_is_year10(int open_, int stop_)
+// int _disk_writer_is_year10(int open_, int stop_)
+// {
+//     int open_year = open_ / 100000 * 10;
+//     int stop_year = stop_ / 100000 * 10;
+//     if (open_year == stop_year)
+//     {
+//         return 1;
+//     }
+//     return  0;
+// }
+int _disk_writer_is_year(int open_, int stop_)
 {
-    int open_year = open_ / 100000 * 10;
-    int stop_year = stop_ / 100000 * 10;
+    int open_year = open_ / 10000;
+    int stop_year = stop_ / 10000;
     if (open_year == stop_year)
     {
         return 1;
@@ -303,7 +313,8 @@ int _disk_writer_is_year10(int open_, int stop_)
 }
 s_sis_disk_ctrl *_disk_writer_get_year(s_sis_disk_writer *writer_, int idate_)
 {
-    int nyear = idate_ / 100000 * 10;
+    // int nyear = idate_ / 100000 * 10;
+    int nyear = idate_ / 10000;
     char syear[32];
     sis_llutoa(nyear, syear, 32, 10);
     s_sis_disk_ctrl *ctrl = sis_map_list_get(writer_->units, syear);
@@ -395,7 +406,7 @@ size_t sis_disk_writer_sdb_year(s_sis_disk_writer *writer_, s_sis_disk_kdict *kd
     start = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, start);
     msec_t stop = sis_dynamic_db_get_time(sdb, count - 1, in_, ilen_);
     stop = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, stop);
-    if (_disk_writer_is_year10(start, stop))
+    if (_disk_writer_is_year(start, stop))
     {
         ctrl = _disk_writer_get_year(writer_, start);
         if (ctrl)
@@ -413,7 +424,7 @@ size_t sis_disk_writer_sdb_year(s_sis_disk_writer *writer_, s_sis_disk_kdict *kd
         {
             int curr = sis_dynamic_db_get_time(sdb, i, in_, ilen_);
             curr = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, curr);
-            if (!_disk_writer_is_year10(curr, nowday))
+            if (!_disk_writer_is_year(curr, nowday))
             {
                 ctrl = _disk_writer_get_year(writer_, nowday);
                 // write 

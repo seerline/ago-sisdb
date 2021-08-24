@@ -56,19 +56,28 @@ void _disk_ctrl_init(s_sis_disk_ctrl *o)
                     o->fpath, o->fname, SIS_DISK_SNO_CHAR, nyear, o->open_date, SIS_DISK_IDX_CHAR);
         }
         break;
-    case SIS_DISK_TYPE_SDB_YEAR:  // name/year/2000-2009.sdb
+    case SIS_DISK_TYPE_SDB_YEAR:  // name/year/2000.sdb
         {
-            int nyear = o->open_date / 100000 * 10;
-            int open_date = (nyear + 0) * 10000 +  101;
-            int stop_date = (nyear + 9) * 10000 + 1231;
-            sis_sprintf(work_fn, 1024, "%s/%s/%s/%04d-%04d.%s",
-                    o->fpath, o->fname, SIS_DISK_YEAR_CHAR, open_date / 10000, stop_date / 10000, SIS_DISK_SDB_CHAR);
+            // int nyear = o->open_date / 100000 * 10;
+            // int open_date = (nyear + 0) * 10000 +  101;
+            // int stop_date = (nyear + 9) * 10000 + 1231;
+            // sis_sprintf(work_fn, 1024, "%s/%s/%s/%04d-%04d.%s",
+            //         o->fpath, o->fname, SIS_DISK_YEAR_CHAR, open_date / 10000, stop_date / 10000, SIS_DISK_SDB_CHAR);
+            // o->work_fps->main_head.index = 1;
+            // o->work_fps->max_page_size = SIS_DISK_MAXLEN_SDBPAGE;
+            // o->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
+            // o->work_fps->main_head.zip = SIS_DISK_ZIP_SNAPPY;
+            // sis_sprintf(widx_fn, 1024, "%s/%s/%s/%04d-%04d.%s",
+            //         o->fpath, o->fname, SIS_DISK_YEAR_CHAR, open_date / 10000, stop_date / 10000, SIS_DISK_IDX_CHAR);
+            int nyear = o->open_date / 10000;
+            sis_sprintf(work_fn, 1024, "%s/%s/%s/%04d.%s",
+                    o->fpath, o->fname, SIS_DISK_YEAR_CHAR, nyear, SIS_DISK_SDB_CHAR);
             o->work_fps->main_head.index = 1;
             o->work_fps->max_page_size = SIS_DISK_MAXLEN_SDBPAGE;
             o->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
             o->work_fps->main_head.zip = SIS_DISK_ZIP_SNAPPY;
-            sis_sprintf(widx_fn, 1024, "%s/%s/%s/%04d-%04d.%s",
-                    o->fpath, o->fname, SIS_DISK_YEAR_CHAR, open_date / 10000, stop_date / 10000, SIS_DISK_IDX_CHAR);
+            sis_sprintf(widx_fn, 1024, "%s/%s/%s/%04d.%s",
+                    o->fpath, o->fname, SIS_DISK_YEAR_CHAR, nyear, SIS_DISK_IDX_CHAR);
         }
         break;
     case SIS_DISK_TYPE_SDB_DATE:  // name/date/2021/20210606.sdb

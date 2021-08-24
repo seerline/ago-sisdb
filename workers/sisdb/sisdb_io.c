@@ -107,8 +107,6 @@ int sisdb_one_set(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds
 {
     s_sisdb_collect *collect = sisdb_kv_create(style_, key_, argv_, sis_sdslen(argv_));
     sis_map_pointer_set(sisdb_->work_keys, key_, collect);
-    // 这里处理订阅
-    sisdb_make_sub_message(sisdb_, collect, style_, argv_);
     return 0;
 }
 
@@ -174,7 +172,7 @@ int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char 
         {
             s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
             if (collect->style == SISDB_COLLECT_TYPE_TABLE && 
-                sis_str_subcmp_strict(collect->sdb->db->name,  sdbs_, ',') >= 0)
+                sis_str_subcmp_strict(collect->sdb->name,  sdbs_, ',') >= 0)
             {
                 sis_string_list_push(list_, sis_dict_getkey(de), sis_strlen(sis_dict_getkey(de)));
             }
@@ -189,8 +187,8 @@ int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char 
             int count = sis_map_list_getsize(sisdb_->work_sdbs);
             for (int i = 0; i < count; i++)
             {
-                s_sisdb_table *tb = sis_map_list_geti(sisdb_->work_sdbs, i);
-                sis_string_list_push(slists, tb->db->name, sis_sdslen(tb->db->name));
+                s_sisdb_table *table = sis_map_list_geti(sisdb_->work_sdbs, i);
+                sis_string_list_push(slists, table->name, sis_sdslen(table->name));
             }  
         }
         else
@@ -381,8 +379,6 @@ int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
     {
         return -5;
     }
-    // 这里处理订阅
-    sisdb_make_sub_message(sisdb_, collect, SISDB_COLLECT_TYPE_BYTES, value_);
 
     return 0;
 }
@@ -424,310 +420,8 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
     {
         return -5;
     }
-    // 这里处理订阅
-    sisdb_make_sub_message(sisdb_, collect, SISDB_COLLECT_TYPE_BYTES, bytes);
 
     sis_sdsfree(bytes);
     return 0;
-}
-/////////////////
-//  sub function
-/////////////////
-
-void _send_sub_message(s_sisdb_cxt *sisdb_, s_sis_net_message *info_, s_sisdb_collect *collect_, uint8 style_, const char *in_, size_t ilen_)
-{
-    // 赋新值
-    s_sis_net_message *newinfo = sis_net_message_create();
-    newinfo->cid = info_->cid;
-    newinfo->name = sis_sdsdup(info_->name);
-    newinfo->key = sis_sdsdup(collect_->name);
-
-    if(info_->rfmt & SISDB_FORMAT_CHARS)
-    {
-        if(style_ == SISDB_COLLECT_TYPE_BYTES)
-        {
-            if(collect_->sdb)
-            {
-                // 只有数据表才能转格式
-                s_sis_sds out = sisdb_get_chars_format_sds(collect_->sdb, collect_->name, info_->rfmt, in_, ilen_, NULL);
-                // printf("%s %s %x: %p = %s\n",collect_->name, collect_->sdb->db->name,info_->rfmt, out,out);
-                // sis_out_binary("out:",  in_, ilen_);
-                sis_net_ans_with_chars(newinfo, out, sis_sdslen(out));
-                sis_sdsfree(out); 
-            }
-            else  // 单键
-            {
-                // 返回数据类型不正确
-                // sis_net_ans_with_error(newinfo, "datatype error.", 15);
-                sis_net_ans_with_bytes(newinfo, in_, ilen_);
-            }
-        }
-        else
-        {
-            sis_net_ans_with_chars(newinfo, in_, ilen_);
-        }         
-    }
-    else
-    {
-        if(style_ == SISDB_COLLECT_TYPE_BYTES)
-        {
-            sis_net_ans_with_bytes(newinfo, in_, ilen_);
-        }
-        else
-        {
-            // 转二进制
-            sis_net_ans_with_bytes(newinfo, in_, ilen_);
-        }         
-    }
-    if (sisdb_->cb_net_message)
-    {
-        sisdb_->cb_net_message(sisdb_->cb_source, newinfo);
-    }
-    sis_net_message_destroy(newinfo); 
-}
-
-void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, s_sisdb_collect *collect_, uint8 style_, s_sis_sds in_)
-{
-    // 先处理单键值订阅
-    {
-        s_sisdb_reader *sublist = (s_sisdb_reader *)sis_map_pointer_get(sisdb_->sub_single, collect_->name);
-        // printf("sublist pub: %p %s\n", sublist, collect_->name);
-        if (sublist)
-        {
-            for (int i = 0; i < sublist->netmsgs->count; i++)
-            {
-                s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-                // printf("sublist one: %d  %s  format = %d\n", sublist->netmsgs->count, info->key, info->rfmt);
-                _send_sub_message(sisdb_, info, collect_, style_, in_, sis_sdslen(in_));
-            }
-        }
-    }
-    // 再处理多键值订阅 这个可能耗时 先这样处理
-    {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->sub_multiple);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_reader *sublist = (s_sisdb_reader *)sis_dict_getval(de);
-
-            bool is_publish = false;
-            switch (sublist->sub_type)
-            {
-            case SISDB_SUB_ONE_ALL:
-            case SISDB_SUB_TABLE_ALL:
-                is_publish = true;
-                break;
-            case SISDB_SUB_ONE_MUL:
-                if (sis_str_subcmp_strict(collect_->name,  sublist->sub_keys, ',') >= 0)
-                {
-                    is_publish = true;
-                }
-                break;            
-            case SISDB_SUB_TABLE_MUL:
-                {
-                    // 都是小串
-                    char kname[128], sname[128]; 
-                    int cmds = sis_str_divide(collect_->name, '.', kname, sname);
-                    if (cmds == 2 && sis_str_subcmp_strict(kname,  sublist->sub_keys, ',') >= 0
-                                && sis_str_subcmp_strict(sname,  sublist->sub_sdbs, ',') >= 0)
-                    {
-                        is_publish = true;
-                    }
-                }
-                break;            
-            case SISDB_SUB_TABLE_KEY:
-                {
-                    char kname[128], sname[128]; 
-                    int cmds = sis_str_divide(collect_->name, '.', kname, sname);
-                    if (cmds == 2 && sis_str_subcmp_strict(kname,  sublist->sub_keys, ',') >= 0)
-                    {
-                        is_publish = true;
-                    }
-                }
-                break;            
-            case SISDB_SUB_TABLE_SDB:
-                {
-                    char kname[128], sname[128]; 
-                    int cmds = sis_str_divide(collect_->name, '.', kname, sname);
-                    if (cmds == 2 && sis_str_subcmp_strict(sname,  sublist->sub_sdbs, ',') >= 0)
-                    {
-                        is_publish = true;
-                    }
-                }
-                break;            
-            default:
-                break;
-            }
-            if (is_publish)
-            {
-                for (int i = 0; i < sublist->netmsgs->count; i++)
-                {
-                    s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-                    // printf("sublist sdb: %d  %s  format = %d\n", sublist->netmsgs->count, info->key, info->rfmt);
-                    _send_sub_message(sisdb_, info, collect_, style_, in_, sis_sdslen(in_));
-                }
-            }
-        }
-        sis_dict_iter_free(di);
-    }    
-}
-
-
-int sisdb_one_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
-{
-	s_sisdb_reader *sublist = (s_sisdb_reader *)sis_map_pointer_get(sisdb_->sub_single, netmsg_->key);
-	if (!sublist)
-	{
-        sublist = sisdb_reader_create(netmsg_);
-		sis_map_pointer_set(sisdb_->sub_single, netmsg_->key, sublist);
-	}
-	bool isnew = true;
-	for (int i = 0; i < sublist->netmsgs->count; i++)
-	{
-		s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-		if (info->cid ==  netmsg_->cid)
-		{
-            info->rfmt = sis_db_get_format(netmsg_->ask);
-        	isnew = false;
-			break;
-		}
-	}
-	if (isnew)
-	{
-		sis_net_message_incr(netmsg_);
-        netmsg_->rfmt = sis_db_get_format(netmsg_->ask);
-    // printf("sublist sub: %s [%d] format = %d, %d, %d\n",netmsg_->key, isnew, SISDB_FORMAT_CHARS, netmsg_->rfmt, sis_db_get_format(netmsg_->val));
-		sis_pointer_list_push(sublist->netmsgs, netmsg_);
-	}
-    // printf("sublist sub: %s [%d] format = %d, %d, %d\n",netmsg_->key, isnew, SISDB_FORMAT_CHARS, netmsg_->rfmt, sis_db_get_format(netmsg_->val));
-    return isnew ? 1 : 0;
-}
-int _sisdb_unsub_map_list(s_sis_map_pointer *map_, int cid_)
-{
-    int count = 0;
-    s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(map_);
-    while ((de = sis_dict_next(di)) != NULL)
-    {
-        s_sisdb_reader *sublist = (s_sisdb_reader *)sis_dict_getval(de);
-        if (cid_ == -1)
-        {
-            count = sublist->netmsgs->count;
-            sis_pointer_list_clear(sublist->netmsgs);
-            sis_map_pointer_del(map_, sis_dict_getkey(de));
-        }
-        else
-        {
-            for (int i = 0; i < sublist->netmsgs->count; )
-            {
-                s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-                if (info->cid == cid_)
-                {
-                    sis_pointer_list_delete(sublist->netmsgs, i, 1);
-                    count++;
-                    if (sublist->netmsgs->count == 0)
-                    {
-                        sis_map_pointer_del(map_, sis_dict_getkey(de));
-                    }
-                    break;
-                }
-                else
-                {
-                    i++;
-                }
-            }
-        }
-    }
-    sis_dict_iter_free(di);  
-    return count;
-}
-int sisdb_unsub_whole(s_sisdb_cxt *sisdb_, int cid_)
-{
-    int count = 0;
-    count += _sisdb_unsub_map_list(sisdb_->sub_single, cid_);
-    count += _sisdb_unsub_map_list(sisdb_->sub_multiple, cid_);
-    return count;
-}
-
-int sisdb_one_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
-{
-	s_sisdb_reader *sublist = (s_sisdb_reader *)sis_map_pointer_get(sisdb_->sub_single, netmsg_->key);
-    if (sublist)
-    {
-        for (int i = 0; i < sublist->netmsgs->count; )
-        {
-            s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-            if (info->cid == netmsg_->cid)
-            {
-                sis_pointer_list_delete(sublist->netmsgs, i, 1);
-                if (sublist->netmsgs->count == 0)
-                {
-                    sis_map_pointer_del(sisdb_->sub_multiple, netmsg_->key);
-                }
-                break;
-            }
-            else
-            {
-                i++;
-            }
-        }
-        return 1;
-    }
-    return 0 ;
-}
-
-int sisdb_multiple_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
-{
-	s_sisdb_reader *sublist = (s_sisdb_reader *)sis_map_pointer_get(sisdb_->sub_multiple, netmsg_->key);
-	if (!sublist)
-	{
-        sublist = sisdb_reader_create(netmsg_);
-		sis_map_pointer_set(sisdb_->sub_multiple, netmsg_->key, sublist);
-	}
-    // printf("multiple_sub: %s\n",netmsg_->key);
-	bool isnew = true;
-	for (int i = 0; i < sublist->netmsgs->count; i++)
-	{
-		s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-		if (info->cid ==  netmsg_->cid)
-		{
-            info->rfmt = sis_db_get_format(netmsg_->ask);
-			isnew = false;
-			break;
-		}
-	}
-	if (isnew)
-	{
-		sis_net_message_incr(netmsg_);
-        netmsg_->rfmt = sis_db_get_format(netmsg_->ask);
-		sis_pointer_list_push(sublist->netmsgs, netmsg_);
-	}
-    return isnew ? 1 : 0;
-}
-int sisdb_multiple_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *netmsg_)
-{
-	s_sisdb_reader *sublist = (s_sisdb_reader *)sis_map_pointer_get(sisdb_->sub_multiple, netmsg_->key);
-    if (sublist)
-    {
-        for (int i = 0; i < sublist->netmsgs->count; )
-        {
-            s_sis_net_message *info = (s_sis_net_message *)sis_pointer_list_get(sublist->netmsgs, i);
-            if (info->cid == netmsg_->cid)
-            {
-                sis_pointer_list_delete(sublist->netmsgs, i, 1);
-                if (sublist->netmsgs->count == 0)
-                {
-                    sis_map_pointer_del(sisdb_->sub_multiple, netmsg_->key);
-                }
-                break;
-            }
-            else
-            {
-                i++;
-            }
-        }
-        return 1;
-    }
-    return 0 ;
 }
 

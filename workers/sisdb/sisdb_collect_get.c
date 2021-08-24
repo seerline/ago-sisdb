@@ -338,7 +338,7 @@ s_sis_sds sisdb_collect_get_of_range_sds(s_sisdb_collect *collect_, int start_, 
 		return NULL;
 	}
 	int count = (stop_ - start_) + 1;
-	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), start_), count * collect_->sdb->db->size);
+	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), start_), count * collect_->sdb->size);
 }
 s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *collect_, int start_, int count_)
 {
@@ -348,7 +348,7 @@ s_sis_sds sisdb_collect_get_of_count_sds(s_sisdb_collect *collect_, int start_, 
 	{
 		return NULL;
 	}
-	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), start_), count_ * collect_->sdb->db->size);
+	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), start_), count_ * collect_->sdb->size);
 }
 s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *collect_)
 {
@@ -356,7 +356,7 @@ s_sis_sds sisdb_collect_get_last_sds(s_sisdb_collect *collect_)
 	{
 		return NULL;
 	}
-	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), SIS_OBJ_LIST(collect_->obj)->count - 1), collect_->sdb->db->size);
+	return sis_sdsnewlen(sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), SIS_OBJ_LIST(collect_->obj)->count - 1), collect_->sdb->size);
 }
 
 s_sis_sds sisdb_collect_get_of_are_sds(s_sisdb_collect *collect_, int finder, int offset, int count)
@@ -591,9 +591,9 @@ s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_, 
 	int start = 0;
 	int count = SIS_OBJ_LIST(collect_->obj)->count;
 
-	if (count * collect_->sdb->db->size > SISDB_MAX_GET_SIZE)
+	if (count * collect_->sdb->size > SISDB_MAX_GET_SIZE)
 	{
-		count = SISDB_MAX_GET_SIZE / collect_->sdb->db->size;
+		count = SISDB_MAX_GET_SIZE / collect_->sdb->size;
 		start = -1 * count;
 	}
 	// printf("%d,%d\n",start,count);
@@ -609,46 +609,49 @@ s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_, 
 		return NULL;
 	}
 
-	s_sis_sds other = sisdb_collect_struct_to_json_sds(collect_->sdb->db, out, sis_sdslen(out), key_, collect_->sdb->fields, false, true);
+	s_sis_sds other = sis_dynamic_db_to_array_sds(collect_->sdb, key_, out, sis_sdslen(out));
 
 	sis_sdsfree(out);
 	return other;
 }
 
-s_sis_sds sisdb_get_chars_format_sds(s_sisdb_table *tb_, const char *key_, int iformat_, const char *in_, size_t ilen_, const char *fields_)
+s_sis_sds sisdb_get_chars_format_sds(s_sisdb_table *table_, const char *key_, int iformat_, const char *in_, size_t ilen_, const char *fields_)
 {
-	s_sis_string_list *field_list = tb_->fields; //取得全部的字段定义
+	s_sis_sds other = NULL;
+
 	bool iswhole = sisdb_field_is_whole(fields_);
 	if (!iswhole)
 	{
-		field_list = sis_string_list_create();
+		s_sis_string_list *field_list = sis_string_list_create();
 		sis_string_list_load(field_list, fields_, sis_strlen(fields_), ",");
-	}
-
-	s_sis_sds other = NULL;
-	switch (iformat_)
-	{
-	// case SISDB_FORMAT_BYTES:
-	// 	if (!iswhole)
-	// 	{
-	// 		other = sisdb_collect_struct_to_sds(tb_->db, in_, ilen_, field_list);
-	// 		sis_sdsfree(src_);
-	// 		src_ = other;
-	// 	}
-	// 	break;
-	case SISDB_FORMAT_JSON:
-		other = sisdb_collect_struct_to_json_sds(tb_->db, in_, ilen_, key_, field_list, fields_ ? true : false, true);
-		break;
-	case SISDB_FORMAT_ARRAY:
-		other = sisdb_collect_struct_to_array_sds(tb_->db, in_, ilen_, field_list, true);
-		break;
-	case SISDB_FORMAT_CSV:
-		other = sisdb_collect_struct_to_csv_sds(tb_->db, in_, ilen_, field_list, fields_ ? true : false);
-		break;
-	}
-	if (!iswhole)
-	{
+		switch (iformat_)
+		{
+		case SISDB_FORMAT_JSON:
+			other = sisdb_collect_struct_to_json_sds(table_, in_, ilen_, key_, field_list, fields_ ? true : false, true);
+			break;
+		case SISDB_FORMAT_ARRAY:
+			other = sisdb_collect_struct_to_array_sds(table_, in_, ilen_, field_list, true);
+			break;
+		case SISDB_FORMAT_CSV:
+			other = sisdb_collect_struct_to_csv_sds(table_, in_, ilen_, field_list, fields_ ? true : false);
+			break;
+		}
 		sis_string_list_destroy(field_list);
+	}
+	else
+	{
+		switch (iformat_)
+		{
+		case SISDB_FORMAT_JSON:
+			other = sis_dynamic_db_to_array_sds(table_, key_, (void *)in_, ilen_);
+			break;
+		case SISDB_FORMAT_ARRAY:
+			other = sis_dynamic_db_to_array_sds(table_, key_, (void *)in_, ilen_);
+			break;
+		case SISDB_FORMAT_CSV:
+			other = sis_dynamic_db_to_csv_sds(table_, (void *)in_, ilen_);
+			break;
+		}		
 	}
 	return other;
 }
@@ -677,7 +680,7 @@ s_sis_sds sisdb_collect_get_sds(s_sisdb_collect *collect_, const char *key_, int
 		}
 		s_sis_string_list *field_list = sis_string_list_create();
 		sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
-		s_sis_sds other = sisdb_collect_struct_to_sds(collect_->sdb->db, out, sis_sdslen(out), field_list);
+		s_sis_sds other = sisdb_collect_struct_to_sds(collect_->sdb, out, sis_sdslen(out), field_list);
 		sis_sdsfree(out);
 		sis_string_list_destroy(field_list);
 		return other;
@@ -709,28 +712,29 @@ s_sis_json_node *sisdb_collects_get_last_node(s_sisdb_collect *collect_, s_sis_j
 		fields = "*";
 	}
 
-	s_sis_string_list *field_list = collect_->sdb->fields; //取得全部的字段定义
-	if (!sisdb_field_is_whole(fields))
-	{
-		field_list = sis_string_list_create();
-		sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
-	}
-
-	int fnums = sis_string_list_getsize(field_list);
-	// case SISDB_FORMAT_JSON:
 	s_sis_json_node *jval = sis_json_create_array();
-	for (int i = 0; i < fnums; i++)
-	{
-		s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(collect_->sdb->db->fields, sis_string_list_get(field_list, i));
-		sis_dynamic_field_to_array(jval, inunit, val);
-	}
-	
-	sis_sdsfree(val);
 	if (!sisdb_field_is_whole(fields))
 	{
+		s_sis_string_list *field_list = sis_string_list_create();
+		sis_string_list_load(field_list, fields, sis_strlen(fields), ",");
+		int fnums = sis_string_list_getsize(field_list);
+		for (int i = 0; i < fnums; i++)
+		{
+			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_get(collect_->sdb->fields, sis_string_list_get(field_list, i));
+			sis_dynamic_field_to_array(jval, inunit, val);
+		}
 		sis_string_list_destroy(field_list);
 	}
-
+	else
+	{
+		int fnums = sis_map_list_getsize(collect_->sdb->fields);
+		for (int i = 0; i < fnums; i++)
+		{
+			s_sis_dynamic_field *inunit = sis_map_list_geti(collect_->sdb->fields, i);
+			sis_dynamic_field_to_array(jval, inunit, val);
+		}
+	}
+	sis_sdsfree(val);
 	return jval;
 }
 

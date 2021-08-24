@@ -1,20 +1,19 @@
-﻿#include "sis_modules.h"
-#include "worker.h"
+﻿#include "worker.h"
+#include "sis_modules.h"
+
 #include "server.h"
 #include "sis_method.h"
 
 #include "sisdb_wsdb.h"
-#include "sisdb.h"
-#include "sisdb_server.h"
-#include "sisdb_collect.h"
+
+static s_sis_method _sisdb_wsdb_methods[] = {
+  {"start",  cmd_sisdb_wsdb_start, 0, NULL},
+  {"stop",   cmd_sisdb_wsdb_stop, 0, NULL},
+  {"write",  cmd_sisdb_wsdb_write, 0, NULL},
+};
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
 ///////////////////////////////////////////////////
-
-struct s_sis_method sisdb_wsdb_methods[] = {
-    {"save", cmd_sisdb_wsdb_save, 0, NULL},  // json 格式
-    {"pack", cmd_sisdb_wsdb_pack, 0, NULL},  // json 格式
-};
 // 通用文件存取接口
 s_sis_modules sis_modules_sisdb_wsdb = {
     sisdb_wsdb_init,
@@ -24,8 +23,8 @@ s_sis_modules sis_modules_sisdb_wsdb = {
     sisdb_wsdb_uninit,
     NULL,
     NULL,
-    sizeof(sisdb_wsdb_methods) / sizeof(s_sis_method),
-    sisdb_wsdb_methods,
+    sizeof(_sisdb_wsdb_methods) / sizeof(s_sis_method),
+    _sisdb_wsdb_methods,
 };
 
 bool sisdb_wsdb_init(void *worker_, void *argv_)
@@ -68,161 +67,177 @@ bool sisdb_wsdb_init(void *worker_, void *argv_)
             context->safe_path = sis_sdsnew("data/safe/");
         }
     }
+    context->work_sdbs = sis_sdsnew("*");
+    context->work_keys = sis_sdsnew("*");
     return true;
 }
 void sisdb_wsdb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
+
+    context->status = SIS_WSDB_EXIT;
+    sisdb_wsdb_stop(context);
+
     sis_sdsfree(context->work_path);
     sis_sdsfree(context->work_name);
     sis_sdsfree(context->safe_path);
+    sis_sdsfree(context->work_keys);
+    sis_sdsfree(context->work_sdbs);
+
     sis_free(context);
-
+    
+    sis_free(context);
+    worker->context = NULL;
 }
 
-s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
-{
-    int nums = 0;
-    s_sis_sds msg = sis_sdsempty();
-    {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(cxt->work_keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (collect->style == SISDB_COLLECT_TYPE_TABLE)
-            {
-                char keyn[128], sdbn[128]; 
-                int cmds = sis_str_divide(collect->name, '.', keyn, sdbn);
-                if (cmds == 2)
-                {
-                    if (nums > 0)
-                    {
-                        msg = sis_sdscat(msg, ",");
-                    }
-                    nums++;
-                    msg = sis_sdscatfmt(msg, "%s", keyn);
-                }                
-            }
-        }
-        sis_dict_iter_free(di);
-    }  
-    printf("keys = %s\n", msg);
-    return msg;    
-}
+///////////////////////////////////////////
+//  callback define begin
+///////////////////////////////////////////
 
-s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
+void sisdb_wsdb_open(s_sisdb_wsdb_cxt *context)
 {
-    int count = sis_map_list_getsize(cxt->work_sdbs);
-    s_sis_json_node *sdbs_node = sis_json_create_object();
+    // 老文件如果没有关闭再关闭一次
+    sisdb_wsdb_stop(context);
+
+    sis_sdsfree(context->work_keys); context->work_keys = NULL;
+    sis_sdsfree(context->work_sdbs); context->work_sdbs = NULL;
+
+    context->writer = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB);
+    sis_disk_writer_open(context->writer, 0);
+    context->status = SIS_WSDB_OPEN;
+}
+void sisdb_wsdb_stop(s_sisdb_wsdb_cxt *context)
+{
+    if (context->writer)
     {
-        for(int i = 0; i < count; i++)
-        {
-            s_sisdb_table *sdb = (s_sisdb_table *)sis_map_list_geti(cxt->work_sdbs, i);
-            sis_json_object_add_node(sdbs_node, sdb->db->name, sis_dynamic_dbinfo_to_json(sdb->db));
-        }
+        sis_disk_writer_stop(context->writer);
+        sis_disk_writer_close(context->writer);
+        sis_disk_writer_destroy(context->writer);
+        context->writer = NULL;
     }
-    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
-    printf("sdbs = %s\n", msg);
-    sis_json_delete_node(sdbs_node);
-    return msg;
+     context->status = SIS_WSDB_NONE;
 }
 
-int cmd_sisdb_wsdb_save(void *worker_, void *argv_)
+static int _write_wsdb_head(s_sisdb_wsdb_cxt *context, int iszip)
 {
-    s_sis_message *msg = (s_sis_message *)argv_;
-    s_sisdb_cxt *sisdb = (s_sisdb_cxt *)sis_message_get(msg, "sisdb");
-    if (!sisdb)
+    if (context->wheaded)
     {
-        return SIS_METHOD_ERROR;
+        return 0;
     }
+    sis_disk_writer_set_kdict(context->writer, context->work_keys, sis_sdslen(context->work_keys));
+    sis_disk_writer_set_sdict(context->writer, context->work_sdbs, sis_sdslen(context->work_sdbs));
+    sis_disk_writer_start(context->writer);
+    context->wheaded = 1;
+    return 0;
+}
+
+///////////////////////////////////////////
+//  callback define end.
+///////////////////////////////////////////
+
+///////////////////////////////////////////
+//  method define
+/////////////////////////////////////////
+int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
+{
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
-    if (sis_map_pointer_getsize(sisdb->work_keys) > 0)
+    sisdb_wsdb_open(context);
+    s_sis_message *msg = (s_sis_message *)argv_; 
     {
-        s_sis_disk_writer *sdbfile = sis_disk_writer_create(context->work_path, sisdb->dbname, SIS_DISK_TYPE_SDB);
-        // 不能删除老文件的信息
-        sis_disk_writer_open(sdbfile, 0);
+        s_sis_sds str = sis_message_get_str(msg, "work-keys");
+        if (str)
         {
-            s_sis_sds keys = _sisdb_get_keys(sisdb);
-            sis_disk_writer_set_kdict(sdbfile, keys, sis_sdslen(keys));
-            s_sis_sds sdbs = _sisdb_get_sdbs(sisdb);
-            sis_disk_writer_set_sdict(sdbfile, sdbs, sis_sdslen(sdbs));
-            sis_sdsfree(keys);
-            sis_sdsfree(sdbs);
+            sis_sdsfree(context->work_keys);
+            context->work_keys = sis_sdsdup(str);
         }
-
-        // 写入自由和结构键值
-        {
-            char keyn[128], sdbn[128]; 
-            s_sis_memory *memory = sis_memory_create();
-            s_sis_dict_entry *de;
-            s_sis_dict_iter *di = sis_dict_get_iter(sisdb->work_keys);
-            while ((de = sis_dict_next(di)) != NULL)
-            {
-                s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-                sis_str_divide(collect->name, '.', keyn, sdbn); 
-                if (collect->style == SISDB_COLLECT_TYPE_TABLE)
-                {
-                    sis_disk_writer_sdb(sdbfile, keyn, collect->sdb->db->name, 
-                        SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-                }
-                else 
-                if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
-                {
-                    sis_memory_clear(memory);
-                    sis_memory_cat_byte(memory, collect->style, 1);
-                    sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-                    sis_disk_writer_one(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
-                }
-            }
-            sis_dict_iter_free(di);
-            sis_memory_destroy(memory);
-        }
-        sis_disk_writer_close(sdbfile);
-        sis_disk_writer_destroy(sdbfile);
     }
-
-    return SIS_METHOD_OK;
-}
-
-int cmd_sisdb_wsdb_pack(void *worker_, void *argv_)
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-sdbs");
+        if (str)
+        {
+            sis_sdsfree(context->work_sdbs);
+            context->work_sdbs = sis_sdsdup(str);
+        }
+    }
+    context->wheaded = 0;
+    context->status = SIS_WSDB_OPEN;
+    return SIS_METHOD_OK; 
+}    
+int cmd_sisdb_wsdb_stop(void *worker_, void *argv_)
 {
-    // s_sis_message *msg = (s_sis_message *)argv_;
-    // s_sis_sds dbname = sis_message_get_str(msg, "dbname");
-    // if (!dbname)
-    // {
-    //     return SIS_METHOD_ERROR;
-    // }
-    // s_sis_worker *worker = (s_sis_worker *)worker_; 
-    // s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
-
-    // // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
-    // s_sis_disk_v1_class *srcfile = sis_disk_v1_class_create();
-    // sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
-    // sis_disk_v1_file_move(srcfile, context->safe_path);
-    // sis_disk_v1_class_init(srcfile, SIS_DISK_TYPE_SDB, context->safe_path, dbname, 0);
-
-    // s_sis_disk_v1_class *desfile = sis_disk_v1_class_create();
-    // sis_disk_v1_class_init(desfile, SIS_DISK_TYPE_SDB, context->work_path, dbname, 0);
-
-    // size_t size = sis_disk_v1_file_pack(srcfile, desfile);
-
-    // if (size == 0)
-    // {
-    //     sis_disk_v1_file_delete(desfile);
-    //     sis_disk_v1_file_move(srcfile, context->work_path);
-    // }   
-    // sis_disk_v1_class_destroy(desfile);
-    // sis_disk_v1_class_destroy(srcfile);
-
-    // if (size == 0)
-    // {
-    //     return SIS_METHOD_ERROR;
-    // }
-    return SIS_METHOD_OK;
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
+    sisdb_wsdb_stop(context);
+    context->status = SIS_WSDB_NONE;
+    return SIS_METHOD_OK; 
+} 
+void sisdb_wsdb_write(s_sisdb_wsdb_cxt *context, int style, s_sis_message *msg)
+{
+    _write_wsdb_head(context, 0);
+    switch (style)
+    {
+    case SIS_SDB_STYLE_NON:
+    case SIS_SDB_STYLE_ONE:
+    case SIS_SDB_STYLE_MUL:
+        break;    
+    default:
+        {
+            s_sis_db_chars *chars = sis_message_get(msg, "chars");
+            sis_disk_writer_sdb(context->writer, chars->kname, chars->sname, chars->data, chars->size);
+        }
+        break;
+    }
+}
+int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
+    
+    if (context->status != SIS_WSDB_NONE && context->status != SIS_WSDB_OPEN)
+    {
+        return SIS_METHOD_ERROR;
+    }    
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-path");
+        if (str)
+        {
+            sis_sdsfree(context->work_path);
+            context->work_path = sis_sdsdup(str);
+        }
+    }
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-name");
+        if (str)
+        {
+            sis_sdsfree(context->work_name);
+            context->work_name = sis_sdsdup(str);
+        }
+    }
+    int style = SIS_SDB_STYLE_SDB;
+    if (sis_message_exist(msg, "style"))
+    {
+        style = sis_message_get_int(msg, "style");
+    }
+    
+    if (context->status == SIS_WSDB_NONE)
+    {
+        // 打开文件
+        sisdb_wsdb_open(context);
+        // 写文件
+        sisdb_wsdb_write(context, style, msg);
+        // 关闭文件
+        sisdb_wsdb_stop(context);
+    }
+    else
+    {
+        // 写文件
+        sisdb_wsdb_write(context, style, msg);
+    }
+    return SIS_METHOD_OK; 
 }
 
 

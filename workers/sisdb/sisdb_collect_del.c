@@ -11,7 +11,7 @@
 int _sisdb_collect_delete(s_sisdb_collect *collect_, int start_, int count_)
 {
 	sis_struct_list_delete(SIS_OBJ_LIST(collect_->obj), start_, count_);
-	if (collect_->sdb->db->field_mindex)
+	if (collect_->sdb->field_mindex)
 	{
 		sisdb_stepindex_rebuild(collect_->stepinfo,
 								sisdb_collect_get_mindex(collect_, 0),

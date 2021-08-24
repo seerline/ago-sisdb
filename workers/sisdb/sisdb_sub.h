@@ -1,5 +1,5 @@
-﻿#ifndef _SIS_NOTICE_H
-#define _SIS_NOTICE_H
+﻿#ifndef _SISDB_SUB_H
+#define _SISDB_SUB_H
 
 #include "sis_method.h"
 #include "sis_net.msg.h"
@@ -28,7 +28,7 @@ typedef struct s_sisdb_sub_unit
 	s_sis_pointer_list   *netmsgs;    // s_sis_net_message
 } s_sisdb_sub_unit;	
 
-typedef struct s_sis_notice_cxt
+typedef struct s_sisdb_sub_cxt
 {
 	// 多个 client 订阅的列表 需要一一对应发送
 	// 以 subkey 为索引的 s_sisdb_sub_unit 同一key会有多个用户订阅
@@ -38,16 +38,18 @@ typedef struct s_sis_notice_cxt
 	void               *cb_source;       // 
 	sis_method_define  *cb_net_message;  // s_sis_net_message 
 
-} s_sis_notice_cxt;
+} s_sisdb_sub_cxt;
 
-bool  sis_notice_init(void *, void *);
-void  sis_notice_uninit(void *);
+s_sisdb_sub_cxt *sisdb_sub_cxt_create();
+void  sisdb_sub_cxt_destroy(s_sisdb_sub_cxt *);
+
+void  sisdb_sub_cxt_init(s_sisdb_sub_cxt *, void *source_, sis_method_define *cb_);
 
 // 订阅 头匹配时 需要在key开头增加 "*," 
-int sis_notice_sub(void *worker_, void *argv_);
+int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *);
 // 取消订阅
-int sis_notice_unsub(void *worker_, void *argv_);
+int sisdb_sub_cxt_unsub(s_sisdb_sub_cxt *cxt_, int cid_);
 // 发布一个信息
-int sis_notice_pub(void *worker_, void *argv_);
+int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *);
 
 #endif

@@ -18,6 +18,7 @@ typedef struct s_sisdb_wsno_cxt
     s_sis_sds          work_name;     // 可配置 也可传入
     s_sis_disk_writer *writer;        // 写盘类
  
+	int                stop_time;     // 停止时间
 	int                work_date;     // 工作日期  
 	s_sis_sds          work_keys;     // 筛选后的 
 	s_sis_sds          work_sdbs;     // 筛选后的

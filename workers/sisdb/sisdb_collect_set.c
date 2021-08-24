@@ -15,7 +15,7 @@ int _sisdb_collect_search_from_last(s_sisdb_collect *collect_, uint64 finder_, i
 	for (int i = SIS_OBJ_LIST(collect_->obj)->count - 1; i >= 0 ; i--)
 	{
 		const char *val = sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), i);
-		uint64 mindex = sis_dynamic_db_get_mindex(tb->db, 0, (void *)val, tb->db->size);
+		uint64 mindex = sis_dynamic_db_get_mindex(tb, 0, (void *)val, tb->size);
 		if (mindex < finder_)
 		{
 			*mode_ = SIS_SEARCH_RIGHT;
@@ -39,7 +39,7 @@ int _sisdb_collect_check_lasttime(s_sisdb_collect *collect_, uint64 finder_)
 	}
 	s_sisdb_table *tb = collect_->sdb;
 
-	uint64 old_index = sis_dynamic_db_get_mindex(tb->db, 0, sis_struct_list_last(SIS_OBJ_LIST(collect_->obj)), tb->db->size);
+	uint64 old_index = sis_dynamic_db_get_mindex(tb, 0, sis_struct_list_last(SIS_OBJ_LIST(collect_->obj)), tb->size);
 
 	if (finder_ == old_index)
 	{
@@ -67,7 +67,7 @@ int _sisdb_collect_update_solely(s_sisdb_collect *collect_, const char *in_, int
 		const char *val = sis_struct_list_get(SIS_OBJ_LIST(collect_->obj), i);
 		if (mindex_ > 0)
 		{
-			uint64 mindex = sis_dynamic_db_get_mindex(tb->db, 0, (void *)val, tb->db->size);
+			uint64 mindex = sis_dynamic_db_get_mindex(tb, 0, (void *)val, tb->size);
 			if (mindex < mindex_)
 			{
 				if (index_ == -1)
@@ -82,9 +82,9 @@ int _sisdb_collect_update_solely(s_sisdb_collect *collect_, const char *in_, int
 			}
 		}
 		bool ok = true;
-		for (int k = 0; k < tb->db->field_solely->count; k++)
+		for (int k = 0; k < tb->field_solely->count; k++)
 		{
-			s_sisdb_field *fu = (s_sisdb_field *)sis_pointer_list_get(tb->db->field_solely, k);
+			s_sisdb_field *fu = (s_sisdb_field *)sis_pointer_list_get(tb->field_solely, k);
 			// sis_out_binary("in :", in_+fu->offset, fu->flags.len);
 			// sis_out_binary("val:", val+fu->offset, fu->flags.len);
 			if (memcmp(in_ + fu->offset, val + fu->offset, fu->len))
@@ -110,7 +110,7 @@ int sisdb_collect_update_mindex(s_sisdb_collect *collect_, const char *in_)
 
 	int o = 0;
 	// 计算时序
-	uint64 new_index = sis_dynamic_db_get_mindex(tb->db, 0, (void *)in_, tb->db->size);
+	uint64 new_index = sis_dynamic_db_get_mindex(tb, 0, (void *)in_, tb->size);
 	int search_mode = _sisdb_collect_check_lasttime(collect_, new_index);
 	if (search_mode == SIS_CHECK_LASTTIME_NEW)
 	{
@@ -119,7 +119,7 @@ int sisdb_collect_update_mindex(s_sisdb_collect *collect_, const char *in_)
 	}
 	if (search_mode == SIS_CHECK_LASTTIME_OK)
 	{
-		if (tb->db->field_solely->count > 0)
+		if (tb->field_solely->count > 0)
 		{
 			o = _sisdb_collect_update_solely(collect_, in_, -1, new_index);
 		}
@@ -155,25 +155,25 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 {
 	int ilen = sis_sdslen(in_);
 
-	// printf("-----len=%d:%d\n", ilen, collect_->sdb->db->size);
-	if (ilen < collect_->sdb->db->size)
+	// printf("-----len=%d:%d\n", ilen, collect_->sdb->size);
+	if (ilen < collect_->sdb->size)
 	{
 		return 0;
 	}
 
-	int count = (int)(ilen / collect_->sdb->db->size);
+	int count = (int)(ilen / collect_->sdb->size);
 	//这里应该判断数据完整性
-	if (count * collect_->sdb->db->size != ilen)
+	if (count * collect_->sdb->size != ilen)
 	{
-		LOG(3)("source format error [%d*%d!=%u]\n", count, collect_->sdb->db->size, ilen);
+		LOG(3)("source format error [%d*%d!=%u]\n", count, collect_->sdb->size, ilen);
 		return 0;
 	}
 	s_sisdb_table *tb = collect_->sdb;
 
 	// 先判断是否可以直接插入
-	if ((tb->db->field_solely->count == 0 && !tb->db->field_mindex) ||
+	if ((tb->field_solely->count == 0 && !tb->field_mindex) ||
 		(SIS_OBJ_LIST(collect_->obj)->count < 1))
-		// !tb->db->field_time field_mindex 为空则 field_time 一定为空
+		// !tb->field_time field_mindex 为空则 field_time 一定为空
 	{
 		sis_struct_list_pushs(SIS_OBJ_LIST(collect_->obj), in_, count);
 	}
@@ -182,7 +182,7 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 		const char *ptr = in_;
 		for (int i = 0; i < count; i++)
 		{
-			if (tb->db->field_mindex)
+			if (tb->field_mindex)
 			{
 				sisdb_collect_update_mindex(collect_, ptr);	
 			}
@@ -190,10 +190,10 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 			{
 				sisdb_collect_update_nomindex(collect_, ptr);	
 			}			
-			ptr += collect_->sdb->db->size;
+			ptr += collect_->sdb->size;
 		}
 	}
-	if (collect_->sdb->db->field_mindex)
+	if (collect_->sdb->field_mindex)
 	{
 		// 重建索引
 		sisdb_stepindex_rebuild(collect_->stepinfo,
@@ -208,21 +208,21 @@ int sisdb_collect_update(s_sisdb_collect *collect_, s_sis_sds in_)
 // 从磁盘中整块写入，不逐条进行校验
 int sisdb_collect_wpush(s_sisdb_collect *collect_, char *in_, size_t ilen_)
 {
-	if (ilen_ < collect_->sdb->db->size)
+	if (ilen_ < collect_->sdb->size)
 	{
 		return 0;
 	}
-	int count = (int)(ilen_ / collect_->sdb->db->size);
+	int count = (int)(ilen_ / collect_->sdb->size);
 	//这里应该判断数据完整性
-	printf("wpush %s %s %d %p %d\n", collect_->name, collect_->sdb->db->name, collect_->sdb->db->size, collect_->sdb->db, count);
-	if (count * collect_->sdb->db->size != ilen_)
+	printf("wpush %s %s %d %p %d\n", collect_->name, collect_->sdb->name, collect_->sdb->size, collect_->sdb, count);
+	if (count * collect_->sdb->size != ilen_)
 	{
-		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->sdb->db->size, ilen_);
+		LOG(3)("source format error [%d*%d!=%d]\n", count, collect_->sdb->size, ilen_);
 		return 0;
 	}
 	sis_struct_list_pushs(SIS_OBJ_LIST(collect_->obj), in_, count);
 
-	if (collect_->sdb->db->field_mindex)
+	if (collect_->sdb->field_mindex)
 	{
 		sisdb_stepindex_rebuild(collect_->stepinfo,
 								sisdb_collect_get_mindex(collect_, 0),

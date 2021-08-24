@@ -520,7 +520,6 @@ uint64 sis_dynamic_db_get_mindex(s_sis_dynamic_db *db_, int index_, void *in_, s
 
 // 直接通过配置转数据格式
 s_sis_sds sis_dynamic_conf_to_array_sds(const char *confstr_, void *in_, size_t ilen_); 
-
 // 数据转换为array
 s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in_, size_t ilen_); 
 

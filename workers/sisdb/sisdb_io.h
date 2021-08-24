@@ -46,17 +46,4 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
 // 以二进制方式写入数据 数据表必须已经存在 否则返回错误
 int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_);
 
-/////////////////
-//  sub function
-/////////////////
-// 处理最新的数据订阅问题
-void sisdb_make_sub_message(s_sisdb_cxt *sisdb_, s_sisdb_collect *collect_, uint8 style_, s_sis_sds in_);
-
-int sisdb_one_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *);
-int sisdb_multiple_sub(s_sisdb_cxt *sisdb_, s_sis_net_message *);
-
-int sisdb_unsub_whole(s_sisdb_cxt *sisdb_, int );
-int sisdb_one_unsub(s_sisdb_cxt *sisdb_,s_sis_net_message *);
-int sisdb_multiple_unsub(s_sisdb_cxt *sisdb_, s_sis_net_message *);
-
 #endif  /* _SISDB_IO_H */

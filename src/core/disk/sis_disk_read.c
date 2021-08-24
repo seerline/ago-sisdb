@@ -375,11 +375,10 @@ void sis_disk_reader_make_sdb(s_sis_disk_reader *reader_)
         return;
     }
     // 2.检查日上时序数据
-    int open_date = sis_time_get_idate(reader_->search_msec.start / 1000);
-    int open_year = open_date / 10000;
+    int open_year = sis_time_get_idate(reader_->search_msec.start / 1000) / 10000;
     int stop_year = sis_time_get_idate(reader_->search_msec.stop / 1000) / 10000;
-    open_year = open_year / 10 * 10;
-    stop_year = stop_year / 10 * 10;
+    // open_year = open_year / 10 * 10;
+    // stop_year = stop_year / 10 * 10;
     while(open_year <= stop_year)
     {
         LOG(5)("year: %d %d\n", open_year, stop_year);
@@ -406,7 +405,8 @@ void sis_disk_reader_make_sdb(s_sis_disk_reader *reader_)
         {
             sis_disk_reader_unit_destroy(unit);
         }
-        open_year += 10;
+        // open_year += 10;
+        open_year += 1;
     }
     if (reader_->isone && sis_map_list_getsize(reader_->subidxs) > 0)
     {

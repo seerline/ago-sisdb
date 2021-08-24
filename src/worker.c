@@ -256,8 +256,7 @@ void _sis_load_work_time(s_sis_worker *worker_, s_sis_json_node *node_)
 /////////////////////////////////
 //  worker
 /////////////////////////////////
-
-s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
+s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_, s_sis_json_node *node_)
 {
     if (!node_)
     {
@@ -276,16 +275,16 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
     }
     else
     {
-        worker->classname = sis_sdsnew(node_->key);
+        worker->classname = sis_sdsnew(name_);
     }
-    if (sis_str_substr_nums(node_->key, sis_strlen(node_->key), '.') > 1)
+    if (sis_str_substr_nums(name_, sis_strlen(name_), '.') > 1)
     {
-        LOG(3)("workname [%s] cannot '.' !\n", node_->key);  
+        LOG(3)("workname [%s] cannot '.' !\n", name_);  
         sis_worker_destroy(worker);
         return NULL;
     }
     // 需要遍历前导字符
-    worker->workername = _sis_worker_get_workname(worker, node_->key);
+    worker->workername = _sis_worker_get_workname(worker, name_);
 
     // 必须在 _sis_worker_init 之前初始化workers
     worker->workers = sis_map_pointer_create();
@@ -340,6 +339,14 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
         worker->classname, worker->workername, 
         worker->status, (int)sis_map_pointer_getsize(worker->workers));
 	return worker;
+}
+s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
+{
+    if (!node_)
+    {
+        return NULL;
+    }
+    return sis_worker_create_of_name(father_, node_->key, node_);
 }
 
 void sis_worker_destroy(void *worker_)

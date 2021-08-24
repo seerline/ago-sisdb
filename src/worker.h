@@ -73,6 +73,7 @@ bool sis_work_thread_working(s_sis_work_thread *task_);  // 检查时间是否�
 void sis_work_thread_notice(s_sis_worker *worker_);
 
 // 可能为server
+s_sis_worker *sis_worker_create_of_name(s_sis_worker *worker_, const char *name, s_sis_json_node *);
 s_sis_worker *sis_worker_create(s_sis_worker *worker_, s_sis_json_node *);
 void sis_worker_destroy(void *);
 

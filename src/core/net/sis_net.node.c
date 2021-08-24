@@ -514,65 +514,62 @@ s_sis_sds _sis_json_node_get_sds(s_sis_json_node *node_, const char *key_)
     }
     return o;
 }
-bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
+void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *mess)
 {
-    s_sis_net_message *mess = (s_sis_net_message *)out_;
-    s_sis_json_handle *handle = sis_json_load(sis_memory(in_), sis_memory_get_size(in_));
-    if (!handle)
-    {
-        LOG(5)("json parse error.\n");
-        return false;
-    }
-	s_sis_json_node *ver = sis_json_cmp_child_node(handle->node, "ver");  
+	s_sis_json_node *ver = sis_json_cmp_child_node(node_, "ver");  
 	if (ver)
 	{
-        mess->ver = sis_json_get_int(handle->node, "ver", 0);    
+        mess->ver = sis_json_get_int(node_, "ver", 0);    
 		mess->switchs.has_ver = 1;
 	}
-	s_sis_json_node *fmt = sis_json_cmp_child_node(handle->node, "fmt");  
+	s_sis_json_node *fmt = sis_json_cmp_child_node(node_, "fmt");  
 	if (fmt)
 	{
-        mess->format = sis_json_get_int(handle->node, "fmt", 0);   
+        mess->format = sis_json_get_int(node_, "fmt", 0);   
 		mess->switchs.has_fmt = 1;
 	}
-    s_sis_json_node *rans = sis_json_cmp_child_node(handle->node, "ans");
+    s_sis_json_node *rans = sis_json_cmp_child_node(node_, "ans");
 	if (rans)
 	{
 		// 应答包
 		mess->switchs.is_reply = 1;
 		mess->rans = rans->value ? sis_atoll(rans->value) : 0; 	
-        mess->rmsg = _sis_json_node_get_sds(handle->node, "msg");    
+        mess->rmsg = _sis_json_node_get_sds(node_, "msg");    
 		mess->switchs.has_msg = mess->rmsg ? 1 : 0;
-        mess->rnext = sis_json_get_int(handle->node, "next", 0);   
+        mess->rnext = sis_json_get_int(node_, "next", 0);   
 		mess->switchs.has_next = mess->rnext > 0 ? 1 : 0;
 	}
 	else
 	{
 		// 表示为请求
 		mess->switchs.is_reply = 0;
-        mess->service = _sis_json_node_get_sds(handle->node, "service");    
+        mess->service = _sis_json_node_get_sds(node_, "service");    
 		mess->switchs.has_service = mess->service ? 1 : 0;
-        mess->cmd = _sis_json_node_get_sds(handle->node, "cmd");    
+        mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
 		mess->switchs.has_cmd = mess->cmd ? 1 : 0;
-        mess->key = _sis_json_node_get_sds(handle->node, "key");    
+        mess->key = _sis_json_node_get_sds(node_, "key");    
 		mess->switchs.has_key = mess->key ? 1 : 0;
-        mess->ask = _sis_json_node_get_sds(handle->node, "ask");    
+        mess->ask = _sis_json_node_get_sds(node_, "ask");    
 		mess->switchs.has_ask = mess->ask ? 1 : 0;
 	}
-	s_sis_json_node *argvs = sis_json_cmp_child_node(handle->node, "argvs");  
+	s_sis_json_node *argvs = sis_json_cmp_child_node(node_, "argvs");  
 	if (argvs)
 	{
 		// mess->switchs.has_argvs = 1;
 		// 这里以后有需求再补
 	} 
-	// 
-	// printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
-	// 		mess->serial? mess->serial : "nil",
-	// 		mess->cmd ? mess->cmd : "nil",
-	// 		mess->key? mess->key : "nil",
-	// 		mess->val? mess->val : "nil",
-	// 		mess->rval? mess->rval : "nil");
+}
 
+bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
+{
+    // s_sis_net_message *mess = (s_sis_net_message *)out_;
+    s_sis_json_handle *handle = sis_json_load(sis_memory(in_), sis_memory_get_size(in_));
+    if (!handle)
+    {
+        LOG(5)("json parse error.\n");
+        return false;
+    }
+	sis_json_to_netmsg(handle->node, out_);
     sis_json_close(handle);
     return true;
 }

@@ -236,7 +236,7 @@ void sis_net_ans_with_chars(s_sis_net_message *netmsg_, const char *in_, size_t 
     SIS_NET_SET_BUF(netmsg_->switchs.has_msg, netmsg_->rmsg, in_, ilen_);
     netmsg_->switchs.has_key = netmsg_->key ? 1 : 0;
 }
-void sis_net_ans_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_)
+void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_)
 {
     sis_sdsfree(netmsg_->key);
     if (sname_)
@@ -249,6 +249,12 @@ void sis_net_ans_set_key(s_sis_net_message *netmsg_, const char *kname_, const c
         netmsg_->key = sis_sdsnew(kname_);
     }
 }
+void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_)
+{
+    sis_sdsfree(netmsg_->cmd);
+    netmsg_->cmd = sis_sdsnew(cmd_);
+}
+
 void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {
     netmsg_->format = SIS_NET_FORMAT_BYTES;

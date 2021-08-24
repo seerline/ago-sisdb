@@ -7,7 +7,7 @@
 #include "sis_memory.h"
 #include "sis_net.msg.h"
 #include "sis_obj.h"
-
+#include "sis_json.h"
 /////////////////////////////////////////////////
 //  s_sis_net_nodes
 /////////////////////////////////////////////////
@@ -77,5 +77,7 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_);
 bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_);
 // 返回失败 表示数据出错 断开链接 重新开始
 bool sis_net_decoded_normal(s_sis_memory* in_, s_sis_net_message *out_);
+// json 转 netmsg
+void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *out_);
 
 #endif

@@ -5,10 +5,10 @@
 #include <sisdb_wsno.h>
 
 // 从行情流文件中获取数据源 需要支持直接写压缩数据然后解压写入
+
 static s_sis_method _sisdb_wsno_methods[] = {
   {"getcb",  cmd_sisdb_wsno_getcb, 0, NULL},
 };
-
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
 ///////////////////////////////////////////////////
@@ -214,7 +214,7 @@ static int cb_sub_chars(void *worker_, void *argv_)
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
 
     _write_wsno_head(context, 0);
-
+    printf("------%s %s %zu-\n", inmem->kname, inmem->sname, inmem->size);
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
     sis_disk_writer_sno(context->writer, inmem->kname, inmem->sname, inmem->data, inmem->size);
 	return SIS_METHOD_OK;

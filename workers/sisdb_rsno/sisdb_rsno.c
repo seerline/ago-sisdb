@@ -125,7 +125,7 @@ static void cb_start(void *context_, int idate)
 static void cb_stop(void *context_, int idate)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
-    printf("sno read ok. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
+    printf("sno sub ok. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
      // stop 放这里
     if (context->cb_sub_inctzip)
     {
@@ -179,7 +179,7 @@ static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)
 	sis_sdsfree(srcsdbs); 
 }
 // #include "stk_struct.v3.h"
-int _read_nums = 0;
+static int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
@@ -415,7 +415,6 @@ void sisdb_rsno_working(void *worker_)
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
     
     SIS_WAIT_OR_EXIT(context->status == SIS_RSNO_WORK);  
-    context->status = SIS_RSNO_WORK;
     if (context->status == SIS_RSNO_WORK)
     {
         LOG(5)("sub history start. [%d]\n", context->work_date);

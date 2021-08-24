@@ -117,11 +117,11 @@ s_sisdb_collect *sisdb_collect_create(s_sisdb_cxt *sisdb_, const char *key_)
 
 	o->father = sisdb_;
 	o->sdb = sdb;
-	printf("create : %s.%s = %d\n", code, dbname, sdb->db->size);
+	printf("create : %s.%s = %d\n", code, dbname, sdb->size);
 
 	o->stepinfo = sisdb_stepindex_create();
 
-	o->obj = sis_object_create(SIS_OBJECT_LIST, sis_struct_list_create(sdb->db->size)); 
+	o->obj = sis_object_create(SIS_OBJECT_LIST, sis_struct_list_create(sdb->size)); 
 
 	return o;
 }
@@ -151,14 +151,14 @@ void sisdb_collect_clear(s_sisdb_collect *collect_)
 ////////////////////////
 msec_t sisdb_collect_get_time(s_sisdb_collect *collect_, int index_)
 {
-	return sis_dynamic_db_get_time(collect_->sdb->db, index_, 
+	return sis_dynamic_db_get_time(collect_->sdb, index_, 
 		SIS_OBJ_GET_CHAR(collect_->obj),
 		SIS_OBJ_GET_SIZE(collect_->obj));
 }
 
 uint64 sisdb_collect_get_mindex(s_sisdb_collect *collect_, int index_)
 {
-	return sis_dynamic_db_get_mindex(collect_->sdb->db, index_, 
+	return sis_dynamic_db_get_mindex(collect_->sdb, index_, 
 		SIS_OBJ_GET_CHAR(collect_->obj),
 		SIS_OBJ_GET_SIZE(collect_->obj));
 }
@@ -185,7 +185,7 @@ s_sis_json_node *sis_collect_get_fields_of_json(s_sisdb_collect *collect_, s_sis
 	for (int i = 0; i < count; i++)
 	{
 		const char *key = sis_string_list_get(fields_, i);
-		s_sisdb_field *fu = sis_dynamic_db_get_field(collect_->sdb->db, NULL, (char *)key);
+		s_sisdb_field *fu = sis_dynamic_db_get_field(collect_->sdb, NULL, (char *)key);
 		if(!fu) continue;
 		if (fu->count > 1)
 		{
@@ -217,7 +217,7 @@ s_sis_sds sis_collect_get_fields_of_csv(s_sisdb_collect *collect_, s_sis_string_
 	for (int i = 0; i < count; i++)
 	{
 		const char *key = sis_string_list_get(fields_, i);
-		s_sisdb_field *fu = sis_dynamic_db_get_field(collect_->sdb->db, NULL, (char *)key);
+		s_sisdb_field *fu = sis_dynamic_db_get_field(collect_->sdb, NULL, (char *)key);
 		if(!fu) continue;
 		if (fu->count > 1)
 		{
@@ -407,20 +407,20 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds 
 	if (SIS_OBJ_LIST(collect_->obj))
 	{
 		const char *src = sis_struct_list_last(SIS_OBJ_LIST(collect_->obj));
-		o = sis_sdsnewlen(src, collect_->sdb->db->size);
+		o = sis_sdsnewlen(src, collect_->sdb->size);
 	}
 	else
 	{
-		o = sis_sdsnewlen(NULL, collect_->sdb->db->size);
+		o = sis_sdsnewlen(NULL, collect_->sdb->size);
 	}
 	
-	s_sisdb_table *tb = collect_->sdb;
+	s_sisdb_table *table_ = collect_->sdb;
 
-	int fnums = sis_string_list_getsize(tb->fields);
+	int fnums = sis_map_list_getsize(table_->fields);
 	char key[64];
 	for (int k = 0; k < fnums; k++)
 	{
-		s_sisdb_field *fu = (s_sisdb_field *)sis_map_list_geti(tb->db->fields, k);
+		s_sisdb_field *fu = (s_sisdb_field *)sis_map_list_geti(table_->fields, k);
 		for (int i = 0; i < fu->count; i++)
 		{
 			if (fu->count > 1)
@@ -436,7 +436,7 @@ s_sis_sds sisdb_collect_json_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds 
 		}
 	}
 	sis_json_close(handle);
-	// printf("struct len = %d %d\n", collect_->sdb->db->size, sis_sdslen(o));
+	// printf("struct len = %d %d\n", collect_->sdb->size, sis_sdslen(o));
 	return o;
 }
 
@@ -462,15 +462,15 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 		count = 1;
 		jval = handle->node;
 	}
-	// printf("array to = %d %d\n", count, collect_->sdb->db->size);
+	// printf("array to = %d %d\n", count, collect_->sdb->size);
 	if (count < 1)
 	{
 		sis_json_close(handle);
 		return NULL;
 	}
 
-	int fnums = sis_string_list_getsize(collect_->sdb->fields);
-	s_sis_sds o = sis_sdsnewlen(NULL, count * collect_->sdb->db->size);
+	int fnums = sis_map_list_getsize(collect_->sdb->fields);
+	s_sis_sds o = sis_sdsnewlen(NULL, count * collect_->sdb->size);
 	int index = 0;
 	while (jval)
 	{
@@ -485,11 +485,11 @@ s_sis_sds sisdb_collect_array_to_struct_sds(s_sisdb_collect *collect_, s_sis_sds
 		int fidx = 0;
 		for (int k = 0; k < fnums; k++)
 		{
-			s_sisdb_field *fu = (s_sisdb_field *)sis_map_list_geti(collect_->sdb->db->fields, k);
+			s_sisdb_field *fu = (s_sisdb_field *)sis_map_list_geti(collect_->sdb->fields, k);
 			for (int i = 0; i < fu->count; i++)
 			{
 				sis_llutoa(fidx, key, 32, 10);
-				sis_dynamic_field_json_to_struct(o + index * collect_->sdb->db->size, fu, i, key, jval);
+				sis_dynamic_field_json_to_struct(o + index * collect_->sdb->size, fu, i, key, jval);
 				// printf("%s %d\n",key, fidx);
 				fidx++;
 			}

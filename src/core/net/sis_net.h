@@ -148,12 +148,6 @@ typedef struct s_sis_net_class {
 
 	s_sis_wait_thread    *read_thread;  // 为保证每次只处理一个请求 用该线程统一处理收到的消息
 
-	s_sis_lock_list      *ready_recv_cxts;    // 接收到的数据  s_sis_net_message - s_sis_object
-	s_sis_lock_reader    *reader_recv;  // 读取接收队列
-
-	// 当前正在发送的信息 刚出队列的 发送成功后释放
-	// s_sis_object         *after_send_cxt;  // 已经发送的数据 等待发送成功后删除 s_sis_memory
-	// 发送队列自行释放内存
 	void                 *cb_source;     // 回调句柄
 	cb_socket_connect     cb_connected;  // 链接成功
 	cb_socket_connect     cb_disconnect; // 链接断开

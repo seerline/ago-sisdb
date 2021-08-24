@@ -124,7 +124,7 @@ void sis_net_message_decr(void *);
 void sis_net_message_clear(s_sis_net_message *);
 size_t sis_net_message_get_size(s_sis_net_message *);
 
-void sis_net_message_copy(s_sis_net_message *, s_sis_net_message *, int , s_sis_sds);
+void sis_net_message_copy(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_);
 
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数
@@ -141,7 +141,8 @@ void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t 
 // in_被吸入
 void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);
 // *** 这个函数需要检查
-void sis_net_ans_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
+void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
+void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
 
 void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
 void sis_net_ans_with_argvs(s_sis_net_message *, const char *in_, size_t ilen_);
