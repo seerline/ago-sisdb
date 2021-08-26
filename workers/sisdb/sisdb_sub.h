@@ -43,10 +43,13 @@ typedef struct s_sisdb_sub_cxt
 s_sisdb_sub_cxt *sisdb_sub_cxt_create();
 void  sisdb_sub_cxt_destroy(s_sisdb_sub_cxt *);
 
-void  sisdb_sub_cxt_init(s_sisdb_sub_cxt *, void *source_, sis_method_define *cb_);
+void  sisdb_sub_cxt_clear(s_sisdb_sub_cxt *);
 
-// 订阅 头匹配时 需要在key开头增加 "*," 
+void  sisdb_sub_cxt_init(s_sisdb_sub_cxt *, void *source_, sis_method_define *cb_);
+// 订阅
 int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *);
+// 订阅 头匹配  key = "k1,k2" 
+int sisdb_sub_cxt_hsub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *);
 // 取消订阅
 int sisdb_sub_cxt_unsub(s_sisdb_sub_cxt *cxt_, int cid_);
 // 发布一个信息

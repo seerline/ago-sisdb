@@ -6,20 +6,7 @@
 //////////////////////////////////////////////////////////////////
 //------------------------s_sisdb_sub_unit -----------------------//
 //////////////////////////////////////////////////////////////////
-int _set_sub_unit_key(s_sisdb_sub_unit *unit, s_sis_sds wkey)
-{
-    // 如果头有 * 需要去掉
-    size_t isize = sis_sdslen(wkey);
-    const char *ptr = (const char *)wkey;
-    if (ptr[0] == '*' && ptr[1] == ',')
-    {
-        unit->sub_keys = sis_sdsnewlen(&ptr[2], isize - 2);
-        return 1;
-    }
-    unit->sub_keys = sis_sdsdup(wkey);
-    return 0;
-}
-uint8 _set_sub_unit_type(s_sisdb_sub_unit *unit, s_sis_sds key)
+uint8 _set_sub_unit_type(s_sisdb_sub_unit *unit, s_sis_sds key, int ishead)
 {
     if (!sis_strcasecmp(key, "*"))
     {
@@ -34,47 +21,53 @@ uint8 _set_sub_unit_type(s_sisdb_sub_unit *unit, s_sis_sds key)
     {
         s_sis_sds keys = NULL; s_sis_sds sdbs = NULL;
         sis_str_divide_sds(key, '.', &keys, &sdbs);
+        unit->sub_sdbs = sdbs;
+        unit->sub_keys = keys;
         
-        if (sis_str_exist_ch(keys, sis_sdslen(keys), ",", 1) ||
-            sis_str_exist_ch(sdbs, sis_sdslen(sdbs), ",", 1))
+        if (ishead)
         {
-            unit->sub_sdbs = sdbs;
-            if (_set_sub_unit_key(unit, keys))
-            {
-                sis_sdsfree(keys);
-                return SIS_SUB_MULKEY_CMP;
-            }
-            sis_sdsfree(keys);
-            return SIS_SUB_MULKEY_MUL;
+            return SIS_SUB_MULKEY_CMP;
         }
         else
         {
-            return SIS_SUB_MULKEY_ONE;
+            if (sis_str_exist_ch(keys, sis_sdslen(keys), ",", 1) ||
+                sis_str_exist_ch(sdbs, sis_sdslen(sdbs), ",", 1))
+            {
+                return SIS_SUB_MULKEY_MUL;
+            }
+            else
+            {
+                return SIS_SUB_MULKEY_ONE;
+            }
         }
     }
     // else
     {
-        if (sis_str_exist_ch(key, ksize, ",", 1))
+        unit->sub_keys = sis_sdsdup(key);
+        if (ishead)
         {
-            if (_set_sub_unit_key(unit, key))
-            {
-                return SIS_SUB_ONEKEY_CMP;
-            }
-            return SIS_SUB_ONEKEY_MUL;
+            return SIS_SUB_ONEKEY_CMP;
         }
         else
         {
-            return SIS_SUB_ONEKEY_ONE;
+            if (sis_str_exist_ch(key, ksize, ",", 1))
+            {
+                return SIS_SUB_ONEKEY_MUL;
+            }
+            else
+            {
+                return SIS_SUB_ONEKEY_ONE;
+            }
         }
     }
 } 
 
-s_sisdb_sub_unit *sisdb_sub_unit_create(s_sis_sds key_)
+s_sisdb_sub_unit *sisdb_sub_unit_create(s_sis_sds key_, int ishead)
 {
     s_sisdb_sub_unit *o = SIS_MALLOC(s_sisdb_sub_unit, o);
     o->netmsgs = sis_pointer_list_create();
     o->netmsgs->vfree = sis_net_message_decr;
-    o->sub_type = _set_sub_unit_type(o, key_);
+    o->sub_type = _set_sub_unit_type(o, key_, ishead);
     return o;
 }
 
@@ -100,18 +93,23 @@ void  sisdb_sub_cxt_destroy(s_sisdb_sub_cxt *cxt_)
     sis_map_pointer_destroy(cxt_->sub_mulkeys);
     sis_free(cxt_);
 }
+void  sisdb_sub_cxt_clear(s_sisdb_sub_cxt *cxt_)
+{
+    sis_map_pointer_clear(cxt_->sub_onekeys);
+    sis_map_pointer_clear(cxt_->sub_mulkeys);
+}
 void  sisdb_sub_cxt_init(s_sisdb_sub_cxt *cxt_, void *source_, sis_method_define *cb_)
 {
     cxt_->cb_source = source_;
     cxt_->cb_net_message = cb_;
 }
 
-static int sisdb_sub_notice(s_sis_map_pointer *map, s_sis_net_message *msg)
+static int sisdb_sub_notice(s_sis_map_pointer *map, s_sis_net_message *msg, int ishead)
 {
 	s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_map_pointer_get(map, msg->key);
 	if (!subunit)
 	{
-        subunit = sisdb_sub_unit_create(msg->key);
+        subunit = sisdb_sub_unit_create(msg->key, ishead);
 		sis_map_pointer_set(map, msg->key, subunit);
 	}
 	for (int i = 0; i < subunit->netmsgs->count; i++)
@@ -134,17 +132,33 @@ int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
     {
         if (sis_str_exist_ch(netmsg_->key, sis_sdslen(netmsg_->key), "*,", 2))
         {
-            o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_);
+            o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 0);
         }
         else
         {
             // 单键
-            o = sisdb_sub_notice(cxt_->sub_onekeys, netmsg_);
+            o = sisdb_sub_notice(cxt_->sub_onekeys, netmsg_, 0);
         }
     }
     return o;
 }
-
+int sisdb_sub_cxt_hsub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
+{
+    int o = 0;
+    if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
+    {
+        if (sis_str_exist_ch(netmsg_->key, sis_sdslen(netmsg_->key), "*,", 2))
+        {
+            o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 1);
+        }
+        else
+        {
+            // 单键
+            o = sisdb_sub_notice(cxt_->sub_onekeys, netmsg_, 1);
+        }
+    }
+    return o;
+}
 static int sisdb_unsub_notice(s_sis_map_pointer *map, int cid_)
 {
     int count = 0;
@@ -184,27 +198,6 @@ static int sisdb_unsub_notice(s_sis_map_pointer *map, int cid_)
     sis_dict_iter_free(di);  
     return count;
 }
-
-    // if (netmsg->key && sis_sdslen(netmsg->key) > 0)
-    // {
-    //     if (!sis_strcasecmp(netmsg->key, "*")||!sis_strcasecmp(netmsg->key, "*.*"))
-    //     {
-    //         o = sisdb_unsub_whole(context, netmsg->cid);
-    //     }    
-    //     else if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
-    //     {
-    //         o = sisdb_multiple_unsub(context, netmsg);
-    //     }
-    //     else
-    //     {
-    //         o = sisdb_one_unsub(context, netmsg);
-    //     }
-    // }
-    // else
-    // {
-    //     // 没有键值就取消所有订阅
-    //     o = sisdb_unsub_whole(context, netmsg->cid);
-    // }
 
 int sisdb_sub_cxt_unsub(s_sisdb_sub_cxt *cxt_, int cid_)
 {
@@ -281,7 +274,7 @@ int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
                     int cmds = sis_str_divide(netmsg_->key, '.', kname, sname);
                     if (cmds == 2 && 
                         (!sis_strcasecmp(subunit->sub_keys, "*") || sis_str_subcmp(kname, subunit->sub_keys, ',') >= 0) &&
-                        (!sis_strcasecmp(subunit->sub_sdbs, "*") || sis_str_subcmp_strict(sname, subunit->sub_sdbs, ',') >= 0))
+                        (!sis_strcasecmp(subunit->sub_sdbs, "*") || sis_str_subcmp(sname, subunit->sub_sdbs, ',') >= 0))
                     {
                         notice = true;
                     }

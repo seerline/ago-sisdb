@@ -687,8 +687,8 @@ static int cb_json_sub(void *source, s_sis_json_node *node)
 int main()
 {
 	// const char *fn = "../bin/sisdb.values.conf";
-	// const char *fn = "market.conf";
-	const char *fn = "../sisdb/test/sisa.conf";
+	const char *fn = "init.conf";
+	// const char *fn = "../sisdb/test/sisa.conf";
 
 	sis_conf_sub(fn, NULL, cb_json_sub);
 

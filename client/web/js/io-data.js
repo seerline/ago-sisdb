@@ -86,7 +86,7 @@ function saveListData(comstr){
 
 $(function(){
   // setup autocomplete function pulling from currencies[] array
-  $('#send-msg').autocomplete({
+  $('#send-cmd').autocomplete({
     lookup: loadListData(),
     // onSelect: function (suggestion) {
     //   var thehtml = '<strong>Currency Name:</strong> ' + suggestion.value + ' <br> <strong>Symbol:</strong> ' + suggestion.data;

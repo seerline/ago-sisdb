@@ -51,7 +51,7 @@ void sis_disk_sno_rctrl_set(s_sis_disk_sno_rctrl *rctrl_, int sno_, s_sis_db_cha
         slist->count = irec + 1;
     }
 }
-#include "stk_struct.v3.h"
+// #include "stk_struct.v3.h"
 // 放入一个标准块 返回实际的数量
 int sis_disk_sno_rctrl_push(s_sis_disk_sno_rctrl *rctrl_, const char *kname_, const char *sname_, int dbsize_, s_sis_memory *imem_)
 {

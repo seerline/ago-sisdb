@@ -144,7 +144,7 @@ int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
-    sisdb_wsdb_open(context);
+    sisdb_wsdb_start(context);
     s_sis_message *msg = (s_sis_message *)argv_; 
     {
         s_sis_sds str = sis_message_get_str(msg, "work-keys");
@@ -226,7 +226,7 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
     if (context->status == SIS_WSDB_NONE)
     {
         // 打开文件
-        sisdb_wsdb_open(context);
+        sisdb_wsdb_start(context);
         // 写文件
         sisdb_wsdb_write(context, style, msg);
         // 关闭文件

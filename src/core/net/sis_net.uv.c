@@ -233,9 +233,9 @@ bool _sis_socket_server_init(s_sis_socket_server *server)
 void _thread_server(void* argv)
 {
 	s_sis_socket_server *server = (s_sis_socket_server*)argv;
-	LOG(5)("server start.[%p] %s:%p\n", server, server->ip, server->port);
+	LOG(5)("server start.[%p] %s:%d\n", server, server->ip, server->port);
 	uv_run(server->uv_s_worker, UV_RUN_DEFAULT);
-	LOG(5)("server stop. [%d] %s:%p\n", server->write_may, server->ip, server->port);
+	LOG(5)("server stop. [%d] %s:%d\n", server->write_may, server->ip, server->port);
     _uv_exit_loop(server->uv_s_worker);	
 	server->uv_s_thread = 0;
 }

@@ -13,7 +13,7 @@
 // NULL 默认为读取
 struct s_sis_method sisdb_methods[] = {
     {"show",      cmd_sisdb_show,       SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式
-    {"init",      cmd_sisdb_open,       SIS_METHOD_ACCESS_NONET, NULL},   // 设置一些必要的参数
+    {"create",    cmd_sisdb_create,     SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 json 格式
     {"get",       cmd_sisdb_get,        SIS_METHOD_ACCESS_READ,  NULL},   // 默认 json 格式
     {"set",       cmd_sisdb_set,        SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 json 格式
     {"bset",      cmd_sisdb_bset,       SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 二进制 格式
@@ -23,19 +23,20 @@ struct s_sis_method sisdb_methods[] = {
     {"keys",      cmd_sisdb_keys,       SIS_METHOD_ACCESS_READ,  NULL},   // 获取 所有keys
     {"dels",      cmd_sisdb_dels,       SIS_METHOD_ACCESS_ADMIN, NULL},   // 删除多个数据
     {"sub",       cmd_sisdb_sub,        SIS_METHOD_ACCESS_READ,  NULL},   // 订阅数据 - 只发新写入的数据
+    {"hsub",      cmd_sisdb_hsub,       SIS_METHOD_ACCESS_READ,  NULL},   // 订阅数据 - 头匹配 只发新写入的数据
     {"unsub",     cmd_sisdb_unsub,      SIS_METHOD_ACCESS_READ,  NULL},   // 取消订阅
     // 磁盘数据订阅
     {"psub",      cmd_sisdb_psub,       SIS_METHOD_ACCESS_READ,  NULL},   // 回放数据 需指定日期 支持模糊匹配 所有数据全部拿到按时间排序后一条一条返回 
     {"unpsub",    cmd_sisdb_unpsub,     SIS_METHOD_ACCESS_READ,  NULL},   // 取消回放
-    // 存储方法
-    {"save",      cmd_sisdb_disk_save  ,     SIS_METHOD_ACCESS_ADMIN, NULL},   // 存盘
-    {"pack",      cmd_sisdb_disk_pack  ,     SIS_METHOD_ACCESS_ADMIN, NULL},   // 合并整理数据
-    // 主要用于server调用
-    {"rdisk",     cmd_sisdb_rdisk ,     SIS_METHOD_ACCESS_NONET, NULL},   // 从磁盘加载数据
-    {"rlog",      cmd_sisdb_rlog  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 加载没有写盘的log信息
+    {"read",      cmd_sisdb_read ,      SIS_METHOD_ACCESS_READ,  NULL},   // 从磁盘加载数据
+    // 以下方法为数据集标配 即使没有最好也支持
+    {"save",      cmd_sisdb_disk_save,  SIS_METHOD_ACCESS_ADMIN, NULL},   // 存盘
+    {"pack",      cmd_sisdb_disk_pack,  SIS_METHOD_ACCESS_ADMIN, NULL},   // 合并整理数据
+    {"open",      cmd_sisdb_open  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 初始化信息
+    {"close",     cmd_sisdb_close ,     SIS_METHOD_ACCESS_NONET, NULL},   // 关闭数据表
+    {"rlog",      cmd_sisdb_rlog  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 读入没有写盘的log信息
     {"wlog",      cmd_sisdb_wlog  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 写入没有写盘的log信息
     {"clear",     cmd_sisdb_clear ,     SIS_METHOD_ACCESS_NONET, NULL},   // 停止某个客户的所有查询
-    {"getdb",     cmd_sisdb_getdb ,     SIS_METHOD_ACCESS_NONET, NULL},   // 得到表
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb = {
@@ -50,86 +51,6 @@ s_sis_modules sis_modules_sisdb = {
     sisdb_methods,
 };
 
-uint8 _set_sub_info_style(s_sisdb_reader *info, const char *in, size_t ilen)
-{
-    if (sis_strcasecmp(in, "*"))
-    {
-        return SISDB_SUB_ONE_ALL;
-    }
-    if (sis_strcasecmp(in, "*.*"))
-    {
-        return SISDB_SUB_TABLE_ALL;
-    }
-    s_sis_sds keys = NULL; s_sis_sds sdbs = NULL; 
-    int cmds = sis_str_divide_sds(in, '.', &keys, &sdbs);
-    if (cmds == 2)
-    {
-        if (sis_strcasecmp(keys, "*"))
-        {
-            info->sub_sdbs = sdbs;
-            sis_sdsfree(keys);
-            return SISDB_SUB_TABLE_SDB;
-        }
-        if (sis_strcasecmp(sdbs, "*"))
-        {
-            info->sub_keys = keys;
-            sis_sdsfree(sdbs);
-            return SISDB_SUB_TABLE_KEY;
-        }
-        s_sis_string_list *klists = sis_string_list_create();
-        sis_string_list_load(klists, keys, sis_sdslen(keys), ",");  
-        s_sis_string_list *slists = sis_string_list_create();
-        sis_string_list_load(slists, sdbs, sis_sdslen(sdbs), ",");  
-        int kcount = sis_string_list_getsize(klists);
-        int scount = sis_string_list_getsize(slists);
-        info->sub_keys = sis_sdsempty();
-        int count = 0;
-        for (int k = 0; k < kcount; k++)
-        {
-            for (int i = 0; i < scount; i++)
-            {
-                if (count > 0)
-                {
-                    info->sub_keys = sis_sdscat(info->sub_keys, ",");
-                }
-                count++;
-                info->sub_keys = sis_sdscatfmt(info->sub_keys, "%s.%s", sis_string_list_get(klists, k), sis_string_list_get(slists, i));
-            }         
-        }
-        sis_string_list_destroy(klists);
-        sis_string_list_destroy(slists);
-
-        sis_sdsfree(keys);    sis_sdsfree(sdbs);
-        return SISDB_SUB_TABLE_MUL;
-    }
-    info->sub_keys = sis_sdsnewlen(in, ilen);  
-    sis_sdsfree(keys);    sis_sdsfree(sdbs);
-    return SISDB_SUB_ONE_MUL;
-} 
-
-s_sisdb_reader *sisdb_reader_create(s_sis_net_message *netmsg_)
-{
-    if (!netmsg_||!netmsg_->key)
-    {
-        return NULL;
-    }
-    s_sisdb_reader *o = SIS_MALLOC(s_sisdb_reader, o);
-    o->sub_type = _set_sub_info_style(o, netmsg_->key, sis_sdslen(netmsg_->key));
-    o->netmsgs = sis_pointer_list_create();
-    o->netmsgs->vfree = sis_net_message_decr;
-    return o;
-}
-
-void sisdb_reader_destroy(void *reader_)
-{
-    s_sisdb_reader *o = (s_sisdb_reader *)reader_;
-    sis_sdsfree(o->sub_keys);
-    sis_sdsfree(o->sub_sdbs);
-    sis_pointer_list_destroy(o->netmsgs);
-    sis_free(o);
-}
-
-
 bool sisdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -141,56 +62,25 @@ bool sisdb_init(void *worker_, void *argv_)
     context->work_date = sis_time_get_idate(0); 
 	context->work_name = sis_sdsnew(node->key);
 
+    s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
+    if (sonnode)
+    {
+        context->work_path = sis_sdsnew(sonnode->value);
+    }
     // 默认4点存盘
     context->save_time = sis_json_get_int(node, "save-time", 40000);
 
-	context->work_sdbs = sis_map_list_create(sisdb_table_destroy);
-    s_sis_json_node *tbnode = sis_json_cmp_child_node(node, "sdbs");
-    if (tbnode)
-    {
-        s_sis_json_node *next = sis_conf_first_node(tbnode);
-        while (next)
-        {
-            s_sisdb_table *table = sisdb_table_create(next);
-            sis_map_list_set(context->work_sdbs, next->key, table);
-            next = next->next;
-        }
-    }
     context->work_sub_cxt = sisdb_sub_cxt_create();
 
     // 数据集合
     context->work_keys = sis_map_pointer_create_v(sisdb_collect_destroy);
 
+    // 加载本地的所有数据结构
+    context->work_sdbs = sis_map_list_create(sisdb_table_destroy);
+
     sis_mutex_init(&(context->wlog_lock), NULL);
-    s_sis_json_node *wlognode = sis_json_cmp_child_node(node, "wlog");
-    if (wlognode)
-    {
-		// 表示需要加载wlog的数据
-        s_sis_worker *service = sis_worker_create(worker, wlognode);
-        if (service)
-        {
-            context->wlog_worker = service; 
-			context->wlog_method = sis_worker_get_method(context->wlog_worker, "write");
-        }     
-    }
-    s_sis_json_node *wfilenode = sis_json_cmp_child_node(node, "wfile");
-    if (wfilenode)
-    {
-		// 表示收到stop时需要从wlog中获取数据并转格式后存盘
-        s_sis_worker *service = sis_worker_create(worker, wfilenode);
-        if (service)
-        {
-            context->wfile_worker = service; 
-        }     
-    }
-    s_sis_json_node *rfilenode = sis_json_cmp_child_node(node, "rfile");
-    if (rfilenode)
-    {
-        s_sis_worker *service = sis_worker_create(worker, rfilenode);
-        if (service)
-        {
-            context->rfile_worker = service; 
-        }       }
+
+    context->status = 0;
     return true;
 }
 void sisdb_uninit(void *worker_)
@@ -253,10 +143,12 @@ void sisdb_working(void *worker_)
     {
         return;
     }
-    int minute = sis_time_get_iminute(0);
-    if (minute > context->save_time)
+    int itime = sis_time_get_itime(0);
+    if (itime > context->save_time)
     {
         sis_mutex_lock(&context->wlog_lock);
+        sisdb_wlog_close(context);
+        sisdb_wlog_move(context);
         if (context->wlog_open)
         {
             sis_worker_command(context->wlog_worker, "close", context->work_name);
@@ -301,6 +193,30 @@ s_sis_sds sis_sisdb_make_sdbs(s_sisdb_cxt *context_)
 	sis_json_delete_node(jone);
 	return o;
 }
+
+int cmd_sisdb_create(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    s_sisdb_table *table = sis_map_list_get(context->work_sdbs, netmsg->key);
+    if (!table)
+    {
+        s_sis_json_handle *handle = sis_json_open(netmsg->ask);
+        if (handle)
+        {
+            s_sisdb_table *table = sisdb_table_create(handle->node);
+            sis_map_list_set(context->work_sdbs, netmsg->key, table);
+        }
+        else
+        {
+            return SIS_METHOD_ERROR;
+        }
+    }
+   sis_net_ans_with_ok(netmsg);
+    return SIS_METHOD_OK;
+}
 int cmd_sisdb_show(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -316,20 +232,7 @@ int cmd_sisdb_show(void *worker_, void *argv_)
     sis_sdsfree(sdbs);
     return SIS_METHOD_OK;
 }
-int cmd_sisdb_open(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_;
-    
-	context->cb_source = sis_message_get(msg, "cb_source");
-	context->cb_net_message = sis_message_get_method(msg, "cb_net_message");
 
-    // 多值订阅者
-    sisdb_sub_cxt_init(context->work_sub_cxt, context->cb_source, context->cb_net_message);
-    
-    return SIS_METHOD_OK;
-}
 
 int cmd_sisdb_get(void *worker_, void *argv_)
 {
@@ -560,6 +463,16 @@ int cmd_sisdb_sub(void *worker_, void *argv_)
     sis_net_ans_with_int(netmsg, o);
     return SIS_METHOD_OK;
 }
+int cmd_sisdb_hsub(void *worker_, void *argv_)
+{
+    // 只订阅最后一条记录 不开线程 
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;  
+    int o = sisdb_sub_cxt_hsub(context->work_sub_cxt, netmsg);
+    sis_net_ans_with_int(netmsg, o);
+    return SIS_METHOD_OK;
+}
 int cmd_sisdb_unsub(void *worker_, void *argv_)
 {
     // 只订阅最后一条记录 不开线程 
@@ -623,18 +536,39 @@ int cmd_sisdb_unpsub(void *worker_, void *argv_)
     sis_net_ans_with_int(netmsg, o);
     return SIS_METHOD_OK;
 }
+int cmd_sisdb_read(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    
+    s_sis_object *obj = sisdb_read_disk(context, netmsg);
+    
+    sis_net_ans_with_object(netmsg, obj);
+    
+    sis_object_destroy(obj);
+
+    return SIS_METHOD_OK;
+}
 
 int cmd_sisdb_disk_save(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
+    sisdb_wlog_close(context);
+
     int o = sisdb_disk_save(context);  
     if (o == SIS_METHOD_OK)
     {
-        sis_worker_command(context->wlog_worker, "move", context->work_name);
-        s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+        // 存盘成功 可以清理老的log
+        sisdb_wlog_move(context);
         sis_net_ans_with_ok(netmsg);
+    }
+    else
+    {
+        sis_net_ans_with_error(netmsg, "save fail.", 0);
     }
     return o;
 }
@@ -643,63 +577,82 @@ int cmd_sisdb_disk_pack(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
     int o = sisdb_disk_pack(context);
-
     if (o == SIS_METHOD_OK)
     {
-        s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
         sis_net_ans_with_ok(netmsg);
+    }
+    else
+    {
+        sis_net_ans_with_error(netmsg, "pack fail.", 0);
     }
     return o;
 }
-int cmd_sisdb_rdisk(void *worker_, void *argv_)
+int cmd_sisdb_open(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_message *msg = (s_sis_message *)argv_;
-    sis_message_set(msg, "sisdb", context, NULL);
-    // 如果自己有就用自己的 否则就继承
-    // sis_message_set(msg, "config", &context->catch_cfg, NULL);
-    // 直接转移过去
-    // sis_mutex_lock(&context->wlog_lock);
-    sis_worker_command(context->rfile_worker, "load", msg);
-    // sis_mutex_unlock(&context->wlog_lock);
+    
+	context->cb_source = sis_message_get(msg, "cb_source");
+	context->cb_net_message = sis_message_get_method(msg, "cb_net_message");
 
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-path");
+        if (str)
+        {
+            sis_sdsfree(context->work_path);
+            context->work_path = sis_sdsdup(str);
+        }
+    }
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-name");
+        if (str)
+        {
+            sis_sdsfree(context->work_name);
+            context->work_name = sis_sdsdup(str);
+        }
+    }
+    if (sis_message_exist(msg, "work-date"))
+    {
+        context->work_date = sis_message_get_int(msg, "work-date");
+    }
+    // 先加载所有数据结构
+    sisdb_read_sdbs(context);
+
+    // 再加载 log 的数据 加载 log数据会读取对应磁盘的数据
+    sisdb_rlog_read(worker);
+
+    // 这里初始化 log 的写入服务
+    s_sis_worker *service = sis_worker_create_of_conf(worker, context->work_name, "{classname:sisdb_flog}");
+    if (service)
+    {
+        context->wlog_worker = service; 
+        context->wlog_write = sis_worker_get_method(context->wlog_worker, "write");
+    }     
+    // 初始化订阅者
+    sisdb_sub_cxt_init(context->work_sub_cxt, context->cb_source, context->cb_net_message);
+    
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_close(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    // 取消所有订阅
+    sisdb_sub_cxt_unsub(context->work_sub_cxt, -1);
+    // 关闭wlog
+    sisdb_wlog_close(context);
+    // 数据不清理 等到销毁时清理
     return SIS_METHOD_OK;
 }
 
-static int cb_rlog_recv(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-    printf("cb_rlog_recv: %d %s \n%s \n%s \n%s \n", netmsg->switchs.is_reply,
-            netmsg->name? netmsg->name : "nil",
-            netmsg->cmd ?   netmsg->cmd : "nil",
-            netmsg->key?    netmsg->key : "nil",
-            netmsg->ask?    netmsg->ask : "nil");   
-
-    char argv[2][128]; 
-    int cmds = sis_str_divide(netmsg->cmd, '.', argv[0], argv[1]);
-    if (cmds == 2)
-    {
-        sis_worker_command(worker, argv[1], netmsg);
-    }  
-    return 0;
-}
 int cmd_sisdb_rlog(void *worker_, void *argv_)
 {   
     s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_;
-
-    sis_mutex_lock(&context->wlog_lock);
-    sis_message_set_str(msg, "dbname", context->work_name, sis_sdslen(context->work_name));
-    sis_message_set(msg, "source", worker, NULL);
-    sis_message_set_method(msg, "cb_recv", cb_rlog_recv);
-    int o = sis_worker_command(context->wlog_worker, "read", msg);
-    sis_mutex_unlock(&context->wlog_lock);
+    int o = sisdb_rlog_read(worker);
 	return o;
 }
 int cmd_sisdb_wlog(void *worker_, void *argv_)
@@ -710,16 +663,10 @@ int cmd_sisdb_wlog(void *worker_, void *argv_)
     sis_mutex_lock(&context->wlog_lock);
     if (!context->wlog_open)
     {
-        s_sis_message *msg = sis_message_create();
-        sis_message_set_str(msg, "log-name", context->work_name, sis_sdslen(context->work_name));
-        sis_message_set_int(msg, "log-date", context->work_date);
-        sis_worker_command(context->wlog_worker, "open", msg);
-    	sis_message_destroy(msg);
-        context->wlog_open = 1;
+        sisdb_wlog_open(context);
     }
-    int o = context->wlog_method->proc(context->wlog_worker, argv_);
+    int o = context->wlog_write->proc(context->wlog_worker, argv_);
     sis_mutex_unlock(&context->wlog_lock);
-
     return o;
 }
 
@@ -732,6 +679,7 @@ int cmd_sisdb_clear(void *worker_, void *argv_)
 	const char *mode = sis_message_get_str(msg, "mode");
 	if (sis_strcasecmp(mode, "reader"))
 	{
+        // 清理订阅的信息
         if (sis_message_exist(msg, "cid"))
         {
             sisdb_sub_cxt_unsub(context->work_sub_cxt, sis_message_get_int(msg, "cid"));
@@ -740,19 +688,4 @@ int cmd_sisdb_clear(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_getdb(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
-    s_sis_message *msg = (s_sis_message *)argv_;
-
-	const char *dbname = sis_message_get_str(msg, "dbname");
-    sis_message_set(msg, "db", NULL, NULL);
-    s_sisdb_table *table = sisdb_get_table(context, dbname);
-    if (table)
-    {
-        sis_message_set(msg, "db", table, NULL);
-    }
-    return SIS_METHOD_OK;
-}
 

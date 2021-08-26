@@ -1,5 +1,7 @@
 #定义工程名,必须在第一行
 PROJECT(sisdb)
+#检查版本 必须大于等于2.6版本
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8) 
 
 SET(MYMODE "mode_${MODE}")
 IF (MYMODE STREQUAL "mode_")
@@ -11,8 +13,6 @@ ELSE ()
 ENDIF ()
 MESSAGE("MODE:" ${MYMODE})
 
-#检查版本 必须大于等于2.6版本
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6) 
 
 #设置显示编译参数 方便验证编译参数
 SET(CMAKE_VERBOSE_MAKEFILE 1)
@@ -22,7 +22,7 @@ SET(CMAKE_VERBOSE_MAKEFILE 1)
 MESSAGE(STATUS "operation system is ${PROJECT} ${CMAKE_SYSTEM}")
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     SET(SHOBJ_CFLAGS "-fPIC -Wall -Wunused-value -Wno-deprecated -Wno-format-truncation -Wno-format-overflow -g -O3 -std=gnu99")
-    SET(SHOBJ_CXXFLAGS "-fPIC -Wall -Wunused-value -Wno-deprecated -Wno-format-truncation  -Wno-format-overflow -g -O3 -std=c++11")
+    SET(SHOBJ_CXXFLAGS "-fPIC -Wall -Wunused-value -Wno-deprecated -Wno-format-truncation  -Wno-format-overflow -Wno-delete-non-virtual-dtor -g -O3 -std=c++11")
     MESSAGE(STATUS "current platform: Linux ")
 ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Windows")
     SET(SHOBJ_CFLAGS ${CMAKE_C_FLAGS_DEBUG})
@@ -67,7 +67,6 @@ LIST(APPEND IGNOREPATH ".DS_Store")
 LIST(APPEND IGNOREPATH "o")
 IF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     LIST(APPEND IGNOREPATH "market_api_wb")
-    LIST(APPEND IGNOREPATH "market_api_wbtop")
 ENDIF ()    
 
 # make modules control file

@@ -41,7 +41,7 @@ int cmd_sisdb_flog_open(void *worker_, void *argv_);
 // 接收数据并顺序写入log
 int cmd_sisdb_flog_write(void *worker_, void *argv_);
 // 写文件结束 关闭文件 
-int cmd_sisdb_flog_stop(void *worker_, void *argv_);
+int cmd_sisdb_flog_close(void *worker_, void *argv_);
 
 // 删除wlog文件 方法调用统一用 message
 int cmd_sisdb_flog_move(void *worker_, void *argv_);

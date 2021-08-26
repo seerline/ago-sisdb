@@ -146,6 +146,8 @@ void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
 
 void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
 void sis_net_ans_with_argvs(s_sis_net_message *, const char *in_, size_t ilen_);
+
+void sis_net_ans_with_object(s_sis_net_message *, void *obj_);
 // 获取数据流
 s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index);
 

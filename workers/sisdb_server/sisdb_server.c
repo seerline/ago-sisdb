@@ -26,12 +26,12 @@ struct s_sis_method sisdb_server_methods[] = {
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_server = {
     sisdb_server_init,
-    NULL,
-    NULL,
-    NULL,
+    sisdb_server_work_init,
+    sisdb_server_working,
+    sisdb_server_work_uninit,
     sisdb_server_uninit,
-    sisdb_server_method_init,
-    sisdb_server_method_uninit,
+    NULL,
+    NULL,
     sizeof(sisdb_server_methods) / sizeof(s_sis_method),
     sisdb_server_methods,
 };
@@ -75,30 +75,6 @@ static int cb_net_message(void *context_, void *argv_)
     sis_net_class_send(context->socket, (s_sis_net_message *)argv_);
     return 0;
 }
-// 从初始化文件中加载的网络包
-// 未指定 service 且server 没有对应cmd 默认 service 为 sisdb
-static int cb_sys_init_scripts(void *worker_, s_sis_json_node *node)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    // s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-
-    s_sis_net_message *netmsg = sis_net_message_create();
-    sis_json_to_netmsg(node, netmsg); // node 转 
-    if (netmsg->service)
-    {
-        s_sis_worker *service = sis_worker_get(worker, netmsg->service);
-        if (service)
-        {
-            sis_worker_command(service, netmsg->cmd, netmsg);
-        }
-    }
-    else
-    {
-        sis_worker_command(worker, netmsg->cmd, netmsg);
-    }
-    sis_net_message_destroy(netmsg);
-    return 0;
-}
 
 bool sisdb_server_init(void *worker_, void *argv_)
 {
@@ -117,42 +93,31 @@ bool sisdb_server_init(void *worker_, void *argv_)
 
     context->users = sis_map_list_create(sis_userinfo_destroy);
     context->works = sis_map_list_create(sis_workinfo_destroy);
-    
-    s_sis_message *msg = sis_message_create();
-    if (sisdb_server_sysinfo_load(worker))
+
     {
-        // 没有初始化 需要加载脚本
-        const char *initname = sis_json_get_str(node, "init-scripts");
-        if (initname && sis_file_exists(initname))
+        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
+        if (sonnode)
         {
-            sis_conf_sub(initname, worker, cb_sys_init_scripts);
+            context->work_path = sis_sdsnew(sonnode->value);
         }
-    }
-    if (sis_map_list_getsize(context->works) < 1)
+        else
+        {
+            context->work_path = sis_sdsnew("data");
+        }  
+    }  
     {
-        // 最差也要启动一个空的数据集
-        s_sis_net_message *netmsg = sis_net_message_create();
-        netmsg->switchs.is_inside = 1;  // 仅仅内部传递
-        netmsg->key = sis_sdsnew("sisdb");
-        netmsg->ask = sis_sdsnew("{\"save-time\":40000,\"classname\":\"sisdb\"}");
-        cmd_sisdb_server_open(worker, netmsg);
-        sis_net_message_destroy(netmsg);
-    }
-    if (sis_map_list_getsize(context->works) < 1)
-    {
-        LOG(5)("no worker.\n");
-        sis_message_destroy(msg);
-        return false;
-    }
-    sis_message_destroy(msg);
-    // 数据集合打开时需要加载 当日log数据 各数据集自行管理数据       
+        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "init-scripts");
+        if (sonnode)
+        {
+            context->init_name = sis_sdsnew(sonnode->value);
+        }
+        else
+        {
+            context->init_name = sis_sdsnew("init.conf");
+        }  
+    }  
 
-    // 到这里判断是否需要验证用户
-    if (sis_map_list_getsize(context->users) > 0)
-    {
-        context->user_access = sis_map_kint_create();
-    }
-
+    // 记载端口配置  
     s_sis_json_node *srvnode = sis_json_cmp_child_node(node, "server");
     s_sis_url  url;
     memset(&url, 0, sizeof(s_sis_url));
@@ -165,15 +130,91 @@ bool sisdb_server_init(void *worker_, void *argv_)
         context->socket->cb_connected = _cb_connect_open;
         context->socket->cb_disconnect = _cb_connect_close;
     }
-    // 打开网络
+
+    context->status = SISDB_STATUS_INIT;
+
+    return true;
+}
+// 从初始化文件中加载的网络包
+// 未指定 service 且server 没有对应cmd 默认 service 为 sisdb
+static int cb_sys_init_scripts(void *worker_, s_sis_json_node *node)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+
+    s_sis_net_message *netmsg = sis_net_message_create();
+    // s_sis_sds str = sis_json_to_sds(node, 0);
+    // printf("--- %s\n", str);
+    sis_json_to_netmsg(node, netmsg); // node 转 
+    LOG(5)("init: %s %s\n", netmsg->service, netmsg->cmd);
+    if (!sis_strcasecmp(netmsg->cmd, "open"))
+    {
+        sis_message_set_str(netmsg, "work-path", context->work_path, sis_sdslen(context->work_path));
+    }
+    if (netmsg->service)
+    {
+        s_sis_worker *service = sis_worker_get(worker, netmsg->service);
+        if (service)
+        {
+            sis_worker_command(service, netmsg->cmd, netmsg);
+        }
+    }
+    else
+    {
+        sis_worker_command(worker, netmsg->cmd, netmsg);
+    }
+    sis_net_message_destroy(netmsg);
+    return 0;
+}
+
+void sisdb_server_work_init(void *worker_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+
+    SIS_WAIT_LONG(context->status == SISDB_STATUS_INIT);
+
+    s_sis_message *msg = sis_message_create();
+    if (sisdb_server_sysinfo_load(context))
+    {
+        // 没有初始化 需要加载脚本
+        if (sis_file_exists(context->init_name))
+        {
+            sis_conf_sub(context->init_name, worker, cb_sys_init_scripts);
+        }
+    }
+    if (sis_map_list_getsize(context->works) < 1)
+    {
+        // 最差也要启动一个空的数据集
+        sisdb_server_open(context, "sisdb", "{\"save-time\":40000,\"classname\":\"sisdb\"}");
+    }
+    if (sis_map_list_getsize(context->works) < 1)
+    {
+        LOG(5)("no worker.\n");
+    }
+    sis_message_destroy(msg);
+    // 数据集合打开时需要加载 当日log数据 各数据集自行管理数据       
+
+    // 到这里判断是否需要验证用户
+    if (sis_map_list_getsize(context->users) > 0)
+    {
+        context->user_access = sis_map_kint_create();
+    }
+
+    // 全部数据准备好再 打开网络
     if (!sis_net_class_open(context->socket))
     {
-        return false;
+        access("no open socket.", -10);
     }
     
     context->status = SISDB_STATUS_WORK;
+}
 
-    return true;
+void sisdb_server_working(void *worker_)
+{
+}
+void sisdb_server_work_uninit(void *worker_)
+{
 }
 
 void sisdb_server_uninit(void *worker_)
@@ -201,7 +242,7 @@ void sisdb_server_uninit(void *worker_)
     {
     	sis_worker_destroy(context->works);
     }
-
+    sis_sdsfree(context->work_path);
     sis_free(context);
     worker->context = NULL;
 }
@@ -348,7 +389,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     int access = sisdb_server_get_access(context, netmsg);
     if ( access < 0 && sis_strcasecmp("auth", netmsg->cmd))
     {
-        sis_net_ans_with_error(netmsg, "no auth.", 8);
+        sis_net_ans_with_error(netmsg, "no auth.", 0);
         sis_net_class_send(context->socket, netmsg);
     }
     else
@@ -415,12 +456,6 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
 	return 0;
 }
 
-void sisdb_server_method_init(void *worker_)
-{
-}
-void sisdb_server_method_uninit(void *worker_)
-{
-}
 //////////////////////////////////
 
 int cmd_sisdb_server_auth(void *worker_, void *argv_)
@@ -505,7 +540,7 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
     s_sis_json_handle *handle = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
     if (!handle)
     {
-        sis_net_ans_with_error(netmsg, "auth ask error.", 15);
+        sis_net_ans_with_error(netmsg, "setuser ask error.", 15);
     }
     else
     {
@@ -523,7 +558,7 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
             s_sisdb_userinfo *userinfo = sis_userinfo_create(
                 username, password, iaccess);
             sis_map_list_set(context->users, username, userinfo); 
-            sisdb_server_sysinfo_save(worker);
+            sisdb_server_sysinfo_save(context);
         }
         else if (sis_strcasecmp(userinfo->password, password))
         {
@@ -534,7 +569,7 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
             if (userinfo->access != iaccess)
             {
                 userinfo->access = iaccess;
-                sisdb_server_sysinfo_save(worker);
+                sisdb_server_sysinfo_save(context);
             }
             sis_map_kint_set(context->user_access, netmsg->cid, userinfo);
         }
@@ -550,42 +585,14 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-// // ??? 这里如果文件没有返回错误的情况下 初始就启动不了server 
-// // 读取sno文件时，如果客户端中断 服务端会偶尔崩溃 怀疑是数据未清理 检查一下
-// // 订阅sno时，会有几秒等待时间 查一下
-// int _sisdb_server_load(s_sisdb_server_cxt *context)
-// {
-//     // 先根据规则加载磁盘数据
-//     s_sis_message *msg = sis_message_create();
-//     int count = sis_map_list_getsize(context->datasets);
-//     for (int i = 0; i < count; i++)
-//     {
-//         s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
-//         sis_message_set(msg, "config", &context->catch_cfg, NULL);
-//         sis_worker_command(service, "rdisk", msg);
-//     }
-//     // 再加载wlog中的数据
-//     for (int i = 0; i < count; i++)
-//     {
-//         s_sis_worker *service = (s_sis_worker *)sis_map_list_geti(context->datasets, i);
-//         if (sis_worker_command(service, "rlog", msg) != SIS_METHOD_OK)
-//         {
-//         }
-//     }
-//     sis_message_destroy(msg);
-//     return SIS_METHOD_OK;
-// }
-int cmd_sisdb_server_open(void *worker_, void *argv_)
+int sisdb_server_open(s_sisdb_server_cxt *context, const char *workname, const char *config)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
-    sis_message_set(netmsg, "cb_source", context, NULL);
-    sis_message_set_method(netmsg, "cb_net_message", cb_net_message);
+    s_sis_message *msg = sis_message_create();
+    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
+    sis_message_set(msg, "cb_source", context, NULL);
+    sis_message_set_method(msg, "cb_net_message", cb_net_message);
 
     int oks = 0;
-    const char *workname = (const char *)netmsg->key;
     if (!workname)
     {
         // 打开所有工作
@@ -595,7 +602,7 @@ int cmd_sisdb_server_open(void *worker_, void *argv_)
             s_sisdb_workinfo *workinfo = sis_map_list_geti(context->works, i);
             if (workinfo->work_status == 0)
             {
-                sis_worker_command(workinfo->worker, "open", netmsg);
+                sis_worker_command(workinfo->worker, "open", msg);
                 workinfo->work_status = 1;
             }
             oks++;
@@ -608,7 +615,7 @@ int cmd_sisdb_server_open(void *worker_, void *argv_)
         {
             s_sis_worker *worker = NULL;
             s_sis_json_node *cfgnode = NULL;
-            s_sis_json_handle *handle = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+            s_sis_json_handle *handle = sis_json_load(config, sis_strlen(config));
             if (handle)
             {
                 worker = sis_worker_create_of_name(worker, workname, handle->node);
@@ -622,7 +629,7 @@ int cmd_sisdb_server_open(void *worker_, void *argv_)
 
             if (worker)
             {
-                s_sisdb_workinfo *workinfo = SIS_MALLOC(s_sisdb_workinfo, workinfo);
+                workinfo = SIS_MALLOC(s_sisdb_workinfo, workinfo);
                 workinfo->config = cfgnode;
                 workinfo->worker = worker;
                 workinfo->workname = sis_sdsnew(workname);
@@ -634,17 +641,30 @@ int cmd_sisdb_server_open(void *worker_, void *argv_)
                 sis_json_delete_node(cfgnode);
                 return SIS_METHOD_ERROR;
             }
-            sisdb_server_sysinfo_save(worker);
+            sisdb_server_sysinfo_save(context);
             
         }
         if (workinfo->work_status == 0)
         {
-            sis_worker_command(workinfo->worker, "open", netmsg);
+            sis_worker_command(workinfo->worker, "open", msg);
             workinfo->work_status = 1;
         }
         oks++;
     }
-    sis_net_ans_with_int(netmsg, oks); 
+    sis_message_destroy(msg);
+    return oks;
+}
+
+int cmd_sisdb_server_open(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+
+    int o = sisdb_server_open(context, netmsg->key, netmsg->ask);
+    
+    sis_net_ans_with_int(netmsg, o); 
+
     return SIS_METHOD_OK;
 }
 
@@ -761,9 +781,8 @@ int cmd_sisdb_server_call(void *worker_, void *argv_)
 }
 
 
-void sisdb_server_sysinfo_save(s_sis_worker *worker)
+void sisdb_server_sysinfo_save(s_sisdb_server_cxt *context)
 {
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 	s_sis_json_node *jone = sis_json_create_object();
 	s_sis_json_node *jusers = sis_json_create_object();
     s_sis_json_node *jworks = sis_json_create_object();
@@ -793,14 +812,15 @@ void sisdb_server_sysinfo_save(s_sis_worker *worker)
     }
     sis_json_object_add_node(jone, "workinfos", jworks);
     
+    sis_file_delete("./.sissys.json");
+
     sis_json_save(jone, "./.sissys.json");
 
 	sis_json_delete_node(jone);	
 
 }
-int sisdb_server_sysinfo_load(s_sis_worker *worker)
+int sisdb_server_sysinfo_load(s_sisdb_server_cxt *context)
 {
-    s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_json_handle *handle = sis_json_open("./.sissys.json");
     if (!handle)
     {
