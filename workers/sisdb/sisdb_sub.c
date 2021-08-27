@@ -147,15 +147,7 @@ int sisdb_sub_cxt_hsub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
     int o = 0;
     if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
     {
-        if (sis_str_exist_ch(netmsg_->key, sis_sdslen(netmsg_->key), "*,", 2))
-        {
-            o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 1);
-        }
-        else
-        {
-            // 单键
-            o = sisdb_sub_notice(cxt_->sub_onekeys, netmsg_, 1);
-        }
+        o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 1);
     }
     return o;
 }
@@ -213,7 +205,7 @@ static void _make_notice_send(s_sisdb_sub_cxt *context, s_sis_net_message *inetm
 {
     s_sis_net_message *newmsg = sis_net_message_create();
 
-    sis_net_message_copy(inetmsg, newmsg, onetmsg->cid, onetmsg->name);
+    sis_net_message_publish(inetmsg, newmsg, onetmsg->cid, onetmsg->name, inetmsg->key);
 
     // 这里暂时不处理格式转换问题 广播什么数据就发送什么数据
     // 需要转换时 根据数据表的结构 自动转换
@@ -222,6 +214,7 @@ static void _make_notice_send(s_sisdb_sub_cxt *context, s_sis_net_message *inetm
     {
         context->cb_net_message(context->cb_source, newmsg);
     }
+    sis_net_message_destroy(newmsg);
 }
 
 int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)

@@ -95,7 +95,7 @@ void sisdb_wsdb_uninit(void *worker_)
 //  callback define begin
 ///////////////////////////////////////////
 
-void sisdb_wsdb_open(s_sisdb_wsdb_cxt *context)
+void sisdb_wsdb_start(s_sisdb_wsdb_cxt *context)
 {
     // 老文件如果没有关闭再关闭一次
     sisdb_wsdb_stop(context);
@@ -179,10 +179,10 @@ void sisdb_wsdb_write(s_sisdb_wsdb_cxt *context, int style, s_sis_message *msg)
     _write_wsdb_head(context, 0);
     switch (style)
     {
-    case SIS_SDB_STYLE_NON:
     case SIS_SDB_STYLE_ONE:
     case SIS_SDB_STYLE_MUL:
         break;    
+    case SIS_SDB_STYLE_NON:
     default:
         {
             s_sis_db_chars *chars = sis_message_get(msg, "chars");

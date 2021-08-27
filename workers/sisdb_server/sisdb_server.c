@@ -188,6 +188,25 @@ void sisdb_server_work_init(void *worker_)
         // 最差也要启动一个空的数据集
         sisdb_server_open(context, "sisdb", "{\"save-time\":40000,\"classname\":\"sisdb\"}");
     }
+    else
+    {
+        s_sis_message *msg = sis_message_create();
+        sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
+        sis_message_set(msg, "cb_source", context, NULL);
+        sis_message_set_method(msg, "cb_net_message", cb_net_message);
+        int count = sis_map_list_getsize(context->works);
+        for (int i = 0; i < count; i++)
+        {
+            s_sisdb_workinfo *workinfo = sis_map_list_geti(context->works, i);
+            workinfo->worker = sis_worker_create_of_name(worker, workinfo->workname, workinfo->config);
+            if (workinfo->work_status == 0)
+            {
+                sis_worker_command(workinfo->worker, "open", msg);
+                workinfo->work_status = 1;
+            }
+        }
+        sis_message_destroy(msg);
+    }
     if (sis_map_list_getsize(context->works) < 1)
     {
         LOG(5)("no worker.\n");
@@ -236,12 +255,13 @@ void sisdb_server_uninit(void *worker_)
     sis_lock_list_destroy(context->socket_recv);
     if (context->users)
     {
-    	sis_worker_destroy(context->users);
+    	sis_map_list_destroy(context->users);
     }
     if (context->works)
     {
-    	sis_worker_destroy(context->works);
+    	sis_map_list_destroy(context->works);
     }
+    sis_sdsfree(context->init_name);
     sis_sdsfree(context->work_path);
     sis_free(context);
     worker->context = NULL;
@@ -252,12 +272,7 @@ static void cb_socket_recv(void *worker_, s_sis_net_message *msg)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
 	
-    // printf("recv query: [%d] %d : %s %s %s %s\n %s\n", msg->cid, msg->style, 
-    //     msg->serial ? msg->serial : "nil",
-    //     msg->cmd ? msg->cmd : "nil",
-    //     msg->key ? msg->key : "nil",
-    //     msg->val ? msg->val : "nil",
-    //     msg->rval ? msg->rval : "nil");
+    // SIS_NET_SHOW_MSG("server recv:", msg);
 
     sis_net_message_incr(msg);
     s_sis_object *obj = sis_object_create(SIS_OBJECT_NETMSG, msg);
@@ -312,40 +327,18 @@ void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_messag
 void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const char *cmdname, s_sis_net_message *netmsg)
 {
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
-
     if (!workname)
     {
         int o = sis_worker_command(worker, cmdname, netmsg);
-        if (o == SIS_METHOD_OK)
+        if (!netmsg->switchs.is_inside)
         {
-            sis_net_class_send(context->socket, netmsg);
-        }  
-        else if (o == SIS_METHOD_NULL)
-        {
-            sisdb_server_reply_null(context, netmsg, cmdname);
-        }
-        else if (o == SIS_METHOD_NOCMD)
-        {
-            sisdb_server_reply_no_method(context, netmsg, cmdname);
-        }
-        else // if (o == SIS_METHOD_ERROR)
-        {
-            sisdb_server_reply_error(context, netmsg);
-        }
-    }
-    else
-    {
-        s_sisdb_workinfo *workinfo = sis_map_list_get(context->works, workname);
-        if (workinfo)
-        {
-            int o = sis_worker_command(workinfo->worker, cmdname, netmsg);
             if (o == SIS_METHOD_OK)
             {
                 sis_net_class_send(context->socket, netmsg);
-            } 
+            }  
             else if (o == SIS_METHOD_NULL)
             {
-                sisdb_server_reply_null(context, netmsg, netmsg->key);
+                sisdb_server_reply_null(context, netmsg, cmdname);
             }
             else if (o == SIS_METHOD_NOCMD)
             {
@@ -355,7 +348,34 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
             {
                 sisdb_server_reply_error(context, netmsg);
             }
-        } 
+        }
+    }
+    else
+    {
+        s_sisdb_workinfo *workinfo = sis_map_list_get(context->works, workname);
+        if (workinfo)
+        {
+            int o = sis_worker_command(workinfo->worker, cmdname, netmsg);
+            if (!netmsg->switchs.is_inside)
+            {
+                if (o == SIS_METHOD_OK)
+                {
+                    sis_net_class_send(context->socket, netmsg);
+                } 
+                else if (o == SIS_METHOD_NULL)
+                {
+                    sisdb_server_reply_null(context, netmsg, netmsg->key);
+                }
+                else if (o == SIS_METHOD_NOCMD)
+                {
+                    sisdb_server_reply_no_method(context, netmsg, cmdname);
+                }
+                else // if (o == SIS_METHOD_ERROR)
+                {
+                    sisdb_server_reply_error(context, netmsg);
+                }
+            } 
+        }
         else
         {
             sisdb_server_reply_no_service(context, netmsg, workname);
@@ -385,7 +405,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
 
     sis_net_message_incr(netmsg);
-    
+    SIS_NET_SHOW_MSG("server recv:", netmsg);
     int access = sisdb_server_get_access(context, netmsg);
     if ( access < 0 && sis_strcasecmp("auth", netmsg->cmd))
     {
@@ -500,6 +520,7 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
         {
             sis_net_ans_with_error(netmsg, "auth fail.", 10);
         }
+        sis_json_close(handle);
     }
     return SIS_METHOD_OK;
 }
@@ -581,6 +602,7 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
         {
             sis_net_ans_with_error(netmsg, "auth fail.", 10);
         }
+        sis_json_close(handle);
     }
     return SIS_METHOD_OK;
 }

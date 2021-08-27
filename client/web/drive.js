@@ -74,7 +74,7 @@ function make_command_packed(sign, input) {
     else
     if (k === 2)
     {
-      cmd += '"val":' + isjson + command[k] + isjson;
+      cmd += '"ask":' + isjson + command[k] + isjson;
     }
     else
     {
@@ -133,15 +133,15 @@ client.ws.onmessage = function (message) {
   
     if (client.wait.commands[sign] !== undefined) {
       let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
-      if (msg.rcmd !== undefined)
+      if (msg.ans !== undefined)
       {
-        if (msg.rval)
+        if (msg.msg)
         {
-          client.wait.replys = msg.rcmd + ':' + msg.rval;
+          client.wait.replys = msg.ans + ':' + msg.msg;
         }
         else
         {
-          client.wait.replys = msg.rcmd;
+          client.wait.replys = msg.ans;
         }
       }
       else

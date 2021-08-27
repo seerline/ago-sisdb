@@ -19,6 +19,8 @@
         <input type="text" name="currency3" class="biginput" id="send-service">
         <input type="text" name="currency4" class="biginput" id="send-ask">
       </form>
+      <button onclick="connect()">connect</button>
+      <button onclick="auth()">auth-admin</button>
       <button onclick="send_string()">submit</button>
     </div>
   </div>
@@ -55,7 +57,16 @@
         output.innerHTML = data;
       });
   }
-  
+  function connect() {
+    connect_server();
+  }
+  function auth() {
+    send_single_command(
+      { cmd : `{"cmd":"auth","ask":{"username":"admin","password":"admin5678"}}` },
+      function reply(data) {
+        output.innerHTML = data;
+      });
+  }
   function send_string() {
     var doc = {cmd:(document.getElementById("send-cmd")).value,
       key:(document.getElementById("send-key")).value,
@@ -68,7 +79,7 @@
     }
     saveListData(JSON.stringify(doc));
     send_single_command(
-      doc,
+      { cmd : JSON.stringify(doc) },
       function reply(data) {
         output.innerHTML = data;
       });

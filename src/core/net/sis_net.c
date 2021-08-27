@@ -619,8 +619,8 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 			// printf("recv netmsg: %d %d\n", count, status);
 			if (status == 1)
 			{
-				SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
 				netmsg->cid = cxt->rid;
+				// SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
 				if (cxt->cb_reply)
 				{
 					cxt->cb_reply(cxt->cb_source, netmsg);
@@ -769,6 +769,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 		LOG(5)("net no working. %d\n", cls_->work_status);
 		return -1;
 	}
+	SIS_NET_SHOW_MSG("send:", mess_);
 	sis_net_message_incr(mess_);
 	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, mess_->cid);
 	if (cxt)

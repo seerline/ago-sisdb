@@ -111,7 +111,7 @@ size_t sis_net_message_get_size(s_sis_net_message *msg_)
 	size += _net_message_list_size(msg_->argvs);
 	return size;
 }
-
+// 只拷贝数据和key
 void sis_net_message_copy(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_, int cid_, s_sis_sds name_)
 {
     newmsg_->cid = cid_;
@@ -149,6 +149,51 @@ void sis_net_message_copy(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_
     newmsg_->rmsg = agomsg_->rmsg ? sis_sdsdup(agomsg_->rmsg) : NULL;
     newmsg_->rfmt = agomsg_->rfmt;
    
+}
+
+void sis_net_message_publish(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_, int cid_, s_sis_sds name_, s_sis_sds key_)
+{
+    newmsg_->cid = cid_;
+    newmsg_->name = name_ ? sis_sdsdup(name_) : NULL;
+
+    newmsg_->key = key_ ? sis_sdsdup(key_) : NULL;    
+    newmsg_->switchs.has_key = newmsg_->key ? 1 : 0;
+    newmsg_->switchs.is_publish = 1;
+
+    if (agomsg_->ask)
+    {
+        newmsg_->ask = agomsg_->ask ? sis_sdsdup(agomsg_->ask) : NULL;
+        newmsg_->switchs.has_ask = newmsg_->ask ? 1 : 0;
+    } 
+    if (agomsg_->rmsg)
+    {
+        newmsg_->rans = agomsg_->rans;
+        newmsg_->rnext = agomsg_->rnext;
+        newmsg_->rfmt = agomsg_->rfmt;
+        
+        newmsg_->rmsg = agomsg_->rmsg ? sis_sdsdup(agomsg_->rmsg) : NULL;
+        newmsg_->switchs.has_msg= newmsg_->rmsg ? 1 : 0;
+        newmsg_->switchs.is_reply = 1;
+    } 
+    if (agomsg_->argvs && agomsg_->argvs->count > 0)
+    {
+        newmsg_->switchs.has_argvs = 1;
+        if (!newmsg_->argvs)
+        {
+            newmsg_->argvs = sis_pointer_list_create();
+            newmsg_->argvs->vfree = sis_object_decr;
+        }
+        else
+        {
+            sis_pointer_list_clear(newmsg_->argvs);
+        }
+        for (int i = 0; i < agomsg_->argvs->count; i++)
+        {
+            s_sis_object *obj = sis_pointer_list_get(agomsg_->argvs, i);
+            sis_object_incr(obj);
+            sis_pointer_list_push(newmsg_->argvs, obj);
+        }        
+    }
 }
 
 ////////////////////////////////////////////////////////
