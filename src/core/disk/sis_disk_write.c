@@ -504,6 +504,37 @@ size_t sis_disk_writer_sdb_date(s_sis_disk_writer *writer_, s_sis_disk_kdict *kd
     }
     return osize;
 }
+int sis_disk_writer_sdb_map(s_sis_disk_writer *writer_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, int style, int count)
+{
+    // s_sis_sds key = NULL;
+    // if (sdict_)
+    // {
+    //     sis_sdsnew(SIS_OBJ_GET_CHAR(kdict_->name));
+    //     key = sis_sdscatfmt(key, ".%s", SIS_OBJ_GET_CHAR(sdict_->name));
+    // }
+    // else
+    // {
+    //     key = SIS_OBJ_GET_CHAR(kdict_->name);
+    // }
+    // s_sis_disk_map *map = sis_map_list_get(cls_->map_maps, key)
+    // if (!map)
+    // {
+    //     map = sis_disk_map_create(key, sis_sdslen(key));
+    // }
+    // for (int i = 0; i < map->idxs->count; i++)
+    // {
+    //     /* code */
+    // }
+    
+    // if (sdict_)
+    // {
+    //     sis_sdsfree(key);
+    // }
+    // return map->idxs->count;  
+    return 0;
+}
+
+
 size_t sis_disk_writer_sdb_nots(s_sis_disk_writer *writer_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
 {
     size_t osize = 0;
@@ -557,6 +588,12 @@ size_t sis_disk_writer_sdb(s_sis_disk_writer *writer_, const char *kname_, const
         osize = sis_disk_writer_sdb_nots(writer_, kdict, sdict, in_, ilen_);
         break;
     }
+    if (osize > 0)
+    {
+        int count = ilen_ / sdb->size;
+        sis_disk_writer_sdb_map(writer_, kdict, sdict, 
+            scale == SIS_SDB_SCALE_NOTS ? SIS_SDB_STYLE_NON : SIS_SDB_STYLE_SDB, count);
+    }
     return osize;
 }
 
@@ -579,6 +616,10 @@ size_t sis_disk_writer_one(s_sis_disk_writer *writer_, const char *kname_, void 
         s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, kname_);
         osize += sis_disk_io_write_one(ctrl, kdict, in_, ilen_);
     }
+    if (osize > 0)
+    {
+        sis_disk_writer_sdb_map(writer_, kdict, NULL, SIS_SDB_STYLE_ONE, 1);
+    }
     return osize;
 }
 size_t sis_disk_writer_mul(s_sis_disk_writer *writer_, const char *kname_, s_sis_pointer_list *inlist_)
@@ -599,6 +640,10 @@ size_t sis_disk_writer_mul(s_sis_disk_writer *writer_, const char *kname_, s_sis
     {
         s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, kname_);
         osize += sis_disk_io_write_mul(ctrl, kdict, inlist_);
+    }
+    if (osize > 0)
+    {
+        sis_disk_writer_sdb_map(writer_, kdict, NULL, SIS_SDB_STYLE_MUL, inlist_->count);
     }
     return osize;
 }

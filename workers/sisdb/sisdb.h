@@ -5,6 +5,7 @@
 #include "sis_net.msg.h"
 #include "sis_list.lock.h"
 #include "sis_dynamic.h"
+#include "sis_utils.h"
 #include "sis_db.h"
 #include "sis_obj.h"
 #include "worker.h"

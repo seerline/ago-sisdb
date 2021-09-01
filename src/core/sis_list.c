@@ -137,6 +137,26 @@ int sis_struct_list_insert(s_sis_struct_list *list_, int index_, void *in_)
 	list_->count++;
 	return index_;
 }
+int sis_struct_list_inserts(s_sis_struct_list *list_, int index_, void *in_, int count_)
+{
+	if (list_->count < 1 || index_ > list_->count - 1)
+	{
+		return sis_struct_list_pushs(list_, in_, count_);
+	}
+	if (index_ < 0)
+	{
+		index_ = 0;
+	}
+	_struct_list_grow(list_, count_);
+	int offset = index_ + list_->start;
+	memmove((char *)list_->buffer + ((offset + count_) * list_->len),
+			(char *)list_->buffer + (offset * list_->len),
+			(list_->count - index_) * list_->len);
+
+	memmove((char *)list_->buffer + (offset * list_->len), in_, count_ * list_->len);
+	list_->count += count_;
+	return index_;
+}
 void *sis_struct_list_first(s_sis_struct_list *list_)
 {
 	return sis_struct_list_get(list_, 0);
@@ -443,7 +463,7 @@ int   sis_node_list_get_size(s_sis_node_list *list_)
 s_sis_sort_list *sis_sort_list_create(int len_)
 {
 	s_sis_sort_list *o = SIS_MALLOC(s_sis_sort_list, o);
-	o->key = sis_struct_list_create(sizeof(int));
+	o->key = sis_struct_list_create(sizeof(int64));
 	o->value = sis_struct_list_create(len_);
 	return o;
 }
@@ -466,7 +486,7 @@ void sis_sort_list_clone(s_sis_sort_list *src_,s_sis_sort_list *des_)
 	sis_struct_list_clone(src_->value, des_->value);
 }
 
-void *sis_sort_list_set(s_sis_sort_list *list_, int key_, void *in_)
+void *sis_sort_list_set(s_sis_sort_list *list_, int64 key_, void *in_)
 {
 	void *unit = sis_sort_list_find(list_, key_);
 	if (unit)
@@ -476,7 +496,7 @@ void *sis_sort_list_set(s_sis_sort_list *list_, int key_, void *in_)
 	}
 	for (int i = 0; i < list_->key->count; i++)
 	{
-		int *key = (int *)sis_struct_list_get(list_->key, i);
+		int64 *key = (int64 *)sis_struct_list_get(list_->key, i);
 		if (*key < key_)
 		{
 			sis_struct_list_insert(list_->key, i, &key_);
@@ -505,12 +525,12 @@ void *sis_sort_list_prev(s_sis_sort_list *list_, void *value_)
 	return sis_struct_list_offset(list_->value, value_, -1);
 }
 // 二分法查找 从高向低
-int _sort_list_find(s_sis_sort_list *list, int key, int start, int stop)
+int _sort_list_find(s_sis_sort_list *list, int64 key, int start, int stop)
 {	
 	while(start <= stop)
 	{
 		int mid = (stop - start) / 2 + start;
-		int *midv = (int *)sis_struct_list_get(list->key, mid);
+		int64 *midv = (int64 *)sis_struct_list_get(list->key, mid);
 		if (*midv < key)
 		{
 			stop = mid - 1;
@@ -526,7 +546,7 @@ int _sort_list_find(s_sis_sort_list *list, int key, int start, int stop)
 	}
 	return -1;
 }
-void *sis_sort_list_find(s_sis_sort_list *list_, int key_)
+void *sis_sort_list_find(s_sis_sort_list *list_, int64 key_)
 {
 	int index = _sort_list_find(list_, key_, 0, list_->key->count - 1);
 	if (index >= 0)

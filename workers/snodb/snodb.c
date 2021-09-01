@@ -3,6 +3,7 @@
 #include "worker.h"
 #include "server.h"
 #include "sis_method.h"
+#include "sis_utils.h"
 
 #include <snodb.h>
 #include <sis_net.msg.h>

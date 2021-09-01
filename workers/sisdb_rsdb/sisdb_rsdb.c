@@ -3,6 +3,7 @@
 
 #include "sis_modules.h"
 #include "sisdb_rsdb.h"
+#include "sis_utils.h"
 #include <sis_obj.h>
 
 ///////////////////////////////////////////////////

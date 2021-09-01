@@ -29,7 +29,8 @@ int _sis_dict_int_compare(const void *key1, const void *key2)
 }
 int _sis_dict_obj_compare(const void *key1, const void *key2)
 {
-	return sis_strcasecmp(SIS_OBJ_GET_CHAR((s_sis_object *)key1), SIS_OBJ_GET_CHAR((s_sis_object *)key2)) == 0;
+	// return sis_strcasecmp(SIS_OBJ_GET_CHAR((s_sis_object *)key1), SIS_OBJ_GET_CHAR((s_sis_object *)key2)) == 0;
+	return sis_strcasecmp((const char *)key1, SIS_OBJ_GET_CHAR((s_sis_object *)key2)) == 0;
 }
 void *_sis_dict_sds_dup(const void *val)
 {

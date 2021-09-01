@@ -505,27 +505,13 @@ void sis_dynamic_db_decr(s_sis_dynamic_db *db_);
 
 s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_);
 
-s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
 // 比较两个表的结构 一样返回 true
 bool sis_dynamic_dbinfo_same(s_sis_dynamic_db *db1_, s_sis_dynamic_db *db2_);
-
-s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_);
-// 从db转为json格式数据结构
-// s_sis_sds sis_dynamic_dbinfo_to_json_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
 
 // 获得当前缓存的时间
 msec_t sis_dynamic_db_get_time(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_);
 // 获得当前索引的值 以长整数返回
 uint64 sis_dynamic_db_get_mindex(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_);
-
-// 直接通过配置转数据格式
-s_sis_sds sis_dynamic_conf_to_array_sds(const char *confstr_, void *in_, size_t ilen_); 
-// 数据转换为array
-s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in_, size_t ilen_); 
-
-s_sis_sds sis_dynamic_db_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_);
-
-s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_);
 
 ///////////////////////////////
 // 转换对象定义
@@ -593,22 +579,6 @@ uint64 sis_time_unit_convert(int instyle, int outstyle, uint64 in64);
 //         const char *key_, int dir_,
 //         const char *in_, size_t ilen_);
 
-// match_keys : * --> whole_keys
-// match_keys : k,m1 | whole_keys : k1,k2,m1,m2 --> k1,k2,m1
-s_sis_sds sis_match_key(s_sis_sds match_keys, s_sis_sds whole_keys);
-// 得到匹配的sdbs
-// match_sdbs : * | whole_sdbs : {s1:{},s2:{},k1:{}} --> s1,s2,k1
-// match_sdbs : s1,s2,s4 | whole_sdbs : {s1:{},s2:{},k1:{}} --> s1,s2
-s_sis_sds sis_match_sdb(s_sis_sds match_keys, s_sis_sds whole_keys);
-// 得到匹配的sdbs
-// match_sdbs : * --> whole_sdbs
-// match_sdbs : s1,s2 | whole_sdbs : {s1:{},s2:{},k1:{}} --> {s1:{},s2:{}}
-s_sis_sds sis_match_sdb_of_sds(s_sis_sds match_sdbs, s_sis_sds  whole_sdbs);
-// 得到匹配的sdbs
-// whole_sdbs 是s_sis_dynamic_db结构的map表
-// match_sdbs : * --> whole_sdbs of sis_sds
-// match_sdbs : s1,s2 | whole_sdbs : {s1:{},s2:{},k1:{}} --> {s1:{},s2:{}}
-s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs);
 
 #endif //_SIS_DYNAMIC_H
 

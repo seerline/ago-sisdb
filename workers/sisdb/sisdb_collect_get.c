@@ -183,8 +183,7 @@ int sisdb_collect_search_right(s_sisdb_collect *collect_, uint64 finder_, int *m
 	// return 0;
 }
 
-// 最后一个匹配的时间
-// 12355579  查5返回5，查4返回3
+     
 int sisdb_collect_search_last(s_sisdb_collect *collect_, uint64 finder_, int *mode_)
 {
 	*mode_ = SIS_SEARCH_NONE;

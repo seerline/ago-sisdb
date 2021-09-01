@@ -5,6 +5,7 @@
 #include <sis_modules.h>
 #include <sisdb_rsno.h>
 #include <sis_obj.h>
+#include "sis_utils.h"
 
 // 从行情流文件中获取数据源
 static s_sis_method _sisdb_rsno_methods[] = {

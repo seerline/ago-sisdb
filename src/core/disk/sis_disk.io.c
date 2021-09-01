@@ -652,7 +652,7 @@ int sis_disk_ctrl_read_start(s_sis_disk_ctrl *cls_)
     else if (cls_->style == SIS_DISK_TYPE_SDB)
     {
         // 读取key和sdb定义信息
-        o = sis_disk_io_read_sdb_mks(cls_);
+        o = sis_disk_io_read_sdb_map(cls_);
         if (o != SIS_DISK_CMD_NO_IDX)
         {
             return o;
@@ -751,7 +751,7 @@ int sis_disk_ctrl_write_start(s_sis_disk_ctrl *cls_)
         else if (cls_->style == SIS_DISK_TYPE_SDB)
         {
             // 读取key和sdb定义信息
-            vo = sis_disk_io_read_sdb_mks(cls_);
+            vo = sis_disk_io_read_sdb_map(cls_);
             if (vo != SIS_DISK_CMD_NO_IDX)
             {
                 return vo;

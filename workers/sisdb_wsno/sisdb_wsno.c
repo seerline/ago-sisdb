@@ -3,6 +3,7 @@
 
 #include <sis_modules.h>
 #include <sisdb_wsno.h>
+#include "sis_utils.h"
 
 // 从行情流文件中获取数据源 需要支持直接写压缩数据然后解压写入
 

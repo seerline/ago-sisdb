@@ -64,7 +64,6 @@ typedef struct s_sis_step_index
 typedef struct s_sisdb_collect
 {
 	uint8                wflag;  // 当前块是否被写入 只有写入新数据的块才存盘
-	msec_t               rwmsec; // 最近读写的毫秒数 超过 36小时就写盘 并释放 或者磁盘容量不足 先存最早的数据
 
 	uint8                style;  // 数据类型 SISDB_COLLECT_TYPE_TABLE ...
 	s_sis_object        *obj;    // 值
