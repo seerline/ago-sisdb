@@ -1133,7 +1133,7 @@ int main()
 	sprintf(in_info[0].name, "123");
 	sprintf(in_info[1].name, "2345");
 
-	s_sis_sds in = sis_dynamic_db_to_array_sds(indb, "stock", in_info, count*sizeof(_local_info));
+	s_sis_sds in = sis_sdb_to_array_sds(indb, "stock", in_info, count*sizeof(_local_info));
 	printf("indb = \n%s\n",in);
 	sis_sdsfree(in);	
 
@@ -1142,7 +1142,7 @@ int main()
 	char *out_info = sis_malloc(size + 1);
 	sis_dynamic_convert(convert, (const char *)in_info, count*sizeof(_local_info), out_info, size);
 
-	s_sis_sds out = sis_dynamic_db_to_array_sds(outdb, "stock", out_info, size);
+	s_sis_sds out = sis_sdb_to_array_sds(outdb, "stock", out_info, size);
 	printf("outdb = \n%s\n",out);
 	sis_sdsfree(out);	
 

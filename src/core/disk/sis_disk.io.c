@@ -419,7 +419,7 @@ void sis_disk_ctrl_write_sdict(s_sis_disk_ctrl *cls_)
         for (int i = 0; i < cls_->new_sinfos->count; i++)
         {
             s_sis_dynamic_db *sdb = sis_pointer_list_get(cls_->new_sinfos, i);
-            sis_json_object_add_node(sdbs_node, sdb->name, sis_dynamic_dbinfo_to_json(sdb)); 
+            sis_json_object_add_node(sdbs_node, sdb->name, sis_sdbinfo_to_json(sdb)); 
         }
         msg = sis_json_to_sds(sdbs_node, true);
         sis_json_delete_node(sdbs_node);
@@ -468,7 +468,7 @@ s_sis_sds sis_disk_ctrl_get_sdbs_sds(s_sis_disk_ctrl *cls_)
         {
             s_sis_disk_sdict *sdict = (s_sis_disk_sdict *)sis_map_list_geti(cls_->map_sdicts, i);
             s_sis_dynamic_db *sdb = sis_disk_sdict_last(sdict);
-            sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(sdict->name), sis_dynamic_dbinfo_to_json(sdb));
+            sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(sdict->name), sis_sdbinfo_to_json(sdb));
         }
     }
     s_sis_sds msg = sis_json_to_sds(sdbs_node, true);

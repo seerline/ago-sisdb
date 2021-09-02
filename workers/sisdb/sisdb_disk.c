@@ -123,7 +123,7 @@ s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
         for(int i = 0; i < count; i++)
         {
             s_sisdb_table *table = (s_sisdb_table *)sis_map_list_geti(cxt->work_sdbs, i);
-            sis_json_object_add_node(sdbs_node, table->name, sis_dynamic_dbinfo_to_json(table));
+            sis_json_object_add_node(sdbs_node, table->name, sis_sdbinfo_to_json(table));
         }
     }
     s_sis_sds msg = sis_json_to_sds(sdbs_node, true);

@@ -569,7 +569,7 @@ static void cb_read1(void *src, const char *key_, const char *sdb_, s_sis_object
         if (sdb)
         {
             s_sis_disk_v1_dict_unit *unit =  sis_disk_v1_dict_last(sdb);
-            s_sis_sds info = sis_dynamic_db_to_csv_sds(unit->db, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_)); 
+            s_sis_sds info = sis_sdb_to_csv_sds(unit->db, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_)); 
             printf(" %s \n", info);
             sis_sdsfree(info);
         }

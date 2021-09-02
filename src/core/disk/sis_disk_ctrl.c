@@ -482,7 +482,7 @@ int sis_disk_map_merge(s_sis_disk_map *agomap_, s_sis_disk_map *newmap_)
 //         if (sdb)
 //         {
 //             s_sis_disk_dict_unit *unit =  sis_disk_dict_last(sdb);
-//             s_sis_sds info = sis_dynamic_db_to_csv_sds(unit->db, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_)); 
+//             s_sis_sds info = sis_sdb_to_csv_sds(unit->db, SIS_OBJ_GET_CHAR(obj_), SIS_OBJ_GET_SIZE(obj_)); 
 //             printf(" %s \n", info);
 //             sis_sdsfree(info);
 //         }

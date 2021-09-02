@@ -186,7 +186,7 @@ s_sis_sds sis_sisdb_make_sdbs(s_sisdb_cxt *context_)
     for (int i = 0; i < count; i++)
     {
         s_sisdb_table *table = sis_map_list_geti(context_->work_sdbs, i);
-		sis_json_object_add_node(jdbs, table->name, sis_dynamic_dbinfo_to_json(table));
+		sis_json_object_add_node(jdbs, table->name, sis_sdbinfo_to_json(table));
     }
     sis_json_object_add_node(jone, context_->work_name, jdbs);
     s_sis_sds o = sis_json_to_sds(jone, 1);

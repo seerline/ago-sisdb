@@ -608,7 +608,7 @@ s_sis_sds sisdb_collect_fastget_sds(s_sisdb_collect *collect_,const char *key_, 
 		return NULL;
 	}
 
-	s_sis_sds other = sis_dynamic_db_to_array_sds(collect_->sdb, key_, out, sis_sdslen(out));
+	s_sis_sds other = sis_sdb_to_array_sds(collect_->sdb, key_, out, sis_sdslen(out));
 
 	sis_sdsfree(out);
 	return other;
@@ -642,13 +642,13 @@ s_sis_sds sisdb_get_chars_format_sds(s_sisdb_table *table_, const char *key_, in
 		switch (iformat_)
 		{
 		case SISDB_FORMAT_JSON:
-			other = sis_dynamic_db_to_array_sds(table_, key_, (void *)in_, ilen_);
+			other = sis_sdb_to_array_sds(table_, key_, (void *)in_, ilen_);
 			break;
 		case SISDB_FORMAT_ARRAY:
-			other = sis_dynamic_db_to_array_sds(table_, key_, (void *)in_, ilen_);
+			other = sis_sdb_to_array_sds(table_, key_, (void *)in_, ilen_);
 			break;
 		case SISDB_FORMAT_CSV:
-			other = sis_dynamic_db_to_csv_sds(table_, (void *)in_, ilen_);
+			other = sis_sdb_to_csv_sds(table_, (void *)in_, ilen_);
 			break;
 		}		
 	}

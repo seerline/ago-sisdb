@@ -590,7 +590,7 @@ static int cb_key_chars(void *cxt_, void *avgv_)
 	s_sis_dynamic_db *db = sis_map_list_get(cxt->work_sdbs, chars->sname);
 	if (db)
 	{
-		s_sis_sds in = sis_dynamic_db_to_array_sds(db, NULL, chars->data, chars->size);
+		s_sis_sds in = sis_sdb_to_array_sds(db, NULL, chars->data, chars->size);
 		printf("%s %s = %s\n",chars->kname, chars->sname, in);
 		sis_sdsfree(in);	
 	}

@@ -673,7 +673,7 @@ int cb_sis_decode(void *src, int kid,int sid, char *in, size_t ilen)
     {
         s_sis_incrzip_class *zip = (s_sis_incrzip_class *)src;
         s_sis_incrzip_dbinfo *unit=(s_sis_incrzip_dbinfo *)sis_pointer_list_get(zip->dbinfos, sid);
-        s_sis_sds out = sis_dynamic_db_to_array_sds(unit->lpdb, unit->lpdb->name, in, ilen);
+        s_sis_sds out = sis_sdb_to_array_sds(unit->lpdb, unit->lpdb->name, in, ilen);
         printf("%d %s = %s\n", __unsize, unit->lpdb->name, out);
         sis_sdsfree(out);
     }
@@ -707,7 +707,7 @@ int main()
 
     int snap_nums = sizeof(snaps) / sizeof(_snap_);
     {
-        s_sis_sds in = sis_dynamic_db_to_array_sds(snap, "snap", &snaps[0], snap_nums * sizeof(_snap_));
+        s_sis_sds in = sis_sdb_to_array_sds(snap, "snap", &snaps[0], snap_nums * sizeof(_snap_));
         printf("%s\n", in);
         sis_sdsfree(in);
     } 
@@ -804,12 +804,12 @@ int main1()
     int snap_nums = sizeof(snaps) / sizeof(_snap_);
     int tick_nums = sizeof(ticks) / sizeof(_tick_);
     {
-        s_sis_sds in = sis_dynamic_db_to_array_sds(snap, "snap", &snaps[0], snap_nums * sizeof(_snap_));
+        s_sis_sds in = sis_sdb_to_array_sds(snap, "snap", &snaps[0], snap_nums * sizeof(_snap_));
         printf("%s\n", in);
         sis_sdsfree(in);
     } 
     {
-        s_sis_sds in = sis_dynamic_db_to_array_sds(tick, "tick", &ticks[0], tick_nums* sizeof(_tick_));
+        s_sis_sds in = sis_sdb_to_array_sds(tick, "tick", &ticks[0], tick_nums* sizeof(_tick_));
         printf("%s\n", in);
         sis_sdsfree(in);
     }
