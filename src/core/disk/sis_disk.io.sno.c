@@ -30,7 +30,14 @@ void sis_disk_sno_rctrl_clear(s_sis_disk_sno_rctrl *rctrl_)
     rctrl_->count = 0;
     rctrl_->cursor_blk =  0;
     rctrl_->cursor_rec = -1;
-    sis_pointer_list_clear(rctrl_->rsno_idxs);
+    // sis_pointer_list_clear(rctrl_->rsno_idxs);
+    // 为增加效率 不释放已经申请的数据索引
+    for (int i = 0; i < rctrl_->rsno_idxs->count; i++)
+    {
+        s_sis_struct_list *slist = sis_pointer_list_get(rctrl_->rsno_idxs, i);
+        sis_struct_list_clear(slist);
+        memset(slist->buffer, 0, slist->maxcount * slist->len);
+    }
     sis_pointer_list_clear(rctrl_->rsno_mems);
 }
 void sis_disk_sno_rctrl_set(s_sis_disk_sno_rctrl *rctrl_, int sno_, s_sis_db_chars *chars_)
@@ -40,7 +47,7 @@ void sis_disk_sno_rctrl_set(s_sis_disk_sno_rctrl *rctrl_, int sno_, s_sis_db_cha
     {
         s_sis_struct_list *slist = sis_struct_list_create(sizeof(s_sis_db_chars));
         sis_struct_list_set_size(slist, rctrl_->pagenums);
-        memset(slist->buffer, 0, sizeof(s_sis_db_chars) * rctrl_->pagenums);
+        memset(slist->buffer, 0, slist->maxcount * slist->len);
         sis_pointer_list_push(rctrl_->rsno_idxs, slist);
     }
     s_sis_struct_list *slist = sis_pointer_list_get(rctrl_->rsno_idxs, ipage - 1);
@@ -51,7 +58,7 @@ void sis_disk_sno_rctrl_set(s_sis_disk_sno_rctrl *rctrl_, int sno_, s_sis_db_cha
         slist->count = irec + 1;
     }
 }
-#include "stk_struct.v3.h"
+// #include "stk_struct.v3.h"
 // 放入一个标准块 返回实际的数量
 int sis_disk_sno_rctrl_push(s_sis_disk_sno_rctrl *rctrl_, const char *kname_, const char *sname_, int dbsize_, s_sis_memory *imem_)
 {
@@ -59,8 +66,10 @@ int sis_disk_sno_rctrl_push(s_sis_disk_sno_rctrl *rctrl_, const char *kname_, co
     chars.kname = kname_;
     chars.sname = sname_;
     chars.size = dbsize_;
-    s_sis_memory *memory = sis_memory_create();
+    size_t isize = sis_memory_get_size(imem_);
+    s_sis_memory *memory = sis_memory_create_size(isize);
     s_sis_struct_list *snos = sis_struct_list_create(sizeof(int));
+    sis_struct_list_set_maxsize(snos, isize / dbsize_);
     while(sis_memory_get_size(imem_) > 0)
     {
         int sno = sis_memory_get_ssize(imem_);
@@ -527,7 +536,7 @@ int sis_disk_io_sub_sno_part(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     s_sis_memory *imem = sis_memory_create();
     for (uint32 page = minpage; page < cls_->sno_pages; page++)
     {
-        // LOG(5)("sno === ipage = %d : %d.\n", page, cls_->sno_pages);
+        // LOG(5)("sno === ipage = %d : %d. subparts = %d\n", page, cls_->sno_pages, subparts->count);
         for (int i = 0; i < subparts->count; i++)
         {
             s_sis_disk_idx *subidx = (s_sis_disk_idx *)sis_pointer_list_get(subparts, i);

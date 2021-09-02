@@ -127,6 +127,8 @@ int sis_incrzip_compress(s_sis_incrzip_class *s_, char *in_, size_t ilen_, s_sis
 
 // 如果未设置结构体返回错误 压缩数据直接写入 cin_ 避免内存多次拷贝
 int sis_incrzip_compress_start(s_sis_incrzip_class *, int maxsize_, void *source_, cb_incrzip_encode *);
+// 压缩过程中增加key 
+int sis_incrzip_compress_addkey(s_sis_incrzip_class *, int newnums);
 // 强制从头开始压缩
 void sis_incrzip_compress_restart(s_sis_incrzip_class *s_);
 // 返回成功压缩的数量（包数量，不是记录数量）

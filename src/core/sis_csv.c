@@ -167,6 +167,28 @@ const char *sis_file_csv_get_head(s_sis_file_csv *csv_, int hidx_)
 	return sis_string_list_get(head, hidx_);
 }
 
+s_sis_file_handle sis_csv_write_open(const char *name_, int isnew_)
+{
+	if (isnew_)
+	{
+		sis_file_delete(name_);
+	}
+	s_sis_file_handle fp = sis_file_open(name_, SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
+	if (!fp)
+	{
+		return NULL;
+	}
+	return fp;
+}
+s_sis_file_handle sis_csv_write(s_sis_file_handle fp_, s_sis_sds isds_)
+{
+	sis_file_write(fp_, isds_, sis_sdslen(isds_));
+}
+s_sis_file_handle sis_csv_write_close(s_sis_file_handle fp_)
+{
+	sis_file_close(fp_);
+}
+
 s_sis_sds sis_csv_make_str(s_sis_sds in_, const char *str_, size_t len_)
 {
 	size_t size = sis_sdslen(in_);
