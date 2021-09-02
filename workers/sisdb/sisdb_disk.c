@@ -10,6 +10,11 @@
 // safe目录 只保留最近5个目录
 int sisdb_disk_pack(s_sisdb_cxt *context)
 {
+    if (context->wfile_status)
+    {
+        return -1;
+    }
+    context->wfile_status = 1;
     sis_mutex_lock(&context->wlog_lock);
 
     // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
@@ -37,6 +42,7 @@ int sisdb_disk_pack(s_sisdb_cxt *context)
     // }
 
     sis_mutex_unlock(&context->wlog_lock);
+    context->wfile_status = 0;
     return 0;
 }
 
@@ -127,6 +133,11 @@ s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
 }
 int sisdb_disk_save(s_sisdb_cxt *context)
 {
+    if (context->wfile_status)
+    {
+        return -1;
+    }
+    context->wfile_status = 1;
     sis_mutex_lock(&context->wlog_lock);
 
     if (sis_map_pointer_getsize(context->work_keys) > 0)
@@ -177,6 +188,7 @@ int sisdb_disk_save(s_sisdb_cxt *context)
         sis_disk_writer_destroy(sdbfile);
     }
     sis_mutex_unlock(&context->wlog_lock);
+    context->wfile_status = 0;
     return 0;
 }
 
@@ -326,4 +338,81 @@ int sisdb_disk_save(s_sisdb_cxt *context)
 
 
 // write
+// 加载数据结构
+s_sis_object *sisdb_read_disk(s_sisdb_cxt *context, s_sis_net_message *netmsg)
+{
 
+    return NULL;
+}
+int sisdb_read_sdbs(s_sisdb_cxt *context)
+{
+
+    return 0;
+}
+
+static int cb_rlog_netmsg(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    sis_worker_command(worker, netmsg->cmd, netmsg);
+    return 0;
+}
+// 从磁盘中加载log
+int sisdb_rlog_read(s_sis_worker *worker)
+{
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_message *msg = sis_message_create();
+    // 这里需要加载 log 中的数据 这可能是一个漫长的过程
+
+    sis_mutex_lock(&context->wlog_lock);
+    // 读完就销毁
+    s_sis_worker *rlog = sis_worker_create_of_conf(NULL, context->work_name, "{classname:sisdb_flog}");
+
+    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
+    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_int(msg, "work-date", context->work_date);
+    sis_message_set(msg, "source", worker, NULL);
+    // sis_message_set_method(msg, "cb_sub_start", NULL);
+    // sis_message_set_method(msg, "cb_sub_stop", NULL);
+    sis_message_set_method(msg, "cb_netmsg", cb_rlog_netmsg);
+    int o = sis_worker_command(rlog, "sub", msg);
+
+    sis_worker_destroy(rlog);
+    sis_mutex_unlock(&context->wlog_lock);
+    sis_message_destroy(msg);
+    return o;
+}
+void sisdb_wlog_open(s_sisdb_cxt *context)
+{
+    s_sis_message *msg = sis_message_create();
+    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
+    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_int(msg, "work-date", context->work_date);
+    sis_worker_command(context->wlog_worker, "open", msg);
+    sis_message_destroy(msg);
+    context->wlog_open = 1;
+}
+void sisdb_wlog_close(s_sisdb_cxt *context)
+{
+    s_sis_message *msg = sis_message_create();
+    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
+    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_int(msg, "work-date", context->work_date);
+    sis_worker_command(context->wlog_worker, "close", msg);
+    sis_message_destroy(msg);
+    context->wlog_open = 0;
+}
+void sisdb_wlog_move(s_sisdb_cxt *context)
+{
+    s_sis_message *msg = sis_message_create();
+    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
+    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_int(msg, "work-date", context->work_date);
+    if (context->wlog_open)
+    {
+        sis_worker_command(context->wlog_worker, "close", msg);
+        context->wlog_open = 0;
+    }
+    sis_worker_command(context->wlog_worker, "move", msg);
+    sis_message_destroy(msg);
+}

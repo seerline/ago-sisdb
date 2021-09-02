@@ -111,7 +111,7 @@ size_t sis_net_message_get_size(s_sis_net_message *msg_)
 	size += _net_message_list_size(msg_->argvs);
 	return size;
 }
-
+// 只拷贝数据和key
 void sis_net_message_copy(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_, int cid_, s_sis_sds name_)
 {
     newmsg_->cid = cid_;
@@ -149,6 +149,51 @@ void sis_net_message_copy(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_
     newmsg_->rmsg = agomsg_->rmsg ? sis_sdsdup(agomsg_->rmsg) : NULL;
     newmsg_->rfmt = agomsg_->rfmt;
    
+}
+
+void sis_net_message_publish(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_, int cid_, s_sis_sds name_, s_sis_sds key_)
+{
+    newmsg_->cid = cid_;
+    newmsg_->name = name_ ? sis_sdsdup(name_) : NULL;
+
+    newmsg_->key = key_ ? sis_sdsdup(key_) : NULL;    
+    newmsg_->switchs.has_key = newmsg_->key ? 1 : 0;
+    newmsg_->switchs.is_publish = 1;
+
+    if (agomsg_->ask)
+    {
+        newmsg_->ask = agomsg_->ask ? sis_sdsdup(agomsg_->ask) : NULL;
+        newmsg_->switchs.has_ask = newmsg_->ask ? 1 : 0;
+    } 
+    if (agomsg_->rmsg)
+    {
+        newmsg_->rans = agomsg_->rans;
+        newmsg_->rnext = agomsg_->rnext;
+        newmsg_->rfmt = agomsg_->rfmt;
+        
+        newmsg_->rmsg = agomsg_->rmsg ? sis_sdsdup(agomsg_->rmsg) : NULL;
+        newmsg_->switchs.has_msg= newmsg_->rmsg ? 1 : 0;
+        newmsg_->switchs.is_reply = 1;
+    } 
+    if (agomsg_->argvs && agomsg_->argvs->count > 0)
+    {
+        newmsg_->switchs.has_argvs = 1;
+        if (!newmsg_->argvs)
+        {
+            newmsg_->argvs = sis_pointer_list_create();
+            newmsg_->argvs->vfree = sis_object_decr;
+        }
+        else
+        {
+            sis_pointer_list_clear(newmsg_->argvs);
+        }
+        for (int i = 0; i < agomsg_->argvs->count; i++)
+        {
+            s_sis_object *obj = sis_pointer_list_get(agomsg_->argvs, i);
+            sis_object_incr(obj);
+            sis_pointer_list_push(newmsg_->argvs, obj);
+        }        
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -273,6 +318,18 @@ void sis_net_ans_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t 
     s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
     sis_net_new_argvs(netmsg_, obj, 0);
 }
+void sis_net_ans_with_object(s_sis_net_message *netmsg_, void *obj_)
+{
+    netmsg_->format = SIS_NET_FORMAT_BYTES;
+    netmsg_->switchs.is_reply = 1;
+    netmsg_->rans = SIS_NET_ANS_OK;
+    netmsg_->switchs.has_key = netmsg_->key ? 1 : 0;
+    netmsg_->switchs.has_argvs = 1;
+    s_sis_object *obj = (s_sis_object *)obj_;
+    sis_object_incr(obj);
+    sis_net_new_argvs(netmsg_, obj, 0);
+}
+
 s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index)
 {
     if (!netmsg_ || !netmsg_->argvs)
@@ -311,6 +368,10 @@ void sis_net_ans_with_error(s_sis_net_message *netmsg_, char *rval_, size_t vlen
     netmsg_->format = SIS_NET_FORMAT_CHARS;
     netmsg_->switchs.is_reply = 1;
     netmsg_->rans = SIS_NET_ANS_ERROR;
+    if (vlen_ == 0)
+    {
+        vlen_ = sis_strlen(rval_);
+    }
     SIS_NET_SET_BUF(netmsg_->switchs.has_msg, netmsg_->rmsg, rval_, vlen_);
 }
 void sis_net_ans_with_null(s_sis_net_message *netmsg_)

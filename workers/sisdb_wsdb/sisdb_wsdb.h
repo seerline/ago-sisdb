@@ -33,7 +33,7 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_);
 int cmd_sisdb_wsdb_start(void *worker_, void *argv_);
 int cmd_sisdb_wsdb_stop(void *worker_, void *argv_);
 
-void sisdb_wsdb_open(s_sisdb_wsdb_cxt *context);
+void sisdb_wsdb_start(s_sisdb_wsdb_cxt *context);
 void sisdb_wsdb_stop(s_sisdb_wsdb_cxt *context);
 
 #endif

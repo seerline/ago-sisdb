@@ -14,8 +14,13 @@
   <div>
     <div id="searchfield">
       <form>
-        <input type="text" name="currency" class="biginput" id="send-msg">
+        <input type="text" name="currency1" class="biginput" id="send-cmd">
+        <input type="text" name="currency2" class="biginput" id="send-key">
+        <input type="text" name="currency3" class="biginput" id="send-service">
+        <input type="text" name="currency4" class="biginput" id="send-ask">
       </form>
+      <button onclick="connect()">connect</button>
+      <button onclick="auth()">auth-admin</button>
       <button onclick="send_string()">submit</button>
     </div>
   </div>
@@ -44,7 +49,7 @@
         }
     }
     console.log('It is not a string!')
-}
+  }
   function send_command(doc) {    
     send_single_command(
       { cmd : doc.value },
@@ -52,17 +57,29 @@
         output.innerHTML = data;
       });
   }
-  
+  function connect() {
+    connect_server();
+  }
+  function auth() {
+    send_single_command(
+      { cmd : `{"cmd":"auth","ask":{"username":"admin","password":"admin5678"}}` },
+      function reply(data) {
+        output.innerHTML = data;
+      });
+  }
   function send_string() {
-    var doc = document.getElementById("send-msg");
-    if (!isJSON(doc.value))
+    var doc = {cmd:(document.getElementById("send-cmd")).value,
+      key:(document.getElementById("send-key")).value,
+      service:(document.getElementById("send-service")).value,
+      ask:(document.getElementById("send-ask")).value};
+    if (!isJSON(JSON.stringify(doc)))
     {
-      console.log("format error.", doc.value);
+      console.log("format error.", JSON.stringify(doc));
       return ;
     }
-    saveListData(doc.value);
+    saveListData(JSON.stringify(doc));
     send_single_command(
-      { cmd : doc.value },
+      { cmd : JSON.stringify(doc) },
       function reply(data) {
         output.innerHTML = data;
       });

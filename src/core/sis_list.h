@@ -35,6 +35,7 @@ void sis_struct_list_clear(s_sis_struct_list *list_);
 int sis_struct_list_pushs(s_sis_struct_list *, void *in_, int count_);
 int sis_struct_list_push(s_sis_struct_list *, void *in_);
 int sis_struct_list_insert(s_sis_struct_list *, int index_, void *in_);
+int sis_struct_list_inserts(s_sis_struct_list *, int index_, void *in_, int count_);
 int sis_struct_list_update(s_sis_struct_list *, int index_, void *in_);
 void *sis_struct_list_first(s_sis_struct_list *);
 void *sis_struct_list_last(s_sis_struct_list *);
@@ -68,7 +69,7 @@ int sis_struct_list_pack(s_sis_struct_list *list_);
 
 
 typedef struct s_sis_sort_list {
-	s_sis_struct_list *key;     // int 类型
+	s_sis_struct_list *key;     // int64 类型
 	s_sis_struct_list *value;   // 结构类型
 } s_sis_sort_list;
 
@@ -80,12 +81,12 @@ void sis_sort_list_destroy(void *);
 void sis_sort_list_clear(s_sis_sort_list *list_);
 void sis_sort_list_clone(s_sis_sort_list *src_,s_sis_sort_list *des_);
 
-void *sis_sort_list_set(s_sis_sort_list *, int key_, void *in_);
+void *sis_sort_list_set(s_sis_sort_list *, int64 key_, void *in_);
 void *sis_sort_list_first(s_sis_sort_list *);
 void *sis_sort_list_last(s_sis_sort_list *);
 void *sis_sort_list_get(s_sis_sort_list *, int index_);
 
-void *sis_sort_list_find(s_sis_sort_list *, int key_);
+void *sis_sort_list_find(s_sis_sort_list *, int64 key_);
 
 void *sis_sort_list_next(s_sis_sort_list *list_, void *value_);
 void *sis_sort_list_prev(s_sis_sort_list *list_, void *value_);

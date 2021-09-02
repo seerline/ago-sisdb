@@ -7,6 +7,7 @@
 #include <sis_conf.h>
 #include <sis_csv.h>
 #include <sis_method.h>
+#include "sis_utils.h"
 
 /////////////////////////////////////////////////////////
 //  数据格是定义 

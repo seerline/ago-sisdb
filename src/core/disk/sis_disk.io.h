@@ -11,6 +11,7 @@
 #include "sis_math.h"
 #include "sis_time.h"
 #include "sis_db.h"
+#include "sis_utils.h"
 
 #pragma pack(push, 1)
 
@@ -172,12 +173,15 @@
 //         +[active(1)+kdict(dsize)+style(dsize)+sdict(dsize)+fidx(dsize)+offset(dsize)+size(dsize)+start(dsize)+stop(dsize)]...
 #define  SIS_DISK_HID_INDEX_MSG   0x13 // size(dsize)+
 // NET的块开始块索引 存储当前是第几个块 用于断点续传时使用
-// 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)+openmsec(dsize)]
-#define  SIS_DISK_HID_INDEX_NEW   0x15 // size(dsize)+
-// NET的块开始块索引 存储当前是第几个块 用于断点续传时使用
 // 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)+stopmsec(dsize)]
 #define  SIS_DISK_HID_INDEX_END   0x14 // size(dsize)+
-
+// NET的块开始块索引 存储当前是第几个块 用于断点续传时使用
+// 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)+openmsec(dsize)]
+#define  SIS_DISK_HID_INDEX_NEW   0x15 // size(dsize)+
+// MAP文件的key+sdb的索引信息 active 在 1.255 之间表示有效 
+// 后写入的 如果 ndate 一样会覆盖前面写入的数据
+#define  SIS_DISK_HID_INDEX_MAP   0x16 // size(dsize)+klen(dsize)+kname+dblen(dsize)+dname+active(1)+ktype+blocks(dsize)
+//        +[+ndate(dsize)+count(dsize)]
 // 文件结束块
 #define  SIS_DISK_HID_TAIL        0x1F  // 结束块标记
 
@@ -286,7 +290,7 @@ typedef struct s_sis_disk_files {
 typedef struct s_sis_disk_idx_unit
 {
     uint8             active; // 活跃记数 据此可判断是否需要加载到内存
-    uint8             ktype;  // key对应异构类型时的 数据类型 0 标准结构体 1 one 2 mul
+    uint8             ktype;  // key对应异构类型时的 数据类型 SIS_SDB_STYLE_SDB SIS_SDB_STYLE_NON ...
     uint8             sdict;  // 结构字典对应的索引 - 默认为一个文件同一个键值不超过255次改变 0 表示没有sdb
     uint16            fidx;   // 在哪个文件中 文件序号 文件名.1
     uint64            offset; // 文件偏移位置
@@ -354,6 +358,22 @@ typedef struct s_sis_disk_sdict {
 	s_sis_object       *name;   // 名字
     s_sis_pointer_list *sdbs;   // 信息 s_sis_dynamic_db
 }s_sis_disk_sdict;
+//////////////////////////////////////////////////////
+// s_sis_disk_map 
+//////////////////////////////////////////////////////
+typedef struct s_sis_disk_map_unit
+{
+    uint32              idate;  // 日上为年 日下未日期
+    uint32              count;  // 数据个数
+} s_sis_disk_map_unit;
+// map 的索引传递信息 这里的name是原始的
+typedef struct s_sis_disk_map {
+    s_sis_object       *kname;  // 可能多次引用 - 指向dict表的name
+    s_sis_object       *sname;  // 可能多次引用 - 指向dict表的name
+    uint8               active; // 读者数
+    uint8               ktype;  // SIS_SDB_STYLE_SDB SIS_SDB_STYLE_NON ...
+    s_sis_struct_list  *idxs;   // s_sis_disk_map_unit
+}s_sis_disk_map;
 
 //////////////////////////////////////////////////////
 // s_sis_disk_sno sno读取文件控制类
@@ -391,6 +411,8 @@ typedef struct s_sis_disk_ctrl {
     // 读时不用 写时为新增的字典 按增加顺序写入  
 	s_sis_pointer_list  *new_kinfos;   // s_sis_object 
 	s_sis_pointer_list  *new_sinfos;   // s_sis_dynamic_db * 
+    // map 的索引 
+	s_sis_map_list      *map_maps;     // s_sis_disk_map
     // 读写控制器
     s_sis_disk_rcatch   *rcatch;       // 读数据的缓存 
     s_sis_disk_wcatch   *wcatch;       // 写数据的缓存
@@ -515,6 +537,12 @@ int sis_disk_reader_set_sdict(s_sis_map_list *map_sdict_, const char *in_, size_
 s_sis_disk_kdict *sis_disk_map_get_kdict(s_sis_map_list *map_kdict_, const char *kname_);
 s_sis_disk_sdict *sis_disk_map_get_sdict(s_sis_map_list *map_sdict_, const char *sname_);
 
+//** s_sis_disk_map **//
+s_sis_disk_map *sis_disk_map_create(s_sis_object *kname_, s_sis_object *sname_);
+void sis_disk_map_destroy(void *in_);
+
+int sis_disk_map_merge(s_sis_disk_map *agomap_, s_sis_disk_map *newmap_);
+
 ///////////////////////////
 //  sis_disk.io.c
 ///////////////////////////
@@ -632,7 +660,7 @@ int sis_disk_io_sub_sdb(s_sis_disk_ctrl *cls_, void *cb_);
 // 读所有索引信息
 int sis_disk_io_read_sdb_widx(s_sis_disk_ctrl *cls_);
 // 读取map文件信息
-int sis_disk_io_read_sdb_mks(s_sis_disk_ctrl *cls_);
+int sis_disk_io_read_sdb_map(s_sis_disk_ctrl *cls_);
 
 ///////////////////////////
 //  sis_disk.io.sno.c

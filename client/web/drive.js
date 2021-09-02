@@ -4,9 +4,10 @@
 var client = {};
 
 function connect_server() {
-  // client.ws = new WebSocket('ws://192.168.3.118:7329');
-  client.ws = new WebSocket('ws://woan2007.ticp.io:7329');
+  client.ws = new WebSocket('ws://192.168.3.118:7329');
+  // client.ws = new WebSocket('ws://woan2007.ticp.io:7329');
   // client.ws = new WebSocket('ws://192.168.1.202:7329');
+  // client.ws = new WebSocket('ws://localhost:7329');
   console.log('connection ...');
   // client.ws = new WebSocket('ws://localhost:8888');
   // ws.binaryType = 'blob';
@@ -73,7 +74,7 @@ function make_command_packed(sign, input) {
     else
     if (k === 2)
     {
-      cmd += '"val":' + isjson + command[k] + isjson;
+      cmd += '"ask":' + isjson + command[k] + isjson;
     }
     else
     {
@@ -132,15 +133,15 @@ client.ws.onmessage = function (message) {
   
     if (client.wait.commands[sign] !== undefined) {
       let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
-      if (msg.rcmd !== undefined)
+      if (msg.ans !== undefined)
       {
-        if (msg.rval)
+        if (msg.msg)
         {
-          client.wait.replys = msg.rcmd + ':' + msg.rval;
+          client.wait.replys = msg.ans + ':' + msg.msg;
         }
         else
         {
-          client.wait.replys = msg.rcmd;
+          client.wait.replys = msg.ans;
         }
       }
       else

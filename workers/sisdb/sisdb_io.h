@@ -16,9 +16,8 @@
 
 #include "sisdb_collect.h"
 
-// #define SISDB_COM_LAST  "{\"search\":{\"start\":-1,\"count\":1}}"
-
-//  非结构化数据IO
+// 全部返回原始数据 依靠外层转换格式 生成通讯包
+// 非结构化数据IO
 s_sis_sds sisdb_one_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_);
 s_sis_sds sisdb_one_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_);
 int sisdb_one_set(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds argv_);

@@ -25,6 +25,9 @@ typedef struct s_sisdb_server_cxt
 	int                 status;       // 工作状态 0 表示没有初始化 1 表示已经初始化
 	int                 level;        // 等级 默认 0 为最高级 只能 0 --> 1,2,3... 发数据 ||  0 <--> 0 数据是互相备份
 
+	s_sis_sds           work_path;     // 系统相关信息 必须的模块
+	s_sis_sds           init_name;     // 初始化文件名
+
 	s_sis_worker       *work_system;  // 系统相关信息 必须的模块
 	s_sis_map_kint     *user_access;  // 用户权限信息 s_sisdb_userinfo 索引为 cid
 
@@ -50,8 +53,9 @@ typedef struct s_sisdb_server_cxt
 
 bool  sisdb_server_init(void *, void *);
 void  sisdb_server_uninit(void *);
-void  sisdb_server_method_init(void *);
-void  sisdb_server_method_uninit(void *);
+void  sisdb_server_working(void *);
+void  sisdb_server_work_init(void *);
+void  sisdb_server_work_uninit(void *);
 
 int _sisdb_server_stop(s_sisdb_server_cxt *context, int cid);
 int _sisdb_server_load(s_sisdb_server_cxt *context);
@@ -65,8 +69,10 @@ int cmd_sisdb_server_save(void *worker_, void *argv_);
 int cmd_sisdb_server_pack(void *worker_, void *argv_);
 int cmd_sisdb_server_call(void *worker_, void *argv_);
 
-void sisdb_server_sysinfo_save(s_sis_worker *worker);
-int  sisdb_server_sysinfo_load(s_sis_worker *worker);
+void sisdb_server_sysinfo_save(s_sisdb_server_cxt *context);
+int  sisdb_server_sysinfo_load(s_sisdb_server_cxt *context);
+
+int sisdb_server_open(s_sisdb_server_cxt *context, const char *workname, const char *config);
 
 
 #endif

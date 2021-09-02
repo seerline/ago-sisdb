@@ -258,16 +258,25 @@ void _sis_load_work_time(s_sis_worker *worker_, s_sis_json_node *node_)
 /////////////////////////////////
 s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_, s_sis_json_node *node_)
 {
-    if (!node_)
+    if (!name_ || sis_str_substr_nums(name_, sis_strlen(name_), '.') > 1)
     {
+        LOG(3)("workname [%s] cannot '.' !\n", name_ ? name_ : "");  
         return NULL;
     }
+    s_sis_json_node *node = NULL;
+    if (!node_)
+    {
+        node = sis_json_create_object();
+        sis_json_object_add_string(node, "classname", name_, sis_strlen(name_));
+    }
+    else
+    {
+        node = node_;
+    }
+
     s_sis_worker *worker = SIS_MALLOC(s_sis_worker, worker);
-
     worker->father = father_; 
-
     worker->status = SIS_WORK_INIT_NONE;
-
     s_sis_json_node *classname_node = sis_json_cmp_child_node(node_, "classname");
     if (classname_node)
     {
@@ -276,12 +285,6 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     else
     {
         worker->classname = sis_sdsnew(name_);
-    }
-    if (sis_str_substr_nums(name_, sis_strlen(name_), '.') > 1)
-    {
-        LOG(3)("workname [%s] cannot '.' !\n", name_);  
-        sis_worker_destroy(worker);
-        return NULL;
     }
     // 需要遍历前导字符
     worker->workername = _sis_worker_get_workname(worker, name_);
@@ -294,7 +297,8 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     {
         LOG(3)("init worker [%s] error.\n", worker->classname);
         sis_worker_destroy(worker);
-        return NULL;
+        worker = NULL;
+        goto work_exit;
     }
     worker->status |= SIS_WORK_INIT_METHOD;
     // 如果有 working 表示有独立线程需要启动
@@ -311,7 +315,8 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
             {
                 LOG(3)("can't start service_thread\n");
                 sis_worker_destroy(worker);
-                return NULL;
+                worker = NULL;
+                goto work_exit;
             }
         }
     }
@@ -338,7 +343,28 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     LOG(5)("worker [%s] start. workname = %s status: %d sub-workers = %d \n", 
         worker->classname, worker->workername, 
         worker->status, (int)sis_map_pointer_getsize(worker->workers));
+work_exit:
+    if (!node_)
+    {
+        sis_json_delete_node(node_);
+    }
 	return worker;
+}
+
+s_sis_worker *sis_worker_create_of_conf(s_sis_worker *father_, const char *name_, const char *config_)
+{
+    s_sis_worker *worker = NULL;
+    s_sis_conf_handle *handle = sis_conf_load(config_, sis_strlen(config_));
+    if (handle)
+    {
+        worker = sis_worker_create_of_name(father_, name_, handle->node);
+        sis_conf_close(handle);
+    }
+    else
+    {
+        worker = sis_worker_create_of_name(father_, name_, NULL);
+    }
+    return worker;
 }
 s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
 {

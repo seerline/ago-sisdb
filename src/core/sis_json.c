@@ -502,6 +502,10 @@ void sis_json_save(s_sis_json_node *node_, const char *fn_)
 	size_t len;
 	char *buffer = sis_json_output(node_, &len);
 	sis_file_write(fp, buffer, len);
+	if (buffer[len] != '\r')
+	{
+		sis_file_write(fp, "\r", 1);
+	}
 	sis_file_close(fp);
 	sis_free(buffer);
 }

@@ -36,13 +36,35 @@ s_sis_message *sis_message_create()
 
 void sis_message_destroy(s_sis_message *msg_)
 {
-    sis_map_pointer_destroy(msg_->map); 
+    if (msg_->map)
+    {
+        sis_map_pointer_destroy(msg_->map); 
+    }
     sis_net_message_destroy(msg_);
 }
 
+static inline void _sis_message_set(s_sis_message *msg_, const char* key_, s_sis_message_unit *unit)
+{
+    if (!msg_->map)
+    {
+        msg_->map = sis_map_pointer_create_v(_sis_message_unit_free);
+    }
+    sis_map_pointer_set(msg_->map, key_, unit);
+}
+static inline s_sis_message_unit *_sis_message_get(s_sis_message *msg_, const char* key_)
+{
+    if (!msg_->map)
+    {
+        return NULL;
+    }
+    return (s_sis_message_unit *)sis_map_pointer_get(msg_->map, key_);
+}
 void sis_message_del(s_sis_message *msg_, const char *key_)
 {
-    sis_map_pointer_del(msg_->map, key_);
+    if (msg_->map)
+    {
+        sis_map_pointer_del(msg_->map, key_);
+    }
 }
 
 void sis_message_set_int(s_sis_message *msg_, const char* key_, int64 in_)
@@ -50,7 +72,7 @@ void sis_message_set_int(s_sis_message *msg_, const char* key_, int64 in_)
     s_sis_message_unit *unit = SIS_MALLOC(s_sis_message_unit, unit);
     unit->style = SIS_MESSGE_TYPE_INT;
     unit->value = (void *)in_;
-    sis_map_pointer_set(msg_->map, key_, unit);
+    _sis_message_set(msg_, key_, unit);
 }
 void sis_message_set_bool(s_sis_message *msg_, const char* key_, bool in_)
 {
@@ -58,7 +80,7 @@ void sis_message_set_bool(s_sis_message *msg_, const char* key_, bool in_)
     unit->style = SIS_MESSGE_TYPE_BOOL;
     unit->value = NULL;
     if (in_) {unit->value = (void *)1;}
-    sis_map_pointer_set(msg_->map, key_, unit);
+    _sis_message_set(msg_, key_, unit);
 }
 void sis_message_set_double(s_sis_message *msg_, const char* key_, double in_)
 {
@@ -67,14 +89,14 @@ void sis_message_set_double(s_sis_message *msg_, const char* key_, double in_)
     uint64 in;
     memmove(&in, &in_, sizeof(uint64));
     unit->value = (void *)in;
-    sis_map_pointer_set(msg_->map, key_, unit);
+    _sis_message_set(msg_, key_, unit);
 }
 void sis_message_set_str(s_sis_message *msg_, const char* key_, char *in_, size_t ilen_)
 {
     s_sis_message_unit *unit = SIS_MALLOC(s_sis_message_unit, unit);
     unit->style = SIS_MESSGE_TYPE_SDS;
     unit->value = sis_sdsnewlen(in_, ilen_);
-    sis_map_pointer_set(msg_->map, key_, unit);
+    _sis_message_set(msg_, key_, unit);
 }
 
 void sis_message_set_method(s_sis_message *msg_, const char *key_, sis_method_define *method_)
@@ -82,7 +104,7 @@ void sis_message_set_method(s_sis_message *msg_, const char *key_, sis_method_de
     s_sis_message_unit *unit = SIS_MALLOC(s_sis_message_unit, unit);
     unit->style = SIS_MESSGE_TYPE_METHOD;
     unit->value = method_;
-    sis_map_pointer_set(msg_->map, key_, unit);
+    _sis_message_set(msg_, key_, unit);
 }
 
 // 用户自定义结构体 如果 sis_free_define = NULL 默认调用 sis_free
@@ -92,17 +114,17 @@ void sis_message_set(s_sis_message *msg_, const char *key_, void *in_, sis_free_
     unit->style = SIS_MESSGE_TYPE_OWNER;
     unit->value = in_;
     unit->free = free_;
-    sis_map_pointer_set(msg_->map, key_, unit);
+    _sis_message_set(msg_, key_, unit);
 }   
 
 bool sis_message_exist(s_sis_message *msg_, const char *key_)
 {
-    return sis_map_pointer_get(msg_->map, key_) ? true : false;
+    return _sis_message_get(msg_, key_) ? true : false;
 }
 
 int64 sis_message_get_int(s_sis_message *msg_, const char *key_)
 {
-    s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->map, key_);
+    s_sis_message_unit *unit = _sis_message_get(msg_, key_);
     if (unit && unit->style == SIS_MESSGE_TYPE_INT)
     {
         return (int64)unit->value;
@@ -111,7 +133,7 @@ int64 sis_message_get_int(s_sis_message *msg_, const char *key_)
 }
 bool sis_message_get_bool(s_sis_message *msg_, const char *key_)
 {
-    s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->map, key_);
+    s_sis_message_unit *unit = _sis_message_get(msg_, key_);
     if (unit && unit->style == SIS_MESSGE_TYPE_BOOL)
     {
         return unit->value ? true : false;
@@ -120,7 +142,7 @@ bool sis_message_get_bool(s_sis_message *msg_, const char *key_)
 }
 double sis_message_get_double(s_sis_message *msg_, const char *key_)
 {
-    s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->map, key_);
+    s_sis_message_unit *unit = _sis_message_get(msg_, key_);
     if (unit && unit->style == SIS_MESSGE_TYPE_DOUBLE)
     {
         uint64 in = (uint64)unit->value;
@@ -133,7 +155,7 @@ double sis_message_get_double(s_sis_message *msg_, const char *key_)
 
 s_sis_sds sis_message_get_str(s_sis_message *msg_, const char *key_)
 {
-    s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->map, key_);
+    s_sis_message_unit *unit = _sis_message_get(msg_, key_);
     if (unit && unit->style == SIS_MESSGE_TYPE_SDS)
     {
         return (s_sis_sds)unit->value;
@@ -143,7 +165,7 @@ s_sis_sds sis_message_get_str(s_sis_message *msg_, const char *key_)
 
 sis_method_define *sis_message_get_method(s_sis_message *msg_, const char *key_)
 {
-    s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->map, key_);
+    s_sis_message_unit *unit = _sis_message_get(msg_, key_);
     if (unit && unit->style == SIS_MESSGE_TYPE_METHOD)
     {
         return (sis_method_define *)unit->value;
@@ -153,7 +175,7 @@ sis_method_define *sis_message_get_method(s_sis_message *msg_, const char *key_)
 // 用户自定义结构体 如果 sis_free_define = NULL 不释放
 void *sis_message_get(s_sis_message *msg_, const char *key_)
 {
-    s_sis_message_unit *unit = (s_sis_message_unit *)sis_map_pointer_get(msg_->map, key_);
+    s_sis_message_unit *unit = _sis_message_get(msg_, key_);
     if (unit && unit->style == SIS_MESSGE_TYPE_OWNER)
     {
         return unit->value;

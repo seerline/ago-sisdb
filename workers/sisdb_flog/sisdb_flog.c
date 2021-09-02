@@ -15,7 +15,7 @@ struct s_sis_method _sisdb_flog_methods[] = {
     {"unsub",   cmd_sisdb_flog_unsub,  0, NULL}, 
     {"open",    cmd_sisdb_flog_open,    0, NULL},   
     {"write",   cmd_sisdb_flog_write,   0, NULL},  
-    {"stop",    cmd_sisdb_flog_stop,   0, NULL},   
+    {"close",   cmd_sisdb_flog_close,   0, NULL},   
     {"move",    cmd_sisdb_flog_move,    0, NULL},  
 };
 // 共享内存数据库
@@ -48,7 +48,7 @@ bool sisdb_flog_init(void *worker_, void *argv_)
         }
         else
         {
-            context->work_path = sis_sdsnew("data/");
+            context->work_path = sis_sdsnew("data");
         }  
     }
     {
@@ -74,7 +74,7 @@ void sisdb_flog_stop(s_sis_worker *worker)
     }
     if (context->status == SIS_FLOG_WRITE)
     {
-        cmd_sisdb_flog_stop(worker, NULL);
+        cmd_sisdb_flog_close(worker, NULL);
     }
 }
 
@@ -152,13 +152,9 @@ int cmd_sisdb_flog_sub(void *worker_, void *argv_)
             context->work_name = sis_sdsdup(str);
         }
     }
-    if (sis_message_exist(msg, "sub-date"))
+    if (sis_message_exist(msg, "work-date"))
     {
-        context->work_date = sis_message_get_int(msg, "sub-date");
-    }
-    else
-    {
-        context->work_date = sis_time_get_idate(0);
+        context->work_date = sis_message_get_int(msg, "work-date");
     }
     context->cb_source =  sis_message_get(msg, "source");
     context->cb_sub_start =  sis_message_get_method(msg, "cb_sub_start");
@@ -178,7 +174,7 @@ int cmd_sisdb_flog_sub(void *worker_, void *argv_)
 
     LOG(5)("sub log open. [%d]\n", context->work_date);
     sis_disk_reader_sub_log(context->reader, context->work_date);
-    LOG(5)("sub log stop. [%d]\n", context->work_date);
+    LOG(5)("sub log close. [%d]\n", context->work_date);
 
     sis_disk_reader_destroy(context->reader);
     context->reader = NULL;
@@ -231,13 +227,9 @@ int cmd_sisdb_flog_open(void *worker_, void *argv_)
             context->work_name = sis_sdsdup(str);
         }
     }
-    if (sis_message_exist(msg, "sub-date"))
+    if (sis_message_exist(msg, "work-date"))
     {
-        context->work_date = sis_message_get_int(msg, "sub-date");
-    }
-    else
-    {
-        context->work_date = sis_time_get_idate(0);
+        context->work_date = sis_message_get_int(msg, "work-date");
     }
     context->status = SIS_FLOG_WRITE;
     context->writer = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_LOG);
@@ -247,7 +239,7 @@ int cmd_sisdb_flog_open(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_flog_stop(void *worker_, void *argv_)
+int cmd_sisdb_flog_close(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
@@ -287,13 +279,13 @@ int cmd_sisdb_flog_move(void *worker_, void *argv_)
     s_sis_message *msg = (s_sis_message *)argv_;
     if (sis_message_exist(msg, "work-path") &&
         sis_message_exist(msg, "work-name") &&
-        sis_message_exist(msg, "sub-date"))
+        sis_message_exist(msg, "work-date"))
     {
         sis_disk_control_move(
             sis_message_get_str(msg, "work-path"), 
             sis_message_get_str(msg, "work-name"), 
             SIS_DISK_TYPE_LOG, 
-            sis_message_get_int(msg, "sub-date"));
+            sis_message_get_int(msg, "work-date"));
     }
     return SIS_METHOD_OK;
 }

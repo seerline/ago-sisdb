@@ -95,19 +95,20 @@ typedef struct s_sis_net_message {
 	s_sis_map_pointer  *map;       // 
 } s_sis_net_message;
 
-#define SIS_NET_SHOW_MSG(_s_,_n_) { uint16 *sw = (uint16 *)&netmsg->switchs; \
-	if (netmsg->switchs.is_reply) {\
-		printf("%s: [%d] %x : %d %s %s  argvs :%d\n", _s_, netmsg->cid, *sw, \
-			netmsg->rans, netmsg->key ? netmsg->key : "nil",\
-			netmsg->rmsg ? netmsg->rmsg : "nil",\
-			netmsg->argvs ? netmsg->argvs->count : 0);\
+#define SIS_NET_SHOW_MSG(_s_,_n_) { s_sis_net_message *_msg_ = (s_sis_net_message *)_n_; \
+	uint16 *sw = (uint16 *)&_msg_->switchs; \
+	if (_msg_->switchs.is_reply) {\
+		printf("%s: [%d] %x : %d %s %s  argvs :%d\n", _s_, _msg_->cid, *sw, \
+			_msg_->rans, _msg_->key ? _msg_->key : "nil",\
+			_msg_->rmsg ? _msg_->rmsg : "nil",\
+			_msg_->argvs ? _msg_->argvs->count : 0);\
 	} else {\
-		printf("%s: [%d] %x : %s %s %s %s argvs :%d\n", _s_, netmsg->cid, *sw, \
-			netmsg->service ? netmsg->service : "nil",\
-			netmsg->cmd ? netmsg->cmd : "nil",\
-			netmsg->key ? netmsg->key : "nil",\
-			netmsg->ask ? netmsg->ask : "nil",\
-			netmsg->argvs ? netmsg->argvs->count : 0);\
+		printf("%s: [%d] %x : %s %s %s %s argvs :%d\n", _s_, _msg_->cid, *sw, \
+			_msg_->service ? _msg_->service : "nil",\
+			_msg_->cmd ? _msg_->cmd : "nil",\
+			_msg_->key ? _msg_->key : "nil",\
+			_msg_->ask ? _msg_->ask : "nil",\
+			_msg_->argvs ? _msg_->argvs->count : 0);\
 	}}
 
 ////////////////////////////////////////////////////////
@@ -124,7 +125,8 @@ void sis_net_message_decr(void *);
 void sis_net_message_clear(s_sis_net_message *);
 size_t sis_net_message_get_size(s_sis_net_message *);
 
-void sis_net_message_copy(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_);
+// 拷贝需要广播的数据
+void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, s_sis_sds key_);
 
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数
@@ -146,6 +148,8 @@ void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
 
 void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
 void sis_net_ans_with_argvs(s_sis_net_message *, const char *in_, size_t ilen_);
+
+void sis_net_ans_with_object(s_sis_net_message *, void *obj_);
 // 获取数据流
 s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index);
 

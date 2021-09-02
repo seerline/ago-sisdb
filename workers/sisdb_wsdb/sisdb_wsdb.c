@@ -95,7 +95,7 @@ void sisdb_wsdb_uninit(void *worker_)
 //  callback define begin
 ///////////////////////////////////////////
 
-void sisdb_wsdb_open(s_sisdb_wsdb_cxt *context)
+void sisdb_wsdb_start(s_sisdb_wsdb_cxt *context)
 {
     // 老文件如果没有关闭再关闭一次
     sisdb_wsdb_stop(context);
@@ -144,7 +144,7 @@ int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
-    sisdb_wsdb_open(context);
+    sisdb_wsdb_start(context);
     s_sis_message *msg = (s_sis_message *)argv_; 
     {
         s_sis_sds str = sis_message_get_str(msg, "work-keys");
@@ -179,10 +179,10 @@ void sisdb_wsdb_write(s_sisdb_wsdb_cxt *context, int style, s_sis_message *msg)
     _write_wsdb_head(context, 0);
     switch (style)
     {
-    case SIS_SDB_STYLE_NON:
     case SIS_SDB_STYLE_ONE:
     case SIS_SDB_STYLE_MUL:
         break;    
+    case SIS_SDB_STYLE_NON:
     default:
         {
             s_sis_db_chars *chars = sis_message_get(msg, "chars");
@@ -226,7 +226,7 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
     if (context->status == SIS_WSDB_NONE)
     {
         // 打开文件
-        sisdb_wsdb_open(context);
+        sisdb_wsdb_start(context);
         // 写文件
         sisdb_wsdb_write(context, style, msg);
         // 关闭文件
