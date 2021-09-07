@@ -152,6 +152,26 @@ int sis_incrzip_compress_start(s_sis_incrzip_class *s_, int maxsize_, void *sour
     s_->status = SIS_SIC_STATUS_ENCODE;
     return 0;
 }
+int sis_incrzip_compress_addkey(s_sis_incrzip_class *s_, int newnums)
+{
+    // 此函数未经测试 压缩过程中增加代码未测试
+    if (s_->status == SIS_SIC_STATUS_ENCODE)
+    {
+        int newkeys = s_->cur_keys + newnums;
+        uint8 *newmem = (uint8 *)sis_malloc(newkeys * s_->sumdbsize);
+        memmove(newmem, s_->cur_memory, s_->cur_keys * s_->sumdbsize);
+        memset(newmem +  s_->cur_keys * s_->sumdbsize, 0, newnums * s_->sumdbsize);
+        sis_free(s_->cur_memory);
+        s_->cur_memory = newmem;
+        s_->cur_keys = newkeys;
+    }
+    if (s_->status == SIS_SIC_STATUS_INITED)
+    {
+        s_->cur_keys += newnums;
+    }
+    return s_->cur_keys;
+}
+
 // 生成新的数据包
 void _incrzip_compress_next(s_sis_incrzip_class *s_)
 {

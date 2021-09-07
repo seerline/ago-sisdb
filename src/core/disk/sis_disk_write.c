@@ -283,6 +283,8 @@ int sis_disk_writer_net(s_sis_disk_writer *writer_, const char *kname_, const ch
         LOG(8)("new key: %s\n", kname_);
         kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
         sis_disk_ctrl_write_kdict(writer_->munit);
+        // 对于net新增代码后 必须要好好处理key增长的问题
+        sis_incrzip_compress_addkey(writer_->munit->net_incrzip, 1);
     }
     return sis_disk_io_write_net(writer_->munit, kdict, sdict, in_, ilen_);
 }
