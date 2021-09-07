@@ -386,46 +386,31 @@ s_sis_disk_map *sis_disk_map_create(s_sis_object *kname_, s_sis_object *sname_)
     {
         o->sname = sis_object_incr(sname_);
     }
-    o->idxs = sis_struct_list_create(sizeof(s_sis_disk_map_unit));
+    o->sidxs = sis_sort_list_create(sizeof(s_sis_disk_map_unit));
     return o;
 }
 void sis_disk_map_destroy(void *in_)
 {
     s_sis_disk_map *o = (s_sis_disk_map *)in_;
-    sis_struct_list_destroy(o->idxs);
+    sis_sort_list_destroy(o->sidxs);
+    if (o->kname)
+    {
+        sis_object_decr(o->kname);
+    }
+    if (o->sname)
+    {
+        sis_object_decr(o->sname);
+    }
     sis_free(o);  
 }
 
 int sis_disk_map_merge(s_sis_disk_map *agomap_, s_sis_disk_map *newmap_)
 {
-    int i = 0;
-    for (int k = 0; k < newmap_->idxs->count; k++)
+    int count = sis_sort_list_getsize(newmap_->sidxs);
+    for (int k = 0; k < count; k++)
     {
-        s_sis_disk_map_unit *newunit = sis_struct_list_get(newmap_->idxs, k);
-        int flag = 0; // 
-        while(i < agomap_->idxs->count)
-        {
-            s_sis_disk_map_unit *agounit = sis_struct_list_get(agomap_->idxs, i);
-            if (agounit->idate == newunit->idate)
-            {
-                agounit->count = newunit->count;
-                flag = 1;  i++; break;
-            } 
-            else if (agounit->idate > newunit->idate)
-            {
-                sis_struct_list_insert(agomap_->idxs, i, newunit);
-                flag = 2; i++; break;
-            }
-            else
-            {
-                i++;
-            }
-        }
-        if (flag == 0)
-        {
-            sis_struct_list_push(agomap_->idxs, newunit);
-            i++;
-        }
+        s_sis_disk_map_unit *newunit = sis_sort_list_get(newmap_->sidxs, k);
+        sis_sort_list_set(agomap_->sidxs, newunit->idate, newunit);
     } 
     return 0;
 }

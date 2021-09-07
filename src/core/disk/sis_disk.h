@@ -108,9 +108,12 @@ void sis_disk_writer_destroy(void *);
 int sis_disk_writer_open(s_sis_disk_writer *, int idate_);
 // 关闭所有文件 重写索引
 void sis_disk_writer_close(s_sis_disk_writer *);
+
 // 写入键值信息 - 可以多次写 新增的添加到末尾 仅支持 SNO SDB
+// 无论何时 只要有新的键设置 就直接写盘 
 int sis_disk_writer_set_kdict(s_sis_disk_writer *, const char *in_, size_t ilen_);
 // 设置表结构体 - 根据不同的时间尺度设置不同的标记 仅支持 SNO SDB
+// 无论何时 只要有新结构设置 就直接写盘 
 int sis_disk_writer_set_sdict(s_sis_disk_writer *, const char *in_, size_t ilen_);
 
 //////////////////////////////////////////

@@ -1658,7 +1658,7 @@ int snodb_reader_realtime_stop(s_snodb_reader *reader_)
 //         sis_disk_v1_class_destroy(read_class);
 //         return NULL;
 //     }
-//     s_sisdb_table *tb = sis_map_list_get(sisdb_->sdbs, sname);
+//     s_sis_dynamic_db *tb = sis_map_list_get(sisdb_->sdbs, sname);
 
 //     s_sis_disk_v1_reader *reader = sis_disk_v1_reader_create(NULL);
 //     // reader->issub = 0;

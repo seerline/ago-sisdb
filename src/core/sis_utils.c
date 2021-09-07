@@ -217,7 +217,7 @@ s_sis_json_node *sis_sdb_get_fields_of_json(s_sis_dynamic_db *sdb_, s_sis_string
 	for (int i = 0; i < count; i++)
 	{
 		const char *key = sis_string_list_get(fields_, i);
-		s_sisdb_field *fu = sis_dynamic_db_get_field(sdb_, NULL, (char *)key);
+		s_sis_dynamic_field *fu = sis_dynamic_db_get_field(sdb_, NULL, (char *)key);
 		if(!fu) continue;
 		if (fu->count > 1)
 		{
@@ -249,7 +249,7 @@ s_sis_sds sis_sdb_get_fields_of_csv(s_sis_dynamic_db *db_, s_sis_string_list *fi
 	for (int i = 0; i < count; i++)
 	{
 		const char *key = sis_string_list_get(fields_, i);
-		s_sisdb_field *fu = sis_dynamic_db_get_field(db_, NULL, (char *)key);
+		s_sis_dynamic_field *fu = sis_dynamic_db_get_field(db_, NULL, (char *)key);
 		if(!fu) continue;
 		if (fu->count > 1)
 		{
@@ -282,7 +282,7 @@ s_sis_sds sisdb_sdb_struct_to_sds(s_sis_dynamic_db *db_, const char *in_, size_t
 		for (int i = 0; i < sis_string_list_getsize(fields_); i++)
 		{
 			int index = 0;
-			s_sisdb_field *fu = sis_dynamic_db_get_field(db_, &index, sis_string_list_get(fields_, i));
+			s_sis_dynamic_field *fu = sis_dynamic_db_get_field(db_, &index, sis_string_list_get(fields_, i));
 			if (!fu)
 			{
 				continue;
@@ -366,8 +366,9 @@ s_sis_sds sis_sdb_fields_to_array_sds(s_sis_dynamic_db *db_, void *in_, size_t i
 		sis_json_array_add_node(jone, jval);
 		val += db_->size;
 	}
-	s_sis_sds o = sis_json_to_sds(jone, zip_);
+	s_sis_sds o = sis_json_to_sds(jone, iszip_);
 	sis_json_delete_node(jone);		
+	return o;
 }
 
 s_sis_sds sis_sdb_fields_to_json_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_, const char *key_, s_sis_string_list *fields_, bool isfields_, bool iszip_)
@@ -416,14 +417,14 @@ s_sis_sds sis_sdb_fields_to_json_sds(s_sis_dynamic_db *db_, void *in_, size_t il
 	}
 	sis_json_object_add_node(jone, key_? key_ : "datas", jtwo);
 
-	s_sis_sds o = sis_json_to_sds(jone, zip_);
+	s_sis_sds o = sis_json_to_sds(jone, iszip_);
 
 	sis_json_delete_node(jone);	
 	return o;	
 }
 
 
-s_sis_sds sisdb_array_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
+s_sis_sds sis_array_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
 {
 	s_sis_json_handle *handle = sis_json_load(in_, sis_sdslen(in_));
 	if (!handle)
@@ -483,7 +484,7 @@ s_sis_sds sisdb_array_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_)
 	return o;	
 }
 
-s_sis_sds sisdb_json_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_, s_sis_sds ago_)
+s_sis_sds sis_json_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_, s_sis_sds ago_)
 {
 	s_sis_json_handle *handle = sis_json_load(in_, sis_sdslen(in_));
 	if (!handle)

@@ -4,410 +4,233 @@
 
 #include "sisdb_io.h"
 #include "sis_net.msg.h"
-#include "sisdb_collect.h"
 
-s_sis_sds sisdb_one_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)
+s_sis_sds sisdb_io_show_sds(s_sisdb_cxt *sisdb_)
 {
-    s_sis_sds o = NULL;
-    s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->work_keys, key_);
-    if (collect && collect->obj )
+    s_sisdb_fmap_cxt *cxt = sisdb_->work_famp_cxt;
+    int count = sis_map_list_getsize(cxt->work_sdbs);
+    if (count < 1)
     {
-        *format_ = collect->style == SISDB_COLLECT_TYPE_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
-        o = sis_sdsdup(SIS_OBJ_SDS(collect->obj));
+        return NULL;
     }
-    return o;
-}
-
-// 多单键取值只处理字符串 非字符串不处理
-s_sis_sds sisdb_one_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
-{
     s_sis_json_node *jone = sis_json_create_object();
-    if (!sis_strcasecmp(keys_, "*"))
+    s_sis_json_node *jdbs = sis_json_create_object();
+    for (int i = 0; i < count; i++)
     {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (collect->style == SISDB_COLLECT_TYPE_CHARS)
-            {
-                sis_json_object_add_string(jone, sis_dict_getkey(de), SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-            }
-        }
-        sis_dict_iter_free(di);
+        s_sis_dynamic_db *table = sis_map_list_geti(cxt->work_sdbs, i);
+		sis_json_object_add_node(jdbs, table->name, sis_sdbinfo_to_json(table));
     }
-    else
-    {
-        s_sis_string_list *klist = sis_string_list_create();
-        sis_string_list_load(klist, keys_, sis_strlen(keys_), ",");
-
-        int count = sis_string_list_getsize(klist);
-        for (int i = 0; i < count; i++)
-        {
-            const char *key = sis_string_list_get(klist, i);
-            s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->work_keys, key);
-            if (collect && collect->style == SISDB_COLLECT_TYPE_CHARS)
-            {
-                sis_json_object_add_string(jone, key, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-            }
-        }
-        sis_string_list_destroy(klist);
-    }
-    s_sis_sds o = sis_json_to_sds(jone, false);
-    sis_json_delete_node(jone);
-    return o;
+    sis_json_object_add_node(jone, cxt->work_name, jdbs);
+    s_sis_sds o = sis_json_to_sds(jone, 1);
+	sis_json_delete_node(jone);
+	return o;    
 }
 
-int sisdb_one_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
+int sisdb_io_create(s_sisdb_cxt *sisdb_, const char *sname_, s_sis_json_node *node_)
 {
-    s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->work_keys, key_);
-    if (collect && collect->style != SISDB_COLLECT_TYPE_TABLE)
+    s_sis_dynamic_db *newdb = sis_dynamic_db_create(node_);
+    if (newdb)
     {
-        sis_map_pointer_del(sisdb_->work_keys, key_);
-        return 1;
+        sis_dynamic_db_setname(newdb, sname_);
+
+        int o = sisdb_fmap_cxt_setdb(sisdb_->work_famp_cxt, newdb);
+
+        sis_dynamic_db_destroy(newdb);
+        return o;  
+    }
+    return -1;
+}
+
+static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_json_node *node_)
+{
+    cmd_->cmpmode = SISDB_FMAP_CMP_RANGE;
+    cmd_->start = 0;
+    cmd_->stop = 0;
+    cmd_->offset = 0;
+    cmd_->count = 1;
+    cmd_->key = key_;
+    if (!node_)
+    {
+        return -1;
+    }
+    s_sis_json_node *range = sis_json_cmp_child_node(node_, "range");
+    if (range)
+    {
+        if (sis_json_cmp_child_node(range, "start"))
+        {
+            cmd_->start = sis_json_get_int(range, "start", 0);;
+        }
+        else
+        {
+            return -2;
+        }
+        cmd_->stop = sis_json_get_int(range, "stop", -1);;
+    }
+    else 
+    {
+        s_sis_json_node *same = sis_json_cmp_child_node(node_, "same");
+        if (same)
+        {
+            if (sis_json_cmp_child_node(same, "start"))
+            {
+                cmd_->start = sis_json_get_int(same, "start", 0);;
+            }
+            else
+            {
+                return -3;
+            }
+        }
     }
     return 0;
 }
-int sisdb_one_dels(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
+// 返回NULL表示全部字段
+static s_sis_string_list *_read_fields( s_sis_json_node *node_)
 {
-    int o = 0;
-    if (!sis_strcasecmp(keys_, "*"))
+	if (!sis_json_cmp_child_node(node_, "fields"))
+	{
+		return NULL;
+	}
+    const char *fields = sis_json_get_str(node_, "fields");
+    if (!sis_strncmp(fields, "*", 1))
     {
-        // sis_map_pointer_clear(sisdb_->work_keys);
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
-            {
-                sis_map_pointer_del(sisdb_->work_keys, sis_dict_getkey(de));
-                o++;
-            }
-        }
-        sis_dict_iter_free(di);
+        return NULL;
     }
-    else
-    {
-        s_sis_string_list *klist = sis_string_list_create();
-        sis_string_list_load(klist, keys_, sis_strlen(keys_), ",");
-
-        int count = sis_string_list_getsize(klist);
-        for (int i = 0; i < count; i++)
-        {
-            sis_map_pointer_del(sisdb_->work_keys, sis_string_list_get(klist, i));
-            o++;
-        }
-        sis_string_list_destroy(klist);
-    }
-    return o;
+    s_sis_string_list *flist = sis_string_list_create();
+    sis_string_list_load(flist, fields, sis_strlen(fields), ",");
+    return flist;
 }
-
-int sisdb_one_set(s_sisdb_cxt *sisdb_, const char *key_, uint8 style_, s_sis_sds argv_)
-{
-    s_sisdb_collect *collect = sisdb_kv_create(style_, key_, argv_, sis_sdslen(argv_));
-    sis_map_pointer_set(sisdb_->work_keys, key_, collect);
-    return 0;
-}
-
-//////////////////////////
-// 设置标准的 sdb
-/////////////////////////
-
 
 // 为保证最快速度，尽量不加参数
 // 默认返回最后不超过 64K 的数据，以json格式
-s_sis_sds sisdb_get_sds(s_sisdb_cxt *sisdb_, const char *key_, uint16 *format_, s_sis_sds argv_)
+s_sis_sds sisdb_io_get_sds(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
 {
-    s_sis_sds o = NULL;    
-    s_sisdb_collect *collect = sisdb_get_collect(sisdb_, key_);  
-    if (collect)
+    s_sisdb_fmap_cmd cmd = {0};
+    _init_cmd_from_get(&cmd, key_, node_);  // 获取参数
+
+    if (sisdb_fmap_cxt_read(sisdb_->work_famp_cxt, &cmd) < 0)
     {
-        if (!argv_)
-        {
-            *format_ = SISDB_FORMAT_CHARS;
-            o = sisdb_collect_fastget_sds(collect, key_, SISDB_FORMAT_CHARS);
-        }
-        else
-        {
-	        s_sis_json_handle *handle = sis_json_load(argv_, sis_sdslen(argv_));
-            if (handle)
-            {
-                int iformat = sis_db_get_format_from_node(handle->node, SISDB_FORMAT_JSON);
-                *format_ = iformat & SISDB_FORMAT_CHARS ? SISDB_FORMAT_CHARS : SISDB_FORMAT_BYTES;
-                o = sisdb_collect_get_sds(collect, key_, iformat, handle->node);           
-                sis_json_close(handle);
-            }
-            else
-            {
-                *format_ = SISDB_FORMAT_CHARS;
-                o = sisdb_collect_fastget_sds(collect, key_, SISDB_FORMAT_CHARS);
-            }
-            
-        } 
+        return NULL;
+    };
+    if (cmd.ktype == SISDB_FMAP_TYPE_MUL)
+    {
+        // 暂时不处理
+        return NULL;
     }
+    if (cmd.ktype == SISDB_FMAP_TYPE_ONE)
+    {
+        return sis_sdsnewlen(cmd.imem, cmd.isize); 
+    }
+    s_sis_string_list *fields = _read_fields(node_);
+
+    if (!fields)
+    {
+        return sis_sdsnewlen(cmd.imem, cmd.isize); 
+    }
+    s_sis_sds o = sisdb_sdb_struct_to_sds(cmd.unit->sdb, cmd.imem, cmd.isize, fields);
+    sis_string_list_destroy(fields);
     return o;
 }
 
-int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char *keys_, const char *sdbs_)
+s_sis_sds sisdb_io_get_chars_sds(s_sisdb_cxt *sisdb_, const char *key_, int rfmt_, s_sis_json_node *node_)
 {
-    sis_string_list_clear(list_);
-    if (!sis_strcasecmp(sdbs_, "*") && !sis_strcasecmp(keys_, "*"))
+    s_sisdb_fmap_cmd cmd = {0};
+    _init_cmd_from_get(&cmd, key_, node_);  // 获取参数
+
+    if (sisdb_fmap_cxt_read(sisdb_->work_famp_cxt, &cmd) < 0)
     {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            sis_string_list_push(list_, sis_dict_getkey(de), sis_strlen(sis_dict_getkey(de)));
-        }
-        sis_dict_iter_free(di);
-        return sis_string_list_getsize(list_);
+        return NULL;
+    };
+    if (cmd.ktype == SISDB_FMAP_TYPE_MUL)
+    {
+        // 暂时不处理
+        return NULL;
     }
-    
-    if (!sis_strcasecmp(keys_, "*"))
+    if (cmd.ktype == SISDB_FMAP_TYPE_ONE)
     {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (collect->style == SISDB_COLLECT_TYPE_TABLE && 
-                sis_str_subcmp_strict(collect->sdb->name,  sdbs_, ',') >= 0)
-            {
-                sis_string_list_push(list_, sis_dict_getkey(de), sis_strlen(sis_dict_getkey(de)));
-            }
-        }
-        sis_dict_iter_free(di);
+        return sis_sdsnewlen(cmd.imem, cmd.isize); 
+    }
+    s_sis_sds o = NULL;
+    s_sis_string_list *fields = _read_fields(node_);
+
+    if (!fields)
+    {
+		switch (rfmt_)
+		{
+		case SISDB_FORMAT_JSON:
+			o = sis_sdb_to_array_sds(cmd.unit->sdb, key_, cmd.imem, cmd.isize); 
+			break;
+		case SISDB_FORMAT_ARRAY:
+			o = sis_sdb_to_array_sds(cmd.unit->sdb, key_, cmd.imem, cmd.isize); 
+			break;
+		case SISDB_FORMAT_CSV:
+			o = sis_sdb_to_csv_sds(cmd.unit->sdb, cmd.imem, cmd.isize); 
+			break;
+		}		
     }
     else
     {
-        s_sis_string_list *slists = sis_string_list_create();
-        if (!sis_strcasecmp(sdbs_, "*"))
-        {
-            int count = sis_map_list_getsize(sisdb_->work_sdbs);
-            for (int i = 0; i < count; i++)
-            {
-                s_sisdb_table *table = sis_map_list_geti(sisdb_->work_sdbs, i);
-                sis_string_list_push(slists, table->name, sis_sdslen(table->name));
-            }  
-        }
-        else
-        {
-            sis_string_list_load(slists, sdbs_, sis_strlen(sdbs_), ",");  
-        }
-
-        s_sis_string_list *klists = sis_string_list_create();
-        sis_string_list_load(klists, keys_, sis_strlen(keys_), ",");  
-        int kcount = sis_string_list_getsize(klists);
-        int scount = sis_string_list_getsize(slists);
-        char key[128];
-        for (int k = 0; k < kcount; k++)
-        {
-            for (int i = 0; i < scount; i++)
-            {
-                sis_sprintf(key, 128, "%s.%s", sis_string_list_get(klists, k), sis_string_list_get(slists, i));
-                sis_string_list_push(list_, key, sis_strlen(key));
-            }         
-        }
-        sis_string_list_destroy(klists);
-        sis_string_list_destroy(slists);
+		switch (rfmt_)
+		{
+		case SISDB_FORMAT_JSON:
+			o = sis_sdb_fields_to_json_sds(cmd.unit->sdb, cmd.imem, cmd.isize, key_, fields, true, true);
+			break;
+		case SISDB_FORMAT_ARRAY:
+			o = sis_sdb_fields_to_array_sds(cmd.unit->sdb, cmd.imem, cmd.isize, fields, true);
+			break;
+		case SISDB_FORMAT_CSV:
+			o = sis_sdb_fields_to_csv_sds(cmd.unit->sdb, cmd.imem, cmd.isize, fields, true);
+			break;
+		}
+		sis_string_list_destroy(fields);     
     }
-    return sis_string_list_getsize(list_);
+    return o;    
 }
 
-// 多键取值只返回字符串 并且只返回最后一条记录
-s_sis_sds sisdb_gets_sds(s_sisdb_cxt *sisdb_, const char *keys_,const  char *sdbs_, s_sis_sds argv_)
+static int _init_cmd_from_set(s_sisdb_fmap_cmd *cmd_, const char *key_, s_sis_sds ask_)
 {
-    s_sis_string_list *collects = sis_string_list_create();
+    cmd_->cmpmode = SISDB_FMAP_CMP_SAME;
+    // cmd_->start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
+    // cmd_->start = 0;
+    // cmd_->stop = 0;
+    // cmd_->offset = 0;
+    // cmd_->count = 1;
+    // if (!node_)
+    // {
+    //     return -1;
+    // }
 
-    int count = _sisdb_get_filter(sisdb_, collects, keys_, sdbs_);
+    return 0;
+}
+// 返回修改成功的数量
+int sisdb_io_update(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds imem_)
+{
+    s_sisdb_fmap_cmd cmd = {0};
+    _init_cmd_from_set(&cmd, key_, imem_);  // 获取参数
 
-    s_sis_json_handle *handle = NULL;
-    if (argv_)
-    {
-        handle = sis_json_load(argv_, sis_sdslen(argv_));
-    } 
+    int  o = sisdb_fmap_cxt_update(sisdb_->work_famp_cxt, &cmd);
     
-    s_sis_json_node *jone = sis_json_create_object();
-    for (int i = 0; i < count; i++)
-    {
-        const char *key = sis_string_list_get(collects, i);
-        s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->work_keys, key);
-        if (collect)
-        {
-            s_sis_json_node *jval = sisdb_collects_get_last_node(collect, handle ? handle->node : NULL);
-            if (jval)
-            {
-                sis_json_object_add_node(jone, key, jval);
-            }
-        }
-    }
-    sis_string_list_destroy(collects);
-    if (handle)
-    {
-        sis_json_close(handle);
-    }
-
-    s_sis_sds o = sis_json_to_sds(jone, true);
-    sis_json_delete_node(jone);
     return o;
 }
-
-// 只获取单键数值
-s_sis_sds sisdb_one_keys_sds(s_sisdb_cxt *sisdb_, const char *keys_)
+int sisdb_io_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds vmem_)
 {
-    s_sis_sds o = NULL;
-    s_sis_dict_entry *de;
-    s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
-    while ((de = sis_dict_next(di)) != NULL)
-    {
-        s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-        if (collect->style != SISDB_COLLECT_TYPE_TABLE)
-        {
-            if (!o)
-            {
-                o = sis_sdsnew(sis_dict_getkey(de));
-            }
-            else
-            {
-                o = sis_sdscatfmt(o, ",%s", sis_dict_getkey(de));
-            }
-        }
-    }
-    sis_dict_iter_free(di);
-    return o;
-}
-s_sis_sds sisdb_keys_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_sds argv_)
-{
-    s_sis_map_int *keys = sis_map_int_create();
-
-    {
-        char kname[128], sname[128]; 
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            // printf("%s\n", (char *)sis_dict_getkey(de));
-            if (collect->style == SISDB_COLLECT_TYPE_TABLE)
-            {
-                int cmds = sis_str_divide(sis_dict_getkey(de), '.', kname, sname);
-                if (cmds == 2)
-                {
-                    if (sis_map_int_get(keys, kname) == -1)
-                    {
-                        sis_map_int_set(keys, kname, 1);
-                    }
-                }
-            }
-        }
-        sis_dict_iter_free(di);
-    }
-    s_sis_sds o = NULL;
-    {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            if (!o)
-            {
-                o = sis_sdsnew(sis_dict_getkey(de));
-            }
-            else
-            {
-                o = sis_sdscatfmt(o, ",%s", sis_dict_getkey(de));
-            }
-        }
-        sis_dict_iter_free(di);
-    }
-    sis_map_int_destroy(keys);
-
-    return o;
-}
-// 必须带参数 否则不执行删除操作
-int sisdb_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
-{
-    // printf("sisdb_del : %s, %s\n",key_, argv_);
-    s_sisdb_collect *collect = sisdb_get_collect(sisdb_, key_);  
-    if (!collect || !argv_)
+    if(!vmem_ || sis_sdslen(vmem_) < 1 || (vmem_[0] != '{' && vmem_[0] != '['))
     {
         return -1;
     }
-    s_sis_json_handle *handle = sis_json_load(argv_, sis_sdslen(argv_));
-    if (!handle)
+    s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(sisdb_->work_famp_cxt, key_);
+    if (!unit)
     {
-        return -2;
-    }
-    // 返回剩余的记录个数
-    sisdb_collect_delete(collect, handle->node);
-    sis_json_close(handle);
-    if (SIS_OBJ_LIST(collect->obj)->count == 0)
-    {
-        // 没有数据 就直接删除key
-        sis_map_pointer_del(sisdb_->work_keys, key_);
-    }
-    return 0;
-}
-int sisdb_dels(s_sisdb_cxt *sisdb_, const char *keys_, const char *sdbs_, s_sis_sds argv_)
-{
-    s_sis_string_list *collects = sis_string_list_create();
-    int count = _sisdb_get_filter(sisdb_, collects, keys_, sdbs_);
-    for (int i = 0; i < count; i++)
-    {
-        sisdb_del(sisdb_, sis_string_list_get(collects, i), argv_);
-    }
-    sis_string_list_destroy(collects);
-    return 0;    
-}
-
-int sisdb_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
-{
-    if(!value_ || sis_sdslen(value_) < 1)
-    {
-        return -1;
-    }
-    s_sisdb_collect *collect = sisdb_get_collect(sisdb_, key_);
-    if (!collect)
-    {
-        collect = sisdb_collect_create(sisdb_, key_);
-        if (!collect)
-        {
-            return -2;
-        }    
-    }
-    if (sisdb_collect_update(collect, value_) <= 0)
-    {
-        return -5;
-    }
-
-    return 0;
-}
-
-int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
-{
-    if(!value_ || sis_sdslen(value_) < 1 || (value_[0] != '{' && value_[0] != '['))
-    {
-        return -1;
-    }
-    // 数据转为 二进制后
-    s_sisdb_collect *collect = sisdb_get_collect(sisdb_, key_);
-    if (!collect)
-    {
-        collect = sisdb_collect_create(sisdb_, key_);
-        if (!collect)
-        {
-            return -2;
-        }    
+        unit = sisdb_fmap_cxt_new(sisdb_->work_famp_cxt, key_, SISDB_FMAP_TYPE_SDB);  
     }
     // 到这里已经有了collect
     s_sis_sds bytes = NULL;
-    if (value_[0] == '{')
+    if (vmem_[0] == '{')
     {
-        bytes = sisdb_collect_json_to_struct_sds(collect, value_);
+        bytes = sis_json_to_struct_sds(unit->sdb, vmem_, NULL);
     }
-    if (value_[0] == '[')
+    if (vmem_[0] == '[')
     {
-        bytes = sisdb_collect_array_to_struct_sds(collect, value_);
+        bytes = sis_array_to_struct_sds(unit->sdb, vmem_);
     }
     if (!bytes)
     {
@@ -415,13 +238,371 @@ int sisdb_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds value_)
     }
     // printf("%p\n",bytes);
     // sis_out_binary("bytes:",  bytes, sis_sdslen(bytes));
-
-    if (sisdb_collect_update(collect, bytes) <= 0)
-    {
-        return -5;
-    }
+    int o = sisdb_io_update(sisdb_, key_, bytes);
 
     sis_sdsfree(bytes);
+
+    return o;
+}
+
+int sisdb_io_set_one_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv_)
+{
+    // 单键值 暂时不支持
     return 0;
+}
+
+
+int sisdb_io_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_pointer_list *vlist_)
+{
+    if(!vlist_ || vlist_->count < 1)
+    {
+        return -1;
+    }
+    s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(sisdb_->work_famp_cxt, key_);
+    if (!unit)
+    {
+        unit = sisdb_fmap_cxt_new(sisdb_->work_famp_cxt, key_, SISDB_FMAP_TYPE_SDB);  
+    }
+
+    int o = 0;
+    for (int i = 0; i < vlist_->count; i++)
+    {
+        s_sis_sds str = sis_pointer_list_get(vlist_, i);
+        o += sisdb_io_update(sisdb_, key_, str);
+    }
+    return o;
+}
+
+int sisdb_io_set_one_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_pointer_list *vlist_)
+{
+    // 单键值 暂时不支持
+    return 0;
+}
+
+// 必须带参数 否则不执行删除操作
+int sisdb_io_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
+{
+    s_sisdb_fmap_cmd cmd = {0};
+    
+    if (!node_)
+    {
+        return 0;
+    }
+    cmd.cmpmode = SISDB_FMAP_CMP_SAME;
+    s_sis_json_node *range = sis_json_cmp_child_node(node_, "range");
+    if (range)
+    {
+        cmd.cmpmode = SISDB_FMAP_CMP_RANGE;
+        if (sis_json_cmp_child_node(range, "start"))
+        {
+            cmd.start = sis_json_get_int(range, "start", 0);;
+        }
+        else
+        {
+            return 0;
+        }
+        cmd.stop = sis_json_get_int(range, "stop", cmd.start);
+    }
+    else 
+    {
+        s_sis_json_node *same = sis_json_cmp_child_node(node_, "same");
+        if (same)
+        {
+            if (sis_json_cmp_child_node(same, "start"))
+            {
+                cmd.start = sis_json_get_int(same, "start", 0);;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }    
+    cmd.key = key_;
+
+    return sisdb_fmap_cxt_del(sisdb_->work_famp_cxt, &cmd);
+
+}
+int sisdb_io_del_one(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
+{
+    // 单键值 暂时不支持
+    return 0;
+}
+
+int sisdb_io_drop(s_sisdb_cxt *sisdb_, const char *sname_)
+{
+    s_sis_dynamic_db *curdb = sisdb_fmap_cxt_getdb(sisdb_->work_famp_cxt, sname_);
+    if (!curdb)
+    {
+        return -2;
+    }
+    // 暂时不支持
+    return -1;
+}
+
+// 多单键取值只处理字符串 非字符串不处理
+s_sis_sds sisdb_io_gets_one_sds(s_sisdb_cxt *sisdb_, const char *keys_)
+{
+    // s_sis_json_node *jone = sis_json_create_object();
+    // if (!sis_strcasecmp(keys_, "*"))
+    // {
+    //     s_sis_dict_entry *de;
+    //     s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_famp_cxt->work_keys);
+    //     while ((de = sis_dict_next(di)) != NULL)
+    //     {
+    //         s_sisdb_fmap_unit *unit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
+    //         if (unit->ktype == SISDB_FMAP_TYPE_ONE)
+    //         {
+    //             sis_json_object_add_string(jone, sis_dict_getkey(de), SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+    //         }
+    //     }
+    //     sis_dict_iter_free(di);
+    // }
+    // else
+    // {
+    //     s_sis_string_list *klist = sis_string_list_create();
+    //     sis_string_list_load(klist, keys_, sis_strlen(keys_), ",");
+
+    //     int count = sis_string_list_getsize(klist);
+    //     for (int i = 0; i < count; i++)
+    //     {
+    //         const char *key = sis_string_list_get(klist, i);
+    //         s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->work_keys, key);
+    //         if (collect && collect->style == SISDB_COLLECT_TYPE_CHARS)
+    //         {
+    //             sis_json_object_add_string(jone, key, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+    //         }
+    //     }
+    //     sis_string_list_destroy(klist);
+    // }
+    // s_sis_sds o = sis_json_to_sds(jone, false);
+    // sis_json_delete_node(jone);
+    // return o;
+    return NULL;
+}
+
+
+// int _sisdb_get_filter(s_sisdb_cxt *sisdb_, s_sis_string_list *list_, const char *keys_, const char *sdbs_)
+// {
+//     sis_string_list_clear(list_);
+//     if (!sis_strcasecmp(sdbs_, "*") && !sis_strcasecmp(keys_, "*"))
+//     {
+//         s_sis_dict_entry *de;
+//         s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
+//         while ((de = sis_dict_next(di)) != NULL)
+//         {
+//             sis_string_list_push(list_, sis_dict_getkey(de), sis_strlen(sis_dict_getkey(de)));
+//         }
+//         sis_dict_iter_free(di);
+//         return sis_string_list_getsize(list_);
+//     }
+    
+//     if (!sis_strcasecmp(keys_, "*"))
+//     {
+//         s_sis_dict_entry *de;
+//         s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
+//         while ((de = sis_dict_next(di)) != NULL)
+//         {
+//             s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+//             if (collect->style == SISDB_COLLECT_TYPE_TABLE && 
+//                 sis_str_subcmp_strict(collect->sdb->name,  sdbs_, ',') >= 0)
+//             {
+//                 sis_string_list_push(list_, sis_dict_getkey(de), sis_strlen(sis_dict_getkey(de)));
+//             }
+//         }
+//         sis_dict_iter_free(di);
+//     }
+//     else
+//     {
+//         s_sis_string_list *slists = sis_string_list_create();
+//         if (!sis_strcasecmp(sdbs_, "*"))
+//         {
+//             int count = sis_map_list_getsize(sisdb_->work_sdbs);
+//             for (int i = 0; i < count; i++)
+//             {
+//                 s_sis_dynamic_db *table = sis_map_list_geti(sisdb_->work_sdbs, i);
+//                 sis_string_list_push(slists, table->name, sis_sdslen(table->name));
+//             }  
+//         }
+//         else
+//         {
+//             sis_string_list_load(slists, sdbs_, sis_strlen(sdbs_), ",");  
+//         }
+
+//         s_sis_string_list *klists = sis_string_list_create();
+//         sis_string_list_load(klists, keys_, sis_strlen(keys_), ",");  
+//         int kcount = sis_string_list_getsize(klists);
+//         int scount = sis_string_list_getsize(slists);
+//         char key[128];
+//         for (int k = 0; k < kcount; k++)
+//         {
+//             for (int i = 0; i < scount; i++)
+//             {
+//                 sis_sprintf(key, 128, "%s.%s", sis_string_list_get(klists, k), sis_string_list_get(slists, i));
+//                 sis_string_list_push(list_, key, sis_strlen(key));
+//             }         
+//         }
+//         sis_string_list_destroy(klists);
+//         sis_string_list_destroy(slists);
+//     }
+//     return sis_string_list_getsize(list_);
+// }
+
+// 多键取值只返回字符串 并且只返回最后一条记录
+s_sis_sds sisdb_io_gets_sds(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
+{
+    // s_sis_string_list *collects = sis_string_list_create();
+
+    // int count = _sisdb_get_filter(sisdb_, collects, keys_, sdbs_);
+
+    // s_sis_json_handle *handle = NULL;
+    // if (argv_)
+    // {
+    //     handle = sis_json_load(argv_, sis_sdslen(argv_));
+    // } 
+    
+    // s_sis_json_node *jone = sis_json_create_object();
+    // for (int i = 0; i < count; i++)
+    // {
+    //     const char *key = sis_string_list_get(collects, i);
+    //     s_sisdb_collect *collect = sis_map_pointer_get(sisdb_->work_keys, key);
+    //     if (collect)
+    //     {
+    //         s_sis_json_node *jval = sisdb_collects_get_last_node(collect, handle ? handle->node : NULL);
+    //         if (jval)
+    //         {
+    //             sis_json_object_add_node(jone, key, jval);
+    //         }
+    //     }
+    // }
+    // sis_string_list_destroy(collects);
+    // if (handle)
+    // {
+    //     sis_json_close(handle);
+    // }
+
+    // s_sis_sds o = sis_json_to_sds(jone, true);
+    // sis_json_delete_node(jone);
+    // return o;
+    return NULL;
+}
+
+// 只获取单键数值
+s_sis_sds sisdb_io_keys_one_sds(s_sisdb_cxt *sisdb_, const char *keys_)
+{
+    s_sis_sds o = NULL;
+    // s_sis_dict_entry *de;
+    // s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
+    // while ((de = sis_dict_next(di)) != NULL)
+    // {
+    //     s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+    //     if (collect->style != SISDB_COLLECT_TYPE_TABLE)
+    //     {
+    //         if (!o)
+    //         {
+    //             o = sis_sdsnew(sis_dict_getkey(de));
+    //         }
+    //         else
+    //         {
+    //             o = sis_sdscatfmt(o, ",%s", sis_dict_getkey(de));
+    //         }
+    //     }
+    // }
+    // sis_dict_iter_free(di);
+    return o;
+}
+s_sis_sds sisdb_io_keys_sds(s_sisdb_cxt *sisdb_, const char *keys_, s_sis_json_node *node_)
+{
+    s_sis_sds o = NULL;
+    // s_sis_map_int *keys = sis_map_int_create();
+    // {
+    //     char kname[128], sname[128]; 
+    //     s_sis_dict_entry *de;
+    //     s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
+    //     while ((de = sis_dict_next(di)) != NULL)
+    //     {
+    //         s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+    //         // printf("%s\n", (char *)sis_dict_getkey(de));
+    //         if (collect->style == SISDB_COLLECT_TYPE_TABLE)
+    //         {
+    //             int cmds = sis_str_divide(sis_dict_getkey(de), '.', kname, sname);
+    //             if (cmds == 2)
+    //             {
+    //                 if (sis_map_int_get(keys, kname) == -1)
+    //                 {
+    //                     sis_map_int_set(keys, kname, 1);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     sis_dict_iter_free(di);
+    // }
+    // {
+    //     s_sis_dict_entry *de;
+    //     s_sis_dict_iter *di = sis_dict_get_iter(keys);
+    //     while ((de = sis_dict_next(di)) != NULL)
+    //     {
+    //         if (!o)
+    //         {
+    //             o = sis_sdsnew(sis_dict_getkey(de));
+    //         }
+    //         else
+    //         {
+    //             o = sis_sdscatfmt(o, ",%s", sis_dict_getkey(de));
+    //         }
+    //     }
+    //     sis_dict_iter_free(di);
+    // }
+    // sis_map_int_destroy(keys);
+
+    return o;
+}
+
+
+int sisdb_io_dels_one(s_sisdb_cxt *sisdb_, const char *key_)
+{
+    int o = 0;
+    // if (!sis_strcasecmp(keys_, "*"))
+    // {
+    //     // sis_map_pointer_clear(sisdb_->work_keys);
+    //     s_sis_dict_entry *de;
+    //     s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_keys);
+    //     while ((de = sis_dict_next(di)) != NULL)
+    //     {
+    //         s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+    //         if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
+    //         {
+    //             sis_map_pointer_del(sisdb_->work_keys, sis_dict_getkey(de));
+    //             o++;
+    //         }
+    //     }
+    //     sis_dict_iter_free(di);
+    // }
+    // else
+    // {
+    //     s_sis_string_list *klist = sis_string_list_create();
+    //     sis_string_list_load(klist, keys_, sis_strlen(keys_), ",");
+
+    //     int count = sis_string_list_getsize(klist);
+    //     for (int i = 0; i < count; i++)
+    //     {
+    //         sis_map_pointer_del(sisdb_->work_keys, sis_string_list_get(klist, i));
+    //         o++;
+    //     }
+    //     sis_string_list_destroy(klist);
+    // }
+    return o;
+}
+
+int sisdb_io_dels(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
+{
+    // s_sis_string_list *collects = sis_string_list_create();
+    // int count = _sisdb_get_filter(sisdb_, collects, keys_, sdbs_);
+    // for (int i = 0; i < count; i++)
+    // {
+    //     sisdb_del(sisdb_, sis_string_list_get(collects, i), argv_);
+    // }
+    // sis_string_list_destroy(collects);
+    return 0;    
 }
 

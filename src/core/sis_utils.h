@@ -44,10 +44,10 @@ s_sis_sds sis_sdb_fields_to_array_sds(s_sis_dynamic_db *db_, void *in_, size_t i
 s_sis_sds sis_sdb_fields_to_json_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_, const char *key_, s_sis_string_list *fields_, bool isfields_, bool iszip_);
 
 // [[x,y,z],....]字符串转二进制数据
-s_sis_sds sisdb_array_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
+s_sis_sds sis_array_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
 
 // [[x,y,z],....]字符串转二进制数据
-s_sis_sds sisdb_json_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
+s_sis_sds sis_json_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_, s_sis_sds ago_);
 
 // json 转字符串
 s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_);

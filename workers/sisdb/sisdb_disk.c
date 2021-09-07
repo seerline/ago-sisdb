@@ -10,12 +10,12 @@
 // safe目录 只保留最近5个目录
 int sisdb_disk_pack(s_sisdb_cxt *context)
 {
-    if (context->wfile_status)
-    {
-        return -1;
-    }
-    context->wfile_status = 1;
-    sis_mutex_lock(&context->wlog_lock);
+    // if (context->wfile_status)
+    // {
+    //     return -1;
+    // }
+    // context->wfile_status = 1;
+    // sis_mutex_lock(&context->wlog_lock);
 
     // 只处理 sdb 的数据 sno 数据本来就是没有冗余的
     // s_sis_disk_v1_class *srcfile = sis_disk_v1_class_create();
@@ -41,8 +41,8 @@ int sisdb_disk_pack(s_sisdb_cxt *context)
     //     return SIS_METHOD_ERROR;
     // }
 
-    sis_mutex_unlock(&context->wlog_lock);
-    context->wfile_status = 0;
+    // sis_mutex_unlock(&context->wlog_lock);
+    // context->wfile_status = 0;
     return 0;
 }
 
@@ -86,28 +86,28 @@ int sisdb_disk_pack(s_sisdb_cxt *context)
 
 s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
 {
-    int nums = 0;
+    // int nums = 0;
     s_sis_sds msg = sis_sdsempty();
     {
         s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(cxt->work_keys);
+        s_sis_dict_iter *di = sis_dict_get_iter(cxt->work_famp_cxt->work_keys);
         while ((de = sis_dict_next(di)) != NULL)
         {
-            s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-            if (collect->style == SISDB_COLLECT_TYPE_TABLE)
-            {
-                char keyn[128], sdbn[128]; 
-                int cmds = sis_str_divide(collect->name, '.', keyn, sdbn);
-                if (cmds == 2)
-                {
-                    if (nums > 0)
-                    {
-                        msg = sis_sdscat(msg, ",");
-                    }
-                    nums++;
-                    msg = sis_sdscatfmt(msg, "%s", keyn);
-                }                
-            }
+            // s_sisdb_fmap_unit *collect = (s_sisdb_collect *)sis_dict_getval(de);
+            // if (collect->style == SISDB_COLLECT_TYPE_TABLE)
+            // {
+            //     char keyn[128], sdbn[128]; 
+            //     int cmds = sis_str_divide(collect->name, '.', keyn, sdbn);
+            //     if (cmds == 2)
+            //     {
+            //         if (nums > 0)
+            //         {
+            //             msg = sis_sdscat(msg, ",");
+            //         }
+            //         nums++;
+            //         msg = sis_sdscatfmt(msg, "%s", keyn);
+            //     }                
+            // }
         }
         sis_dict_iter_free(di);
     }  
@@ -117,78 +117,79 @@ s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
 
 s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
 {
-    int count = sis_map_list_getsize(cxt->work_sdbs);
-    s_sis_json_node *sdbs_node = sis_json_create_object();
-    {
-        for(int i = 0; i < count; i++)
-        {
-            s_sisdb_table *table = (s_sisdb_table *)sis_map_list_geti(cxt->work_sdbs, i);
-            sis_json_object_add_node(sdbs_node, table->name, sis_sdbinfo_to_json(table));
-        }
-    }
-    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
-    printf("sdbs = %s\n", msg);
-    sis_json_delete_node(sdbs_node);
-    return msg;
+    // int count = sis_map_list_getsize(cxt->work_sdbs);
+    // s_sis_json_node *sdbs_node = sis_json_create_object();
+    // {
+    //     for(int i = 0; i < count; i++)
+    //     {
+    //         s_sis_dynamic_db *table = (s_sis_dynamic_db *)sis_map_list_geti(cxt->work_sdbs, i);
+    //         sis_json_object_add_node(sdbs_node, table->name, sis_sdbinfo_to_json(table));
+    //     }
+    // }
+    // s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
+    // printf("sdbs = %s\n", msg);
+    // sis_json_delete_node(sdbs_node);
+    // return msg;
+    return NULL;
 }
 int sisdb_disk_save(s_sisdb_cxt *context)
 {
-    if (context->wfile_status)
-    {
-        return -1;
-    }
-    context->wfile_status = 1;
-    sis_mutex_lock(&context->wlog_lock);
+    // if (context->wfile_status)
+    // {
+    //     return -1;
+    // }
+    // context->wfile_status = 1;
+    // sis_mutex_lock(&context->wlog_lock);
 
-    if (sis_map_pointer_getsize(context->work_keys) > 0)
-    {
-        s_sis_disk_writer *sdbfile = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB);
-        // 不能删除老文件的信息
-        sis_disk_writer_open(sdbfile, 0);
-        {
-            s_sis_sds keys = _sisdb_get_keys(context);
-            sis_disk_writer_set_kdict(sdbfile, keys, sis_sdslen(keys));
-            s_sis_sds sdbs = _sisdb_get_sdbs(context);
-            sis_disk_writer_set_sdict(sdbfile, sdbs, sis_sdslen(sdbs));
-            sis_sdsfree(keys);
-            sis_sdsfree(sdbs);
-        }
+    // if (sis_map_pointer_getsize(context->work_keys) > 0)
+    // {
+    //     s_sis_disk_writer *sdbfile = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB);
+    //     // 不能删除老文件的信息
+    //     sis_disk_writer_open(sdbfile, 0);
+    //     {
+    //         s_sis_sds keys = _sisdb_get_keys(context);
+    //         sis_disk_writer_set_kdict(sdbfile, keys, sis_sdslen(keys));
+    //         s_sis_sds sdbs = _sisdb_get_sdbs(context);
+    //         sis_disk_writer_set_sdict(sdbfile, sdbs, sis_sdslen(sdbs));
+    //         sis_sdsfree(keys);
+    //         sis_sdsfree(sdbs);
+    //     }
 
-        // 写入自由和结构键值
-        {
-            char keyn[128], sdbn[128]; 
-            s_sis_memory *memory = sis_memory_create();
-            s_sis_dict_entry *de;
-            s_sis_dict_iter *di = sis_dict_get_iter(context->work_keys);
-            while ((de = sis_dict_next(di)) != NULL)
-            {
-                s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
-                if (collect->wflag)  // 数据更新的键才写入
-                {
-                    sis_str_divide(collect->name, '.', keyn, sdbn); 
-                    if (collect->style == SISDB_COLLECT_TYPE_TABLE)
-                    {
-                        sis_disk_writer_sdb(sdbfile, keyn, collect->sdb->name, 
-                            SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-                    }
-                    else 
-                    if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
-                    {
-                        sis_memory_clear(memory);
-                        sis_memory_cat_byte(memory, collect->style, 1);
-                        sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
-                        sis_disk_writer_one(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
-                    }
-                }
-            }
-            sis_dict_iter_free(di);
-            sis_memory_destroy(memory);
-        }
-        sis_disk_writer_close(sdbfile);
-        sis_disk_writer_destroy(sdbfile);
-    }
-    sis_mutex_unlock(&context->wlog_lock);
-    context->wfile_status = 0;
+    //     // 写入自由和结构键值
+    //     {
+    //         char keyn[128], sdbn[128]; 
+    //         s_sis_memory *memory = sis_memory_create();
+    //         s_sis_dict_entry *de;
+    //         s_sis_dict_iter *di = sis_dict_get_iter(context->work_keys);
+    //         while ((de = sis_dict_next(di)) != NULL)
+    //         {
+    //             s_sisdb_collect *collect = (s_sisdb_collect *)sis_dict_getval(de);
+    //             if (collect->wflag)  // 数据更新的键才写入
+    //             {
+    //                 sis_str_divide(collect->name, '.', keyn, sdbn); 
+    //                 if (collect->style == SISDB_COLLECT_TYPE_TABLE)
+    //                 {
+    //                     sis_disk_writer_sdb(sdbfile, keyn, collect->sdb->name, 
+    //                         SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+    //                 }
+    //                 else 
+    //                 if (collect->style == SISDB_COLLECT_TYPE_CHARS || collect->style == SISDB_COLLECT_TYPE_BYTES)
+    //                 {
+    //                     sis_memory_clear(memory);
+    //                     sis_memory_cat_byte(memory, collect->style, 1);
+    //                     sis_memory_cat(memory, SIS_OBJ_GET_CHAR(collect->obj), SIS_OBJ_GET_SIZE(collect->obj));
+    //                     sis_disk_writer_one(sdbfile, sis_dict_getkey(de), sis_memory(memory), sis_memory_get_size(memory));
+    //                 }
+    //             }
+    //         }
+    //         sis_dict_iter_free(di);
+    //         sis_memory_destroy(memory);
+    //     }
+    //     sis_disk_writer_close(sdbfile);
+    //     sis_disk_writer_destroy(sdbfile);
+    // }
+    // sis_mutex_unlock(&context->wlog_lock);
+    // context->wfile_status = 0;
     return 0;
 }
 
@@ -209,7 +210,7 @@ int sisdb_disk_save(s_sisdb_cxt *context)
 //     s_sis_json_node *innode = sis_json_first_node(injson->node); 
 //     while (innode)
 //     {
-//         s_sisdb_table *table = sisdb_table_create(innode);
+//         s_sis_dynamic_db *table = sis_dynamic_db_create(innode);
 //         sis_map_list_set(cxt->work_sdbs, innode->key, table);
 //         innode = sis_json_next_node(innode);
 //     }
@@ -339,15 +340,10 @@ int sisdb_disk_save(s_sisdb_cxt *context)
 
 // write
 // 加载数据结构
-s_sis_object *sisdb_read_disk(s_sisdb_cxt *context, s_sis_net_message *netmsg)
+s_sis_object *sisdb_disk_read(s_sisdb_cxt *context, s_sis_net_message *netmsg)
 {
 
     return NULL;
-}
-int sisdb_read_sdbs(s_sisdb_cxt *context)
-{
-
-    return 0;
 }
 
 static int cb_rlog_netmsg(void *worker_, void *argv_)
@@ -392,16 +388,7 @@ void sisdb_wlog_open(s_sisdb_cxt *context)
     sis_message_destroy(msg);
     context->wlog_open = 1;
 }
-void sisdb_wlog_close(s_sisdb_cxt *context)
-{
-    s_sis_message *msg = sis_message_create();
-    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
-    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
-    sis_message_set_int(msg, "work-date", context->work_date);
-    sis_worker_command(context->wlog_worker, "close", msg);
-    sis_message_destroy(msg);
-    context->wlog_open = 0;
-}
+
 void sisdb_wlog_move(s_sisdb_cxt *context)
 {
     s_sis_message *msg = sis_message_create();
@@ -415,4 +402,22 @@ void sisdb_wlog_move(s_sisdb_cxt *context)
     }
     sis_worker_command(context->wlog_worker, "move", msg);
     sis_message_destroy(msg);
+}
+void sisdb_wlog_close(s_sisdb_cxt *context)
+{
+    s_sis_message *msg = sis_message_create();
+    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
+    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_int(msg, "work-date", context->work_date);
+    sis_worker_command(context->wlog_worker, "close", msg);
+    sis_message_destroy(msg);
+    context->wlog_open = 0;
+}
+
+void sisdb_wlog_save_start(s_sisdb_cxt *context)
+{
+}
+
+void sisdb_wlog_save_stop(s_sisdb_cxt *context)
+{
 }
