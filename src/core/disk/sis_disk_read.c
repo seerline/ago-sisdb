@@ -525,7 +525,8 @@ void sis_disk_reader_make_sdb(s_sis_disk_reader *reader_)
     }
     if (sis_map_list_getsize(reader_->munit->map_maps) > 0)
     {
-        _disk_reader_make_sdb_from_fmap(reader_);
+        // _disk_reader_make_sdb_from_fmap(reader_);
+        _disk_reader_make_sdb_from_file(reader_);
     }
     else
     {
@@ -618,7 +619,7 @@ s_sis_object *sis_disk_reader_get_one(s_sis_disk_reader *reader_, const char *kn
     return NULL;
 }
 // 返回值 释放类型为 s_sis_memory
-s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *kname_)
+s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *kname_)
 {
     if (reader_->status_open == 0 || reader_->status_sub == 1 || !kname_)
     {
@@ -630,8 +631,7 @@ s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const c
     sis_pointer_list_clear(reader_->sunits);
     sis_disk_reader_make_alone(reader_, kname_);
 
-    s_sis_pointer_list *obj = sis_pointer_list_create();
-    obj->vfree = sis_sdsfree_call;
+    s_sis_node *obj = sis_node_create();
     if (sis_map_list_getsize(reader_->subidxs) > 0)
     {
         reader_->status_sub = 1;
@@ -656,19 +656,19 @@ s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const c
                         int insize = sis_memory_get_ssize(rcatch->memory);
                         s_sis_sds in = sis_sdsnewlen(sis_memory(rcatch->memory), insize);
                         sis_memory_move(rcatch->memory, insize);
-                        sis_pointer_list_push(obj, in);
+                        sis_node_list_push(obj, in);
                     }
                 }
             }
         }
         // 订阅结束
         reader_->status_sub = 0;
-        if (obj->count > 0)
-        {
-            return obj;
-        }
     }
-    sis_pointer_list_destroy(obj);
+    if (sis_node_list_get_size(obj) > 0)
+    {
+        return obj;
+    }
+    sis_node_destroy(obj);
     return NULL;
 }
 // 时间范围 日期以上可以多日 日期以下只能当日

@@ -56,15 +56,17 @@ typedef struct s_sisdb_fmap_unit
 	//  要求每个节点时间不能重叠 重叠写入时会覆盖老的数据
     s_sis_object        *kname;  // 可能多次引用 - 指向dict表的name
     s_sis_object        *sname;  // 可能多次引用 - 指向dict表的name
-	uint8                reads;  // 读取次数 最大255 每天减少 1/2 销毁时根据该值大小排序
 	uint8                ktype;  // 该键值的数据类型
-	s_sis_struct_list   *fidxs;   // 按时间排序的 索引表 s_sisdb_fmap_idx
+	int8                 ready;  // 已经从磁盘读过数据 
+	uint8                reads;  // 读取次数 最大255 每天减少 1/2 销毁时根据该值大小排序
 	// 以上信息来源于 map 的索引信息
 	msec_t               rmsec;  // 最近读的毫秒数 只记录读的毫秒数 大多数键值写入后就不读了，默认36小时没有再读就释放
-								 // 写入时rmsec = 0 最长每日会存一次盘 如果没有读只有写那么save时就会从内存清理掉
+								 // rmsec = 0 表示新建unit 还没有读取操作 
+								 //  最长每日会存一次盘 如果没有读只有写那么save时就会从内存清理掉
 	uint8                moved;  // 键值直接被删除
 	void                *value;  // 数据缓存区 
 	// 如果data为时序结构化数据   
+	s_sis_struct_list   *fidxs;  // 按时间排序的 索引表 s_sisdb_fmap_idx
 	int8                 scale;  // 时序表的时间尺度 SIS_SDB_SCALE_NOTS  SIS_SDB_SCALE_YEAR  SIS_SDB_SCALE_DATE
 	msec_t               start;  // 开始时间
 	msec_t               stop;   // 结束时间
@@ -194,7 +196,7 @@ int sisdb_fmap_unit_goto(s_sisdb_fmap_unit *unit_, msec_t curr_);
 // 得到记录数
 int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_);
 // 仅仅增加一条 这里 start 是日期
-int sisdb_fmap_unit_push_idx(s_sisdb_fmap_unit *unit_, int start);
+int sisdb_fmap_unit_set_idx(s_sisdb_fmap_unit *unit_, int idate);
 // 可以修改同一索引的多条 这里 start 是日期
 int sisdb_fmap_unit_update_idx(s_sisdb_fmap_unit *unit_, int start);
 // 删除 这里 index 为起始记录 count 为数量
@@ -217,7 +219,7 @@ void sisdb_fmap_cxt_destroy(s_sisdb_fmap_cxt *);
 int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_);
 // 生成新的fmap
 s_sisdb_fmap_unit *sisdb_fmap_cxt_new(s_sisdb_fmap_cxt *cxt_, const char *key_, int ktype_);
-// 得到
+// 得到数据的索引信息 并读入内存 除非磁盘也没有数据 才返回NULL
 s_sisdb_fmap_unit *sisdb_fmap_cxt_get(s_sisdb_fmap_cxt *cxt_, const char *key_);
 // 对数据表操作
 int sisdb_fmap_cxt_setdb(s_sisdb_fmap_cxt *cxt_, s_sis_dynamic_db *sdb_);
@@ -238,7 +240,6 @@ int sisdb_fmap_cxt_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 
 int sisdb_fmap_cxt_tsdb_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 
-int sisdb_fmap_cxt_tsdb_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 int sisdb_fmap_cxt_tsdb_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 int sisdb_fmap_cxt_tsdb_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 int sisdb_fmap_cxt_tsdb_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_);
@@ -246,10 +247,9 @@ int sisdb_fmap_cxt_tsdb_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_);
 // // 得到数据 并读入内存 除非磁盘也没有数据 才返回NULL 否则根据cmd参数获取数据
 // s_sisdb_fmap_unit * sisdb_fmap_cxt_read_where(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 // s_sisdb_fmap_unit * sisdb_fmap_cxt_read_match(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
-// 得到数据的索引信息 并读入内存 除非磁盘也没有数据 才返回NULL
-s_sisdb_fmap_unit *sisdb_fmap_cxt_getidx(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
-// 把unit 索引中还没有读盘的数据 读盘 
-int sisdb_fmap_cxt_getdata(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
-
+// 根据索引从磁盘中读取数据 不管数据是否存在 start和stop之间的索引都必须建立
+int sisdb_fmap_cxt_init_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int start_, int stop_);
+// 只根据索引从磁盘中读取数据 不增加索引块
+int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int start_, int stop_);
 
 #endif /* _SIS_COLLECT_H */

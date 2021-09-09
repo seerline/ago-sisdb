@@ -165,9 +165,9 @@ int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_)
 }
 
 // 仅仅增加一条 这里 start 是日期
-int sisdb_fmap_unit_push_idx(s_sisdb_fmap_unit *unit_, int start)
+int sisdb_fmap_unit_set_idx(s_sisdb_fmap_unit *unit_, int idate)
 {
-	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? start / 10000 : start;
+	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? idate / 10000 : idate;
 	int isidx = 0;  // 1 表示已经有索引
 	int count = 0;
 	for (int i = 0; i < unit_->fidxs->count; i++)

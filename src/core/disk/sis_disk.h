@@ -207,7 +207,7 @@ void sis_disk_reader_close(s_sis_disk_reader *reader_);
 // 获取单值和列表值 返回值需要释放 数据实际类型 s_sis_memory
 s_sis_object * sis_disk_reader_get_one(s_sis_disk_reader *, const char *kname_);
 // 返回值 单条数据类型为 s_sis_sds
-s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *, const char *kname_);
+s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *, const char *kname_);
 
 // 下面都是结构化数据包括时序和非时序的数据
 // 从对应文件中获取数据 拼成完整的数据返回 只支持 SDB 单键单表

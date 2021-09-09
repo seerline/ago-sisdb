@@ -8,7 +8,7 @@
 //  push
 //////////////////////////////////////////////////
 
-int sisdb_fmap_cxt_tsdb_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_)
+static int _fmap_cxt_tsdb_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_)
 {
 	s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 	s_sisdb_fmap_cmp ans = { 0, -1, 0};
@@ -22,7 +22,8 @@ int sisdb_fmap_cxt_tsdb_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s
 	{
 		ostart = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, cmd_->start);
 	}
-	sisdb_fmap_unit_push_idx(unit_, ostart);
+
+	sisdb_fmap_unit_set_idx(unit_, ostart);
 
 	int count = cmd_->isize / unit_->sdb->size;
 	if (ans.oindex < 0)
@@ -37,13 +38,44 @@ int sisdb_fmap_cxt_tsdb_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s
 	{
 		sis_struct_list_inserts(slist, ans.oindex + ans.ocount, cmd_->imem, count);
 	}
-	// 重建索引
-	sisdb_fmap_unit_reidx(unit_);
 	return count;
 }
 //////////////////////////////////////////////////
 //  update
 //////////////////////////////////////////////////
+			// // 如果有多条记录 需要根据索引字段的值 同样的值一起插入 毕竟要修改 索引表 所以不能一起插入
+			// count = cmd_->isize / unit->sdb->size;
+			// if (count > 1)
+			// {
+			// 	s_sisdb_fmap_cmd cmd;
+			// 	memset(&cmd, 0, sizeof(s_sisdb_fmap_cmd));
+			// 	int index = 0;
+			// 	cmd.start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
+			// 	for (int i = 1; i < count; i++)
+			// 	{
+			// 		msec_t start = sis_dynamic_db_get_mindex(unit->sdb, i, cmd_->imem, cmd_->isize);
+			// 		if (start != cmd.start)
+			// 		{
+			// 			cmd.imem = cmd_->imem + index * unit->sdb->size;
+			// 			cmd.isize = (i - index) * unit->sdb->size;
+			// 			_fmap_cxt_tsdb_push(cxt_, unit, &cmd);
+			// 			index = i;
+			// 			cmd.start = start;
+			// 		}
+			// 	}
+			// 	if (index < count)
+			// 	{
+			// 		cmd.imem = cmd_->imem + index * unit->sdb->size;
+			// 		cmd.isize = (count - index) * unit->sdb->size;
+			// 		_fmap_cxt_tsdb_push(cxt_, unit, &cmd);
+			// 	}
+			// }
+			// else
+			// {
+			// 	_fmap_cxt_tsdb_push(cxt_, unit, cmd_);
+			// }
+			// // 重建索引
+			// sisdb_fmap_unit_reidx(unit);
 
 int sisdb_fmap_cxt_tsdb_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_)
 {

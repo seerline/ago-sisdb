@@ -57,14 +57,13 @@ s_sisdb_fmap_cxt *sisdb_fmap_cxt_create(const char *wpath_, const char *wname_)
 	o->work_path = sis_sdsnew(wpath_);
 	o->work_name = sis_sdsnew(wname_);
 	o->freader = sis_disk_reader_create(o->work_path, o->work_name, SIS_DISK_TYPE_SDB, NULL);
-
 	return o;
 }
 void sisdb_fmap_cxt_destroy(s_sisdb_fmap_cxt *cxt_)
 {
 	if (cxt_->freader)
 	{
-		sis_disk_reader_destroy(cxt_->freader); 
+		sis_disk_reader_close(cxt_->freader);
 	}
 	sis_sdsfree(cxt_->work_path);
 	sis_sdsfree(cxt_->work_name);
@@ -72,7 +71,7 @@ void sisdb_fmap_cxt_destroy(s_sisdb_fmap_cxt *cxt_)
 	sis_map_list_destroy(cxt_->work_sdbs);
 	sis_free(cxt_);
 }
-void sisdb_fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
+static void _fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
 {
 	s_sisdb_fmap_unit *unit = NULL;
 	char name[255];
@@ -102,7 +101,7 @@ void sisdb_fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
 			s_sis_disk_map_unit *uidx = sis_sort_list_get(dmap_->sidxs, i);
 			s_sisdb_fmap_idx fidx = {0};
 			fidx.isign = uidx->idate;
-			fidx.start = -1;
+			fidx.start = -1;  // 此时不读盘
 			fidx.moved = uidx->active == 0 ? 1 : 0;
 			sis_struct_list_push(unit->fidxs, &fidx);
 		}
@@ -126,8 +125,7 @@ int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 
     if (sis_disk_reader_open(cxt_->freader))
 	{
-		LOG(5)("open %s/%s fail.\n", cxt_->work_path, cxt_->work_name);
-		
+		LOG(5)("open %s/%s fail.\n", cxt_->work_path, cxt_->work_name);	
 		return -2;
 	}
 	// 记载数据结构
@@ -145,7 +143,7 @@ int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 		for (int i = 0; i < count; i++)
 		{
 			s_sis_disk_map *dmap = sis_map_list_geti(cxt_->freader->munit->map_maps, i);
-			sisdb_fmap_cxt_new_of_map(cxt_, dmap);
+			_fmap_cxt_new_of_map(cxt_, dmap);
 		}	
 	}	
     sis_disk_reader_close(cxt_->freader);
@@ -201,6 +199,11 @@ s_sisdb_fmap_unit *sisdb_fmap_cxt_new(s_sisdb_fmap_cxt *cxt_, const char *key_, 
 	}
 	return unit;
 }
+// 读索引
+// 由于按时间来读数据 可以在主索引不存在的情况下 也可以定位数据文件 
+// 因此即便没有主索引 也会根据 start 尝试获取数据 并存入索引中 
+// 这样处理可以解决只拷贝了目标数据文件 未重建索引的情况 
+// ***经过权衡 必须通过map中的主索引来获取数据 否则效率太低
 s_sisdb_fmap_unit *sisdb_fmap_cxt_get(s_sisdb_fmap_cxt *cxt_, const char *key_)
 {
 	return sis_map_pointer_get(cxt_->work_keys, key_);
@@ -229,14 +232,14 @@ s_sis_dynamic_db *sisdb_fmap_cxt_getdb(s_sisdb_fmap_cxt *cxt_, const char *sname
 // 如果没有数据就返回空
 int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
-	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_getidx(cxt_, cmd_);
+	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
 	if (!unit)
 	{
 		return -1;
 	}
 	else
 	{
-		sisdb_fmap_cxt_getdata(cxt_, unit, cmd_);
+		sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 	}
 	cmd_->ktype = unit->ktype;
 	int count = 0;
@@ -307,7 +310,9 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		}
 		break;
 	default:
-		count = sisdb_fmap_cxt_tsdb_read(cxt_, unit, cmd_);
+		{
+			count = sisdb_fmap_cxt_tsdb_read(cxt_, unit, cmd_);
+		}
 		break;
 	}
 	return count;
@@ -315,7 +320,7 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 // 增加数据 直接写 不做安全判断 
 int sisdb_fmap_cxt_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
-	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_getidx(cxt_, cmd_);
+	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
 	if (!unit)
 	{
 		// 没有数据 要增加新键值
@@ -323,7 +328,7 @@ int sisdb_fmap_cxt_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	else
 	{
-		sisdb_fmap_cxt_getdata(cxt_, unit, cmd_);
+		sisdb_fmap_cxt_init_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 	}
 	int count = 1;
 	switch (unit->ktype)
@@ -351,37 +356,7 @@ int sisdb_fmap_cxt_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		break;
 	default:
 		{
-			// 如果有多条记录 需要根据索引字段的值 同样的值一起插入 毕竟要修改 索引表 所以不能一起插入
-			count = cmd_->isize / unit->sdb->size;
-			if (count > 1)
-			{
-				s_sisdb_fmap_cmd cmd;
-				memset(&cmd, 0, sizeof(s_sisdb_fmap_cmd));
-				int index = 0;
-				cmd.start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
-				for (int i = 1; i < count; i++)
-				{
-					msec_t start = sis_dynamic_db_get_mindex(unit->sdb, i, cmd_->imem, cmd_->isize);
-					if (start != cmd.start)
-					{
-						cmd.imem = cmd_->imem + index * unit->sdb->size;
-						cmd.isize = (i - index) * unit->sdb->size;
-						sisdb_fmap_cxt_tsdb_push(cxt_, unit, &cmd);
-						index = i;
-						cmd.start = start;
-					}
-				}
-				if (index < count)
-				{
-					cmd.imem = cmd_->imem + index * unit->sdb->size;
-					cmd.isize = (count - index) * unit->sdb->size;
-					sisdb_fmap_cxt_tsdb_push(cxt_, unit, &cmd);
-				}
-			}
-			else
-			{
-				sisdb_fmap_cxt_tsdb_push(cxt_, unit, cmd_);
-			}
+			sisdb_fmap_cxt_tsdb_update(cxt_, unit, cmd_);
 		}
 		break;
 	}
@@ -390,7 +365,7 @@ int sisdb_fmap_cxt_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 
 int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
-	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_getidx(cxt_, cmd_);
+	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
 	if (!unit)
 	{
 		if (cmd_->ktype == SISDB_FMAP_TYPE_ONE)
@@ -404,7 +379,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	else
 	{
-		sisdb_fmap_cxt_getdata(cxt_, unit, cmd_);
+		sisdb_fmap_cxt_init_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 	}
 	switch (unit->ktype)
 	{
@@ -438,7 +413,9 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		}
 		break;		
 	default:
-		sisdb_fmap_cxt_tsdb_update(cxt_, unit, cmd_);
+		{
+			sisdb_fmap_cxt_tsdb_update(cxt_, unit, cmd_);
+		}
 		break;
 	}
 	return 1;
@@ -447,14 +424,17 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 // 删除数据必须设置时间 才能定位数据 
 int sisdb_fmap_cxt_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
-	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_getidx(cxt_, cmd_);
+	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
 	if (!unit)
 	{
 		return 0;
 	}
 	else
 	{
-		sisdb_fmap_cxt_getdata(cxt_, unit, cmd_);
+		if (unit->ktype != SISDB_FMAP_TYPE_ONE)
+		{
+			sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
+		}
 	}
 	int count = 0;
 	switch (unit->ktype)
@@ -516,7 +496,7 @@ int sisdb_fmap_cxt_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
 	// 对于时序表 如果没有索引 移除键值实际上不能移除未加载到内存的数据块
 	// 因此移除键值必须设置时间 在getidx时加载索引到内存 再做move才能保证数据干净的被清理
-	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_getidx(cxt_, cmd_);
+	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
 	if (!unit)
 	{
 		return 0;
@@ -539,7 +519,9 @@ int sisdb_fmap_cxt_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		}
 		break;
 	default:
-		sisdb_fmap_cxt_tsdb_move(cxt_, unit);
+		{
+			sisdb_fmap_cxt_tsdb_move(cxt_, unit);
+		}
 		break;
 	}
 	unit->reads = 0;
@@ -548,107 +530,3 @@ int sisdb_fmap_cxt_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	return 1;
 }
 
-
-// 读索引
-// 由于按时间来读数据 可以在主索引不存在的情况下 也可以定位数据文件 
-// 因此即便没有主索引 也会根据 start 尝试获取数据 并存入索引中 
-// 这样处理可以解决只拷贝了目标数据文件 未重建索引的情况 
-// ***经过权衡 必须通过map中的主索引来获取数据 否则效率太低
-s_sisdb_fmap_unit *sisdb_fmap_cxt_getidx(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
-{
-	s_sisdb_fmap_unit *unit = sis_map_pointer_get(cxt_->work_keys, cmd_->key);
-	return unit;
-}
-
-// 读实际数据
-// 仅仅把相关的键值 相关的日期的数据加载到内存 其他什么事情也不做
-int sisdb_fmap_cxt_getdata(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_)
-{
-	// 这里需要根据索引 去对应文件读取数据
-	// 传入的 cmd 中的 start stop 是原始数据 需要根据数据类型转换后 再去匹配索引的信息
-
-	switch (unit_->ktype)
-	{
-	case SISDB_FMAP_TYPE_ONE:
-		{
-			if (!unit_->value)
-			{
-				
-			}
-			// s_sis_sds str = (s_sis_sds)unit->value;
-			// sis_sdsclear(str);
-			// unit->value = sis_sdscatlen(str, cmd_->imem, cmd_->isize);
-		}
-		break;
-	case SISDB_FMAP_TYPE_MUL:
-		{
-			// s_sis_sds str = sis_sdsnewlen(cmd_->imem, cmd_->isize);
-			// s_sis_node *node = (s_sis_node *)unit->value;
-			// sis_node_push(node, str);
-		}
-		break;
-	case SISDB_FMAP_TYPE_NON:
-		{
-			sis_disk_reader_open(cxt_->freader);
-			char kname[128], sname[128];
-			sis_str_divide(cmd_->key, '.', kname, sname);
-			s_sis_object *obj = sis_disk_reader_get_obj(cxt_->freader, kname, sname, NULL);
-			if (obj)
-			{
-				s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
-				int count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
-				sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
-				sis_object_destroy(obj);
-			}
-			sis_disk_reader_close(cxt_->freader);
-		}
-		break;
-	default:
-		{
-			// 如果有多条记录 需要根据索引字段的值 同样的值一起插入 毕竟要修改 索引表 所以不能一起插入
-			sis_disk_reader_open(cxt_->freader);
-			if (unit_->scale == SIS_SDB_SCALE_YEAR)
-			{
-				// 根据cmd中时间 匹配索引加载数据 已经加载过的不再加载
-				// 数据加载后更新 count
-			}
-			else
-			{
-
-			}
-			sis_disk_reader_close(cxt_->freader);
-		// 	count = cmd_->isize / unit->sdb->size;
-		// 	if (count > 1)
-		// 	{
-		// 		s_sisdb_fmap_cmd cmd;
-		// 		memset(&cmd, 0, sizeof(s_sisdb_fmap_cmd));
-		// 		int index = 0;
-		// 		cmd.start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
-		// 		for (int i = 1; i < count; i++)
-		// 		{
-		// 			msec_t start = sis_dynamic_db_get_mindex(unit->sdb, i, cmd_->imem, cmd_->isize);
-		// 			if (start != cmd.start)
-		// 			{
-		// 				cmd.imem = cmd_->imem + index * unit->sdb->size;
-		// 				cmd.isize = (i - index) * unit->sdb->size;
-		// 				sisdb_fmap_cxt_tsdb_push(cxt_, unit, &cmd);
-		// 				index = i;
-		// 				cmd.start = start;
-		// 			}
-		// 		}
-		// 		if (index < count)
-		// 		{
-		// 			cmd.imem = cmd_->imem + index * unit->sdb->size;
-		// 			cmd.isize = (count - index) * unit->sdb->size;
-		// 			sisdb_fmap_cxt_tsdb_push(cxt_, unit, &cmd);
-		// 		}
-		// 	}
-		// 	else
-		// 	{
-		// 		sisdb_fmap_cxt_tsdb_push(cxt_, unit, cmd_);
-		// 	}
-		}
-		break;
-	}
-	return 0;
-}
