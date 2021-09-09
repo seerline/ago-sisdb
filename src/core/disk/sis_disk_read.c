@@ -340,80 +340,6 @@ int sis_disk_reader_filters(s_sis_disk_reader *reader_, s_sis_disk_reader_unit *
     return count;
 }
 
-void _disk_reader_make_sdb_from_fmap(s_sis_disk_reader *reader_)
-{
-    // ??? 以下的过滤器未来要改成根据 map 的信息获取数据
-    // 2.检查日上时序数据
-    int open_year = sis_time_get_idate(reader_->search_msec.start / 1000) / 10000;
-    int stop_year = sis_time_get_idate(reader_->search_msec.stop / 1000) / 10000;
-    // open_year = open_year / 10 * 10;
-    // stop_year = stop_year / 10 * 10;
-    while(open_year <= stop_year)
-    {
-        LOG(5)("year: %d %d\n", open_year, stop_year);
-        int isok = true;
-        s_sis_disk_reader_unit *unit = sis_disk_reader_unit_create(reader_, SIS_DISK_TYPE_SDB_YEAR);
-        unit->idate = open_year * 10000 + 101;
-        if (!sis_disk_reader_unit_open(unit))
-        {
-            if (sis_disk_reader_filters(reader_, unit) == 0)
-            {
-                // 没有相关订阅记录
-                isok = false;
-            }
-        }
-        else
-        {
-            isok = false;
-        }
-        if (isok)
-        {
-            sis_pointer_list_push(reader_->sunits, unit);
-        }
-        else
-        {
-            sis_disk_reader_unit_destroy(unit);
-        }
-        // open_year += 10;
-        open_year += 1;
-    }
-    if (reader_->isone && sis_map_list_getsize(reader_->subidxs) > 0)
-    {
-        return;
-    }
-    // 3.检查日下时序数据
-    {
-        int open = sis_time_get_idate(reader_->search_msec.start / 1000);
-        int stop = sis_time_get_idate(reader_->search_msec.stop / 1000);
-        while (open <= stop)
-        {
-            int isok = true;
-            s_sis_disk_reader_unit *unit = sis_disk_reader_unit_create(reader_, SIS_DISK_TYPE_SDB_DATE);
-            unit->idate = open;
-            if (!sis_disk_reader_unit_open(unit))
-            {
-                if (sis_disk_reader_filters(reader_, unit) == 0)
-                {
-                    // 没有相关订阅记录
-                    isok = false;
-                }
-            }
-            else
-            {
-                isok = false;
-            }
-            if (isok)
-            {
-                sis_pointer_list_push(reader_->sunits, unit);
-            }
-            else
-            {
-                sis_disk_reader_unit_destroy(unit);
-            }
-            open = sis_time_next_work_day(open, 1);
-        }
-    }
-}
 void _disk_reader_make_sdb_from_file(s_sis_disk_reader *reader_)
 {
     // 2.检查日上时序数据
@@ -523,15 +449,8 @@ void sis_disk_reader_make_sdb(s_sis_disk_reader *reader_)
     {
         return;
     }
-    if (sis_map_list_getsize(reader_->munit->map_maps) > 0)
-    {
-        // _disk_reader_make_sdb_from_fmap(reader_);
-        _disk_reader_make_sdb_from_file(reader_);
-    }
-    else
-    {
-        _disk_reader_make_sdb_from_file(reader_);
-    }
+
+    _disk_reader_make_sdb_from_file(reader_);
 
 }
 
@@ -656,7 +575,7 @@ s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *knam
                         int insize = sis_memory_get_ssize(rcatch->memory);
                         s_sis_sds in = sis_sdsnewlen(sis_memory(rcatch->memory), insize);
                         sis_memory_move(rcatch->memory, insize);
-                        sis_node_list_push(obj, in);
+                        sis_node_push(obj, in);
                     }
                 }
             }
@@ -664,7 +583,7 @@ s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *knam
         // 订阅结束
         reader_->status_sub = 0;
     }
-    if (sis_node_list_get_size(obj) > 0)
+    if (sis_node_get_size(obj) > 0)
     {
         return obj;
     }

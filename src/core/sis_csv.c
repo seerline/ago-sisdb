@@ -180,11 +180,11 @@ s_sis_file_handle sis_csv_write_open(const char *name_, int isnew_)
 	}
 	return fp;
 }
-s_sis_file_handle sis_csv_write(s_sis_file_handle fp_, s_sis_sds isds_)
+size_t sis_csv_write(s_sis_file_handle fp_, s_sis_sds isds_)
 {
-	sis_file_write(fp_, isds_, sis_sdslen(isds_));
+	return sis_file_write(fp_, isds_, sis_sdslen(isds_));
 }
-s_sis_file_handle sis_csv_write_close(s_sis_file_handle fp_)
+void sis_csv_write_close(s_sis_file_handle fp_)
 {
 	sis_file_close(fp_);
 }

@@ -72,8 +72,6 @@ int _fmap_cxt_getdata_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	// s_sisdb_fmap_cmp ans = { 0, -1, 0};
 
 
-	return count;
-
 	// s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 	// count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
 	// sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
@@ -107,7 +105,7 @@ int _fmap_cxt_getdata_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	// }
 	// // 重建索引
 	// sisdb_fmap_unit_reidx(unit_);
-	return count;
+	return 0;
 }
 // 返回加载的数据数量
 int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int openyear, int stopyear)
@@ -120,93 +118,54 @@ int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	int index = 0;
 	while (open_year <= stop_year)
 	{
-		s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
-		if (open_year == pidx->start)
-		{
-			if (pidx->start == -1)
-			{
-				// 读取数据并插入到合适的位置
-				// _fmap_cxt_getdata_set(unit_, pidx, )
-				pidx->start = 1;
-			}
-			else
-			{
-				open_year++;
-				index++;
-			}
-		}
-		else 
-		{
-			if (open_year < pidx->start)
-			{
-				sis_struct_list_insert(unit_->fidxs, index, &fidx);
-				open_year++;
-				index++;
-			}
-			else // if (open_year > pidx->start)
-			{
-				if (index < unit_->fidxs->count)
-				{
-					index++;
-				}
-				else
-				{
-					// 新读数据
-					sis_struct_list_push(unit_->fidxs, &fidx);
-					open_year++;
-					index++;
-				}
-			}
-		}
-		// 	// 增加新索引 
-		// 	s_sisdb_fmap_idx fidx = {0};
-		// 	sis_struct_list_insert(unit_->fidxs, open_year < pidx->start ?index, &fidx);
-		// 	pidx = sis_struct_list_get(unit_->fidxs, index);
-		// 	pidx->isign = open_year;
-		// 	pidx->start = 0;
-		// 	pidx->count = 0;
-		// 	pidx->moved = 0;
-		// 	pidx->writed = 0;
-		// 	// 读取新数据
-		// 	s_sis_msec_pair pair = {open_year, open_year};
-		// 	s_sis_object *obj = sis_disk_reader_get_obj(cxt_->freader, kname, sname, &pair);
-		// 	if (obj)
+		// s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
+		// if (open_year == pidx->start)
+		// {
+		// 	if (pidx->start == -1)
 		// 	{
-		// 		s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
-		// 		count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
-		// 		sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
-		// 		sis_object_destroy(obj);
+		// 		// 读取数据并插入到合适的位置
+		// 		// _fmap_cxt_getdata_set(unit_, pidx, )
+		// 		pidx->start = 1;
 		// 	}
 		// 	else
 		// 	{
-		// 	}
-		// 	open_year++;
-		// 	index++;
-		// 	if (open_year < pidx->start)
-		// 	{
-		// 		index
-		// 	}
-		// 	else //if (open_year > fidx->start)
-		// 	{
+		// 		open_year++;
 		// 		index++;
 		// 	}
-
 		// }
-		// else
+		// else 
 		// {
-
-		// 	fidx++;
-		// 	open_year++;
+		// 	if (open_year < pidx->start)
+		// 	{
+		// 		sis_struct_list_insert(unit_->fidxs, index, &fidx);
+		// 		open_year++;
+		// 		index++;
+		// 	}
+		// 	else // if (open_year > pidx->start)
+		// 	{
+		// 		if (index < unit_->fidxs->count)
+		// 		{
+		// 			index++;
+		// 		}
+		// 		else
+		// 		{
+		// 			// 新读数据
+		// 			sis_struct_list_push(unit_->fidxs, &fidx);
+		// 			open_year++;
+		// 			index++;
+		// 		}
+		// 	}
 		// }
+		// 	// 增
 	}
 	
 
 	return count;
 }
 
-int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_)
+int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int start_, int stop_)
 {
-	sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start);
+	// sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start);
 	return 0;
 }
 // 从磁盘中读实际数据
@@ -231,8 +190,9 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 				s_sis_object *obj = sis_disk_reader_get_one(cxt_->freader, key_);
 				if(obj)
 				{
-					sis_sdsclear((s_sis_sds)unit->value);
-					unit->value = sis_sdscatlen(SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+					s_sis_sds *str = (s_sis_sds)unit_->value;
+					sis_sdsclear(str);
+					unit_->value = sis_sdscatlen(str, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
 					sis_object_destroy(obj);
 					count = 1;
 				}

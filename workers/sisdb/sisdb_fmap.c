@@ -71,43 +71,7 @@ void sisdb_fmap_cxt_destroy(s_sisdb_fmap_cxt *cxt_)
 	sis_map_list_destroy(cxt_->work_sdbs);
 	sis_free(cxt_);
 }
-static void _fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
-{
-	s_sisdb_fmap_unit *unit = NULL;
-	char name[255];
-	switch (dmap_->ktype)
-	{
-	case SISDB_FMAP_TYPE_ONE:
-	case SISDB_FMAP_TYPE_MUL:
-		{
-			unit = sisdb_fmap_unit_create(dmap_->kname, NULL, dmap_->ktype, NULL);
-			sis_sprintf(name, 255, "%s", SIS_OBJ_SDS(dmap_->kname));
-		}		
-		break;
-	default:
-		{
-			s_sis_dynamic_db *table = sis_map_list_get(cxt_->work_sdbs, SIS_OBJ_SDS(dmap_->sname));
-			unit = sisdb_fmap_unit_create(dmap_->kname, dmap_->sname, dmap_->ktype, table);
-			sis_sprintf(name, 255, "%s.%s", SIS_OBJ_SDS(dmap_->kname), SIS_OBJ_SDS(dmap_->sname));
-		}
-		break;
-	}
 
-	if (unit)
-	{
-		int count = sis_sort_list_getsize(dmap_->sidxs);
-		for (int i = 0; i < count; i++)
-		{
-			s_sis_disk_map_unit *uidx = sis_sort_list_get(dmap_->sidxs, i);
-			s_sisdb_fmap_idx fidx = {0};
-			fidx.isign = uidx->idate;
-			fidx.start = -1;  // 此时不读盘
-			fidx.moved = uidx->active == 0 ? 1 : 0;
-			sis_struct_list_push(unit->fidxs, &fidx);
-		}
-		sis_map_pointer_set(cxt_->work_keys, name, unit);
-	}
-}
 // 初始化 加载磁盘中map的所有数据
 int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 {
@@ -137,15 +101,6 @@ int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 			sisdb_fmap_cxt_setdb(cxt_, sis_disk_sdict_last(sdict));
 		}	
 	}
-	// 加载数据索引信息
-	{
-		int count = sis_map_list_getsize(cxt_->freader->munit->map_maps);
-		for (int i = 0; i < count; i++)
-		{
-			s_sis_disk_map *dmap = sis_map_list_geti(cxt_->freader->munit->map_maps, i);
-			_fmap_cxt_new_of_map(cxt_, dmap);
-		}	
-	}	
     sis_disk_reader_close(cxt_->freader);
 	return 0;
 }

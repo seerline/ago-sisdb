@@ -172,7 +172,6 @@ s_sis_disk_ctrl *sis_disk_ctrl_create(int style_, const char *fpath_, const char
 
     o->sdb_incrzip = sis_incrzip_class_create();
 
-    o->map_maps = sis_map_list_create(sis_disk_map_destroy);
     _disk_ctrl_init(o);
 
     return o;
@@ -199,8 +198,6 @@ void sis_disk_ctrl_destroy(void *cls_)
 
     sis_map_list_destroy(ctrl->map_idxs);
     sis_disk_files_destroy(ctrl->widx_fps);
-
-    sis_map_list_destroy(ctrl->map_maps);
 
     sis_free(ctrl);
 }

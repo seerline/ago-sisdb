@@ -369,53 +369,6 @@ s_sis_disk_sdict *sis_disk_map_get_sdict(s_sis_map_list *map_sdict_, const char 
     return sdict;
 }
 
-
-////////////////////////////////////////////////////////
-// s_sis_disk_map
-////////////////////////////////////////////////////////
-
-
-s_sis_disk_map *sis_disk_map_create(s_sis_object *kname_, s_sis_object *sname_)
-{
-    s_sis_disk_map *o = SIS_MALLOC(s_sis_disk_map, o);
-    if (kname_)
-    {
-        o->kname = sis_object_incr(kname_);
-    }
-    if (sname_)
-    {
-        o->sname = sis_object_incr(sname_);
-    }
-    o->sidxs = sis_sort_list_create(sizeof(s_sis_disk_map_unit));
-    return o;
-}
-void sis_disk_map_destroy(void *in_)
-{
-    s_sis_disk_map *o = (s_sis_disk_map *)in_;
-    sis_sort_list_destroy(o->sidxs);
-    if (o->kname)
-    {
-        sis_object_decr(o->kname);
-    }
-    if (o->sname)
-    {
-        sis_object_decr(o->sname);
-    }
-    sis_free(o);  
-}
-
-int sis_disk_map_merge(s_sis_disk_map *agomap_, s_sis_disk_map *newmap_)
-{
-    int count = sis_sort_list_getsize(newmap_->sidxs);
-    for (int k = 0; k < count; k++)
-    {
-        s_sis_disk_map_unit *newunit = sis_sort_list_get(newmap_->sidxs, k);
-        sis_sort_list_set(agomap_->sidxs, newunit->idate, newunit);
-    } 
-    return 0;
-}
-
-
 // #if 0
 
 // int __nums = 0;

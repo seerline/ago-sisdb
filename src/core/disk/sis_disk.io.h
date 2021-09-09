@@ -155,10 +155,6 @@
 #define  SIS_DISK_HID_MSG_NET     0xB  // size(dsize)+incrzipstream 
 // SNO数据块结束符 收到此消息后 表明数据压缩重新开始
 #define  SIS_DISK_HID_NET_NEW     0xC  // size(dsize)+最新时间+pages(dsize)+序号(dsize)
-// MAP文件的key+sdb的索引信息 active 在 1.255 之间表示有效 0 表示删除 
-// 后写入的 如果 ndate 一样会覆盖前面写入的数据 这样保证 map 只写增量数据 仅在pack 时才清理冗余的数据
-#define  SIS_DISK_HID_MSG_MAP   0xD // size(dsize)+klen(dsize)+kname+dblen(dsize)+dname+active(1)+ktype(1)+blocks(dsize)
-//        +[active(1)+ndate(dsize)+count(dsize)]
 
 /////////////////////////////////////////////////////////
 // 读取索引文件必须加载全部数据 *** 特别重要 *** 数据文件才有意义
@@ -360,24 +356,6 @@ typedef struct s_sis_disk_sdict {
 	s_sis_object       *name;   // 名字
     s_sis_pointer_list *sdbs;   // 信息 s_sis_dynamic_db
 }s_sis_disk_sdict;
-//////////////////////////////////////////////////////
-// s_sis_disk_map 
-//////////////////////////////////////////////////////
-typedef struct s_sis_disk_map_unit
-{
-    uint8               active; // 读者数 0 表示该块被删除 1 - 255 表示读者数
-    uint32              idate;  // 日上为年 日下未日期
-    // 写入和读取时没有用 单次写如果时间不重叠 会直接增加一个数据块 此时数量是对不上的
-    // uint32              count;  // 数据个数 仅仅在读取成立时
-} s_sis_disk_map_unit;
-// map 的索引传递信息 这里的name是原始的
-typedef struct s_sis_disk_map {
-    s_sis_object       *kname;  // 可能多次引用 - 指向dict表的name
-    s_sis_object       *sname;  // 可能多次引用 - 指向dict表的name
-    uint8               active; // 读者数 0 表示该键值被删除 1 - 255 表示读者数 每天减 1
-    uint8               ktype;  // SIS_SDB_STYLE_SDB SIS_SDB_STYLE_NON ...
-    s_sis_sort_list    *sidxs;  // s_sis_disk_map_unit
-}s_sis_disk_map;
 
 //////////////////////////////////////////////////////
 // s_sis_disk_sno sno读取文件控制类
@@ -415,8 +393,6 @@ typedef struct s_sis_disk_ctrl {
     // 读时不用 写时为新增的字典 按增加顺序写入  
 	s_sis_pointer_list  *new_kinfos;   // s_sis_object 
 	s_sis_pointer_list  *new_sinfos;   // s_sis_dynamic_db * 
-    // map 的索引 
-	s_sis_map_list      *map_maps;     // s_sis_disk_map
     // 读写控制器
     s_sis_disk_rcatch   *rcatch;       // 读数据的缓存 
     s_sis_disk_wcatch   *wcatch;       // 写数据的缓存
@@ -541,12 +517,6 @@ int sis_disk_reader_set_sdict(s_sis_map_list *map_sdict_, const char *in_, size_
 s_sis_disk_kdict *sis_disk_map_get_kdict(s_sis_map_list *map_kdict_, const char *kname_);
 s_sis_disk_sdict *sis_disk_map_get_sdict(s_sis_map_list *map_sdict_, const char *sname_);
 
-//** s_sis_disk_map **//
-s_sis_disk_map *sis_disk_map_create(s_sis_object *kname_, s_sis_object *sname_);
-void sis_disk_map_destroy(void *in_);
-
-int sis_disk_map_merge(s_sis_disk_map *agomap_, s_sis_disk_map *newmap_);
-
 ///////////////////////////
 //  sis_disk.io.c
 ///////////////////////////
@@ -651,8 +621,6 @@ int sis_disk_io_write_mul(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
 
 int sis_disk_io_write_non(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
 int sis_disk_io_write_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
-
-int sis_disk_io_write_map(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, int style, int idate, int moved);
 
 size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_);
 

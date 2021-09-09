@@ -154,93 +154,6 @@ int sis_disk_io_write_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
     return size;
 }
 
-int sis_disk_io_write_map(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, int ktype, int idate, int moved)
-{
-    // 写map之间需要先写一下 newinfo 确保索引存在
-
-    char name[255];
-    if (sdict_)
-    {
-        sis_sprintf(name, 255, "%s.%s", SIS_OBJ_SDS(kdict_->name), SIS_OBJ_SDS(sdict_->name));
-    }
-    else
-    {
-        sis_sprintf(name, 255, "%s", SIS_OBJ_SDS(kdict_->name));
-    }
-    // printf("write map::: %d %d %d\n", ktype, idate, moved);
-    s_sis_disk_map *map = sis_map_list_get(cls_->map_maps, name);
-    if (!map)
-    {
-        if (moved)
-        {
-            return 0;
-        }
-        map = sis_disk_map_create(kdict_->name, sdict_ ? sdict_->name : NULL);
-        map->ktype = ktype;
-        map->active = 1;
-        sis_map_list_set(cls_->map_maps, name, map);
-    }
-  
-    s_sis_disk_map_unit *punit = sis_sort_list_find(map->sidxs, idate);
-    if (!punit)
-    {
-        if (moved)
-        {
-            return 0;
-        }
-        s_sis_disk_map_unit unit;
-        unit.active = 1;
-        unit.idate = idate;
-        punit = sis_sort_list_set(map->sidxs, unit.idate, &unit);       
-    }
-    else
-    {
-        if (!moved)
-        {
-            return 0;
-        }
-        punit->active = 0 ;
-    }
-
-    s_sis_disk_wcatch *wcatch = cls_->wcatch;
-    s_sis_memory *memory = wcatch->memory;
-    sis_memory_cat_ssize(memory, kdict_->index);
-    if (sdict_)
-    {
-        sis_memory_cat_ssize(memory, sdict_->index + 1);  // 0 表示没有表键值
-    }
-    else
-    {
-        sis_memory_cat_ssize(memory, 0);
-    }
-    // size_t klen = SIS_OBJ_GET_SIZE(kdict_->name);
-    // sis_memory_cat_ssize(memory, klen);
-    // sis_memory_cat(memory, SIS_OBJ_SDS(kdict_->name), klen);
-    // if (sdict_)
-    // {
-    //     size_t slen = SIS_OBJ_GET_SIZE(sdict_->name);
-    //     sis_memory_cat_ssize(memory, slen);
-    //     sis_memory_cat(memory, SIS_OBJ_SDS(sdict_->name), slen);
-    // }
-    // else
-    // {
-    //     sis_memory_cat_ssize(memory, 0);
-    // }
-    sis_memory_cat_byte(memory, map->active, 1);
-    sis_memory_cat_byte(memory, map->ktype, 1);
-    sis_memory_cat_ssize(memory, 1);
-    sis_memory_cat_byte(memory, 1, punit->active);
-    sis_memory_cat_ssize(memory, punit->idate);
-
-    wcatch->head.hid = SIS_DISK_HID_MSG_MAP;
-    wcatch->head.zip = sis_disk_ctrl_work_zipmode(cls_);
-    // size_t size = 
-    sis_disk_io_write_sdb_work(cls_, wcatch);
-    sis_disk_wcatch_init(wcatch);
-    printf("write map:::ok\n");
-    return 0;
-}
-
 void sis_disk_io_write_widx_tail(s_sis_disk_ctrl *cls_)
 {
     // 同步尾信息
@@ -588,7 +501,6 @@ int cb_sis_disk_io_read_sdb_map(void *source_, s_sis_disk_head *head_, char *ime
 
     s_sis_memory *memory = sis_memory_create();
     sis_disk_io_unzip_widx(head_, imem_, isize_, memory);
-    char name[255];
     switch (head_->hid)
     {
     case SIS_DISK_HID_DICT_KEY:
@@ -597,110 +509,6 @@ int cb_sis_disk_io_read_sdb_map(void *source_, s_sis_disk_head *head_, char *ime
     case SIS_DISK_HID_DICT_SDB:
         sis_disk_reader_set_sdict(ctrl->map_sdicts, sis_memory(memory), sis_memory_get_size(memory));
         sis_out_binary("sdbs", sis_memory(memory), sis_memory_get_size(memory));
-        break;
-    // case SIS_DISK_HID_MSG_MAP:
-    //     {
-    //         int klen = sis_memory_get_ssize(memory);
-    //         s_sis_sds kname = sis_sdsnewlen(sis_memory(memory), klen);
-    //         s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, kname);
-    //         sis_memory_move(memory, klen);
-            
-    //         int slen = sis_memory_get_ssize(memory);
-    //         s_sis_disk_sdict *sdict = NULL;
-    //         if (slen > 0)
-    //         {
-    //             s_sis_sds sname = sis_sdsnewlen(sis_memory(memory), slen);
-    //             sdict = sis_disk_map_get_sdict(ctrl->map_sdicts, sname);
-    //             sis_memory_move(memory, slen);
-    //             sis_sprintf(name, 255, "%s.%s",kname, sname);
-    //             sis_sdsfree(sname);
-    //         }
-    //         else
-    //         {
-    //             sis_sprintf(name, 255, "%s", kname);
-    //         }
-    //         sis_sdsfree(kname);
-
-    //         s_sis_disk_map *map = sis_disk_map_create(kdict->name, sdict ? sdict->name : NULL);
-    //         map->active = sis_memory_get_byte(memory, 1);
-    //         map->ktype =sis_memory_get_byte(memory, 1);
-    //         int blocks = sis_memory_get_ssize(memory);
-    //         for (int i = 0; i < blocks; i++)
-    //         {
-    //             s_sis_disk_map_unit unit;
-    //             memset(&unit, 0, sizeof(s_sis_disk_map_unit));
-    //             unit.active = sis_memory_get_byte(memory, 1);
-    //             unit.idate = sis_memory_get_ssize(memory);
-    //             sis_sort_list_set(map->sidxs, unit.idate, &unit);
-    //             printf("newmap : %s %d %d %d\n", name, unit.active, unit.idate);
-    //         }
-    //         s_sis_disk_map *agomap = sis_map_list_get(ctrl->map_maps, name);  
-    //         if (agomap)
-    //         {
-    //             sis_disk_map_merge(agomap, map);
-    //             sis_disk_map_destroy(map);
-    //             for (int i = 0; i < sis_sort_list_getsize(agomap->sidxs); i++)
-    //             {
-    //                 s_sis_disk_map_unit *unit = sis_sort_list_get(agomap->sidxs, i);
-    //                 printf("+++map : %s %d %d %d\n", name, unit->active, unit->idate);
-    //             }
-    //         }
-    //         else
-    //         {
-    //             sis_map_list_set(ctrl->map_maps, name, map);
-    //         }
-    //     }
-    //     break;
-    case SIS_DISK_HID_MSG_MAP:
-        {
-            int kidx = sis_memory_get_ssize(memory);
-            s_sis_disk_kdict *kdict = sis_map_list_geti(ctrl->map_kdicts, kidx);
-            s_sis_disk_sdict *sdict = NULL;
-            int sidx = sis_memory_get_ssize(memory) - 1;
-            if (sidx >= 0)
-            {
-                sdict = sis_map_list_geti(ctrl->map_sdicts, sidx);
-            }
-            printf("sdict : %p %d %d | %d\n", sdict,  kidx, sidx, sis_map_list_getsize(ctrl->map_sdicts));
-
-            if (sdict)
-            {
-                sis_sprintf(name, 255, "%s.%s", SIS_OBJ_GET_CHAR(kdict->name), SIS_OBJ_GET_CHAR(sdict->name));
-            }
-            else
-            {
-                sis_sprintf(name, 255, "%s", SIS_OBJ_GET_CHAR(kdict->name));
-            }
-
-            s_sis_disk_map *map = sis_disk_map_create(kdict->name, sdict ? sdict->name : NULL);
-            map->active = sis_memory_get_byte(memory, 1);
-            map->ktype =sis_memory_get_byte(memory, 1);
-            int blocks = sis_memory_get_ssize(memory);
-            for (int i = 0; i < blocks; i++)
-            {
-                s_sis_disk_map_unit unit;
-                memset(&unit, 0, sizeof(s_sis_disk_map_unit));
-                unit.active = sis_memory_get_byte(memory, 1);
-                unit.idate = sis_memory_get_ssize(memory);
-                sis_sort_list_set(map->sidxs, unit.idate, &unit);
-                printf("newmap : %s %d %d | %d %d\n", name, unit.active, unit.idate, kidx, sidx);
-            }
-            s_sis_disk_map *agomap = sis_map_list_get(ctrl->map_maps, name);  
-            if (agomap)
-            {
-                sis_disk_map_merge(agomap, map);
-                sis_disk_map_destroy(map);
-                for (int i = 0; i < sis_sort_list_getsize(agomap->sidxs); i++)
-                {
-                    s_sis_disk_map_unit *unit = sis_sort_list_get(agomap->sidxs, i);
-                    printf("+++map : %s %d %d\n", name, unit->active, unit->idate);
-                }
-            }
-            else
-            {
-                sis_map_list_set(ctrl->map_maps, name, map);
-            }
-        }
         break;
     default:
         LOG(5)("other hid : %d at map.\n", head_->hid);
@@ -720,8 +528,6 @@ int sis_disk_io_read_sdb_map(s_sis_disk_ctrl *cls_)
     sis_map_list_clear(cls_->map_sdicts);
     sis_pointer_list_clear(cls_->new_kinfos);
     sis_pointer_list_clear(cls_->new_sinfos);
-
-    sis_map_list_clear(cls_->map_maps);
 
     sis_disk_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_io_read_sdb_map);
 
