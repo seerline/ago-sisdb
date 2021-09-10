@@ -598,59 +598,6 @@ int cb_sis_disk_io_read_sdb_map(void *source_, s_sis_disk_head *head_, char *ime
         sis_disk_reader_set_sdict(ctrl->map_sdicts, sis_memory(memory), sis_memory_get_size(memory));
         sis_out_binary("sdbs", sis_memory(memory), sis_memory_get_size(memory));
         break;
-    // case SIS_DISK_HID_MSG_MAP:
-    //     {
-    //         int klen = sis_memory_get_ssize(memory);
-    //         s_sis_sds kname = sis_sdsnewlen(sis_memory(memory), klen);
-    //         s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, kname);
-    //         sis_memory_move(memory, klen);
-            
-    //         int slen = sis_memory_get_ssize(memory);
-    //         s_sis_disk_sdict *sdict = NULL;
-    //         if (slen > 0)
-    //         {
-    //             s_sis_sds sname = sis_sdsnewlen(sis_memory(memory), slen);
-    //             sdict = sis_disk_map_get_sdict(ctrl->map_sdicts, sname);
-    //             sis_memory_move(memory, slen);
-    //             sis_sprintf(name, 255, "%s.%s",kname, sname);
-    //             sis_sdsfree(sname);
-    //         }
-    //         else
-    //         {
-    //             sis_sprintf(name, 255, "%s", kname);
-    //         }
-    //         sis_sdsfree(kname);
-
-    //         s_sis_disk_map *map = sis_disk_map_create(kdict->name, sdict ? sdict->name : NULL);
-    //         map->active = sis_memory_get_byte(memory, 1);
-    //         map->ktype =sis_memory_get_byte(memory, 1);
-    //         int blocks = sis_memory_get_ssize(memory);
-    //         for (int i = 0; i < blocks; i++)
-    //         {
-    //             s_sis_disk_map_unit unit;
-    //             memset(&unit, 0, sizeof(s_sis_disk_map_unit));
-    //             unit.active = sis_memory_get_byte(memory, 1);
-    //             unit.idate = sis_memory_get_ssize(memory);
-    //             sis_sort_list_set(map->sidxs, unit.idate, &unit);
-    //             printf("newmap : %s %d %d %d\n", name, unit.active, unit.idate);
-    //         }
-    //         s_sis_disk_map *agomap = sis_map_list_get(ctrl->map_maps, name);  
-    //         if (agomap)
-    //         {
-    //             sis_disk_map_merge(agomap, map);
-    //             sis_disk_map_destroy(map);
-    //             for (int i = 0; i < sis_sort_list_getsize(agomap->sidxs); i++)
-    //             {
-    //                 s_sis_disk_map_unit *unit = sis_sort_list_get(agomap->sidxs, i);
-    //                 printf("+++map : %s %d %d %d\n", name, unit->active, unit->idate);
-    //             }
-    //         }
-    //         else
-    //         {
-    //             sis_map_list_set(ctrl->map_maps, name, map);
-    //         }
-    //     }
-    //     break;
     case SIS_DISK_HID_MSG_MAP:
         {
             int kidx = sis_memory_get_ssize(memory);

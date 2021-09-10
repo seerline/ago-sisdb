@@ -63,7 +63,7 @@ void sisdb_fmap_cxt_destroy(s_sisdb_fmap_cxt *cxt_)
 {
 	if (cxt_->freader)
 	{
-		sis_disk_reader_close(cxt_->freader);
+		sis_disk_reader_destroy(cxt_->freader);
 	}
 	sis_sdsfree(cxt_->work_path);
 	sis_sdsfree(cxt_->work_name);
@@ -71,6 +71,7 @@ void sisdb_fmap_cxt_destroy(s_sisdb_fmap_cxt *cxt_)
 	sis_map_list_destroy(cxt_->work_sdbs);
 	sis_free(cxt_);
 }
+
 static void _fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
 {
 	s_sisdb_fmap_unit *unit = NULL;
@@ -111,24 +112,25 @@ static void _fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
 // 初始化 加载磁盘中map的所有数据
 int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 {
-	if (!cxt_->freader)
+	// 每天存盘后重新打开一次 
+	// 如果读文件存在就先关闭一次
+	if (cxt_->freader)
 	{
-		return -1;
+		sis_disk_reader_destroy(cxt_->freader);
 	}
-	// 初始化 加载磁盘中数据
-	// SISDB_FMAP_TYPE_ONE  SISDB_FMAP_TYPE_MUL 类型的 所有 key 
-	// SISDB_FMAP_TYPE_SDB  SISDB_FMAP_TYPE_NON 类型的 所有 sdb 结构 和 key 值
-	// 如果map文件中有所有键值的索引信息 就方便了
-	// 键值 nyear 有这些信息 查询速度就快了
 	sis_map_list_clear(cxt_->work_sdbs);
 	sis_map_pointer_clear(cxt_->work_keys);
 
-    if (sis_disk_reader_open(cxt_->freader))
+	cxt_->freader = sis_disk_reader_create(cxt_->work_path, cxt_->work_name, SIS_DISK_TYPE_SDB, NULL);
+	if (sis_disk_reader_open(cxt_->freader))
 	{
+		// 文件不存在 先写数据到内存 
+		sis_disk_reader_destroy(cxt_->freader);
+		cxt_->freader = NULL;
 		LOG(5)("open %s/%s fail.\n", cxt_->work_path, cxt_->work_name);	
-		return -2;
+		return -1;
 	}
-	// 记载数据结构
+	// 加载数据结构
 	{
 		int count = sis_map_list_getsize(cxt_->freader->munit->map_sdicts);
 		for (int i = 0; i < count; i++)

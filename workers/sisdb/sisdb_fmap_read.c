@@ -72,8 +72,6 @@ int _fmap_cxt_getdata_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	// s_sisdb_fmap_cmp ans = { 0, -1, 0};
 
 
-	return count;
-
 	// s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 	// count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
 	// sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
@@ -107,7 +105,7 @@ int _fmap_cxt_getdata_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	// }
 	// // 重建索引
 	// sisdb_fmap_unit_reidx(unit_);
-	return count;
+	return 0;
 }
 // 返回加载的数据数量
 int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int openyear, int stopyear)
@@ -120,93 +118,54 @@ int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	int index = 0;
 	while (open_year <= stop_year)
 	{
-		s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
-		if (open_year == pidx->start)
-		{
-			if (pidx->start == -1)
-			{
-				// 读取数据并插入到合适的位置
-				// _fmap_cxt_getdata_set(unit_, pidx, )
-				pidx->start = 1;
-			}
-			else
-			{
-				open_year++;
-				index++;
-			}
-		}
-		else 
-		{
-			if (open_year < pidx->start)
-			{
-				sis_struct_list_insert(unit_->fidxs, index, &fidx);
-				open_year++;
-				index++;
-			}
-			else // if (open_year > pidx->start)
-			{
-				if (index < unit_->fidxs->count)
-				{
-					index++;
-				}
-				else
-				{
-					// 新读数据
-					sis_struct_list_push(unit_->fidxs, &fidx);
-					open_year++;
-					index++;
-				}
-			}
-		}
-		// 	// 增加新索引 
-		// 	s_sisdb_fmap_idx fidx = {0};
-		// 	sis_struct_list_insert(unit_->fidxs, open_year < pidx->start ?index, &fidx);
-		// 	pidx = sis_struct_list_get(unit_->fidxs, index);
-		// 	pidx->isign = open_year;
-		// 	pidx->start = 0;
-		// 	pidx->count = 0;
-		// 	pidx->moved = 0;
-		// 	pidx->writed = 0;
-		// 	// 读取新数据
-		// 	s_sis_msec_pair pair = {open_year, open_year};
-		// 	s_sis_object *obj = sis_disk_reader_get_obj(cxt_->freader, kname, sname, &pair);
-		// 	if (obj)
+		// s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
+		// if (open_year == pidx->start)
+		// {
+		// 	if (pidx->start == -1)
 		// 	{
-		// 		s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
-		// 		count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
-		// 		sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
-		// 		sis_object_destroy(obj);
+		// 		// 读取数据并插入到合适的位置
+		// 		// _fmap_cxt_getdata_set(unit_, pidx, )
+		// 		pidx->start = 1;
 		// 	}
 		// 	else
 		// 	{
-		// 	}
-		// 	open_year++;
-		// 	index++;
-		// 	if (open_year < pidx->start)
-		// 	{
-		// 		index
-		// 	}
-		// 	else //if (open_year > fidx->start)
-		// 	{
+		// 		open_year++;
 		// 		index++;
 		// 	}
-
 		// }
-		// else
+		// else 
 		// {
-
-		// 	fidx++;
-		// 	open_year++;
+		// 	if (open_year < pidx->start)
+		// 	{
+		// 		sis_struct_list_insert(unit_->fidxs, index, &fidx);
+		// 		open_year++;
+		// 		index++;
+		// 	}
+		// 	else // if (open_year > pidx->start)
+		// 	{
+		// 		if (index < unit_->fidxs->count)
+		// 		{
+		// 			index++;
+		// 		}
+		// 		else
+		// 		{
+		// 			// 新读数据
+		// 			sis_struct_list_push(unit_->fidxs, &fidx);
+		// 			open_year++;
+		// 			index++;
+		// 		}
+		// 	}
 		// }
+		// 	// 增
 	}
 	
 
 	return count;
 }
 
-int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_)
+int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int start_, int stop_)
 {
-	sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start);
+	// sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start);
 	return 0;
 }
 // 从磁盘中读实际数据
@@ -216,7 +175,7 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 {
 	// 这里需要根据索引 去对应文件读取数据
 	// 传入的 cmd 中的 start stop 是原始数据 需要根据数据类型转换后 再去匹配索引的信息
-	if (!unit_)
+	if (!unit_ || !cxt_->freader)
 	{
 		return 0;
 	}
@@ -225,27 +184,24 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 	{
 	case SISDB_FMAP_TYPE_ONE:
 		{
-			if (!unit_->ready)
+			if (unit_->reads == 0)
 			{
-				sis_disk_reader_open(cxt_->freader);
 				s_sis_object *obj = sis_disk_reader_get_one(cxt_->freader, key_);
 				if(obj)
 				{
-					sis_sdsclear((s_sis_sds)unit->value);
-					unit->value = sis_sdscatlen(SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+					s_sis_sds str = (s_sis_sds)unit_->value;
+					sis_sdsclear(str);
+					unit_->value = sis_sdscatlen(str, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
 					sis_object_destroy(obj);
 					count = 1;
 				}
-				sis_disk_reader_close(cxt_->freader);
-				unit_->ready = 1;
 			}
 		}
 		break;
 	case SISDB_FMAP_TYPE_MUL:
 		{
-			if (!unit_->ready)
+			if (unit_->reads == 0)
 			{
-				sis_disk_reader_open(cxt_->freader);
 				s_sis_node *obj = sis_disk_reader_get_mul(cxt_->freader, key_);
 				if(obj)
 				{
@@ -256,16 +212,13 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					unit_->value = obj;
 					count = sis_node_get_size(obj);
 				}
-				sis_disk_reader_close(cxt_->freader);
-				unit_->ready = 1;
 			}
 		}
 		break;
 	case SISDB_FMAP_TYPE_NON:
 		{
-			if (!unit_->ready)
+			if (unit_->reads == 0)
 			{
-				sis_disk_reader_open(cxt_->freader);
 				s_sis_object *obj = sis_disk_reader_get_obj(cxt_->freader, SIS_OBJ_GET_CHAR(unit_->kname), SIS_OBJ_GET_CHAR(unit_->sname), NULL);
 				if (obj)
 				{
@@ -275,8 +228,6 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
 					sis_object_destroy(obj);
 				}
-				sis_disk_reader_close(cxt_->freader);
-				unit_->ready = 1;
 			}
 		}
 		break;
@@ -284,7 +235,6 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 		{
 			if (start_ < unit_->start || stop_ > unit_->stop || unit_->start == 0 || unit_->stop == 0)
 			{
-				sis_disk_reader_open(cxt_->freader);
 				if (unit_->scale == SIS_SDB_SCALE_YEAR)
 				{
 					// 根据cmd中时间 匹配索引加载数据 已经加载过的不再加载
@@ -299,7 +249,6 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					// 无论是何类型都转换为日 要加载就加载一天 
 					count = _fmap_cxt_getdata_date(cxt_, unit_, start, stop);
 				}
-				sis_disk_reader_close(cxt_->freader);
 			}
 		}
 		break;

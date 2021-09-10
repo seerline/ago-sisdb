@@ -57,8 +57,7 @@ typedef struct s_sisdb_fmap_unit
     s_sis_object        *kname;  // 可能多次引用 - 指向dict表的name
     s_sis_object        *sname;  // 可能多次引用 - 指向dict表的name
 	uint8                ktype;  // 该键值的数据类型
-	int8                 ready;  // 已经从磁盘读过数据 
-	uint8                reads;  // 读取次数 最大255 每天减少 1/2 销毁时根据该值大小排序
+	uint8                reads;  // 读取次数 0 表示还没有读 最大 255 每天减少 1/2 销毁时根据该值大小排序
 	// 以上信息来源于 map 的索引信息
 	msec_t               rmsec;  // 最近读的毫秒数 只记录读的毫秒数 大多数键值写入后就不读了，默认36小时没有再读就释放
 								 // rmsec = 0 表示新建unit 还没有读取操作 
