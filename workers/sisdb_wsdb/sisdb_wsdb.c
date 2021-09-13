@@ -10,6 +10,7 @@ static s_sis_method _sisdb_wsdb_methods[] = {
   {"start",  cmd_sisdb_wsdb_start, 0, NULL},
   {"stop",   cmd_sisdb_wsdb_stop, 0, NULL},
   {"write",  cmd_sisdb_wsdb_write, 0, NULL},
+  {"push",   cmd_sisdb_wsdb_push, 0, NULL},
 };
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
@@ -69,6 +70,8 @@ bool sisdb_wsdb_init(void *worker_, void *argv_)
     }
     context->work_sdbs = sis_sdsnew("*");
     context->work_keys = sis_sdsnew("*");
+
+    context->work_datas = sis_map_pointer_create_v(sis_struct_list_destroy);
     return true;
 }
 void sisdb_wsdb_uninit(void *worker_)
@@ -79,6 +82,7 @@ void sisdb_wsdb_uninit(void *worker_)
     context->status = SIS_WSDB_EXIT;
     sisdb_wsdb_stop(context);
 
+    sis_map_pointer_destroy(context->work_datas);
     sis_sdsfree(context->work_path);
     sis_sdsfree(context->work_name);
     sis_sdsfree(context->safe_path);
@@ -109,6 +113,22 @@ void sisdb_wsdb_start(s_sisdb_wsdb_cxt *context)
 }
 void sisdb_wsdb_stop(s_sisdb_wsdb_cxt *context)
 {
+    int size = sis_map_pointer_getsize(context->work_datas);
+    if (size > 0)
+    {
+        char kname[128],sname[128];
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(context->work_datas);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sis_struct_list *slist = (s_sis_struct_list *)sis_dict_getval(de);
+            sis_str_divide((char *)sis_dict_getkey(de), '.', kname, sname);
+            sis_disk_writer_sdb(context->writer, kname, sname, 
+                sis_struct_list_first(slist), slist->count * slist->len);
+            // printf("---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
+        }
+        sis_dict_iter_free(di);        
+    }
     if (context->writer)
     {
         sis_disk_writer_stop(context->writer);
@@ -116,7 +136,8 @@ void sisdb_wsdb_stop(s_sisdb_wsdb_cxt *context)
         sis_disk_writer_destroy(context->writer);
         context->writer = NULL;
     }
-     context->status = SIS_WSDB_NONE;
+    sis_map_pointer_clear(context->work_datas);
+    context->status = SIS_WSDB_NONE;
 }
 
 static int _write_wsdb_head(s_sisdb_wsdb_cxt *context, int iszip)
@@ -240,4 +261,50 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
     return SIS_METHOD_OK; 
 }
 
+int cmd_sisdb_wsdb_push(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
+    
+    // 必须已经打开
+    if (context->status != SIS_WSDB_OPEN)
+    {
+        return SIS_METHOD_ERROR;
+    }    
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    int style = SIS_SDB_STYLE_SDB;
+    if (sis_message_exist(msg, "style"))
+    {
+        style = sis_message_get_int(msg, "style");
+    }
+    _write_wsdb_head(context, 0);
+    switch (style)
+    {
+    case SIS_SDB_STYLE_ONE:
+    case SIS_SDB_STYLE_MUL:
+        break;    
+    case SIS_SDB_STYLE_NON:
+    default:
+        {
+            s_sis_db_chars *chars = sis_message_get(msg, "chars");
+            s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(context->writer->map_sdbs, chars->sname);
+            s_sis_dynamic_db *sdb = sis_disk_sdict_last(sdict);
+            if (sdb)
+            {
+                char name[255];
+                sis_sprintf(name, 255, "%s.%s", chars->kname, chars->sname);
+                s_sis_struct_list *slist = (s_sis_struct_list *)sis_map_pointer_get(context->work_datas, name);
+                if (!slist)
+                {
+                    slist = sis_struct_list_create(sdb->size);
+                    sis_map_pointer_set(context->work_datas, name, slist);
+                }
+                int count = chars->size / sdb->size;
+                sis_struct_list_pushs(slist, chars->data, count);
+            }
+        }
+        break;
+    }
+    return SIS_METHOD_OK; 
+}
 

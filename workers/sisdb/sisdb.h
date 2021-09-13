@@ -85,6 +85,7 @@ typedef struct s_sisdb_cxt
   
 	s_sis_sds           work_path;     // 数据库路径 sisdb
 	s_sis_sds           work_name;     // 数据库名字 sisdb
+	s_sis_sds           safe_path;     // 安全路径 sisdb
   
 	int                 work_date;     // 当前工作日期
 	int                 save_time;     // 存盘时间
@@ -97,8 +98,10 @@ typedef struct s_sisdb_cxt
 	s_sisdb_fmap_cxt   *work_famp_cxt; // 管理所有的数据
 
 	// 多个 client 订阅的列表 需要一一对应发送
-	s_sisdb_sub_cxt    *work_sub_cxt;  // 信息发布管理
+	s_sisdb_sub_cxt    *work_sub_cxt;  // 实时信息发布管理
 
+	// s_sis_map_list     *work_psubs;    // s_sisdb_sub_unit 订阅磁盘历史数据
+	int                 save_status;   // 0 可以存盘 1 正在存盘 2 存盘成功 -1 存盘失败
 	// 直接回调组装好的 s_sis_net_message open 时设置
 	void               *cb_source;       // 
 	sis_method_define  *cb_net_message;  // s_sis_net_message 
@@ -166,7 +169,6 @@ int cmd_sisdb_clear(void *worker_, void *argv_);// 停止某个客户的所有�
 //////////////////////////////////////////////////
 //
 /////////////////////////////////////////////////
-int sisdb_disk_save(s_sisdb_cxt *context);
 int sisdb_disk_pack(s_sisdb_cxt *context);
 
 s_sis_object *sisdb_disk_read(s_sisdb_cxt *context, s_sis_net_message *netmsg);
@@ -175,10 +177,14 @@ s_sis_object *sisdb_disk_read(s_sisdb_cxt *context, s_sis_net_message *netmsg);
 int sisdb_rlog_read(s_sis_worker *worker);
 
 void sisdb_wlog_open(s_sisdb_cxt *context);
-void sisdb_wlog_move(s_sisdb_cxt *context);
+void sisdb_wlog_remove(s_sisdb_cxt *context);
 void sisdb_wlog_close(s_sisdb_cxt *context);
 
-void sisdb_wlog_save_start(s_sisdb_cxt *context);
-void sisdb_wlog_save_stop(s_sisdb_cxt *context);
+// 开始存盘操作 锁定内存数据 移动相关文件 改名log 主程序可以继续接受新的写入信息 但不直接修改内存
+void sisdb_disk_save_start(s_sisdb_cxt *context);
+// 开始执行存盘操作 如果失败就恢复原状 利用老的文件和log生成新的文件到safe目录
+int sisdb_disk_save(s_sisdb_cxt *context);
+// 成功后 交换safe文件 删除处理完的log文件 重置内存write标记=0 然后加载新的log信息
+void sisdb_disk_save_stop(s_sisdb_cxt *context);
 
 #endif

@@ -287,7 +287,7 @@ int snodb_wlog_save(s_snodb_cxt *, int , s_snodb_compress *);
 // 停止wlog文件
 int snodb_wlog_stop(s_snodb_cxt *);
 // 清除wlog文件
-int snodb_wlog_move(s_snodb_cxt *);
+int snodb_wlog_remove(s_snodb_cxt *);
 // 把wlog转为snos格式 
 int snodb_wlog_save_snos(s_snodb_cxt *);
 // 读取 snos 文件 snos 为snodb压缩的分块式顺序格式

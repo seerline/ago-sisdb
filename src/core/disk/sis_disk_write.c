@@ -642,12 +642,28 @@ size_t sis_disk_writer_mul(s_sis_disk_writer *writer_, const char *kname_, s_sis
     return osize;
 }
 
+// 结构化时序和无时序数据 
+int sis_disk_writer_sdb_remove(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, int isign_)
+{
+    // return 0;
+}
+// 单键值单记录数据 
+int sis_disk_writer_one_remove(s_sis_disk_writer *writer_, const char *kname_)
+{
+    // return 0;
+}
+// 单键值多记录数据 inlist_ : s_sis_sds 的列表
+int sis_disk_writer_mul_remove(s_sis_disk_writer *writer_, const char *kname_)
+{
+    // return 0;
+}
+
 ///////////////////////////
 //  s_sis_disk_control
 ///////////////////////////
 
 // 这个函数专门清理 SBD 扩展类型的数据
-int sis_disk_control_move_sdbs(const char *path_, const char *name_)
+int sis_disk_control_remove_sdbs(const char *path_, const char *name_)
 {
     // 暂时不支持
     // 1.检索目录下面所有相关文件 生成文件列表
@@ -658,14 +674,72 @@ int sis_disk_control_move_sdbs(const char *path_, const char *name_)
     return 0;
 }
 // 这里函数只能删除 SNO 和 LOG NET
-int sis_disk_control_move(const char *path_, const char *name_, int style_, int idate_)
+int sis_disk_control_remove(const char *path_, const char *name_, int style_, int idate_)
 {
     s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, path_, name_, idate_);
-    sis_disk_ctrl_delete(munit);
+    sis_disk_ctrl_remove(munit);
     sis_disk_ctrl_destroy(munit);
     return 1;
 }
 
+// void sis_disk_v1_file_move(s_sis_disk_v1_class *cls_, const char *path_)
+// {
+//     char fn[255];
+//     char newfn[255];
+//     for (int  i = 0; i < cls_->work_fps->lists->count; i++)
+//     {
+//         s_sis_disk_v1_unit *unit = (s_sis_disk_v1_unit *)sis_pointer_list_get(cls_->work_fps->lists, i);
+//         sis_file_getname(unit->fn, fn, 255);
+//         sis_sprintf(newfn, 255, "%s/%s", path_, fn);
+//         sis_file_rename(unit->fn, newfn);
+//     }
+//     if (cls_->work_fps->main_head.index)
+//     {
+//         for (int  i = 0; i < cls_->index_fps->lists->count; i++)
+//         {
+//             s_sis_disk_v1_unit *unit = (s_sis_disk_v1_unit *)sis_pointer_list_get(cls_->index_fps->lists, i);
+//             sis_file_getname(unit->fn, fn, 255);
+//             sis_sprintf(newfn, 255, "%s/%s", path_, fn);
+//             sis_file_rename(unit->fn, newfn);
+//         }
+//     }
+// }
+// 移动文件至目标目录
+int sis_disk_control_move(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_)
+{
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, srcpath_, name_, idate_);
+    sis_disk_ctrl_move(munit, dstpath_);
+    sis_disk_ctrl_destroy(munit);
+    return 1;
+}
+
+// 复制文件至目标目录
+int sis_disk_control_copy(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_)
+{
+    s_sis_disk_ctrl *unit = sis_disk_ctrl_create(style_, srcpath_, name_, idate_);
+    char agofn[255];
+    char newfn[512];
+    // for (int  i = 0; i < unit->work_fps->lists->count; i++)
+    // {
+    //     s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->work_fps->lists, i);
+    //     sis_file_getname(unit->fn, agofn, 255);
+
+    //     sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+    //     sis_file_copy(unit->fn, newfn);
+    // }
+    // if (unit->work_fps->main_head.index)
+    // {
+    //     for (int  i = 0; i < cls_->widx_fps->lists->count; i++)
+    //     {
+    //         s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->widx_fps->lists, i);
+    //         sis_file_getname(unit->fn, agofn, 255);
+    //         sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+    //         sis_file_copy(unit->fn, newfn);
+    //     }
+    // }
+    sis_disk_ctrl_destroy(unit);
+    return 1;
+}
 int sis_disk_log_exist(const char *path_, const char *name_, int idate_)
 {
     int isok = 0;

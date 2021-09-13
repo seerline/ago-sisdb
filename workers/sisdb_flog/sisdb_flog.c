@@ -11,12 +11,12 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method _sisdb_flog_methods[] = {
-    {"sub",     cmd_sisdb_flog_sub,    0, NULL},  
-    {"unsub",   cmd_sisdb_flog_unsub,  0, NULL}, 
+    {"sub",     cmd_sisdb_flog_sub,     0, NULL},  
+    {"unsub",   cmd_sisdb_flog_unsub,   0, NULL}, 
     {"open",    cmd_sisdb_flog_open,    0, NULL},   
     {"write",   cmd_sisdb_flog_write,   0, NULL},  
     {"close",   cmd_sisdb_flog_close,   0, NULL},   
-    {"move",    cmd_sisdb_flog_move,    0, NULL},  
+    {"remove",  cmd_sisdb_flog_remove,  0, NULL},  
 };
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb_flog = {
@@ -268,7 +268,7 @@ int cmd_sisdb_flog_write(void *worker_, void *argv_)
     return SIS_METHOD_OK;
 }
 
-int cmd_sisdb_flog_move(void *worker_, void *argv_)
+int cmd_sisdb_flog_remove(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
@@ -281,7 +281,7 @@ int cmd_sisdb_flog_move(void *worker_, void *argv_)
         sis_message_exist(msg, "work-name") &&
         sis_message_exist(msg, "work-date"))
     {
-        sis_disk_control_move(
+        sis_disk_control_remove(
             sis_message_get_str(msg, "work-path"), 
             sis_message_get_str(msg, "work-name"), 
             SIS_DISK_TYPE_LOG, 

@@ -48,63 +48,63 @@ int sisdb_fmap_cxt_tsdb_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s
 }
 
 
-int _fmap_cxt_getdata_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int start)
+int _fmap_cxt_getdata_from_disk(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int index, int start)
 {
 	s_sis_msec_pair pair; 
 	if (unit_->scale == SIS_SDB_SCALE_YEAR)
 	{
-		pair.start = (msec_t)sis_time_make_time(start / 10000 * 10000 + 101, 0) * 1000;
-		pair.stop = (msec_t)sis_time_make_time(start / 10000 * 10000 + 1231, 235959) * 1000 + 999;
+		pair.start = (msec_t)sis_time_make_time(start * 10000 + 101, 0) * 1000;
+		pair.stop = (msec_t)sis_time_make_time(start * 10000 + 1231, 235959) * 1000 + 999;
 	}
 	else
 	{
 		pair.start = (msec_t)sis_time_make_time(start, 0) * 1000;
 		pair.stop = (msec_t)sis_time_make_time(start, 235959) * 1000 + 999;
 	}
+	s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
+	pidx->count = 0;
+	pidx->start = 0;
 	s_sis_object *obj = sis_disk_reader_get_obj(cxt_->freader, SIS_OBJ_GET_CHAR(unit_->kname), SIS_OBJ_GET_CHAR(unit_->sname), &pair);
 	if (!obj)
 	{  
 		// 没数据就增加一个空的索引 下次可以不用再读
 		return 0;
 	}
-	// 有数据就把读到的数据插入数据区 并增加一个新的有数据的索引
-	s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
-	// s_sisdb_fmap_cmp ans = { 0, -1, 0};
-
-
-	// s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
-	// count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
-	// sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
-	// sis_object_destroy(obj);
-
-	// 找到和start匹配的数据索引
-	// push 一定可以成功
-	// sisdb_fmap_cmp_find(unit_, start, &ans);
-	
-	// // 先整理镜像索引
-	// int ostart = ans.ostart;
-	// if (ostart == 0)
-	// {
-	// 	ostart = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start);
-	// }
-
-	// sisdb_fmap_unit_set_idx(unit_, ostart);
-
-	// int count = isize / unit_->sdb->size;
-	// if (ans.oindex < 0)
-	// {
-	// 	sis_struct_list_inserts(slist, 0, imem, count);
-	// }
-	// else if (ans.oindex >= slist->count)
-	// {
-	// 	sis_struct_list_pushs(slist, imem, count);
-	// }
-	// else 
-	// {
-	// 	sis_struct_list_inserts(slist, ans.oindex + ans.ocount, imem, count);
-	// }
-	// // 重建索引
-	// sisdb_fmap_unit_reidx(unit_);
+	int count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
+	pidx->count = count;
+	// 有数据就把读到的数据插入数据区 并更新 start 的值
+	if (count > 0)
+	{
+		s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
+		msec_t search = pair.start;
+		search = sis_time_unit_convert(SIS_DYNAMIC_TYPE_MSEC, unit_->sdb->field_mindex->style, search);
+		int oindex = sisdb_fmap_cmp_find_head(unit_, search);
+		// 修改之后的数据
+		for (int i = index + 1; i < unit_->fidxs->count; i++)
+		{
+			s_sisdb_fmap_idx *fpidx = sis_struct_list_get(unit_->fidxs, i);
+			if (fpidx->count > 0 && fpidx->start >= 0)
+			{
+				fpidx->start += count;
+			}
+		}
+		if (oindex >= slist->count)
+		{
+			pidx->start = slist->count;
+			sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
+		}
+		else 
+		{
+			if (oindex < 0)
+			{
+				oindex = 0;
+			}
+			pidx->start = oindex;
+			sis_struct_list_inserts(slist, oindex, SIS_OBJ_GET_CHAR(obj), count);
+		}
+	}
+	// 重建索引
+	sisdb_fmap_unit_reidx(unit_);
 	return 0;
 }
 // 返回加载的数据数量
@@ -116,57 +116,68 @@ int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	int open_year = openyear; 
 	int stop_year = stopyear;
 	int index = 0;
-	while (open_year <= stop_year)
+	while (open_year <= stop_year && index < unit_->fidxs->count)
 	{
-		// s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
-		// if (open_year == pidx->start)
-		// {
-		// 	if (pidx->start == -1)
-		// 	{
-		// 		// 读取数据并插入到合适的位置
-		// 		// _fmap_cxt_getdata_set(unit_, pidx, )
-		// 		pidx->start = 1;
-		// 	}
-		// 	else
-		// 	{
-		// 		open_year++;
-		// 		index++;
-		// 	}
-		// }
-		// else 
-		// {
-		// 	if (open_year < pidx->start)
-		// 	{
-		// 		sis_struct_list_insert(unit_->fidxs, index, &fidx);
-		// 		open_year++;
-		// 		index++;
-		// 	}
-		// 	else // if (open_year > pidx->start)
-		// 	{
-		// 		if (index < unit_->fidxs->count)
-		// 		{
-		// 			index++;
-		// 		}
-		// 		else
-		// 		{
-		// 			// 新读数据
-		// 			sis_struct_list_push(unit_->fidxs, &fidx);
-		// 			open_year++;
-		// 			index++;
-		// 		}
-		// 	}
-		// }
-		// 	// 增
+		s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
+		if (open_year == pidx->isign)
+		{
+			if (pidx->start == -1)
+			{
+				// 读取数据并插入到合适的位置
+				count = _fmap_cxt_getdata_from_disk(cxt_, unit_, index, open_year);
+			}
+			open_year++;
+			index++;
+		}
+		else 
+		{
+			if (open_year < pidx->isign)
+			{
+				open_year++;
+			}
+			else // if (open_year > pidx->isign)
+			{
+				index++;
+			}
+		}
 	}
-	
-
 	return count;
 }
 
-int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int start_, int stop_)
+int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int opendate, int stopdate)
 {
-	// sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start);
-	return 0;
+	// 根据cmd中时间 匹配索引加载数据 已经加载过的不再加载
+	// 数据加载后更新 
+	int count = 0;
+	int open_date = opendate; 
+	int stop_date = stopdate;
+	int index = 0;
+	while (open_date <= stop_date && index < unit_->fidxs->count)
+	{
+		s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
+		if (open_date == pidx->isign)
+		{
+			if (pidx->start == -1)
+			{
+				// 读取数据并插入到合适的位置
+				count = _fmap_cxt_getdata_from_disk(cxt_, unit_, index, open_date);
+			}
+			open_date = sis_time_get_offset_day(open_date, 1);
+			index++;
+		}
+		else 
+		{
+			if (open_date < pidx->isign)
+			{
+				open_date = sis_time_get_offset_day(open_date, 1);
+			}
+			else // if (open_date > pidx->isign)
+			{
+				index++;
+			}
+		}
+	}
+	return count;
 }
 // 从磁盘中读实际数据
 // 仅仅把相关的键值 相关的日期的数据加载到内存 其他什么事情也不做
@@ -233,14 +244,16 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 		break;
 	default:
 		{
-			if (start_ < unit_->start || stop_ > unit_->stop || unit_->start == 0 || unit_->stop == 0)
+			// if (start_ < unit_->start || stop_ > unit_->stop || unit_->start == 0 || unit_->stop == 0)
 			{
 				if (unit_->scale == SIS_SDB_SCALE_YEAR)
 				{
 					// 根据cmd中时间 匹配索引加载数据 已经加载过的不再加载
 					// 数据加载后更新 count
 					// 传入年份 如果已经读过了就直接返回 如果没有读过就去读
-					count = _fmap_cxt_getdata_year(cxt_, unit_, start_ / 10000, stop_ / 10000);
+					int start = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, start_);
+					int stop = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, stop_);
+					count = _fmap_cxt_getdata_year(cxt_, unit_, start, stop);
 				}
 				else
 				{
@@ -254,8 +267,4 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 		break;
 	}
 	return count;
-}
-
-int sisdb_fmap_cxt_init_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int start_, int stop_)
-{
 }

@@ -849,12 +849,12 @@ int sis_disk_ctrl_write_stop(s_sis_disk_ctrl *cls_)
 }
 
 
-void sis_disk_ctrl_delete(s_sis_disk_ctrl *cls_)
+void sis_disk_ctrl_remove(s_sis_disk_ctrl *cls_)
 {
-    int count = sis_disk_files_delete(cls_->work_fps);
+    int count = sis_disk_files_remove(cls_->work_fps);
     if (cls_->widx_fps)
     {
-        count += sis_disk_files_delete(cls_->widx_fps);
+        count += sis_disk_files_remove(cls_->widx_fps);
     }
     LOG(5)("delete file count = %d.\n", count);
 }
@@ -866,7 +866,7 @@ int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_)
         return 0;
     }
     // 开始新文件
-    sis_disk_ctrl_delete(des_);
+    sis_disk_ctrl_remove(des_);
     // 先初始化原文件 读索引
     sis_disk_ctrl_read_start(src_);
     // 再初始化目标文件 准备工作
@@ -927,5 +927,3 @@ int sis_disk_ctrl_move(s_sis_disk_ctrl *cls_, const char *path_)
     }
     return o;
 }
-
-

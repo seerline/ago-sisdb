@@ -228,7 +228,7 @@ int sis_disk_files_open_rdonly(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
 
     return 0;
 }
-int sis_disk_files_delete(s_sis_disk_files *cls_)
+int sis_disk_files_remove(s_sis_disk_files *cls_)
 {
     for (int  i = 0; i < cls_->lists->count; i++)
     {
@@ -247,7 +247,7 @@ int sis_disk_files_open(s_sis_disk_files *cls_, int access_)
     {
     case SIS_DISK_ACCESS_CREATE:
         {
-            sis_disk_files_delete(cls_);
+            sis_disk_files_remove(cls_);
             sis_pointer_list_delete(cls_->lists, 1, cls_->lists->count - 1);
             s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->lists, 0);
             if (cls_->lists->count < 1)

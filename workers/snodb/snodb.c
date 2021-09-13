@@ -371,7 +371,7 @@ bool snodb_init(void *worker_, void *argv_)
 		LOG(5)("load wlog ok. %d\n", context->wlog_load);
 
 		// 加载成功后 wlog 文件会被重写 以此来保证数据前后的一致性
-		// snodb_wlog_move(context);
+		// snodb_wlog_remove(context);
 		//  如何保证磁盘的code索引和重启后索引保持一致 
 		//  传入数据时不能清理 keys 和 sdbs 才能不出错
 		// 然后启动一个读者 订阅 outputs 中数据 然后实时写盘
@@ -664,13 +664,13 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 				// 等待数据存盘完毕
 				SIS_WAIT_LONG(context->wfile_save == 0);
 				// 存盘结束清理 wlog
-				snodb_wlog_move(context);
+				snodb_wlog_remove(context);
 			}
 			// 数据转错 就不删除
 		}
 		else
 		{
-			snodb_wlog_move(context);
+			snodb_wlog_remove(context);
 		}
 	}
 	context->stoped = true; // 停止表示当日数据已经落盘

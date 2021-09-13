@@ -175,6 +175,14 @@ size_t sis_disk_writer_one(s_sis_disk_writer *, const char *kname_, void *in_, s
 // 单键值多记录数据 inlist_ : s_sis_sds 的列表
 size_t sis_disk_writer_mul(s_sis_disk_writer *, const char *kname_, s_sis_pointer_list *inlist_);
 
+
+// 结构化时序和无时序数据 
+int sis_disk_writer_sdb_remove(s_sis_disk_writer *, const char *kname_, const char *sname_, int isign_);
+// 单键值单记录数据 
+int sis_disk_writer_one_remove(s_sis_disk_writer *, const char *kname_);
+// 单键值多记录数据 inlist_ : s_sis_sds 的列表
+int sis_disk_writer_mul_remove(s_sis_disk_writer *, const char *kname_);
+
 ///////////////////////////
 //  s_sis_disk_reader
 ///////////////////////////
@@ -233,7 +241,13 @@ int sis_disk_reader_sub_sdb(s_sis_disk_reader *, const char *keys_, const char *
 //  s_sis_disk_control
 ///////////////////////////
 // 删除 log net sno 文件
-int sis_disk_control_move(const char *path_, const char *name_, int style_, int idate_);
+int sis_disk_control_remove(const char *path_, const char *name_, int style_, int idate_);
+// 移动文件至目标目录
+int sis_disk_control_move(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_);
+// 复制文件至目标目录
+int sis_disk_control_copy(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_);
+// 复制文件至目标目录
+int sis_disk_control_(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_);
 // 判断指定日期的log是否存在
 int sis_disk_log_exist(const char *path_, const char *name_, int idate_);
 // 判断指定日期的net是否存在

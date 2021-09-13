@@ -66,16 +66,28 @@ bool sisdb_init(void *worker_, void *argv_)
     context->work_sub_cxt = sisdb_sub_cxt_create();
 
     // 数据集合
+    context->work_name = sis_sdsdup(node->key);
+    
     const char *work_path = sis_json_get_str(node, "work-path");
     if (work_path)
     {
-        context->work_famp_cxt = sisdb_fmap_cxt_create(work_path, node->key);
+        context->work_famp_cxt = sisdb_fmap_cxt_create(work_path, context->work_name );
     }
     else
     {
-        context->work_famp_cxt = sisdb_fmap_cxt_create("data", node->key);
+        context->work_famp_cxt = sisdb_fmap_cxt_create("data", context->work_name );
     }
-
+    {
+        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "safe-path");
+        if (sonnode)
+        {
+            context->safe_path = sis_sdsnew(sonnode->value);
+        }
+        else
+        {
+            context->safe_path = sis_sdsnew("data/safe/");
+        }
+    }
     sis_mutex_init(&(context->wlog_lock), NULL);
 
     context->status = 0;
@@ -101,6 +113,9 @@ void sisdb_uninit(void *worker_)
         context->work_sub_cxt = NULL;
     }
     sisdb_fmap_cxt_destroy(context->work_famp_cxt);
+    sis_sdsfree(context->work_path);
+    sis_sdsfree(context->work_name);
+    sis_sdsfree(context->safe_path);
     sis_free(context);
 }
 
@@ -126,13 +141,13 @@ void sisdb_working(void *worker_)
     int itime = sis_time_get_itime(0);
     if (itime > context->save_time)
     {
-        sis_mutex_lock(&context->wlog_lock);
-        sisdb_wlog_save_start(context);
+        sisdb_disk_save_start(context);  
         // 这里要判断是否新的一天 如果是就存盘
         if (sisdb_disk_save(context) == SIS_METHOD_OK)
         {
-            sisdb_wlog_save_stop(context);
         }
+        sisdb_disk_save_stop(context);
+
         int week = sis_time_get_week_ofday(context->work_date);
         // 存盘后如果检测到是周五 就执行pack工作
         if (week == 5)
@@ -144,7 +159,6 @@ void sisdb_working(void *worker_)
         }   
         context->work_date = idate;   
         LOG(5)("new workdate = %d\n", context->work_date);  
-        sis_mutex_unlock(&context->wlog_lock);
     }
 }
 
@@ -553,20 +567,18 @@ int cmd_sisdb_save(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     // 先关闭 log 然后转移log文件 然后再打开新的log 
     // 并设置标记 此时只接收数据 等待save结束
-    sisdb_wlog_save_start(context);
-
+    sisdb_disk_save_start(context);   
     int o = sisdb_disk_save(context);  
     if (o == SIS_METHOD_OK)
     {
         // 存盘成功 可以清理老的log
-        sisdb_wlog_save_stop(context);
         sis_net_ans_with_ok(netmsg);
     }
     else
     {
         sis_net_ans_with_error(netmsg, "save fail.", 0);
     }
-    
+    sisdb_disk_save_stop(context);    
     return o;
 }
 

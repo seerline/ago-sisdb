@@ -85,6 +85,7 @@
 #define SIS_DYNAMIC_TYPE_TSEC   'S'  // 秒   4 8  
 #define SIS_DYNAMIC_TYPE_MINU   'M'  // 分钟 4 time_t/60
 #define SIS_DYNAMIC_TYPE_DATE   'D'  // 天 4 20010101
+#define SIS_DYNAMIC_TYPE_YEAR   'Y'  // 年 4 2001
 
 #define SIS_DYNAMIC_DIR_RTOL     0
 #define SIS_DYNAMIC_DIR_LTOR     1
