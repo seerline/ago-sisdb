@@ -638,7 +638,7 @@ int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, msec_t start_, msec_t stop_, 
 	return ans_->oindex;
 }
 
-#if 1
+#if 0
 // 这里测试 sisdb_fmap_cmp_range 和 sisdb_fmap_cmp_same
 #pragma pack(push,1)
 typedef struct s_date_data
