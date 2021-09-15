@@ -500,6 +500,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_);
 s_sis_dynamic_db *sis_dynamic_db_create_none(const char *name_, size_t size_);
 void sis_dynamic_db_destroy(void *db_);
 
+void sis_dynamic_db_setname(s_sis_dynamic_db *db_, const char *name_);
 void sis_dynamic_db_incr(s_sis_dynamic_db *db_);
 void sis_dynamic_db_decr(s_sis_dynamic_db *db_);
 

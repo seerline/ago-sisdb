@@ -37,7 +37,9 @@
 //    索引文件对每个key需要保存一个 active 字节 0..255 每次写盘时如果没有增加就减 1 以此来判断key的热度  
 //    文件一律分块存储
 ////////////////////////////////////////////////////
-// 2. 统一管理 4 5 6 类型文件 只保留 所有key和sdb最新的结构体 只有两个块 key和sdb  
+// 2. 统一管理 4 5 6 类型文件 只保留 所有key和sdb最新的结构体
+// 所有有效的 key 及相关信息 保存在 SIS_DISK_HID_MSG_MAP 块中
+// 删除在 map 中做标记  pack 时才做清理
 #define  SIS_DISK_TYPE_SDB         3   // name/name.sdb
 // 4. 标准SDB数据文件 无时序 有索引 有文件尾 name.sdb 会有[所有]的key [最新]的结构体名和结构sdb
 //    但name的索引只有无时序的数据索引 加载时仅仅加载key和sdb 以方便确定数据是否可能存在
@@ -153,6 +155,10 @@
 #define  SIS_DISK_HID_MSG_NET     0xB  // size(dsize)+incrzipstream 
 // SNO数据块结束符 收到此消息后 表明数据压缩重新开始
 #define  SIS_DISK_HID_NET_NEW     0xC  // size(dsize)+最新时间+pages(dsize)+序号(dsize)
+// MAP文件的key+sdb的索引信息 active 在 1.255 之间表示有效 0 表示删除 
+// 后写入的 如果 ndate 一样会覆盖前面写入的数据 这样保证 map 只写增量数据 仅在pack 时才清理冗余的数据
+#define  SIS_DISK_HID_MSG_MAP   0xD // size(dsize)+klen(dsize)+kname+dblen(dsize)+dname+active(1)+ktype(1)+blocks(dsize)
+//        +[active(1)+ndate(dsize)]
 
 /////////////////////////////////////////////////////////
 // 读取索引文件必须加载全部数据 *** 特别重要 *** 数据文件才有意义
@@ -178,10 +184,6 @@
 // NET的块开始块索引 存储当前是第几个块 用于断点续传时使用
 // 格式为 blocks(dsize)+[fidx(dsize)+offset(dsize)+size(dsize)+openmsec(dsize)]
 #define  SIS_DISK_HID_INDEX_NEW   0x15 // size(dsize)+
-// MAP文件的key+sdb的索引信息 active 在 1.255 之间表示有效 
-// 后写入的 如果 ndate 一样会覆盖前面写入的数据
-#define  SIS_DISK_HID_INDEX_MAP   0x16 // size(dsize)+klen(dsize)+kname+dblen(dsize)+dname+active(1)+ktype+blocks(dsize)
-//        +[+ndate(dsize)+count(dsize)]
 // 文件结束块
 #define  SIS_DISK_HID_TAIL        0x1F  // 结束块标记
 
@@ -363,16 +365,18 @@ typedef struct s_sis_disk_sdict {
 //////////////////////////////////////////////////////
 typedef struct s_sis_disk_map_unit
 {
+    uint8               active; // 读者数 0 表示该块被删除 1 - 255 表示读者数
     uint32              idate;  // 日上为年 日下未日期
-    uint32              count;  // 数据个数
+    // 写入和读取时没有用 单次写如果时间不重叠 会直接增加一个数据块 此时数量是对不上的
+    // uint32              count;  // 数据个数 仅仅在读取成立时
 } s_sis_disk_map_unit;
 // map 的索引传递信息 这里的name是原始的
 typedef struct s_sis_disk_map {
     s_sis_object       *kname;  // 可能多次引用 - 指向dict表的name
     s_sis_object       *sname;  // 可能多次引用 - 指向dict表的name
-    uint8               active; // 读者数
+    uint8               active; // 读者数 0 表示该键值被删除 1 - 255 表示读者数 每天减 1
     uint8               ktype;  // SIS_SDB_STYLE_SDB SIS_SDB_STYLE_NON ...
-    s_sis_struct_list  *idxs;   // s_sis_disk_map_unit
+    s_sis_sort_list    *sidxs;  // s_sis_disk_map_unit
 }s_sis_disk_map;
 
 //////////////////////////////////////////////////////
@@ -647,6 +651,8 @@ int sis_disk_io_write_mul(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
 
 int sis_disk_io_write_non(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
 int sis_disk_io_write_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
+
+int sis_disk_io_write_map(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, int style, int idate, int moved);
 
 size_t sis_disk_io_write_sdb_widx(s_sis_disk_ctrl *cls_);
 

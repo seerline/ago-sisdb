@@ -458,7 +458,7 @@ int cmd_sisdb_rsno_v1_get(void *worker_, void *argv_)
         if (sdict)
         {
             s_sis_disk_v1_dict_unit *sunit = sis_disk_v1_dict_last(sdict);
-            s_sis_json_node *node = sis_dynamic_dbinfo_to_json(sunit->db);
+            s_sis_json_node *node = sis_sdbinfo_to_json(sunit->db);
             s_sis_dynamic_db *diskdb = sis_dynamic_db_create(node);
             sis_json_delete_node(node);
             sis_message_set(msg, "diskdb", diskdb, sis_dynamic_db_destroy);

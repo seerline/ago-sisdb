@@ -281,6 +281,36 @@ int sis_index_list_del(s_sis_index_list *list_, int index_);
 }
 #endif
 
+typedef struct s_sis_node {
+	struct s_sis_node *next, *prev;
+	int                index;
+	void              *value;        
+} s_sis_node;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+s_sis_node *sis_node_create(); 
+void sis_node_destroy(void *node_);
+
+void sis_node_clear(void *node_);
+
+int sis_node_push(s_sis_node *, void *data_);
+
+s_sis_node *sis_node_get(s_sis_node *, int index_);
+
+s_sis_node *sis_node_next(s_sis_node *);
+
+void *sis_node_set(s_sis_node *, int index_, void *data_);
+
+void *sis_node_del(s_sis_node *, int index_);
+
+int sis_node_get_size(s_sis_node *);
+
+#ifdef __cplusplus
+}
+#endif
 typedef struct s_sis_node_list {
 	int                 node_size;
 	int                 node_count; // 单结点最大数量

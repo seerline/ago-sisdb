@@ -172,6 +172,7 @@ s_sis_disk_ctrl *sis_disk_ctrl_create(int style_, const char *fpath_, const char
 
     o->sdb_incrzip = sis_incrzip_class_create();
 
+    o->map_maps = sis_map_list_create(sis_disk_map_destroy);
     _disk_ctrl_init(o);
 
     return o;
@@ -198,6 +199,8 @@ void sis_disk_ctrl_destroy(void *cls_)
 
     sis_map_list_destroy(ctrl->map_idxs);
     sis_disk_files_destroy(ctrl->widx_fps);
+
+    sis_map_list_destroy(ctrl->map_maps);
 
     sis_free(ctrl);
 }
@@ -419,7 +422,7 @@ void sis_disk_ctrl_write_sdict(s_sis_disk_ctrl *cls_)
         for (int i = 0; i < cls_->new_sinfos->count; i++)
         {
             s_sis_dynamic_db *sdb = sis_pointer_list_get(cls_->new_sinfos, i);
-            sis_json_object_add_node(sdbs_node, sdb->name, sis_dynamic_dbinfo_to_json(sdb)); 
+            sis_json_object_add_node(sdbs_node, sdb->name, sis_sdbinfo_to_json(sdb)); 
         }
         msg = sis_json_to_sds(sdbs_node, true);
         sis_json_delete_node(sdbs_node);
@@ -468,7 +471,7 @@ s_sis_sds sis_disk_ctrl_get_sdbs_sds(s_sis_disk_ctrl *cls_)
         {
             s_sis_disk_sdict *sdict = (s_sis_disk_sdict *)sis_map_list_geti(cls_->map_sdicts, i);
             s_sis_dynamic_db *sdb = sis_disk_sdict_last(sdict);
-            sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(sdict->name), sis_dynamic_dbinfo_to_json(sdb));
+            sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(sdict->name), sis_sdbinfo_to_json(sdb));
         }
     }
     s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
@@ -620,8 +623,7 @@ int sis_disk_ctrl_read_start(s_sis_disk_ctrl *cls_)
     // 对已经存在的文件进行合法性检查 如果文件不完整 就打开失败 由外部程序来处理异常，这样相对安全
     if (!sis_file_exists(cls_->work_fps->cur_name))
     {
-        LOG(5)
-            ("workfile no exists.[%s]\n", cls_->work_fps->cur_name);
+        // LOG(5)("workfile no exists.[%s]\n", cls_->work_fps->cur_name);
         return SIS_DISK_CMD_NO_EXISTS;
     }
     if (cls_->work_fps->main_head.index)

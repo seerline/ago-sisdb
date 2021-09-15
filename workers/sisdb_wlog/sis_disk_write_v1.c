@@ -500,7 +500,7 @@ s_sis_sds sis_disk_v1_file_get_sdbs(s_sis_disk_v1_class *cls_, bool onlyincr_)
                 {
                     unit->writed = 1;
                 }
-                sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(info->name), sis_dynamic_dbinfo_to_json(unit->db));
+                sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(info->name), sis_sdbinfo_to_json(unit->db));
             }
         }
     }

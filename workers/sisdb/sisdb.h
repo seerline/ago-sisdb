@@ -10,6 +10,7 @@
 #include "sis_obj.h"
 #include "worker.h"
 #include "sisdb_sub.h"
+#include "sisdb_fmap.h"
 
 // 所有查询全部先返回二进制数据 最后再转换格式返回
 // 启动时只加载LOG 通过LOG的写入指令 加载磁盘的相应数据 
@@ -77,12 +78,6 @@
 // // 多个client订阅的列表 需要一一对应发送
 // s_sis_map_pointer    *map_pubs;  // 以key为索引的 s_sis_net_pub 结构的 s_sis_pointer_list *
 // 								 // 同一key可能有多个用户订阅
-	
-#define s_sisdb_table s_sis_dynamic_db
-#define s_sisdb_field s_sis_dynamic_field
-#define sisdb_table_create sis_dynamic_db_create
-#define sisdb_table_destroy sis_dynamic_db_destroy
-
 
 typedef struct s_sisdb_cxt
 {
@@ -98,17 +93,8 @@ typedef struct s_sisdb_cxt
 	int                 wlog_open;     // wlog是否可写
 	s_sis_method       *wlog_write;    // log的写入方法
 	s_sis_worker       *wlog_worker;   // 当前使用的flog类
-
-	int                 wfile_status;  // 是否正在存盘 
-	s_sis_worker       *wfile_worker;  // 当前使用的写文件类
-	int                 rfile_status;  // 是否正在读盘 
-	s_sis_worker       *rfile_worker;  // 当前使用的读文件类
 	
-	// 下面数据永不清理
-	s_sis_map_list     *work_sdbs;    // sdb 的结构字典表 s_sis_dynamic_db
-	// 下面数据可能定时清理
-	s_sis_map_pointer  *work_keys;    // 数据集合的字典表 s_sisdb_collect 这里实际存放数据，数量为股票个数x数据表数
-									  // SH600600.DAY 
+	s_sisdb_fmap_cxt   *work_famp_cxt; // 管理所有的数据
 
 	// 多个 client 订阅的列表 需要一一对应发送
 	s_sisdb_sub_cxt    *work_sub_cxt;  // 信息发布管理
@@ -159,16 +145,18 @@ int cmd_sisdb_unsub(void *worker_, void *argv_);
 // 订阅历史数据
 // 回放数据 需指定日期 支持模糊匹配 所有数据全部拿到按时间排序后一条一条返回 
 // 会先发送start 然后是各种数据 s_sis_db_chars * 最后是stop 每个请求获取数据样本后 开一个线程处理并返回数据
-// 同一个连接只能同时有一个回放请求
-// 这里暂时不考虑内存和磁盘数据的拼接问题
+// 同一个连接只能同时有一个回放请求 启动一个线程 新建一个订阅类
+// 这里暂时不考虑内存和磁盘数据的拼接问题 
+// ** 如果考虑也可以 先从内存看数据是否已经加载 如果加载，直接放数据到订阅类 **
+// 用该功能 读取的数据并不常驻内存 数据用完就释放
 int cmd_sisdb_psub(void *worker_, void *argv_);
 // 取消回放
 int cmd_sisdb_unpsub(void *worker_, void *argv_);
-
+// 直接从磁盘获取数据
 int cmd_sisdb_read(void *worker_, void *argv_);// 从磁盘加载数据
 
-int cmd_sisdb_disk_save (void *worker_, void *argv_);// 存盘
-int cmd_sisdb_disk_pack (void *worker_, void *argv_);// 合并整理数据
+int cmd_sisdb_save (void *worker_, void *argv_);// 存盘
+int cmd_sisdb_pack (void *worker_, void *argv_);// 合并整理数据
 int cmd_sisdb_open(void *worker_, void *argv_);
 int cmd_sisdb_close(void *worker_, void *argv_);
 int cmd_sisdb_rlog (void *worker_, void *argv_);// 加载没有写盘的log信息
@@ -181,14 +169,16 @@ int cmd_sisdb_clear(void *worker_, void *argv_);// 停止某个客户的所有�
 int sisdb_disk_save(s_sisdb_cxt *context);
 int sisdb_disk_pack(s_sisdb_cxt *context);
 
-s_sis_object *sisdb_read_disk(s_sisdb_cxt *context, s_sis_net_message *netmsg);
+s_sis_object *sisdb_disk_read(s_sisdb_cxt *context, s_sis_net_message *netmsg);
 
-int sisdb_read_sdbs(s_sisdb_cxt *context);
 // 从磁盘中加载log
 int sisdb_rlog_read(s_sis_worker *worker);
 
 void sisdb_wlog_open(s_sisdb_cxt *context);
 void sisdb_wlog_move(s_sisdb_cxt *context);
 void sisdb_wlog_close(s_sisdb_cxt *context);
+
+void sisdb_wlog_save_start(s_sisdb_cxt *context);
+void sisdb_wlog_save_stop(s_sisdb_cxt *context);
 
 #endif

@@ -18,16 +18,36 @@ extern "C" {
 /////////////////////////////////////////////////
 // 对 s_sis_dynamic_db 信息的提取和转换
 /////////////////////////////////////////////////
-// 数据转换为array
-s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in_, size_t ilen_); 
-// 数据转换为csv
-s_sis_sds sis_dynamic_db_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_);
 // 表字段转 conf
-s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
+s_sis_sds sis_sdbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_);
 // 表字段转 json 
-s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_);
+s_sis_json_node *sis_sdbinfo_to_json(s_sis_dynamic_db *db_);
+// 数据转换为array
+s_sis_sds sis_sdb_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in_, size_t ilen_); 
+// 数据转换为csv
+s_sis_sds sis_sdb_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_);
 // 直接通过配置转数据格式
-s_sis_sds sis_dynamic_conf_to_array_sds(const char *confstr_, void *in_, size_t ilen_); 
+s_sis_sds sis_sdb_to_array_of_conf_sds(const char *confstr_, void *in_, size_t ilen_); 
+
+// 得到指定 字段的json格式
+s_sis_json_node *sis_sdb_get_fields_of_json(s_sis_dynamic_db *sdb_, s_sis_string_list *fields_);
+// 得到指定 字段的csv格式
+s_sis_sds sis_sdb_get_fields_of_csv(s_sis_dynamic_db *db_, s_sis_string_list *fields_);
+
+// 按fields_中的约定字段获取二进制数据
+s_sis_sds sisdb_sdb_struct_to_sds(s_sis_dynamic_db *db_, const char *in_, size_t ilen_, s_sis_string_list *fields_);
+// 数据按字段转换为 csv
+s_sis_sds sis_sdb_fields_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_, s_sis_string_list *fields_, bool isfields_);
+// 数据按字段转换为 array
+s_sis_sds sis_sdb_fields_to_array_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_, s_sis_string_list *fields_, bool iszip_);
+// 数据按字段转换为 json
+s_sis_sds sis_sdb_fields_to_json_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_, const char *key_, s_sis_string_list *fields_, bool isfields_, bool iszip_);
+
+// [[x,y,z],....]字符串转二进制数据
+s_sis_sds sis_array_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_);
+
+// [[x,y,z],....]字符串转二进制数据
+s_sis_sds sis_json_to_struct_sds(s_sis_dynamic_db *db_, s_sis_sds in_, s_sis_sds ago_);
 
 // json 转字符串
 s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_);

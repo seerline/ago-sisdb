@@ -9,7 +9,7 @@
 //====================================s_sisdb_fmap_unit ================================================//
 ///////////////////////////////////////////////////////////////////////////
 
-s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sname_, int ktype_, s_sisdb_table *sdb_)
+s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sname_, int ktype_, s_sis_dynamic_db *sdb_)
 {
 	if ((ktype_ == SISDB_FMAP_TYPE_SDB || ktype_ == SISDB_FMAP_TYPE_NON) && !sdb_)
 	{
@@ -35,17 +35,20 @@ s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sn
 		break;
 	case SISDB_FMAP_TYPE_MUL:
 		{
-			s_sis_pointer_list *slist = sis_pointer_list_create();
-			slist->vfree = sis_sdsfree_call;
-			o->value = slist;
+			o->value = sis_node_create();
 		}
 		break;
 	default:
 		{
 			o->sdb = sdb_;
+			if (!o->sdb->field_time && !o->sdb->field_mindex && o->ktype != SISDB_FMAP_TYPE_NON)
+			{
+				// 这里需要判断如果没有时间和索引字段强制 转换类型
+				o->ktype = SISDB_FMAP_TYPE_NON;
+			}
 			o->scale = sis_disk_get_sdb_scale(o->sdb);
 			o->value = sis_struct_list_create(sdb_->size);			
-			o->idxs = sis_struct_list_create(sizeof(s_sisdb_fmap_idx));
+			o->fidxs = sis_struct_list_create(sizeof(s_sisdb_fmap_idx));
 		}
 		break;
 	}
@@ -62,11 +65,20 @@ void sisdb_fmap_unit_destroy(void *unit_)
 			sis_sdsfree(o->value);
 			break;
 		case SISDB_FMAP_TYPE_MUL:
-			sis_pointer_list_destroy(o->value);
+			{
+				s_sis_node *node = (s_sis_node *)o->value;
+				s_sis_node *next = sis_node_get(node, 0);
+				while(next)
+				{
+					sis_sdsfree((s_sis_sds)next->value);
+					next = sis_node_next(next);
+				}
+				sis_node_destroy(node);
+			}
 			break;
 		default:
 			sis_dynamic_db_destroy(o->sdb);
-			sis_struct_list_destroy(o->idxs);
+			sis_struct_list_destroy(o->fidxs);
 			sis_struct_list_destroy(o->value);
 			break;
 		}
@@ -84,10 +96,19 @@ void sisdb_fmap_unit_clear(s_sisdb_fmap_unit *unit_)
 		sis_sdsclear(unit_->value);
 		break;
 	case SISDB_FMAP_TYPE_MUL:
-		sis_pointer_list_clear(unit_->value);
+		{
+			s_sis_node *node = (s_sis_node *)unit_->value;
+			s_sis_node *next = sis_node_get(node, 0);
+			while (next)
+			{
+				sis_sdsfree((s_sis_sds)next->value);
+				next = sis_node_next(next);
+			}
+			sis_node_clear(node);
+		}
 		break;
 	default:
-		sis_struct_list_clear(unit_->idxs);
+		sis_struct_list_clear(unit_->fidxs);
 		sis_struct_list_clear(unit_->value);
 		break;
 	}
@@ -133,7 +154,7 @@ int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_)
 			o = 1;
 			break;
 		case SISDB_FMAP_TYPE_MUL:
-			o = ((s_sis_pointer_list *)(unit_->value))->count;
+			o = sis_node_get_size((s_sis_node *)unit_->value);
 			break;
 		default:
 			o = ((s_sis_struct_list *)(unit_->value))->count;
@@ -144,14 +165,14 @@ int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_)
 }
 
 // 仅仅增加一条 这里 start 是日期
-int sisdb_fmap_unit_push_idx(s_sisdb_fmap_unit *unit_, int start)
+int sisdb_fmap_unit_set_idx(s_sisdb_fmap_unit *unit_, int idate)
 {
-	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? start / 10000 : start;
+	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? idate / 10000 : idate;
 	int isidx = 0;  // 1 表示已经有索引
 	int count = 0;
-	for (int i = 0; i < unit_->idxs->count; i++)
+	for (int i = 0; i < unit_->fidxs->count; i++)
 	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->idxs, i);
+		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
 		if (isidx != 0)
 		{
 			fidx->start++;
@@ -175,7 +196,7 @@ int sisdb_fmap_unit_push_idx(s_sisdb_fmap_unit *unit_, int start)
 				newidx.writed = 1;
 				isidx = 2;
 				// 修改当前的起始位置
-				sis_struct_list_insert(unit_->idxs, i, &newidx);
+				sis_struct_list_insert(unit_->fidxs, i, &newidx);
 			}
 			count += fidx->count;
 		}
@@ -189,7 +210,7 @@ int sisdb_fmap_unit_push_idx(s_sisdb_fmap_unit *unit_, int start)
 		newidx.moved = 0;
 		newidx.writed = 1;
 		isidx = 3;
-		sis_struct_list_push(unit_->idxs, &newidx);
+		sis_struct_list_push(unit_->fidxs, &newidx);
 	}
 	return isidx;
 }
@@ -198,9 +219,9 @@ int sisdb_fmap_unit_update_idx(s_sisdb_fmap_unit *unit_, int start)
 {
 	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? start / 10000 : start;
 	int isidx = 0;  // 1 表示已经有索引
-	for (int i = 0; i < unit_->idxs->count; i++)
+	for (int i = 0; i < unit_->fidxs->count; i++)
 	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->idxs, i);
+		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
 		if (isign == fidx->isign)
 		{
 			fidx->moved = 0;
@@ -215,9 +236,9 @@ int sisdb_fmap_unit_update_idx(s_sisdb_fmap_unit *unit_, int start)
 int sisdb_fmap_unit_del_idx(s_sisdb_fmap_unit *unit_, int index, int count)
 {
 	int nums = 0;
-	for (int i = 0; i < unit_->idxs->count; i++)
+	for (int i = 0; i < unit_->fidxs->count; i++)
 	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->idxs, i);
+		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
 		if (index == 0 && count == 0)
 		{
 			fidx->start -= nums;
@@ -255,9 +276,9 @@ int sisdb_fmap_unit_del_idx(s_sisdb_fmap_unit *unit_, int index, int count)
 // 删除键值 需要做标记 仅仅针对时序数据
 int sisdb_fmap_unit_move_idx(s_sisdb_fmap_unit *unit_)
 {
-	for (int i = 0; i < unit_->idxs->count; i++)
+	for (int i = 0; i < unit_->fidxs->count; i++)
 	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->idxs, i);
+		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
 		fidx->start = 0;
 		fidx->count = 0;
 		fidx->moved = 1;
@@ -704,7 +725,7 @@ int main1()
 	s_sisdb_fmap_unit *funit = sisdb_fmap_unit_create(NULL, NULL, SISDB_FMAP_TYPE_SDB, timedb);
 	for (int i = 0; i < 3; i++)
 	{
-		sis_struct_list_push(funit->idxs, &_time_idxs[i]);
+		sis_struct_list_push(funit->fidxs, &_time_idxs[i]);
 	}
 	s_sis_struct_list *slist = funit->value;
 	for (int i = 0; i < 12; i++)
@@ -761,7 +782,7 @@ int main()
 	s_sisdb_fmap_unit *funit = sisdb_fmap_unit_create(NULL, NULL, SISDB_FMAP_TYPE_SDB, datedb);
 	for (int i = 0; i < 3; i++)
 	{
-		sis_struct_list_push(funit->idxs, &_date_idxs[i]);
+		sis_struct_list_push(funit->fidxs, &_date_idxs[i]);
 	}
 	s_sis_struct_list *slist = funit->value;
 	for (int i = 0; i < 12; i++)

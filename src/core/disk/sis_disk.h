@@ -108,9 +108,12 @@ void sis_disk_writer_destroy(void *);
 int sis_disk_writer_open(s_sis_disk_writer *, int idate_);
 // 关闭所有文件 重写索引
 void sis_disk_writer_close(s_sis_disk_writer *);
+
 // 写入键值信息 - 可以多次写 新增的添加到末尾 仅支持 SNO SDB
+// 无论何时 只要有新的键设置 就直接写盘 
 int sis_disk_writer_set_kdict(s_sis_disk_writer *, const char *in_, size_t ilen_);
 // 设置表结构体 - 根据不同的时间尺度设置不同的标记 仅支持 SNO SDB
+// 无论何时 只要有新结构设置 就直接写盘 
 int sis_disk_writer_set_sdict(s_sis_disk_writer *, const char *in_, size_t ilen_);
 
 //////////////////////////////////////////
@@ -204,7 +207,7 @@ void sis_disk_reader_close(s_sis_disk_reader *reader_);
 // 获取单值和列表值 返回值需要释放 数据实际类型 s_sis_memory
 s_sis_object * sis_disk_reader_get_one(s_sis_disk_reader *, const char *kname_);
 // 返回值 单条数据类型为 s_sis_sds
-s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *, const char *kname_);
+s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *, const char *kname_);
 
 // 下面都是结构化数据包括时序和非时序的数据
 // 从对应文件中获取数据 拼成完整的数据返回 只支持 SDB 单键单表

@@ -338,7 +338,134 @@ int sis_struct_list_delete(s_sis_struct_list *list_, int start_, int count_)
 // 	}
 // 	return (int)(((char *)p_ - (char *)list_->buffer) / list_->len) - list_->start;
 // }
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_node ---------------------------------//
+//////////////////////////////////////////////////////////////////////////
+// 第一个节点不可被删除
+s_sis_node *sis_node_create()
+{
+	s_sis_node *o = SIS_MALLOC(s_sis_node, o);
+	o->index = -1;
+	return o;
+} 
+void sis_node_destroy(void *node_)
+{
+	s_sis_node *node = (s_sis_node *)node_;
+	while (node->prev)
+	{
+		node = node->prev;
+	}
+	s_sis_node *next = node->next;
+	while (next)
+	{
+		s_sis_node *prev = next;
+		next = next->next;
+		sis_free(prev);	
+	}
+	sis_free(node);	
+}
+void sis_node_clear(void *node_)
+{
+	s_sis_node *node = (s_sis_node *)node_;
+	while (node->prev)
+	{
+		node = node->prev;
+	}
+	s_sis_node *next = node->next;
+	while (next)
+	{
+		s_sis_node *prev = next;
+		next = next->next;
+		sis_free(prev);	
+	}	
+}
 
+int sis_node_push(s_sis_node *node_, void *data_)
+{
+	while (node_->next)
+	{
+		node_ = node_->next;
+	}
+	s_sis_node *newnode = sis_node_create();
+	newnode->value = data_;
+	newnode->prev = node_;
+	newnode->index = node_->index + 1;
+	node_->next = newnode;
+	return newnode->index;
+}
+
+s_sis_node *sis_node_get(s_sis_node *node_, int index_)
+{
+	if (!node_ || index_ < 0)
+	{
+		return NULL;
+	}
+	if (node_->index < index_)
+	{
+		return sis_node_get(node_->next, index_);
+	}
+	if (node_->index > index_)
+	{
+		return sis_node_get(node_->prev, index_);
+	}
+	return node_;
+}
+s_sis_node *sis_node_next(s_sis_node *node_)
+{
+	if (!node_)
+	{
+		return NULL;
+	}
+	return node_->next;
+}
+
+void *sis_node_set(s_sis_node *node_, int index_, void *data_)
+{
+	s_sis_node *node = sis_node_get(node_, index_);
+	if (node)
+	{
+		void *ago = node->value;
+		node->value = data_;
+		return ago;
+	}
+	return NULL;
+}
+
+void *sis_node_del(s_sis_node *node_, int index_)
+{
+	s_sis_node *node = sis_node_get(node_, index_);
+	if (node)
+	{	
+		s_sis_node *next = node->next;
+		s_sis_node *prev = node->prev;
+		if (prev)
+		{
+			prev->next = next;
+		}
+		if (next)
+		{
+			next->prev = prev;
+		}
+		while (next)
+		{
+			next->index--;
+			next = next->next;
+		}
+		void *ago = node->value;
+		sis_free(node);
+		return ago;
+	}
+	return NULL;
+}
+
+int sis_node_get_size(s_sis_node *node_)
+{
+	while (node_->next)
+	{
+		node_ = node_->next;
+	}	
+	return node_->index + 1;
+}
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_node_list ---------------------------------//
 //////////////////////////////////////////////////////////////////////////

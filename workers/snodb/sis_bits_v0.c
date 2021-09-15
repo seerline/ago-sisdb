@@ -1063,7 +1063,7 @@ int cb_sis_decode(void *src, int kid,int sid, char *in, size_t ilen)
     s_sis_bits_stream_v0 *zip = (s_sis_bits_stream_v0 *)src;
     s_sis_struct_unit *unit=(s_sis_struct_unit *)sis_pointer_list_get(zip->units, sid);
 
-    s_sis_sds out = sis_dynamic_db_to_array_sds(unit->sdb, unit->sdb->name, in, ilen);
+    s_sis_sds out = sis_sdb_to_array_sds(unit->sdb, unit->sdb->name, in, ilen);
     printf("%s = %s\n", unit->sdb->name, out);
     sis_sdsfree(out);
 
@@ -1085,12 +1085,12 @@ int main()
     int snap_nums = sizeof(snaps) / sizeof(_snap_);
     int tick_nums = sizeof(ticks) / sizeof(_tick_);
     {
-        s_sis_sds in = sis_dynamic_db_to_array_sds(snap, "snap", &snaps[0], snap_nums * sizeof(_snap_));
+        s_sis_sds in = sis_sdb_to_array_sds(snap, "snap", &snaps[0], snap_nums * sizeof(_snap_));
         printf("%s\n", in);
         sis_sdsfree(in);
     } 
     {
-        s_sis_sds in = sis_dynamic_db_to_array_sds(tick, "tick", &ticks[0], tick_nums* sizeof(_tick_));
+        s_sis_sds in = sis_sdb_to_array_sds(tick, "tick", &ticks[0], tick_nums* sizeof(_tick_));
         printf("%s\n", in);
         sis_sdsfree(in);
     }

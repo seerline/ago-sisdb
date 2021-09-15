@@ -315,11 +315,11 @@ int sis_disk_reader_filters(s_sis_disk_reader *reader_, s_sis_disk_reader_unit *
         for (int k = 0; k < nums; k++)
         {
             s_sis_disk_idx *subidx = (s_sis_disk_idx *)sis_map_list_geti(unit_->ctrl->map_idxs, k);
-            if (!subidx->kname) //表示为key sdb 或 sno net
+            if (!subidx->kname || !subidx->sname) //表示为key sdb 或 sno net
             {
                 continue;
             }
-            // printf("== filter : %d %p %p\n", nums, subidx->kname, subidx->sname);
+            printf("== filter : %d %p %p\n", nums, subidx->kname, subidx->sname);
             if ((!sis_strcasecmp(unit_->reader->sub_sdbs, "*") || sis_str_subcmp_strict(SIS_OBJ_SDS(subidx->sname), unit_->reader->sub_sdbs, ',') >= 0) &&
                 (!sis_strcasecmp(unit_->reader->sub_keys, "*") || sis_str_subcmp(SIS_OBJ_SDS(subidx->kname), unit_->reader->sub_keys, ',') >= 0))
             {
@@ -339,46 +339,17 @@ int sis_disk_reader_filters(s_sis_disk_reader *reader_, s_sis_disk_reader_unit *
     }
     return count;
 }
-void sis_disk_reader_make_sdb(s_sis_disk_reader *reader_)
+// 在 reader 中 应该生成 年和日的 kint map 表 
+// 文件打得开的放到 map 表中 下次读取时 就可以不用按顺序打开了 
+// 以后再优化
+void _disk_reader_make_sdb_from_file(s_sis_disk_reader *reader_)
 {
-    // 时间 = 0 表示取最近的数据块 
-    // 先确定时间的日期区间 找到对应时区的文件 打开不成功就下一个
-    // 成功就读取索引 并做匹配 匹配到的就加入索引列表
-    // 索引列表不为空该文件有效 添加到文件列表 并且每个文件都是打开状态
-    // 1.检查无时序结构化数据
-    {   // 检查无时序数据
-        int isok = true;
-        s_sis_disk_reader_unit *unit = sis_disk_reader_unit_create(reader_, SIS_DISK_TYPE_SDB_NOTS);
-        if (!sis_disk_reader_unit_open(unit))
-        {
-            if (sis_disk_reader_filters(reader_, unit) == 0)
-            {
-                // 没有相关订阅记录
-                isok = false;
-            }
-        }
-        else
-        {
-            isok = false;
-        }
-        if (isok)
-        {
-            sis_pointer_list_push(reader_->sunits, unit);
-        }
-        else
-        {
-            sis_disk_reader_unit_destroy(unit);
-        }
-    }
-    if (reader_->isone && sis_map_list_getsize(reader_->subidxs) > 0)
-    {
-        return;
-    }
     // 2.检查日上时序数据
     int open_year = sis_time_get_idate(reader_->search_msec.start / 1000) / 10000;
     int stop_year = sis_time_get_idate(reader_->search_msec.stop / 1000) / 10000;
     // open_year = open_year / 10 * 10;
     // stop_year = stop_year / 10 * 10;
+    // ??? 以下的过滤器未来要改成根据 map 的信息获取数据
     while(open_year <= stop_year)
     {
         LOG(5)("year: %d %d\n", open_year, stop_year);
@@ -444,6 +415,52 @@ void sis_disk_reader_make_sdb(s_sis_disk_reader *reader_)
             open = sis_time_next_work_day(open, 1);
         }
     }
+}
+void sis_disk_reader_make_sdb(s_sis_disk_reader *reader_)
+{
+    // 时间 = 0 表示取最近的数据块 
+    // 先确定时间的日期区间 找到对应时区的文件 打开不成功就下一个
+    // 成功就读取索引 并做匹配 匹配到的就加入索引列表
+    // 索引列表不为空该文件有效 添加到文件列表 并且每个文件都是打开状态
+    // 1.检查无时序结构化数据
+    {   // 检查无时序数据
+        int isok = true;
+        s_sis_disk_reader_unit *unit = sis_disk_reader_unit_create(reader_, SIS_DISK_TYPE_SDB_NOTS);
+        if (!sis_disk_reader_unit_open(unit))
+        {
+            if (sis_disk_reader_filters(reader_, unit) == 0)
+            {
+                // 没有相关订阅记录
+                isok = false;
+            }
+        }
+        else
+        {
+            isok = false;
+        }
+        if (isok)
+        {
+            sis_pointer_list_push(reader_->sunits, unit);
+        }
+        else
+        {
+            sis_disk_reader_unit_destroy(unit);
+        }
+    }
+    if (reader_->isone && sis_map_list_getsize(reader_->subidxs) > 0)
+    {
+        return;
+    }
+    if (sis_map_list_getsize(reader_->munit->map_maps) > 0)
+    {
+        // _disk_reader_make_sdb_from_fmap(reader_);
+        _disk_reader_make_sdb_from_file(reader_);
+    }
+    else
+    {
+        _disk_reader_make_sdb_from_file(reader_);
+    }
+
 }
 
 void sis_disk_reader_make_alone(s_sis_disk_reader *reader_, const char *kname_)
@@ -513,7 +530,7 @@ s_sis_object *sis_disk_reader_get_one(s_sis_disk_reader *reader_, const char *kn
                 {
                     // 跳掉长度
                     sis_memory_get_ssize(rcatch->memory);
-                    // printf("%d %d | %d %d\n", rcatch->rinfo->offset, rcatch->rinfo->size, kidx, sidx);
+                    // printf("%lld %lld \n", rcatch->rinfo->offset, rcatch->rinfo->size);
                     // sis_out_binary(".out.",sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
                     sis_memory_cat(memory, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
                 }
@@ -530,7 +547,7 @@ s_sis_object *sis_disk_reader_get_one(s_sis_disk_reader *reader_, const char *kn
     return NULL;
 }
 // 返回值 释放类型为 s_sis_memory
-s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *kname_)
+s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *kname_)
 {
     if (reader_->status_open == 0 || reader_->status_sub == 1 || !kname_)
     {
@@ -542,8 +559,7 @@ s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const c
     sis_pointer_list_clear(reader_->sunits);
     sis_disk_reader_make_alone(reader_, kname_);
 
-    s_sis_pointer_list *obj = sis_pointer_list_create();
-    obj->vfree = sis_sdsfree_call;
+    s_sis_node *obj = sis_node_create();
     if (sis_map_list_getsize(reader_->subidxs) > 0)
     {
         reader_->status_sub = 1;
@@ -568,19 +584,19 @@ s_sis_pointer_list * sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const c
                         int insize = sis_memory_get_ssize(rcatch->memory);
                         s_sis_sds in = sis_sdsnewlen(sis_memory(rcatch->memory), insize);
                         sis_memory_move(rcatch->memory, insize);
-                        sis_pointer_list_push(obj, in);
+                        sis_node_push(obj, in);
                     }
                 }
             }
         }
         // 订阅结束
         reader_->status_sub = 0;
-        if (obj->count > 0)
-        {
-            return obj;
-        }
     }
-    sis_pointer_list_destroy(obj);
+    if (sis_node_get_size(obj) > 0)
+    {
+        return obj;
+    }
+    sis_node_destroy(obj);
     return NULL;
 }
 // 时间范围 日期以上可以多日 日期以下只能当日

@@ -5,7 +5,7 @@
 
 #include "sis_message.h"
 #include "sisdb_server.h"
-#include "sisdb_collect.h"
+#include "sisdb_fmap.h"
 
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
