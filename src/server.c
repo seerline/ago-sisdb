@@ -155,14 +155,14 @@ void sis_server_uninit()
 
 int main(int argc, char *argv[])
 {
-	sis_sprintf(_server.conf_name, 255, "%s.conf", argv[0]);
+	sis_sprintf(_server.conf_name, 1024, "%s.conf", argv[0]);
 		
 	int c = 1;
 	while (c < argc)
 	{
 		if (argv[c][0] == '-' && argv[c][1] == 'f' && argv[c + 1])
 		{
-			sis_strcpy(_server.conf_name, 255, argv[c + 1]);
+			sis_strcpy(_server.conf_name, 1024, argv[c + 1]);
 			c++;
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'd')

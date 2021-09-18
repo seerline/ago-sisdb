@@ -463,7 +463,7 @@ char *sis_memory_read_line(s_sis_memory *m_, size_t *len_)
 }
 size_t sis_memory_get_line_sign(s_sis_memory *m_)
 {
-	if (!m_)
+	if (!m_ || (m_->offset == m_->size))
 	{
 		return 0;
 	}
