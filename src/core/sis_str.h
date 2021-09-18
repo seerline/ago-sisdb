@@ -105,6 +105,7 @@ bool sis_str_get_time_id(char *out_, size_t olen_);
 
 int64 sis_str_read_long(char *s);
 
+void sis_str_change(char *outs_, int olen_, const char *ins_, const char *cuts_, const char *news_);
 // 从 V1 --> V2 头尾标记符更换
 // SH600600 SH --> .SSE ==> 600600.SSE
 // 600600.SSE .SSE --> SH ==> SH600600

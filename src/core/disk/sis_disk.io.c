@@ -905,14 +905,12 @@ int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_)
 //??? 这里以后要判断是否改名成功 如果一个失败就全部恢复出来
 int sis_disk_ctrl_move(s_sis_disk_ctrl *cls_, const char *path_)
 {
-    char agofn[255];
     char newfn[255];
     int o = 0;
     for (int  i = 0; i < cls_->work_fps->lists->count; i++)
     {
         s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->work_fps->lists, i);
-        sis_file_getname(unit->fn, agofn, 255);
-        sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+        sis_str_change(newfn, 255, unit->fn, cls_->fpath, path_);
         sis_file_rename(unit->fn, newfn);
     }
     if (cls_->work_fps->main_head.index)
@@ -920,8 +918,7 @@ int sis_disk_ctrl_move(s_sis_disk_ctrl *cls_, const char *path_)
         for (int  i = 0; i < cls_->widx_fps->lists->count; i++)
         {
             s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->widx_fps->lists, i);
-            sis_file_getname(unit->fn, agofn, 255);
-            sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+            sis_str_change(newfn, 255, unit->fn, cls_->fpath, path_);
             sis_file_rename(unit->fn, newfn);
         }
     }

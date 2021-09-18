@@ -684,6 +684,46 @@ int64 sis_str_read_long(char *s)
     return mult*v;
 }
 
+void sis_str_change(char *outs_, int olen_, const char *ins_, const char *cuts_, const char *news_)
+{
+	outs_[0] = 0;
+	int isize  = sis_strlen(ins_);
+	int cutsize = sis_strlen(cuts_);
+	int newsize = sis_strlen(news_);
+	char *ptr = strstr(ins_, cuts_);
+	if (!ptr || cutsize == 0 || isize == 0)
+	{
+		return ;
+	}
+	if (isize + newsize - cutsize >= olen_)
+	{
+		return ;
+	}
+	if (ptr == ins_)
+	{
+		int size = isize - cutsize;
+		if (newsize > 0)
+		{
+			memmove(outs_, news_, newsize);
+		}
+		memmove(outs_ + newsize, ptr + cutsize, size);
+		outs_[size + newsize] = 0;
+	}
+	else
+	{
+		int osize = ptr - ins_;
+		memmove(outs_, ins_, osize);
+		if (newsize > 0)
+		{
+			memmove(outs_ + osize, news_, newsize);
+		}
+		osize += newsize;
+		int size = isize - cutsize;
+		memmove(outs_ + osize, ptr + cutsize, size);
+		osize += size;
+		outs_[osize] = 0;
+	}
+}
 // 从 V1 --> V2 头尾标记符更换
 // SH600600 SH --> .SSE ==> 600600.SSE
 // 600600.SSE .SSE --> SH ==> SH600600
