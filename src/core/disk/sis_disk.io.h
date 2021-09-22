@@ -52,13 +52,13 @@
 // 按5000key算 一条100 一天5000条 = 2.5G 原始数据 通常KEY对应一块数据 PACK时清理过期数据块 保留最后一块数据
 // 没有对分钟线专门处理 是因为正常分析时通常以天总览 以天为细节分析
 #define  SIS_DISK_TYPE_SDB_DATE    6  // name/date/2021/20210606.sdb
-// 7. 顺序NET日记文件 方便网络直接传输 采用增量压缩方式存储数据
+// 7. 顺序SIC日记文件 方便网络直接传输 采用增量压缩方式存储数据
 //    此类文件只能追加结构化数据 按时序压缩写入 有索引 有文件尾 此类文件只能追加数据
 //    存在的价值主要用于历史全盘数据回放 以避免解压压缩过程提高读取速度 以天为一个文件
 //    文件可以直接提取磁盘数据进行网络传输  支持压缩期间增加key和sdb
-//    文件以16K一个数据块 以1024个数据块为一个数据包 以SIS_DISK_HID_NET_NEW 分隔
+//    文件以16K一个数据块 以1024个数据块为一个数据包 以SIS_DISK_HID_SIC_NEW 分隔
 //    数据从头开始的加载 直到读取到文件尾 由于可能定位读取数据 文件分块存储
-#define  SIS_DISK_TYPE_NET         7  // name/2021/20210121.net
+#define  SIS_DISK_TYPE_SIC         7  // name/2021/20210121.sic  struct incr compress
 ////////////////////////////////////////////////////
 // 1. sno的索引文件 记录key和sdb的信息 以及每个段的 以SIS_DISK_HID_SNO_END 信息 方便按时间点获取数据 时间为毫秒
 //    索引文件由于必须全部加载 不分块存储
@@ -66,17 +66,17 @@
 // 2. sdb的索引文件 记录key和sdb的信息 以及每个key+sdb的位置信息 时间统一为毫秒
 //    索引文件由于必须全部加载 不分块存储
 #define  SIS_DISK_TYPE_SDB_IDX    11
-// 3. sno的索引文件 记录key和sdb的信息 以及每个段的 以SIS_DISK_HID_NET_NEW 信息 方便按时间点获取数据 时间为毫秒
+// 3. sno的索引文件 记录key和sdb的信息 以及每个段的 以SIS_DISK_HID_SIC_NEW 信息 方便按时间点获取数据 时间为毫秒
 //    索引文件由于必须全部加载 不分块存储
-#define  SIS_DISK_TYPE_NET_IDX    12 
+#define  SIS_DISK_TYPE_SIC_IDX    12 
 ////////////////////////////////////////////////////
 
-#define  SIS_DISK_IS_IDX(t) (t == SIS_DISK_TYPE_SNO_IDX||t == SIS_DISK_TYPE_SDB_IDX||t == SIS_DISK_TYPE_NET_IDX)
+#define  SIS_DISK_IS_IDX(t) (t == SIS_DISK_TYPE_SNO_IDX||t == SIS_DISK_TYPE_SDB_IDX||t == SIS_DISK_TYPE_SIC_IDX)
 #define  SIS_DISK_IS_SDB(t) (t == SIS_DISK_TYPE_SDB_NOTS || t == SIS_DISK_TYPE_SDB_YEAR || t == SIS_DISK_TYPE_SDB_DATE)
 // 文件后缀名
 #define  SIS_DISK_LOG_CHAR      "log"
 #define  SIS_DISK_SNO_CHAR      "sno"
-#define  SIS_DISK_NET_CHAR      "net"
+#define  SIS_DISK_SIC_CHAR      "sic"
 #define  SIS_DISK_SDB_CHAR      "sdb"
 #define  SIS_DISK_MAP_CHAR      "map"
 #define  SIS_DISK_IDX_CHAR      "idx"
@@ -108,8 +108,8 @@
 #define  SIS_DISK_MAXLEN_FILE      0xFF000000  // 数据文件专用  4G - 83M
 #define  SIS_DISK_MAXLEN_SDBPAGE   0x00FFFFFF  // 16M SDB文件块大小 超过需分块存储
 
-#define  SIS_DISK_MAXLEN_NETPART   0x00004000  // 16K 每个压缩包大小
-#define  SIS_DISK_MAXLEN_NETPAGE   0x00FFFFFF  // 16M 文件块大小 不超过连续压缩 超过重新开始压缩
+#define  SIS_DISK_MAXLEN_SICPART   0x00004000  // 16K 每个压缩包大小
+#define  SIS_DISK_MAXLEN_SICPAGE   0x00FFFFFF  // 16M 文件块大小 不超过连续压缩 超过重新开始压缩
 
 #define  SIS_DISK_MAXLEN_SNOPAGE   0x1FFFFFFF  // 536M 文件块大小
 
@@ -152,9 +152,9 @@
 // 需要有 SIS_DISK_HID_DICT_KEY 和 SIS_DISK_HID_DICT_SDB
 #define  SIS_DISK_HID_MSG_SDB     0xA  // size(dsize)+kid(dsize)+dbid(dsize)+[incrzipstream] 一个key+N条记录
 // SNO的数据块 默认多key多sdb压缩数据   
-#define  SIS_DISK_HID_MSG_NET     0xB  // size(dsize)+incrzipstream 
+#define  SIS_DISK_HID_MSG_SIC     0xB  // size(dsize)+incrzipstream 
 // SNO数据块结束符 收到此消息后 表明数据压缩重新开始
-#define  SIS_DISK_HID_NET_NEW     0xC  // size(dsize)+最新时间+pages(dsize)+序号(dsize)
+#define  SIS_DISK_HID_SIC_NEW     0xC  // size(dsize)+最新时间+pages(dsize)+序号(dsize)
 // MAP文件的key+sdb的索引信息 active 在 1.255 之间表示有效 0 表示删除 
 // 后写入的 如果 ndate 一样会覆盖前面写入的数据 这样保证 map 只写增量数据 仅在pack 时才清理冗余的数据
 #define  SIS_DISK_HID_MSG_MAP   0xD // size(dsize)+klen(dsize)+kname+dblen(dsize)+dname+active(1)+ktype(1)+blocks(dsize)
@@ -189,7 +189,7 @@
 
 // 定义压缩方法
 // 由于 incrzip 的解压速度稍逊于 snappy 所以通用格式采用 snappy 压缩 
-// incrzip 仅仅用于 SIS_DISK_TYPE_NET 类型文件
+// incrzip 仅仅用于 SIS_DISK_TYPE_SIC 类型文件
 #define  SIS_DISK_ZIP_NOZIP       0
 #define  SIS_DISK_ZIP_SNAPPY      1
 #define  SIS_DISK_ZIP_INCRZIP     2
@@ -620,22 +620,22 @@ size_t sis_disk_io_write_log(s_sis_disk_ctrl *cls_, void *in_, size_t ilen_);
 int sis_disk_io_sub_log(s_sis_disk_ctrl *cls_, void *cb_);
 
 ///////////////////////////
-//  sis_disk.io.net.c
+//  sis_disk.io.sic.c
 ///////////////////////////
 // 读取时 可由外部通过 s_sis_disk_reader 直接访问数据
 ////////////////////////////////////////////
 // write
-size_t sis_disk_io_write_net_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_);
+size_t sis_disk_io_write_sic_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_);
 
-int sis_disk_io_write_net_start(s_sis_disk_ctrl *cls_);
-int sis_disk_io_write_net(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
-int sis_disk_io_write_net_stop(s_sis_disk_ctrl *cls_);
-size_t sis_disk_io_write_net_widx(s_sis_disk_ctrl *cls_);
+int sis_disk_io_write_sic_start(s_sis_disk_ctrl *cls_);
+int sis_disk_io_write_sic(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_);
+int sis_disk_io_write_sic_stop(s_sis_disk_ctrl *cls_);
+size_t sis_disk_io_write_sic_widx(s_sis_disk_ctrl *cls_);
 // read
-int sis_disk_io_sub_net(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_,
+int sis_disk_io_sub_sic(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_,
                     s_sis_msec_pair *search_, void *cb_);
 // 读所有索引信息
-int sis_disk_io_read_net_widx(s_sis_disk_ctrl *cls_);
+int sis_disk_io_read_sic_widx(s_sis_disk_ctrl *cls_);
 
 ///////////////////////////
 //  sis_disk.io.sdb.c

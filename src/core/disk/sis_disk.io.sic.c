@@ -2,7 +2,7 @@
 #include "sis_disk.h"
 
 // 这里是关于net的读写函数
-size_t sis_disk_io_write_net_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_)
+size_t sis_disk_io_write_sic_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_)
 { 
     if (wcatch_->head.zip == SIS_DISK_ZIP_SNAPPY)
     {
@@ -11,12 +11,12 @@ size_t sis_disk_io_write_net_work(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcat
     }
     wcatch_->head.fin = 1;
     size_t size = sis_disk_files_write_saveidx(cls_->work_fps, wcatch_); 
-    if (wcatch_->head.hid == SIS_DISK_HID_NET_NEW  ||
+    if (wcatch_->head.hid == SIS_DISK_HID_SIC_NEW  ||
         wcatch_->head.hid == SIS_DISK_HID_DICT_KEY ||
         wcatch_->head.hid == SIS_DISK_HID_DICT_SDB )
     {
         s_sis_disk_idx *node = sis_disk_idx_get(cls_->map_idxs, wcatch_->kname, wcatch_->sname);
-        // printf("sis_disk_io_write_net_work : %p %s \n", node, SIS_OBJ_SDS(wcatch_->kname));
+        // printf("sis_disk_io_write_sic_work : %p %s \n", node, SIS_OBJ_SDS(wcatch_->kname));
         wcatch_->winfo.active++;
         sis_disk_idx_set_unit(node, &wcatch_->winfo);
     }
@@ -26,11 +26,11 @@ int _write_nums = 0;
 size_t _write_size = 0;
 
 
-int cb_incrzip_encode_net(void *source, char *in, size_t ilen)
+int cb_incrzip_encode_sic(void *source, char *in, size_t ilen)
 {
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source;
     s_sis_disk_wcatch *wcatch = ctrl->wcatch;
-    wcatch->head.hid = SIS_DISK_HID_MSG_NET;
+    wcatch->head.hid = SIS_DISK_HID_MSG_SIC;
     wcatch->head.zip = SIS_DISK_ZIP_INCRZIP;
     sis_memory_cat(wcatch->memory, in, ilen);   
     // _write_nums++;
@@ -40,13 +40,13 @@ int cb_incrzip_encode_net(void *source, char *in, size_t ilen)
     //     printf("newnet: %d %zu\n", _write_nums, _write_size);
     //     sis_out_binary("newnet:", in, ilen);     
     // }
-    size_t size = sis_disk_io_write_net_work(ctrl, wcatch);
+    size_t size = sis_disk_io_write_sic_work(ctrl, wcatch);
     sis_disk_wcatch_init(wcatch);
     ctrl->net_zipsize += size;
     return 0;
 }
 // 打开前需要设置好 map_kdicts 和 map_sdicts 
-int sis_disk_io_write_net_start(s_sis_disk_ctrl *cls_)
+int sis_disk_io_write_sic_start(s_sis_disk_ctrl *cls_)
 {
     // 文件已经打开并初始化完成 
     // 初始化watch 应该在打开时就初始化好 并设定好位置和偏移
@@ -63,10 +63,10 @@ int sis_disk_io_write_net_start(s_sis_disk_ctrl *cls_)
     cls_->net_pages = 0;
     cls_->net_count = 0;
     cls_->net_zipsize = 0;
-    sis_incrzip_compress_start(cls_->net_incrzip, SIS_DISK_MAXLEN_NETPART, cls_, cb_incrzip_encode_net);
+    sis_incrzip_compress_start(cls_->net_incrzip, SIS_DISK_MAXLEN_SICPART, cls_, cb_incrzip_encode_sic);
     return 0;
 }
-int sis_disk_io_write_net_stop(s_sis_disk_ctrl *cls_)
+int sis_disk_io_write_sic_stop(s_sis_disk_ctrl *cls_)
 {
     sis_incrzip_compress_stop(cls_->net_incrzip);
     sis_incrzip_class_destroy(cls_->net_incrzip);
@@ -78,7 +78,7 @@ int sis_disk_io_write_net_stop(s_sis_disk_ctrl *cls_)
     return 0;
 }
 
-static void _set_disk_io_net_msec(s_sis_disk_ctrl *cls_, s_sis_dynamic_db *sdb_, void *in_, size_t ilen_)
+static void _set_disk_io_sic_msec(s_sis_disk_ctrl *cls_, s_sis_dynamic_db *sdb_, void *in_, size_t ilen_)
 {
     if (cls_->net_msec == 0)
     {
@@ -92,7 +92,7 @@ static void _set_disk_io_net_msec(s_sis_disk_ctrl *cls_, s_sis_dynamic_db *sdb_,
     }
 }
 
-int sis_disk_io_write_net(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
+int sis_disk_io_write_sic(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
 {
     s_sis_dynamic_db *sdb = sis_disk_sdict_last(sdict_);
     if (!sdb || (ilen_ % sdb->size) != 0)
@@ -101,7 +101,7 @@ int sis_disk_io_write_net(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
     }
     // cls_->work_fps->max_page_size = 10*1024*1024;
 
-    _set_disk_io_net_msec(cls_, sdb, in_, ilen_);
+    _set_disk_io_sic_msec(cls_, sdb, in_, ilen_);
     if ((cls_->net_zipsize == 0 && cls_->net_count == 0) || 
          cls_->net_zipsize > cls_->work_fps->max_page_size)
     {
@@ -109,13 +109,13 @@ int sis_disk_io_write_net(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
 
         s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_NEW));
         s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(mapobj, NULL);
-        wcatch->head.hid = SIS_DISK_HID_NET_NEW;
+        wcatch->head.hid = SIS_DISK_HID_SIC_NEW;
         wcatch->head.zip = SIS_DISK_ZIP_NOZIP;
         sis_memory_cat_ssize(wcatch->memory, cls_->net_msec); 
         sis_memory_cat_ssize(wcatch->memory, cls_->net_pages); 
         sis_memory_cat_ssize(wcatch->memory, cls_->net_count); 
         wcatch->winfo.start = cls_->net_msec;
-        sis_disk_io_write_net_work(cls_, wcatch);
+        sis_disk_io_write_sic_work(cls_, wcatch);
         sis_disk_wcatch_destroy(wcatch);
         sis_object_destroy(mapobj);
 
@@ -133,7 +133,7 @@ int sis_disk_io_write_net(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
     return 0;
 }
 
-size_t sis_disk_io_write_net_widx(s_sis_disk_ctrl *cls_)
+size_t sis_disk_io_write_sic_widx(s_sis_disk_ctrl *cls_)
 {
     s_sis_disk_wcatch *wcatch = cls_->wcatch;
     sis_disk_wcatch_init(wcatch);
@@ -200,7 +200,7 @@ size_t sis_disk_io_write_net_widx(s_sis_disk_ctrl *cls_)
 ////////////////////////////////
 int _readcode_nums = 0;
 size_t _readcode_size = 0;
-static int cb_incrzip_decode_net(void *source_, int kidx, int sidx, char *in, size_t ilen)
+static int cb_incrzip_decode_sic(void *source_, int kidx, int sidx, char *in, size_t ilen)
 {
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source_;
 
@@ -235,14 +235,14 @@ static int cb_incrzip_decode_net(void *source_, int kidx, int sidx, char *in, si
 }
 int _readzip_nums = 0;
 size_t _readzip_size = 0;
-int cb_sis_disk_io_read_net(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
+int cb_sis_disk_io_read_sic(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source_;
     s_sis_disk_reader_cb *callback = ctrl->rcatch->callback; 
     // 根据hid不同写入不同的数据到obj
     switch (head_->hid)
     {
-    case SIS_DISK_HID_MSG_NET: // 只有一个key + 可能多条数据
+    case SIS_DISK_HID_MSG_SIC: // 只有一个key + 可能多条数据
         if(callback->cb_original)
         {
             callback->cb_original(callback->cb_source, head_, imem_, isize_);
@@ -256,7 +256,7 @@ int cb_sis_disk_io_read_net(void *source_, s_sis_disk_head *head_, char *imem_, 
             sis_incrzip_uncompress_step(ctrl->net_incrzip, imem_, isize_);
         }
         break;
-    case SIS_DISK_HID_NET_NEW: 
+    case SIS_DISK_HID_SIC_NEW: 
         if(callback->cb_original)
         {
             callback->cb_original(callback->cb_source, head_, imem_, isize_);
@@ -285,7 +285,7 @@ int cb_sis_disk_io_read_net(void *source_, s_sis_disk_head *head_, char *imem_, 
     return 0;
 }
 
-int sis_disk_io_sub_net(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_,
+int sis_disk_io_sub_sic(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_,
                     s_sis_msec_pair *search_, void *cb_)
 {
     if (!cb_)
@@ -306,7 +306,7 @@ int sis_disk_io_sub_net(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
             s_sis_dynamic_db *sdb = sis_disk_sdict_last(sdict);    
             sis_incrzip_set_sdb(cls_->net_incrzip, sdb);
         }
-        sis_incrzip_uncompress_start(cls_->net_incrzip, cls_, cb_incrzip_decode_net);
+        sis_incrzip_uncompress_start(cls_->net_incrzip, cls_, cb_incrzip_decode_sic);
     }
 
     if(callback->cb_start)
@@ -314,7 +314,7 @@ int sis_disk_io_sub_net(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
         callback->cb_start(callback->cb_source, cls_->open_date);
     }
     // 每次都从头读起
-    sis_disk_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_io_read_net);
+    sis_disk_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_io_read_sic);
 
     // 不是因为中断而结束 就发送stop标志
    if (cls_->isstop)
@@ -340,7 +340,7 @@ int sis_disk_io_sub_net(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
     return 0;
 }
 
-int cb_sis_disk_io_read_net_widx(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
+int cb_sis_disk_io_read_sic_widx(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
     s_sis_disk_ctrl *cls_ = (s_sis_disk_ctrl *)source_;
     // 直接写到内存中
@@ -411,7 +411,7 @@ int cb_sis_disk_io_read_net_widx(void *source_, s_sis_disk_head *head_, char *im
     return 0;
 }
 
-int sis_disk_io_read_net_widx(s_sis_disk_ctrl *cls_)
+int sis_disk_io_read_sic_widx(s_sis_disk_ctrl *cls_)
 {
     if (cls_->work_fps->main_head.index)
     {
@@ -426,7 +426,7 @@ int sis_disk_io_read_net_widx(s_sis_disk_ctrl *cls_)
             LOG(5)("open widx fail.[%s]\n", cls_->widx_fps->cur_name);
             return SIS_DISK_CMD_NO_OPEN_IDX;
         }
-        sis_disk_files_read_fulltext(cls_->widx_fps, cls_, cb_sis_disk_io_read_net_widx);
+        sis_disk_files_read_fulltext(cls_->widx_fps, cls_, cb_sis_disk_io_read_sic_widx);
         sis_disk_files_close(cls_->widx_fps);
          return SIS_DISK_CMD_OK;
     }
@@ -515,7 +515,7 @@ static void cb_chardata(void *src, const char *kname_, const char *sname_, void 
     // }
 }
 
-void write_net(s_sis_disk_writer *cxt)
+void write_sic(s_sis_disk_writer *cxt)
 {
     s_info info_data[3] = { 
         { "k10000" },
@@ -544,20 +544,20 @@ void write_net(s_sis_disk_writer *cxt)
     __write_msec = sis_time_get_now_msec();
     for (int k = 0; k < count; k++)
     {
-        __write_size += sis_disk_writer_net(cxt, "k1", "info", &info_data[0], sizeof(s_info));
-        __write_size += sis_disk_writer_net(cxt, "k2", "info", &info_data[1], sizeof(s_info));
-        __write_size += sis_disk_writer_net(cxt, "k3", "info", &info_data[2], sizeof(s_info));
+        __write_size += sis_disk_writer_sic(cxt, "k1", "info", &info_data[0], sizeof(s_info));
+        __write_size += sis_disk_writer_sic(cxt, "k2", "info", &info_data[1], sizeof(s_info));
+        __write_size += sis_disk_writer_sic(cxt, "k3", "info", &info_data[2], sizeof(s_info));
         // for (int i = 0; i < 8; i++)
         // {
-        //     __write_size += sis_disk_writer_net(cxt, "k1", "smsec", &snap_data[i], sizeof(s_msec));
+        //     __write_size += sis_disk_writer_sic(cxt, "k1", "smsec", &snap_data[i], sizeof(s_msec));
         // }
         // for (int i = 0; i < 5; i++)
         // {
-        //     __write_size += sis_disk_writer_net(cxt, "k2", "smsec", &snap_data[i], sizeof(s_msec));
+        //     __write_size += sis_disk_writer_sic(cxt, "k2", "smsec", &snap_data[i], sizeof(s_msec));
         // }
         // for (int i = 0; i < 7; i++)
         // {
-        //     __write_size += sis_disk_writer_net(cxt, "k3", "smsec", &snap_data[i], sizeof(s_msec));
+        //     __write_size += sis_disk_writer_sic(cxt, "k3", "smsec", &snap_data[i], sizeof(s_msec));
         // }
     }
     sis_disk_writer_stop(cxt);
@@ -600,8 +600,8 @@ int main(int argc, char **argv)
     test_map_list_speed();
     if (argc < 2)
     {
-        s_sis_disk_writer *wcxt = sis_disk_writer_create(".", "wlog", SIS_DISK_TYPE_NET);
-        write_net(wcxt);
+        s_sis_disk_writer *wcxt = sis_disk_writer_create(".", "wlog", SIS_DISK_TYPE_SIC);
+        write_sic(wcxt);
         sis_disk_writer_destroy(wcxt);
     }
     else
@@ -615,11 +615,11 @@ int main(int argc, char **argv)
         cb.cb_break = cb_break;
         // cb.cb_original = cb_original;
         cb.cb_chardata  = cb_chardata;
-        s_sis_disk_reader *rcxt = sis_disk_reader_create(".", "wlog", SIS_DISK_TYPE_NET, &cb);
-        // s_sis_disk_reader *rcxt = sis_disk_reader_create("../../data/", "test4", SIS_DISK_TYPE_NET, &cb);
+        s_sis_disk_reader *rcxt = sis_disk_reader_create(".", "wlog", SIS_DISK_TYPE_SIC, &cb);
+        // s_sis_disk_reader *rcxt = sis_disk_reader_create("../../data/", "test4", SIS_DISK_TYPE_SIC, &cb);
         cb.cb_source = rcxt;
-        sis_disk_reader_sub_net(rcxt, NULL, NULL, 0);
-        // sis_disk_reader_sub_net(rcxt, "*", "*", 20210531);
+        sis_disk_reader_sub_sic(rcxt, NULL, NULL, 0);
+        // sis_disk_reader_sub_sic(rcxt, "*", "*", 20210531);
         sis_disk_reader_destroy(rcxt);
     }
 

@@ -126,20 +126,20 @@ typedef struct s_snodb_disk_worker
 
 typedef struct s_snodb_cxt
 {
-	int      work_status;  // 当前工作状态
+	int                 work_status;  // 当前工作状态
+           
+	int                 wait_msec;   // 超过多长时间生成新的块 毫秒
+	int                 initsize;    // 超过多大数据重新初始化 字节
+	int                 zip_size;    // 单个数据块的大小
+	int                 cur_size;    // 当前累计字节数 字节
+           
+	uint64              catch_size;  // 缓存数据保留最大的尺寸
+           
+	bool                inited;      // 是否已经初始化
+	bool                stoped;      // 是否已经结束
+	int                 work_date;   // 工作日期
 
-	int      wait_msec;   // 超过多长时间生成新的块 毫秒
-	int      initsize;    // 超过多大数据重新初始化 字节
-	int      zip_size;    // 单个数据块的大小
-	int      cur_size;    // 当前累计字节数 字节
-
-	uint64   catch_size;  // 缓存数据保留最大的尺寸
-
-	bool     inited;    // 是否已经初始化
-	bool     stoped;    // 是否已经结束
-	int      work_date; // 工作日期
-
-	s_sis_sds dbname;  // 数据库名称 
+	s_sis_sds           dbname;     // 数据库名称 
 
 	int                 wlog_load;  // 是否正在加载 wlog       
 	int                 wlog_date;  // wlog    

@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 #include "sis_disk.h"
-#include "sisdb_worker.h"
+#include "sisdb_sic.h"
 
 #define  SIS_WSDB_NONE     0 // 
 #define  SIS_WSDB_OPEN     1 // 文件是否打开
@@ -21,7 +21,7 @@ typedef struct s_sisdb_wsdb_cxt
 	s_sis_sds          work_keys;     // 筛选后的 
 	s_sis_sds          work_sdbs;     // 筛选后的
 
-	s_sisdb_worker    *work_unzip;    // 解压 s_snodb_compress 中来的数据
+	s_sisdb_sic       *work_unzip;    // 解压 s_snodb_compress 中来的数据
 
 } s_sisdb_wsdb_cxt;
 

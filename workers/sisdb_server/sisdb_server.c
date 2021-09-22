@@ -15,7 +15,7 @@ struct s_sis_method sisdb_server_methods[] = {
     {"auth",     cmd_sisdb_server_auth,    SIS_METHOD_ACCESS_READ,  NULL},   // 用户登录
     {"show",     cmd_sisdb_server_show,    SIS_METHOD_ACCESS_READ,  NULL},   // 显示有多少数据集
 
-    {"setuser",  cmd_sisdb_server_setuser, SIS_METHOD_ACCESS_ADMIN, NULL}, // 设置用户信息
+    {"setuser",  cmd_sisdb_server_setuser, SIS_METHOD_ACCESS_ADMIN, NULL},   // 设置用户信息
 
     {"open",     cmd_sisdb_server_open,    SIS_METHOD_ACCESS_ADMIN, NULL},   // 打开一个数据集
     {"close",    cmd_sisdb_server_close,   SIS_METHOD_ACCESS_ADMIN, NULL},   // 关闭一个数据集

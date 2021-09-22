@@ -128,7 +128,7 @@ static void cb_stop(void *context_, int idate)
      // stop 放这里
     if (context->cb_sub_inctzip)
     {
-        sisdb_worker_zip_stop(context->work_ziper);
+        sisdb_sic_zip_stop(context->work_ziper);
     }
     if (context->cb_sub_stop)
     {
@@ -153,7 +153,7 @@ static void cb_dict_keys(void *context_, void *key_, size_t size)
     } 
     if (context->cb_sub_inctzip)
     {
-    	sisdb_worker_set_keys(context->work_ziper, keys);
+    	sisdb_sic_set_keys(context->work_ziper, keys);
     }
 	sis_sdsfree(keys);
 	sis_sdsfree(srckeys);
@@ -173,7 +173,7 @@ static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)
     } 
     if (context->cb_sub_inctzip)
     {
-    	sisdb_worker_set_sdbs(context->work_ziper, sdbs);
+    	sisdb_sic_set_sdbs(context->work_ziper, sdbs);
     }
 	sis_sdsfree(sdbs);
 	sis_sdsfree(srcsdbs); 
@@ -193,7 +193,7 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
     // {
     //     if (!sis_strcasecmp(sname_, "stk_snapshot"))
     //     {
-    //         s_v3_stk_snapshot *snapshot = (s_v3_stk_snapshot *)out_;
+    //         s_v4_stk_snapshot *snapshot = (s_v4_stk_snapshot *)out_;
     //         printf("--%s %s %zu | %6d %5d %10d\n", kname_, sname_, olen_, sis_time_get_itime(snapshot->time/1000), snapshot->newp, snapshot->volume);
     //     }
     //     else
@@ -216,13 +216,13 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
     }
     if (context->cb_sub_inctzip)
     {
-        int kidx = sisdb_worker_get_kidx(context->work_ziper, kname_);
-        int sidx = sisdb_worker_get_sidx(context->work_ziper, sname_);
+        int kidx = sisdb_sic_get_kidx(context->work_ziper, kname_);
+        int sidx = sisdb_sic_get_sidx(context->work_ziper, sname_);
         if (kidx < 0 || sidx < 0)
         {
             return ;
         }
-        sisdb_worker_zip_set(context->work_ziper, kidx, sidx, out_, olen_);
+        sisdb_sic_zip_set(context->work_ziper, kidx, sidx, out_, olen_);
     }
 } 
 
@@ -258,8 +258,8 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     if (context->cb_sub_inctzip)
     {
-        context->work_ziper = sisdb_worker_create();
-        sisdb_worker_zip_start(context->work_ziper, context, cb_encode);
+        context->work_ziper = sisdb_sic_create();
+        sisdb_sic_zip_start(context->work_ziper, context, cb_encode);
     }
 
     LOG(5)("sub sno open. [%d]\n", context->work_date);
@@ -276,8 +276,8 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     if (context->cb_sub_inctzip)
     {
-        // sisdb_worker_zip_stop(context->work_ziper);
-        sisdb_worker_destroy(context->work_ziper);
+        // sisdb_sic_zip_stop(context->work_ziper);
+        sisdb_sic_destroy(context->work_ziper);
         context->work_ziper = NULL;
     }
 

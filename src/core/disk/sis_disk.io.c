@@ -28,18 +28,18 @@ void _disk_ctrl_init(s_sis_disk_ctrl *o)
     char widx_fn[1024];
     switch (o->style)
     {
-    case SIS_DISK_TYPE_NET: 
+    case SIS_DISK_TYPE_SIC: 
         {
             int nyear = o->open_date / 10000;
             sis_sprintf(work_fn, 1024, "%s/%s/%s.%d/%d.%s",
-                    o->fpath, o->fname, SIS_DISK_NET_CHAR, nyear, o->open_date, SIS_DISK_NET_CHAR);
+                    o->fpath, o->fname, SIS_DISK_SIC_CHAR, nyear, o->open_date, SIS_DISK_SIC_CHAR);
             // 这里虽然没有设置压缩方式 实际传入的数据就已经按增量压缩好了
             o->work_fps->main_head.index = 1;
-            o->work_fps->max_page_size = SIS_DISK_MAXLEN_NETPAGE;
+            o->work_fps->max_page_size = SIS_DISK_MAXLEN_SICPAGE;
             o->work_fps->max_file_size = SIS_DISK_MAXLEN_FILE;
             o->work_fps->main_head.zip = SIS_DISK_ZIP_INCRZIP;
             sis_sprintf(widx_fn, 1024, "%s/%s/%s.%d/%d.%s",
-                    o->fpath, o->fname, SIS_DISK_NET_CHAR, nyear, o->open_date, SIS_DISK_IDX_CHAR);
+                    o->fpath, o->fname, SIS_DISK_SIC_CHAR, nyear, o->open_date, SIS_DISK_IDX_CHAR);
         }
         break;
     case SIS_DISK_TYPE_SNO: 
@@ -361,8 +361,8 @@ size_t sis_disk_io_write_dict(s_sis_disk_ctrl *cls_, s_sis_disk_wcatch *wcatch_)
     size_t osize = 0;
     switch (cls_->work_fps->main_head.style)
     {
-    case SIS_DISK_TYPE_NET:
-        osize = sis_disk_io_write_net_work(cls_, wcatch_);
+    case SIS_DISK_TYPE_SIC:
+        osize = sis_disk_io_write_sic_work(cls_, wcatch_);
         break;
     case SIS_DISK_TYPE_SNO:
         osize = sis_disk_io_write_sdb_work(cls_, wcatch_);
@@ -660,9 +660,9 @@ int sis_disk_ctrl_read_start(s_sis_disk_ctrl *cls_)
             return o;
         }
     }    
-    else if (cls_->style == SIS_DISK_TYPE_NET)
+    else if (cls_->style == SIS_DISK_TYPE_SIC)
     {
-        o = sis_disk_io_read_net_widx(cls_);
+        o = sis_disk_io_read_sic_widx(cls_);
         if (o != SIS_DISK_CMD_OK)
         {
             return o;
@@ -759,9 +759,9 @@ int sis_disk_ctrl_write_start(s_sis_disk_ctrl *cls_)
                 return vo;
             }
         } 
-        else if (cls_->style == SIS_DISK_TYPE_NET)
+        else if (cls_->style == SIS_DISK_TYPE_SIC)
         {
-            vo = sis_disk_io_read_net_widx(cls_);
+            vo = sis_disk_io_read_sic_widx(cls_);
             if (vo != SIS_DISK_CMD_OK)
             {
                 return vo;
@@ -821,9 +821,9 @@ int sis_disk_ctrl_write_stop(s_sis_disk_ctrl *cls_)
                 return -3;
             }
         }
-        else if (cls_->style == SIS_DISK_TYPE_NET)
+        else if (cls_->style == SIS_DISK_TYPE_SIC)
         {
-            if (sis_disk_io_write_net_widx(cls_) == 0)
+            if (sis_disk_io_write_sic_widx(cls_) == 0)
             {
                 LOG(5)("write netidx fail.[%s]\n", cls_->widx_fps->cur_name);
                 return -4;
@@ -861,7 +861,7 @@ void sis_disk_ctrl_delete(s_sis_disk_ctrl *cls_)
 
 int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_)
 {
-    if (src_->style == SIS_DISK_TYPE_LOG || src_->style == SIS_DISK_TYPE_NET || src_->style == SIS_DISK_TYPE_SNO)
+    if (src_->style == SIS_DISK_TYPE_LOG || src_->style == SIS_DISK_TYPE_SIC || src_->style == SIS_DISK_TYPE_SNO)
     {
         return 0;
     }

@@ -210,8 +210,14 @@ void sis_dynamic_db_decr(s_sis_dynamic_db *db_)
 	if (db_->refs == 1)
 	{
 		sis_sdsfree(db_->name);
-		sis_map_list_destroy(db_->fields);
-		sis_pointer_list_destroy(db_->field_solely);
+		if (db_->fields)
+		{
+			sis_map_list_destroy(db_->fields);
+		}
+		if (db_->field_solely)
+		{
+			sis_pointer_list_destroy(db_->field_solely);
+		}
 		sis_free(db_);
 	}
 	else

@@ -97,8 +97,8 @@ void sisdb_wsno_stop(s_sisdb_wsno_cxt *context)
 {
     if (context->work_unzip)
     {
-        sisdb_worker_unzip_stop(context->work_unzip);
-        sisdb_worker_destroy(context->work_unzip);
+        sisdb_sic_unzip_stop(context->work_unzip);
+        sisdb_sic_destroy(context->work_unzip);
         context->work_unzip = NULL;
     }
     if (context->writer)
@@ -164,8 +164,8 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 {
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)context_;
     
-    const char *kname = sisdb_worker_get_kname(context->work_unzip, kidx_);
-    const char *sname = sisdb_worker_get_sname(context->work_unzip, sidx_);
+    const char *kname = sisdb_sic_get_kname(context->work_unzip, kidx_);
+    const char *sname = sisdb_sic_get_sname(context->work_unzip, sidx_);
     sis_disk_writer_sno(context->writer, kname, sname, in_, ilen_);
     return 0;
 } 
@@ -192,12 +192,12 @@ static int _write_wsno_head(s_sisdb_wsno_cxt *context, int iszip)
         sis_disk_writer_set_kdict(context->writer, newkeys, sis_sdslen(newkeys));
         sis_disk_writer_set_sdict(context->writer, newsdbs, sis_sdslen(newsdbs));
         sis_disk_writer_start(context->writer);
-        context->work_unzip = sisdb_worker_create(); 
-        sisdb_worker_set_keys(context->work_unzip, context->wsno_keys);
-        sisdb_worker_set_sdbs(context->work_unzip,  context->wsno_sdbs);
-        // sisdb_worker_set_keys(context->work_unzip, newkeys);
-        // sisdb_worker_set_sdbs(context->work_unzip,  newsdbs);
-        sisdb_worker_unzip_start(context->work_unzip, context, cb_decode);
+        context->work_unzip = sisdb_sic_create(); 
+        sisdb_sic_set_keys(context->work_unzip, context->wsno_keys);
+        sisdb_sic_set_sdbs(context->work_unzip,  context->wsno_sdbs);
+        // sisdb_sic_set_keys(context->work_unzip, newkeys);
+        // sisdb_sic_set_sdbs(context->work_unzip,  newsdbs);
+        sisdb_sic_unzip_start(context->work_unzip, context, cb_decode);
 
         sis_sdsfree(newkeys); 
         sis_sdsfree(newsdbs); 
@@ -229,7 +229,7 @@ static int cb_sub_incrzip(void *worker_, void *argv_)
     _write_wsno_head(context, 1);
 
     s_sis_db_incrzip *inmem = (s_sis_db_incrzip *)argv_;
-    sisdb_worker_unzip_set(context->work_unzip, inmem);
+    sisdb_sic_unzip_set(context->work_unzip, inmem);
 	return SIS_METHOD_OK;
 }
 ///////////////////////////////////////////
@@ -249,45 +249,45 @@ int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }
     s_sis_message *msg = (s_sis_message *)argv_; 
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "sub-keys");
-        if (str)
-        {
-            sis_sdsfree(context->work_keys);
-            context->work_keys = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "sub-sdbs");
-        if (str)
-        {
-            sis_sdsfree(context->work_sdbs);
-            context->work_sdbs = sis_sdsdup(str);
-        }
-    }
+    // {
+    //     s_sis_sds str = sis_message_get_str(msg, "work-path");
+    //     if (str)
+    //     {
+    //         sis_sdsfree(context->work_path);
+    //         context->work_path = sis_sdsdup(str);
+    //     }
+    // }
+    // {
+    //     s_sis_sds str = sis_message_get_str(msg, "work-name");
+    //     if (str)
+    //     {
+    //         sis_sdsfree(context->work_name);
+    //         context->work_name = sis_sdsdup(str);
+    //     }
+    // }
+    // {
+    //     s_sis_sds str = sis_message_get_str(msg, "sub-keys");
+    //     if (str)
+    //     {
+    //         sis_sdsfree(context->work_keys);
+    //         context->work_keys = sis_sdsdup(str);
+    //     }
+    // }
+    // {
+    //     s_sis_sds str = sis_message_get_str(msg, "sub-sdbs");
+    //     if (str)
+    //     {
+    //         sis_sdsfree(context->work_sdbs);
+    //         context->work_sdbs = sis_sdsdup(str);
+    //     }
+    // }
     sis_message_set(msg, "source", worker, NULL);
     sis_message_set_method(msg, "cb_sub_start"   ,cb_sub_start);
     sis_message_set_method(msg, "cb_sub_stop"    ,cb_sub_stop);
     sis_message_set_method(msg, "cb_dict_sdbs"   ,cb_dict_sdbs);
     sis_message_set_method(msg, "cb_dict_keys"   ,cb_dict_keys);
     sis_message_set_method(msg, "cb_sub_chars"   ,cb_sub_chars);
-    sis_message_set_method(msg, "cb_sub_incrzip" ,cb_sub_incrzip);
+    sis_message_set_method(msg, "cb_any_bytes"   ,cb_sub_incrzip);
 
     context->status = SIS_WSNO_INIT;
     return SIS_METHOD_OK; 

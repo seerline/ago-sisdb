@@ -758,7 +758,7 @@ int cmd_snodb_spub(void *worker_, void *argv_)
 	if (cmds == 2 && inmem)
 	{
 		int kidx = sis_map_list_get_index(context->keys, kname);
-		int sidx = sis_map_list_get_index(context->sdbs, sname);
+		int sidx = sis_map_list_get_index(context->sdbs, sname); 
 
 		if (_snodb_write(context, kidx, sidx, inmem, sis_sdslen(inmem)) >= 0)
 		{

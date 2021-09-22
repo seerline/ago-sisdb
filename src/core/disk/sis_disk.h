@@ -137,12 +137,12 @@ void sis_disk_writer_stop(s_sis_disk_writer *);
 // sis_disk_writer_set_kdict
 // sis_disk_writer_set_sdict
 // sis_disk_writer_start
-// sis_disk_writer_net
+// sis_disk_writer_sic
 // ....
 // sis_disk_writer_stop
 // sis_disk_writer_close
 // map速度最快 2500万次查询 耗时1秒 
-int sis_disk_writer_net(s_sis_disk_writer *, const char *kname_, const char *sname_, void *in_, size_t ilen_);
+int sis_disk_writer_sic(s_sis_disk_writer *, const char *kname_, const char *sname_, void *in_, size_t ilen_);
 // 写入数据 仅支持 NET 必须是原始数据
 // sis_disk_writer_open
 // sis_disk_writer_set_kdict
@@ -187,7 +187,7 @@ int sis_disk_reader_sub_log(s_sis_disk_reader *, int idate_);
 // 顺序读取 仅支持 NET  通过回调的 cb_original 或 cb_bytedata 返回数据
 // 如果定义了 cb_bytedata 就解压数据再返回
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
-int sis_disk_reader_sub_net(s_sis_disk_reader *, const char *keys_, const char *sdbs_, int idate_);
+int sis_disk_reader_sub_sic(s_sis_disk_reader *, const char *keys_, const char *sdbs_, int idate_);
 
 // 读取 仅支持 SNO  
 // 如果定义了 cb_bytedata cb_chardata 就解压数据再返回
@@ -237,7 +237,7 @@ int sis_disk_control_move(const char *path_, const char *name_, int style_, int 
 // 判断指定日期的log是否存在
 int sis_disk_log_exist(const char *path_, const char *name_, int idate_);
 // 判断指定日期的net是否存在
-int sis_disk_net_exist(const char *path_, const char *name_, int idate_);
+int sis_disk_sic_exist(const char *path_, const char *name_, int idate_);
 // 判断指定日期的sno是否存在
 int sis_disk_sno_exist(const char *path_, const char *name_, int idate_);
 

@@ -51,8 +51,8 @@ int sis_disk_writer_open(s_sis_disk_writer *writer_, int idate_)
     }
     switch (writer_->style)
     {
-    case SIS_DISK_TYPE_NET:
-        writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_NET, writer_->fpath, writer_->fname, idate_);
+    case SIS_DISK_TYPE_SIC:
+        writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SIC, writer_->fpath, writer_->fname, idate_);
         break;   
     case SIS_DISK_TYPE_SNO:
         writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SNO, writer_->fpath, writer_->fname, idate_);
@@ -225,10 +225,10 @@ int sis_disk_writer_start(s_sis_disk_writer *writer_)
     int o = -1;
     switch (writer_->style)
     {
-    case SIS_DISK_TYPE_NET:
+    case SIS_DISK_TYPE_SIC:
         sis_disk_ctrl_write_kdict(writer_->munit);
         sis_disk_ctrl_write_sdict(writer_->munit);
-        o = sis_disk_io_write_net_start(writer_->munit);
+        o = sis_disk_io_write_sic_start(writer_->munit);
         break;
     case SIS_DISK_TYPE_SNO:
         sis_disk_ctrl_write_kdict(writer_->munit);
@@ -247,8 +247,8 @@ void sis_disk_writer_stop(s_sis_disk_writer *writer_)
 {
     switch (writer_->style)
     {
-    case SIS_DISK_TYPE_NET:
-        sis_disk_io_write_net_stop(writer_->munit);
+    case SIS_DISK_TYPE_SIC:
+        sis_disk_io_write_sic_stop(writer_->munit);
         break;
     case SIS_DISK_TYPE_SNO:
         sis_disk_io_write_sno_stop(writer_->munit);
@@ -261,9 +261,9 @@ void sis_disk_writer_stop(s_sis_disk_writer *writer_)
 }
 // int __tempnums = 0;
 // 写入数据 仅支持 NET 
-int sis_disk_writer_net(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
+int sis_disk_writer_sic(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
 {
-    if (writer_->style != SIS_DISK_TYPE_NET) 
+    if (writer_->style != SIS_DISK_TYPE_SIC) 
     {
         return -1;
     }  
@@ -286,7 +286,7 @@ int sis_disk_writer_net(s_sis_disk_writer *writer_, const char *kname_, const ch
         // 对于net新增代码后 必须要好好处理key增长的问题
         sis_incrzip_compress_addkey(writer_->munit->net_incrzip, 1);
     }
-    return sis_disk_io_write_net(writer_->munit, kdict, sdict, in_, ilen_);
+    return sis_disk_io_write_sic(writer_->munit, kdict, sdict, in_, ilen_);
 }
 
 int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
@@ -679,10 +679,10 @@ int sis_disk_log_exist(const char *path_, const char *name_, int idate_)
     return isok;
 }
 
-int sis_disk_net_exist(const char *path_, const char *name_, int idate_)
+int sis_disk_sic_exist(const char *path_, const char *name_, int idate_)
 {
     int isok = 0;
-    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_NET, path_, name_, idate_);
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SIC, path_, name_, idate_);
     int o = sis_disk_ctrl_read_start(munit);
     if (o == SIS_DISK_CMD_OK)
     {

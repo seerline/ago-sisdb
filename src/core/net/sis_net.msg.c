@@ -305,8 +305,10 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t 
     netmsg_->format = SIS_NET_FORMAT_BYTES;
     netmsg_->switchs.is_reply = 1;
     netmsg_->rans = SIS_NET_ANS_OK;
-    SIS_NET_SET_BUF(netmsg_->switchs.has_msg, netmsg_->rmsg, in_, ilen_);
     netmsg_->switchs.has_key = netmsg_->key ? 1 : 0;
+    netmsg_->switchs.has_argvs = 1;
+    s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
+	sis_net_new_argvs(netmsg_, obj, 1);
 }
 void sis_net_ans_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_)
 {

@@ -172,9 +172,9 @@ int sis_disk_reader_sub_log(s_sis_disk_reader *reader_, int idate_)
 // 顺序读取 仅支持 NET  通过回调的 cb_original 或 cb_bytedata 返回数据
 // 如果定义了 cb_bytedata 就解压数据再返回
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
-int sis_disk_reader_sub_net(s_sis_disk_reader *reader_, const char *keys_, const char *sdbs_, int idate_)
+int sis_disk_reader_sub_sic(s_sis_disk_reader *reader_, const char *keys_, const char *sdbs_, int idate_)
 {
-    int o = _disk_reader_open(reader_, SIS_DISK_TYPE_NET, idate_);
+    int o = _disk_reader_open(reader_, SIS_DISK_TYPE_SIC, idate_);
     if (o)
     {
         LOG(5)("no open %s. %d\n", reader_->fname, o);
@@ -182,7 +182,7 @@ int sis_disk_reader_sub_net(s_sis_disk_reader *reader_, const char *keys_, const
     }
     reader_->status_sub = 1;
     // 按顺序输出 keys_ sdbs_ = NULL 实际表示 *
-    sis_disk_io_sub_net(reader_->munit, keys_, sdbs_, NULL, reader_->callback);
+    sis_disk_io_sub_sic(reader_->munit, keys_, sdbs_, NULL, reader_->callback);
     // 订阅结束
     reader_->status_sub = 0;
 
