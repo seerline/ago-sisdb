@@ -29,17 +29,18 @@ int _fmap_calc_nots_count(s_sisdb_fmap_cmd *cmd_, int inums_, int *start_, int *
 	return 1;
 }
 
-int _fmap_calc_nots_start(s_sisdb_fmap_cmd *cmd_, int inums_, int *start_)
+int _fmap_calc_nots_start(int start_, int inums_)
 {
-	if (cmd_->start < 0)
+	int start = start_;
+	if (start_ < 0)
 	{
-		*start_ = sis_max(inums_ + cmd_->start, 0);
+		start = sis_max(inums_ + start_, 0);
 	}
-	if (*start_ >= inums_)
+	if (start >= inums_)
 	{
-		return 0;
+		return -1;
 	}
-	return 1;
+	return start;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -102,8 +103,8 @@ static void _fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
 			s_sis_disk_map_unit *uidx = sis_sort_list_get(dmap_->sidxs, i);
 			s_sisdb_fmap_idx fidx = {0};
 			fidx.isign = uidx->idate;
-			fidx.start = -1;  // 此时不读盘
 			fidx.moved = uidx->active == 0 ? 1 : 0;
+			fidx.start = fidx.moved ? 0 : -1;  // 此时不读盘
 			sis_struct_list_push(unit->fidxs, &fidx);
 		}
 		sis_map_pointer_set(cxt_->work_keys, name, unit);
@@ -139,7 +140,7 @@ int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 			sisdb_fmap_cxt_setdb(cxt_, sis_disk_sdict_last(sdict));
 		}	
 	}
-	// 加载数据索引信息
+	// 加载数据索引信息 读时直接使用初始化时的索引
 	{
 		int count = sis_map_list_getsize(cxt_->freader->munit->map_maps);
 		for (int i = 0; i < count; i++)
@@ -148,7 +149,6 @@ int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 			_fmap_cxt_new_of_map(cxt_, dmap);
 		}	
 	}	
-    sis_disk_reader_close(cxt_->freader);
 	return 0;
 }
 
@@ -319,69 +319,17 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	return count;
 }
-// 增加数据 直接写 不做安全判断 
-int sisdb_fmap_cxt_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
-{
-	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
-	if (!unit)
-	{
-		// 没有数据 要增加新键值
-		unit = sisdb_fmap_cxt_new(cxt_, cmd_->key, cmd_->ktype);
-	}
-	else
-	{
-		sisdb_fmap_cxt_init_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
-	}
-	int count = 1;
-	switch (unit->ktype)
-	{
-	case SISDB_FMAP_TYPE_ONE:
-		{
-			s_sis_sds str = (s_sis_sds)unit->value;
-			sis_sdsclear(str);
-			unit->value = sis_sdscatlen(str, cmd_->imem, cmd_->isize);
-		}
-		break;
-	case SISDB_FMAP_TYPE_MUL:
-		{
-			s_sis_sds str = sis_sdsnewlen(cmd_->imem, cmd_->isize);
-			s_sis_node *node = (s_sis_node *)unit->value;
-			sis_node_push(node, str);
-		}
-		break;
-	case SISDB_FMAP_TYPE_NON:
-		{
-			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
-			count = cmd_->isize / unit->sdb->size;
-			sis_struct_list_pushs(slist, cmd_->imem, count);
-		}
-		break;
-	default:
-		{
-			sisdb_fmap_cxt_tsdb_update(cxt_, unit, cmd_);
-		}
-		break;
-	}
-	return count;
-}
 
 int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
 	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
 	if (!unit)
 	{
-		if (cmd_->ktype == SISDB_FMAP_TYPE_ONE)
-		{
-			unit = sisdb_fmap_cxt_new(cxt_, cmd_->key, cmd_->ktype);
-		}
-		else
-		{
-			return 0;
-		}
+		unit = sisdb_fmap_cxt_new(cxt_, cmd_->key, cmd_->ktype);
 	}
 	else
 	{
-		sisdb_fmap_cxt_init_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
+		sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 	}
 	switch (unit->ktype)
 	{
@@ -395,28 +343,76 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	case SISDB_FMAP_TYPE_MUL:
 		{
 			s_sis_node *node = (s_sis_node *)unit->value;
-			int nums = sis_node_get_size(node);
-			int start = 0;
-			if (_fmap_calc_nots_start(cmd_, nums, &start))
+			if (cmd_->cmpmode == SISDB_FMAP_CMP_NONE)
 			{
-				s_sis_sds ago = sis_node_set(node, start, sis_sdsnewlen(cmd_->imem, cmd_->isize));
-				sis_sdsfree(ago);
+				s_sis_sds str = sis_sdsnewlen(cmd_->imem, cmd_->isize);
+				sis_node_push(node, str);
+			}
+			else
+			{
+				int nums = sis_node_get_size(node);			
+				int start = _fmap_calc_nots_start(cmd_->start, nums);
+				if (start >= 0)
+				{
+					s_sis_sds ago = sis_node_set(node, start, sis_sdsnewlen(cmd_->imem, cmd_->isize));
+					sis_sdsfree(ago);
+				}
 			}
 		}
 		break;
 	case SISDB_FMAP_TYPE_NON:
 		{
-			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
-			int start = 0;
-			if (_fmap_calc_nots_start(cmd_, slist->count, &start))
+			int count = cmd_->isize / unit->sdb->size;
+			//这里应该判断数据完整性
+			if (count * unit->sdb->size != cmd_->isize)
 			{
-				sis_struct_list_update(slist, start, cmd_->imem);
+				LOG(3)("source format error [%d*%d != %zu]\n", count, unit->sdb->size, cmd_->isize);
+				return 0;
+			}
+			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
+			if (slist->count < 1 || unit->sdb->field_solely->count == 0)
+			{
+				sis_struct_list_pushs(slist, cmd_->imem, count);
+			}
+			else
+			{
+				count = sisdb_fmap_cxt_solely_update(cxt_, unit, cmd_);
+			}
+			if (count > 0)
+			{
+				sisdb_fmap_unit_reidx(unit);
 			}
 		}
 		break;		
 	default:
 		{
-			sisdb_fmap_cxt_tsdb_update(cxt_, unit, cmd_);
+			int count = cmd_->isize / unit->sdb->size;
+			//这里应该判断数据完整性
+			if (count * unit->sdb->size != cmd_->isize)
+			{
+				LOG(3)("source format error [%d*%d != %zu]\n", count, unit->sdb->size, cmd_->isize);
+				return 0;
+			}
+			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
+			if (slist->count < 1)
+			{
+				sis_struct_list_pushs(slist, cmd_->imem, count);
+			}
+			else
+			{
+				if (unit->sdb->field_solely->count > 0)
+				{
+					count = sisdb_fmap_cxt_solely_update(cxt_, unit, cmd_);
+				}
+				else
+				{
+					count = sisdb_fmap_cxt_mindex_update(cxt_, unit, cmd_);
+				}
+			}
+			if (count > 0)
+			{
+				sisdb_fmap_unit_reidx(unit);
+			}
 		}
 		break;
 	}
@@ -494,7 +490,7 @@ int sisdb_fmap_cxt_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 }
 
 // 删除键值 需要做标记
-int sisdb_fmap_cxt_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
+int sisdb_fmap_cxt_remove(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
 	// 对于时序表 如果没有索引 移除键值实际上不能移除未加载到内存的数据块
 	// 因此移除键值必须设置时间 在getidx时加载索引到内存 再做move才能保证数据干净的被清理
@@ -522,7 +518,7 @@ int sisdb_fmap_cxt_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		break;
 	default:
 		{
-			sisdb_fmap_cxt_tsdb_move(cxt_, unit);
+			sisdb_fmap_cxt_tsdb_remove(cxt_, unit);
 		}
 		break;
 	}

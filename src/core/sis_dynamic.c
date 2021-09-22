@@ -334,6 +334,7 @@ uint64 sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 			case SIS_DYNAMIC_TYPE_MSEC: u64 = in64 * 1000 + 999; break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = in64 / 60;   break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64);   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = sis_time_get_idate(in64) / 10000;   break;
 		}
 		break;
 	case SIS_DYNAMIC_TYPE_MSEC:
@@ -342,14 +343,16 @@ uint64 sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 			case SIS_DYNAMIC_TYPE_TSEC: u64 = in64 / 1000; break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = in64 / 1000 / 60;   break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64 / 1000);   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = sis_time_get_idate(in64 / 1000) / 10000;   break;
 		}
 		break;
 	case SIS_DYNAMIC_TYPE_MINU:
 		switch (outstyle)
 		{
 			case SIS_DYNAMIC_TYPE_MSEC: u64 = in64 * 60 * 1000 + 59999; break;
-			case SIS_DYNAMIC_TYPE_TSEC:  u64 = in64 * 60; break;
+			case SIS_DYNAMIC_TYPE_TSEC: u64 = in64 * 60; break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64 * 60);   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = sis_time_get_idate(in64 * 60) / 10000;   break;
 		}
 		break;
 	case SIS_DYNAMIC_TYPE_DATE:
@@ -358,6 +361,7 @@ uint64 sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 			case SIS_DYNAMIC_TYPE_MSEC: u64 = sis_time_make_time(in64, 235959) * 1000 + 999; break;
 			case SIS_DYNAMIC_TYPE_TSEC:  u64 = sis_time_make_time(in64, 235959); break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = sis_time_make_time(in64, 235959) / 60;   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = in64 / 10000;   break;
 		}
 		break;
 	}

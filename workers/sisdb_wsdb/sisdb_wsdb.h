@@ -14,7 +14,7 @@ typedef struct s_sisdb_wsdb_cxt
 	int                status;
 	s_sis_sds          work_path;
 	s_sis_sds          work_name;
-    s_sis_sds          safe_path; // pack 时需要
+    s_sis_sds          safe_path;     // pack 时需要
 	s_sis_disk_writer *writer;        // 写盘类
 
 	int                wheaded;
@@ -29,6 +29,7 @@ bool  sisdb_wsdb_init(void *, void *);
 void  sisdb_wsdb_uninit(void *);
 
 int cmd_sisdb_wsdb_write(void *worker_, void *argv_);
+int cmd_sisdb_wsdb_push(void *worker_, void *argv_);
 
 int cmd_sisdb_wsdb_start(void *worker_, void *argv_);
 int cmd_sisdb_wsdb_stop(void *worker_, void *argv_);

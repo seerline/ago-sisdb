@@ -44,6 +44,6 @@ int cmd_sisdb_flog_write(void *worker_, void *argv_);
 int cmd_sisdb_flog_close(void *worker_, void *argv_);
 
 // 删除wlog文件 方法调用统一用 message
-int cmd_sisdb_flog_move(void *worker_, void *argv_);
+int cmd_sisdb_flog_remove(void *worker_, void *argv_);
 
 #endif

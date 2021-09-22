@@ -132,7 +132,8 @@ typedef struct s_sisdb_fmap_cxt
 // 用于定位修改 只能定位一条数据 通常用于定位查询、修改或删除  
 // start 表示匹配时间 严格匹配 不按日期 找不到就返回 NULL
 #define SISDB_FMAP_CMP_SAME    1 // 严格匹配查询和删除
-
+// 
+#define SISDB_FMAP_CMP_NONE    2 // 没有start stop 字段 
 
 typedef int (cb_fmap_read_def)(void *, char *, size_t, int);
 
@@ -145,11 +146,11 @@ typedef struct s_sisdb_fmap_cmd
 	uint8              cmpmode;       // 定位或是模糊查询
 	const char        *key;           // 要查询的键值
 	uint8              ktype;         // write 时有用
-	msec_t             start;         // 定位时间 
+	msec_t             start;         // 时间或索引字段的 开始值
 	// 非时序表示第几条记录 -1 = 倒数第一条
 	// 非日期型一般以一天为区间获取数据 
 	// 日期型以 start 为基准日期加载数据 默认stop为当日
-	msec_t             stop;          // 结束时间 
+	msec_t             stop;          // 时间或索引字段的 结束值
 	// 如果超过 count 限制 就截断 count 优先级高
 	int8               offset;        // 以开始时间为定位 -1 向前一条记录 1 向后一条记录 
 	// 如果时间一样就一直到不一样的记录 
@@ -167,7 +168,7 @@ typedef struct s_sisdb_fmap_cmd
 // 
 typedef struct s_sisdb_fmap_cmp
 {
-	int               ostart;   	 // 时序表日期
+	int               ostart;   	 // 时序表日期 或 年
 	int               oindex;   	 // 时序表开始索引
 	int               ocount;   	 // 时序表操作数量
 } s_sisdb_fmap_cmp;
@@ -188,20 +189,24 @@ void sisdb_fmap_unit_reidx(s_sisdb_fmap_unit *unit_);
 // 得到索引值
 msec_t sisdb_fmap_unit_get_mindex(s_sisdb_fmap_unit *unit_, int index_);
 // 得到索引值对应日期
-int sisdb_fmap_unit_get_start(s_sisdb_fmap_unit *unit_, int index_);
+int sisdb_fmap_unit_get_start(s_sisdb_fmap_unit *unit_, msec_t mindex_);
 // 快速定位
 int sisdb_fmap_unit_goto(s_sisdb_fmap_unit *unit_, msec_t curr_);
 
 // 得到记录数
 int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_);
-// 仅仅增加一条 这里 start 是日期
-int sisdb_fmap_unit_set_idx(s_sisdb_fmap_unit *unit_, int idate);
-// 可以修改同一索引的多条 这里 start 是日期
-int sisdb_fmap_unit_update_idx(s_sisdb_fmap_unit *unit_, int start);
+// 仅仅增加一条 这里 idate 是日期
+int sisdb_fmap_unit_add_idx(s_sisdb_fmap_unit *unit_, int startidx, int idate);
+// 可以修改同一索引的多条 这里 idate 是日期
+int sisdb_fmap_unit_set_idx(s_sisdb_fmap_unit *unit_, int startidx, int idate);
 // 删除 这里 index 为起始记录 count 为数量
 int sisdb_fmap_unit_del_idx(s_sisdb_fmap_unit *unit_, int index, int count);
 // 删除键值 需要做标记 仅仅针对时序数据
 int sisdb_fmap_unit_move_idx(s_sisdb_fmap_unit *unit_);
+// 找到一个最接近的前置位置
+int sisdb_fmap_cmp_find_head(s_sisdb_fmap_unit *unit_, msec_t  start_);
+// 找到一个最接近的后置位置
+int sisdb_fmap_cmp_find_tail(s_sisdb_fmap_unit *unit_, msec_t  start_);
 // 必须找到一个相等值，否则返回-1
 int sisdb_fmap_cmp_same(s_sisdb_fmap_unit *unit_, msec_t  start_, s_sisdb_fmap_cmp *ans_);
 // 找到匹配的区间数据，否则返回-1
@@ -226,7 +231,7 @@ s_sis_dynamic_db *sisdb_fmap_cxt_getdb(s_sisdb_fmap_cxt *cxt_, const char *sname
 // 读取指定的数据
 int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 // 插入一条数据
-int sisdb_fmap_cxt_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
+// int sisdb_fmap_cxt_push(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 // 插入多条排好序的数据 不做校验
 // int sisdb_fmap_cxt_pushs(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 // 修改符合条件的数据 没有匹配不修改
@@ -234,20 +239,22 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 // 删除符合条件的数据
 int sisdb_fmap_cxt_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 // 删除一个键值 同时清除所有 fidx 对应数据
-int sisdb_fmap_cxt_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
+int sisdb_fmap_cxt_remove(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 
 
 int sisdb_fmap_cxt_tsdb_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 
-int sisdb_fmap_cxt_tsdb_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
+int sisdb_fmap_cxt_solely_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
+
+int sisdb_fmap_cxt_mindex_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
+
 int sisdb_fmap_cxt_tsdb_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
-int sisdb_fmap_cxt_tsdb_move(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_);
+int sisdb_fmap_cxt_tsdb_remove(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_);
 
 // // 得到数据 并读入内存 除非磁盘也没有数据 才返回NULL 否则根据cmd参数获取数据
 // s_sisdb_fmap_unit * sisdb_fmap_cxt_read_where(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 // s_sisdb_fmap_unit * sisdb_fmap_cxt_read_match(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
-// 根据索引从磁盘中读取数据 不管数据是否存在 start和stop之间的索引都必须建立
-int sisdb_fmap_cxt_init_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int start_, int stop_);
+
 // 只根据索引从磁盘中读取数据 不增加索引块
 int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int start_, int stop_);
 

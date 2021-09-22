@@ -9,8 +9,8 @@ void sis_disk_set_search_msec(s_sis_msec_pair *src_, s_sis_msec_pair *des_)
         des_->start = src_->start;
         des_->stop  = src_->stop;
     }
-    des_->start = des_->start ? des_->start : sis_time_make_time(sis_time_get_idate(0), 1) * 1000;
-    des_->stop = des_->stop ? des_->stop : sis_time_make_time(sis_time_get_idate(0), 235959) * 1000;
+    des_->start = des_->start ? des_->start : sis_time_make_time(sis_time_get_idate(0), 0) * 1000;
+    des_->stop = des_->stop ? des_->stop : sis_time_make_time(sis_time_get_idate(0), 235959) * 1000 + 999;
 }
 int sis_disk_get_sdb_scale(s_sis_dynamic_db *db_)
 {

@@ -132,9 +132,9 @@ int snodb_wlog_stop(s_snodb_cxt *snodb_)
 {
 	return sis_worker_command(snodb_->wlog_worker, "close", snodb_->dbname); 
 }
-int snodb_wlog_move(s_snodb_cxt *snodb_)
+int snodb_wlog_remove(s_snodb_cxt *snodb_)
 {
-	return sis_worker_command(snodb_->wlog_worker, "move", snodb_->dbname); 
+	return sis_worker_command(snodb_->wlog_worker, "remove", snodb_->dbname); 
 }
 
 //////////////////////////////////////////////////////////////////

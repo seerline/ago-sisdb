@@ -460,7 +460,7 @@ int sis_disk_files_init(s_sis_disk_files *cls_, char *fn_);
 
 int sis_disk_files_inc_unit(s_sis_disk_files *cls_);
 
-int sis_disk_files_delete(s_sis_disk_files *cls_);
+int sis_disk_files_remove(s_sis_disk_files *cls_);
 
 int sis_disk_files_open(s_sis_disk_files *cls_, int access_);
 void sis_disk_files_close(s_sis_disk_files *cls_);
@@ -603,7 +603,7 @@ int sis_disk_ctrl_write_start(s_sis_disk_ctrl *cls_);
 int sis_disk_ctrl_write_stop(s_sis_disk_ctrl *cls_);
 
 // 删除文件组
-void sis_disk_ctrl_delete(s_sis_disk_ctrl *cls_);
+void sis_disk_ctrl_remove(s_sis_disk_ctrl *cls_);
 // 把源文件整理为目标文件
 int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_);
 // 把源文件移动到指定位置  0 成功

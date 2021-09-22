@@ -41,7 +41,8 @@ s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sn
 	default:
 		{
 			o->sdb = sdb_;
-			if (!o->sdb->field_time && !o->sdb->field_mindex && o->ktype != SISDB_FMAP_TYPE_NON)
+			// if (!o->sdb->field_time && !o->sdb->field_mindex && o->ktype != SISDB_FMAP_TYPE_NON)
+			if (!o->sdb->field_mindex  && o->ktype != SISDB_FMAP_TYPE_NON)
 			{
 				// 这里需要判断如果没有时间和索引字段强制 转换类型
 				o->ktype = SISDB_FMAP_TYPE_NON;
@@ -119,7 +120,7 @@ void sisdb_fmap_unit_clear(s_sisdb_fmap_unit *unit_)
 
 void sisdb_fmap_unit_reidx(s_sisdb_fmap_unit *unit_)
 {
-	if (!unit_->sdb->field_mindex)
+	if (!unit_->sdb || !unit_->sdb->field_mindex)
 	{
 		return ;
 	}
@@ -138,9 +139,16 @@ msec_t sisdb_fmap_unit_get_mindex(s_sisdb_fmap_unit *unit_, int index_)
 		sis_struct_list_first((s_sis_struct_list *)unit_->value), 
 		((s_sis_struct_list *)unit_->value)->count * ((s_sis_struct_list *)unit_->value)->len);
 }
-int sisdb_fmap_unit_get_start(s_sisdb_fmap_unit *unit_, int index_)
+int sisdb_fmap_unit_get_start(s_sisdb_fmap_unit *unit_, msec_t mindex_)
 {
-	return sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, sisdb_fmap_unit_get_mindex(unit_, index_));
+	if (unit_->sdb->field_time == unit_->sdb->field_mindex)
+	{
+		return sis_time_unit_convert(unit_->sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, mindex_);
+	}
+	else
+	{
+		return mindex_;
+	}
 }
 
 int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_)
@@ -162,129 +170,6 @@ int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_)
 		}
 	}
 	return o;
-}
-
-// 仅仅增加一条 这里 start 是日期
-int sisdb_fmap_unit_set_idx(s_sisdb_fmap_unit *unit_, int idate)
-{
-	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? idate / 10000 : idate;
-	int isidx = 0;  // 1 表示已经有索引
-	int count = 0;
-	for (int i = 0; i < unit_->fidxs->count; i++)
-	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
-		if (isidx != 0)
-		{
-			fidx->start++;
-		}
-		else
-		{
-			if (isign == fidx->isign)
-			{
-				fidx->count++;
-				fidx->moved = 0;
-				fidx->writed = 1;
-				isidx = 1;
-			}
-			else if (isign < fidx->isign)
-			{
-				s_sisdb_fmap_idx newidx;
-				newidx.isign = isign;
-				newidx.start = count;
-				newidx.count = 1;
-				newidx.moved = 0;
-				newidx.writed = 1;
-				isidx = 2;
-				// 修改当前的起始位置
-				sis_struct_list_insert(unit_->fidxs, i, &newidx);
-			}
-			count += fidx->count;
-		}
-	}	
-	if (isidx == 0)
-	{
-		s_sisdb_fmap_idx newidx;
-		newidx.isign = isign;
-		newidx.start = count;
-		newidx.count = 1;
-		newidx.moved = 0;
-		newidx.writed = 1;
-		isidx = 3;
-		sis_struct_list_push(unit_->fidxs, &newidx);
-	}
-	return isidx;
-}
-// 仅仅修改一条 这里 start 是日期
-int sisdb_fmap_unit_update_idx(s_sisdb_fmap_unit *unit_, int start)
-{
-	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? start / 10000 : start;
-	int isidx = 0;  // 1 表示已经有索引
-	for (int i = 0; i < unit_->fidxs->count; i++)
-	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
-		if (isign == fidx->isign)
-		{
-			fidx->moved = 0;
-			fidx->writed = 1;
-			isidx = 1;
-			break;
-		}
-	}	
-	return isidx;
-}
-// 删除 这里 index 为起始记录 count 为数量
-int sisdb_fmap_unit_del_idx(s_sisdb_fmap_unit *unit_, int index, int count)
-{
-	int nums = 0;
-	for (int i = 0; i < unit_->fidxs->count; i++)
-	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
-		if (index == 0 && count == 0)
-		{
-			fidx->start -= nums;
-			continue;
-		}
-		if (index >= fidx->count)
-		{
-			index -= fidx->count;
-			continue;
-		}
-		if (fidx->count - index >= count)
-		{
-			nums += count;
-			fidx->count -= count;  // 后面的 start 都要减去 nums
-			count = 0;
-			index = 0;
-		}
-		else
-		{
-			nums += fidx->count - index;
-			fidx->count -= fidx->count - index; 
-			count -= fidx->count - index;
-			index = 0;
-		}
-		if (fidx->count == 0)
-		{
-			fidx->start = 0;
-			fidx->moved = 1;
-		}
-		fidx->writed = 1;
-	}	
-	return 0;
-}
-
-// 删除键值 需要做标记 仅仅针对时序数据
-int sisdb_fmap_unit_move_idx(s_sisdb_fmap_unit *unit_)
-{
-	for (int i = 0; i < unit_->fidxs->count; i++)
-	{
-		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
-		fidx->start = 0;
-		fidx->count = 0;
-		fidx->moved = 1;
-		fidx->writed = 1;
-	}
-	return 0;
 }
 
 int sisdb_fmap_unit_goto(s_sisdb_fmap_unit *unit_, msec_t curr_)
@@ -313,6 +198,106 @@ int sisdb_fmap_unit_goto(s_sisdb_fmap_unit *unit_, msec_t curr_)
 		return slist->count - 1;
 	}
 	return index;	
+}
+// 找到一个最接近的前置位置
+// 如果返回时 = -1 表示比第一个记录小
+// 如果返回时 >= count 表示比最后记录大
+// 如果返回时 0 .. count - 1 表示插入位置 
+int sisdb_fmap_cmp_find_head(s_sisdb_fmap_unit *unit_, msec_t  start_)
+{
+	int count = sisdb_fmap_unit_count(unit_);
+	int index = sisdb_fmap_unit_goto(unit_, start_);
+	if (index < 0)
+	{
+		return count;
+	}
+	int i = index;
+	int dir = 0;
+	while (i >= 0 && i < count)
+	{
+		msec_t ts = sisdb_fmap_unit_get_mindex(unit_, i);
+		if (start_ > ts)
+		{
+			if (dir == -1)
+			{
+				return i + 1;
+			}
+			dir = 1;
+			i += dir;
+		}
+		else if (start_ < ts)
+		{
+			if (dir == 1)
+			{
+				return i;
+			}
+			dir = -1;
+			i += dir;
+		}
+		else
+		{
+			for (int k = i; k >= 0; k--)
+			{
+				msec_t kts = sisdb_fmap_unit_get_mindex(unit_, k);
+				if (start_ != kts) 
+				{
+					return k + 1;
+				}
+			}
+			return 0;
+		}
+	}
+	return dir > 0 ? count : -1;
+}
+// 找到一个最接近的后置位置
+// 如果返回时 = -1 表示比第一个记录小
+// 如果返回时 >= count 表示比最后记录大
+// 如果返回时 0 .. count - 1 表示插入位置 
+int sisdb_fmap_cmp_find_tail(s_sisdb_fmap_unit *unit_, msec_t  start_)
+{
+	int count = sisdb_fmap_unit_count(unit_);
+	int index = sisdb_fmap_unit_goto(unit_, start_);
+	if (index < 0)
+	{
+		return count;
+	}
+	int i = index;
+	int dir = 0;
+	while (i >= 0 && i < count)
+	{
+		msec_t ts = sisdb_fmap_unit_get_mindex(unit_, i);
+		if (start_ > ts)
+		{
+			if (dir == -1)
+			{
+				return i + 1;
+			}
+			dir = 1;
+			i += dir;
+		}
+		else if (start_ < ts)
+		{
+			if (dir == 1)
+			{
+				return i;
+			}
+			dir = -1;
+			i += dir;
+		}
+		else
+		{
+			for (int k = i; k < count; k++)
+			{
+				msec_t kts = sisdb_fmap_unit_get_mindex(unit_, k);
+				if (start_ != kts) 
+				{
+					return k - 1;
+				}
+			}
+			return count;
+		}
+	}
+	return dir > 0 ? count : -1;
 }
 // 必须找到一个相等值，找到就返回数量 没找到就返回 -1
 // 如果返回时 oindex = -1 表示比第一个记录小
@@ -382,7 +367,7 @@ int sisdb_fmap_cmp_same(s_sisdb_fmap_unit *unit_, msec_t  start_, s_sisdb_fmap_c
 					}
 					dir = -1;
 				}
-				ans_->ostart = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, ts);
+				ans_->ostart = sisdb_fmap_unit_get_start(unit_, ts);
 				ans_->oindex = i;
 			}
 			else
@@ -653,7 +638,8 @@ int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, msec_t start_, msec_t stop_, 
 	{
 		return -1;
 	}
-	ans_->ostart = sisdb_fmap_unit_get_start(unit_, cmphead.oindex);
+	msec_t mindex = sisdb_fmap_unit_get_mindex(unit_, cmphead.oindex);
+	ans_->ostart = sisdb_fmap_unit_get_start(unit_, mindex);
 	ans_->oindex = cmphead.oindex;
 	ans_->ocount = cmptail.oindex - cmphead.oindex + 1;
 	return ans_->oindex;

@@ -642,30 +642,138 @@ size_t sis_disk_writer_mul(s_sis_disk_writer *writer_, const char *kname_, s_sis
     return osize;
 }
 
+// 结构化时序和无时序数据 
+int sis_disk_writer_sdb_remove(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, int isign_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return -1;
+    }   
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(writer_->munit->map_sdicts, sname_);
+    if (!sdict)
+    {
+        return -2;
+    }
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        return -3;
+    }
+    s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict->sdbs, sdict->sdbs->count - 1);
+    int scale = sis_disk_get_sdb_scale(sdb);
+    switch (scale)
+    {
+    case SIS_SDB_SCALE_YEAR: // isign_ :: 2021
+        sis_disk_io_write_map(writer_->munit, kdict, sdict, SIS_SDB_STYLE_SDB, isign_, 1);
+        break;
+    case SIS_SDB_SCALE_DATE: // isign_ :: 20211210
+        sis_disk_io_write_map(writer_->munit, kdict, sdict, SIS_SDB_STYLE_SDB, isign_, 1);
+        break;
+    default: // SIS_SDB_SCALE_NOTS
+        sis_disk_io_write_map(writer_->munit, kdict, sdict, SIS_SDB_STYLE_NON, isign_, 1);
+        break;
+    }
+    return 0;
+}
+// 单键值单记录数据 
+int sis_disk_writer_one_remove(s_sis_disk_writer *writer_, const char *kname_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return -1;
+    }   
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        return -3;
+    }
+    sis_disk_io_write_map(writer_->munit, kdict, NULL, SIS_SDB_STYLE_ONE, 0, 1);
+    return 0;
+}
+// 单键值多记录数据 inlist_ : s_sis_sds 的列表
+int sis_disk_writer_mul_remove(s_sis_disk_writer *writer_, const char *kname_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return -1;
+    }   
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        return -3;
+    }
+    sis_disk_io_write_map(writer_->munit, kdict, NULL, SIS_SDB_STYLE_MUL, 0, 1);
+    return 0;
+}
+
 ///////////////////////////
 //  s_sis_disk_control
 ///////////////////////////
 
 // 这个函数专门清理 SBD 扩展类型的数据
-int sis_disk_control_move_sdbs(const char *path_, const char *name_)
-{
-    // 暂时不支持
-    // 1.检索目录下面所有相关文件 生成文件列表
-    // 2.统计文件数据大小 和磁盘空闲大小 如果空闲足够 就继续 否则返回错误
-    // 3.挨个锁住文件和索引，mv文件到日期命名的safe目录
-    // 4.如果有文件移动失败 就等待继续 直到全部移动完成
-    // -- 不直接删除 避免误操作 数据库文件存储已经做到所有不同组文件分离 -- //
-    return 0;
-}
-// 这里函数只能删除 SNO 和 LOG NET
-int sis_disk_control_move(const char *path_, const char *name_, int style_, int idate_)
+// int sis_disk_control_remove_sdbs(const char *path_, const char *name_)
+// {
+//     // 暂时不支持
+//     // 1.检索目录下面所有相关文件 生成文件列表
+//     // 2.统计文件数据大小 和磁盘空闲大小 如果空闲足够 就继续 否则返回错误
+//     // 3.挨个锁住文件和索引，mv文件到日期命名的safe目录
+//     // 4.如果有文件移动失败 就等待继续 直到全部移动完成
+//     // -- 不直接删除 避免误操作 数据库文件存储已经做到所有不同组文件分离 -- //
+//     return 0;
+// }
+// 这里style_为以下7种类型 传入后得到相应文件名然后操作
+// #define  SIS_DISK_TYPE_LOG         1  // name.20210121.log
+// #define  SIS_DISK_TYPE_SNO         2  // name/2021/20210121.sno
+// #define  SIS_DISK_TYPE_SDB         3  // name/name.sdb
+// #define  SIS_DISK_TYPE_SDB_NOTS    4  // name/nots/name.sdb name.idx
+// #define  SIS_DISK_TYPE_SDB_YEAR    5  // name/year/2010.sdb
+// #define  SIS_DISK_TYPE_SDB_DATE    6  // name/date/2021/20210606.sdb
+// #define  SIS_DISK_TYPE_NET         7  // name/2021/20210121.net
+
+int sis_disk_control_remove(const char *path_, const char *name_, int style_, int idate_)
 {
     s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, path_, name_, idate_);
-    sis_disk_ctrl_delete(munit);
+    sis_disk_ctrl_remove(munit);
     sis_disk_ctrl_destroy(munit);
     return 1;
 }
 
+// 移动文件至目标目录
+int sis_disk_control_move(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_)
+{
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, srcpath_, name_, idate_);
+    sis_disk_ctrl_move(munit, dstpath_);
+    sis_disk_ctrl_destroy(munit);
+    return 1;
+}
+
+// 复制文件至目标目录
+int sis_disk_control_copy(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_)
+{
+    s_sis_disk_ctrl *unit = sis_disk_ctrl_create(style_, srcpath_, name_, idate_);
+    // char agofn[255];
+    // char newfn[512];
+    // for (int  i = 0; i < unit->work_fps->lists->count; i++)
+    // {
+    //     s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->work_fps->lists, i);
+    //     sis_file_getname(unit->fn, agofn, 255);
+
+    //     sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+    //     sis_file_copy(unit->fn, newfn);
+    // }
+    // if (unit->work_fps->main_head.index)
+    // {
+    //     for (int  i = 0; i < cls_->widx_fps->lists->count; i++)
+    //     {
+    //         s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->widx_fps->lists, i);
+    //         sis_file_getname(unit->fn, agofn, 255);
+    //         sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+    //         sis_file_copy(unit->fn, newfn);
+    //     }
+    // }
+    sis_disk_ctrl_destroy(unit);
+    return 1;
+}
 int sis_disk_log_exist(const char *path_, const char *name_, int idate_)
 {
     int isok = 0;
