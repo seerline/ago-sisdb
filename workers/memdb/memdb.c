@@ -7,14 +7,13 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method memdb_methods[] = {
-  {"open",   cmd_memdb_open,  0, NULL},
-  {"close",  cmd_memdb_close, 0, NULL},
-  {"get",    cmd_memdb_get,   0, NULL},
-  {"set",    cmd_memdb_set,   0, NULL},
-  {"sub",    cmd_memdb_sub,   0, NULL},
-  {"hsub",   cmd_memdb_hsub,  0, NULL},
-  {"pub",    cmd_memdb_pub,   0, NULL},
-  {"unsub",  cmd_memdb_unsub, 0, NULL},
+    {"open",   cmd_memdb_init,  0, NULL},
+    {"get",    cmd_memdb_get,   0, NULL},
+    {"set",    cmd_memdb_set,   0, NULL},
+    {"sub",    cmd_memdb_sub,   0, NULL},
+    {"hsub",   cmd_memdb_hsub,  0, NULL},
+    {"pub",    cmd_memdb_pub,   0, NULL},
+    {"unsub",  cmd_memdb_unsub, 0, NULL},
 };
 // 共享内存数据库 不落盘
 s_sis_modules sis_modules_memdb = {
@@ -86,7 +85,7 @@ void  memdb_uninit(void *worker_)
     sis_sdsfree(context->work_name);
     sis_free(context);
 }
-int cmd_memdb_open(void *worker_, void *argv_)
+int cmd_memdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_memdb_cxt *context = (s_memdb_cxt *)worker->context;
@@ -104,16 +103,7 @@ int cmd_memdb_open(void *worker_, void *argv_)
     // sis_net_ans_with_ok(netmsg);
     return SIS_METHOD_OK;
 }
-int cmd_memdb_close(void *worker_, void *argv_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_memdb_cxt *context = (s_memdb_cxt *)worker->context;
-    // s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-    sis_map_pointer_clear(context->work_keys);
-    sisdb_sub_cxt_clear(context->work_sub_cxt);
-    // sis_net_ans_with_ok(netmsg);
-    return SIS_METHOD_OK;
-}
+
 int cmd_memdb_get(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

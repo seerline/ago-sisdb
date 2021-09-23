@@ -1,10 +1,10 @@
-﻿#include "sisdb_sic.h"
+﻿#include "sisdb_zip.h"
 //////////////////////////////////////////////////////////////////
 //------------------------s_sisdb_si c -----------------------//
 //////////////////////////////////////////////////////////////////
-s_sisdb_sic *sisdb_sic_create()
+s_sisdb_zip *sisdb_zip_create()
 {
-	s_sisdb_sic *o = SIS_MALLOC(s_sisdb_sic, o);
+	s_sisdb_zip *o = SIS_MALLOC(s_sisdb_zip, o);
 	o->work_keys = sis_map_list_create(sis_sdsfree_call);
 	o->work_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
 	o->page_size = SISDB_ZIP_PAGE_SIZE;
@@ -13,20 +13,20 @@ s_sisdb_sic *sisdb_sic_create()
 	return o;
 }
 
-void sisdb_sic_destroy(s_sisdb_sic *worker)
+void sisdb_zip_destroy(s_sisdb_zip *worker)
 {
 	sis_map_list_destroy(worker->work_keys);
 	sis_map_list_destroy(worker->work_sdbs);
 	sis_free(worker);
 }
 
-void sisdb_sic_clear(s_sisdb_sic *worker)
+void sisdb_zip_clear(s_sisdb_zip *worker)
 {
 	sis_map_list_clear(worker->work_keys);
 	sis_map_list_clear(worker->work_sdbs);
 }
 
-void sisdb_sic_set_keys(s_sisdb_sic *worker, s_sis_sds in_)
+void sisdb_zip_set_keys(s_sisdb_zip *worker, s_sis_sds in_)
 {
 	// printf("%s\n",in_);
 	s_sis_string_list *klist = sis_string_list_create();
@@ -45,7 +45,7 @@ void sisdb_sic_set_keys(s_sisdb_sic *worker, s_sis_sds in_)
 		sis_incrzip_set_key(worker->incrzip, count);
 	}
 }
-void sisdb_sic_set_sdbs(s_sisdb_sic *worker, s_sis_sds in_)
+void sisdb_zip_set_sdbs(s_sisdb_zip *worker, s_sis_sds in_)
 {
 	LOG(5)("set unzip sdbs\n");
 	// printf("%s %d\n",in_, sis_sdslen(in_));
@@ -71,35 +71,35 @@ void sisdb_sic_set_sdbs(s_sisdb_sic *worker, s_sis_sds in_)
 	sis_json_close(injson);
 }
 
-int sisdb_sic_get_kidx(s_sisdb_sic *worker, const char *kname_)
+int sisdb_zip_get_kidx(s_sisdb_zip *worker, const char *kname_)
 {
     return sis_map_list_get_index(worker->work_keys, kname_);
 }
-int sisdb_sic_get_sidx(s_sisdb_sic *worker, const char *sname_)
+int sisdb_zip_get_sidx(s_sisdb_zip *worker, const char *sname_)
 {
     return sis_map_list_get_index(worker->work_sdbs, sname_);
 }
-const char *sisdb_sic_get_kname(s_sisdb_sic *worker, int kidx_)
+const char *sisdb_zip_get_kname(s_sisdb_zip *worker, int kidx_)
 {
 	return sis_map_list_geti(worker->work_keys, kidx_);
 }
-const char *sisdb_sic_get_sname(s_sisdb_sic *worker, int sidx_)
+const char *sisdb_zip_get_sname(s_sisdb_zip *worker, int sidx_)
 {
 	s_sis_dynamic_db *db = sis_map_list_geti(worker->work_sdbs, sidx_);
 	return db->name;
 }
 
-void sisdb_sic_unzip_start(s_sisdb_sic *worker, void *cb_source_, cb_incrzip_decode *cb_decode)
+void sisdb_zip_unzip_start(s_sisdb_zip *worker, void *cb_source_, cb_incrzip_decode *cb_decode)
 {
 	worker->incrzip = sis_incrzip_class_create();
 	sis_incrzip_uncompress_start(worker->incrzip, cb_source_, cb_decode);
 }
 
-void sisdb_sic_unzip_set(s_sisdb_sic *worker, s_sis_db_incrzip *in_)
+void sisdb_zip_unzip_set(s_sisdb_zip *worker, s_sis_db_incrzip *in_)
 {
 	sis_incrzip_uncompress_step(worker->incrzip, (char *)in_->data, in_->size);
 }
-void sisdb_sic_unzip_stop(s_sisdb_sic *worker)
+void sisdb_zip_unzip_stop(s_sisdb_zip *worker)
 {
 	if (worker->incrzip)
 	{
@@ -111,7 +111,7 @@ void sisdb_sic_unzip_stop(s_sisdb_sic *worker)
 
 static int cb_worker_encode(void *context_, char *in_, size_t ilen_)
 {
-    s_sisdb_sic *worker = (s_sisdb_sic *)context_;
+    s_sisdb_zip *worker = (s_sisdb_zip *)context_;
     if (worker->cb_encode)
     {
 		worker->curr_size += ilen_;
@@ -120,7 +120,7 @@ static int cb_worker_encode(void *context_, char *in_, size_t ilen_)
 	return 0;
 } 
 // 很重要
-void sisdb_sic_zip_start(s_sisdb_sic *worker, void *cb_source, cb_incrzip_encode *cb_encode) 
+void sisdb_zip_zip_start(s_sisdb_zip *worker, void *cb_source, cb_incrzip_encode *cb_encode) 
 {
 	worker->incrzip = sis_incrzip_class_create();
 	worker->cb_source = cb_source;
@@ -128,7 +128,7 @@ void sisdb_sic_zip_start(s_sisdb_sic *worker, void *cb_source, cb_incrzip_encode
 	sis_incrzip_compress_start(worker->incrzip, worker->part_size, worker, cb_worker_encode);
 	worker->curr_size = 0;
 }
-void sisdb_sic_zip_set(s_sisdb_sic *worker, int kidx, int sidx, char *in_, size_t ilen_)
+void sisdb_zip_zip_set(s_sisdb_zip *worker, int kidx, int sidx, char *in_, size_t ilen_)
 {
 	s_sis_dynamic_db *sdb = sis_map_list_geti(worker->work_sdbs, sidx);
 	if (!sdb)
@@ -147,8 +147,13 @@ void sisdb_sic_zip_set(s_sisdb_sic *worker, int kidx, int sidx, char *in_, size_
         sis_incrzip_compress_step(worker->incrzip, kidx, sidx, (char *)in_ + i * sdb->size, sdb->size);
     }
 }
+void sisdb_zip_zip_restart(s_sisdb_zip *worker)
+{
+	worker->curr_size = 0;
+	sis_incrzip_compress_restart(worker->incrzip);
+} 
 
-void sisdb_sic_zip_stop(s_sisdb_sic *worker)
+void sisdb_zip_zip_stop(s_sisdb_zip *worker)
 {
 	sis_incrzip_compress_stop(worker->incrzip);
 	sis_incrzip_class_destroy(worker->incrzip);

@@ -2,7 +2,7 @@
 #define _SISDB_RSNO_H
 
 #include "sis_method.h"
-#include "sisdb_sic.h"
+#include "sisdb_zip.h"
 
 // 需要支持读取的数据直接压缩好返回 根据回调函数
 
@@ -21,7 +21,7 @@ typedef struct s_sisdb_rsno_cxt
     s_sis_sds          work_sdbs;
     s_sis_disk_reader *work_reader;
 
-	s_sisdb_sic       *work_ziper;     // cb_sub_inctzip 有值时 需要压缩读出的数据
+	s_sisdb_zip       *work_ziper;     // cb_sub_inctzip 有值时 需要压缩读出的数据
     s_sis_thread       work_thread;    // 读文件时间长 需要启动一个线程处理
 
     void              *cb_source;      // 

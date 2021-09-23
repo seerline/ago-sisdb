@@ -5,6 +5,7 @@
 #include "sis_net.msg.h"
 #include "sis_list.lock.h"
 #include "sisdb_sub.h"
+#include "sisdb_zip.h"
 #include "worker.h"
 
 typedef struct s_sicdb_unit
@@ -15,12 +16,12 @@ typedef struct s_sicdb_unit
 
 typedef struct s_sicdb_cxt
 {
-	int                 status;      // 工作状态
+	int                 status;          // 工作状态
 
-	s_sis_sds           work_name;   // 数据库名字 sicdb
-	s_sis_map_pointer  *work_keys;   // 数据集合的字典表 s_sicdb_unit
+	s_sis_sds           work_name;       // 数据库名字 sicdb
+	s_sis_map_pointer  *work_keys;       // 数据集合的字典表 s_sicdb_unit
 
-	s_sisdb_sub_cxt    *work_sub_cxt; // 
+	s_sisdb_sub_cxt    *work_sub_cxt;    // 
 
 	// 直接回调组装好的 s_sis_net_message
 	void               *cb_source;       // 
@@ -36,6 +37,10 @@ void  sicdb_uninit(void *);
 int cmd_sicdb_open(void *worker_, void *argv_);
 // 关闭
 int cmd_sicdb_close(void *worker_, void *argv_);
+// 开始
+int cmd_sicdb_start(void *worker_, void *argv_);
+// 结束
+int cmd_sicdb_stop(void *worker_, void *argv_);
 // 获得一个set写入的数据
 int cmd_sicdb_get(void *worker_, void *argv_);
 // 写入一个数据 数据会在重启清理
@@ -46,6 +51,8 @@ int cmd_sicdb_sub(void *worker_, void *argv_);
 int cmd_sicdb_hsub(void *worker_, void *argv_);
 // 发布一个信息
 int cmd_sicdb_pub(void *worker_, void *argv_);
+// 发布一个信息
+int cmd_sicdb_zpub(void *worker_, void *argv_);
 // 取消订阅
 int cmd_sicdb_unsub(void *worker_, void *argv_);
 

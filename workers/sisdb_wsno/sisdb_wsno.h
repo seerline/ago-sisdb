@@ -3,7 +3,7 @@
 
 #include "sis_method.h"
 #include "sis_disk.h"
-#include "sisdb_sic.h"
+#include "sisdb_zip.h"
 
 #define  SIS_WSNO_NONE     0 // 
 #define  SIS_WSNO_INIT     1 // 是否初始化
@@ -29,7 +29,7 @@ typedef struct s_sisdb_wsno_cxt
 	s_sis_sds          wsno_keys;     // 外部写入的keys
 	s_sis_sds          wsno_sdbs;     // 外部写入的sdbs
 
-	s_sisdb_sic       *work_unzip;    // 解压 s_snodb_compress 中来的数据
+	s_sisdb_zip       *work_unzip;    // 解压 s_snodb_compress 中来的数据
 
 }s_sisdb_wsno_cxt;
 

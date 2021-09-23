@@ -31,10 +31,8 @@ typedef struct s_memdb_cxt
 bool  memdb_init(void *, void *);
 void  memdb_uninit(void *);
 
-// 打开
-int cmd_memdb_open(void *worker_, void *argv_);
-// 关闭
-int cmd_memdb_close(void *worker_, void *argv_);
+// 初始化 用来接收外部参数 传递参数 并且初始化自己
+int cmd_memdb_init(void *worker_, void *argv_);
 // 获得一个set写入的数据
 int cmd_memdb_get(void *worker_, void *argv_);
 // 写入一个数据 数据会在重启清理

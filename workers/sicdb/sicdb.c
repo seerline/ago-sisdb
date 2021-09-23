@@ -7,14 +7,17 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sicdb_methods[] = {
-  {"open",   cmd_sicdb_open,  0, NULL},
-  {"close",  cmd_sicdb_close, 0, NULL},
-  {"get",    cmd_sicdb_get,   0, NULL},
-  {"set",    cmd_sicdb_set,   0, NULL},
-  {"sub",    cmd_sicdb_sub,   0, NULL},
-  {"hsub",   cmd_sicdb_hsub,  0, NULL},
-  {"pub",    cmd_sicdb_pub,   0, NULL},
-  {"unsub",  cmd_sicdb_unsub, 0, NULL},
+    {"open",   cmd_sicdb_open,   SIS_METHOD_ACCESS_NONET, NULL},
+    {"close",  cmd_sicdb_close,  SIS_METHOD_ACCESS_NONET, NULL},
+    {"start",  cmd_sicdb_start,  SIS_METHOD_ACCESS_RDWR, NULL},   // 开始发送数据 
+    {"stop",   cmd_sicdb_stop,   SIS_METHOD_ACCESS_RDWR, NULL},   // 数据流发布完成 此时不再接收数据
+    {"get",    cmd_sicdb_get,    SIS_METHOD_ACCESS_READ, NULL},
+    {"set",    cmd_sicdb_set,    SIS_METHOD_ACCESS_RDWR, NULL},
+    {"sub",    cmd_sicdb_sub,    SIS_METHOD_ACCESS_READ, NULL},
+    {"hsub",   cmd_sicdb_hsub,   SIS_METHOD_ACCESS_READ, NULL},
+    {"pub",    cmd_sicdb_pub,    SIS_METHOD_ACCESS_RDWR, NULL},
+    {"zpub",   cmd_sicdb_zpub,   SIS_METHOD_ACCESS_NONET, NULL},  // 发布数据流 只有完成的压缩数据块
+    {"unsub",  cmd_sicdb_unsub,  SIS_METHOD_ACCESS_READ, NULL},
 };
 // 共享内存数据库 不落盘
 s_sis_modules sis_modules_sicdb = {
@@ -114,6 +117,19 @@ int cmd_sicdb_close(void *worker_, void *argv_)
     // sis_net_ans_with_ok(netmsg);
     return SIS_METHOD_OK;
 }
+int cmd_sicdb_start(void *worker_, void *argv_)
+{
+    // s_sis_worker *worker = (s_sis_worker *)worker_; 
+    // s_sicdb_cxt *context = (s_sicdb_cxt *)worker->context;
+    return SIS_METHOD_OK;
+}
+int cmd_sicdb_stop(void *worker_, void *argv_)
+{
+    // s_sis_worker *worker = (s_sis_worker *)worker_; 
+    // s_sicdb_cxt *context = (s_sicdb_cxt *)worker->context;
+    // sis_net_ans_with_ok(netmsg);
+    return SIS_METHOD_OK;
+}
 int cmd_sicdb_get(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -183,6 +199,46 @@ int cmd_sicdb_pub(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     sisdb_sub_cxt_pub(context->work_sub_cxt, netmsg);
     sis_net_ans_with_ok(netmsg);
+    return SIS_METHOD_OK;
+}
+// int _snodb_write_bits(s_snodb_cxt *snodb_, s_snodb_compress *in_)
+// {
+// 	if (!snodb_->inited || snodb_->stoped)
+// 	{
+// 		return -1;
+// 	}
+// 	// 直接写入
+// 	size_t size = sizeof(s_snodb_compress) + in_->size;
+// 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
+// 	s_snodb_compress *memory = MAP_SNODB_BITS(obj);
+// 	memmove(memory, in_, size);
+// 	sis_memory_set_size(SIS_OBJ_MEMORY(obj), size);
+// 	// printf("_snodb_write_bits = %d %d | %d %d\n", snodb_->inited , snodb_->stoped, memory->init,memory->size);
+// 	if (memory->init == 1)
+// 	{
+// 		snodb_->last_object = obj;
+// 		// printf("set last obj = %p\n", obj);
+// 	}
+// 	// printf("push 3 outmem->size = %d\n", MAP_SNODB_BITS(obj)->size);
+// 	sis_lock_list_push(snodb_->outputs, obj);
+// 	if ((snodb_->zipnums++) % 100 == 0)
+// 	{
+// 		LOG(8)("zpub nums = %d %d\n", snodb_->zipnums, snodb_->outputs->users->count);
+// 	}
+// 	sis_object_destroy(obj);
+// 	return 0;
+// }
+int cmd_sicdb_zpub(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sicdb_cxt *context = (s_sicdb_cxt *)worker->context;
+    s_sis_db_incrzip *imem = (s_sis_db_incrzip *)argv_;
+    
+    // size_t size = sizeof(s_snodb_compress) + in_->size;
+	// s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, sis_memory_create_size(size));
+	
+    // sisdb_sub_cxt_pub(context->work_sub_cxt, netmsg);
+    // sis_net_ans_with_ok(netmsg);
     return SIS_METHOD_OK;
 }
 int cmd_sicdb_unsub(void *worker_, void *argv_)

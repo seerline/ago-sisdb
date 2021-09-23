@@ -233,8 +233,6 @@ static int cb_incrzip_decode_sic(void *source_, int kidx, int sidx, char *in, si
     sis_object_decr(sname);
     return 0;
 }
-int _readzip_nums = 0;
-size_t _readzip_size = 0;
 int cb_sis_disk_io_read_sic(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source_;
