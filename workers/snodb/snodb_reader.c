@@ -400,11 +400,13 @@ void snodb_reader_destroy(void *reader_)
 
 	if (reader->sub_unziper)
 	{
+		sisdb_incr_unzip_stop(reader->sub_unziper);
 		sisdb_incr_destroy(reader->sub_unziper);	
 	}
 	if (reader->sub_ziper)
 	{
 		// 次级退出 上级会报异常 onebyone = 1
+		sisdb_incr_zip_stop(reader->sub_ziper);
 		sisdb_incr_destroy(reader->sub_ziper);	
 	}
 	sis_sdsfree(reader->sub_keys);
@@ -419,7 +421,7 @@ int snodb_reader_new_history(s_snodb_reader *reader_)
     s_snodb_cxt *snodb = (s_snodb_cxt *)reader_->father;
 	// 清除该端口其他的订阅
 	snodb_remove_reader(snodb, reader_->cid);
-	
+
 	snodb_reader_history_start(reader_);
 	if (reader_->sub_disker)
 	{

@@ -277,7 +277,7 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     if (context->cb_sub_inctzip)
     {
-        // sisdb_incr_zip_stop(context->work_ziper);
+        sisdb_incr_zip_stop(context->work_ziper);
         sisdb_incr_destroy(context->work_ziper);
         context->work_ziper = NULL;
     }
