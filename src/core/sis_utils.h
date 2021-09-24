@@ -69,6 +69,11 @@ s_sis_sds sis_match_sdb_of_sds(s_sis_sds match_sdbs, s_sis_sds  whole_sdbs);
 // match_sdbs : s1,s2 | whole_sdbs : {s1:{},s2:{},k1:{}} --> {s1:{},s2:{}}
 s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs);
 
+
+int sis_get_map_keys(s_sis_sds keys_, s_sis_map_list *map_keys_);
+
+int sis_get_map_sdbs(s_sis_sds sdbs_, s_sis_map_list *map_sdbs_);
+
 #ifdef __cplusplus
 }
 #endif

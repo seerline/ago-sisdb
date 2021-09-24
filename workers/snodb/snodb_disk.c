@@ -1,16 +1,14 @@
 ﻿
-#include "sis_modules.h"
 #include "worker.h"
 #include "sis_method.h"
 #include "sis_disk.h"
-
 #include <snodb.h>
 
 //////////////////////////////////////////////////////////////////
 //------------------------wlog function -----------------------//
 //////////////////////////////////////////////////////////////////
-bool _snodb_write_init(s_snodb_cxt *snodb_, int workdate_, s_sis_sds keys_, s_sis_sds sdbs_);
-int _snodb_write_bits(s_snodb_cxt *snodb_, s_snodb_compress *in_);
+bool _snodb_write_start(s_snodb_cxt *context, int workdate);
+int _snodb_write_incrzip(void *context_, char *imem_, size_t isize_);
 
 // static msec_t _speed_msec = 0;
 // 从wlog文件中加载数据
@@ -51,27 +49,28 @@ static int cb_snodb_wlog_load(void *worker_, void *argv_)
 		for (int i = 0; i < netmsg->argvs->count; i++)
 		{
 			s_sis_object *obj = sis_pointer_list_get(netmsg->argvs, i);
-			_snodb_write_bits(context, (s_snodb_compress *)SIS_OBJ_SDS(obj));
+			_snodb_write_incrzip(context, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
 		}
 	}
 	else // "set"
 	{
 		if (!sis_strcasecmp("_keys_", netmsg->key))
 		{
-			sis_sdsfree(context->wlog_keys);
-			context->wlog_keys = sis_sdsdup(netmsg->ask);
+			sis_sdsfree(context->init_keys);
+			context->init_keys = sis_sdsdup(netmsg->ask);
 		}
 		if (!sis_strcasecmp("_sdbs_", netmsg->key))
 		{
-			sis_sdsfree(context->wlog_sdbs);
-			context->wlog_sdbs = sis_sdsdup(netmsg->ask);			
+			sis_sdsfree(context->init_sdbs);
+			context->init_sdbs = sis_sdsdup(netmsg->ask);			
 		}
-		if (context->wlog_keys && context->wlog_sdbs)
+		if (context->init_keys && context->init_sdbs)
 		{
-			if(!_snodb_write_init(context, context->wlog_date, context->wlog_keys, context->wlog_sdbs))
+			if(!_snodb_write_start(context, context->wlog_date))
 			{
 				// 数据错误 应该停止读取 直接返回错误
 				context->wlog_load = 0;
+				LOG(5)("load wlog fail. %d\n", context->wlog_date);
 			}	
 		}
 	}
@@ -85,34 +84,33 @@ int snodb_wlog_load(s_snodb_cxt *snodb_)
 	s_sis_message *msg = sis_message_create();
 
 	snodb_->wlog_load = 1;
-	sis_message_set_str(msg, "dbname", snodb_->dbname, sis_sdslen(snodb_->dbname));
+	sis_message_set_str(msg, "work-path", snodb_->work_path, sis_sdslen(snodb_->work_path));
+	sis_message_set_str(msg, "work-name", snodb_->work_name, sis_sdslen(snodb_->work_name));
+	sis_message_set_int(msg, "work-date", snodb_->work_date);
+
 	sis_message_set(msg, "source", snodb_, NULL);
 	sis_message_set_method(msg, "cb_sub_start", cb_snodb_wlog_start);
 	sis_message_set_method(msg, "cb_sub_stop", cb_snodb_wlog_stop);
-	sis_message_set_method(msg, "cb_recv", cb_snodb_wlog_load);
-	if (sis_worker_command(snodb_->wlog_worker, "read", msg) != SIS_METHOD_OK)
-	{
-		snodb_->wlog_load = 0;
-		sis_message_destroy(msg);
-		return SIS_METHOD_ERROR;
-	}
+	sis_message_set_method(msg, "cb_netmsg", cb_snodb_wlog_load);
+	int o = sis_worker_command(snodb_->wlog_worker, "sub", msg);
+	snodb_->wlog_load = 0;
 	sis_message_destroy(msg);
-	return SIS_METHOD_OK;	
+	return o;	
 }
 // 把数据写入到wlog中
-int snodb_wlog_save(s_snodb_cxt *snodb_, int sign_, s_snodb_compress *inmem_)
+int snodb_wlog_save(s_snodb_cxt *snodb_, int sign_, char *imem_, size_t isize_)
 {
 	s_sis_net_message *netmsg = sis_net_message_create();
 	switch (sign_)
 	{
-	case SDCDB_FILE_SIGN_KEYS:
-		sis_net_ask_with_chars(netmsg, "set", "_keys_", snodb_->work_keys, sis_sdslen(snodb_->work_keys));
+	case SICDB_FILE_SIGN_KEYS:
+		sis_net_ask_with_chars(netmsg, "set", "_keys_", imem_, isize_);
 		break;
-	case SDCDB_FILE_SIGN_SDBS:
-		sis_net_ask_with_chars(netmsg, "set", "_sdbs_", snodb_->work_sdbs, sis_sdslen(snodb_->work_sdbs));
+	case SICDB_FILE_SIGN_SDBS:
+		sis_net_ask_with_chars(netmsg, "set", "_sdbs_", imem_, isize_);
 		break;	
-	default: // SDCDB_FILE_SIGN_ZPUB
-		sis_net_ask_with_bytes(netmsg, "zpub", NULL, (char *)inmem_, sizeof(s_snodb_compress) + inmem_->size);
+	default: // SICDB_FILE_SIGN_ZPUB
+		sis_net_ask_with_bytes(netmsg, "zpub", NULL, imem_, isize_);
 		break;
 	}
 	snodb_->wlog_method->proc(snodb_->wlog_worker, netmsg);
@@ -122,19 +120,26 @@ int snodb_wlog_save(s_snodb_cxt *snodb_, int sign_, s_snodb_compress *inmem_)
 int snodb_wlog_start(s_snodb_cxt *snodb_)
 {
 	s_sis_message *msg = sis_message_create();
-	sis_message_set_str(msg, "log-name", snodb_->dbname, sis_sdslen(snodb_->dbname));
-	sis_message_set_int(msg, "log-date", snodb_->work_date);
+	sis_message_set_str(msg, "work-path", snodb_->work_path, sis_sdslen(snodb_->work_path));
+	sis_message_set_str(msg, "work-name", snodb_->work_name, sis_sdslen(snodb_->work_name));
+	sis_message_set_int(msg, "work-date", snodb_->work_date);
 	int o = sis_worker_command(snodb_->wlog_worker, "open", msg); 
 	sis_message_destroy(msg);
 	return o;
 }
 int snodb_wlog_stop(s_snodb_cxt *snodb_)
 {
-	return sis_worker_command(snodb_->wlog_worker, "close", snodb_->dbname); 
+	return sis_worker_command(snodb_->wlog_worker, "close", NULL); 
 }
 int snodb_wlog_remove(s_snodb_cxt *snodb_)
 {
-	return sis_worker_command(snodb_->wlog_worker, "remove", snodb_->dbname); 
+	s_sis_message *msg = sis_message_create();
+	sis_message_set_str(msg, "work-path", snodb_->work_path, sis_sdslen(snodb_->work_path));
+	sis_message_set_str(msg, "work-name", snodb_->work_name, sis_sdslen(snodb_->work_name));
+	sis_message_set_int(msg, "work-date", snodb_->work_date);
+	int o = sis_worker_command(snodb_->wlog_worker, "remove", msg); 
+	sis_message_destroy(msg);
+	return o;
 }
 
 //////////////////////////////////////////////////////////////////
@@ -162,7 +167,6 @@ static int cb_snodb_wfile_stop(void *worker_, void *argv_)
 	{
 		context->wfile_cb_sub_stop(context->wfile_worker, (char *)argv_);
 	}
-	context->wfile_save = 0;
 	return SIS_METHOD_OK;
 }
 
@@ -181,13 +185,16 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
     //         netmsg->ask?    netmsg->ask : "nil");   
 	if (!sis_strcasecmp("zpub", netmsg->cmd))
 	{
-		// printf("%p %d\n", context->wfile_cb_sub_inctzip, netmsg->argvs->count);
 		for (int i = 0; i < netmsg->argvs->count; i++)
 		{ 
 			s_sis_object *obj = sis_pointer_list_get(netmsg->argvs, i);
 			if (context->wfile_cb_sub_inctzip)
 			{
-				context->wfile_cb_sub_inctzip(context->wfile_worker, SIS_OBJ_SDS(obj));
+				s_sis_db_incrzip zmem = {0};
+				zmem.data = (uint8 *)SIS_OBJ_GET_CHAR(obj);
+				zmem.size = SIS_OBJ_GET_SIZE(obj);
+				zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
+				context->wfile_cb_sub_inctzip(context->wfile_worker, &zmem);
 			}
 		}
 	}
@@ -231,12 +238,12 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
 // 现在改为仅仅log文件才强制写盘 其他直接写入缓存就返回 只在关闭文件时才强制写入文件
 
 
-int snodb_wlog_save_snos(s_snodb_cxt *snodb_)
+int snodb_wlog_to_snos(s_snodb_cxt *snodb_)
 {
-	if (sis_worker_command(snodb_->wlog_worker, "exist", snodb_->dbname) != SIS_METHOD_OK)
+	if (sis_disk_control_exist(snodb_->work_path, snodb_->work_name, SIS_DISK_TYPE_LOG, snodb_->work_date) != 1)
 	{
 		// 文件不存在就返回
-		return 0;
+		return SIS_METHOD_ERROR;
 	}
 	// 设置写文件回调
 	{
@@ -244,96 +251,76 @@ int snodb_wlog_save_snos(s_snodb_cxt *snodb_)
 		if (sis_worker_command(snodb_->wfile_worker, "getcb", msg) != SIS_METHOD_OK)
 		{
 			sis_message_destroy(msg);
-			return 0;
+			return SIS_METHOD_ERROR;
 		}
-		snodb_->wfile_cb_sub_start = sis_message_get_method(msg, "cb_sub_start");
-		snodb_->wfile_cb_sub_stop  = sis_message_get_method(msg, "cb_sub_stop");
-		snodb_->wfile_cb_dict_keys = sis_message_get_method(msg, "cb_dict_keys");
-		snodb_->wfile_cb_dict_sdbs = sis_message_get_method(msg, "cb_dict_sdbs");
+		snodb_->wfile_cb_sub_start   = sis_message_get_method(msg, "cb_sub_start");
+		snodb_->wfile_cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop");
+		snodb_->wfile_cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys");
+		snodb_->wfile_cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs");
 		snodb_->wfile_cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_inctzip");
 		sis_message_destroy(msg);
 	}
 	// 从wlog直接取数据
+	int  o = SIS_METHOD_OK;
 	{
 		s_sis_message *msg = sis_message_create();
 		snodb_->wfile_save = 1;
-		sis_message_set_str(msg, "dbname", snodb_->dbname, sis_sdslen(snodb_->dbname));
+		sis_message_set_str(msg, "work-path", snodb_->work_path, sis_sdslen(snodb_->work_path));
+		sis_message_set_str(msg, "work-name", snodb_->work_name, sis_sdslen(snodb_->work_name));
+		sis_message_set_int(msg, "work-date", snodb_->work_date);
 		sis_message_set(msg, "source", snodb_, NULL);
 		sis_message_set_method(msg, "cb_sub_start", cb_snodb_wfile_start);
 		sis_message_set_method(msg, "cb_sub_stop", cb_snodb_wfile_stop);
-		sis_message_set_method(msg, "cb_recv", cb_snodb_wfile_load);
-		if (sis_worker_command(snodb_->wlog_worker, "read", msg) != SIS_METHOD_OK)
-		{
-			snodb_->wfile_save = 0;
-			sis_message_destroy(msg);
-			return SIS_METHOD_ERROR;
-		}
+		sis_message_set_method(msg, "cb_netmsg", cb_snodb_wfile_load);
+		o = sis_worker_command(snodb_->wlog_worker, "sub", msg);
+		snodb_->wfile_save = 0;
 		sis_message_destroy(msg);
 	}
-	return 1;
+	return o;
 }
 
 ///////////////////////////////////////////
 //  callback define begin
 ///////////////////////////////////////////
 
-// 读取 snos 文件 snos 为snodb压缩的分块式顺序格式
-s_snodb_disk_worker *snodb_snos_read_start(s_sis_json_node *config_, s_snodb_reader *reader_)
+int snodb_reader_history_start(s_snodb_reader *reader_)
 {
-	// printf("%s\n", __func__);
-	s_snodb_disk_worker *worker = SIS_MALLOC(s_snodb_disk_worker, worker);
+	reader_->sub_disker = sis_worker_create_of_name(NULL, "sisdb_rsno", NULL);
 
-	worker->rdisk_worker = sis_worker_create(NULL, config_);
-	if (!worker->rdisk_worker)
-	{
-		sis_free(worker);
-		return NULL;
-	}
-	// printf("%s\n", worker->rdisk_worker->workername);
-	worker->rdisk_status = SDCDB_DISK_INIT;
-	worker->snodb_reader = reader_;
+	s_snodb_cxt *snodb = (s_snodb_cxt *)reader_->father;
 
 	s_sis_message *msg = sis_message_create();
-	sis_message_set_int(msg, "sub-date", worker->snodb_reader->sub_date);
-	sis_message_set_str(msg, "sub-keys", worker->snodb_reader->sub_keys, sis_sdslen(worker->snodb_reader->sub_keys));
-	sis_message_set_str(msg, "sub-sdbs", worker->snodb_reader->sub_sdbs, sis_sdslen(worker->snodb_reader->sub_sdbs));
+	sis_message_set_str(msg, "work-path", snodb->work_path, sis_sdslen(snodb->work_path));
+	sis_message_set_str(msg, "work-name", snodb->work_name, sis_sdslen(snodb->work_name));
+	sis_message_set_int(msg, "sub-date", reader_->sub_date);
+	sis_message_set_str(msg, "sub-keys", reader_->sub_keys, sis_sdslen(reader_->sub_keys));
+	sis_message_set_str(msg, "sub-sdbs", reader_->sub_sdbs, sis_sdslen(reader_->sub_sdbs));
 
-    sis_message_set(msg, "source", worker->snodb_reader, NULL);
-    sis_message_set_method(msg, "cb_sub_start" ,  worker->snodb_reader->cb_sub_start);
-    sis_message_set_method(msg, "cb_sub_stop"  ,  worker->snodb_reader->cb_sub_stop );
-    sis_message_set_method(msg, "cb_dict_sdbs" ,  worker->snodb_reader->cb_dict_sdbs);
-    sis_message_set_method(msg, "cb_dict_keys" ,  worker->snodb_reader->cb_dict_keys);
+    sis_message_set(msg, "source", reader_, NULL);
+    sis_message_set_method(msg, "cb_sub_start" ,  reader_->cb_sub_start);
+    sis_message_set_method(msg, "cb_sub_stop"  ,  reader_->cb_sub_stop );
+    sis_message_set_method(msg, "cb_dict_sdbs" ,  reader_->cb_dict_sdbs);
+    sis_message_set_method(msg, "cb_dict_keys" ,  reader_->cb_dict_keys);
+	// 统一返回字符串 外部压缩
+	sis_message_set_method(msg, "cb_sub_chars", reader_->cb_sub_chars);
+	// sis_message_set_method(msg, "cb_sub_inctzip", reader_->cb_sub_inctzip);
 
-	if (worker->snodb_reader->iszip)
+	if(sis_worker_command(reader_->sub_disker, "sub", msg) != SIS_METHOD_OK)
 	{
-		s_snodb_cxt *snodb = ((s_sis_worker *)worker->snodb_reader->snodb_worker)->context;
-		sis_message_set_int(msg, "zip-size" , snodb->zip_size);
-		sis_message_set_int(msg, "init-size", snodb->initsize);
-		sis_message_set_method(msg, "cb_sub_inctzip", worker->snodb_reader->cb_sub_inctzip);
-	}
-	else
-	{
-		sis_message_set_method(msg, "cb_sub_chars", worker->snodb_reader->cb_sub_chars);
-	}
-
-	if(sis_worker_command(worker->rdisk_worker, "sub", msg) != SIS_METHOD_OK)
-	{
-		sis_worker_destroy(worker->rdisk_worker);
-		sis_free(worker);
-		worker = NULL;
+		// 订阅
+		sis_worker_destroy(reader_->sub_disker);
+		reader_->sub_disker = NULL;
 	}
 	sis_message_destroy(msg);
 
-	return worker;
+	return 1;
 }
 
-int snodb_snos_read_stop(s_snodb_disk_worker *worker_)
+int snodb_reader_history_stop(s_snodb_reader *reader_)
 {
-	sis_worker_command(worker_->rdisk_worker, "unsub", NULL);
-
-	sis_worker_destroy(worker_->rdisk_worker);
-
-	sis_free(worker_);
+	sis_worker_command(reader_->sub_disker, "unsub", NULL);
+	sis_worker_destroy(reader_->sub_disker);
+	reader_->sub_disker = NULL;
 	return 0;
 }
 

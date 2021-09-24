@@ -737,6 +737,14 @@ int sis_disk_control_remove(const char *path_, const char *name_, int style_, in
     sis_disk_ctrl_destroy(munit);
     return 1;
 }
+int sis_disk_control_exist(const char *path_, const char *name_, int style_, int idate_)
+{
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    sis_disk_ctrl_read_stop(munit);
+    sis_disk_ctrl_destroy(munit);
+    return (o == SIS_DISK_CMD_OK) ? 1 : 0;
+}
 
 // 移动文件至目标目录
 int sis_disk_control_move(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_)

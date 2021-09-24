@@ -121,7 +121,7 @@ int sis_disk_io_write_sic(s_sis_disk_ctrl *cls_, s_sis_disk_kdict *kdict_, s_sis
 
         cls_->net_msec = 0;
         cls_->net_zipsize = 0;
-        sis_incrzip_compress_restart(cls_->net_incrzip);
+        sis_incrzip_compress_restart(cls_->net_incrzip, 1);
         printf("write: %d %d %s\n", kdict_->index, sdict_->index, SIS_OBJ_GET_CHAR(sdict_->name));
     }
     int count = ilen_ / sdb->size;

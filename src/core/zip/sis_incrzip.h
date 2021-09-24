@@ -58,6 +58,7 @@ typedef struct s_sis_incrzip_class{
 	s_sis_bits_stream    *cur_stream;   // 字节流操作指针
 	uint8                *cur_memory;   // 前值数据缓存 大小为 keycount * sdbcount * sdbsize               
 
+    int8                  zip_init;     // 1 表示初始块 0 表示连续块 2 表示已经写了块头
 	uint32                zip_size;     // 压缩用最大尺寸
 	uint8                *zip_memory;   // 压缩用外部缓存
 	// 数据格式 : kid + sid + count + 数据区
@@ -130,11 +131,14 @@ int sis_incrzip_compress_start(s_sis_incrzip_class *, int maxsize_, void *source
 // 压缩过程中增加key 
 int sis_incrzip_compress_addkey(s_sis_incrzip_class *, int newnums);
 // 强制从头开始压缩
-void sis_incrzip_compress_restart(s_sis_incrzip_class *s_);
+void sis_incrzip_compress_restart(s_sis_incrzip_class *s_, int init_);
 // 返回成功压缩的数量（包数量，不是记录数量）
 int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kid_, int sid_, char *in_, size_t ilen_);
 // 把最后的压缩包返回给调用端
 int sis_incrzip_compress_stop(s_sis_incrzip_class *);
+
+// 判断是否起始包
+int sis_incrzip_isinit(uint8 *in_, size_t ilen_);
 
 /////////////////////
 //  单数据单股票整体解开压缩

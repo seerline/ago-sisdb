@@ -80,7 +80,6 @@ void sisdb_wsno_uninit(void *worker_)
 ///////////////////////////////////////////
 //  callback define begin
 ///////////////////////////////////////////
-static int cb_sub_stop(void *worker_, void *argv_);
 
 void sisdb_wsno_start(s_sisdb_wsno_cxt *context)
 {
@@ -97,8 +96,8 @@ void sisdb_wsno_stop(s_sisdb_wsno_cxt *context)
 {
     if (context->work_unzip)
     {
-        sisdb_zip_unzip_stop(context->work_unzip);
-        sisdb_zip_destroy(context->work_unzip);
+        sisdb_incr_unzip_stop(context->work_unzip);
+        sisdb_incr_destroy(context->work_unzip);
         context->work_unzip = NULL;
     }
     if (context->writer)
@@ -160,13 +159,16 @@ static int cb_dict_sdbs(void *worker_, void *argv_)
     context->wsno_sdbs = sis_sdsdup((s_sis_sds)argv_);
     return SIS_METHOD_OK;
 }
-static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ilen_)
+static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t isize_)
 {
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)context_;
     
-    const char *kname = sisdb_zip_get_kname(context->work_unzip, kidx_);
-    const char *sname = sisdb_zip_get_sname(context->work_unzip, sidx_);
-    sis_disk_writer_sno(context->writer, kname, sname, in_, ilen_);
+    if (in_ && isize_ && kidx_>=0 && sidx_>=0)
+    {
+        const char *kname = sisdb_incr_get_kname(context->work_unzip, kidx_);
+        const char *sname = sisdb_incr_get_sname(context->work_unzip, sidx_);
+        sis_disk_writer_sno(context->writer, kname, sname, in_, isize_);
+    }
     return 0;
 } 
 
@@ -192,12 +194,12 @@ static int _write_wsno_head(s_sisdb_wsno_cxt *context, int iszip)
         sis_disk_writer_set_kdict(context->writer, newkeys, sis_sdslen(newkeys));
         sis_disk_writer_set_sdict(context->writer, newsdbs, sis_sdslen(newsdbs));
         sis_disk_writer_start(context->writer);
-        context->work_unzip = sisdb_zip_create(); 
-        sisdb_zip_set_keys(context->work_unzip, context->wsno_keys);
-        sisdb_zip_set_sdbs(context->work_unzip,  context->wsno_sdbs);
-        // sisdb_zip_set_keys(context->work_unzip, newkeys);
-        // sisdb_zip_set_sdbs(context->work_unzip,  newsdbs);
-        sisdb_zip_unzip_start(context->work_unzip, context, cb_decode);
+        context->work_unzip = sisdb_incr_create(); 
+        sisdb_incr_set_keys(context->work_unzip, context->wsno_keys);
+        sisdb_incr_set_sdbs(context->work_unzip,  context->wsno_sdbs);
+        // sisdb_incr_set_keys(context->work_unzip, newkeys);
+        // sisdb_incr_set_sdbs(context->work_unzip,  newsdbs);
+        sisdb_incr_unzip_start(context->work_unzip, context, cb_decode);
 
         sis_sdsfree(newkeys); 
         sis_sdsfree(newsdbs); 
@@ -232,7 +234,10 @@ static int cb_sub_incrzip(void *worker_, void *argv_)
     _write_wsno_head(context, 1);
 
     s_sis_db_incrzip *inmem = (s_sis_db_incrzip *)argv_;
-    sisdb_zip_unzip_set(context->work_unzip, inmem);
+    if (context->work_unzip)
+    {
+        sisdb_incr_unzip_set(context->work_unzip, inmem);
+    }
 	return SIS_METHOD_OK;
 }
 ///////////////////////////////////////////

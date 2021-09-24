@@ -47,6 +47,7 @@ typedef struct s_sis_db_bytes
 
 typedef struct s_sis_db_incrzip
 {
+	int8       init;  // 是否头
 	uint32     size;
 	uint8     *data; 
 } s_sis_db_incrzip;

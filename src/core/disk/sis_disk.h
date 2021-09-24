@@ -242,6 +242,8 @@ int sis_disk_reader_sub_sdb(s_sis_disk_reader *, const char *keys_, const char *
 ///////////////////////////
 // 删除 log net sno 文件
 int sis_disk_control_remove(const char *path_, const char *name_, int style_, int idate_);
+// 是否存在 log net sno 文件
+int sis_disk_control_exist(const char *path_, const char *name_, int style_, int idate_);
 // 移动文件至目标目录
 int sis_disk_control_move(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_);
 // 复制文件至目标目录

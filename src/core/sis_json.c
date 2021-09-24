@@ -1512,6 +1512,10 @@ s_sis_json_node *sis_json_last_node(s_sis_json_node *node_)
 
 s_sis_json_node *sis_json_cmp_child_node(s_sis_json_node *object_, const char *key_)
 {
+	if (!object_ || !key_)
+	{
+		return NULL;
+	}
 	s_sis_json_node *c = object_->child;
 	while (c && sis_strcasecmp(c->key, key_))
 	{

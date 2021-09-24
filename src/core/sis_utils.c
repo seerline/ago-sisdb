@@ -664,3 +664,41 @@ s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs)
 	sis_json_delete_node(innode);
 	return o;
 }
+
+int sis_get_map_keys(s_sis_sds keys_, s_sis_map_list *map_keys_)
+{
+	sis_map_list_clear(map_keys_);
+	s_sis_string_list *klist = sis_string_list_create();
+	sis_string_list_load(klist, keys_, sis_sdslen(keys_), ",");
+	// 重新设置keys
+	int count = sis_string_list_getsize(klist);
+	for (int i = 0; i < count; i++)
+	{
+		s_sis_sds key = sis_sdsnew(sis_string_list_get(klist, i));
+		sis_map_list_set(map_keys_, key, key);	
+	}
+	sis_string_list_destroy(klist);
+	return sis_map_list_getsize(map_keys_);
+}
+
+int sis_get_map_sdbs(s_sis_sds sdbs_, s_sis_map_list *map_sdbs_)
+{
+	sis_map_list_clear(map_sdbs_);
+	s_sis_json_handle *injson = sis_json_load(sdbs_, sis_sdslen(sdbs_));
+	if (!injson)
+	{
+		return 0;
+	}
+	s_sis_json_node *innode = sis_json_first_node(injson->node);
+	while (innode)
+	{
+		s_sis_dynamic_db *db = sis_dynamic_db_create(innode);
+		if (db)
+		{
+			sis_map_list_set(map_sdbs_, db->name, db);
+		}
+		innode = sis_json_next_node(innode);
+	}
+	sis_json_close(injson);
+	return sis_map_list_getsize(map_sdbs_);
+}

@@ -351,7 +351,7 @@ s_sis_fast_queue *sis_fast_queue_create(
     o->cb_source = cb_source_ ? cb_source_ : o;
     o->cb_reader = cb_reader_;
 
-    int wait_msec = (wait_msec_ > 1000 || wait_msec_ < 3) ? 1000 : wait_msec_;   
+    int wait_msec = (wait_msec_ > 1000) ? 1000 : (wait_msec_ < 5) ? 5 : wait_msec_;   
     o->zero_msec = zero_msec_;   // zero_msec_ == 0 没有数据不会发送
 
  	o->work_thread = sis_wait_thread_create(wait_msec);

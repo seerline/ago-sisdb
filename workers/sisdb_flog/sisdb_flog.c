@@ -65,9 +65,11 @@ bool sisdb_flog_init(void *worker_, void *argv_)
     return true;
 }
 
-void sisdb_flog_stop(s_sis_worker *worker)
+void sisdb_flog_uninit(void *worker_)
 {
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
+
     if (context->status == SIS_FLOG_READ)
     {
         cmd_sisdb_flog_unsub(worker, NULL);
@@ -76,15 +78,6 @@ void sisdb_flog_stop(s_sis_worker *worker)
     {
         cmd_sisdb_flog_close(worker, NULL);
     }
-}
-
-void sisdb_flog_uninit(void *worker_)
-{
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
-
-    sisdb_flog_stop(worker);
-
     sis_sdsfree(context->work_path);
     sis_sdsfree(context->work_name);
     sis_free(context);
@@ -289,3 +282,22 @@ int cmd_sisdb_flog_remove(void *worker_, void *argv_)
     }
     return SIS_METHOD_OK;
 }
+
+// int cmd_sisdb_flog_exist(void *worker_, void *argv_)
+// {
+//     s_sis_worker *worker = (s_sis_worker *)worker_; 
+//     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)worker->context;
+//     int o = 0;
+//     s_sis_message *msg = (s_sis_message *)argv_;
+//     if (sis_message_exist(msg, "work-path") &&
+//         sis_message_exist(msg, "work-name") &&
+//         sis_message_exist(msg, "work-date"))
+//     {
+//         o = sis_disk_control_exist(
+//             sis_message_get_str(msg, "work-path"), 
+//             sis_message_get_str(msg, "work-name"), 
+//             SIS_DISK_TYPE_LOG, 
+//             sis_message_get_int(msg, "work-date"));
+//     }
+//     return o == 1 ? SIS_METHOD_OK : SIS_METHOD_NULL;   
+// }

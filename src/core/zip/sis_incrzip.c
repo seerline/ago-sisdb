@@ -148,7 +148,7 @@ int sis_incrzip_compress_start(s_sis_incrzip_class *s_, int maxsize_, void *sour
     _incrzip_memory_init(s_);
 
     sis_bits_stream_link(s_->cur_stream, s_->zip_memory, s_->zip_size);
-
+    s_->zip_init = 1; 
     s_->status = SIS_SIC_STATUS_ENCODE;
     return 0;
 }
@@ -180,7 +180,7 @@ void _incrzip_compress_next(s_sis_incrzip_class *s_)
     sis_bits_stream_link(s_->cur_stream, s_->zip_memory, s_->zip_size);
 }
 // 生成新的数据包
-void sis_incrzip_compress_restart(s_sis_incrzip_class *s_)
+void sis_incrzip_compress_restart(s_sis_incrzip_class *s_, int init_)
 {
     if (s_->status == SIS_SIC_STATUS_ENCODE)
     {
@@ -190,10 +190,19 @@ void sis_incrzip_compress_restart(s_sis_incrzip_class *s_)
             // printf("--1.0-- %d\n", size);
             s_->cb_compress(s_->cb_source, (char *)s_->zip_memory, size);
             // 传递后就从头开始写数据了
+            // 设置起始标记
             _incrzip_compress_next(s_);
+            if (init_ == 0)
+            {
+                s_->zip_init = 0;
+            }
         }  
-        // 生成新的数据包前需要把可能老的数据传递出去  
-        memset(s_->cur_memory, 0, s_->cur_keys * s_->sumdbsize);
+        if (init_)
+        {
+            s_->zip_init = 1;
+            // 生成新的数据包前需要把可能老的数据传递出去  
+            memset(s_->cur_memory, 0, s_->cur_keys * s_->sumdbsize);
+        }
     }  
 }
 
@@ -215,6 +224,15 @@ int sis_incrzip_compress_stop(s_sis_incrzip_class *s_)
         s_->status = SIS_SIC_STATUS_NONE;
     }
     return 0;
+}
+
+int sis_incrzip_isinit(uint8 *in_, size_t ilen_)
+{
+    if (ilen_ < 1 || (in_[0] & 0x80) == 0)
+    {
+        return 0;
+    }
+    return 1;
 }
 
 static inline void _sis_incrzip_compress_one(s_sis_incrzip_class *s_, 
@@ -267,6 +285,11 @@ static inline void _sis_incrzip_compress_one(s_sis_incrzip_class *s_,
 void _incrzip_compress(s_sis_incrzip_class *s_, uint8 *agomem_, int kidx_, int sidx_, int nums_,
     s_sis_incrzip_dbinfo *info_, char *in_)
 {
+    if (s_->zip_init == 1 || s_->zip_init == 0)
+    {
+        sis_bits_stream_put(s_->cur_stream, s_->zip_init, 1);
+        s_->zip_init = 2;
+    }
     char *memory = (char *)&agomem_[1];
     sis_bits_stream_put(s_->cur_stream, agomem_[0] == 0 ? 0 : 1, 1);
     sis_bits_stream_put_uint(s_->cur_stream, kidx_);
@@ -314,6 +337,8 @@ int sis_incrzip_compress(s_sis_incrzip_class *s_, char *in_, size_t ilen_, s_sis
     size_t zipsize = ilen_ + 256;
     sis_memory_set_maxsize(out_, zipsize);
     sis_bits_stream_link(s_->cur_stream, (uint8 *)sis_memory(out_), zipsize);
+    // 设置起始标记
+    s_->zip_init = 1;
     // 开始压缩
     _incrzip_compress(s_, buffer, 0, 0, count, info, in_);
 
@@ -360,6 +385,7 @@ int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kidx_, int sidx_, cha
         s_->cb_compress(s_->cb_source, (char *)s_->zip_memory, size);
         // 传递后就从头开始写数据了
         _incrzip_compress_next(s_);
+        s_->zip_init = 0;
     } 
 
     _incrzip_compress(s_, buffer, kidx_, sidx_, count, info, in_);
@@ -502,6 +528,12 @@ int sis_incrzip_uncompress(s_sis_incrzip_class *s_, char *in_, size_t ilen_, s_s
         LOG(5)("decode fail bags[%d] != 1 \n", bags);
         return 0;
     }    
+    int init = sis_bits_stream_get(s_->cur_stream, 1);
+    if (init != 1)
+    {
+        LOG(5)("decode fail init != 1\n");
+        return 0;
+    }
     // 默认为整块数据 第一字节表示当前块是否压缩
     int zip = sis_bits_stream_get(s_->cur_stream, 1);
     if (zip)
@@ -549,6 +581,10 @@ int sis_incrzip_uncompress_step(s_sis_incrzip_class *s_, char *in_, size_t ilen_
         LOG(5)("decode fail bags= %d\n", bags);
         return 0;
     }    
+    // 读取掉第一个标志位
+    // int init = 
+    sis_bits_stream_get(s_->cur_stream, 1);
+
     int nums = 0;
     while (nums < bags)
     {        

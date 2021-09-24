@@ -128,7 +128,7 @@ static void cb_stop(void *context_, int idate)
      // stop 放这里
     if (context->cb_sub_inctzip)
     {
-        sisdb_zip_zip_stop(context->work_ziper);
+        sisdb_incr_zip_stop(context->work_ziper);
     }
     if (context->cb_sub_stop)
     {
@@ -153,7 +153,7 @@ static void cb_dict_keys(void *context_, void *key_, size_t size)
     } 
     if (context->cb_sub_inctzip)
     {
-    	sisdb_zip_set_keys(context->work_ziper, keys);
+    	sisdb_incr_set_keys(context->work_ziper, keys);
     }
 	sis_sdsfree(keys);
 	sis_sdsfree(srckeys);
@@ -173,7 +173,7 @@ static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)
     } 
     if (context->cb_sub_inctzip)
     {
-    	sisdb_zip_set_sdbs(context->work_ziper, sdbs);
+    	sisdb_incr_set_sdbs(context->work_ziper, sdbs);
     }
 	sis_sdsfree(sdbs);
 	sis_sdsfree(srcsdbs); 
@@ -216,13 +216,13 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
     }
     if (context->cb_sub_inctzip)
     {
-        int kidx = sisdb_zip_get_kidx(context->work_ziper, kname_);
-        int sidx = sisdb_zip_get_sidx(context->work_ziper, sname_);
+        int kidx = sisdb_incr_get_kidx(context->work_ziper, kname_);
+        int sidx = sisdb_incr_get_sidx(context->work_ziper, sname_);
         if (kidx < 0 || sidx < 0)
         {
             return ;
         }
-        sisdb_zip_zip_set(context->work_ziper, kidx, sidx, out_, olen_);
+        sisdb_incr_zip_set(context->work_ziper, kidx, sidx, out_, olen_);
     }
 } 
 
@@ -234,6 +234,7 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
         s_sis_db_incrzip inmem = {0};
         inmem.data = (uint8 *)in_;
         inmem.size = ilen_;
+        inmem.init = sis_incrzip_isinit(inmem.data, inmem.size);
         context->cb_sub_inctzip(context->cb_source, &inmem);
     }
     return 0;
@@ -258,8 +259,8 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     if (context->cb_sub_inctzip)
     {
-        context->work_ziper = sisdb_zip_create();
-        sisdb_zip_zip_start(context->work_ziper, context, cb_encode);
+        context->work_ziper = sisdb_incr_create();
+        sisdb_incr_zip_start(context->work_ziper, context, cb_encode);
     }
 
     LOG(5)("sub sno open. [%d]\n", context->work_date);
@@ -276,8 +277,8 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     if (context->cb_sub_inctzip)
     {
-        // sisdb_zip_zip_stop(context->work_ziper);
-        sisdb_zip_destroy(context->work_ziper);
+        // sisdb_incr_zip_stop(context->work_ziper);
+        sisdb_incr_destroy(context->work_ziper);
         context->work_ziper = NULL;
     }
 
