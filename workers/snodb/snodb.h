@@ -201,6 +201,7 @@ int snodb_remove_reader(s_snodb_cxt *context_, int cid_);
 // 直接读取单键值数据
 int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip);
 
+
 //////////////////////////////////////////////////////////////////
 //------------------------s_snodb_reader -----------------------//
 //////////////////////////////////////////////////////////////////

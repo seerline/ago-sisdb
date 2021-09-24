@@ -382,7 +382,7 @@ void _sisdb_rsdb_init(s_sisdb_rsdb_cxt *context, s_sis_message *msg)
     context->cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop"   );
     context->cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs"  );
     context->cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys"  );
-    context->cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_inctzip");
+    context->cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_incrzip");
     context->cb_sub_chars   = sis_message_get_method(msg, "cb_sub_chars"  );
 }
 int cmd_sisdb_rsdb_get(void *worker_, void *argv_)

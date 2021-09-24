@@ -92,35 +92,30 @@ int snodb_start_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool is
     return SIS_METHOD_OK;
 }
 
-s_sis_object *snodb_snos_read_get(s_sis_json_node *config_, s_snodb_reader *reader_)
+s_sis_object *snodb_read_get_obj(s_snodb_reader *reader_)
 {
-	// printf("%s\n", __func__);
-	s_sis_worker *worker = sis_worker_create(NULL, config_);
-	if (!worker)
-	{
-		sis_free(worker);
-		return NULL;
-	}
+	reader_->sub_disker = sis_worker_create_of_name(NULL, "sisdb_rsno", NULL);
+
+	s_snodb_cxt *snodb = (s_snodb_cxt *)reader_->father;
 
 	s_sis_message *msg = sis_message_create();
-    char sdate[32];   
-    sis_llutoa(reader_->sub_date, sdate, 32, 10);
-
-	sis_message_set_str(msg, "get-date", sdate, sis_strlen(sdate));
-	sis_message_set_str(msg, "get-keys", reader_->sub_keys, sis_sdslen(reader_->sub_keys));
-	sis_message_set_str(msg, "get-sdbs", reader_->sub_sdbs, sis_sdslen(reader_->sub_sdbs));
+	sis_message_set_str(msg, "work-path", snodb->work_path, sis_sdslen(snodb->work_path));
+	sis_message_set_str(msg, "work-name", snodb->work_name, sis_sdslen(snodb->work_name));
+	sis_message_set_int(msg, "sub-date", reader_->sub_date);
+	sis_message_set_str(msg, "sub-keys", reader_->sub_keys, sis_sdslen(reader_->sub_keys));
+	sis_message_set_str(msg, "sub-sdbs", reader_->sub_sdbs, sis_sdslen(reader_->sub_sdbs));
 
 	s_sis_object *obj = NULL;
-	if (sis_worker_command(worker, "get", msg) == SIS_METHOD_OK)
+	if (sis_worker_command(reader_->sub_disker, "get", msg) == SIS_METHOD_OK)
 	{
-		obj = sis_message_get(msg, "omem");
+		obj = sis_message_get(msg, "object");
 		if (reader_->rfmt & SISDB_FORMAT_CHARS)
 		{
-			s_sis_dynamic_db *diskdb = sis_message_get(msg, "diskdb");
-			if (diskdb)
+			s_sis_dynamic_db *db = sis_map_list_get(snodb->map_sdbs, reader_->sub_sdbs);
+			if (db)
 			{
 				// 这里未来可以做格式转换处理
-				s_sis_sds omem = sis_db_format_sds(diskdb, NULL, reader_->rfmt, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), 0);
+				s_sis_sds omem = sis_db_format_sds(db, NULL, reader_->rfmt, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), 0);
 				obj = sis_object_create(SIS_OBJECT_SDS, omem);
 			}
 			else
@@ -133,14 +128,20 @@ s_sis_object *snodb_snos_read_get(s_sis_json_node *config_, s_snodb_reader *read
 			sis_object_incr(obj);		
 		}
 	}
-	sis_worker_destroy(worker);
 	sis_message_destroy(msg);
+	sis_worker_destroy(reader_->sub_disker);
+	reader_->sub_disker = NULL;
 	return obj;
 }
 // 只支持字符串数据获取 只支持单个结构单个品种
 int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip)
 {
     s_snodb_cxt *context = (s_snodb_cxt *)context_;
+
+	if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+	{
+		return SIS_METHOD_NIL;
+	}
 
 	s_snodb_reader *reader = snodb_reader_create();
 	reader->iszip = iszip;
@@ -160,7 +161,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
             reader->ishead = sis_json_get_int(argnode->node, "ishead", 1);
-            reader->sub_date = sis_json_get_int(argnode->node, "date", context->work_date);
+            reader->sub_date = sis_json_get_int(argnode->node, "sub-date", context->work_date);
             sis_json_close(argnode);
         }
 	}
@@ -179,7 +180,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip)
 	{
 		reader->sub_disk = true;
 		// 请求历史数据 
-		obj = snodb_snos_read_get(context->rfile_config, reader);
+		obj = snodb_read_get_obj(reader);
 	}
 	else
 	{		
@@ -261,7 +262,6 @@ static int cb_sub_chars(void *source, void *argv)
     // 向对应的socket发送数据
 
     // printf("%s %d %s\n", __func__, reader->rfmt, inmem->sname);
-
 	s_sis_net_message *newinfo = sis_net_message_create();
 	newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
 	newinfo->cid = reader->cid;

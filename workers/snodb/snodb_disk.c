@@ -257,7 +257,7 @@ int snodb_wlog_to_snos(s_snodb_cxt *snodb_)
 		snodb_->wfile_cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop");
 		snodb_->wfile_cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys");
 		snodb_->wfile_cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs");
-		snodb_->wfile_cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_inctzip");
+		snodb_->wfile_cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_incrzip");
 		sis_message_destroy(msg);
 	}
 	// 从wlog直接取数据
@@ -301,9 +301,14 @@ int snodb_reader_history_start(s_snodb_reader *reader_)
     sis_message_set_method(msg, "cb_sub_stop"  ,  reader_->cb_sub_stop );
     sis_message_set_method(msg, "cb_dict_sdbs" ,  reader_->cb_dict_sdbs);
     sis_message_set_method(msg, "cb_dict_keys" ,  reader_->cb_dict_keys);
-	// 统一返回字符串 外部压缩
-	sis_message_set_method(msg, "cb_sub_chars", reader_->cb_sub_chars);
-	// sis_message_set_method(msg, "cb_sub_inctzip", reader_->cb_sub_inctzip);
+	if (reader_->iszip)
+	{
+		sis_message_set_method(msg, "cb_sub_incrzip", reader_->cb_sub_inctzip);
+	}
+	else
+	{
+		sis_message_set_method(msg, "cb_sub_chars", reader_->cb_sub_chars);
+	}
 
 	if(sis_worker_command(reader_->sub_disker, "sub", msg) != SIS_METHOD_OK)
 	{
