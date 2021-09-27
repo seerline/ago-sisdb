@@ -769,14 +769,14 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 		LOG(5)("net no working. %d\n", cls_->work_status);
 		return -1;
 	}
-	SIS_NET_SHOW_MSG("send:", mess_);
+	// SIS_NET_SHOW_MSG("send:", mess_);
 	sis_net_message_incr(mess_);
 	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, mess_->cid);
 	if (cxt)
 	{
 		// printf("reader read +++ [%d] %d | %p \n", mess_->cid, cxt->send_cxts->count ,cxt->send_cxts);
 		s_sis_object *sendobj = sis_net_send_message(cxt, mess_); 
-		// sis_out_binary("send", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+		// sis_out_binary("send", SIS_OBJ_GET_CHAR(sendobj), SIS_OBJ_GET_SIZE(sendobj));
 		if (sendobj)
 		{
 			if (cls_->url->io == SIS_NET_IO_WAITCNT)
@@ -837,7 +837,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 		}
 		sis_memory_destroy(outmemptr);
 	}
-
+	// sis_out_binary("recv", sis_memory(inmemptr), sis_memory_get_size(inmemptr));
 	mess_->format = info.is_bytes;  // 这里设置数据区格式
 
  	if (call->slot_net_decoded)

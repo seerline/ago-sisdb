@@ -130,7 +130,7 @@ int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
     int o = 0;
     if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
     {
-        if (sis_str_exist_ch(netmsg_->key, sis_sdslen(netmsg_->key), "*,", 2))
+        if (sis_str_exist_ch(netmsg_->cmd, sis_sdslen(netmsg_->key), "*,", 2))
         {
             o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 0);
         }
@@ -205,11 +205,12 @@ static void _make_notice_send(s_sisdb_sub_cxt *context, s_sis_net_message *inetm
 {
     s_sis_net_message *newmsg = sis_net_message_create();
 
-    sis_net_message_publish(inetmsg, newmsg, onetmsg->cid, onetmsg->name, inetmsg->key);
+    sis_net_message_publish(inetmsg, newmsg, onetmsg->cid, onetmsg->name, inetmsg->cmd, inetmsg->key);
 
     // 这里暂时不处理格式转换问题 广播什么数据就发送什么数据
     // 需要转换时 根据数据表的结构 自动转换
-
+    // printf("%p\n", context->cb_net_message);
+    // SIS_NET_SHOW_MSG("notice:", newmsg);
     if (context->cb_net_message)
     {
         context->cb_net_message(context->cb_source, newmsg);
@@ -228,7 +229,7 @@ int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
             for (int i = 0; i < subunit->netmsgs->count; i++)
             {
                 s_sis_net_message *omsg = (s_sis_net_message *)sis_pointer_list_get(subunit->netmsgs, i);
-                // printf("subunit one: %d  %s  format = %d\n", subunit->netmsgs->count, info->key, info->rfmt);
+                // printf("subunit one: %d  %s  format = %d\n", subunit->netmsgs->count, omsg->key, omsg->rfmt);
                 _make_notice_send(cxt_, netmsg_, omsg);
             }
         }
@@ -294,7 +295,7 @@ int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
                 for (int i = 0; i < subunit->netmsgs->count; i++)
                 {
                     s_sis_net_message *omsg = (s_sis_net_message *)sis_pointer_list_get(subunit->netmsgs, i);
-                    // printf("subunit sdb: %d  %s  format = %d\n", subunit->netmsgs->count, info->key, info->rfmt);
+                    // printf("subunit sdb: %d  %s  format = %d\n", subunit->netmsgs->count, omsg->key, omsg->rfmt);
                     _make_notice_send(cxt_, netmsg_, omsg);
                 }
             }

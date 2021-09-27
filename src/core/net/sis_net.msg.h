@@ -37,14 +37,14 @@
 // key 拿什么东西 - 拿工作计划
 // ask 什么样的工作计划 - 5月份的工作计划 
 typedef struct s_sis_net_switch {
-	unsigned char is_publish  : 1;  // 是否为广播包 如果是 不再解析其他 直接准备传递 
-	unsigned char is_inside   : 1;  // 是否为内部包 如果是 不扩散
 	unsigned char is_reply    : 1;  // 表示为应答包  应答有  ans ** 字符格式以此来判定是否为应答
+	unsigned char is_inside   : 1;  // 是否为内部包 如果是 不扩散
 	unsigned char is_1        : 1;  // 备用
 	unsigned char has_ver     : 1;  // 请求有 ver     应答有  ver
 	unsigned char has_fmt     : 1;  // 请求有 fmt     应答有  fmt
 	unsigned char has_service : 1;  // 请求有 service 应答有  --- 
 	unsigned char has_cmd     : 1;  // 请求有 cmd     应答有  ---
+	unsigned char has_ans     : 1;  // 请求有 ---     应答有  ans
 
 	unsigned char has_key     : 1;  // 请求有 key     应答有  key
 	unsigned char has_ask     : 1;  // 请求有 ask     应答有  ---
@@ -126,7 +126,7 @@ void sis_net_message_clear(s_sis_net_message *);
 size_t sis_net_message_get_size(s_sis_net_message *);
 
 // 拷贝需要广播的数据
-void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, s_sis_sds key_);
+void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, s_sis_sds cmd_, s_sis_sds key_);
 
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数
