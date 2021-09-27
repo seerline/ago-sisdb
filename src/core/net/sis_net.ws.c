@@ -449,6 +449,7 @@ int sis_net_unpack_ws(s_sis_memory *in_, s_sis_net_tail *info_, s_sis_memory *ou
     else
     {
         LOG(5)("opcode error = %d.\n", wshead.opcode);
+        sis_out_binary("ii", sis_memory(in_), sis_memory_get_size(in_));
         return -1;
     }
     return 1;

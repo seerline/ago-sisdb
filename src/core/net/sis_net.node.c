@@ -190,7 +190,7 @@ void sis_net_list_clear(s_sis_net_list *list_)
 	{
 		if (list_->vfree && ptr[i])
 		{
-			list_->vfree(ptr[i]);
+			list_->vfree(ptr[i], 1);
 			ptr[i] = NULL;
 		}
 		list_->used[i] = SIS_NET_NOUSE;
@@ -224,7 +224,7 @@ void _net_list_free(s_sis_net_list *list_, int index_)
 	char **ptr = (char **)list_->buffer;
 	if (list_->vfree && ptr[index_])
 	{
-		list_->vfree(ptr[index_]);
+		list_->vfree(ptr[index_], 1);
 		ptr[index_] = NULL;
 	}
 	list_->stop_sec[index_] = 0;
@@ -329,6 +329,11 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_)
 	{
 		list_->stop_sec[index_] = sis_time_get_now();
 		list_->used[index_] = SIS_NET_CLOSE;
+		char **ptr = (char **)list_->buffer;
+		if (list_->vfree && ptr[index_])
+		{
+			list_->vfree(ptr[index_], 0);
+		}
 		list_->cur_count--;
 	}
 	else

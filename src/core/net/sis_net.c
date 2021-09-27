@@ -426,6 +426,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 	{
 		return ;
 	}
+	// printf("recv .... ");
 	if (cxt->status == SIS_NET_WORKING)
 	{
 		s_sis_memory *memory = sis_memory_create_size(ilen_ + 1);
@@ -462,6 +463,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			sis_socket_client_close(cls->client);
 		}   // == 0 还没有收到数据		
 	}
+	// printf("ok\n");
 }
 static void cb_client_send_after(void* handle_, int sid_, int status_)
 {
@@ -1080,7 +1082,7 @@ int main(int argc, const char **argv)
 #endif
 
 
-#if 0
+#if 1
 // 测试打包数据的网络最大流量
 // 约每秒30M
 #include "sis_net.msg.h"
@@ -1094,7 +1096,7 @@ s_sis_net_class *session = NULL;
 int    connectid = -1;
 msec_t start_time = 0;
 
-int64  maxnums = 30*1000;
+int64  maxnums = 30*1000*1000; 
 
 int    sendnums = 0;
 int    recvnums = 0; 
@@ -1121,7 +1123,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 			recvnums++;
 			recvsize+=sis_sdslen(reply);
 			msec_t *recv_time = (msec_t *)reply;
-			if (recvnums%100==0)
+			if (recvnums%10000==0)
 			printf("=1=recv: %d delay = %llu \n", recvnums, now_time - *recv_time);
 		}
 		else
@@ -1139,7 +1141,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 			recvsize+=sis_sdslen(reply);
 			msec_t *recv_time = (msec_t *)reply;
 			// sis_out_binary(".1.", reply, 16);
-			if (recvnums%100==0 || recvnums > maxnums -10 )
+			if (recvnums%10000==0 || recvnums > maxnums -10 )
 			printf("=2=recv: %d delay = %llu \n", recvnums, now_time - *recv_time);
 
 			if (start_time == 0)
@@ -1172,6 +1174,7 @@ static void *thread_send_data(void *arg)
 	start_time = sis_time_get_now_msec();
 	sendnums = 0;
 	char imem[bagssize];
+	memset(imem, 1, bagssize);
 	while(sendnums < maxnums)
 	{
 		sendnums++;
@@ -1265,8 +1268,8 @@ int main(int argc, const char **argv)
 	sis_net_class_open(session);
 	if (session->url->role== SIS_NET_ROLE_REQUEST)
 	{
-		// while (sendnums < maxnums || recvnums < maxnums)
-		while (1)//sendnums < maxnums || _send_nums < maxnums)
+		while (sendnums < maxnums || recvnums < maxnums)
+		// while (1)//sendnums < maxnums || _send_nums < maxnums)
 		{
 			sis_sleep(100);
 			if (exit_) break;

@@ -54,7 +54,7 @@ typedef struct s_sis_net_list {
 	int		       cur_count;    // 当前有效个数
 	unsigned char *used;         // 是否有效 初始为 0 
 	void          *buffer;       // used 为 0 需调用vfree
-	void (*vfree)(void *);       // == NULL 不释放对应内存
+	void (*vfree)(void *, int);       // == NULL 不释放对应内存
 } s_sis_net_list;
 
 s_sis_net_list *sis_net_list_create(void *); 
