@@ -57,7 +57,7 @@ void sis_socket_session_set_rwcb(s_sis_socket_session *session_,
 								cb_socket_recv_after cb_recv_, 
 								cb_socket_send_after cb_send_);
 
-void sis_socket_session_destroy(void *session_);
+void sis_socket_session_destroy(void *session_, int mode_);
 
 void sis_socket_session_init(s_sis_socket_session *session_);
 

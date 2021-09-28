@@ -766,10 +766,10 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 {
 	if(cls_->work_status != SIS_NET_WORKING)
 	{
-		LOG(5)("net no working. %d\n", cls_->work_status);
+		// LOG(5)("net no working. %d\n", cls_->work_status);
 		return -1;
 	}
-	SIS_NET_SHOW_MSG("send:", mess_);
+	// SIS_NET_SHOW_MSG("send:", mess_);
 	sis_net_message_incr(mess_);
 	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, mess_->cid);
 	if (cxt)
@@ -1080,7 +1080,7 @@ int main(int argc, const char **argv)
 #endif
 
 
-#if 0
+#if 1
 // 测试打包数据的网络最大流量
 // 约每秒30M
 #include "sis_net.msg.h"
@@ -1094,7 +1094,7 @@ s_sis_net_class *session = NULL;
 int    connectid = -1;
 msec_t start_time = 0;
 
-int64  maxnums = 30*1000;
+int64  maxnums = 30*1000*1000;
 
 int    sendnums = 0;
 int    recvnums = 0; 
@@ -1121,7 +1121,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 			recvnums++;
 			recvsize+=sis_sdslen(reply);
 			msec_t *recv_time = (msec_t *)reply;
-			if (recvnums%100==0)
+			if (recvnums%10000==0)
 			printf("=1=recv: %d delay = %llu \n", recvnums, now_time - *recv_time);
 		}
 		else
@@ -1139,7 +1139,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 			recvsize+=sis_sdslen(reply);
 			msec_t *recv_time = (msec_t *)reply;
 			// sis_out_binary(".1.", reply, 16);
-			if (recvnums%100==0 || recvnums > maxnums -10 )
+			if (recvnums%10000==0 || recvnums > maxnums -10 )
 			printf("=2=recv: %d delay = %llu \n", recvnums, now_time - *recv_time);
 
 			if (start_time == 0)

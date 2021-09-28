@@ -65,18 +65,34 @@ void sis_socket_session_set_rwcb(s_sis_socket_session *session_,
 	session_->cb_send_after = cb_send_;
 }
 
-void sis_socket_session_destroy(void *session_)
+void sis_socket_session_destroy(void *session_, int mode_)
 {
 	s_sis_socket_session *session = (s_sis_socket_session *)session_;
-	if (session->uv_r_buffer.base)
+	if (mode_ == 0)
 	{
-		sis_free(session->uv_r_buffer.base);
+		if (session->send_nodes)
+		{
+			sis_net_nodes_destroy(session->send_nodes);
+			session->send_nodes = NULL;
+		}	
+		// printf("==0==free %d\n",session->sid);	
 	}
-	session->uv_r_buffer.base = NULL;
-	session->uv_r_buffer.len = 0;
-	sis_free(session->sendbuff);
-	sis_net_nodes_destroy(session->send_nodes);
-	sis_free(session);
+	else
+	{
+		if (session->uv_r_buffer.base)
+		{
+			sis_free(session->uv_r_buffer.base);
+		}
+		session->uv_r_buffer.base = NULL;
+		session->uv_r_buffer.len = 0;
+		sis_free(session->sendbuff);
+		if (session->send_nodes)
+		{
+			sis_net_nodes_destroy(session->send_nodes);
+		}
+		// printf("==1==free %d\n",session->sid);
+		sis_free(session);
+	}
 }
 
 void sis_socket_session_init(s_sis_socket_session *session_)
@@ -357,7 +373,7 @@ static void cb_server_new_connect(uv_stream_t *handle, int status)
 	if (o) 
 	{
 		LOG(5)("no init client %d. close.\n", session->sid);
-		sis_socket_session_destroy(session);
+		sis_socket_session_destroy(session, 1);
 		return;
 	}
 	int index = sis_net_list_new(server->sessions, session);
@@ -531,7 +547,7 @@ void *_thread_server_write(void* argv)
     while (sis_wait_thread_noexit(server->write_thread))
     {
 		sis_mutex_lock(&server->write_may_lock);
-		// printf("--.2.-- %d\n", server->write_may);
+		// printf("--.2.-- %d %d\n", server->write_may, server->sessions->cur_count);
 		if (server->write_may == 0)
 		{
 			sis_mutex_unlock(&server->write_may_lock);
@@ -568,7 +584,7 @@ void *_thread_server_write(void* argv)
 			}
 			else if (ok < 0)
 			{
-				printf("--.3.1.-- %d %d\n", session->sid, server->write_may);
+				// printf("--.3.1.-- %d %d\n", session->sid, server->write_may);
 				// 写入错误 关闭该链接
 				sis_socket_server_delete(server, session->sid);
 			}
@@ -581,6 +597,7 @@ void *_thread_server_write(void* argv)
 			server->write_may = 1;
 			sis_mutex_unlock(&server->write_may_lock);
 		}
+		// printf("--.3.3.-- %d\n", server->write_thread->wait_msec);
        	sis_wait_thread_wait(server->write_thread, server->write_thread->wait_msec);
     }
     sis_wait_thread_stop(server->write_thread);
@@ -632,7 +649,7 @@ bool sis_socket_server_delete(s_sis_socket_server *server_, int sid_)
 	s_sis_socket_session *session = sis_net_list_get(server_->sessions, sid_ - 1);
 	if (!session)
 	{
-		LOG(5)("can't find session.[%d]\n", sid_);
+		LOG(5)("can't find session.[%d:%d]\n", server_->sessions->cur_count ,sid_);
 		return false;
 	}
 	// if (session->write_stop == 1)
@@ -725,7 +742,7 @@ void sis_socket_client_destroy(s_sis_socket_client *client_)
 	// 再关闭链接
 	sis_socket_client_close(client_);
 
-	sis_socket_session_destroy(client_->session);
+	sis_socket_session_destroy(client_->session, 1);
 	sis_mutex_destroy(&client_->write_may_lock);
 	sis_free(client_->uv_c_worker);
 	sis_free(client_);
@@ -1383,7 +1400,8 @@ void _thread_write(void* arg)
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(send_buffer.base, send_buffer.len));
 	printf("_thread_write : %p\n", service);
 	speed_send_msec = sis_time_get_now_msec();
-	for (int i = 0; i < maxcount; i++)
+	// for (int i = 0; i < maxcount; i++)
+	for (int i = 0; ; i++)
 	{
 		speed_send_size += sendsize;
 		 
@@ -1462,7 +1480,7 @@ int main(int argc, char **argv)
 
 	}
 	printf("client close.\n");
-	while(__exit != 2)
+	while(1)
 	{
 		recv_buffer = uv_buf_init((char*)sis_malloc(sendsize), sendsize);
 
