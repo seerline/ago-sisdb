@@ -130,7 +130,7 @@ int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
     int o = 0;
     if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
     {
-        if (sis_str_exist_ch(netmsg_->cmd, sis_sdslen(netmsg_->key), "*,", 2))
+        if (sis_str_exist_ch(netmsg_->key, sis_sdslen(netmsg_->key), "*,", 2))
         {
             o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 0);
         }
