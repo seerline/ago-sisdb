@@ -40,7 +40,7 @@ typedef struct s_snodb_reader
 	int                 cid;
 	s_sis_sds           serial;
 	// 以下两个回调互斥
-	void               *father;       // 来源对象
+	void               *father;       // 来源对象 s_snodb_cxt
         
 	int                 rfmt;         // 返回数据的格式
         

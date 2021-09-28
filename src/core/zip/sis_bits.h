@@ -569,7 +569,7 @@ static inline int sis_bits_stream_charcmp(const char *s1_, size_t l1_, const cha
 static inline int sis_bits_stream_put_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)
 {
     int size = sis_bits_stream_charcmp(in_, ilen_, ago_, alen_);
-    printf("put char : %d [%s], [%s], %zu, %zu\n", size, in_, ago_, ilen_, alen_);
+    // printf("put char : %d [%s], [%s], %zu, %zu\n", size, in_, ago_, ilen_, alen_);
     if (size == 0)
     {
         sis_bits_stream_put_chars(s_, NULL, 0);

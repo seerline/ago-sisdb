@@ -52,11 +52,19 @@ s_sis_modules sis_modules_snodb = {
 ///////////////////////////////////////////////////////////////////////////
 
 static int64 _zipnums = 0;
+static int64 _innums = 0;
+static size_t _insize = 0;
 
 static int cb_input_reader(void *context_, s_sis_object *imem_)
 {	
 	s_snodb_cxt *context = (s_snodb_cxt *)context_;
-	if (!context->inited || !context->work_ziper)
+	
+	if ((_innums++) % 100000 == 0)
+	{
+		LOG(8)("recv innums = %d %zu %p\n", _innums, _insize, context->work_ziper);
+	}
+	return 0;
+	if (!context->inited || !context->work_ziper || context->status == 1)
 	{
 		// 必须有这个判断 否则正在初始化时 会收到 in==NULL的数据包 
 		LOG(5)("snodb no init. %d %d zip : %p imem : %p \n", context->inited, context->work_date, context->work_ziper, imem_);
@@ -70,6 +78,7 @@ static int cb_input_reader(void *context_, s_sis_object *imem_)
 	else
 	{
 		s_sis_memory *memory = SIS_OBJ_MEMORY(imem_);
+		_insize += sis_memory_get_size(memory);
 		int kidx = sis_memory_get_byte(memory, 4);
 		int sidx = sis_memory_get_byte(memory, 2);
 		sisdb_incr_zip_set(context->work_ziper, kidx, sidx, sis_memory(memory), sis_memory_get_size(memory));
@@ -80,7 +89,7 @@ static int cb_input_reader(void *context_, s_sis_object *imem_)
 static int cb_wlog_reader(void *reader_, s_sis_object *obj_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
-	s_snodb_cxt *snodb = ((s_sis_worker *)reader->father)->context;
+	s_snodb_cxt *snodb = (s_snodb_cxt *)reader->father;
 	// 从第一个初始包开始存盘
 	s_sis_db_incrzip zmem;
 	zmem.data = (uint8 *)SIS_OBJ_GET_CHAR(obj_);
@@ -89,7 +98,7 @@ static int cb_wlog_reader(void *reader_, s_sis_object *obj_)
 	
 	if ((_zipnums++) % 100 == 0)
 	{
-		LOG(8)("recv nums = %d %d %d\n", reader->isinit, zmem.init, snodb->wlog_init);
+		LOG(8)("recv zipnums = %d %d %d\n", reader->isinit, zmem.init, snodb->wlog_init);
 	}
 	if (!reader->isinit)
 	{
@@ -188,7 +197,7 @@ bool snodb_init(void *worker_, void *argv_)
 		//  传入数据时不能清理 keys 和 sdbs 才能不出错
 		// 然后启动一个读者 订阅 outputs 中数据 然后实时写盘
 		context->wlog_reader = snodb_reader_create();
-		context->wlog_reader->father = worker;
+		context->wlog_reader->father = context;
 		context->wlog_reader->isinit = 0;
 		context->wlog_reader->ishead = isload ? 0 : 1;
 		context->wlog_init = 0; 
@@ -199,12 +208,14 @@ bool snodb_init(void *worker_, void *argv_)
 		sis_lock_reader_open(context->wlog_reader->reader);	
 		 
 	}
+	context->status = 0;
     return true;
 }
 void snodb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
+	context->status = 1;
 
     if (context->wlog_worker)
     {
@@ -333,7 +344,7 @@ int cmd_snodb_start(void *worker_, void *argv_)
 	// 	context->wlog_reader->isinit = 0;
 	// 	context->wlog_init = 0;
 	// }	
-	// printf("cmd_snodb_start : %d\n", context->inited);
+	printf("cmd_snodb_start : %d\n", context->inited);
 
 	// 初始化后首先向所有订阅者发送订阅开始信息
 	for (int i = 0; i < context->readeres->count; i++)
@@ -407,6 +418,10 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 int _snodb_write_incrzip(void *context_, char *imem_, size_t isize_)
 {
 	s_snodb_cxt *context = (s_snodb_cxt *)context_;
+	if ((_zipnums++) % 100 == 0)
+	{
+		LOG(8)("zpub nums = %d %d\n", _zipnums, context->outputs->users->count);
+	}
 	if (!context->inited || context->stoped)
 	{
 		return -1;
@@ -421,10 +436,7 @@ int _snodb_write_incrzip(void *context_, char *imem_, size_t isize_)
 		context->near_object = obj;
 	}
 	sis_lock_list_push(context->outputs, obj);
-	if ((_zipnums++) % 100 == 0)
-	{
-		LOG(8)("zpub nums = %d %d\n", _zipnums, context->outputs->users->count);
-	}
+
 	sis_object_destroy(obj);
 	return 0;
 }
@@ -442,6 +454,7 @@ int _snodb_write_bytes(s_snodb_cxt *context, int kidx, int sidx, void *imem, siz
 		sisdb_incr_set_keys(context->work_ziper, context->work_keys);
 		sisdb_incr_set_sdbs(context->work_ziper, context->work_sdbs);
 		sisdb_incr_zip_start(context->work_ziper, context, _snodb_write_incrzip);
+		LOG(5)("no.... %d\n", context->work_ziper->incrzip->status);
 	}
 	if (!context->inputs)
 	{
@@ -452,7 +465,7 @@ int _snodb_write_bytes(s_snodb_cxt *context, int kidx, int sidx, void *imem, siz
 	sis_memory_cat_byte(memory, sidx, 2);
 	sis_memory_cat(memory, (char *)imem, isize);	
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
-	// printf("-- input -- kidx_= %d, sidx_= %d\n", kidx_, sidx_);
+	// printf("-- input -- kidx_= %d, sidx_= %d isize = %zu\n", kidx, sidx, isize);
 	sis_fast_queue_push(context->inputs, obj);
 	
 	sis_object_destroy(obj);

@@ -7,7 +7,7 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method memdb_methods[] = {
-    {"open",   cmd_memdb_init,  0, NULL},
+    {"init",   cmd_memdb_init,  0, NULL},
     {"get",    cmd_memdb_get,   0, NULL},
     {"set",    cmd_memdb_set,   0, NULL},
     {"sub",    cmd_memdb_sub,   0, NULL},
@@ -172,6 +172,7 @@ int cmd_memdb_pub(void *worker_, void *argv_)
     s_memdb_cxt *context = (s_memdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     sisdb_sub_cxt_pub(context->work_sub_cxt, netmsg);
+    // SIS_NET_SHOW_MSG("memdb pub", netmsg);
     sis_net_ans_with_noreply(netmsg);
     return SIS_METHOD_OK;
 }

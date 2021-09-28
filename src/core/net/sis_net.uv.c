@@ -52,7 +52,7 @@ s_sis_socket_session *sis_socket_session_create(void *father_)
 	session->uv_w_handle.data = session;
 	session->uv_r_buffer = uv_buf_init((char*)sis_malloc(MAX_NET_UV_BUFFSIZE), MAX_NET_UV_BUFFSIZE);
 	session->send_nodes = sis_net_nodes_create();
-	session->sendnums = 64 * 1024;
+	session->sendnums = 1 * 1024;
 	session->sendbuff = sis_malloc(sizeof(uv_buf_t) * session->sendnums);
 	memset(session->sendbuff, 0, sizeof(uv_buf_t) * session->sendnums);
 	return session;	
@@ -478,7 +478,7 @@ static void _server_write_may(s_sis_socket_server *server)
 	server->write_may = 1;
 	sis_mutex_unlock(&server->write_may_lock);
 	// 通知线程开始干活
-	// printf("--1--%d\n", server->write_may);
+	printf("--1--%d\n", server->write_may);
 	sis_wait_thread_notice(server->write_thread);
 }
 static void cb_server_write_after(uv_write_t *writer_, int status)

@@ -49,10 +49,7 @@ void sisdb_incr_set_keys(s_sisdb_incr *worker, s_sis_sds in_)
 		sis_map_list_set(worker->work_keys, key, key);	
 	}
 	sis_string_list_destroy(klist);
-	if (worker->incrzip)
-	{
-		sis_incrzip_set_key(worker->incrzip, count);
-	}
+
 }
 void sisdb_incr_set_sdbs(s_sisdb_incr *worker, s_sis_sds in_)
 {
@@ -70,10 +67,6 @@ void sisdb_incr_set_sdbs(s_sisdb_incr *worker, s_sis_sds in_)
 		if (sdb)
 		{
 			sis_map_list_set(worker->work_sdbs, sdb->name, sdb);
-			if (worker->incrzip)
-			{
-				sis_incrzip_set_sdb(worker->incrzip, sdb);
-			}
 		}
 		innode = sis_json_next_node(innode);
 	}
@@ -97,12 +90,23 @@ const char *sisdb_incr_get_sname(s_sisdb_incr *worker, int sidx_)
 	s_sis_dynamic_db *db = sis_map_list_geti(worker->work_sdbs, sidx_);
 	return db->name;
 }
+void _init_dict(s_sisdb_incr *worker)
+{
+	sis_incrzip_set_key(worker->incrzip, sis_map_list_getsize(worker->work_keys));
+	int count = sis_map_list_getsize(worker->work_sdbs);
+	for (int i = 0; i < count; i++)
+	{
+		s_sis_dynamic_db *db = sis_map_list_geti(worker->work_sdbs, i);
+		sis_incrzip_set_sdb(worker->incrzip, db);
+	}
+}
 // 
 void sisdb_incr_unzip_start(s_sisdb_incr *worker, void *cb_source_, cb_incrzip_decode *cb_decode)
 {
 	worker->incrzip = sis_incrzip_class_create();
 	worker->cb_source = cb_source_;
 	worker->cb_decode = cb_decode;
+	_init_dict(worker);
 	sis_incrzip_uncompress_start(worker->incrzip, worker, cb_decode);
 }
 
@@ -141,6 +145,7 @@ void sisdb_incr_zip_start(s_sisdb_incr *worker, void *cb_source, cb_incrzip_enco
 	worker->incrzip = sis_incrzip_class_create();
 	worker->cb_source = cb_source;
 	worker->cb_encode = cb_encode;
+	_init_dict(worker);
 	sis_incrzip_compress_start(worker->incrzip, worker->part_size, worker, cb_worker_encode);
 	worker->curr_size = 0;
 }
@@ -160,7 +165,11 @@ void sisdb_incr_zip_set(s_sisdb_incr *worker, int kidx, int sidx, char *in_, siz
     int count = ilen_ / sdb->size;
     for (int i = 0; i < count; i++)
     {
-        sis_incrzip_compress_step(worker->incrzip, kidx, sidx, (char *)in_ + i * sdb->size, sdb->size);
+        int o = sis_incrzip_compress_step(worker->incrzip, kidx, sidx, (char *)in_ + i * sdb->size, sdb->size);
+		if (o < 0)
+		{
+			LOG(5)("no.... %d\n", o);
+		}
     }
 }
 void sisdb_incr_zip_restart(s_sisdb_incr *worker, int init_)
