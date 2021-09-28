@@ -1082,7 +1082,7 @@ int main(int argc, const char **argv)
 #endif
 
 
-#if 1
+#if 0
 // 测试打包数据的网络最大流量
 // 约每秒30M
 #include "sis_net.msg.h"
@@ -1096,7 +1096,7 @@ s_sis_net_class *session = NULL;
 int    connectid = -1;
 msec_t start_time = 0;
 
-int64  maxnums = 30*1000*1000; 
+int64  maxnums = 3*1000*1000; 
 
 int    sendnums = 0;
 int    recvnums = 0; 
@@ -1141,7 +1141,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 			recvsize+=sis_sdslen(reply);
 			msec_t *recv_time = (msec_t *)reply;
 			// sis_out_binary(".1.", reply, 16);
-			if (recvnums%10000==0 || recvnums > maxnums -10 )
+			if (recvnums%10000==0 || recvnums > maxnums - 10 )
 			printf("=2=recv: %d delay = %llu \n", recvnums, now_time - *recv_time);
 
 			if (start_time == 0)
@@ -1167,6 +1167,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 }
 static void *thread_send_data(void *arg)
 {
+	sis_sleep(1000);
     while(connectid == -1)
     {
         sis_sleep(10);
@@ -1174,7 +1175,7 @@ static void *thread_send_data(void *arg)
 	start_time = sis_time_get_now_msec();
 	sendnums = 0;
 	char imem[bagssize];
-	memset(imem, 1, bagssize);
+	// memset(imem, 1, bagssize);
 	while(sendnums < maxnums)
 	{
 		sendnums++;
@@ -1206,7 +1207,6 @@ static void _cb_connected(void *handle_, int sid)
 		// 创建发送线程
 		LOG(5)("==client start.  [%d]\n", sid);	
 		pthread_create(&send_thread, NULL, thread_send_data, NULL);
-		// pthread_create(&send_thread, NULL, thread_send_data, NULL);
 	}
 	else
 	{

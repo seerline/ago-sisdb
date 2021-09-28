@@ -10,6 +10,7 @@
 #include <sis_memory.h>
 #include <sis_thread.h>
 #include <sis_map.h>
+#include <sis_net.node.h>
 #include <sis_json.h>
 #include <sis_message.h>
 #include <sis_crypt.h>
