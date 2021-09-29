@@ -48,7 +48,7 @@
 /////////////////////////////////////////////////
 // 速度测试
 
-#if 1
+#if 0
 
 #include <signal.h>
 
@@ -164,7 +164,7 @@ void _thread_write(void* arg)
 {
 	s_test_client *client = (s_test_client *)arg;
 	int id = client->sno;
-	int count = 10*1000*1000; 
+	int count = 10*1000*1000;
 	int sendsize = 16384;
 	s_sis_sds str = sis_sdsnewlen(NULL, sendsize);
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, str);

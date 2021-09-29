@@ -154,10 +154,6 @@ void sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
 	_net_nodes_free_read(nodes_);
     sis_mutex_unlock(&nodes_->lock);
 }
-int  sis_net_nodes_none(s_sis_net_nodes *nodes_)
-{
-	return (nodes_->rnums == 0 && nodes_->wnums == 0);
-}
 
 
 ///////////////////////////////////////////////////////////////////////////

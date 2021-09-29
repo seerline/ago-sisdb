@@ -38,8 +38,6 @@ void sis_net_nodes_clear(s_sis_net_nodes *nodes_);
 int  sis_net_nodes_push(s_sis_net_nodes *nodes_, s_sis_object *obj_);
 int  sis_net_nodes_read(s_sis_net_nodes *nodes_, int );
 void sis_net_nodes_free_read(s_sis_net_nodes *nodes_);
-// 队列是否为空
-int  sis_net_nodes_none(s_sis_net_nodes *nodes_);
 
 ///////////////////////////////////////////////////////////////////////////
 //----------------------s_sis_net_list --------------------------------//
