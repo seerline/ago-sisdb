@@ -378,7 +378,7 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 		else
 		{
 			// 如果没有ans就返回一个为0的ans 字符通讯包以ans判断是否应答包
-			sis_json_object_set_int(node, "ans", 0); 
+			sis_json_object_set_string(node, "ans", "0"); 
 		}
 		if (in_->switchs.has_cmd)
 		{
@@ -563,7 +563,7 @@ void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *mess)
 	{
 		// 应答包
 		mess->switchs.is_reply = 1;
-		mess->switchs.has_ans = 1;
+		mess->switchs.has_ans = rans->type == SIS_JSON_STRING ? 0 : 1;
 		mess->rans = rans->value ? sis_atoll(rans->value) : 0; 	
         mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
 		mess->switchs.has_cmd = mess->cmd ? 1 : 0;
@@ -666,10 +666,7 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
 	sis_memory_move(in_, 1);
 	memmove(&mess->switchs, sis_memory(in_), sizeof(s_sis_net_switch));
 	sis_memory_move(in_, sizeof(s_sis_net_switch));
-	if (mess->switchs.has_ver)
-	{
-		mess->ver = sis_net_memory_get_int(in_, mess->switchs.has_ver);
-	}
+	mess->ver = sis_net_memory_get_int(in_, mess->switchs.has_ver);
 	if (mess->switchs.has_fmt)
 	{
 		// 没有字段用默认的格式 或上层指定

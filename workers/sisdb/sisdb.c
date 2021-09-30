@@ -552,8 +552,8 @@ int cmd_sisdb_read(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
     s_sis_object *obj = sisdb_disk_read(context, netmsg);
-    
-    sis_net_ans_with_object(netmsg, obj);
+    sis_message_set_ans(netmsg, 0, 1);
+    sis_message_set_object(netmsg, obj, 0);
     
     sis_object_destroy(obj);
 

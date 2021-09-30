@@ -128,6 +128,13 @@ size_t sis_net_message_get_size(s_sis_net_message *);
 // 拷贝需要广播的数据
 void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, s_sis_sds cmd_, s_sis_sds key_);
 
+// 以下函数 只检查相关字段 其他都不管
+void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
+void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
+void sis_message_set_ans(s_sis_net_message *netmsg_, int ans_, int isclear_);
+void sis_message_set_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_, int isclear_);
+void sis_message_set_object(s_sis_net_message *netmsg_, void *obj_, int isclear_);
+
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数
 ////////////////////////////////////////////////////////
@@ -138,18 +145,10 @@ void sis_net_ask_with_chars(s_sis_net_message *netmsg_,
 void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, 
     char *cmd_, char *key_, char *val_, size_t vlen_);
 
-void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_);
-
 // in_被吸入
 void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);
-// *** 这个函数需要检查
-void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
-void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
 
 void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
-void sis_net_ans_with_argvs(s_sis_net_message *, const char *in_, size_t ilen_);
-
-void sis_net_ans_with_object(s_sis_net_message *, void *obj_);
 // 获取数据流
 s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index);
 
