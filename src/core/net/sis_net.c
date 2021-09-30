@@ -768,7 +768,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 {
 	if(cls_->work_status != SIS_NET_WORKING)
 	{
-		LOG(5)("net no working. %d\n", cls_->work_status);
+		// LOG(5)("net no working. %d\n", cls_->work_status);
 		return -1;
 	}
 	// SIS_NET_SHOW_MSG("send:", mess_);
