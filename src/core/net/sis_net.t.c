@@ -4,7 +4,7 @@
 #include <sis_net.h>
 #include <sis_net.msg.h>
 
-#if 1
+#if 0
 // 测试打包数据的网络流量
 
 #define TEST_PORT 7329

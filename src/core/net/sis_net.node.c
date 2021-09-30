@@ -378,7 +378,7 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 		else
 		{
 			// 如果没有ans就返回一个为0的ans 字符通讯包以ans判断是否应答包
-			sis_json_object_set_string(node, "ans", "0"); 
+			sis_json_object_set_string(node, "ans", "0", 1); 
 		}
 		if (in_->switchs.has_cmd)
 		{
