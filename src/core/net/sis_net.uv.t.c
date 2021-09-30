@@ -97,6 +97,8 @@ void exithandle(int sig)
 // 测试服务端发送数据的速度 client记录收到字节数
 // 经过测试比实际带宽慢10倍
 size_t speed_send_size = 0;
+size_t speed_send_curr = 0;
+msec_t speed_send_msec = 0;
 size_t speed_recv_size = 0;
 size_t speed_recv_curr = 0;
 msec_t speed_recv_msec = 0;
@@ -149,7 +151,7 @@ static void cb_client_recv_after(void* handle_, int cid, char* in_, size_t ilen_
 	else 
 	{
 		int offset = sis_time_get_now_msec() - speed_recv_msec;
-		if (sis_time_get_now_msec() - speed_recv_msec > 1000)
+		if (offset > 1000)
 		{
 			speed_recv_msec = sis_time_get_now_msec();
 			printf("--- cost : %5d recv : %12zu, %10zu speed(M/s): %zu\n", offset, speed_recv_size, speed_recv_curr, speed_recv_curr/offset/1000);
@@ -164,12 +166,34 @@ void _thread_write(void* arg)
 {
 	s_test_client *client = (s_test_client *)arg;
 	int id = client->sno;
-	int count = 10*1000*1000;
+	int maxcount = 10*1000*1000;
 	int sendsize = 16384;
+	speed_send_size = 0;
 	s_sis_sds str = sis_sdsnewlen(NULL, sendsize);
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, str);
-	for (int i = 0; i < count; i++)
+	// for (int i = 0; i < maxcount; i++)
+	for (int i = 0; client->status; i++)
 	{
+		speed_send_size += sendsize;
+		if (speed_send_msec == 0) 
+		{
+			speed_send_msec = sis_time_get_now_msec();
+		}
+		else 
+		{
+			int offset = sis_time_get_now_msec() - speed_send_msec;
+			if (offset > 1000)
+			{
+				speed_send_msec = sis_time_get_now_msec();
+				printf("--- cost : %5d send : %12zu, %10zu speed(M/s): %zu\n", offset, speed_send_size, speed_send_curr, speed_send_curr/offset/1000);
+				speed_send_curr = 0;
+			}
+		}
+		speed_send_curr += sendsize;
+		if (speed_send_curr > 2000*1000*1000)
+		{
+			sis_sleep(10);
+		}
 		sis_socket_server_send(server, id, obj);
 	}
 	sis_object_destroy(obj);
@@ -184,6 +208,7 @@ static void cb_new_connect(void *handle_, int sid_)
 	
 	s_test_client *client = SIS_MALLOC(s_test_client, client);
 	client->sno = sid_;
+	client->status = 1;
 	printf("--- send start. %p %d \n", client, sid_);	
 	uv_thread_create(&server_thread, _thread_write, client);
 }

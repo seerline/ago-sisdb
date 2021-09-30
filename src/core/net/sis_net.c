@@ -426,7 +426,6 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 	{
 		return ;
 	}
-	// printf("recv .... ");
 	if (cxt->status == SIS_NET_WORKING)
 	{
 		s_sis_memory *memory = sis_memory_create_size(ilen_ + 1);
@@ -463,7 +462,6 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			sis_socket_client_close(cls->client);
 		}   // == 0 还没有收到数据		
 	}
-	// printf("ok\n");
 }
 static void cb_client_send_after(void* handle_, int sid_, int status_)
 {
@@ -768,7 +766,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 {
 	if(cls_->work_status != SIS_NET_WORKING)
 	{
-		// LOG(5)("net no working. %d\n", cls_->work_status);
+		LOG(5)("net no working. %d\n", cls_->work_status);
 		return -1;
 	}
 	// SIS_NET_SHOW_MSG("send:", mess_);
@@ -778,7 +776,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 	{
 		// printf("reader read +++ [%d] %d | %p \n", mess_->cid, cxt->send_cxts->count ,cxt->send_cxts);
 		s_sis_object *sendobj = sis_net_send_message(cxt, mess_); 
-		// sis_out_binary("send", SIS_OBJ_GET_CHAR(sendobj), SIS_OBJ_GET_SIZE(sendobj));
+		// sis_out_binary("send", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
 		if (sendobj)
 		{
 			if (cls_->url->io == SIS_NET_IO_WAITCNT)
@@ -839,7 +837,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 		}
 		sis_memory_destroy(outmemptr);
 	}
-	// sis_out_binary("recv", sis_memory(inmemptr), sis_memory_get_size(inmemptr));
+
 	mess_->format = info.is_bytes;  // 这里设置数据区格式
 
  	if (call->slot_net_decoded)
@@ -1142,7 +1140,7 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 			msec_t *recv_time = (msec_t *)reply;
 			// sis_out_binary(".1.", reply, 16);
 			if (recvnums%10000==0 || recvnums > maxnums -10 )
-			printf("=2=recv: %d delay = %llu \n", recvnums, now_time - *recv_time);
+			printf("=2=recv: %d size = %lld delay = %llu \n", recvnums, recvsize, now_time - *recv_time);
 
 			if (start_time == 0)
 			{
@@ -1174,19 +1172,24 @@ static void *thread_send_data(void *arg)
 	start_time = sis_time_get_now_msec();
 	sendnums = 0;
 	char imem[bagssize];
-	memset(imem, 1, bagssize);
 	while(sendnums < maxnums)
 	{
 		sendnums++;
 		sendsize+=bagssize;
-	    
+	    if (sendnums%10000==0 || sendnums > maxnums -10 )
+		printf("=2=send: %d size= %lld \n", sendnums, sendsize);
+
 		msec_t now_time = sis_time_get_now_msec();
 		memmove(imem, &now_time, sizeof(msec_t));
 		// sis_out_binary(".1.", imem, 16);
 		s_sis_net_message *msg = sis_net_message_create();
 		msg->cid = connectid;
 		sis_net_ask_with_bytes(msg, NULL, NULL, imem, bagssize);
-		sis_net_class_send(session, msg);
+		if (sis_net_class_send(session, msg) < 0)
+		{
+			sis_net_message_destroy(msg);
+			break;
+		}
 		sis_net_message_destroy(msg);
 		// sis_sleep(1);
 	}
@@ -1268,8 +1271,8 @@ int main(int argc, const char **argv)
 	sis_net_class_open(session);
 	if (session->url->role== SIS_NET_ROLE_REQUEST)
 	{
-		while (sendnums < maxnums || recvnums < maxnums)
-		// while (1)//sendnums < maxnums || _send_nums < maxnums)
+		// while (sendnums < maxnums || recvnums < maxnums)
+		while (1)//sendnums < maxnums || _send_nums < maxnums)
 		{
 			sis_sleep(100);
 			if (exit_) break;
