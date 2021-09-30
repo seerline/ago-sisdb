@@ -145,7 +145,7 @@ int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
 		}
 	}
 	sis_mutex_unlock(&nodes_->lock);
-	// printf("==3== lock ok. %lld :: %lld\n", nodes_->rnums, nodes_->wnums);
+	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
 	return 	nodes_->rnums;
 }
 void sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
@@ -153,6 +153,13 @@ void sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
     sis_mutex_lock(&nodes_->lock);
 	_net_nodes_free_read(nodes_);
     sis_mutex_unlock(&nodes_->lock);
+}
+int  sis_net_nodes_none(s_sis_net_nodes *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	int count = nodes_->rnums + nodes_->wnums;
+	sis_mutex_unlock(&nodes_->lock);
+	return count;
 }
 
 
@@ -364,7 +371,23 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 	if (in_->switchs.is_reply)
 	{
 		// 必须有 ans 不然字符模式下无法判断是应答包
-		sis_json_object_set_int(node, "ans", in_->rans); 
+		if (in_->switchs.has_ans)
+		{
+			sis_json_object_set_int(node, "ans", in_->rans); 
+		}
+		else
+		{
+			// 如果没有ans就返回一个为0的ans 字符通讯包以ans判断是否应答包
+			sis_json_object_set_int(node, "ans", 0); 
+		}
+		if (in_->switchs.has_cmd)
+		{
+			sis_json_object_set_string(node, "cmd", in_->cmd, SIS_SDS_SIZE(in_->cmd)); 
+		}		
+		if (in_->switchs.has_key)
+		{
+			sis_json_object_set_string(node, "key", in_->key, SIS_SDS_SIZE(in_->key)); 
+		}	
 		if (in_->switchs.has_msg)
 		{
 			sis_json_object_set_string(node, "msg", in_->rmsg, SIS_SDS_SIZE(in_->rmsg)); 
@@ -466,7 +489,9 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 	sis_net_int_set_memory(out_, in_->switchs.has_fmt, in_->format);
 	if (in_->switchs.is_reply)
 	{
-		sis_net_int_set_memory(out_, in_->switchs.is_reply, in_->rans);
+		sis_net_int_set_memory(out_, in_->switchs.has_ans, in_->rans);
+		sis_net_str_set_memory(out_, in_->switchs.has_cmd, in_->cmd, SIS_SDS_SIZE(in_->cmd));
+		sis_net_str_set_memory(out_, in_->switchs.has_key, in_->key, SIS_SDS_SIZE(in_->key));
 		sis_net_str_set_memory(out_, in_->switchs.has_msg, in_->rmsg, SIS_SDS_SIZE(in_->rmsg));
 		sis_net_int_set_memory(out_, in_->switchs.has_next, in_->rnext);
 	}
@@ -538,7 +563,12 @@ void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *mess)
 	{
 		// 应答包
 		mess->switchs.is_reply = 1;
+		mess->switchs.has_ans = 1;
 		mess->rans = rans->value ? sis_atoll(rans->value) : 0; 	
+        mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
+		mess->switchs.has_cmd = mess->cmd ? 1 : 0;
+        mess->key = _sis_json_node_get_sds(node_, "key");    
+		mess->switchs.has_key = mess->key ? 1 : 0;
         mess->rmsg = _sis_json_node_get_sds(node_, "msg");    
 		mess->switchs.has_msg = mess->rmsg ? 1 : 0;
         mess->rnext = sis_json_get_int(node_, "next", 0);   
@@ -548,6 +578,7 @@ void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *mess)
 	{
 		// 表示为请求
 		mess->switchs.is_reply = 0;
+		mess->switchs.has_ans = 0;
         mess->service = _sis_json_node_get_sds(node_, "service");    
 		mess->switchs.has_service = mess->service ? 1 : 0;
         mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
@@ -635,7 +666,10 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
 	sis_memory_move(in_, 1);
 	memmove(&mess->switchs, sis_memory(in_), sizeof(s_sis_net_switch));
 	sis_memory_move(in_, sizeof(s_sis_net_switch));
-	mess->ver = sis_net_memory_get_int(in_, mess->switchs.has_ver);
+	if (mess->switchs.has_ver)
+	{
+		mess->ver = sis_net_memory_get_int(in_, mess->switchs.has_ver);
+	}
 	if (mess->switchs.has_fmt)
 	{
 		// 没有字段用默认的格式 或上层指定
@@ -643,7 +677,9 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
 	}
 	if (mess->switchs.is_reply)
 	{
-		mess->rans = sis_net_memory_get_int(in_, mess->switchs.is_reply);
+		mess->rans = sis_net_memory_get_int(in_, mess->switchs.has_ans);
+		mess->cmd = sis_net_memory_get_sds(in_, mess->switchs.has_cmd);
+		mess->key = sis_net_memory_get_sds(in_, mess->switchs.has_key);
 		mess->rmsg = sis_net_memory_get_sds(in_, mess->switchs.has_msg);
 		mess->rnext = sis_net_memory_get_int(in_, mess->switchs.has_next);
 	}

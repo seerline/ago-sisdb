@@ -176,34 +176,3 @@ sis_net.h   提供给外部用户访问的接口和类型
 // 	2.作为订阅和发布，当客户订阅了某一类数据，异步返回数据时可以准确的定位数据源，
 // 	3.对于一应一答的阻塞请求，基本可以忽略不用；
 //  4.对于客户端发出多个请求，服务端返回数据时以stock来定位请求；
-
-
-### sis_net.nxp.c
-
-os_net.c
-
-提供函数 
-    create() 根据传入参数判定连接方式 同时传入回调函数集 成功返回句柄
-        connect()
-        disconnect()
-        read_alloc() 网络有数据返回就回调该函数 由外部用户申请好内存后返回 若为空 默认使用64K缓存
-        read_after() 申请好内存后 如果数据超过 max_read_size 就分段读取数据后返回
-        max_read_size 默认64K读缓存
-        warn_info() 每隔5秒遍历一遍 检查每个链接的属性是否正常 
-        max_write_size 每次写入网络最大数据 默认64K 单链数据小就循环写 单链数据大进入链表时就直接拆开 单链需要记录当前写入位置
-        max_catch_size 累计数据超过该缓存会回调 warn_info() 标记为 style = catch full 尺寸为当前缓存大小 避免慢速客户端 
-        max_noask_msec 最大多长时间没有请求交互 对端超过该时间没有数据发出 就回调 warn_info() 标记为 style = noask_msec 数据为多少毫秒
-    destroy()
-    open_tcp_s() ip port protocol
-    open_tcp_c()  
-    write
-    close
-    一共提供以上6个函数 
-    open成功后 返回fd 
-    close 直接关闭所有fd相关信息 清理剩余内存 关闭socket端口数据 禁止数据写入 然后返回
-    数据从网络收到后会直接回调返回 
-    外部线程客户只管调用 write 写入数据 实际会根据当前fd是否可写 如果可写就从fd对应缓存链表中获取数据写入网络 每次写入数据不超过最大缓存
-
-
-    
-

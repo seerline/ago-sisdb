@@ -6,11 +6,11 @@
 #include <sis_malloc.h>
 #include <sis_str.h>
 #include <sis_net.msg.h>
-#include <sis_net.node.h>
 #include <sis_method.h>
 #include <sis_memory.h>
 #include <sis_thread.h>
 #include <sis_map.h>
+#include <sis_net.node.h>
 #include <sis_json.h>
 #include <sis_message.h>
 #include <sis_crypt.h>

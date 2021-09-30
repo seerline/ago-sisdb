@@ -426,6 +426,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 	{
 		return ;
 	}
+	// printf("recv .... ");
 	if (cxt->status == SIS_NET_WORKING)
 	{
 		s_sis_memory *memory = sis_memory_create_size(ilen_ + 1);
@@ -462,6 +463,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 			sis_socket_client_close(cls->client);
 		}   // == 0 还没有收到数据		
 	}
+	// printf("ok\n");
 }
 static void cb_client_send_after(void* handle_, int sid_, int status_)
 {
@@ -524,7 +526,7 @@ static void cb_server_disconnect(void *handle_, int sid_)
 }
 static void cb_client_connected(void *handle_, int sid_)
 {
-	// printf("client connected . sid_ = %d \n", sid_);	
+	printf("client connected . sid_ = %d \n", sid_);	
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
 	if (!cxt)
@@ -537,7 +539,7 @@ static void cb_client_connected(void *handle_, int sid_)
 		sis_memory_clear(cxt->recv_memory);
 		sis_net_nodes_clear(cxt->recv_nodes);
 	}
-	// printf("connect count = %d \n", sis_map_pointer_getsize(cls->cxts));	
+	printf("connect count = %d \n", sis_map_pointer_getsize(cls->cxts));	
 	sis_socket_client_set_rwcb(cls->client, cb_client_recv_after, cb_client_send_after);
 	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 
@@ -776,7 +778,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 	{
 		// printf("reader read +++ [%d] %d | %p \n", mess_->cid, cxt->send_cxts->count ,cxt->send_cxts);
 		s_sis_object *sendobj = sis_net_send_message(cxt, mess_); 
-		// sis_out_binary("send", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+		// sis_out_binary("send", SIS_OBJ_GET_CHAR(sendobj), SIS_OBJ_GET_SIZE(sendobj));
 		if (sendobj)
 		{
 			if (cls_->url->io == SIS_NET_IO_WAITCNT)
@@ -837,7 +839,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 		}
 		sis_memory_destroy(outmemptr);
 	}
-
+	// sis_out_binary("recv", sis_memory(inmemptr), sis_memory_get_size(inmemptr));
 	mess_->format = info.is_bytes;  // 这里设置数据区格式
 
  	if (call->slot_net_decoded)
@@ -1079,226 +1081,3 @@ int main(int argc, const char **argv)
 }
 #endif
 
-
-#if 1
-// 测试打包数据的网络最大流量
-// 约每秒30M
-#include "sis_net.msg.h"
-
-#define TEST_PORT 7329
-#define TEST_SIP "0.0.0.0"
-#define TEST_IP "127.0.0.1"
-
-s_sis_net_class *session = NULL;
-
-int    connectid = -1;
-msec_t start_time = 0;
-
-int64  maxnums = 30*1000*1000;
-
-int    sendnums = 0;
-int    recvnums = 0; 
-int64  sendsize = 0; 
-int64  recvsize = 0; 
-
-int    replynums = 0; 
-int64  replysize = 0; 
-
-int64  bagssize = 16000; // 16K
-
-pthread_t  send_thread;
-
-static void cb_recv_data(void *socket_, s_sis_net_message *msg)
-{
-	s_sis_net_class *socket = (s_sis_net_class *)socket_;
-
-	if (socket->url->role== SIS_NET_ROLE_REQUEST)
-	{		
-		if (msg->switchs.is_reply && msg->switchs.has_argvs)
-		{
-			msec_t now_time = sis_time_get_now_msec();
-			s_sis_sds reply = SIS_OBJ_GET_CHAR(sis_pointer_list_get(msg->argvs, 0)); 
-			recvnums++;
-			recvsize+=sis_sdslen(reply);
-			msec_t *recv_time = (msec_t *)reply;
-			if (recvnums%10000==0)
-			printf("=1=recv: %d delay = %llu \n", recvnums, now_time - *recv_time);
-		}
-		else
-		{
-			printf("=1=recv no type. %x\n", msg->format);
-		}
-	}
-	else
-	{	
-		if (!msg->switchs.is_reply && msg->switchs.has_argvs)
-		{
-			msec_t now_time = sis_time_get_now_msec();
-			s_sis_sds reply = SIS_OBJ_GET_CHAR(sis_pointer_list_get(msg->argvs, 0)); 
-			recvnums++;
-			recvsize+=sis_sdslen(reply);
-			msec_t *recv_time = (msec_t *)reply;
-			// sis_out_binary(".1.", reply, 16);
-			if (recvnums%10000==0 || recvnums > maxnums -10 )
-			printf("=2=recv: %d size = %lld delay = %llu \n", recvnums, recvsize, now_time - *recv_time);
-
-			if (start_time == 0)
-			{
-				start_time = sis_time_get_now_msec();
-			}
-			replynums++;
-			// replysize+= 8;//sis_sdslen(reply);
-			// memmove(reply, &now_time, sizeof(msec_t));
-			// // sis_out_binary(".2.", reply, 16);
-			// s_sis_net_message *newmsg = sis_net_message_create();
-			// newmsg->cid = connectid;
-			// // sis_net_ans_with_bytes(newmsg, reply, sis_sdslen(reply));
-			// sis_net_ans_with_bytes(newmsg, reply, 8);
-			// sis_net_class_send(socket, newmsg);
-			// sis_net_message_destroy(newmsg);
-		}
-		else
-		{
-			printf("=2=recv no type. %x\n", msg->format);
-		}		
-	}
-}
-static void *thread_send_data(void *arg)
-{
-    while(connectid == -1)
-    {
-        sis_sleep(10);
-    }
-	start_time = sis_time_get_now_msec();
-	sendnums = 0;
-	char imem[bagssize];
-	while(sendnums < maxnums)
-	{
-		sendnums++;
-		sendsize+=bagssize;
-	    if (sendnums%10000==0 || sendnums > maxnums -10 )
-		printf("=2=send: %d size= %lld \n", sendnums, sendsize);
-
-		msec_t now_time = sis_time_get_now_msec();
-		memmove(imem, &now_time, sizeof(msec_t));
-		// sis_out_binary(".1.", imem, 16);
-		s_sis_net_message *msg = sis_net_message_create();
-		msg->cid = connectid;
-		sis_net_ask_with_bytes(msg, NULL, NULL, imem, bagssize);
-		if (sis_net_class_send(session, msg) < 0)
-		{
-			sis_net_message_destroy(msg);
-			break;
-		}
-		sis_net_message_destroy(msg);
-		// sis_sleep(1);
-	}
-    return NULL;
-}
-
-static void _cb_connected(void *handle_, int sid)
-{
-	s_sis_net_class *socket = (s_sis_net_class *)handle_;
-	
-	sis_net_class_set_cb(socket, sid, socket, cb_recv_data);
-	
-	connectid = sid;
-
-	if (socket->url->role== SIS_NET_ROLE_REQUEST)
-	{		
-		// 创建发送线程
-		LOG(5)("==client start.  [%d]\n", sid);	
-		pthread_create(&send_thread, NULL, thread_send_data, NULL);
-		// pthread_create(&send_thread, NULL, thread_send_data, NULL);
-	}
-	else
-	{
-		LOG(5)("==server start. [%d]\n", sid);
-	}
-}
-static void _cb_disconnect(void *handle_, int sid)
-{
-	s_sis_net_class *socket = (s_sis_net_class *)handle_;
-	connectid = -1;
-	if (socket->url->role== SIS_NET_ROLE_REQUEST)
-	{
-		LOG(5)("==client stop.\n");	
-	}
-	else
-	{
-		LOG(5)("==server stop.\n");	
-	}
-}
-// 单CPU 40M左右 多CPU 60M左右 基本够用 有时间再优化
-int exit_ = 0;
-void exithandle(int sig)
-{
-	if (exit_ == 1)
-	{
-		abort();
-	}
-	exit_ = 1;
-}
-
-int main(int argc, const char **argv)
-{
-	if (argc < 2)
-	{
-		return 0;
-	}
-	sis_socket_init();
-	signal(SIGINT, exithandle);
-
-	safe_memory_start();
-
-	// s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_SIP, "", TEST_PORT, NULL};
-	// s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, "", TEST_PORT, NULL};
-	s_sis_url url_srv = { SIS_NET_IO_WAITCNT, SIS_NET_ROLE_REQUEST, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_SIP, "", TEST_PORT, NULL};
-	s_sis_url url_cli = { SIS_NET_IO_CONNECT, SIS_NET_ROLE_ANSWER, 1, SIS_NET_PROTOCOL_WS, 0, 0, TEST_IP, "", TEST_PORT, NULL};
-
-	if (argv[1][0] == 's')
-	{	
-		session = sis_net_class_create(&url_srv);
-	}
-	else
-	{
-		session = sis_net_class_create(&url_cli);
-	}
-
-	session->cb_connected = _cb_connected;
-	session->cb_disconnect = _cb_disconnect;
-
-	sis_net_class_open(session);
-	if (session->url->role== SIS_NET_ROLE_REQUEST)
-	{
-		// while (sendnums < maxnums || recvnums < maxnums)
-		while (1)//sendnums < maxnums || _send_nums < maxnums)
-		{
-			sis_sleep(100);
-			if (exit_) break;
-		}
-
-		// sis_sleep(100);
-	}
-	else
-	{
-		while (recvnums < maxnums || replynums < maxnums)
-		{
-			sis_sleep(100);
-			if (exit_) break;
-		}
-		// sis_sleep(100);
-	}
-	// while (!exit_)
-	// {
-	// 	sis_sleep(100);
-	// }
-	int64 costmsec = sis_time_get_now_msec() - start_time;
-	printf("==cost %lld ms , send : [%d] %lld(k) ==> recv : [%d] %lld(k) \n", costmsec, sendnums, sendsize/costmsec, recvnums, recvsize/costmsec);  
-
-	sis_net_class_destroy(session);
-
-	safe_memory_stop();
-	return 0;		
-}
-#endif
