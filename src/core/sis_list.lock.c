@@ -284,6 +284,7 @@ void *_thread_fast_reader(void *argv_)
     {
         waitmsec = wqueue->zero_msec;
     }
+    bool send_zero = false; // 如果没有数据只发一次
     bool surpass_waittime = false;
     while (sis_wait_thread_noexit(wqueue->work_thread))
     {
@@ -311,12 +312,14 @@ void *_thread_fast_reader(void *argv_)
                 wqueue->rhead = new_head;
                 node = new_head;
             }
+            send_zero = 1;
         }
         else
         {
-            if (surpass_waittime && wqueue->zero_msec)
+            if (surpass_waittime && wqueue->zero_msec && send_zero)
             {
                 wqueue->cb_reader(wqueue->cb_source, NULL);
+                send_zero = 0;
             }
         }
         

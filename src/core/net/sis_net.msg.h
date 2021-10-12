@@ -142,14 +142,15 @@ void sis_message_set_object(s_sis_net_message *netmsg_, void *obj_, int isclear_
 void sis_net_ask_with_chars(s_sis_net_message *netmsg_, 
     char *cmd_, char *key_, char *val_, size_t vlen_);
 
-void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, 
-    char *cmd_, char *key_, char *val_, size_t vlen_);
+void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
 
 // in_被吸入
 void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);
 
 void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
-// 获取数据流
+// 获取字符数据
+s_sis_sds sis_net_get_val(s_sis_net_message *netmsg_);
+// 获取二进制数据流
 s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index);
 
 void sis_net_ans_with_noreply(s_sis_net_message *);

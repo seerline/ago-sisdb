@@ -117,7 +117,9 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
     }
     else
     {
-        sis_net_ask_with_bytes(msg, ask->cmd, ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
+        sis_message_set_cmd(msg, ask->cmd);
+        sis_message_set_key(msg, ask->key, NULL);
+        sis_net_ask_with_bytes(msg, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
     }
     // printf("send query: [%d] %d : %s %s %s %s %d\n", msg->cid, msg->style, 
     //     ask->serial ? ask->serial : "nil",

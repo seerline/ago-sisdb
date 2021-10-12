@@ -32,6 +32,10 @@ void _incrzip_memory_init(s_sis_incrzip_class *s_)
 
 void sis_incrzip_class_destroy(s_sis_incrzip_class *s_)
 {
+    if (s_->status == SIS_SIC_STATUS_DECODE)
+    {
+        sis_incrzip_uncompress_stop(s_);
+    }
     sis_bits_stream_destroy(s_->cur_stream);
     _incrzip_memory_free(s_);
     sis_pointer_list_destroy(s_->dbinfos);

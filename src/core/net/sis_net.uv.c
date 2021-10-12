@@ -382,7 +382,8 @@ void sis_socket_server_close(s_sis_socket_server *server_)
 	while (index >= 0)
 	{
 		s_sis_socket_session *session = (s_sis_socket_session *)sis_net_list_get(server_->sessions, index);		
-		if(!sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, cb_session_closed))
+		sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, NULL);
+		// if(!sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, cb_session_closed))
 		{
 			sis_net_list_stop(server_->sessions, session->sid - 1);
 		}
@@ -673,12 +674,16 @@ static void cb_server_write_after(uv_write_t *writer_, int status)
 void _cb_server_async_write(uv_async_t* handle)
 {
 	s_sis_socket_server *server = (s_sis_socket_server *)handle->data;
-	s_sis_net_node1 *node = server->write_list->live;
-
 	// sis_socket_close_handle((uv_handle_t*)handle, NULL);
 	if (!uv_is_closing((uv_handle_t *)handle))
 	{
 		uv_close((uv_handle_t*)handle, NULL);	//如果async没有关闭，消息队列是会阻塞的
+	}
+	s_sis_net_node1 *node = server->write_list->live;
+	if (!node)
+	{
+		sis_net_queue_stop(server->write_list);
+		return ;
 	}
 	s_sis_socket_session *session = sis_net_list_get(server->sessions, node->cid);
 	if (!session) 
@@ -832,6 +837,7 @@ bool sis_socket_server_delete(s_sis_socket_server *server, int sid_)
 		server->cb_disconnect_s2c(server->cb_source, sid_);
 	}
 	sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, cb_session_closed);
+	sis_net_list_stop(server->sessions, session->sid - 1);
 	LOG(5)("delete session.[%d == %d] %p\n", session->sid, sid_, session);
 	return true;	
 }
@@ -923,10 +929,6 @@ void cb_client_close(uv_handle_t *handle)
 	s_sis_socket_client *client = (s_sis_socket_client*)session->father;
 	
 	client->work_status |= SIS_UV_CONNECT_STOP;
-	if (client->cb_disconnect_c2s) 
-	{
-		client->cb_disconnect_c2s(client->cb_source, 0);
-	}	
 }
 
 void sis_socket_client_close(s_sis_socket_client *client_)
@@ -952,6 +954,11 @@ void sis_socket_client_close(s_sis_socket_client *client_)
 
 	client_->isinit = false;
 	LOG(5)("client close ok.\n");
+	// 没有回调 cb_client_close 时强制回调一次
+	if (client_->cb_disconnect_c2s) 
+	{
+		client_->cb_disconnect_c2s(client_->cb_source, 0);
+	}	
 }
 
 static void cb_client_read_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buffer)

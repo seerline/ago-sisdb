@@ -31,6 +31,7 @@ void sisdb_incr_clear(s_sisdb_incr *worker)
 	worker->cb_encode = NULL;
 	worker->cb_decode = NULL;
 	worker->curr_size = 0;
+	LOG(5)("restart ==2==\n");
 	sis_map_list_clear(worker->work_keys);
 	sis_map_list_clear(worker->work_sdbs);
 }
@@ -42,18 +43,18 @@ void sisdb_incr_set_keys(s_sisdb_incr *worker, s_sis_sds in_)
 	sis_string_list_load(klist, in_, sis_sdslen(in_), ",");
 	// 重新设置keys
 	int count = sis_string_list_getsize(klist);
-	LOG(5)("set unzip keys %d\n", count);
+	// LOG(5)("set unzip keys %d\n", count);
 	for (int i = 0; i < count; i++)
 	{
 		s_sis_sds key = sis_sdsnew(sis_string_list_get(klist, i));
 		sis_map_list_set(worker->work_keys, key, key);	
 	}
 	sis_string_list_destroy(klist);
-
+	LOG(5)("set unzip keys %d\n", sis_map_list_getsize(worker->work_keys));
 }
 void sisdb_incr_set_sdbs(s_sisdb_incr *worker, s_sis_sds in_)
 {
-	LOG(5)("set unzip sdbs\n");
+	LOG(5)("set unzip sdbs : %p\n", worker);
 	// printf("%s %d\n",in_, sis_sdslen(in_));
 	s_sis_json_handle *injson = sis_json_load(in_, sis_sdslen(in_));
 	if (!injson)
@@ -101,13 +102,13 @@ void _init_dict(s_sisdb_incr *worker)
 	}
 }
 // 
-void sisdb_incr_unzip_start(s_sisdb_incr *worker, void *cb_source_, cb_incrzip_decode *cb_decode)
+void sisdb_incr_unzip_start(s_sisdb_incr *worker, void *cb_source_, cb_incrzip_decode *cb_decode_)
 {
 	worker->incrzip = sis_incrzip_class_create();
 	worker->cb_source = cb_source_;
-	worker->cb_decode = cb_decode;
+	worker->cb_decode = cb_decode_;
 	_init_dict(worker);
-	sis_incrzip_uncompress_start(worker->incrzip, worker, cb_decode);
+	sis_incrzip_uncompress_start(worker->incrzip, cb_source_, cb_decode_);
 }
 
 void sisdb_incr_unzip_set(s_sisdb_incr *worker, s_sis_db_incrzip *in_)
@@ -159,6 +160,7 @@ void sisdb_incr_zip_set(s_sisdb_incr *worker, int kidx, int sidx, char *in_, siz
 	}
     if (worker->curr_size > worker->page_size)
     {
+		LOG(5)("restart compress . %d %d\n", worker->curr_size, worker->page_size);
 		worker->curr_size = 0;
         sis_incrzip_compress_restart(worker->incrzip, 1);
     }
@@ -174,8 +176,14 @@ void sisdb_incr_zip_set(s_sisdb_incr *worker, int kidx, int sidx, char *in_, siz
 }
 void sisdb_incr_zip_restart(s_sisdb_incr *worker, int init_)
 {
-	worker->curr_size = 0;
-	sis_incrzip_compress_restart(worker->incrzip, init_);
+	if (worker->curr_size > 0)
+	{
+		if (init_)
+		{
+			worker->curr_size = 0;
+		}
+		sis_incrzip_compress_restart(worker->incrzip, init_);
+	}
 } 
 
 void sisdb_incr_zip_stop(s_sisdb_incr *worker)

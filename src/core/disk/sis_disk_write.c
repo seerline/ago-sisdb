@@ -144,7 +144,7 @@ void sis_disk_writer_sdict_changed(s_sis_disk_writer *writer_, s_sis_dynamic_db 
 // 以保证后续写入数据时MAP是最新的
 int sis_disk_writer_set_kdict(s_sis_disk_writer *writer_, const char *in_, size_t ilen_)
 {
-    if (writer_->style == SIS_DISK_TYPE_LOG || !in_ || ilen_ < 1)
+    if (writer_->status == 0 || writer_->style == SIS_DISK_TYPE_LOG || !in_ || ilen_ < 1)
     {
         return 0;
     }
@@ -174,7 +174,7 @@ int sis_disk_writer_set_kdict(s_sis_disk_writer *writer_, const char *in_, size_
 // 只传递增量和变动的DB
 int sis_disk_writer_set_sdict(s_sis_disk_writer *writer_, const char *in_, size_t ilen_)
 {
-    if (writer_->style == SIS_DISK_TYPE_LOG || !in_ || ilen_ < 16) // {k:{fields:[[]]}}
+    if (writer_->status == 0 || writer_->style == SIS_DISK_TYPE_LOG || !in_ || ilen_ < 16) // {k:{fields:[[]]}}
     {
         return 0;
     }

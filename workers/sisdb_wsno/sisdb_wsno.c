@@ -200,7 +200,8 @@ static int _write_wsno_head(s_sisdb_wsno_cxt *context, int iszip)
         // sisdb_incr_set_keys(context->work_unzip, newkeys);
         // sisdb_incr_set_sdbs(context->work_unzip,  newsdbs);
         sisdb_incr_unzip_start(context->work_unzip, context, cb_decode);
-
+        printf("sno %s %s\n", context->wsno_keys, context->wsno_sdbs);
+        printf("new %s %s\n", newkeys, newsdbs);
         sis_sdsfree(newkeys); 
         sis_sdsfree(newsdbs); 
     }

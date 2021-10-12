@@ -18,6 +18,7 @@
 #include "sis_disk.h"
 #include "sis_net.msg.h"
 #include "sis_db.h"
+#include "sisdb_sub.h"
 #include "sisdb_incr.h"
 
 #include "worker.h"
@@ -43,11 +44,12 @@ typedef struct s_snodb_reader
 	void               *father;       // 来源对象 s_snodb_cxt
         
 	int                 rfmt;         // 返回数据的格式
-        
+	int                 status;       // 0 未初始化 1 初始化 2 正常工作 3 停止工作
+
 	bool                iszip;        // 是否返回压缩格式
 	bool                ishead;       // 是否从头发送
 	bool                isinit;       // 0 刚刚订阅 1 正常订阅 
-	bool                isstop;       // 为真 什么也不能干
+	bool                isstop;       // 用户中断 什么也不能干
  
 	bool                sub_whole;    // 是否返回所有的数据
 	///////以下为定制数据处理///////
@@ -86,40 +88,32 @@ typedef struct s_snodb_reader
 
 typedef struct s_snodb_cxt
 {
-	int                 status;  // 当前工作状态
-
-	bool                inited;      // 是否已经初始化
-	bool                stoped;      // 是否已经结束
+	int                 stoping;     // 当前工作状态
+   
+	int                 status;      // 0 1 2 3
 	int                 work_date;   // 工作日期
 	s_sis_sds			work_path;
 	s_sis_sds			work_name;
 
 	s_sisdb_incr       *work_ziper;
-	s_sis_sds           init_keys;   // 初始化的 keys
-	s_sis_sds           init_sdbs;   // 初始化的 sdbs
-  
+
 	s_sis_sds           work_keys;   // 工作 keys
 	s_sis_sds           work_sdbs;   // 工作 sdbs
 	s_sis_map_list     *map_keys;    // key 的结构字典表 s_sis_sds
 	s_sis_map_list     *map_sdbs;    // sdb 的结构字典表 s_sis_dynamic_db 包括
 
 						
-	int                 wait_msec;   // 超过多长时间生成新的块 毫秒
-	int                 initsize;    // 超过多大数据重新初始化 字节
-	int                 zip_size;    // 单个数据块的大小
-	int                 cur_size;    // 当前累计字节数 字节
-           
+	int                 wait_msec;   // 超过多长时间生成新的块 毫秒           
 	uint64              catch_size;  // 缓存数据保留最大的尺寸
            
 
-	int                 wlog_load;  // 是否正在加载 wlog       
-	int                 wlog_date;  // wlog    
-	int                 wlog_init;  // 是否发送了 keys 和 sdbs  
-	s_sis_worker       *wlog_worker;        // 当前使用的写log类
-
+	int                 wlog_date;    // wlog    
+	int                 wlog_init;    // 是否发送了 keys 和 sdbs  
+	s_sis_worker       *wlog_worker;  // 当前使用的写log类
 	s_sis_method       *wlog_method;
-	s_snodb_reader     *wlog_reader;         // 写wlog的读者
+	s_snodb_reader     *wlog_reader;  // 写wlog的读者
 
+	// int                 stop_minu;    // 停牌时间
 	int                 wfile_save;
 	sis_method_define  *wfile_cb_sub_start;
 	sis_method_define  *wfile_cb_sub_stop ;
@@ -137,7 +131,10 @@ typedef struct s_snodb_cxt
 	s_sis_object       *near_object;  // 最近一个其实数据包的指针
 	// 这个outputs需要设置为无限容量
 	s_sis_lock_list    *outputs;    // 输出的数据链 memory 每10分钟一个新的压缩数据块
-	s_sis_pointer_list *readeres;   // 读者列表 s_snodb_reader
+	s_sis_map_kint     *ago_reader_map;   // 读者列表 s_snodb_reader
+
+	int                 cur_readers;     // 现有工作人数
+	s_sis_map_kint     *cur_reader_map;   // 读者列表 s_snodb_reader
 
 	// 直接回调组装好的 s_sis_net_message
 	void               *cb_source;       // 
@@ -151,8 +148,7 @@ typedef struct s_snodb_cxt
 
 bool  snodb_init(void *, void *);
 void  snodb_uninit(void *);
-void  snodb_method_init(void *);
-void  snodb_method_uninit(void *);
+void  snodb_working(void *);
 
 // ***  数据流操作 ***//
 // 数据采用结构化数据压缩方式，实时压缩，放入无锁发送队列中 
@@ -177,7 +173,7 @@ int cmd_snodb_zpub(void *worker_, void *argv_);  // s_sis_db_incrzip
 // 默认从最新的具备完备数据的数据包开始订阅 seat : 0
 // seat : 1 从最开始订阅 
 // 订阅后首先收到 订阅start 然后收到 key sdb 然后开始持续收到压缩的数据 最后收到 stop 
-int cmd_snodb_zsub(void *worker_, void *argv_);
+// int cmd_snodb_zsub(void *worker_, void *argv_);
 // 订阅其他格式数据
 int cmd_snodb_sub(void *worker_, void *argv_);
 // 取消订阅
@@ -195,7 +191,7 @@ int cmd_snodb_rlog(void *worker_, void *argv_);
 //------------------------snodb function -----------------------//
 //////////////////////////////////////////////////////////////////
 // 初始化一个读者 并启动
-int snodb_start_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip);
+int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg);
 // 清理指定的 reader
 int snodb_remove_reader(s_snodb_cxt *context_, int cid_);
 // 直接读取单键值数据

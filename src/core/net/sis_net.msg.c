@@ -209,31 +209,6 @@ void sis_net_message_publish(s_sis_net_message *agomsg_, s_sis_net_message *newm
 //  s_sis_net_message 操作类函数
 ////////////////////////////////////////////////////////
 
-static inline void sis_net_set_cmd(s_sis_net_message *netmsg_, char *cmd_)
-{
-    sis_sdsfree(netmsg_->service);
-    sis_sdsfree(netmsg_->cmd);
-    netmsg_->service = NULL;
-    netmsg_->cmd = NULL;
-    if (cmd_)
-    {
-        s_sis_sds service = NULL;
-        s_sis_sds command = NULL; 
-        int cmds = sis_str_divide_sds(cmd_, '.', &service, &command);
-        if (cmds == 2)
-        {
-            netmsg_->service = service;
-            netmsg_->cmd = command;
-        }
-        else
-        {
-            netmsg_->cmd = service;
-        }
-    }
-    netmsg_->switchs.has_service = netmsg_->service ? 1 : 0;
-    netmsg_->switchs.has_cmd = netmsg_->cmd ? 1 : 0;
-}
-
 static inline void sis_net_new_argvs(s_sis_net_message *netmsg_,  s_sis_object *obj_, int clear_)
 {
 	if (!netmsg_->argvs)
@@ -268,12 +243,27 @@ void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const c
 }
 void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_)
 {
+    sis_sdsfree(netmsg_->service);
     sis_sdsfree(netmsg_->cmd);
+    netmsg_->service = NULL;
     netmsg_->cmd = NULL;
     if (cmd_)
     {
-        sis_net_set_cmd(netmsg_, (char *)cmd_);
+        s_sis_sds service = NULL;
+        s_sis_sds command = NULL; 
+        int cmds = sis_str_divide_sds(cmd_, '.', &service, &command);
+        if (cmds == 2)
+        {
+            netmsg_->service = service;
+            netmsg_->cmd = command;
+        }
+        else
+        {
+            netmsg_->cmd = service;
+        }
     }
+    netmsg_->switchs.has_service = netmsg_->service ? 1 : 0;
+    netmsg_->switchs.has_cmd = netmsg_->cmd ? 1 : 0;
 }
 void sis_message_set_ans(s_sis_net_message *netmsg_, int ans_, int isclear_)
 {
@@ -312,18 +302,15 @@ void sis_net_ask_with_chars(s_sis_net_message *netmsg_,
     netmsg_->format = SIS_NET_FORMAT_CHARS;
     netmsg_->switchs.is_reply = 0;
     netmsg_->switchs.has_ans = 0;
-    sis_net_set_cmd(netmsg_, cmd_);
+    sis_message_set_cmd(netmsg_, cmd_);
     SIS_NET_SET_STR(netmsg_->switchs.has_key, netmsg_->key, key_);
     SIS_NET_SET_BUF(netmsg_->switchs.has_ask, netmsg_->ask, val_, vlen_);
 }
-void sis_net_ask_with_bytes(s_sis_net_message *netmsg_,
-    char *cmd_, char *key_, char *val_, size_t vlen_)
+void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, char *val_, size_t vlen_)
 {
     netmsg_->format = SIS_NET_FORMAT_BYTES;
     netmsg_->switchs.is_reply = 0;
     netmsg_->switchs.has_ans = 0;
-    sis_net_set_cmd(netmsg_, cmd_);
-    SIS_NET_SET_STR(netmsg_->switchs.has_key, netmsg_->key, key_);
     netmsg_->switchs.has_argvs = 1;
     s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(val_, vlen_));
 	sis_net_new_argvs(netmsg_, obj, 1);
@@ -348,6 +335,15 @@ void sis_net_ans_with_bytes(s_sis_net_message *netmsg_, const char *in_, size_t 
     netmsg_->switchs.has_argvs = 1;
     s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnewlen(in_, ilen_));
 	sis_net_new_argvs(netmsg_, obj, 1);
+}
+
+s_sis_sds sis_net_get_val(s_sis_net_message *netmsg_)
+{
+    if (netmsg_->switchs.is_reply)
+    {
+        return netmsg_->rmsg;
+    }
+    return netmsg_->ask;
 }
 
 s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index)

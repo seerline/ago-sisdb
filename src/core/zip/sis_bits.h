@@ -749,7 +749,7 @@ static inline int sis_bits_stream_get_chars(s_sis_bits_stream *s_, char *in_, si
 // 0 表示和前值一样
 // 1 + size长度+字符
     uint8 signbit = sis_bits_stream_get(s_, 1);
-     printf("signbit : %d\n", signbit);
+    // printf("signbit : %d\n", signbit);
     if (signbit == 0)
     {
         return 0;
@@ -767,7 +767,7 @@ static inline int sis_bits_stream_get_chars(s_sis_bits_stream *s_, char *in_, si
         }
     }
     in_[ilen_ - 1] = 0;
-    printf("readchar : %d %s\n", size, in_);
+    // printf("readchar : %d %s\n", size, in_);
     return size;
 }
 static inline int sis_bits_stream_get_incr_chars(s_sis_bits_stream *s_, char *in_, size_t ilen_, char *ago_, size_t alen_)

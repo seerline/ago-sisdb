@@ -82,7 +82,7 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 
         }
 	}
-    sis_sleep(100);
+    sis_sleep(300);
 	return false;
 }
 s_sis_work_thread *sis_work_thread_create()

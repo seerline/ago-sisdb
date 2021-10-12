@@ -17,6 +17,11 @@
 #define SIS_SUB_MULKEY_CMP      7   // 订阅多个KS值 头匹配 key
 #define SIS_SUB_MULKEY_ALL      8   // 订阅所有的KS值 *.* msub
 
+#define SIS_SUB_STATUS_NONE      0   // 订阅状态 未开始
+#define SIS_SUB_STATUS_INIT      1   // 订阅状态 收到开始信号
+#define SIS_SUB_STATUS_WORK      2   // 订阅状态 收到数据信号
+#define SIS_SUB_STATUS_STOP      3   // 订阅状态 收到停止信号
+
 // 统一用sub表示订阅 需要头匹配时 第一个key必须是 *,k1,k2 这样可以统一订阅的参数
 // key中只要有 , 就表示为头匹配 sdb 始终是强匹配
 // sub_keys 和 sub_sdbs 可能为 * 此时需要特殊处理
