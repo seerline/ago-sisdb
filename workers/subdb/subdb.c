@@ -29,15 +29,16 @@ s_sis_modules sis_modules_subdb = {
   subdb_methods,
 };
 
-int subdb_userinfo_incr(s_subdb_cxt *context, int cid)
+int subdb_userinfo_incr(s_subdb_cxt *context, s_sis_net_message *netmsg)
 {
-    s_subdb_userinfo *o = sis_map_kint_get(context->map_users, cid);
+    s_subdb_userinfo *o = sis_map_kint_get(context->map_users, netmsg->cid);
     if (!o)
     {
         o = SIS_MALLOC(s_subdb_userinfo, o);
-        o->cid = cid;
+        o->cid = netmsg->cid;
         o->status = SIS_SUB_STATUS_INIT;
-        sis_map_kint_set(context->map_users, cid, o);
+        sis_str_divide_sds(netmsg->key, '.', &o->sub_keys, &o->sub_sdbs);
+        sis_map_kint_set(context->map_users, o->cid, o);
         return 1;
     }
     return 0;
@@ -57,7 +58,13 @@ void subdb_userinfo_decr(s_subdb_cxt *context, int cid)
         context->work_readers = sis_max(context->work_readers, 0);
     }
 }
-
+void subdb_userinfo_destroy(void *info_)
+{
+    s_subdb_userinfo *info = (s_subdb_userinfo *)info_;
+    sis_sdsfree(info->sub_keys);
+    sis_sdsfree(info->sub_sdbs);
+    sis_free(info);
+}
 bool  subdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -97,7 +104,7 @@ bool  subdb_init(void *worker_, void *argv_)
     }
     context->work_sub_cxt = sisdb_sub_cxt_create();
     context->map_users = sis_map_kint_create();
-    context->map_users->type->vfree = sis_free_call;
+    context->map_users->type->vfree = subdb_userinfo_destroy;
 
 
     return true;
@@ -128,7 +135,7 @@ int cmd_subdb_init(void *worker_, void *argv_)
     
 	context->cb_source = sis_message_get(msg, "cb_source");
 	context->cb_net_message = sis_message_get_method(msg, "cb_net_message");
-
+    
     sisdb_sub_cxt_init(context->work_sub_cxt, context->cb_source, context->cb_net_message);
     // 初始化用户信息
     // s_sis_dict_entry *de;
@@ -318,13 +325,17 @@ bool _subdb_reader_init(s_subdb_cxt *context)
         sis_net_message_clear(netmsg);
         netmsg->cid = userinfo->cid;
         sis_message_set_key(netmsg, "_keys_", NULL);
-        sis_net_ans_with_chars(netmsg, context->work_keys, sis_sdslen(context->work_keys));
+        s_sis_sds keys = sis_match_key(userinfo->sub_keys, context->work_keys);
+        sis_net_ans_with_chars(netmsg, keys, sis_sdslen(keys));
         context->cb_net_message(context->cb_source, netmsg);
+        sis_sdsfree(keys);
         sis_net_message_clear(netmsg);
         netmsg->cid = userinfo->cid;
         sis_message_set_key(netmsg, "_sdbs_", NULL);
-        sis_net_ans_with_chars(netmsg, context->work_sdbs, sis_sdslen(context->work_sdbs));
+        s_sis_sds sdbs = sis_match_sdb_of_sds(userinfo->sub_sdbs, context->work_sdbs);
+        sis_net_ans_with_chars(netmsg, sdbs, sis_sdslen(sdbs));
         context->cb_net_message(context->cb_source, netmsg);
+        sis_sdsfree(sdbs);
         sis_net_message_clear(netmsg);
         netmsg->cid = userinfo->cid;
         sis_net_ans_with_sub_wait(netmsg, sdate);
@@ -360,8 +371,8 @@ int cmd_subdb_sub(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_subdb_cxt *context = (s_subdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-    subdb_userinfo_incr(context, netmsg->cid);
-    int o = sisdb_sub_cxt_sub(context->work_sub_cxt, netmsg);
+    subdb_userinfo_incr(context, netmsg);
+    int o = sisdb_sub_cxt_hsub(context->work_sub_cxt, netmsg);
     sis_net_ans_with_int(netmsg, o);
     return SIS_METHOD_OK;
 }

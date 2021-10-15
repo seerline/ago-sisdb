@@ -213,7 +213,7 @@ void sis_wait_queue_destroy(s_sis_wait_queue *queue_)
         sis_object_decr(obj);
     }
     sis_mutex_unlock(&queue_->lock);
-    printf("=== sis_wait_queue_destroy. %d\n", queue_->count);
+    // printf("=== sis_wait_queue_destroy. %d\n", queue_->count);
     sis_unlock_node_destroy(queue_->tail);
     sis_free(queue_);
 }
@@ -296,6 +296,7 @@ void *_thread_fast_reader(void *argv_)
             sis_mutex_unlock(&wqueue->wlock);
         }
         // 读不用加锁
+        sis_mutex_lock(&wqueue->rlock);
         s_sis_unlock_node *node = wqueue->rhead;
         if (node->next)
         {
@@ -322,7 +323,7 @@ void *_thread_fast_reader(void *argv_)
                 send_zero = 0;
             }
         }
-        
+        sis_mutex_unlock(&wqueue->rlock);
         if (sis_wait_thread_wait(wqueue->work_thread, waitmsec) == SIS_WAIT_TIMEOUT)
         {
             // printf("timeout exit. %d %p\n", waitmsec, reader);
@@ -350,6 +351,7 @@ s_sis_fast_queue *sis_fast_queue_create(
     o->wtail = o->whead;
     o->wnums = 0;
     sis_mutex_init(&o->wlock, NULL);
+    sis_mutex_init(&o->rlock, NULL);
 
     o->cb_source = cb_source_ ? cb_source_ : o;
     o->cb_reader = cb_reader_;
@@ -380,9 +382,11 @@ void sis_fast_queue_destroy(s_sis_fast_queue *queue_)
     sis_free(queue_);
 }
 void sis_fast_queue_clear(s_sis_fast_queue *queue_)
-{
+{ 
     sis_mutex_lock(&queue_->wlock);
     _fast_queue_move(queue_); // 从w迁移到r
+    sis_mutex_unlock(&queue_->wlock);
+    sis_mutex_lock(&queue_->rlock);
     // 此时没有人在读 直接清理所有 rhead
     s_sis_unlock_node *node = queue_->rhead;
     while (node->next)
@@ -390,10 +394,11 @@ void sis_fast_queue_clear(s_sis_fast_queue *queue_)
         s_sis_unlock_node *new_head = node->next; 
         sis_object_decr(new_head->obj); // ???
         sis_unlock_node_destroy(node);
-        node = new_head;
         queue_->rnums--;
+        queue_->rhead = new_head;
+        node = new_head;
     }
-    sis_mutex_unlock(&queue_->wlock);
+    sis_mutex_unlock(&queue_->rlock);
 }   
 int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_)
 {  
@@ -507,7 +512,7 @@ s_sis_lock_reader *sis_lock_reader_create(s_sis_lock_list *ullist_,
 {
     s_sis_lock_reader *o = SIS_MALLOC(s_sis_lock_reader, o);
     sis_str_get_time_id(o->sign, 16);
-    printf("new sign=%s\n", o->sign);
+    // printf("new sign=%s\n", o->sign);
     o->father = ullist_;
     o->cb_source = cb_source_ ? cb_source_ : o;
     o->cb_recv = cb_recv_;
@@ -529,7 +534,7 @@ void sis_lock_reader_destroy(void *reader_)
 	{
 		sis_wait_thread_destroy(reader->work_thread);
 	}
-    printf("del sign=%s\n", reader->sign);
+    // printf("del sign=%s\n", reader->sign);
     sis_free(reader); 
 }
 void sis_lock_reader_zero(s_sis_lock_reader *reader_, int zero_msec_)

@@ -98,12 +98,12 @@ typedef struct s_sis_net_message {
 #define SIS_NET_SHOW_MSG(_s_,_n_) { s_sis_net_message *_msg_ = (s_sis_net_message *)_n_; \
 	uint16 *sw = (uint16 *)&_msg_->switchs; \
 	if (_msg_->switchs.is_reply) {\
-		printf("%s: [%d] %x : %d %s %s  argvs :%d\n", _s_, _msg_->cid, *sw, \
+		printf("ans %s: [%d] %x : %d %s %s  argvs :%d\n", _s_, _msg_->cid, *sw, \
 			_msg_->rans, _msg_->key ? _msg_->key : "nil",\
 			_msg_->rmsg ? _msg_->rmsg : "nil",\
 			_msg_->argvs ? _msg_->argvs->count : 0);\
 	} else {\
-		printf("%s: [%d] %x : %s %s %s %s argvs :%d\n", _s_, _msg_->cid, *sw, \
+		printf("ask %s: [%d] %x : %s %s %s %s argvs :%d\n", _s_, _msg_->cid, *sw, \
 			_msg_->service ? _msg_->service : "nil",\
 			_msg_->cmd ? _msg_->cmd : "nil",\
 			_msg_->key ? _msg_->key : "nil",\

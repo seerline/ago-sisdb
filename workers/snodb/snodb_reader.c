@@ -17,7 +17,7 @@ static int cb_dict_sdbs(void *source, void *argv);
 int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 {
     s_snodb_cxt *context = (s_snodb_cxt *)context_;
-
+	
 	s_snodb_reader *reader = snodb_reader_create();
 	reader->iszip = false;
 	reader->cid = netmsg->cid;
@@ -418,12 +418,14 @@ void snodb_reader_destroy(void *reader_)
 	{
 		sisdb_incr_unzip_stop(reader->sub_unziper);
 		sisdb_incr_destroy(reader->sub_unziper);	
+		reader->sub_unziper = NULL;
 	}
 	if (reader->sub_ziper)
 	{
 		// 次级退出 上级会报异常 onebyone = 1
 		sisdb_incr_zip_stop(reader->sub_ziper);
-		sisdb_incr_destroy(reader->sub_ziper);	
+		sisdb_incr_destroy(reader->sub_ziper);
+		reader->sub_ziper = NULL;	
 	}
 	sis_sdsfree(reader->sub_keys);
 	sis_sdsfree(reader->sub_sdbs);

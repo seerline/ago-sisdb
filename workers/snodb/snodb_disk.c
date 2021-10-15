@@ -25,7 +25,7 @@ static int cb_snodb_wlog_start(void *worker_, void *argv_)
 }
 static int cb_snodb_wlog_stop(void *worker_, void *argv_)
 {
-    s_snodb_cxt *context = (s_snodb_cxt *)worker_;
+    // s_snodb_cxt *context = (s_snodb_cxt *)worker_;
 	const char *sdate = (const char *)argv_;
 	LOG(5)("load wlog stop. %s\n", sdate);
 	// printf("load wlog cost : %lld\n", sis_time_get_now_msec()-_speed_msec);
@@ -235,9 +235,18 @@ int snodb_wlog_to_snos(s_snodb_cxt *snodb_)
 		// 文件不存在就返回
 		return SIS_METHOD_ERROR;
 	}
+	if (sis_disk_control_exist(snodb_->work_path, snodb_->work_name, SIS_DISK_TYPE_SNO, snodb_->work_date))
+	{
+		// 文件不存在就返回
+		LOG(5)("sno already exist. %s %s %d\n", snodb_->work_path, snodb_->work_name, snodb_->work_date);
+		sis_disk_control_remove(snodb_->work_path, snodb_->work_name, SIS_DISK_TYPE_SNO, snodb_->work_date);
+		// return SIS_METHOD_ERROR; 
+	}
 	// 设置写文件回调
 	{
 		s_sis_message *msg = sis_message_create();
+		sis_message_set_str(msg, "work-path", snodb_->work_path, sis_sdslen(snodb_->work_path));
+		sis_message_set_str(msg, "work-name", snodb_->work_name, sis_sdslen(snodb_->work_name));
 		if (sis_worker_command(snodb_->wfile_worker, "getcb", msg) != SIS_METHOD_OK)
 		{
 			sis_message_destroy(msg);

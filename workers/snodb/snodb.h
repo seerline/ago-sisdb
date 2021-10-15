@@ -128,13 +128,13 @@ typedef struct s_snodb_cxt
 	s_sis_fast_queue   *inputs;    // 传入的数据链 
 
 
-	s_sis_object       *near_object;  // 最近一个其实数据包的指针
+	s_sis_object       *near_object;     // 最近一个其实数据包的指针
 	// 这个outputs需要设置为无限容量
-	s_sis_lock_list    *outputs;    // 输出的数据链 memory 每10分钟一个新的压缩数据块
-	s_sis_map_kint     *ago_reader_map;   // 读者列表 s_snodb_reader
+	s_sis_lock_list    *outputs;          // 输出的数据链 memory 每10分钟一个新的压缩数据块
+	s_sis_map_kint     *ago_reader_map;  // 读者列表 s_snodb_reader
 
 	int                 cur_readers;     // 现有工作人数
-	s_sis_map_kint     *cur_reader_map;   // 读者列表 s_snodb_reader
+	s_sis_map_kint     *cur_reader_map;  // 读者列表 s_snodb_reader
 
 	// 直接回调组装好的 s_sis_net_message
 	void               *cb_source;       // 

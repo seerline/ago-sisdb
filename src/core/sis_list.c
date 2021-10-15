@@ -371,6 +371,12 @@ void sis_node_clear(void *node_)
 	{
 		node = node->prev;
 	}
+	// while(node)
+	// {
+	// 	s_sis_node *next = node->next;
+	// 	sis_free(node);	
+	// 	node = next;
+	// } 
 	s_sis_node *next = node->next;
 	while (next)
 	{

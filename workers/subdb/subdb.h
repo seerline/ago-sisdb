@@ -10,8 +10,10 @@
 
 typedef struct s_subdb_userinfo
 {
-	int	 cid;
-	int	 status;    // 0 初始化 1 正在订阅 2 停止订阅 
+	int	            cid;
+	int	            status;    // 0 初始化 1 正在订阅 2 停止订阅 
+	s_sis_sds       sub_keys;   // 订阅 keys
+	s_sis_sds       sub_sdbs;   // 订阅 sdbs
 } s_subdb_userinfo;
 
 typedef struct s_subdb_cxt

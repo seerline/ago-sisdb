@@ -48,7 +48,7 @@
 /////////////////////////////////////////////////
 // 速度测试
 
-#if 0
+#if 0 
 
 #include <signal.h>
 
@@ -166,12 +166,17 @@ void _thread_write(void* arg)
 {
 	s_test_client *client = (s_test_client *)arg;
 	int id = client->sno;
-	int count = 100*1000*1000; 
+	int count = 20*1000*1000; 
+	// 10*1000*1000 10240000
 	s_sis_sds str = sis_sdsnewlen(NULL, sendsize);
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, str);
 	for (int i = 0; i < count; i++)
 	{
 		sis_socket_server_send(server, id, obj);
+		if (i%1000 == 0)
+		{
+			sis_sleep(2);
+		}
 	}
 	sis_object_destroy(obj);
 	printf("--- send end. %p %d \n", client, id);	
@@ -299,24 +304,54 @@ int main(int argc, char **argv)
 
 	while (__exit != 2)
 	{
-		// if (__isclient)
-		// {
-		// 	for (int i = 0; i < MAX_TEST_CLIENT; i++)
-		// 	{
-		// 		if (client[i]->status  == 0)
-		// 		{
-		// 			sis_socket_client_open(client[i]->client);
-		// 			printf("client working .%d. status %d \n", i , client[i]->status );
-		// 		}
-		// 	}
-		// }
-		sis_sleep(50);
+		printf("--- check memory --- \n");
+		safe_memory_stop();
+		sis_sleep(1000);
+		// sis_sleep(50);
 	}
 	safe_memory_stop();
 	return 0;	
 }
+#endif
 
+#if 0
 
+uv_thread_t server_thread;
+
+void _thread_write(void* arg)
+{
+	int count = 20*1000*1000; 
+	s_sis_sds *data = sis_malloc(sizeof(s_sis_sds) * count);
+	int start = 0;
+	for (int i = 0; i < count; i++)
+	{
+		data[i] = sis_sdsnewlen(NULL, 10000);
+		if (i % 100000 == 0)
+		{
+			for (int k = start; k < i; k++)
+			{
+				sis_sdsfree(data[k]);
+			}
+			sis_sleep(1000);
+			printf("---free %d -> %d 100M\n", start, i);
+			start = i;
+		}
+	}
+	sis_free(data);
+}
+// 内存释放测试
+int main(int argc, char **argv)
+{
+	safe_memory_start();
+
+	uv_thread_create(&server_thread, _thread_write, NULL);
+
+	while (1)
+	{
+		sis_sleep(1000);
+		safe_memory_stop();
+	}
+}
 #endif
 
 #if 0

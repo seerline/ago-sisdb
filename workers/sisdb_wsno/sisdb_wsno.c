@@ -258,22 +258,22 @@ int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }
     s_sis_message *msg = (s_sis_message *)argv_; 
-    // {
-    //     s_sis_sds str = sis_message_get_str(msg, "work-path");
-    //     if (str)
-    //     {
-    //         sis_sdsfree(context->work_path);
-    //         context->work_path = sis_sdsdup(str);
-    //     }
-    // }
-    // {
-    //     s_sis_sds str = sis_message_get_str(msg, "work-name");
-    //     if (str)
-    //     {
-    //         sis_sdsfree(context->work_name);
-    //         context->work_name = sis_sdsdup(str);
-    //     }
-    // }
+    { 
+        s_sis_sds str = sis_message_get_str(msg, "work-path");
+        if (str)
+        {
+            sis_sdsfree(context->work_path);
+            context->work_path = sis_sdsdup(str);
+        }
+    }
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-name");
+        if (str)
+        {
+            sis_sdsfree(context->work_name);
+            context->work_name = sis_sdsdup(str);
+        }
+    }
     // {
     //     s_sis_sds str = sis_message_get_str(msg, "sub-keys");
     //     if (str)

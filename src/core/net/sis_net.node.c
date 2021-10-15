@@ -35,8 +35,9 @@ s_sis_net_nodes *sis_net_nodes_create()
 	sis_mutex_init(&o->lock, NULL);
 	return o;
 }
-void _net_nodes_free_read(s_sis_net_nodes *nodes_)
+int _net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
+	int count = 0;
 	if (nodes_->rhead)
 	{
 		s_sis_net_node *next = nodes_->rhead;	
@@ -45,11 +46,13 @@ void _net_nodes_free_read(s_sis_net_nodes *nodes_)
 			s_sis_net_node *node = next->next;
 			sis_net_node_destroy(next);
 			next = node;
+			count++;
 		}
 		nodes_->rhead = NULL;
 	}
 	nodes_->rtail = NULL;	
-	nodes_->rnums = 0;	
+	nodes_->rnums = 0;
+	return count;	
 }
 void sis_net_nodes_destroy(s_sis_net_nodes *nodes_)
 {
@@ -148,13 +151,15 @@ int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
 	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
 	return 	nodes_->rnums;
 }
-void sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
+int sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
+	int count = 0;
     sis_mutex_lock(&nodes_->lock);
-	_net_nodes_free_read(nodes_);
+	count = _net_nodes_free_read(nodes_);
     sis_mutex_unlock(&nodes_->lock);
+	return count;
 }
-int  sis_net_nodes_none(s_sis_net_nodes *nodes_)
+int  sis_net_nodes_count(s_sis_net_nodes *nodes_)
 {
 	sis_mutex_lock(&nodes_->lock);
 	int count = nodes_->rnums + nodes_->wnums;

@@ -25,7 +25,7 @@ struct s_sis_method snodb_methods[] = {
     {"sub",       cmd_snodb_sub,    SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据流 
     {"unsub",     cmd_snodb_unsub,  SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅数据流 
     {"get",       cmd_snodb_get,    SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据流 
-    {"clear",     cmd_snodb_clear,  SIS_METHOD_ACCESS_NONET, NULL},  // 清理数据流 
+    {"clear",     cmd_snodb_clear,  SIS_METHOD_ACCESS_NONET, NULL},  // 清理数据流  
 // 磁盘工具
     {"rlog",      cmd_snodb_rlog,  0, NULL},  // 异常退出时加载磁盘数据
     {"wlog",      cmd_snodb_wlog,  0, NULL},  // 异常退出时加载磁盘数据
@@ -211,6 +211,7 @@ bool snodb_init(void *worker_, void *argv_)
 	{
 		// 先从目录中获取wlog中数据 并加载到内存中
 		// 0 表示加载当前目录下有的文件
+		LOG(5)("load wlog start.\n");
 		int isload = snodb_wlog_load(context);
 		LOG(5)("load wlog complete. %d\n", isload);
 
@@ -401,6 +402,10 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 	{
 		return SIS_METHOD_ERROR;
 	}
+	if (context->inputs)
+	{
+		sis_fast_queue_clear(context->inputs);
+	}
 	if (context->work_ziper)
 	{
 		// 如果有压缩组件 就停止 
@@ -429,7 +434,7 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 	}
 	sis_dict_iter_free(di);
 	context->cur_readers = 0;
-	context->status = SIS_SUB_STATUS_STOP; // 停止表示当日数据已经落盘
+	// context->status = SIS_SUB_STATUS_STOP; // 停止表示当日数据已经落盘
 
 	// 停止写wlog文件
 	if (context->wlog_worker)
@@ -455,7 +460,7 @@ int _snodb_write_incrzip(void *context_, char *imem_, size_t isize_)
 		LOG(8)("zpub nums = %d %d | status %d \n", _inzipnums, context->outputs->users->count, context->status);
 	}
 #endif
-	if (!imem_ || isize_ < 1)
+	if (context->stoping || !imem_ || isize_ < 1)
 	{
 		return -1;
 	}
@@ -557,7 +562,6 @@ int cmd_snodb_ipub(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }
 	_snodb_write_bytes(context, in->kidx, in->sidx, in->data, in->size);
-    // sisdb_incr_zip_set(context->work_ziper, in->kidx, in->sidx, in->data, in->size);
     return SIS_METHOD_OK;
 }
 int cmd_snodb_pub(void *worker_, void *argv_)
@@ -605,7 +609,7 @@ int cmd_snodb_sub(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
 	s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-	
+	SIS_NET_SHOW_MSG("register sub === ", netmsg);
 	snodb_register_reader(context, netmsg);
 	
 	return SIS_METHOD_OK;
