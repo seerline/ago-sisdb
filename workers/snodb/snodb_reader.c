@@ -19,14 +19,14 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
     s_snodb_cxt *context = (s_snodb_cxt *)context_;
 	
 	s_snodb_reader *reader = snodb_reader_create();
-	reader->iszip = false;
 	reader->cid = netmsg->cid;
 	reader->status = SIS_SUB_STATUS_INIT;
 	if (netmsg->name)
 	{
 		reader->serial = sis_sdsdup(netmsg->name);
 	}
-	reader->rfmt = SISDB_FORMAT_JSON;
+	reader->iszip = true;
+	reader->rfmt = SISDB_FORMAT_BITZIP;
     reader->father = context;
     reader->ishead = 0;
 	reader->sub_date = context->work_date;
@@ -41,9 +41,10 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
             sis_json_close(argnode);
         }
 	}
-	if (reader->rfmt == SISDB_FORMAT_BITZIP)
+	// 默认压缩传输
+	if (reader->rfmt != SISDB_FORMAT_BITZIP)
 	{
-		reader->iszip = true;
+		reader->iszip = false;
 	}
 	if (reader->iszip)
 	{
@@ -99,13 +100,14 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 
 s_sis_object *snodb_read_get_obj(s_snodb_reader *reader_)
 {
-	reader_->sub_disker = sis_worker_create_of_name(NULL, "sisdb_rsno", NULL);
 
 	s_snodb_cxt *snodb = (s_snodb_cxt *)reader_->father;
-
+	if (!snodb->rfile_config)
+	{
+		return NULL;
+	}
+	reader_->sub_disker = sis_worker_create(NULL, snodb->rfile_config);
 	s_sis_message *msg = sis_message_create();
-	sis_message_set_str(msg, "work-path", snodb->work_path, sis_sdslen(snodb->work_path));
-	sis_message_set_str(msg, "work-name", snodb->work_name, sis_sdslen(snodb->work_name));
 	sis_message_set_int(msg, "sub-date", reader_->sub_date);
 	sis_message_set_str(msg, "sub-keys", reader_->sub_keys, sis_sdslen(reader_->sub_keys));
 	sis_message_set_str(msg, "sub-sdbs", reader_->sub_sdbs, sis_sdslen(reader_->sub_sdbs));
@@ -139,7 +141,7 @@ s_sis_object *snodb_read_get_obj(s_snodb_reader *reader_)
 	return obj;
 }
 // 只支持字符串数据获取 只支持单个结构单个品种
-int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip)
+int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 {
     s_snodb_cxt *context = (s_snodb_cxt *)context_;
 
@@ -149,7 +151,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip)
 	}
 
 	s_snodb_reader *reader = snodb_reader_create();
-	reader->iszip = iszip;
+	reader->iszip = false;
 	reader->cid = netmsg->cid;
 	if (netmsg->name)
 	{
@@ -169,6 +171,10 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip)
             reader->sub_date = sis_json_get_int(argnode->node, "sub-date", context->work_date);
             sis_json_close(argnode);
         }
+	}
+	if (reader->rfmt == SISDB_FORMAT_BITZIP)
+	{
+		reader->iszip = true;
 	}
 	reader->sub_whole = false;
     sis_str_divide_sds(netmsg->key, '.', &reader->sub_keys, &reader->sub_sdbs);
@@ -543,6 +549,7 @@ static int cb_output_realtime(void *reader_)
 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
 	s_snodb_cxt *snodb = (s_snodb_cxt *)reader->father;
 
+	// printf("========cb_output_realtime \n");
 	char sdate[32];
 	sis_llutoa(snodb->work_date, sdate, 32, 10);
 	if(snodb->status != SIS_SUB_STATUS_STOP)
@@ -566,6 +573,7 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)context_;
 	// s_snodb_cxt *snodb = (s_snodb_cxt *)reader->father;
+	// printf("cb_encode %p %p\n", in_, reader->cb_sub_inctzip);
 	if (reader->cb_sub_inctzip)
 	{
         s_sis_db_incrzip zmem = {0};
@@ -619,20 +627,26 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 		// 先从大表中得到实际名称
 		const char *kname = sisdb_incr_get_kname(reader->sub_unziper, kidx_);
 		const char *sname = sisdb_incr_get_sname(reader->sub_unziper, sidx_);
+		// printf("cb_decode %p %d %d | %d %d | %d %d\n", in_, kidx_, sidx_, 
+		// 	sis_map_list_getsize(reader->sub_unziper->work_keys), 
+		// 	sis_map_list_getsize(reader->sub_unziper->work_sdbs),
+		// 	sis_map_list_getsize(reader->sub_ziper->work_keys),
+		// 	sis_map_list_getsize(reader->sub_ziper->work_sdbs));
 
 		if (!sname || !kname)
 		{
 			return 0;
 		}
 		int kidx = sisdb_incr_get_kidx(reader->sub_ziper, kname);
-		int sidx = sisdb_incr_get_kidx(reader->sub_ziper, sname);
+		int sidx = sisdb_incr_get_sidx(reader->sub_ziper, sname);
 		if (kidx < 0 || sidx < 0)
 		{
-			// 通过此判断是否是需要的key和sdb
+			// LOG(5)("fail = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
+		// 通过此判断是否是需要的key和sdb
 			return 0;
 		}
 
-		LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
+		// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
 		sisdb_incr_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
 
 	}
@@ -658,20 +672,20 @@ int snodb_reader_realtime_start(s_snodb_reader *reader_)
 		{
 			sisdb_incr_clear(reader_->sub_ziper);			
 		}  
-		sisdb_incr_zip_start(reader_->sub_ziper, reader_, cb_encode);
 
 		work_keys = sis_match_key(reader_->sub_keys, snodb->work_keys);
 		if (!work_keys)
 		{
 			work_keys =  sis_sdsdup(snodb->work_keys);
 		}
-		work_sdbs = sis_match_sdb_of_map(reader_->sub_sdbs, snodb->map_sdbs);
+		work_sdbs = sis_match_sdb_of_sds(reader_->sub_sdbs, snodb->work_sdbs);
 		if (!work_sdbs)
 		{
 			work_sdbs =  sis_sdsdup(snodb->work_sdbs);
 		}
 		sisdb_incr_set_keys(reader_->sub_ziper, work_keys);
 		sisdb_incr_set_sdbs(reader_->sub_ziper, work_sdbs);
+		sisdb_incr_zip_start(reader_->sub_ziper, reader_, cb_encode);
 
 		if (!reader_->sub_unziper)
 		{
@@ -697,7 +711,7 @@ int snodb_reader_realtime_start(s_snodb_reader *reader_)
 		sis_llutoa(snodb->work_date, sdate, 32, 10);
 		reader_->cb_sub_start(reader_, sdate);
 	}
-	LOG(5)("count = %d status = %d \n", snodb->outputs->work_queue->rnums, snodb->status);
+	printf("snodb_reader_realtime_start count = %d status = %d \n", snodb->outputs->work_queue->rnums, snodb->status);
 	if (reader_->cb_dict_keys)
 	{
 		reader_->cb_dict_keys(reader_, work_keys);

@@ -124,7 +124,6 @@ typedef struct s_snodb_cxt
 
 	s_sis_json_node    *rfile_config;
 
-
 	s_sis_fast_queue   *inputs;    // 传入的数据链 
 
 
@@ -195,7 +194,7 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg);
 // 清理指定的 reader
 int snodb_remove_reader(s_snodb_cxt *context_, int cid_);
 // 直接读取单键值数据
-int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg, bool iszip);
+int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg);
 
 
 //////////////////////////////////////////////////////////////////

@@ -20,7 +20,9 @@ typedef struct s_sisdb_rsdb_cxt
     s_sis_sds          work_sdbs;
     s_sis_disk_reader *work_reader;
 
-	s_sisdb_incr       *work_ziper;     // cb_sub_inctzip 有值时 需要压缩读出的数据
+    s_sis_sds          ziper_keys;
+    s_sis_sds          ziper_sdbs;
+	s_sisdb_incr      *work_ziper;     // cb_sub_inctzip 有值时 需要压缩读出的数据
     s_sis_thread       work_thread;    // 读文件时间长 需要启动一个线程处理
 
     void              *cb_source;      // 

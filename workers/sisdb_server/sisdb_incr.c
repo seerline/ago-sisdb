@@ -170,7 +170,7 @@ void sisdb_incr_zip_set(s_sisdb_incr *worker, int kidx, int sidx, char *in_, siz
         int o = sis_incrzip_compress_step(worker->incrzip, kidx, sidx, (char *)in_ + i * sdb->size, sdb->size);
 		if (o < 0)
 		{
-			LOG(5)("no.... %d\n", o);
+			LOG(5)("compress error : %d %d\n", o, worker->incrzip->status);
 		}
     }
 }

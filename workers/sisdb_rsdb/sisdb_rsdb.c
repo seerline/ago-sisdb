@@ -101,6 +101,15 @@ void sisdb_rsdb_uninit(void *worker_)
     sis_sdsfree(context->work_keys);
     sis_sdsfree(context->work_sdbs);
 
+    sis_sdsfree(context->ziper_keys);
+    sis_sdsfree(context->ziper_sdbs);
+
+    if (context->work_ziper)
+    {
+        sisdb_incr_zip_stop(context->work_ziper);
+        sisdb_incr_destroy(context->work_ziper);
+        context->work_ziper = NULL;
+    }
     sis_free(context);
     worker->context = NULL;
 }
@@ -126,9 +135,11 @@ static void cb_stop(void *context_, int idate)
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
     printf("sdb sub ok. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
      // stop 放这里
-    if (context->cb_sub_inctzip)
+    if (context->work_ziper)
     {
         sisdb_incr_zip_stop(context->work_ziper);
+        sisdb_incr_destroy(context->work_ziper);
+        context->work_ziper = NULL;
     }
     if (context->cb_sub_stop)
     {
@@ -142,42 +153,48 @@ static void cb_dict_keys(void *context_, void *key_, size_t size)
 {
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
 	s_sis_sds srckeys = sis_sdsnewlen((char *)key_, size);
-	s_sis_sds keys = sis_match_key(context->work_keys, srckeys);
-    if (!keys)
+    sis_sdsfree(context->ziper_keys);
+	context->ziper_keys = sis_match_key(context->work_keys, srckeys);
+    if (!context->ziper_keys)
     {
-        keys =  sis_sdsdup(srckeys);
+        context->ziper_keys =  sis_sdsdup(srckeys);
     } 
     if (context->cb_dict_keys)
     {
-        context->cb_dict_keys(context->cb_source, keys);
+        context->cb_dict_keys(context->cb_source, context->ziper_keys);
     } 
-    if (context->cb_sub_inctzip)
-    {
-    	sisdb_incr_set_keys(context->work_ziper, keys);
-    }
-	sis_sdsfree(keys);
 	sis_sdsfree(srckeys);
 }
 static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)  
 {
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
 	s_sis_sds srcsdbs = sis_sdsnewlen((char *)sdb_, size);
-	s_sis_sds sdbs = sis_match_sdb_of_sds(context->work_sdbs, srcsdbs);
-    if (!sdbs)
+	sis_sdsfree(context->ziper_sdbs);
+    context->ziper_sdbs = sis_match_sdb_of_sds(context->work_sdbs, srcsdbs);
+    if (!context->ziper_sdbs)
     {
-        sdbs =  sis_sdsdup(srcsdbs);
+        context->ziper_sdbs =  sis_sdsdup(srcsdbs);
     } 
     if (context->cb_dict_sdbs)
     {
-        context->cb_dict_sdbs(context->cb_source, sdbs);
+        context->cb_dict_sdbs(context->cb_source, context->ziper_sdbs);
     } 
-    if (context->cb_sub_inctzip)
-    {
-    	sisdb_incr_set_sdbs(context->work_ziper, sdbs);
-    }
-	sis_sdsfree(sdbs);
 	sis_sdsfree(srcsdbs); 
 }
+
+static int cb_encode(void *context_, char *in_, size_t ilen_)
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+    if (context->cb_sub_inctzip)
+    {
+        s_sis_db_incrzip inmem = {0};
+        inmem.data = (uint8 *)in_;
+        inmem.size = ilen_;
+        inmem.init = sis_incrzip_isinit(inmem.data, inmem.size);
+        context->cb_sub_inctzip(context->cb_source, &inmem);
+    }
+    return 0;
+} 
 // #include "stk_struct.v3.h"
 static int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
@@ -216,6 +233,13 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
     }
     if (context->cb_sub_inctzip)
     {
+        if (!context->work_ziper)
+        {
+            context->work_ziper = sisdb_incr_create();
+    	    sisdb_incr_set_keys(context->work_ziper, context->ziper_keys);
+    	    sisdb_incr_set_sdbs(context->work_ziper, context->ziper_sdbs);
+    	    sisdb_incr_zip_start(context->work_ziper, context, cb_encode);
+        }
         int kidx = sisdb_incr_get_kidx(context->work_ziper, kname_);
         int sidx = sisdb_incr_get_sidx(context->work_ziper, sname_);
         if (kidx < 0 || sidx < 0)
@@ -226,19 +250,6 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
     }
 } 
 
-static int cb_encode(void *context_, char *in_, size_t ilen_)
-{
-    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
-    if (context->cb_sub_inctzip)
-    {
-        s_sis_db_incrzip inmem = {0};
-        inmem.data = (uint8 *)in_;
-        inmem.size = ilen_;
-        inmem.init = sis_incrzip_isinit(inmem.data, inmem.size);
-        context->cb_sub_inctzip(context->cb_source, &inmem);
-    }
-    return 0;
-} 
 ///////////////////////////////////////////
 //  callback define end.
 ///////////////////////////////////////////
@@ -257,12 +268,6 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB, rsdb_cb);
 
-    if (context->cb_sub_inctzip)
-    {
-        context->work_ziper = sisdb_incr_create();
-        sisdb_incr_zip_start(context->work_ziper, context, cb_encode);
-    }
-
     LOG(5)("sub sno open. [%d]\n", context->work_date);
     s_sis_msec_pair smsec;
     smsec.start = sis_time_make_time(context->work_date.start, 0) * 1000;
@@ -275,7 +280,7 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     sis_free(rsdb_cb);
 
-    if (context->cb_sub_inctzip)
+    if (context->work_ziper)
     {
         sisdb_incr_zip_stop(context->work_ziper);
         sisdb_incr_destroy(context->work_ziper);

@@ -47,10 +47,16 @@ const char *sisdb_incr_get_kname(s_sisdb_incr *, int);
 const char *sisdb_incr_get_sname(s_sisdb_incr *, int);
 
 // 写入需要解压的数据
+// sisdb_incr_set_keys(reader_->sub_ziper, work_keys);
+// sisdb_incr_set_sdbs(reader_->sub_ziper, work_sdbs);
+// sisdb_incr_unzip_start(reader_->sub_ziper, reader_, cb_encode);
 void sisdb_incr_unzip_start(s_sisdb_incr *, void *cb_source, cb_incrzip_decode *);
 void sisdb_incr_unzip_set(s_sisdb_incr *, s_sis_db_incrzip *);
 void sisdb_incr_unzip_stop(s_sisdb_incr *worker);
 // 写入需要压缩的数据
+// sisdb_incr_set_keys(reader_->sub_ziper, work_keys);
+// sisdb_incr_set_sdbs(reader_->sub_ziper, work_sdbs);
+// sisdb_incr_zip_start(reader_->sub_ziper, reader_, cb_encode);
 void sisdb_incr_zip_start(s_sisdb_incr *, void *cb_source, cb_incrzip_encode *);
 void sisdb_incr_zip_set(s_sisdb_incr *, int ,int, char *, size_t);
 void sisdb_incr_zip_restart(s_sisdb_incr *, int init_);

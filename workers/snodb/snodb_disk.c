@@ -284,13 +284,15 @@ int snodb_wlog_to_snos(s_snodb_cxt *snodb_)
 
 int snodb_reader_history_start(s_snodb_reader *reader_)
 {
-	reader_->sub_disker = sis_worker_create_of_name(NULL, "sisdb_rsno", NULL);
 
 	s_snodb_cxt *snodb = (s_snodb_cxt *)reader_->father;
+	if (!snodb->rfile_config)
+	{
+		return 0;
+	}
+	reader_->sub_disker = sis_worker_create(NULL, snodb->rfile_config);
 
 	s_sis_message *msg = sis_message_create();
-	sis_message_set_str(msg, "work-path", snodb->work_path, sis_sdslen(snodb->work_path));
-	sis_message_set_str(msg, "work-name", snodb->work_name, sis_sdslen(snodb->work_name));
 	sis_message_set_int(msg, "sub-date", reader_->sub_date);
 	sis_message_set_str(msg, "sub-keys", reader_->sub_keys, sis_sdslen(reader_->sub_keys));
 	sis_message_set_str(msg, "sub-sdbs", reader_->sub_sdbs, sis_sdslen(reader_->sub_sdbs));
