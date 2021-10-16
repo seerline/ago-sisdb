@@ -788,6 +788,7 @@ void _cb_server_async_write(uv_async_t* handle)
 	{
 		uv_close((uv_handle_t*)handle, NULL);	//如果async没有关闭，消息队列是会阻塞的
 	}
+	printf("cb_server_write 0\n");
 	s_sis_net_uv_node *node = server->write_list->work_node;
 	if (!node)
 	{
@@ -883,6 +884,7 @@ static int cb_server_write(void *source_)
 	}
 	session->_uv_send_async_nums++;
 #endif
+	printf("cb_server_write 1\n");
 	session->uv_w_async.data = server;
 	int o = uv_async_init(server->uv_s_worker, &session->uv_w_async, _cb_server_async_write);
 	if (o) 

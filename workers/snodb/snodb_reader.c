@@ -400,7 +400,6 @@ static int cb_dict_sdbs(void *source, void *argv)
 //------------------------s_snodb_reader --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
 
-
 s_snodb_reader *snodb_reader_create()
 {
 	s_snodb_reader *o = SIS_MALLOC(s_snodb_reader, o);
@@ -410,12 +409,12 @@ void snodb_reader_destroy(void *reader_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
 	// 必须先关闭读句柄 数据才会不再写入 再关闭其他
-	LOG(8)("reader close. cid = %d\n", reader->cid);
+	// LOG(8)("reader close. cid = %d %d %p %p \n", reader->cid, reader->sub_disk, reader->reader, reader->sub_disker);
 	if (reader->reader)
 	{
 		sis_lock_reader_close(reader->reader);	
 	}
-	if (reader->sub_disker)
+	if (reader->sub_disk)
 	{
 		snodb_reader_history_stop(reader);
 	}

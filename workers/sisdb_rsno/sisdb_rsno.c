@@ -302,10 +302,11 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
     if (context->work_reader)
     {
         sis_disk_reader_unsub(context->work_reader);
-        while (context->status != SIS_RSNO_NONE)
-        {
-            sis_sleep(30);
-        }
+        // 下面代码在线程中死锁
+        // while (context->status != SIS_RSNO_NONE)
+        // {
+        //     sis_sleep(30);
+        // }
     }
 }
 ///////////////////////////////////////////
