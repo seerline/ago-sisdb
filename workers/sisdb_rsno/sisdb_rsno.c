@@ -265,9 +265,9 @@ static void *_thread_snos_read_sub(void *argv_)
 
     context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SNO, rsno_cb);
 
-    LOG(5)("sub sno open. [%d]\n", context->work_date);
+    LOG(5)("sub sno open. [%d] %d\n", context->work_date, context->status);
     sis_disk_reader_sub_sno(context->work_reader, context->work_keys, context->work_sdbs, context->work_date);
-    LOG(5)("sub sno stop. [%d]\n", context->work_date);
+    LOG(5)("sub sno stop. [%d] %d\n", context->work_date, context->status);
 
     sis_disk_reader_destroy(context->work_reader);
     context->work_reader = NULL;
@@ -280,7 +280,7 @@ static void *_thread_snos_read_sub(void *argv_)
         sisdb_incr_destroy(context->work_ziper);
         context->work_ziper = NULL;
     }
-
+    LOG(5)("sub sno stop. ok [%d] %d\n", context->work_date, context->status);
     context->status = SIS_RSNO_NONE;
     return NULL;
 }
@@ -303,10 +303,12 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
     {
         sis_disk_reader_unsub(context->work_reader);
         // 下面代码在线程中死锁
-        // while (context->status != SIS_RSNO_NONE)
-        // {
-        //     sis_sleep(30);
-        // }
+        while (context->status != SIS_RSNO_NONE)
+        {
+            printf("stop sub... %d\n", context->status);
+            sis_sleep(1000);
+        }
+        printf("stop sub..1.. %d\n", context->status);
     }
 }
 ///////////////////////////////////////////

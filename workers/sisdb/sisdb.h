@@ -160,6 +160,7 @@ int cmd_sisdb_read(void *worker_, void *argv_);// 从磁盘加载数据
 
 int cmd_sisdb_save (void *worker_, void *argv_);// 存盘
 int cmd_sisdb_pack (void *worker_, void *argv_);// 合并整理数据
+int cmd_sisdb_init(void *worker_, void *argv_);
 int cmd_sisdb_open(void *worker_, void *argv_);
 int cmd_sisdb_close(void *worker_, void *argv_);
 int cmd_sisdb_rlog (void *worker_, void *argv_);// 加载没有写盘的log信息

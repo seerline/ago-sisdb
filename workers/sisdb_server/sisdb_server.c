@@ -480,28 +480,29 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
     }
     else
     {
-        int ok = 1;
+        int ok = 0;
         const char *username = sis_json_get_str(handle->node, "username");
         const char *password = sis_json_get_str(handle->node, "password");
         s_sisdb_userinfo *userinfo = sis_map_list_get(context->users, username);
         if (!userinfo)
         {
-            ok = 0;
+            ok = -1;
         }
         else if (sis_strcasecmp(userinfo->password, password))
         {
-            ok = 0;
+            ok = -2;
         }
         else
         {
             sis_map_kint_set(context->user_access, netmsg->cid, userinfo);
         }
-        if (ok)
+        if (ok == 0)
         {
             sis_net_ans_with_ok(netmsg);
         }
         else
         {
+            printf("auth %d %s %s\n", ok, username, password);
             sis_net_ans_with_error(netmsg, "auth fail.", 10);
         }
         sis_json_close(handle);

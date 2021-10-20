@@ -294,6 +294,10 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     worker->workers = sis_map_pointer_create();
 
     // 调用公共初始化配置
+    if (!node->key)
+    {
+        node->key = sis_strdup(name_, sis_strlen(name_));
+    }
     if (!_sis_worker_init(worker, node))
     {
         LOG(3)("init worker [%s] error.\n", worker->classname);

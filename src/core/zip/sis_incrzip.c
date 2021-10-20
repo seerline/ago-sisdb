@@ -146,6 +146,7 @@ int sis_incrzip_compress_start(s_sis_incrzip_class *s_, int maxsize_, void *sour
     }
     s_->zip_size = maxsize_ < 16384 ? 16384 : maxsize_; 
     s_->zip_memory = sis_malloc(s_->zip_size + s_->maxdbsize + 256);
+    memset(s_->zip_memory, 0, s_->zip_size + s_->maxdbsize + 256);
     s_->cb_source = source_;
     s_->cb_compress = cb_; 
 
@@ -377,7 +378,8 @@ int sis_incrzip_compress_step(s_sis_incrzip_class *s_, int kidx_, int sidx_, cha
     }
     int count = ilen_ / info->lpdb->size;
 
-    int newsize = ilen_ + count * 8 + 64; // 每条记录加8个字节 再加包数量4个字节
+    // int newsize = ilen_ + count * 8 + 64; // 每条记录加8个字节 再加包数量4个字节
+    int newsize = ilen_ + count * 8 + 256; // 每条记录加8个字节 再加包数量4个字节
     if (newsize > s_->zip_size)
     {
         LOG(5)("catch too small. %d < %d\n", s_->zip_size, newsize);

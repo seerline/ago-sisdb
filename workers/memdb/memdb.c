@@ -52,15 +52,23 @@ void memdb_unit_destroy(void *unit_)
     sis_free(unit);
 }
 
-bool  memdb_init(void *worker_, void *node_)
+bool  memdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sis_json_node *node = (s_sis_json_node *)argv_;
 
     s_memdb_cxt *context = SIS_MALLOC(s_memdb_cxt, context);
     worker->context = context;
 
-	context->work_name = sis_sdsnew(worker->workername);
-
+	const char *workname = sis_json_get_str(node, "work-name");
+	if (workname)
+	{
+		context->work_name = sis_sdsnew(workname);
+	}
+	else
+	{
+		context->work_name = sis_sdsnew(node->key);
+	}    
     context->work_sub_cxt = sisdb_sub_cxt_create();
     context->work_keys = sis_map_pointer_create();
     context->work_keys->type->vfree = memdb_unit_destroy;

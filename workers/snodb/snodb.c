@@ -159,7 +159,7 @@ bool snodb_init(void *worker_, void *argv_)
 	}
     context->work_date = sis_time_get_idate(0);
 	context->wait_msec = sis_json_get_int(node, "wait-msec", 30);
-	// context->stop_minu = sis_json_get_int(node, "stop-minu", 1600);
+	// context->save_time = sis_json_get_int(node, "save-time", 160000);
 
     s_sis_json_node *catchnode = sis_json_cmp_child_node(node, "catch-size");
     if (catchnode)
@@ -304,11 +304,11 @@ void snodb_working(void *worker_)
     // s_sis_worker *worker = (s_sis_worker *)worker_; 
     // s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	// // 必须保证log和wsno都存在才能转格式写盘
-	// if (context->wlog_worker && context->wfile_worker && context->stop_minu > 0 && 
+	// if (context->wlog_worker && context->wfile_worker && context->save_time > 0 && 
 	// 	context->inited == true && context->stoped == false && context->wfile_save == 0)
 	// {
-	// 	int iminu = sis_time_get_iminute(0);
-	// 	if (iminu > context->stop_minu)
+	// 	int iminu = sis_time_get_itime(0);
+	// 	if (iminu > context->save_time)
 	// 	{
 	// 		snodb_wlog_stop(context);
 	// 		if (snodb_wlog_to_snos(context) == SIS_METHOD_OK)

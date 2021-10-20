@@ -228,7 +228,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
         }
         else
         {
-            LOG(5)("auth fail.\n");
+            LOG(5)("auth fail. %d %s\n", msg_->rans, msg_->rmsg ? msg_->rmsg : "nil");
         }
     }    	
 }
@@ -249,7 +249,9 @@ static void _cb_connected(void *source_, int sid)
             context->cid = sid;
             s_sis_net_message *msg = sis_net_message_create();
             msg->cid = context->cid;
-            sis_net_ask_with_chars(msg, "auth", context->username, context->password, sis_strlen(context->password));
+            char ask[128];
+            sis_sprintf(ask, 128, "{\"username\":\"%s\",\"password\":\"%s\"}", context->username, context->password);
+            sis_net_ask_with_chars(msg, "auth", NULL, ask, sis_strlen(ask));
             sis_net_class_send(context->session, msg);
             sis_net_message_destroy(msg);
         }

@@ -331,6 +331,11 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	{
 		sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 	}
+	if (!unit)
+	{
+		LOG(5)("no create fmap : %s %lld %lld %d\n", cmd_->key, cmd_->start, cmd_->stop, cmd_->ktype);
+		return 0;
+	}
 	switch (unit->ktype)
 	{
 	case SISDB_FMAP_TYPE_ONE:

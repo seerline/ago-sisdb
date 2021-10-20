@@ -113,7 +113,7 @@ typedef struct s_snodb_cxt
 	s_sis_method       *wlog_method;
 	s_snodb_reader     *wlog_reader;  // 写wlog的读者
 
-	// int                 stop_minu;    // 停牌时间
+	int                 save_time;    // 自动存盘时间
 	int                 wfile_save;
 	sis_method_define  *wfile_cb_sub_start;
 	sis_method_define  *wfile_cb_sub_stop ;
