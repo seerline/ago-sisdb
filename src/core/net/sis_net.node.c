@@ -35,8 +35,9 @@ s_sis_net_nodes *sis_net_nodes_create()
 	sis_mutex_init(&o->lock, NULL);
 	return o;
 }
-void _net_nodes_free_read(s_sis_net_nodes *nodes_)
+int _net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
+	int count = 0;
 	if (nodes_->rhead)
 	{
 		s_sis_net_node *next = nodes_->rhead;	
@@ -45,11 +46,13 @@ void _net_nodes_free_read(s_sis_net_nodes *nodes_)
 			s_sis_net_node *node = next->next;
 			sis_net_node_destroy(next);
 			next = node;
+			count++;
 		}
 		nodes_->rhead = NULL;
 	}
 	nodes_->rtail = NULL;	
-	nodes_->rnums = 0;	
+	nodes_->rnums = 0;
+	return count;	
 }
 void sis_net_nodes_destroy(s_sis_net_nodes *nodes_)
 {
@@ -148,13 +151,15 @@ int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
 	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
 	return 	nodes_->rnums;
 }
-void sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
+int sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
+	int count = 0;
     sis_mutex_lock(&nodes_->lock);
-	_net_nodes_free_read(nodes_);
+	count = _net_nodes_free_read(nodes_);
     sis_mutex_unlock(&nodes_->lock);
+	return count;
 }
-int  sis_net_nodes_none(s_sis_net_nodes *nodes_)
+int  sis_net_nodes_count(s_sis_net_nodes *nodes_)
 {
 	sis_mutex_lock(&nodes_->lock);
 	int count = nodes_->rnums + nodes_->wnums;
@@ -179,7 +184,7 @@ s_sis_net_list *sis_net_list_create(void *vfree_)
 	o->buffer = sis_malloc(sizeof(void *) * o->max_count);
 	memset(o->buffer, 0 ,sizeof(void *) * o->max_count);
 	o->vfree = vfree_;
-	o->wait_sec = 180; // 默认3分钟后释放资源
+	o->wait_sec = 60; // 默认3分钟后释放资源
 	return o;
 }
 void sis_net_list_destroy(s_sis_net_list *list_)
@@ -243,6 +248,7 @@ int sis_net_list_new(s_sis_net_list *list_, void *in_)
 	int index = -1;
 	for (int i = 0; i < list_->max_count; i++)
 	{
+		// printf("==new== %d %d %d | %d %d\n", i, list_->used[i], list_->wait_sec, now_sec, list_->stop_sec[i]);
 		if (list_->used[i] == SIS_NET_NOUSE)
 		{
 			index = i;
@@ -265,6 +271,7 @@ int sis_net_list_new(s_sis_net_list *list_, void *in_)
 	char **ptr = (char **)list_->buffer;
 	ptr[index] = (char *)in_;
 	list_->used[index] = SIS_NET_USEED;
+	// list_->stop_sec[index] = now_sec;
 	list_->cur_count++;
 	return index;
 }
@@ -328,6 +335,7 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_)
 	{
 		return -1;
 	}	
+	// printf("==stop=1= %d %d | %d %d\n", index_, list_->used[index_], list_->wait_sec, list_->stop_sec[index_]);
 	if (list_->used[index_] != SIS_NET_USEED)
 	{
 		return -1;
@@ -349,6 +357,7 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_)
 		list_->used[index_] = SIS_NET_NOUSE;
 		list_->cur_count--;
 	}
+	// printf("==stop=2= %d %d | %d %d\n", index_, list_->used[index_], list_->wait_sec, list_->stop_sec[index_]);
 	return index_;
 }
 
@@ -378,7 +387,7 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
 		else
 		{
 			// 如果没有ans就返回一个为0的ans 字符通讯包以ans判断是否应答包
-			sis_json_object_set_int(node, "ans", 0); 
+			sis_json_object_set_string(node, "ans", "0", 1); 
 		}
 		if (in_->switchs.has_cmd)
 		{
@@ -563,7 +572,7 @@ void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *mess)
 	{
 		// 应答包
 		mess->switchs.is_reply = 1;
-		mess->switchs.has_ans = 1;
+		mess->switchs.has_ans = rans->type == SIS_JSON_STRING ? 0 : 1;
 		mess->rans = rans->value ? sis_atoll(rans->value) : 0; 	
         mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
 		mess->switchs.has_cmd = mess->cmd ? 1 : 0;
@@ -666,10 +675,7 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
 	sis_memory_move(in_, 1);
 	memmove(&mess->switchs, sis_memory(in_), sizeof(s_sis_net_switch));
 	sis_memory_move(in_, sizeof(s_sis_net_switch));
-	if (mess->switchs.has_ver)
-	{
-		mess->ver = sis_net_memory_get_int(in_, mess->switchs.has_ver);
-	}
+	mess->ver = sis_net_memory_get_int(in_, mess->switchs.has_ver);
 	if (mess->switchs.has_fmt)
 	{
 		// 没有字段用默认的格式 或上层指定

@@ -98,12 +98,12 @@ typedef struct s_sis_net_message {
 #define SIS_NET_SHOW_MSG(_s_,_n_) { s_sis_net_message *_msg_ = (s_sis_net_message *)_n_; \
 	uint16 *sw = (uint16 *)&_msg_->switchs; \
 	if (_msg_->switchs.is_reply) {\
-		printf("%s: [%d] %x : %d %s %s  argvs :%d\n", _s_, _msg_->cid, *sw, \
+		printf("ans %s: [%d] %x : %d %s %s  argvs :%d\n", _s_, _msg_->cid, *sw, \
 			_msg_->rans, _msg_->key ? _msg_->key : "nil",\
 			_msg_->rmsg ? _msg_->rmsg : "nil",\
 			_msg_->argvs ? _msg_->argvs->count : 0);\
 	} else {\
-		printf("%s: [%d] %x : %s %s %s %s argvs :%d\n", _s_, _msg_->cid, *sw, \
+		printf("ask %s: [%d] %x : %s %s %s %s argvs :%d\n", _s_, _msg_->cid, *sw, \
 			_msg_->service ? _msg_->service : "nil",\
 			_msg_->cmd ? _msg_->cmd : "nil",\
 			_msg_->key ? _msg_->key : "nil",\
@@ -128,6 +128,13 @@ size_t sis_net_message_get_size(s_sis_net_message *);
 // 拷贝需要广播的数据
 void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, s_sis_sds cmd_, s_sis_sds key_);
 
+// 以下函数 只检查相关字段 其他都不管
+void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
+void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
+void sis_message_set_ans(s_sis_net_message *netmsg_, int ans_, int isclear_);
+void sis_message_set_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_, int isclear_);
+void sis_message_set_object(s_sis_net_message *netmsg_, void *obj_, int isclear_);
+
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数
 ////////////////////////////////////////////////////////
@@ -135,22 +142,15 @@ void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_,
 void sis_net_ask_with_chars(s_sis_net_message *netmsg_, 
     char *cmd_, char *key_, char *val_, size_t vlen_);
 
-void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, 
-    char *cmd_, char *key_, char *val_, size_t vlen_);
-
-void sis_net_ask_with_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_);
+void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
 
 // in_被吸入
 void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);
-// *** 这个函数需要检查
-void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
-void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
 
 void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
-void sis_net_ans_with_argvs(s_sis_net_message *, const char *in_, size_t ilen_);
-
-void sis_net_ans_with_object(s_sis_net_message *, void *obj_);
-// 获取数据流
+// 获取字符数据
+s_sis_sds sis_net_get_val(s_sis_net_message *netmsg_);
+// 获取二进制数据流
 s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index);
 
 void sis_net_ans_with_noreply(s_sis_net_message *);

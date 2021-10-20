@@ -4,7 +4,7 @@
 #include <sis_net.h>
 #include <sis_net.msg.h>
 
-#if 1
+#if 0
 // 测试打包数据的网络流量
 
 #define TEST_PORT 7329
@@ -107,7 +107,7 @@ static void *thread_send_data(void *arg)
 		// sis_out_binary(".1.", imem, 16);
 		s_sis_net_message *msg = sis_net_message_create();
 		msg->cid = pclient->cid;
-		sis_net_ask_with_bytes(msg, NULL, NULL, imem, bagssize);
+		sis_net_ask_with_bytes(msg, imem, bagssize);
 		sis_net_class_send(session, msg);
 		sis_net_message_destroy(msg);
 		// sis_sleep(1);

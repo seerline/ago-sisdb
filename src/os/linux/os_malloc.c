@@ -41,10 +41,13 @@ void safe_memory_stop()
     {
         printf("no free memory:\n");
     }
+    sis_mutex_lock(&__memory_mutex);
+    size_t size = 0;
     int i = 0;
     while (node)
     {
         unsigned char *ptr = (unsigned char *)node + MEMORY_NODE_SIZE;
+        size += node->size + MEMORY_NODE_SIZE;
         printf("[%4d] %p [%d] func:%s, lines:%d :: ", i++,
                ptr, node->size, node->info, node->line);
         if (!safe_memory_cmp(node->info, "sis_strdup")||
@@ -56,8 +59,9 @@ void safe_memory_stop()
         printf("\n");
         node = node->next;
     }
+    sis_mutex_unlock(&__memory_mutex);
     sis_mutex_destroy(&__memory_mutex);
-    printf("safe memory end.\n");
+    printf("safe memory end. %zu\n", size);
 }
 #endif
 // void check_memory_newnode(void *__p__,int line_,const char *func_)

@@ -30,8 +30,9 @@ struct s_sis_method sisdb_methods[] = {
     {"unpsub",    cmd_sisdb_unpsub,     SIS_METHOD_ACCESS_READ,  NULL},   // 取消回放
     {"read",      cmd_sisdb_read ,      SIS_METHOD_ACCESS_READ,  NULL},   // 从磁盘加载数据
     // 以下方法为数据集标配 即使没有最好也支持
-    {"save",      cmd_sisdb_save,  SIS_METHOD_ACCESS_ADMIN, NULL},   // 存盘
-    {"pack",      cmd_sisdb_pack,  SIS_METHOD_ACCESS_ADMIN, NULL},   // 合并整理数据
+    {"save",      cmd_sisdb_save,       SIS_METHOD_ACCESS_ADMIN, NULL},   // 存盘
+    {"pack",      cmd_sisdb_pack,       SIS_METHOD_ACCESS_ADMIN, NULL},   // 合并整理数据
+    {"init",      cmd_sisdb_init,       SIS_METHOD_ACCESS_NONET, NULL},
     {"open",      cmd_sisdb_open  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 初始化信息
     {"close",     cmd_sisdb_close ,     SIS_METHOD_ACCESS_NONET, NULL},   // 关闭数据表
     {"rlog",      cmd_sisdb_rlog  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 读入没有写盘的log信息
@@ -66,17 +67,24 @@ bool sisdb_init(void *worker_, void *argv_)
     context->work_sub_cxt = sisdb_sub_cxt_create();
 
     // 数据集合
-    context->work_name = sis_sdsdup(node->key);
-    
+	const char *workname = sis_json_get_str(node, "work-name");
+	if (workname)
+	{
+		context->work_name = sis_sdsnew(workname);
+	}
+	else
+	{
+		context->work_name = sis_sdsnew(node->key);
+	}    
     const char *work_path = sis_json_get_str(node, "work-path");
     if (work_path)
     {
-        context->work_famp_cxt = sisdb_fmap_cxt_create(work_path, context->work_name );
+        context->work_path = sis_sdsnew(work_path);
     }
-    else
-    {
-        context->work_famp_cxt = sisdb_fmap_cxt_create("data", context->work_name );
-    }
+    // else
+    // {
+    //     context->work_famp_cxt = sisdb_fmap_cxt_create("data", context->work_name );
+    // }
     {
         s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "safe-path");
         if (sonnode)
@@ -112,7 +120,11 @@ void sisdb_uninit(void *worker_)
         sisdb_sub_cxt_destroy(context->work_sub_cxt);
         context->work_sub_cxt = NULL;
     }
-    sisdb_fmap_cxt_destroy(context->work_famp_cxt);
+    if (context->work_famp_cxt)
+    {
+        sisdb_fmap_cxt_destroy(context->work_famp_cxt);
+        context->work_famp_cxt =  NULL;
+    }
     sis_sdsfree(context->work_path);
     sis_sdsfree(context->work_name);
     sis_sdsfree(context->safe_path);
@@ -552,8 +564,8 @@ int cmd_sisdb_read(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
     s_sis_object *obj = sisdb_disk_read(context, netmsg);
-    
-    sis_net_ans_with_object(netmsg, obj);
+    sis_message_set_ans(netmsg, 0, 1);
+    sis_message_set_object(netmsg, obj, 0);
     
     sis_object_destroy(obj);
 
@@ -599,35 +611,26 @@ int cmd_sisdb_pack(void *worker_, void *argv_)
     }
     return o;
 }
-int cmd_sisdb_open(void *worker_, void *argv_)
+int cmd_sisdb_init(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_message *msg = (s_sis_message *)argv_;
-    
+    if (context->work_famp_cxt)
+    {
+        sisdb_fmap_cxt_destroy(context->work_famp_cxt);
+    }
+    s_sis_sds curr_path = sis_message_get_str(msg, "work-path");
+    if (curr_path)
+    {
+        sis_sdsfree(context->work_path);
+        context->work_path = sis_sdsdup(curr_path);
+    }
+    context->work_famp_cxt = sisdb_fmap_cxt_create(context->work_path, context->work_name);
+
 	context->cb_source = sis_message_get(msg, "cb_source");
 	context->cb_net_message = sis_message_get_method(msg, "cb_net_message");
 
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
-    if (sis_message_exist(msg, "work-date"))
-    {
-        context->work_date = sis_message_get_int(msg, "work-date");
-    }
     // 先加载所有数据结构
     sisdb_fmap_cxt_init(context->work_famp_cxt);
 
@@ -643,6 +646,18 @@ int cmd_sisdb_open(void *worker_, void *argv_)
     }     
     // 初始化订阅者
     sisdb_sub_cxt_init(context->work_sub_cxt, context->cb_source, context->cb_net_message);
+
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_open(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    s_sis_message *msg = (s_sis_message *)argv_;    
+    if (sis_message_exist(msg, "work-date"))
+    {
+        context->work_date = sis_message_get_int(msg, "work-date");
+    }
     
     return SIS_METHOD_OK;
 }
@@ -674,6 +689,7 @@ int cmd_sisdb_wlog(void *worker_, void *argv_)
     {
         sisdb_wlog_open(context);
     }
+    printf("---%p %p\n", context->wlog_worker, context->wlog_write);
     int o = context->wlog_write->proc(context->wlog_worker, argv_);
     sis_mutex_unlock(&context->wlog_lock);
     return o;

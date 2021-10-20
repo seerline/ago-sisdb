@@ -136,6 +136,7 @@ static int cb_sub_stop(void *worker_, void *argv_)
 
     LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
     sisdb_wsno_stop(context);
+    LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
 
     sis_sdsfree(context->wsno_keys); context->wsno_keys = NULL;
     sis_sdsfree(context->wsno_sdbs); context->wsno_sdbs = NULL;
@@ -200,7 +201,8 @@ static int _write_wsno_head(s_sisdb_wsno_cxt *context, int iszip)
         // sisdb_incr_set_keys(context->work_unzip, newkeys);
         // sisdb_incr_set_sdbs(context->work_unzip,  newsdbs);
         sisdb_incr_unzip_start(context->work_unzip, context, cb_decode);
-
+        printf("sno %s %s\n", context->wsno_keys, context->wsno_sdbs);
+        printf("new %s %s\n", newkeys, newsdbs);
         sis_sdsfree(newkeys); 
         sis_sdsfree(newsdbs); 
     }
@@ -257,22 +259,22 @@ int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }
     s_sis_message *msg = (s_sis_message *)argv_; 
-    // {
-    //     s_sis_sds str = sis_message_get_str(msg, "work-path");
-    //     if (str)
-    //     {
-    //         sis_sdsfree(context->work_path);
-    //         context->work_path = sis_sdsdup(str);
-    //     }
-    // }
-    // {
-    //     s_sis_sds str = sis_message_get_str(msg, "work-name");
-    //     if (str)
-    //     {
-    //         sis_sdsfree(context->work_name);
-    //         context->work_name = sis_sdsdup(str);
-    //     }
-    // }
+    { 
+        s_sis_sds str = sis_message_get_str(msg, "work-path");
+        if (str)
+        {
+            sis_sdsfree(context->work_path);
+            context->work_path = sis_sdsdup(str);
+        }
+    }
+    {
+        s_sis_sds str = sis_message_get_str(msg, "work-name");
+        if (str)
+        {
+            sis_sdsfree(context->work_name);
+            context->work_name = sis_sdsdup(str);
+        }
+    }
     // {
     //     s_sis_sds str = sis_message_get_str(msg, "sub-keys");
     //     if (str)

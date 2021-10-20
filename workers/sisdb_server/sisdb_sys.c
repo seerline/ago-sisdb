@@ -17,7 +17,7 @@ void sis_userinfo_destroy(void *userinfo_)
     sis_sdsfree(userinfo->password);
     sis_free(userinfo);
 }
-s_sisdb_workinfo *sis_workinfo_create(s_sis_json_node *incfg_)
+s_sisdb_workinfo *sis_workinfo_create_of_json(s_sis_json_node *incfg_)
 {
     s_sisdb_workinfo *o = SIS_MALLOC(s_sisdb_workinfo, o);
     o->workname = sis_sdsnew(incfg_->key);
@@ -26,10 +26,34 @@ s_sisdb_workinfo *sis_workinfo_create(s_sis_json_node *incfg_)
     return o;
 }
 
+s_sisdb_workinfo *sis_workinfo_create(const char *name_, const char *config_)
+{
+    s_sisdb_workinfo *o = SIS_MALLOC(s_sisdb_workinfo, o);
+    o->workname = sis_sdsnew(name_);
+    s_sis_json_handle *handle = NULL;
+    if (config_)
+    {
+        handle = sis_json_load(config_, sis_strlen(config_));
+    }
+    if (handle)
+    {
+        o->config = sis_json_clone(handle->node, 1);
+        sis_json_close(handle);
+    }
+    else
+    {
+        o->config = sis_json_create_object();
+        sis_json_object_add_string(o->config, "classname", name_, sis_strlen(name_));
+    }
+    o->work_status = 0;
+    return o;
+}
+
 void sis_workinfo_destroy(void *workinfo_)
 {
     s_sisdb_workinfo *workinfo = (s_sisdb_workinfo *)workinfo_;
     sis_sdsfree(workinfo->workname);
+    // printf("===free %p %p\n", workinfo, workinfo->config);
     if (workinfo->config)
     {
         sis_json_delete_node(workinfo->config);

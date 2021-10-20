@@ -36,10 +36,6 @@ s_sis_message *sis_message_create()
 
 void sis_message_destroy(s_sis_message *msg_)
 {
-    if (msg_->map)
-    {
-        sis_map_pointer_destroy(msg_->map); 
-    }
     sis_net_message_destroy(msg_);
 }
 

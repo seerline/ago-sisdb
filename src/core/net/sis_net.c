@@ -539,7 +539,7 @@ static void cb_client_connected(void *handle_, int sid_)
 		sis_memory_clear(cxt->recv_memory);
 		sis_net_nodes_clear(cxt->recv_nodes);
 	}
-	printf("connect count = %d \n", sis_map_pointer_getsize(cls->cxts));	
+	printf("connect count = %d \n", (int)sis_map_pointer_getsize(cls->cxts));	
 	sis_socket_client_set_rwcb(cls->client, cb_client_recv_after, cb_client_send_after);
 	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 

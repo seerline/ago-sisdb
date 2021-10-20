@@ -35,7 +35,8 @@ typedef struct s_sisdb_workinfo
 
 s_sisdb_userinfo *sis_userinfo_create(const char *username_, const char *password_, int access_);
 void sis_userinfo_destroy(void *userinfo_);
-s_sisdb_workinfo *sis_workinfo_create(s_sis_json_node *incfg_);
+s_sisdb_workinfo *sis_workinfo_create_of_json(s_sis_json_node *incfg_);
+s_sisdb_workinfo *sis_workinfo_create(const char *name_, const char *config_);
 void sis_workinfo_destroy(void *workinfo_);
 
 const char *sis_sys_access_itoa(int access);

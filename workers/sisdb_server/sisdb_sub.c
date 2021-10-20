@@ -41,7 +41,7 @@ uint8 _set_sub_unit_type(s_sisdb_sub_unit *unit, s_sis_sds key, int ishead)
             }
         }
     }
-    // else
+    else
     {
         unit->sub_keys = sis_sdsdup(key);
         if (ishead)
@@ -144,6 +144,7 @@ int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
 }
 int sisdb_sub_cxt_hsub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
 {
+    SIS_NET_SHOW_MSG("hsub === ", netmsg_);
     int o = 0;
     if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
     {

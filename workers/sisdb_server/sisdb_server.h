@@ -72,7 +72,8 @@ int cmd_sisdb_server_call(void *worker_, void *argv_);
 void sisdb_server_sysinfo_save(s_sisdb_server_cxt *context);
 int  sisdb_server_sysinfo_load(s_sisdb_server_cxt *context);
 
-int sisdb_server_open(s_sisdb_server_cxt *context, const char *workname, const char *config);
+int sisdb_server_open_works(s_sis_worker *worker_);
+int sisdb_server_open(s_sis_worker *worker_, const char *workname_, const char *config_);
 
 
 #endif

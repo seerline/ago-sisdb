@@ -743,7 +743,7 @@ void sis_json_object_add_string(s_sis_json_node *node_, const char *key_, const 
 	if (c)
 	{
 		c->type = SIS_JSON_STRING;
-		c->key = sis_strdup(key_, 0);
+		c->key = sis_strdup(key_, sis_strlen(key_));
 		c->value = sis_strdup(value_, len_);
 		sis_json_array_add_node(node_, c);
 	}
@@ -904,8 +904,7 @@ void sis_json_delete_node(s_sis_json_node *node_)
 		node_->prev->next = node_->next;
 	}
 	if (node_->next)
-	{
-		
+	{	
 		node_->next->prev = node_->prev;
 	}	
 	if (node_->father)
@@ -933,7 +932,7 @@ void sis_json_delete_node(s_sis_json_node *node_)
 	if (node_->value)
 	{
 		sis_free(node_->value);
-		node_->key = NULL;
+		node_->value = NULL;
 	}
 	sis_free(node_);
 }
@@ -1400,9 +1399,9 @@ void sis_json_printf(s_sis_json_node *node_, int *i)
 			first = first->next;
 		}
 	}
-	// printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_,
-	// 		node_->child, node_->prev, node_->next,
-	// 		node_->key, node_->value);
+	printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_,
+			node_->child, node_->prev, node_->next,
+			node_->key, node_->value);
 }
 
 //////////////////////////////////////////////

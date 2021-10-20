@@ -623,7 +623,7 @@ int sis_disk_ctrl_read_start(s_sis_disk_ctrl *cls_)
     // 对已经存在的文件进行合法性检查 如果文件不完整 就打开失败 由外部程序来处理异常，这样相对安全
     if (!sis_file_exists(cls_->work_fps->cur_name))
     {
-        // LOG(5)("workfile no exists.[%s]\n", cls_->work_fps->cur_name);
+        LOG(5)("workfile no exists.[%s]\n", cls_->work_fps->cur_name);
         return SIS_DISK_CMD_NO_EXISTS;
     }
     if (cls_->work_fps->main_head.index)
@@ -710,7 +710,7 @@ int sis_disk_ctrl_write_start(s_sis_disk_ctrl *cls_)
     {
         access = SIS_DISK_ACCESS_CREATE;
     }
-    // printf("-5--ss-- %d\n", cls_->work_fps->main_head.wtime);
+    printf("-5--ss-- %s %d\n", cls_->work_fps->cur_name, cls_->open_date);
     if (access == SIS_DISK_ACCESS_CREATE)
     {
         // 工作文件和索引文件保持同样的随机码 应该创建时才生成

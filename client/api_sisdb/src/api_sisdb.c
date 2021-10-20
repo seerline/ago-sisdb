@@ -11,16 +11,15 @@ static s_sis_pointer_list *_api_session_list = NULL;
 
 typedef struct s_api_sisdb_class
 {
-	int                          id;
-	int                          isinit;   // worker 是否初始化
-	int                          isopen;   // 是否打开
-	s_sis_message               *usermsg;  // 用户保存信息
-	s_sis_worker                *worker;
+	int                   id;
+	int                   isinit;   // worker 是否初始化
+	s_sis_message        *usermsg;  // 用户保存信息
+	s_sis_worker         *worker;
 
-	s_api_sisdb_client_callback *callback;
+	s_api_sisdb_cb_sys   *callback;
 } s_api_sisdb_class;
 
-s_api_sisdb_class *worker_api_sisdb_create(s_api_sisdb_client_callback *callback_)
+s_api_sisdb_class *worker_api_sisdb_create(s_api_sisdb_cb_sys *callback_)
 {
 	s_api_sisdb_class *mclass = SIS_MALLOC(s_api_sisdb_class, mclass);
 	mclass->worker = SIS_MALLOC(s_sis_worker, mclass->worker);
@@ -41,7 +40,7 @@ void worker_api_sisdb_destroy(void *mclass_)
 	sis_free(mclass);
 }
 
-_API_SISDB_DLLEXPORT_ int api_sisdb_client_create(s_api_sisdb_client_callback *callback_)
+_API_SISDB_DLLEXPORT_ int api_sisdb_client_create(s_api_sisdb_cb_sys *callback_)
 {
 	if (!_api_session_list)
 	{
@@ -68,7 +67,24 @@ _API_SISDB_DLLEXPORT_ void api_sisdb_client_destroy(int id_)
 		}
 	}
 }
-
+static int _cb_connected(void *source_, void *argv_)
+{
+	s_api_sisdb_class* mclass = (s_api_sisdb_class* )source_;
+	if (mclass->callback && mclass->callback->cb_connected)
+	{
+		mclass->callback->cb_connected(mclass->id);
+	}	
+	return SIS_METHOD_OK;
+}
+static int _cb_disconnect(void *source_, void *argv_)
+{
+	s_api_sisdb_class* mclass = (s_api_sisdb_class* )source_;
+	if (mclass->callback && mclass->callback->cb_disconnect)
+	{
+		mclass->callback->cb_disconnect(mclass->id);
+	}
+	return SIS_METHOD_OK;
+}
 // { "ip" : "127.0.0.1",
 //   "port" : 10000,
 //   "username" : "guest",
@@ -90,21 +106,18 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_client_open(int id_, const char *conf_)
 	sisdb_client_init(mclass->worker, handle->node);
 	sis_json_close(handle);
 	mclass->isinit = 1;
+	s_sisdb_client_cxt *context = mclass->worker->context;
+	context->cb_source = mclass;
+	context->cb_connected = _cb_connected;;
+	context->cb_disconnect = _cb_disconnect;
+	
 	// 连接服务器
 	sisdb_client_method_init(mclass->worker);
 	
-	s_sisdb_client_cxt *context = mclass->worker->context;
-	int wait = 10000;
-	while(wait > 0)
+	if (context->status == SIS_CLI_STATUS_WORK)
 	{
-		sis_sleep(50);
-		wait -= 50;
-		if (context->status == SIS_CLI_STATUS_WORK)
-		{
-			mclass->isopen = 1;
-			// 已经连接服务器 
-			return API_REPLY_OK;
-		}
+		// 已经连接服务器 
+		return API_REPLY_OK;
 	}
 	return API_REPLY_NONET;
 }
@@ -119,122 +132,83 @@ _API_SISDB_DLLEXPORT_ void api_sisdb_client_close(int id_)
 		mclass->isinit = 0;
 	}
 }
-_API_SISDB_DLLEXPORT_ int api_sisdb_client_command(
-	int           id_,             // 句柄
-	const char   *cmd_,            // 请求的参数
-	const char   *key_,            // 请求的key
-	const char   *ask_,            // 请求的参数
-)
+
+_API_SISDB_DLLEXPORT_ int api_sisdb_client_cmd(
+	int                 id_,             // 句柄
+	const char         *cmd_,            // 请求的参数
+	const char         *key_,            // 请求的key
+	const char         *value_,            // 请求的参数
+	size_t              vsize_,
+	void               *cb_source_,
+	void               *cb_reply_)
 {
 	s_api_sisdb_class* mclass = sis_pointer_list_get(_api_session_list, id_);
 	if (!mclass || !mclass->isinit)
 	{
 		return API_REPLY_NIL; 
 	}
-
-	// s_sis_worker* worker = sis_pointer_list_get(_api_session_list, id_);
-	// if (!worker)
-	// {
-	// 	return API_REPLY_ERR;
-	// }
-	// char ds[128], cmd[128]; 
-	// sis_str_divide(cmd_, '.', ds, cmd);
-	// if (sis_str_subcmp_strict(cmd, "sub,zsub,unsub", ',') >= 0)
-	// {
-	// 	return API_REPLY_ERR;
-	// }
-
-	// // 调取sisdb_client对应的函数
-	// s_sisdb_client_cxt *context = worker->context;
-	// s_sisdb_client_ask *ask = sisdb_client_ask_new( 
-	// 	context,
-	// 	cmd_, 
-	// 	key_, 
-	// 	(void *)val_, 
-	// 	sis_strlen(val_),
-	// 	NULL, 
-	// 	NULL,
-	// 	NULL,
-	// 	NULL,
-	// 	cb_reply,
-	// 	false);
+	s_sis_message *msg = sis_message_create();
+	sis_message_set(msg, "cmd", cmd_, NULL);
+	sis_message_set(msg, "key", key_, NULL);
+	sis_message_set(msg, "val", value_, NULL);
+	sis_message_set_int(msg, "vlen", vsize_ == 0 ? sis_strlen(value_) : vsize_);
 	
-	// if (cmd_sisdb_client_send_cb(worker, ask) == SIS_METHOD_OK)
-	// {
-	// 	return API_REPLY_OK;
-	// }
-	// // 不是订阅的收到响应就自动删除
-	// return API_REPLY_ERR;
+	if (cb_source_ && cb_reply_)
+	{
+		sis_message_set(msg, "source", cb_source_, NULL);
+		sis_message_set(msg, "cb_reply", cb_reply_, NULL);
+	}
+	cmd_sisdb_client_bytes_nowait(mclass->worker, msg);
+
+	sis_message_destroy(msg);
+	// 不是订阅的收到响应就自动删除
+	return API_REPLY_OK;
 }
 
+_API_SISDB_DLLEXPORT_ int api_sisdb_client_cmd_wait(
+	int                 id_,             // 句柄
+	const char         *cmd_,            // 请求的参数
+	const char         *key_,            // 请求的key
+	const char         *value_,            // 请求的参数
+	size_t              vsize_,
+	void               *cb_source_,
+	void               *cb_reply_)
+{
+	s_api_sisdb_class* mclass = sis_pointer_list_get(_api_session_list, id_);
+	if (!mclass || !mclass->isinit)
+	{
+		return API_REPLY_NIL; 
+	}
+	s_sis_message *msg = sis_message_create();
+	sis_message_set(msg, "cmd", cmd_, NULL);
+	sis_message_set(msg, "key", key_, NULL);
+	sis_message_set(msg, "val", value_, NULL);
+	sis_message_set_int(msg, "vlen", vsize_ == 0 ? sis_strlen(value_) : vsize_);
+	
+	int o = cmd_sisdb_client_bytes_wait(mclass->worker, msg);
 
-// {
-// 	s_sis_worker* worker = sis_pointer_list_get(_api_session_list, id_);
-// 	if (!worker)
-// 	{
-// 		return API_REPLY_ERR;
-// 	}
+	if (o == SIS_METHOD_NOANS) 
+	{
+		sis_sdsfree(msg->rmsg);
+		msg->rmsg = sis_sdsnew("server too slow.");
+		msg->rans = API_REPLY_NOANS;
+	}
+	else if (o == API_REPLY_NONET)
+	{
+		sis_sdsfree(msg->rmsg);
+		msg->rmsg = sis_sdsnew("api no work. wait...");
+		msg->rans = API_REPLY_NOWORK;
+	}
+	if (cb_reply_)
+	{
+		cb_api_sisdb_ask *cb_reply = (cb_api_sisdb_ask *)cb_reply_;
+		cb_reply(cb_source_, msg->rans, key_, msg->rmsg, msg->rmsg ? sis_sdslen(msg->rmsg) : 0);
+	}
 
-// 	// 调取sisdb_client对应的函数
-// 	s_sisdb_client_cxt *context = worker->context;
-
-// 	char ds[128], cmd[128]; 
-// 	int cmds = sis_str_divide(cmd_, '.', ds, cmd);
-// 	if (cmds != 2 || sis_str_subcmp_strict(cmd, "sub,zsub,unsub", ',') < 0)
-// 	{
-// 		return API_REPLY_ERR;
-// 	}
-
-// 	if (sis_str_subcmp_strict(cmd, "unsub", ',') >= 0)
-// 	{
-// 		// 删除本地的订阅信息
-// 		sisdb_client_ask_unsub(context, cmd_, key_);
-// 		s_sisdb_client_ask *ask = sisdb_client_ask_new(
-// 			context,
-// 			cmd_, 
-// 			key_, 
-// 			(void *)val_, 
-// 			sis_strlen(val_),
-// 			cb_source_, 
-// 			cb_sub_start, 
-// 			cb_sub_realtime,
-// 			cb_sub_stop,
-// 			cb_reply,
-// 			false);
-// 		// 不是订阅的收到响应就自动删除 ask
-// 		// 发给server 取消订阅
-// 		if (cmd_sisdb_client_send_cb(worker, ask) == SIS_METHOD_OK)
-// 		{			
-// 			return API_REPLY_OK;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		if (sisdb_client_ask_sub_exists(context, cmd_, key_))
-// 		{
-// 			return API_REPLY_ERR;
-// 		}
-// 		s_sisdb_client_ask *ask = sisdb_client_ask_new(
-// 			context,
-// 			cmd_, 
-// 			key_, 
-// 			(void *)val_, 
-// 			sis_strlen(val_),
-// 			cb_source_, 
-// 			cb_sub_start, 
-// 			cb_sub_realtime,
-// 			cb_sub_stop,
-// 			cb_reply,
-// 			true);
-// 		if (cmd_sisdb_client_send_cb(worker, ask) == SIS_METHOD_OK)
-// 		{
-// 			return API_REPLY_OK;
-// 		}		
-// 	}
-// 	return API_REPLY_ERR;
-// }
-
-
+	sis_message_destroy(msg);
+	// 不是订阅的收到响应就自动删除
+	return API_REPLY_OK;
+}
 // 可以传递用户的数据，这样回调函数返回时 通过下面的函数就知道调用主体是谁
 _API_SISDB_DLLEXPORT_ void *api_sisdb_client_get_userdata(int id_, const char *name_)
 {
@@ -255,7 +229,7 @@ _API_SISDB_DLLEXPORT_ void  api_sisdb_client_set_userdata(int id_, const char *n
 	return sis_message_set(mclass->usermsg, name_, data_, NULL);
 }
 
-#if 1
+#if 0
 
 int cb_read1(void *source, void *argv)
 {
@@ -271,7 +245,7 @@ int cb_read1(void *source, void *argv)
 	return 0;
 }
 
-int cb_reply1(void *source, int rid, void *key, void *val)
+int cb_reply1(void *source, int rsno, void *key, void *val)
 {
 	printf("%d : %s %d, vsize = %d\n", rid, 
 		key ? (char *)key : "nil", 
@@ -297,7 +271,7 @@ int ask_sisdb(int id_)
 	s_sis_worker* worker = sis_pointer_list_get(_api_session_list, id_);
 	if (!worker)
 	{
-		return API_REPLY_ERR;
+		return API_REPLY_ERROR;
 	}
 	s_sis_message *msg = sis_message_create();
 	sis_message_set(msg, "cmd", "sdb.set", NULL);
@@ -305,7 +279,7 @@ int ask_sisdb(int id_)
 	sis_message_set(msg, "val", "my is dzd.", NULL);
 	sis_message_set_int(msg, "vlen", 10);
 
-	int o = cmd_sisdb_client_ask_chars(worker, msg);
+	int o = cmd_sisdb_client_chars_wait(worker, msg);
 
 	int rid = sis_message_get_int(msg,"rid");
 	char *key = sis_message_get_str(msg,"key");
@@ -325,20 +299,35 @@ int ask_sisdb(int id_)
 
 int main()
 {
+	s_api_sisdb_cb_sys cb = {0};
+    // cb.OnConnect         = cb_connect;
+    // cb.OnDisconnect      = cb_disconnect1;
+
+    // cb.OnRtnDayBegin     = cb_sub_info;
+    // cb.OnRtnDayEnd       = cb_sub_stop1;
+    // cb.OnRtnTimeless     = cb_sub_info;
+    // cb.OnRtnTradingCode  = cb_sub_code;
+    // cb.OnRtnMarket       = cb_sub_market;
+    // cb.OnRtnIndex        = cb_sub_index;
+    // cb.OnRtnTransaction  = cb_sub_trans;
+    // cb.OnRtnOrder        = cb_sub_order;
+ 
+ 	int no = api_sisdb_client_create(&cb); 
+	
+	int o = api_sisdb_client_open(no, "{\"ip\":\"192.168.3.118\",\"port\":10001,\"username\":\"guest\",\"password\":\"guest1234\"}");
 	// int no = api_sisdb_client_create("woan2007.ticp.io", 7329, "", ""); 
 	// int no = api_sisdb_client_create("192.168.3.118", 7329, "aaa", "aaa"); 
-	int no = api_sisdb_client_create("192.168.1.202", 7329, "guest", "guest1234"); 
 
-	// api_sisdb_command_ask(no, "show", NULL, NULL, cb_reply1);
-	api_sisdb_command_ask(no, "mdb.get", "sh600601.stk_right", "{\"format\":\"struct\"}", cb_reply1);
-	api_sisdb_command_ask(no, "mdb.get", "BK000000.bkinfo", "{\"format\":\"struct\"}", cb_reply1);
-	api_sisdb_command_ask(no, "mdb.get", "BK600001.bkcodes", "{\"format\":\"struct\"}", cb_reply1);
-	api_sisdb_command_ask(no, "mdb.get", "SH600600.bkinside", "{\"format\":\"struct\"}", cb_reply1);
+	api_sisdb_client_command(no, "show", NULL, NULL, cb_reply1);
+	// api_sisdb_client_command(no, "mdb.get", "sh600601.stk_right", "{\"format\":\"struct\"}", cb_reply1);
+	// api_sisdb_client_command(no, "mdb.get", "BK000000.bkinfo", "{\"format\":\"struct\"}", cb_reply1);
+	// api_sisdb_client_command(no, "mdb.get", "BK600001.bkcodes", "{\"format\":\"struct\"}", cb_reply1);
+	// api_sisdb_client_command(no, "mdb.get", "SH600600.bkinside", "{\"format\":\"struct\"}", cb_reply1);
 	
-	// 获取二进制数据
-	api_sisdb_command_ask(no, "nowdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"struct\"}", cb_reply1);
+	// // 获取二进制数据
+	// api_sisdb_client_command(no, "nowdb.get", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"struct\"}", cb_reply1);
 	// 订阅二进制数据
-	// api_sisdb_command_sub(no, "nowdb.sub", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"struct\"}", 
+	// api_sisdb_client_command(no, "nowdb.sub", "sh600601.stk_snapshot", "{\"date\":20200204,\"format\":\"struct\"}", 
 	// 	NULL, cb_read1, cb_read1, cb_read1, cb_reply1);
 	// ask_sisdb(no);
 
@@ -347,7 +336,8 @@ int main()
 	{
 		sis_sleep(1000);
 	}
-
+	api_sisdb_client_close(no);
 	api_sisdb_client_destroy(no);  
+	return 0;
 }
 #endif
