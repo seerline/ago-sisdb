@@ -45,18 +45,14 @@ int subdb_userinfo_incr(s_subdb_cxt *context, s_sis_net_message *netmsg)
 }
 void subdb_userinfo_decr(s_subdb_cxt *context, int cid)
 {
-    printf("subdb_userinfo_decr: %d %d\n", cid, context->work_readers); 
-    if (cid == -1)
+    if (sis_map_kint_get(context->map_users, cid))
     {
-        sis_map_kint_clear(context->map_users); 
-        context->work_readers = 0;
-    }
-    else
-    {
+        // 必须存在才删除
         sis_map_kint_del(context->map_users, cid);
         context->work_readers--;  
         context->work_readers = sis_max(context->work_readers, 0);
     }
+     LOG(5)("subdb_userinfo_decr:%d count:%d work_readers:%d\n", cid, sis_map_kint_getsize(context->map_users), context->work_readers); 
 }
 void subdb_userinfo_destroy(void *info_)
 {
@@ -233,6 +229,7 @@ int cmd_subdb_start(void *worker_, void *argv_)
         }
         sis_dict_iter_free(di);
         context->work_readers = 0;
+        printf("cmd_subdb_start work_readers: %d\n", context->work_readers); 
         context->status = SIS_SUB_STATUS_INIT;
     }
 
@@ -276,6 +273,7 @@ int cmd_subdb_stop(void *worker_, void *argv_)
         sis_dict_iter_free(di);
         sis_net_message_destroy(netmsg);
         context->work_readers = 0;
+        printf("cmd_subdb_stop: work_readers %d\n", context->work_readers); 
         context->status = SIS_SUB_STATUS_STOP; // 停止表示当日数据已经落盘
     }
     if (context->wlog_worker)
@@ -313,35 +311,38 @@ bool _subdb_reader_init(s_subdb_cxt *context)
     while ((de = sis_dict_next(di)) != NULL)
     {
         s_subdb_userinfo *userinfo = (s_subdb_userinfo *)sis_dict_getval(de);
-        LOG(5)("send sub start.[%d] %d %s\n", userinfo->cid, userinfo->status, sdate);
-        if (userinfo->status != SIS_SUB_STATUS_INIT)
+        LOG(5)("send sub start.[%d] %d %s %d\n", userinfo->cid, userinfo->status, sdate, context->work_readers);
+        if (userinfo->status == SIS_SUB_STATUS_INIT)
         {
-            continue;
+            netmsg->cid = userinfo->cid;
+            sis_net_ans_with_sub_start(netmsg, sdate);
+            context->cb_net_message(context->cb_source, netmsg);
+            sis_net_message_clear(netmsg);
+            netmsg->cid = userinfo->cid;
+            sis_message_set_key(netmsg, "_keys_", NULL);
+            s_sis_sds keys = sis_match_key(userinfo->sub_keys, context->work_keys);
+            sis_net_ans_with_chars(netmsg, keys, sis_sdslen(keys));
+            context->cb_net_message(context->cb_source, netmsg);
+            sis_sdsfree(keys);
+            sis_net_message_clear(netmsg);
+            netmsg->cid = userinfo->cid;
+            sis_message_set_key(netmsg, "_sdbs_", NULL);
+            s_sis_sds sdbs = sis_match_sdb_of_sds(userinfo->sub_sdbs, context->work_sdbs);
+            sis_net_ans_with_chars(netmsg, sdbs, sis_sdslen(sdbs));
+            context->cb_net_message(context->cb_source, netmsg);
+            sis_sdsfree(sdbs);
+            sis_net_message_clear(netmsg);
+            netmsg->cid = userinfo->cid;
+            sis_net_ans_with_sub_wait(netmsg, sdate);
+            context->cb_net_message(context->cb_source, netmsg);
+            userinfo->status = SIS_SUB_STATUS_WORK;
+            context->work_readers ++;
+        }
+        if (userinfo->status == SIS_SUB_STATUS_WORK)
+        {
+            // context->work_readers ++;
         }
         // netmsg->name = userinfo->serial ? sis_sdsdup(userinfo->serial) : NULL;
-        netmsg->cid = userinfo->cid;
-        sis_net_ans_with_sub_start(netmsg, sdate);
-        context->cb_net_message(context->cb_source, netmsg);
-        sis_net_message_clear(netmsg);
-        netmsg->cid = userinfo->cid;
-        sis_message_set_key(netmsg, "_keys_", NULL);
-        s_sis_sds keys = sis_match_key(userinfo->sub_keys, context->work_keys);
-        sis_net_ans_with_chars(netmsg, keys, sis_sdslen(keys));
-        context->cb_net_message(context->cb_source, netmsg);
-        sis_sdsfree(keys);
-        sis_net_message_clear(netmsg);
-        netmsg->cid = userinfo->cid;
-        sis_message_set_key(netmsg, "_sdbs_", NULL);
-        s_sis_sds sdbs = sis_match_sdb_of_sds(userinfo->sub_sdbs, context->work_sdbs);
-        sis_net_ans_with_chars(netmsg, sdbs, sis_sdslen(sdbs));
-        context->cb_net_message(context->cb_source, netmsg);
-        sis_sdsfree(sdbs);
-        sis_net_message_clear(netmsg);
-        netmsg->cid = userinfo->cid;
-        sis_net_ans_with_sub_wait(netmsg, sdate);
-        context->cb_net_message(context->cb_source, netmsg);
-        userinfo->status = SIS_SUB_STATUS_WORK;
-        context->work_readers ++;
     }
     sis_dict_iter_free(di);
     sis_net_message_destroy(netmsg);

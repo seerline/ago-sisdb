@@ -184,7 +184,7 @@ s_sis_net_list *sis_net_list_create(void *vfree_)
 	o->buffer = sis_malloc(sizeof(void *) * o->max_count);
 	memset(o->buffer, 0 ,sizeof(void *) * o->max_count);
 	o->vfree = vfree_;
-	o->wait_sec = 180; // 默认3分钟后释放资源
+	o->wait_sec = 60; // 默认3分钟后释放资源
 	return o;
 }
 void sis_net_list_destroy(s_sis_net_list *list_)
@@ -248,6 +248,7 @@ int sis_net_list_new(s_sis_net_list *list_, void *in_)
 	int index = -1;
 	for (int i = 0; i < list_->max_count; i++)
 	{
+		// printf("==new== %d %d %d | %d %d\n", i, list_->used[i], list_->wait_sec, now_sec, list_->stop_sec[i]);
 		if (list_->used[i] == SIS_NET_NOUSE)
 		{
 			index = i;
@@ -270,6 +271,7 @@ int sis_net_list_new(s_sis_net_list *list_, void *in_)
 	char **ptr = (char **)list_->buffer;
 	ptr[index] = (char *)in_;
 	list_->used[index] = SIS_NET_USEED;
+	// list_->stop_sec[index] = now_sec;
 	list_->cur_count++;
 	return index;
 }
@@ -333,6 +335,7 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_)
 	{
 		return -1;
 	}	
+	// printf("==stop=1= %d %d | %d %d\n", index_, list_->used[index_], list_->wait_sec, list_->stop_sec[index_]);
 	if (list_->used[index_] != SIS_NET_USEED)
 	{
 		return -1;
@@ -354,6 +357,7 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_)
 		list_->used[index_] = SIS_NET_NOUSE;
 		list_->cur_count--;
 	}
+	// printf("==stop=2= %d %d | %d %d\n", index_, list_->used[index_], list_->wait_sec, list_->stop_sec[index_]);
 	return index_;
 }
 

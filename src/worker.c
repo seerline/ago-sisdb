@@ -273,14 +273,15 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     {
         node = node_;
     }
-
+    // size_t iii = 1;
+    // printf("%s\n", sis_json_output(node, &iii));
     s_sis_worker *worker = SIS_MALLOC(s_sis_worker, worker);
     worker->father = father_; 
     worker->status = SIS_WORK_INIT_NONE;
-    s_sis_json_node *classname_node = sis_json_cmp_child_node(node_, "classname");
+    s_sis_json_node *classname_node = sis_json_cmp_child_node(node, "classname");
     if (classname_node)
     {
-        worker->classname = sis_sdsnew(sis_json_get_str(node_, "classname"));
+        worker->classname = sis_sdsnew(sis_json_get_str(node, "classname"));
     }
     else
     {
@@ -293,7 +294,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     worker->workers = sis_map_pointer_create();
 
     // 调用公共初始化配置
-    if (!_sis_worker_init(worker, node_))
+    if (!_sis_worker_init(worker, node))
     {
         LOG(3)("init worker [%s] error.\n", worker->classname);
         sis_worker_destroy(worker);
@@ -306,7 +307,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     {
         worker->service_thread = sis_work_thread_create();
         // 设置工作模式
-        _sis_load_work_time(worker, node_);
+        _sis_load_work_time(worker, node);
 
         if (worker->service_thread->work_mode != SIS_WORK_MODE_NONE)
         {
@@ -346,7 +347,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
 work_exit:
     if (!node_)
     {
-        sis_json_delete_node(node_);
+        sis_json_delete_node(node);
     }
 	return worker;
 }

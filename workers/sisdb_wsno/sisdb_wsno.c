@@ -136,6 +136,7 @@ static int cb_sub_stop(void *worker_, void *argv_)
 
     LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
     sisdb_wsno_stop(context);
+    LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
 
     sis_sdsfree(context->wsno_keys); context->wsno_keys = NULL;
     sis_sdsfree(context->wsno_sdbs); context->wsno_sdbs = NULL;

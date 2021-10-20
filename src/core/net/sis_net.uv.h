@@ -80,7 +80,6 @@ typedef struct s_sis_socket_session
 	s_sis_net_nodes      *send_nodes;       // 发送队列  
 	
 	int                   write_stop; // 是否已经关闭
-	uv_async_t            uv_w_async;
 	uv_write_t            uv_h_write;   // 写时请求
 
 	volatile int    _uv_send_async_nums;
@@ -113,6 +112,7 @@ typedef struct s_sis_socket_server
 	uv_loop_t           *uv_s_worker;
 	uv_tcp_t             uv_s_handle;	//服务器链接
 	uv_thread_t          uv_s_thread; // server 线程句柄
+	uv_async_t           uv_w_async;
 	      
 	bool                 isinit;     // 是否已初始化，用于 close 函数中判断
 	bool                 isexit;     
@@ -166,6 +166,7 @@ typedef struct s_sis_socket_client
 {
 	uv_loop_t            *uv_c_worker;
 	uv_thread_t           uv_c_thread; // 线程句柄
+	uv_async_t            uv_w_async;
 
 	s_sis_socket_session *session;          // 链接后的实例 断开链接 = sid = -1 来判断
 
