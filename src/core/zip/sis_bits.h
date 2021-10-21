@@ -114,7 +114,7 @@ static inline size_t sis_bits_stream_getbytes(s_sis_bits_stream *s_)
 static inline int sis_bits_stream_moveto(s_sis_bits_stream *s_, int bitpos_)	
 {
     // s_->currpos = bitpos_;
-    s_->currpos = bitpos_ < 0 ? 0 : bitpos_ > s_->maxsize ? s_->maxsize : bitpos_;
+    s_->currpos = bitpos_ < 0 ? 0 : bitpos_ > (int)s_->maxsize ? s_->maxsize : bitpos_;
     return s_->currpos;
 }
 //移动内部指针bits_位,可以为负，返回新的位置

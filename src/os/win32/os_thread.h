@@ -47,6 +47,8 @@ void sis_thread_join(s_sis_thread *thread_);
 void sis_thread_clear(s_sis_thread *thread);
 //获取线程ID
 s_sis_thread_id_t sis_thread_self(); 
+//
+unsigned int sis_thread_handle(s_sis_thread_id_t id_); 
 // 杀死
 void sis_thread_kill(s_sis_thread_id_t thread);
 #ifdef __cplusplus

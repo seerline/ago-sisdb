@@ -55,17 +55,17 @@ s_sis_sds sis_csv_make_end(s_sis_sds in_);
 #define  SIS_CSV_GET_INT(a,z)   ({   \
     char s[64]; memmove(s, a->argv[z], a->argsize[z]); s[a->argsize[z]] = 0; \
     sis_trim(s); sis_atoll(s); \
-}) \
+})
 
 #define  SIS_CSV_GET_FLOAT(a,z)  ({   \
     char s[64]; memmove(s, a->argv[z], a->argsize[z]); s[a->argsize[z]] = 0; \
     sis_trim(s); atof(s); \
-}) \
+})
 
-#define  SIS_CSV_GET_STRING(ia,ii,oa,oz)  ({   \
+#define  SIS_CSV_GET_STRING(ia,ii,oa,oz)  {   \
 	int z = ia->argsize[ii] > (oz - 1) ? oz - 1 : ia->argsize[ii]; \
     memmove(oa, ia->argv[ii], z); oa[z] = 0;  \
-}) \
+}
 // 对于大文件csv 采用回调方式一条一条信息返回 进行读取 
 // s_sis_file_csv_unit 返回参数结构体
 int sis_file_csv_read_sub(const char *name_, char c_, void * cb_source, sis_method_define *cb_);

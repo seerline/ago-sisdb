@@ -15,6 +15,9 @@ typedef int socklen_t;
 typedef unsigned __int64  int64_addr;
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void sis_socket_init();
 void sis_socket_uninit();
 
@@ -25,5 +28,7 @@ int sis_socket_getip4(const char *name_, char *ip_, size_t ilen_);
 
 #define sis_net_close close
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif //_OS_NET_H
