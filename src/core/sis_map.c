@@ -47,6 +47,7 @@ void *_sis_dict_int_dup(const void *val)
 {
 	int64 *o = sis_malloc(sizeof(int64));
 	memmove(o, val, sizeof(int64));	
+	printf("===== %lld,\n", *o);
 	return o;
 }
 void *_sis_dict_obj_dup(const void *val)
@@ -355,7 +356,15 @@ s_sis_map_kobj *sis_map_kobj_create()
 	return map;
 
 }
-
+#if 0
+int main()
+{
+	s_sis_map_kint *map = sis_map_kint_create();
+	sis_map_kint_set(map, 0, NULL);
+	sis_map_kint_set(map, 1, NULL);
+	sis_map_kint_del(map, 0);
+	sis_map_kint_destroy(map);
+}
 // int main()
 // {
 // 	safe_memory_start();
@@ -512,5 +521,5 @@ int main()
 	sis_map_kint_destroy(map);
 	safe_memory_stop();
 }
-
+#endif
 #endif

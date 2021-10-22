@@ -38,6 +38,7 @@ s_sis_net_nodes *sis_net_nodes_create()
 int _net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
 	int count = 0;
+	
 	if (nodes_->rhead)
 	{
 		s_sis_net_node *next = nodes_->rhead;	
