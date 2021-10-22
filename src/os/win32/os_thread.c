@@ -57,6 +57,10 @@ s_sis_thread_id_t sis_thread_self()
 {
 	return (s_sis_thread_id_t)GetCurrentThreadId();
 }
+unsigned int sis_thread_handle(s_sis_thread_id_t id_) 
+{
+	return (unsigned int)id_;
+}
 void sis_thread_kill(s_sis_thread_id_t thread)
 {
 	LPDWORD code = NULL;

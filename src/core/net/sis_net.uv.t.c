@@ -48,7 +48,7 @@
 /////////////////////////////////////////////////
 // 速度测试
 
-#if 0 
+#if 0
 
 #include <signal.h>
 
@@ -142,7 +142,7 @@ static void cb_client_recv_after(void* handle_, int cid, char* in_, size_t ilen_
 	int nums = speed_recv_size/sendsize;
 	if (nums % 100000 == 0)
 	{
-		printf("client recv [%d]:%zu %d\n", cid, ilen_, nums);
+		printf("client recv [%d]:%d %d\n", cid, ilen_, nums);
 	}
 	if (speed_recv_msec == 0) 
 	{
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
 {
 	safe_memory_start();
 
-	sis_signal(SIGINT, exithandle);
+	// sis_signal(SIGINT, exithandle);
 	// sis_signal(SIGKILL, exithandle);
 	// // sis_sigignore(SIGPIPE);
 	// for (int i = 0; i < 1000000; i++)
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
 
 	while (__exit != 2)
 	{
-		printf("--- check memory --- \n");
+		// printf("--- check memory --- \n");
 		safe_memory_stop();
 		sis_sleep(1000);
 		// sis_sleep(50);

@@ -128,6 +128,22 @@ static void cb_stop(void *context_, int idate)
         context->cb_sub_stop(context->cb_source, sdate);
     } 
 }
+static void cb_break(void *context_, int idate)
+{
+    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
+    printf("sno sub break. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
+     // stop 放这里
+    if (context->work_ziper)
+    {
+        sisdb_incr_zip_stop(context->work_ziper);
+        sisdb_incr_destroy(context->work_ziper);
+        context->work_ziper = NULL;
+    }
+    if (context->cb_sub_stop)
+    {
+        context->cb_sub_stop(context->cb_source, "0");
+    } 
+}
 static void cb_dict_keys(void *context_, void *key_, size_t size) 
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
@@ -243,7 +259,7 @@ static void *_thread_snos_read_sub(void *argv_)
     rsno_cb->cb_dict_sdbs = cb_dict_sdbs;
     rsno_cb->cb_chardata = cb_chardata;
     rsno_cb->cb_stop = cb_stop;
-    rsno_cb->cb_break = cb_stop;
+    rsno_cb->cb_break = cb_break;
 
     context->work_reader = sis_disk_reader_create(
         sis_sds_save_get(context->work_path), 

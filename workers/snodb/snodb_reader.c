@@ -351,10 +351,10 @@ static int cb_sub_stop(void *source, void *argv)
 	}
     sis_net_message_destroy(newinfo); 
 	// 如果是磁盘 订阅完毕就销毁
-	if (reader->sub_disk)
-	{
-		snodb_remove_reader(context, reader->cid);
-	}
+	// if (reader->sub_disk)
+	// {
+	// 	snodb_remove_reader(context, reader->cid);
+	// }
     return 0;
 }
 static int cb_dict_keys(void *source, void *argv)
@@ -469,6 +469,19 @@ int snodb_reader_new_realtime(s_snodb_reader *reader_)
 	}
 	return 0;
 }
+// #0  sis_dict_rehash (d=d@entry=0x1076926, n=0, n@entry=1) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/sis_dict.c:344
+// #1  0x00000000004b5f45 in _dict_rehash_step (d=0x1076926) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/sis_dict.c:379
+// #2  _dict_generic_delete (nofree=0, key=0x7fdd4ec7cde8, d=0x1076926) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/sis_dict.c:512
+// #3  sis_dict_delete (ht=0x1076926, key=key@entry=0x7fdd4ec7cde8) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/sis_dict.c:545
+// #4  0x00000000004c8333 in sis_map_kint_del (map_=<optimized out>, key_=key_@entry=1) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/sis_map.c:344
+// #5  0x000000000048f55f in snodb_remove_reader (snodb_=snodb_@entry=0x1075de6, cid_=<optimized out>) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/workers/snodb/snodb_reader.c:483
+// #6  0x000000000048f604 in cb_sub_stop (source=0x7fdd48003336, argv=0x7fdd4ec7ce50) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/workers/snodb/snodb_reader.c:356
+// #7  0x0000000000486967 in cb_stop (context_=0x7fdd48005006, idate=<optimized out>) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/workers/sisdb_rsno/sisdb_rsno.c:146
+// #8  0x000000000049e0cd in sis_disk_io_sub_sno (cls_=0x7fc5d0000cf6, subkeys_=subkeys_@entry=0x7fdd48005ee7 "SZ000001,SZ000002", subsdbs_=subsdbs_@entry=0x7fdd48004977 "stk_snapshot", 
+//     search_=search_@entry=0x0, cb_=<optimized out>) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/disk/sis_disk.io.sno.c:635
+// #9  0x00000000004a150b in sis_disk_reader_sub_sno (reader_=0x7fc5d0000986, keys_=0x7fdd48005ee7 "SZ000001,SZ000002", sdbs_=0x7fdd48004977 "stk_snapshot", idate_=20210326)
+//     at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/disk/sis_disk_read.c:207
+
 int snodb_remove_reader(s_snodb_cxt *snodb_, int cid_)
 {
 	s_snodb_reader *reader = sis_map_kint_get(snodb_->cur_reader_map, cid_);

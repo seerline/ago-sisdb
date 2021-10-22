@@ -47,6 +47,8 @@ void sis_thread_join(s_sis_thread *thread_);
 void sis_thread_clear(s_sis_thread *thread);
 //获取线程ID
 s_sis_thread_id_t sis_thread_self(); 
+//
+unsigned int sis_thread_handle(s_sis_thread_id_t id_); 
 // 杀死
 void sis_thread_kill(s_sis_thread_id_t thread);
 #ifdef __cplusplus
@@ -105,12 +107,47 @@ typedef int s_sis_unlock_mutex;
 extern "C" {
 #endif
 
+static inline bool atomic_compare_exchange_uint(long *ptr, long agov, long 	newv)
+{
+	long curv = *ptr;
+	long o = _InterlockedCompareExchange(ptr, newv, agov);
+	if (o != curv) 
+	{
+		*ptr = o;
+		return false;
+	}
+	return true;
+}		
+static inline void atomic_fetch_add_uint(long *ptr, long addv)
+{
+	_InterlockedExchangeAdd(ptr, addv);
+}
+
+static inline void atomic_fetch_sub_uint(long *ptr, long addv)
+{
+	__pragma(warning(push));
+	__pragma(warning(disable: 4146))
+	_InterlockedExchangeAdd(ptr, -addv);
+	__pragma(warning(pop))
+}
+/*									\
+ATOMIC_INLINE type							\
+atomic_fetch_sub_##short_type(atomic_##short_type##_t *a,		\
+    type val, atomic_memory_order_t mo) {				\						\
+	__pragma(warning(push))						\
+	__pragma(warning(disable: 4146))				\
+	return atomic_fetch_add_##short_type(a, -val, mo);		\
+	__pragma(warning(pop))						\
+}	
+*/	
+
 // https://docs.microsoft.com/zh-cn/windows/win32/sync/synchronization-functions?redirectedfrom=MSDN#interlocked_functions
-#define BCAS(a,b,c) (InterlockedCompareExchange(a,c,b) == a)
-#define VCAS(a,b,c) InterlockedCompareExchange(a,c,b)
-#define ADDF InterlockedExchangeAdd
-#define SUBF InterlockedExchangeSub
-#define ANDF InterlockedExchangeAnd
+#define BCAS(a,b,c) atomic_compare_exchange_uint(a,b,c)
+// #define VCAS(a,b,c) InterlockedCompareExchange(a,c,b)
+#define ADDF(a,b)   atomic_fetch_add_uint(a,b)
+#define SUBF(a,b)   atomic_fetch_sub_uint(a,b)
+// #define SUBF InterlockedExchangeSub
+// #define ANDF InterlockedExchangeAnd
 
 #ifdef __cplusplus
 }
