@@ -14,8 +14,8 @@
 typedef struct s_sisdb_rsno_cxt
 {
     int                status;         // 工作状态
-    s_sis_sds          work_path;      // 可配置 也可传入
-    s_sis_sds          work_name;      // 可配置 也可传入
+    s_sis_sds_save    *work_path;      // 可配置 也可传入
+    s_sis_sds_save    *work_name;      // 可配置 也可传入
     int                work_date;
     s_sis_sds          work_keys;
     s_sis_sds          work_sdbs;

@@ -255,10 +255,13 @@ int sisdb_rlog_read(s_sis_worker *worker)
 
     sis_mutex_lock(&context->wlog_lock);
     // 读完就销毁
-    s_sis_worker *rlog = sis_worker_create_of_conf(NULL, context->work_name, "{classname:sisdb_flog}");
+    s_sis_sds work_path = sis_sds_save_get(context->work_path);
+    s_sis_sds work_name = sis_sds_save_get(context->work_name);
 
-    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
-    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    s_sis_worker *rlog = sis_worker_create_of_conf(NULL, work_name, "{classname:sisdb_flog}");
+
+    sis_message_set_str(msg, "work-path", work_path, sis_sdslen(work_path));
+    sis_message_set_str(msg, "work-name", work_name, sis_sdslen(work_name));
     sis_message_set_int(msg, "work-date", context->work_date);
     sis_message_set(msg, "source", worker, NULL);
     // sis_message_set_method(msg, "cb_sub_start", NULL);
@@ -273,9 +276,11 @@ int sisdb_rlog_read(s_sis_worker *worker)
 }
 void sisdb_wlog_open(s_sisdb_cxt *context)
 {
+    s_sis_sds work_path = sis_sds_save_get(context->work_path);
+    s_sis_sds work_name = sis_sds_save_get(context->work_name);
     s_sis_message *msg = sis_message_create();
-    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
-    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_str(msg, "work-path", work_path, sis_sdslen(work_path));
+    sis_message_set_str(msg, "work-name", work_name, sis_sdslen(work_name));
     sis_message_set_int(msg, "work-date", context->work_date);
     sis_worker_command(context->wlog_worker, "open", msg);
     sis_message_destroy(msg);
@@ -284,9 +289,11 @@ void sisdb_wlog_open(s_sisdb_cxt *context)
 
 void sisdb_wlog_remove(s_sisdb_cxt *context)
 {
+    s_sis_sds work_path = sis_sds_save_get(context->work_path);
+    s_sis_sds work_name = sis_sds_save_get(context->work_name);
     s_sis_message *msg = sis_message_create();
-    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
-    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_str(msg, "work-path", work_path, sis_sdslen(work_path));
+    sis_message_set_str(msg, "work-name", work_name, sis_sdslen(work_name));
     sis_message_set_int(msg, "work-date", context->work_date);
     if (context->wlog_open)
     {
@@ -298,9 +305,11 @@ void sisdb_wlog_remove(s_sisdb_cxt *context)
 }
 void sisdb_wlog_close(s_sisdb_cxt *context)
 {
+    s_sis_sds work_path = sis_sds_save_get(context->work_path);
+    s_sis_sds work_name = sis_sds_save_get(context->work_name);
     s_sis_message *msg = sis_message_create();
-    sis_message_set_str(msg, "work-path", context->work_path, sis_sdslen(context->work_path));
-    sis_message_set_str(msg, "work-name", context->work_name, sis_sdslen(context->work_name));
+    sis_message_set_str(msg, "work-path", work_path, sis_sdslen(work_path));
+    sis_message_set_str(msg, "work-name", work_name, sis_sdslen(work_name));
     sis_message_set_int(msg, "work-date", context->work_date);
     sis_worker_command(context->wlog_worker, "close", msg);
     sis_message_destroy(msg);
@@ -313,7 +322,7 @@ s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
     s_sis_sds msg = NULL;
     {
         s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(cxt->work_famp_cxt->work_keys);
+        s_sis_dict_iter *di = sis_dict_get_iter(cxt->work_fmap_cxt->work_keys);
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
@@ -334,12 +343,12 @@ s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
 
 s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
 {
-    int count = sis_map_list_getsize(cxt->work_famp_cxt->work_sdbs);
+    int count = sis_map_list_getsize(cxt->work_fmap_cxt->work_sdbs);
     s_sis_json_node *sdbs_node = sis_json_create_object();
     {
         for(int i = 0; i < count; i++)
         {
-            s_sis_dynamic_db *table = (s_sis_dynamic_db *)sis_map_list_geti(cxt->work_famp_cxt->work_sdbs, i);
+            s_sis_dynamic_db *table = (s_sis_dynamic_db *)sis_map_list_geti(cxt->work_fmap_cxt->work_sdbs, i);
             sis_json_object_add_node(sdbs_node, table->name, sis_sdbinfo_to_json(table));
         }
     }
@@ -351,10 +360,12 @@ s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
 
 void sisdb_disk_save_start(s_sisdb_cxt *context)
 {
+    s_sis_sds work_path = sis_sds_save_get(context->work_path);
+    s_sis_sds work_name = sis_sds_save_get(context->work_name);
     sis_mutex_lock(&context->wlog_lock);
-    if (sis_disk_log_exist(context->work_path, context->work_name, context->work_date))
+    if (sis_disk_log_exist(work_path, work_name, context->work_date))
     {
-        sis_disk_control_move(context->work_path, context->work_name, SIS_DISK_TYPE_LOG, context->work_date, context->safe_path);
+        sis_disk_control_move(work_path, work_name, SIS_DISK_TYPE_LOG, context->work_date, context->safe_path);
     }
     sis_mutex_unlock(&context->wlog_lock);
     // 后期为了安全应该备份需要修改的文件 如果中间有任何一个步骤出错 就全部恢复过去
@@ -431,10 +442,13 @@ int sisdb_disk_save(s_sisdb_cxt *context)
     }
     context->save_status = 1;
     // sis_mutex_lock(&context->wlog_lock);
-    int count = sis_map_pointer_getsize(context->work_famp_cxt->work_keys);
+    int count = sis_map_pointer_getsize(context->work_fmap_cxt->work_keys);
     if (count)
     {
-        s_sis_disk_writer *wfile = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB);
+        s_sis_disk_writer *wfile = sis_disk_writer_create(
+            sis_sds_save_get(context->work_path), 
+            sis_sds_save_get(context->work_name), 
+            SIS_DISK_TYPE_SDB);
         // 不能删除老文件的信息
         sis_disk_writer_open(wfile, 0);
         {
@@ -447,11 +461,11 @@ int sisdb_disk_save(s_sisdb_cxt *context)
         }
         {
             s_sis_dict_entry *de;
-            s_sis_dict_iter *di = sis_dict_get_iter(context->work_famp_cxt->work_keys);
+            s_sis_dict_iter *di = sis_dict_get_iter(context->work_fmap_cxt->work_keys);
             while ((de = sis_dict_next(di)) != NULL)
             {
                 s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
-                _disk_save_fmap(context->work_famp_cxt, wfile, funit);
+                _disk_save_fmap(context->work_fmap_cxt, wfile, funit);
             }
             sis_dict_iter_free(di);
         }
@@ -475,7 +489,10 @@ void sisdb_disk_save_stop(s_sisdb_cxt *context)
     //        /* code */
     // }
     sis_mutex_unlock(&context->wlog_lock);
-    sis_disk_control_remove(context->safe_path, context->work_name, SIS_DISK_TYPE_LOG, context->work_date);
+    sis_disk_control_remove(
+        context->safe_path, 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_LOG, context->work_date);
     // 全部处理完成后 这里应该处理新写入的 log 
     context->save_status = 0;
 }

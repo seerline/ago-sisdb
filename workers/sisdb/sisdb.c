@@ -67,24 +67,9 @@ bool sisdb_init(void *worker_, void *argv_)
     context->work_sub_cxt = sisdb_sub_cxt_create();
 
     // 数据集合
-	const char *workname = sis_json_get_str(node, "work-name");
-	if (workname)
-	{
-		context->work_name = sis_sdsnew(workname);
-	}
-	else
-	{
-		context->work_name = sis_sdsnew(node->key);
-	}    
-    const char *work_path = sis_json_get_str(node, "work-path");
-    if (work_path)
-    {
-        context->work_path = sis_sdsnew(work_path);
-    }
-    // else
-    // {
-    //     context->work_famp_cxt = sisdb_fmap_cxt_create("data", context->work_name );
-    // }
+    context->work_path = sis_sds_save_create(sis_json_get_str(node, "work-path"), "data");   
+    context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), node->key);   
+
     {
         s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "safe-path");
         if (sonnode)
@@ -120,13 +105,20 @@ void sisdb_uninit(void *worker_)
         sisdb_sub_cxt_destroy(context->work_sub_cxt);
         context->work_sub_cxt = NULL;
     }
-    if (context->work_famp_cxt)
+    if (context->work_fmap_cxt)
     {
-        sisdb_fmap_cxt_destroy(context->work_famp_cxt);
-        context->work_famp_cxt =  NULL;
+        int count = sis_map_list_getsize(context->work_fmap_cxt->work_sdbs);
+        for (int i = 0; i < count; i++)
+        {
+            s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_list_geti(context->work_fmap_cxt->work_sdbs, i);
+            printf("close db %s\n", db->name);
+        }
+        
+        sisdb_fmap_cxt_destroy(context->work_fmap_cxt);
+        context->work_fmap_cxt =  NULL;
     }
-    sis_sdsfree(context->work_path);
-    sis_sdsfree(context->work_name);
+    sis_sds_save_destroy(context->work_path);
+    sis_sds_save_destroy(context->work_name);
     sis_sdsfree(context->safe_path);
     sis_free(context);
 }
@@ -195,8 +187,9 @@ int cmd_sisdb_create(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
+    printf("create ... %s\n", netmsg->key);
     s_sis_json_handle *argvs = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+    
     if (!argvs)
     {
         sis_net_ans_with_error(netmsg, "no create info.", 0);
@@ -616,29 +609,28 @@ int cmd_sisdb_init(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_message *msg = (s_sis_message *)argv_;
-    if (context->work_famp_cxt)
+    if (context->work_fmap_cxt)
     {
-        sisdb_fmap_cxt_destroy(context->work_famp_cxt);
+        sisdb_fmap_cxt_destroy(context->work_fmap_cxt);
     }
-    s_sis_sds curr_path = sis_message_get_str(msg, "work-path");
-    if (curr_path)
-    {
-        sis_sdsfree(context->work_path);
-        context->work_path = sis_sdsdup(curr_path);
-    }
-    context->work_famp_cxt = sisdb_fmap_cxt_create(context->work_path, context->work_name);
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    
+    context->work_fmap_cxt = sisdb_fmap_cxt_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name));
 
 	context->cb_source = sis_message_get(msg, "cb_source");
 	context->cb_net_message = sis_message_get_method(msg, "cb_net_message");
 
     // 先加载所有数据结构
-    sisdb_fmap_cxt_init(context->work_famp_cxt);
+    sisdb_fmap_cxt_init(context->work_fmap_cxt);
 
     // 再加载 log 的数据 加载 log数据会读取对应磁盘的数据
     sisdb_rlog_read(worker);
 
     // 这里初始化 log 的写入服务
-    s_sis_worker *service = sis_worker_create_of_conf(worker, context->work_name, "{classname:sisdb_flog}");
+    s_sis_worker *service = sis_worker_create_of_conf(worker, 
+        sis_sds_save_get(context->work_name), "{classname:sisdb_flog}");
     if (service)
     {
         context->wlog_worker = service; 
@@ -689,7 +681,7 @@ int cmd_sisdb_wlog(void *worker_, void *argv_)
     {
         sisdb_wlog_open(context);
     }
-    printf("---%p %p\n", context->wlog_worker, context->wlog_write);
+    // printf("---%p %p\n", context->wlog_worker, context->wlog_write);
     int o = context->wlog_write->proc(context->wlog_worker, argv_);
     sis_mutex_unlock(&context->wlog_lock);
     return o;

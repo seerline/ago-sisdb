@@ -38,26 +38,8 @@ bool sisdb_rsno_init(void *worker_, void *node_)
 
     context->work_date = sis_json_get_int(node, "work-date", sis_time_get_idate(0));
     {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
-        if (sonnode)
-        {
-            context->work_path = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_path = sis_sdsnew("data/");
-        }  
-    }
-    {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-name");
-        if (sonnode)
-        {
-            context->work_name = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_name = sis_sdsnew("snodb");
-        }  
+        context->work_path = sis_sds_save_create(sis_json_get_str(node, "work-path"), "data");   
+        context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), "snodb");    
     }
     {
         const char *str = sis_json_get_str(node, "sub-sdbs");
@@ -93,8 +75,8 @@ void sisdb_rsno_uninit(void *worker_)
     sisdb_rsno_sub_stop(context);
     context->status = SIS_RSNO_EXIT;
 
-    sis_sdsfree(context->work_path);
-    sis_sdsfree(context->work_name);
+    sis_sds_save_destroy(context->work_path);
+    sis_sds_save_destroy(context->work_name);
     sis_sdsfree(context->work_keys);
     sis_sdsfree(context->work_sdbs);
     sis_sdsfree(context->ziper_keys);
@@ -263,7 +245,10 @@ static void *_thread_snos_read_sub(void *argv_)
     rsno_cb->cb_stop = cb_stop;
     rsno_cb->cb_break = cb_stop;
 
-    context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SNO, rsno_cb);
+    context->work_reader = sis_disk_reader_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SNO, rsno_cb);
 
     LOG(5)("sub sno open. [%d] %d\n", context->work_date, context->status);
     sis_disk_reader_sub_sno(context->work_reader, context->work_keys, context->work_sdbs, context->work_date);
@@ -316,22 +301,8 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
 /////////////////////////////////////////
 void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
 {
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
     {
         s_sis_sds str = sis_message_get_str(msg, "sub-keys");
         if (str)

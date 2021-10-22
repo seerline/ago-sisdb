@@ -183,6 +183,7 @@ s_sisdb_fmap_unit *sisdb_fmap_cxt_new(s_sisdb_fmap_cxt *cxt_, const char *key_, 
 	default:
 		{
 			s_sis_dynamic_db *table = sis_map_list_get(cxt_->work_sdbs, sname);
+			// printf("create... %p, %s %d\n", table, sname, sis_map_list_getsize(cxt_->work_sdbs));
 			unit = sisdb_fmap_unit_create(kobj, sobj, ktype_, table);
 		}
 		break;

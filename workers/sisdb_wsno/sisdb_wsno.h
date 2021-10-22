@@ -17,8 +17,8 @@
 typedef struct s_sisdb_wsno_cxt
 {
     int                status;
-    s_sis_sds          work_path;     // 可配置 也可传入
-    s_sis_sds          work_name;     // 可配置 也可传入
+    s_sis_sds_save    *work_path;     // 可配置 也可传入
+    s_sis_sds_save    *work_name;     // 可配置 也可传入
     s_sis_disk_writer *writer;        // 写盘类
  
 	int                stop_time;     // 停止时间

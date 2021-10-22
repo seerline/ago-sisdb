@@ -85,7 +85,7 @@ void sis_net_message_clear(s_sis_net_message *in_)
 	in_->rfmt = SIS_NET_FORMAT_CHARS;
     if (in_->map)
     {
-        sis_map_pointer_destroy(in_->map); 
+        sis_map_pointer_clear(in_->map); 
     }
 }
 static size_t _net_message_list_size(s_sis_pointer_list *list_)

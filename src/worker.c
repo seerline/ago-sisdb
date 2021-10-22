@@ -502,14 +502,14 @@ s_sis_worker *sis_worker_get(s_sis_worker *worker_, const char *workname_)
     }
     // else
     {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(worker_->workers);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sis_worker *work = (s_sis_worker *)sis_dict_getval(de);
-            printf("---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
-        }
-        sis_dict_iter_free(di);
+        // s_sis_dict_entry *de;
+        // s_sis_dict_iter *di = sis_dict_get_iter(worker_->workers);
+        // while ((de = sis_dict_next(di)) != NULL)
+        // {
+        //     s_sis_worker *work = (s_sis_worker *)sis_dict_getval(de);
+        //     printf("get ---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
+        // }
+        // sis_dict_iter_free(di);
 
         s_sis_sds wname = _sis_worker_get_workname(worker_, workname_);
         s_sis_worker *worker = sis_map_pointer_find(worker_->workers, wname);
