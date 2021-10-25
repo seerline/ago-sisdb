@@ -109,48 +109,92 @@ int  sis_net_nodes_push(s_sis_net_nodes *nodes_, s_sis_object *obj_)
 	sis_mutex_unlock(&nodes_->lock);
 	return nodes_->wnums;
 }
-
+// int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
+// {
+// 	if (nodes_->rnums >= readnums_)
+// 	{
+// 		return nodes_->rnums;
+// 	}
+//     sis_mutex_lock(&nodes_->lock);
+// 	s_sis_net_node *next = nodes_->whead;	
+// 	while (next)
+// 	{
+// 		nodes_->rnums++;
+// 		nodes_->wnums--;
+// 		if (!nodes_->rhead)
+// 		{
+// 			nodes_->rhead = next;
+// 			nodes_->rtail = next;
+// 		} 
+// 		else
+// 		{
+// 			nodes_->rtail->next = next;
+// 			nodes_->rtail = next;
+// 		}
+// 		next = next->next;
+// 		if (next)
+// 		{
+// 			nodes_->whead = next;
+// 		}
+// 		else
+// 		{
+// 			nodes_->whead = NULL;
+// 			nodes_->wtail = NULL;
+// 		}
+// 		nodes_->rtail->next = NULL;
+// 		if (nodes_->rnums >= readnums_)
+// 		{
+// 			break;
+// 		}
+// 	}
+// 	sis_mutex_unlock(&nodes_->lock);
+// 	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
+// 	return 	nodes_->rnums;
+// }
 int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
 {
-	if (nodes_->rnums >= readnums_)
+	if (nodes_->rnums > 0)
 	{
 		return nodes_->rnums;
 	}
-    sis_mutex_lock(&nodes_->lock);
-	s_sis_net_node *next = nodes_->whead;	
-	while (next)
-	{
-		nodes_->rnums++;
-		nodes_->wnums--;
-		if (!nodes_->rhead)
+	if (!sis_mutex_trylock(&nodes_->lock))
+	{	
+		s_sis_net_node *next = nodes_->whead;	
+		while (next)
 		{
-			nodes_->rhead = next;
-			nodes_->rtail = next;
-		} 
-		else
-		{
-			nodes_->rtail->next = next;
-			nodes_->rtail = next;
+			nodes_->rnums++;
+			nodes_->wnums--;
+			if (!nodes_->rhead)
+			{
+				nodes_->rhead = next;
+				nodes_->rtail = next;
+			} 
+			else
+			{
+				nodes_->rtail->next = next;
+				nodes_->rtail = next;
+			}
+			next = next->next;
+			if (next)
+			{
+				nodes_->whead = next;
+			}
+			else
+			{
+				nodes_->whead = NULL;
+				nodes_->wtail = NULL;
+			}
+			nodes_->rtail->next = NULL;
+			if (nodes_->rnums >= readnums_)
+			{
+				break;
+			}
 		}
-		next = next->next;
-		if (next)
-		{
-			nodes_->whead = next;
-		}
-		else
-		{
-			nodes_->whead = NULL;
-			nodes_->wtail = NULL;
-		}
-		nodes_->rtail->next = NULL;
-		if (nodes_->rnums >= readnums_)
-		{
-			break;
-		}
+		sis_mutex_unlock(&nodes_->lock);
+		return 	nodes_->rnums;
 	}
-	sis_mutex_unlock(&nodes_->lock);
 	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
-	return 	nodes_->rnums;
+	return 0;
 }
 int sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
 {
