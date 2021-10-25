@@ -7,7 +7,7 @@
 
 s_sis_sds sisdb_io_show_sds(s_sisdb_cxt *sisdb_)
 {
-    s_sisdb_fmap_cxt *cxt = sisdb_->work_famp_cxt;
+    s_sisdb_fmap_cxt *cxt = sisdb_->work_fmap_cxt;
     int count = sis_map_list_getsize(cxt->work_sdbs);
     if (count < 1)
     {
@@ -33,7 +33,7 @@ int sisdb_io_create(s_sisdb_cxt *sisdb_, const char *sname_, s_sis_json_node *no
     {
         sis_dynamic_db_setname(newdb, sname_);
 
-        int o = sisdb_fmap_cxt_setdb(sisdb_->work_famp_cxt, newdb);
+        int o = sisdb_fmap_cxt_setdb(sisdb_->work_fmap_cxt, newdb);
 
         sis_dynamic_db_destroy(newdb);
         return o;  
@@ -107,7 +107,7 @@ s_sis_sds sisdb_io_get_sds(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_nod
     s_sisdb_fmap_cmd cmd = {0};
     _init_cmd_from_get(&cmd, key_, node_);  // 获取参数
 
-    if (sisdb_fmap_cxt_read(sisdb_->work_famp_cxt, &cmd) < 0)
+    if (sisdb_fmap_cxt_read(sisdb_->work_fmap_cxt, &cmd) < 0)
     {
         return NULL;
     };
@@ -136,7 +136,7 @@ s_sis_sds sisdb_io_get_chars_sds(s_sisdb_cxt *sisdb_, const char *key_, int rfmt
     s_sisdb_fmap_cmd cmd = {0};
     _init_cmd_from_get(&cmd, key_, node_);  // 获取参数
 
-    if (sisdb_fmap_cxt_read(sisdb_->work_famp_cxt, &cmd) < 0)
+    if (sisdb_fmap_cxt_read(sisdb_->work_fmap_cxt, &cmd) < 0)
     {
         return NULL;
     };
@@ -189,6 +189,7 @@ s_sis_sds sisdb_io_get_chars_sds(s_sisdb_cxt *sisdb_, const char *key_, int rfmt
 static int _init_cmd_from_set(s_sisdb_fmap_cmd *cmd_, const char *key_, s_sis_sds ask_)
 {
     cmd_->cmpmode = SISDB_FMAP_CMP_SAME;
+    cmd_->key = key_;
     // cmd_->start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
     // cmd_->start = 0;
     // cmd_->stop = 0;
@@ -207,7 +208,7 @@ int sisdb_io_update(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds imem_)
     s_sisdb_fmap_cmd cmd = {0};
     _init_cmd_from_set(&cmd, key_, imem_);  // 获取参数
 
-    int  o = sisdb_fmap_cxt_update(sisdb_->work_famp_cxt, &cmd);
+    int  o = sisdb_fmap_cxt_update(sisdb_->work_fmap_cxt, &cmd);
     
     return o;
 }
@@ -217,10 +218,10 @@ int sisdb_io_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds vmem_)
     {
         return -1;
     }
-    s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(sisdb_->work_famp_cxt, key_);
+    s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(sisdb_->work_fmap_cxt, key_);
     if (!unit)
     {
-        unit = sisdb_fmap_cxt_new(sisdb_->work_famp_cxt, key_, SISDB_FMAP_TYPE_SDB);  
+        unit = sisdb_fmap_cxt_new(sisdb_->work_fmap_cxt, key_, SISDB_FMAP_TYPE_SDB);  
     }
     // 到这里已经有了collect
     s_sis_sds bytes = NULL;
@@ -258,16 +259,16 @@ int sisdb_io_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_pointer_list
     {
         return -1;
     }
-    s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(sisdb_->work_famp_cxt, key_);
-    if (!unit)
-    {
-        unit = sisdb_fmap_cxt_new(sisdb_->work_famp_cxt, key_, SISDB_FMAP_TYPE_SDB);  
-    }
+    // s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(sisdb_->work_fmap_cxt, key_);
+    // if (!unit)
+    // {
+    //     unit = sisdb_fmap_cxt_new(sisdb_->work_fmap_cxt, key_, SISDB_FMAP_TYPE_SDB);  
+    // }
 
     int o = 0;
     for (int i = 0; i < vlist_->count; i++)
     {
-        s_sis_sds str = sis_pointer_list_get(vlist_, i);
+        s_sis_sds str = SIS_OBJ_SDS((s_sis_object *)sis_pointer_list_get(vlist_, i));
         o += sisdb_io_update(sisdb_, key_, str);
     }
     return o;
@@ -320,7 +321,7 @@ int sisdb_io_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
     }    
     cmd.key = key_;
 
-    return sisdb_fmap_cxt_del(sisdb_->work_famp_cxt, &cmd);
+    return sisdb_fmap_cxt_del(sisdb_->work_fmap_cxt, &cmd);
 
 }
 int sisdb_io_del_one(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
@@ -331,7 +332,7 @@ int sisdb_io_del_one(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *nod
 
 int sisdb_io_drop(s_sisdb_cxt *sisdb_, const char *sname_)
 {
-    s_sis_dynamic_db *curdb = sisdb_fmap_cxt_getdb(sisdb_->work_famp_cxt, sname_);
+    s_sis_dynamic_db *curdb = sisdb_fmap_cxt_getdb(sisdb_->work_fmap_cxt, sname_);
     if (!curdb)
     {
         return -2;
@@ -347,7 +348,7 @@ s_sis_sds sisdb_io_gets_one_sds(s_sisdb_cxt *sisdb_, const char *keys_)
     // if (!sis_strcasecmp(keys_, "*"))
     // {
     //     s_sis_dict_entry *de;
-    //     s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_famp_cxt->work_keys);
+    //     s_sis_dict_iter *di = sis_dict_get_iter(sisdb_->work_fmap_cxt->work_keys);
     //     while ((de = sis_dict_next(di)) != NULL)
     //     {
     //         s_sisdb_fmap_unit *unit = (s_sisdb_fmap_unit *)sis_dict_getval(de);

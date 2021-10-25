@@ -230,6 +230,7 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
 
 int snodb_wlog_to_snos(s_snodb_cxt *snodb_)
 {
+	
 	if (sis_disk_control_exist(snodb_->work_path, snodb_->work_name, SIS_DISK_TYPE_LOG, snodb_->work_date) != 1)
 	{
 		// 文件不存在就返回

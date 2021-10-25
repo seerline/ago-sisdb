@@ -1328,6 +1328,48 @@ s_sis_sds sis_sdsjoinsds(s_sis_sds *argv, int argc, const char *sep, size_t sepl
     return join;
 }
 
+s_sis_sds_save *sis_sds_save_create(const char *cv_, const char *dv_)
+{
+    s_sis_sds_save *o = SIS_MALLOC(s_sis_sds_save, o);
+    if (cv_)
+    {
+        o->current_v = sis_sdsnew(cv_);
+    }
+    if (dv_)
+    {
+        o->default_v = sis_sdsnew(dv_);
+    }
+    return o;
+}
+void sis_sds_save_destroy(s_sis_sds_save *sdss_)
+{
+    sis_sdsfree(sdss_->current_v);
+    sis_sdsfree(sdss_->father_v);
+    sis_sdsfree(sdss_->default_v);
+    sis_free(sdss_);
+}
+void sis_sds_save_set(s_sis_sds_save *sdss_, const char *fv_)
+{
+    sis_sdsfree(sdss_->father_v);
+    sdss_->father_v = NULL;
+    if (fv_)
+    {
+        sdss_->default_v = sis_sdsnew(fv_);
+    }
+}
+s_sis_sds sis_sds_save_get(s_sis_sds_save *sdss_)
+{
+    if (sdss_->current_v)
+    {
+        return sdss_->current_v;
+    }
+    if (sdss_->father_v)
+    {
+        return sdss_->father_v;
+    }
+    return sdss_->default_v;
+}
+
 #ifdef SDS_TEST_MAIN
 #include <stdio.h>
 #include "testhelp.h"

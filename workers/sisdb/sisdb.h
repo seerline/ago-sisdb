@@ -83,8 +83,8 @@ typedef struct s_sisdb_cxt
 {
 	int                 status;        // 工作状态
   
-	s_sis_sds           work_path;     // 数据库路径 sisdb
-	s_sis_sds           work_name;     // 数据库名字 sisdb
+	s_sis_sds_save     *work_path;     // 数据库路径 sisdb
+	s_sis_sds_save     *work_name;     // 数据库名字 sisdb
 	s_sis_sds           safe_path;     // 安全路径 sisdb
   
 	int                 work_date;     // 当前工作日期
@@ -95,7 +95,7 @@ typedef struct s_sisdb_cxt
 	s_sis_method       *wlog_write;    // log的写入方法
 	s_sis_worker       *wlog_worker;   // 当前使用的flog类
 	
-	s_sisdb_fmap_cxt   *work_famp_cxt; // 管理所有的数据
+	s_sisdb_fmap_cxt   *work_fmap_cxt; // 管理所有的数据
 
 	// 多个 client 订阅的列表 需要一一对应发送
 	s_sisdb_sub_cxt    *work_sub_cxt;  // 实时信息发布管理

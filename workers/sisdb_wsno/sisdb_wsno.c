@@ -33,26 +33,8 @@ bool sisdb_wsno_init(void *worker_, void *node_)
     s_sisdb_wsno_cxt *context = SIS_MALLOC(s_sisdb_wsno_cxt, context);
     worker->context = context;
     {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
-        if (sonnode)
-        {
-            context->work_path = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_path = sis_sdsnew("data/");
-        }  
-    }
-    {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-name");
-        if (sonnode)
-        {
-            context->work_name = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_name = sis_sdsnew("snodb");
-        }  
+        context->work_path = sis_sds_save_create(sis_json_get_str(node, "work-path"), "data");   
+        context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), "snodb");    
     }     
     context->work_sdbs = sis_sdsnew("*");
     context->work_keys = sis_sdsnew("*");
@@ -67,8 +49,8 @@ void sisdb_wsno_uninit(void *worker_)
     context->status = SIS_WSNO_EXIT;
     sisdb_wsno_stop(context);
 
-    sis_sdsfree(context->work_path);
-    sis_sdsfree(context->work_name);
+    sis_sds_save_destroy(context->work_path);
+    sis_sds_save_destroy(context->work_name);
     sis_sdsfree(context->work_keys);
     sis_sdsfree(context->work_sdbs);
 
@@ -89,7 +71,10 @@ void sisdb_wsno_start(s_sisdb_wsno_cxt *context)
     sis_sdsfree(context->wsno_keys); context->wsno_keys = NULL;
     sis_sdsfree(context->wsno_sdbs); context->wsno_sdbs = NULL;
 
-    context->writer = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_SNO);
+    context->writer = sis_disk_writer_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SNO);
     sis_disk_writer_open(context->writer, context->work_date);
 }
 void sisdb_wsno_stop(s_sisdb_wsno_cxt *context)
@@ -259,38 +244,9 @@ int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }
     s_sis_message *msg = (s_sis_message *)argv_; 
-    { 
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
-    // {
-    //     s_sis_sds str = sis_message_get_str(msg, "sub-keys");
-    //     if (str)
-    //     {
-    //         sis_sdsfree(context->work_keys);
-    //         context->work_keys = sis_sdsdup(str);
-    //     }
-    // }
-    // {
-    //     s_sis_sds str = sis_message_get_str(msg, "sub-sdbs");
-    //     if (str)
-    //     {
-    //         sis_sdsfree(context->work_sdbs);
-    //         context->work_sdbs = sis_sdsdup(str);
-    //     }
-    // }
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
+
     sis_message_set(msg, "source", worker, NULL);
     sis_message_set_method(msg, "cb_sub_start"   ,cb_sub_start);
     sis_message_set_method(msg, "cb_sub_stop"    ,cb_sub_stop);

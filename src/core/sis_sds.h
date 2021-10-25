@@ -14,6 +14,14 @@
 typedef char * s_sis_sds;
 
 #pragma pack(push,1)
+
+typedef struct s_sis_sds_save
+{
+	s_sis_sds     current_v;    // 当前配置 优先级最高
+	s_sis_sds     father_v;     // 上级信息
+	s_sis_sds     default_v;    // 默认配置 优先级最低
+} s_sis_sds_save;
+
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
  * However is here to document the layout of type 5 SDS strings. */
 struct sdshdr5 {
@@ -241,6 +249,14 @@ s_sis_sds sis_sds_remove_freespace(s_sis_sds s);
 size_t sis_sds_allocsize(s_sis_sds s);
 void *sis_sds_allocptr(s_sis_sds s);
 
+// 初始化信息
+s_sis_sds_save *sis_sds_save_create(const char *cv_, const char *dv_);
+
+void sis_sds_save_destroy(s_sis_sds_save *sdss_);
+// 设置从其他地方转过来的信息
+void sis_sds_save_set(s_sis_sds_save *, const char *fv_);
+// 得到最可能的需要信息
+s_sis_sds sis_sds_save_get(s_sis_sds_save *);
 
 #ifdef __cplusplus
 }

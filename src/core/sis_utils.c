@@ -539,8 +539,12 @@ s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_)
 	{
 		str = sis_json_output(node_, &olen);
 	}
-	s_sis_sds o = sis_sdsnewlen(str, olen);
-	sis_free(str);
+	s_sis_sds o = NULL;
+	if (str)
+	{
+		o = sis_sdsnewlen(str, olen);
+		sis_free(str);
+	}
     return o;
 }
 
