@@ -84,7 +84,7 @@ s_sis_disk_reader *sis_disk_reader_create(const char *path_, const char *name_, 
     s_sis_disk_reader *o = SIS_MALLOC(s_sis_disk_reader, o);
     o->callback = cb_;
     o->style = style_;
-    o->fpath = name_ ? sis_sdsnew(path_) : sis_sdsnew("./"); 
+    o->fpath = path_ ? sis_sdsnew(path_) : sis_sdsnew("./"); 
     o->fname = name_ ? sis_sdsnew(name_) : sis_sdsnew("sisdb");
 
     o->munit = NULL;
@@ -252,6 +252,12 @@ int sis_disk_reader_open(s_sis_disk_reader *reader_)
         reader_->status_open = 1;
         return 0;
     }
+    else
+    {
+        sis_disk_ctrl_read_stop(reader_->munit);
+        sis_disk_ctrl_destroy(reader_->munit);
+        reader_->munit = NULL;
+    }
     return o;
 }
 void sis_disk_reader_close(s_sis_disk_reader *reader_)
@@ -263,9 +269,12 @@ void sis_disk_reader_close(s_sis_disk_reader *reader_)
     }
     if (reader_->status_open == 1)
     {
-        sis_disk_ctrl_read_stop(reader_->munit);
-        sis_disk_ctrl_destroy(reader_->munit);
-        reader_->munit = NULL;
+        if (reader_->munit)
+        {
+            sis_disk_ctrl_read_stop(reader_->munit);
+            sis_disk_ctrl_destroy(reader_->munit);
+            reader_->munit = NULL;
+        }
         // 清除可能
         sis_map_list_clear(reader_->subidxs);
         sis_pointer_list_clear(reader_->sunits);

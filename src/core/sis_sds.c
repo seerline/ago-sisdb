@@ -1354,7 +1354,7 @@ void sis_sds_save_set(s_sis_sds_save *sdss_, const char *fv_)
     sdss_->father_v = NULL;
     if (fv_)
     {
-        sdss_->default_v = sis_sdsnew(fv_);
+        sdss_->father_v = sis_sdsnew(fv_);
     }
 }
 s_sis_sds sis_sds_save_get(s_sis_sds_save *sdss_)

@@ -9,7 +9,7 @@ s_sis_disk_writer *sis_disk_writer_create(const char *path_, const char *name_, 
 {
     s_sis_disk_writer *o = SIS_MALLOC(s_sis_disk_writer, o);
     o->style = style_;
-    o->fpath = name_ ? sis_sdsnew(path_) : sis_sdsnew("./"); 
+    o->fpath = path_ ? sis_sdsnew(path_) : sis_sdsnew("./"); 
     o->fname = name_ ? sis_sdsnew(name_) : sis_sdsnew("sisdb");
 
     o->status = 0;

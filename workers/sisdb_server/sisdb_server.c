@@ -154,6 +154,7 @@ static int cb_sys_init_scripts(void *worker_, s_sis_json_node *node)
     if (netmsg->service)
     {
         s_sis_worker *service = sis_worker_get(worker, netmsg->service);
+        printf("====%p %s\n", service, netmsg->service);
         if (service)
         {
             sis_worker_command(service, netmsg->cmd, netmsg);
@@ -174,7 +175,7 @@ void sisdb_server_work_init(void *worker_)
 
     SIS_WAIT_LONG(context->status == SISDB_STATUS_INIT);
 
-    // 先假装所有worker的配置 形成列表
+    // 先加载所有worker的配置 形成列表
     if (sisdb_server_sysinfo_load(context) != 0)
     {
         // 没有初始化 需要加载脚本 这里加载脚本就直接运行了
@@ -628,7 +629,7 @@ int sisdb_server_open(s_sis_worker *worker_, const char *workname_, const char *
     }
     sisdb_server_sysinfo_save(context);          
     sis_message_destroy(msg);
-    printf("==2== works = %d\n", sis_map_list_getsize(context->works));
+    // printf("==2== works = %d\n", sis_map_list_getsize(context->works));
     return 1;
 }
 

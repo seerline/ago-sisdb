@@ -66,6 +66,7 @@ int sis_map_list_getsize(s_sis_map_list *);
 
 s_sis_map_pointer *sis_map_pointer_create();
 s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_);
+
 void sis_map_pointer_destroy(s_sis_map_pointer *map_);
 
 void  sis_map_pointer_clear(s_sis_map_pointer *);

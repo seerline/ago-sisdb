@@ -43,7 +43,11 @@ void sis_net_message_decr(void *in_)
     if (in->refs == 1) 
     {
         sis_net_message_clear(in_);
-		sis_free(in_);	
+        if (in->map)
+        {
+            sis_map_pointer_destroy(in->map); 
+        }
+        sis_free(in_);	
     } 
     else 
     {

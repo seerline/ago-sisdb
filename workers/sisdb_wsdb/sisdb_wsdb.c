@@ -72,6 +72,7 @@ bool sisdb_wsdb_init(void *worker_, void *argv_)
     context->work_keys = sis_sdsnew("*");
 
     context->work_datas = sis_map_pointer_create_v(sis_struct_list_destroy);
+    // printf("==2.8==%p==\n", context->work_datas);
     return true;
 }
 void sisdb_wsdb_uninit(void *worker_)

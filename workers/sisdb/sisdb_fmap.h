@@ -80,6 +80,7 @@ typedef struct s_sisdb_fmap_cxt
 	s_sis_sds           work_name;
 	int                 work_date;    // 只有自动存盘后 日期才会切换 满足跨天数据
 	// 下面数据永不清理 数据表备份
+	int8                isnewsbds;    // 数据表是否更新
 	s_sis_map_list     *work_sdbs;    // sdb 的结构字典表 s_sis_dynamic_db
 	// 所有读取和写入的键值表
 	s_sis_map_pointer  *work_keys;    // 数据集合的字典表 s_sisdb_fmap_unit 这里实际存放数据，数量为股票个数x数据表数

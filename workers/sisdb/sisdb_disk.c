@@ -443,7 +443,7 @@ int sisdb_disk_save(s_sisdb_cxt *context)
     context->save_status = 1;
     // sis_mutex_lock(&context->wlog_lock);
     int count = sis_map_pointer_getsize(context->work_fmap_cxt->work_keys);
-    if (count)
+    if (count > 0)
     {
         s_sis_disk_writer *wfile = sis_disk_writer_create(
             sis_sds_save_get(context->work_path), 
@@ -472,6 +472,24 @@ int sisdb_disk_save(s_sisdb_cxt *context)
         sis_disk_writer_close(wfile);
         sis_disk_writer_destroy(wfile);
     }
+    else if (context->work_fmap_cxt->isnewsbds)
+    {
+        // 仅仅存结构
+        s_sis_disk_writer *wfile = sis_disk_writer_create(
+            sis_sds_save_get(context->work_path), 
+            sis_sds_save_get(context->work_name), 
+            SIS_DISK_TYPE_SDB);
+        // 不能删除老文件的信息
+        sis_disk_writer_open(wfile, 0);
+        {
+            s_sis_sds sdbs = _sisdb_get_sdbs(context);
+            sis_disk_writer_set_sdict(wfile, sdbs, sis_sdslen(sdbs));
+            sis_sdsfree(sdbs);
+        }
+        sis_disk_writer_close(wfile);
+        sis_disk_writer_destroy(wfile);
+    }
+    
     // sis_mutex_unlock(&context->wlog_lock);
     context->save_status = 0;
     return 0;

@@ -214,6 +214,7 @@ int main(int argc, char *argv[])
 	sis_set_signal(SIS_SIGNAL_WORK);
 	//  创建工作者
 	_server.workers = sis_map_pointer_create_v(sis_worker_destroy);
+
 	int workers = _server_open_workers();
 
 	if (workers > 0)

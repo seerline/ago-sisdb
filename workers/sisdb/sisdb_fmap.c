@@ -55,6 +55,7 @@ s_sisdb_fmap_cxt *sisdb_fmap_cxt_create(const char *wpath_, const char *wname_)
 	o->work_keys->type->vfree = sisdb_fmap_unit_destroy;
     // 加载本地的所有数据结构
     o->work_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
+	o->isnewsbds = 0;
 	o->work_path = sis_sdsnew(wpath_);
 	o->work_name = sis_sdsnew(wname_);
 	o->freader = sis_disk_reader_create(o->work_path, o->work_name, SIS_DISK_TYPE_SDB, NULL);
@@ -216,6 +217,7 @@ int sisdb_fmap_cxt_setdb(s_sisdb_fmap_cxt *cxt_, s_sis_dynamic_db *sdb_)
 	s_sis_dynamic_db *agodb = (s_sis_dynamic_db *)sis_map_list_get(cxt_->work_sdbs, sdb_->name);
 	if (!agodb || !sis_dynamic_dbinfo_same(agodb, sdb_))
 	{
+		cxt_->isnewsbds = 1;
 		sis_dynamic_db_incr(sdb_);
 		sis_map_list_set(cxt_->work_sdbs, sdb_->name, sdb_);	
 		return 0;

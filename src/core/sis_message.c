@@ -44,6 +44,7 @@ static inline void _sis_message_set(s_sis_message *msg_, const char* key_, s_sis
     if (!msg_->map)
     {
         msg_->map = sis_map_pointer_create_v(_sis_message_unit_free);
+        // printf("==2.5==%p==\n", msg_->map);
     }
     sis_map_pointer_set(msg_->map, key_, unit);
 }

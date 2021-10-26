@@ -180,6 +180,20 @@ s_sis_sds _sis_worker_get_workname(s_sis_worker *worker_, const char *workname_)
     }
     return workername;
 }
+// s_sis_sds _sis_worker_get_workname(s_sis_worker *worker_, const char *workname_)
+// {
+//     s_sis_sds workername = sis_sdsempty();
+//     if (worker_)
+//     {
+//         workername = sis_sdscatfmt(workername, "%S",  worker_->workername);
+//         workername = sis_sdscatfmt(workername, ".%s", workname_);
+//     }
+//     else
+//     {
+//         workername = sis_sdscat(workername, workname_);
+//     }
+//     return workername;
+// }
 
 bool _sis_worker_init(s_sis_worker *worker_, s_sis_json_node *node_)
 {
@@ -345,7 +359,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     {
         // 不能够被检索的工作线程，由用户自行管理
     }
-    LOG(5)("worker [%s] start. workname = %s status: %d sub-workers = %d \n", 
+    LOG(5)("worker start. [%s] workname = %s status: %d sub-workers = %d \n", 
         worker->classname, worker->workername, 
         worker->status, (int)sis_map_pointer_getsize(worker->workers));
 work_exit:
@@ -384,7 +398,7 @@ void sis_worker_destroy(void *worker_)
 {   
     s_sis_worker *worker =(s_sis_worker *)worker_;
 
-    LOG(5)("worker [%s] kill.\n", worker->workername);
+    LOG(5)("worker kill. [%s] %s \n", worker->classname, worker->workername);
     // 应该先释放 notice 再释放其他的
     worker->status = SIS_WORK_INIT_NONE;
     if (worker->service_thread)
@@ -500,18 +514,20 @@ s_sis_worker *sis_worker_get(s_sis_worker *worker_, const char *workname_)
         s_sis_server *server = sis_get_server();
         return sis_map_pointer_get(server->workers, workname_);
     }
-    // else
+    else
     {
-        // s_sis_dict_entry *de;
-        // s_sis_dict_iter *di = sis_dict_get_iter(worker_->workers);
-        // while ((de = sis_dict_next(di)) != NULL)
-        // {
-        //     s_sis_worker *work = (s_sis_worker *)sis_dict_getval(de);
-        //     printf("get ---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
-        // }
-        // sis_dict_iter_free(di);
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(worker_->workers);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sis_worker *work = (s_sis_worker *)sis_dict_getval(de);
+            printf("get ---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
+        }
+        sis_dict_iter_free(di);
 
-        s_sis_sds wname = _sis_worker_get_workname(worker_, workname_);
+        s_sis_sds wname = sis_sdsdup(worker_->workername);
+        wname = sis_sdscatfmt(wname, ".%s", workname_);
+        printf("get worker : %s %s %s %s\n", worker_->classname, worker_->workername, wname, workname_);
         s_sis_worker *worker = sis_map_pointer_find(worker_->workers, wname);
         sis_sdsfree(wname);
         return worker;

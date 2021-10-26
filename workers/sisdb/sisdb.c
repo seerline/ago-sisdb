@@ -108,10 +108,11 @@ void sisdb_uninit(void *worker_)
     if (context->work_fmap_cxt)
     {
         int count = sis_map_list_getsize(context->work_fmap_cxt->work_sdbs);
+        printf("=== close dbs %d\n", count);
         for (int i = 0; i < count; i++)
         {
             s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_list_geti(context->work_fmap_cxt->work_sdbs, i);
-            printf("close db %s\n", db->name);
+            printf("=== close db %s\n", db->name);
         }
         
         sisdb_fmap_cxt_destroy(context->work_fmap_cxt);
@@ -188,8 +189,7 @@ int cmd_sisdb_create(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     printf("create ... %s\n", netmsg->key);
-    s_sis_json_handle *argvs = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
-    
+    s_sis_json_handle *argvs = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask)); 
     if (!argvs)
     {
         sis_net_ans_with_error(netmsg, "no create info.", 0);
@@ -572,6 +572,7 @@ int cmd_sisdb_save(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     // 先关闭 log 然后转移log文件 然后再打开新的log 
     // 并设置标记 此时只接收数据 等待save结束
+    printf("====%d\n", context->work_fmap_cxt->isnewsbds);
     sisdb_disk_save_start(context);   
     int o = sisdb_disk_save(context);  
     if (o == SIS_METHOD_OK)
@@ -614,7 +615,7 @@ int cmd_sisdb_init(void *worker_, void *argv_)
         sisdb_fmap_cxt_destroy(context->work_fmap_cxt);
     }
     sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
-    
+    printf("init ====== sisdb\n");
     context->work_fmap_cxt = sisdb_fmap_cxt_create(
         sis_sds_save_get(context->work_path), 
         sis_sds_save_get(context->work_name));
