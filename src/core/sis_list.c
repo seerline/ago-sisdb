@@ -68,10 +68,16 @@ void _struct_list_grow(s_sis_struct_list *list_, int addlen_)
 	{
 		maxlen = 256;
 	}
+	else if (newlen >= 256 && newlen < 1024)
+	{
+		maxlen = 1024;
+	}
 	else
 	{
-		maxlen = newlen + STRUCT_LIST_STEP_ROW;
+		// maxlen = newlen + STRUCT_LIST_STEP_ROW;
+		maxlen = newlen * 2;
 	}
+	// printf("new list: %d\n", maxlen);
 	void *newbuffer = sis_malloc(maxlen * list_->len);
 	// void *newbuffer = sis_realloc(newbuffer, maxlen * list_->len);
 	if (list_->buffer)
