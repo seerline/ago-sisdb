@@ -227,7 +227,7 @@ void sis_dynamic_db_decr(s_sis_dynamic_db *db_)
 }
 void sis_dynamic_db_setname(s_sis_dynamic_db *db_, const char *name_)
 {
-	sis_sdsnew(db_->name);
+	sis_sdsfree(db_->name);
 	db_->name = sis_sdsnew(name_);
 }
 

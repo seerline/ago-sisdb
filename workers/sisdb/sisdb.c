@@ -188,7 +188,7 @@ int cmd_sisdb_create(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     printf("create ... %s\n", netmsg->key);
-    s_sis_json_handle *argvs = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask)); 
+    s_sis_json_handle *argvs = sis_json_load(netmsg->ask, netmsg->ask ? sis_sdslen(netmsg->ask) : 0); 
     if (!argvs)
     {
         sis_net_ans_with_error(netmsg, "no create info.", 0);
