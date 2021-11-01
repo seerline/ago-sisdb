@@ -30,6 +30,7 @@ int cb_sis_disk_io_read_log(void *source_, s_sis_disk_head *head_, char *imem_, 
     s_sis_disk_ctrl *ctrl = (s_sis_disk_ctrl *)source_;
     s_sis_disk_reader_cb *callback = ctrl->rcatch->callback; 
     // 根据hid不同写入不同的数据到obj
+    LOG(5)("other hid : %d at log. %zu\n", head_->hid, isize_);
     if(head_->hid != SIS_DISK_HID_MSG_LOG)
     {
         LOG(5)("other hid : %d at log.\n", head_->hid);

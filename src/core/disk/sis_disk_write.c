@@ -787,7 +787,7 @@ int sis_disk_log_exist(const char *path_, const char *name_, int idate_)
     int isok = 0;
     s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_LOG, path_, name_, idate_);
     int o = sis_disk_ctrl_read_start(munit);
-    if (o == SIS_DISK_CMD_NO_IDX)
+    if (o == SIS_DISK_CMD_NO_IDX || o == SIS_DISK_CMD_OK)
     {
         isok = 1;
     }

@@ -236,7 +236,9 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 					sis_struct_list_clear(slist);
 					count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
+					// printf("==23==, %d %d  %d %d\n", slist->count, count, SIS_OBJ_GET_SIZE(obj),  unit_->sdb->size);
 					sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
+					// printf("==24==, %d %d\n", slist->count, count);
 					sis_object_destroy(obj);
 				}
 			}

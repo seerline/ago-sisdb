@@ -363,17 +363,20 @@ void sisdb_disk_save_start(s_sisdb_cxt *context)
     s_sis_sds work_path = sis_sds_save_get(context->work_path);
     s_sis_sds work_name = sis_sds_save_get(context->work_name);
     sis_mutex_lock(&context->wlog_lock);
+    
     if (sis_disk_log_exist(work_path, work_name, context->work_date))
     {
+        // printf("++++++ :%s --> %s %d\n", work_path, work_name, context->work_date);
         sis_disk_control_move(work_path, work_name, SIS_DISK_TYPE_LOG, context->work_date, context->safe_path);
     }
     sis_mutex_unlock(&context->wlog_lock);
     // 后期为了安全应该备份需要修改的文件 如果中间有任何一个步骤出错 就全部恢复过去
     // 启动时加载时 也需要判断 如果 safe 中有数据就恢复后再处理一遍
 }
-int _disk_save_fmap(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
+int _disk_save_fmap_sdb(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
 {
     int count = 0;
+    printf("save ==== %s %d\n", SIS_OBJ_GET_CHAR(funit->kname), funit->fidxs->count);
     for (int i = 0; i < funit->fidxs->count; i++)
     {
         s_sisdb_fmap_idx *fidx = sis_struct_list_get(funit->fidxs, i);
@@ -384,56 +387,73 @@ int _disk_save_fmap(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fma
         count++;
         if (fidx->moved)
         {
-            switch (funit->ktype)
-            {
-            case SISDB_FMAP_TYPE_ONE:
-                {
-                    sis_disk_writer_one_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
-                }
-                break;
-            case SISDB_FMAP_TYPE_MUL:
-                {
-                    // s_sis_node *node = (s_sis_node *)unit->value;
-                    // sis_disk_writer_mul_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
-                }
-                break;
-            case SISDB_FMAP_TYPE_NON:	
-            default:
-                {
-                    sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), fidx->isign);
-                }
-                break;
-            }
+            sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), fidx->isign);
         }
         else
         {
-            switch (funit->ktype)
-            {
-            case SISDB_FMAP_TYPE_ONE:
-                {
-                    s_sis_sds str = (s_sis_sds)funit->value;
-                    sis_disk_writer_one(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
-                }
-                break;
-            case SISDB_FMAP_TYPE_MUL:
-                {
-                    // s_sis_node *node = (s_sis_node *)funit->value;
-                    // sis_disk_writer_mul(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
-                }
-                break;
-            case SISDB_FMAP_TYPE_NON:	
-            default:
-                {
-                    s_sis_struct_list *slist = (s_sis_struct_list *)funit->value;
-                    sis_disk_writer_sdb(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 
-                        sis_struct_list_first(slist), slist->count * slist->len);
-                }
-                break;
-            }
+            s_sis_struct_list *slist = (s_sis_struct_list *)funit->value;
+            sis_disk_writer_sdb(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 
+                sis_struct_list_first(slist), slist->count * slist->len);
         }
     }
     return count;  
 }
+int _disk_save_fmap(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
+{
+    int count = 1;
+    switch (funit->ktype)
+    {
+    case SISDB_FMAP_TYPE_ONE:
+        {
+            if (funit->moved)
+            {
+                sis_disk_writer_one_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
+            }
+            else
+            {
+                s_sis_sds str = (s_sis_sds)funit->value;
+                sis_disk_writer_one(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
+            }
+        }
+        break;
+    case SISDB_FMAP_TYPE_MUL:
+        {
+            if (funit->moved)
+            {
+                // s_sis_node *node = (s_sis_node *)unit->value;
+                // sis_disk_writer_mul_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
+            }
+            else
+            {
+                // s_sis_node *node = (s_sis_node *)funit->value;
+                // sis_disk_writer_mul(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
+            }
+        }
+        break;
+    case SISDB_FMAP_TYPE_NON:	
+        {
+            if (funit->moved)
+            {
+                sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 0);
+            }
+            else
+            {
+                s_sis_struct_list *slist = (s_sis_struct_list *)funit->value;
+                sis_disk_writer_sdb(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 
+                    sis_struct_list_first(slist), slist->count * slist->len);
+                // printf("save ==== %d %d \n", slist->count, funit->ktype);
+            }
+        }
+        break;
+    default:
+        {
+            count = _disk_save_fmap_sdb(cxt, wfile, funit);
+        }
+        break;
+    }
+    return count;
+}
+
 int sisdb_disk_save(s_sisdb_cxt *context)
 {
     if (context->save_status != 0)
@@ -460,6 +480,7 @@ int sisdb_disk_save(s_sisdb_cxt *context)
             sis_sdsfree(sdbs);
         }
         {
+            // printf("save ==1== %p %d\n", context->work_fmap_cxt, sis_map_pointer_getsize(context->work_fmap_cxt->work_keys));
             s_sis_dict_entry *de;
             s_sis_dict_iter *di = sis_dict_get_iter(context->work_fmap_cxt->work_keys);
             while ((de = sis_dict_next(di)) != NULL)
@@ -491,8 +512,8 @@ int sisdb_disk_save(s_sisdb_cxt *context)
     }
     
     // sis_mutex_unlock(&context->wlog_lock);
-    context->save_status = 0;
-    return 0;
+    context->save_status = 2;
+    return SIS_METHOD_OK;
 }
 
 void sisdb_disk_save_stop(s_sisdb_cxt *context)

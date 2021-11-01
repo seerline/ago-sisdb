@@ -30,8 +30,8 @@ struct s_sis_method sisdb_methods[] = {
     {"unpsub",    cmd_sisdb_unpsub,     SIS_METHOD_ACCESS_READ,  NULL},   // 取消回放
     {"read",      cmd_sisdb_read ,      SIS_METHOD_ACCESS_READ,  NULL},   // 从磁盘加载数据
     // 以下方法为数据集标配 即使没有最好也支持
-    {"save",      cmd_sisdb_save,       SIS_METHOD_ACCESS_ADMIN, NULL},   // 存盘
-    {"pack",      cmd_sisdb_pack,       SIS_METHOD_ACCESS_ADMIN, NULL},   // 合并整理数据
+    {"save",      cmd_sisdb_save,       SIS_METHOD_ACCESS_ADMIN|SIS_METHOD_ACCESS_NOLOG, NULL},   // 存盘
+    {"pack",      cmd_sisdb_pack,       SIS_METHOD_ACCESS_ADMIN|SIS_METHOD_ACCESS_NOLOG, NULL},   // 合并整理数据
     {"init",      cmd_sisdb_init,       SIS_METHOD_ACCESS_NONET, NULL},
     {"open",      cmd_sisdb_open  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 初始化信息
     {"close",     cmd_sisdb_close ,     SIS_METHOD_ACCESS_NONET, NULL},   // 关闭数据表
@@ -78,7 +78,7 @@ bool sisdb_init(void *worker_, void *argv_)
         }
         else
         {
-            context->safe_path = sis_sdsnew("data/safe/");
+            context->safe_path = sis_sdsnew("safe");
         }
     }
     sis_mutex_init(&(context->wlog_lock), NULL);
@@ -107,14 +107,13 @@ void sisdb_uninit(void *worker_)
     }
     if (context->work_fmap_cxt)
     {
-        int count = sis_map_list_getsize(context->work_fmap_cxt->work_sdbs);
-        printf("=== close dbs %d\n", count);
-        for (int i = 0; i < count; i++)
-        {
-            s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_list_geti(context->work_fmap_cxt->work_sdbs, i);
-            printf("=== close db %s\n", db->name);
-        }
-        
+        // int count = sis_map_list_getsize(context->work_fmap_cxt->work_sdbs);
+        // printf("=== close dbs %d\n", count);
+        // for (int i = 0; i < count; i++)
+        // {
+        //     s_sis_dynamic_db *db = (s_sis_dynamic_db *)sis_map_list_geti(context->work_fmap_cxt->work_sdbs, i);
+        //     printf("=== close db %s\n", db->name);
+        // }       
         sisdb_fmap_cxt_destroy(context->work_fmap_cxt);
         context->work_fmap_cxt =  NULL;
     }
@@ -221,7 +220,8 @@ int cmd_sisdb_get(void *worker_, void *argv_)
     
     s_sis_sds  o = NULL;
     int rfmt = SISDB_FORMAT_ARRAY;
-    s_sis_json_handle *argvs = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+    SIS_NET_SHOW_MSG("get==", netmsg);
+    s_sis_json_handle *argvs = sis_json_load(netmsg->ask, netmsg->ask ? sis_sdslen(netmsg->ask) : 0);
     if (!argvs)
     {
         o = sisdb_io_get_chars_sds(context, netmsg->key, rfmt, NULL);  
@@ -572,7 +572,7 @@ int cmd_sisdb_save(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     // 先关闭 log 然后转移log文件 然后再打开新的log 
     // 并设置标记 此时只接收数据 等待save结束
-    printf("====%d\n", context->work_fmap_cxt->isnewsbds);
+    // printf("====%d\n", context->work_fmap_cxt->isnewsbds);
     sisdb_disk_save_start(context);   
     int o = sisdb_disk_save(context);  
     if (o == SIS_METHOD_OK)

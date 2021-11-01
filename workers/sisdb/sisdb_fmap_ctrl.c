@@ -40,6 +40,7 @@ s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sn
 		break;
 	default:
 		{
+			sis_dynamic_db_incr(sdb_);
 			o->sdb = sdb_;
 			// if (!o->sdb->field_time && !o->sdb->field_mindex && o->ktype != SISDB_FMAP_TYPE_NON)
 			if (!o->sdb->field_mindex  && o->ktype != SISDB_FMAP_TYPE_NON)

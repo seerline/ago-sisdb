@@ -47,7 +47,7 @@ void *_sis_dict_int_dup(const void *val)
 {
 	int64 *o = sis_malloc(sizeof(int64));
 	memmove(o, val, sizeof(int64));	
-	printf("===== %lld,\n", *o);
+	// printf("===== %lld,\n", *o);
 	return o;
 }
 void *_sis_dict_obj_dup(const void *val)

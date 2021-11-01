@@ -596,7 +596,7 @@ int cb_sis_disk_io_read_sdb_map(void *source_, s_sis_disk_head *head_, char *ime
         break;
     case SIS_DISK_HID_DICT_SDB:
         sis_disk_reader_set_sdict(ctrl->map_sdicts, sis_memory(memory), sis_memory_get_size(memory));
-        sis_out_binary("sdbs", sis_memory(memory), sis_memory_get_size(memory));
+        // sis_out_binary("sdbs", sis_memory(memory), sis_memory_get_size(memory));
         break;
     case SIS_DISK_HID_MSG_MAP:
         {
