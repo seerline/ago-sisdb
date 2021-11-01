@@ -28,6 +28,8 @@ typedef struct s_sis_net_nodes {
     int64              rnums;
     s_sis_net_node    *rhead;  // 已经被pop出去 保存在这里 除非下一次pop或free
 	s_sis_net_node    *rtail;
+
+	size_t             size;
 } s_sis_net_nodes;
 
 
@@ -41,6 +43,7 @@ int  sis_net_nodes_free_read(s_sis_net_nodes *nodes_);
 // 队列是否为空
 int  sis_net_nodes_count(s_sis_net_nodes *nodes_);
 
+size_t  sis_net_nodes_size(s_sis_net_nodes *nodes_);
 ///////////////////////////////////////////////////////////////////////////
 //----------------------s_sis_net_list --------------------------------//
 //  以整数为索引 存储指针的列表

@@ -62,6 +62,7 @@ bool sisdb_flog_init(void *worker_, void *argv_)
             context->work_name = sis_sdsnew("wlog");
         }  
     } 
+    context->write_memory = sis_memory_create();
     return true;
 }
 
@@ -80,6 +81,7 @@ void sisdb_flog_uninit(void *worker_)
     }
     sis_sdsfree(context->work_path);
     sis_sdsfree(context->work_name);
+    sis_memory_destroy(context->write_memory);
     sis_free(context);
 }
 //////////////////////////////////////
@@ -253,10 +255,8 @@ int cmd_sisdb_flog_write(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     if (context->writer)
     {
-        s_sis_memory *memory = sis_memory_create();
-        sis_net_encoded_normal(netmsg, memory);
-        sis_disk_writer_log(context->writer, sis_memory(memory), sis_memory_get_size(memory));
-        sis_memory_destroy(memory);
+        sis_net_encoded_normal(netmsg, context->write_memory);
+        sis_disk_writer_log(context->writer, sis_memory(context->write_memory), sis_memory_get_size(context->write_memory));
     }
     return SIS_METHOD_OK;
 }

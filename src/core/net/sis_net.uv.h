@@ -56,7 +56,8 @@ typedef struct s_sis_net_uv_catch {
 
 s_sis_net_uv_catch *sis_net_uv_catch_create(void *source_, cb_net_uv_reader *cb_reader_, int wait_nums_);
 void sis_net_uv_catch_destroy(s_sis_net_uv_catch *queue_);
-int sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_object *obj_);
+// 返回缓存大小
+size_t sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_object *obj_);
 void sis_net_uv_catch_stop(s_sis_net_uv_catch *queue_);
 
 s_sis_net_uv_node *sis_net_uv_catch_tail(s_sis_net_uv_catch *queue_);

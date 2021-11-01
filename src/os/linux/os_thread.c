@@ -142,6 +142,9 @@
 
 // 　　　　int sem_destroy(sem_t *sem);　
 
+// #include <unistd.h>
+// #include <sched.h>
+
 // int _now_cpu_index = 0;
 
 // int sis_thread_auto_cpu(s_sis_thread *thread_)  

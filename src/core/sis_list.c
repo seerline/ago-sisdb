@@ -1143,9 +1143,12 @@ void _pointer_list_grow(s_sis_pointer_list *list_, int len_)
 		maxlen = len_ + POINTER_LIST_STEP_ROW;
 	}
 	void *newbuffer = sis_malloc(maxlen * list_->len);
-	if (list_->buffer && list_->maxcount > 0)
+	if (list_->buffer)
 	{
-		memmove(newbuffer, list_->buffer, list_->maxcount*list_->len);
+		if (list_->maxcount > 0)
+		{
+			memmove(newbuffer, list_->buffer, list_->maxcount * list_->len);
+		}
 		sis_free(list_->buffer);
 	}
 	list_->buffer = newbuffer;

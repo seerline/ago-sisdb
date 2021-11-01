@@ -45,6 +45,7 @@ int _net_nodes_free_read(s_sis_net_nodes *nodes_)
 		while (next)
 		{
 			s_sis_net_node *node = next->next;
+			nodes_->size -= SIS_OBJ_GET_SIZE(next->obj);
 			sis_net_node_destroy(next);
 			next = node;
 			count++;
@@ -84,6 +85,7 @@ void sis_net_nodes_clear(s_sis_net_nodes *nodes_)
 	nodes_->whead = NULL;
 	nodes_->wtail = NULL;
 	nodes_->wnums = 0;
+	nodes_->size = 0;
     sis_mutex_unlock(&nodes_->lock);
 }
 int  sis_net_nodes_push(s_sis_net_nodes *nodes_, s_sis_object *obj_)
@@ -106,51 +108,11 @@ int  sis_net_nodes_push(s_sis_net_nodes *nodes_, s_sis_object *obj_)
 		nodes_->wtail->next = newnode;
 		nodes_->wtail = newnode;
 	}
+	nodes_->size += SIS_OBJ_GET_SIZE(newnode->obj);
 	sis_mutex_unlock(&nodes_->lock);
 	return nodes_->wnums;
 }
-// int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
-// {
-// 	if (nodes_->rnums >= readnums_)
-// 	{
-// 		return nodes_->rnums;
-// 	}
-//     sis_mutex_lock(&nodes_->lock);
-// 	s_sis_net_node *next = nodes_->whead;	
-// 	while (next)
-// 	{
-// 		nodes_->rnums++;
-// 		nodes_->wnums--;
-// 		if (!nodes_->rhead)
-// 		{
-// 			nodes_->rhead = next;
-// 			nodes_->rtail = next;
-// 		} 
-// 		else
-// 		{
-// 			nodes_->rtail->next = next;
-// 			nodes_->rtail = next;
-// 		}
-// 		next = next->next;
-// 		if (next)
-// 		{
-// 			nodes_->whead = next;
-// 		}
-// 		else
-// 		{
-// 			nodes_->whead = NULL;
-// 			nodes_->wtail = NULL;
-// 		}
-// 		nodes_->rtail->next = NULL;
-// 		if (nodes_->rnums >= readnums_)
-// 		{
-// 			break;
-// 		}
-// 	}
-// 	sis_mutex_unlock(&nodes_->lock);
-// 	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
-// 	return 	nodes_->rnums;
-// }
+
 int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
 {
 	if (nodes_->rnums > 0)
@@ -159,35 +121,47 @@ int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
 	}
 	if (!sis_mutex_trylock(&nodes_->lock))
 	{	
-		s_sis_net_node *next = nodes_->whead;	
-		while (next)
+		if (readnums_ == 0)
 		{
-			nodes_->rnums++;
-			nodes_->wnums--;
-			if (!nodes_->rhead)
+			nodes_->rnums = nodes_->wnums;
+			nodes_->rhead = nodes_->whead;
+			nodes_->rtail = nodes_->wtail;
+			nodes_->wnums = 0;
+			nodes_->whead = NULL;
+			nodes_->wtail = NULL;
+		}
+		else
+		{
+			s_sis_net_node *next = nodes_->whead;	
+			while (next)
 			{
-				nodes_->rhead = next;
-				nodes_->rtail = next;
-			} 
-			else
-			{
-				nodes_->rtail->next = next;
-				nodes_->rtail = next;
-			}
-			next = next->next;
-			if (next)
-			{
-				nodes_->whead = next;
-			}
-			else
-			{
-				nodes_->whead = NULL;
-				nodes_->wtail = NULL;
-			}
-			nodes_->rtail->next = NULL;
-			if (nodes_->rnums >= readnums_)
-			{
-				break;
+				nodes_->rnums++;
+				nodes_->wnums--;
+				if (!nodes_->rhead)
+				{
+					nodes_->rhead = next;
+					nodes_->rtail = next;
+				} 
+				else
+				{
+					nodes_->rtail->next = next;
+					nodes_->rtail = next;
+				}
+				next = next->next;
+				if (next)
+				{
+					nodes_->whead = next;
+				}
+				else
+				{
+					nodes_->whead = NULL;
+					nodes_->wtail = NULL;
+				}
+				nodes_->rtail->next = NULL;
+				if (nodes_->rnums >= readnums_)
+				{
+					break;
+				}
 			}
 		}
 		sis_mutex_unlock(&nodes_->lock);
@@ -211,7 +185,13 @@ int  sis_net_nodes_count(s_sis_net_nodes *nodes_)
 	sis_mutex_unlock(&nodes_->lock);
 	return count;
 }
-
+size_t  sis_net_nodes_size(s_sis_net_nodes *nodes_)
+{
+	// sis_mutex_lock(&nodes_->lock);
+	// int count = nodes_->rnums + nodes_->wnums;
+	// sis_mutex_unlock(&nodes_->lock);
+	return nodes_->size;
+}
 
 ///////////////////////////////////////////////////////////////////////////
 //----------------------s_sis_net_list --------------------------------//

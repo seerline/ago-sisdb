@@ -18,6 +18,7 @@ typedef struct s_sisdb_flog_cxt
 	s_sis_sds           work_path;
 	s_sis_sds           work_name;
 	int                 work_date;
+	s_sis_memory       *write_memory;
 
 	s_sis_disk_reader  *reader;
 	s_sis_disk_writer  *writer;

@@ -282,9 +282,9 @@ s_sis_net_uv_node *_net_uv_catch_add(s_sis_net_uv_catch *queue_, int cid_)
 	}
 	return newnode;
 }
-int sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_object *obj_)
+size_t sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_object *obj_)
 {  
-	int o = 0;
+	size_t osize = 0;
 	sis_mutex_lock(&queue_->lock);
 	s_sis_net_uv_node *node = _net_uv_catch_get(queue_, cid_);
 	if (!node)
@@ -292,6 +292,7 @@ int sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_object *ob
 		node = _net_uv_catch_add(queue_, cid_);
 	}
 	sis_net_nodes_push(node->nodes, obj_);
+	osize = sis_net_nodes_size(node->nodes);
 	queue_->count++;
 	if (queue_->work_node == NULL)
 	{
@@ -301,7 +302,7 @@ int sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_object *ob
 	}
     sis_mutex_unlock(&queue_->lock); 
 	sis_wait_thread_notice(queue_->work_thread);
-	return o;  
+	return osize;  
 }
 void sis_net_uv_catch_stop(s_sis_net_uv_catch *queue_)
 {
@@ -898,7 +899,13 @@ bool sis_socket_server_send(s_sis_socket_server *server, int sid_, s_sis_object 
 	}
 	// printf("sis_socket_server_send : %d\n", sid_);
 	// 放入队列就返回 其他交给内部处理
-	sis_net_uv_catch_push(server->write_list, sid_ - 1, inobj_);
+	
+	size_t csize = sis_net_uv_catch_push(server->write_list, sid_ - 1, inobj_);
+	if (csize > 512*1024*1024)
+	{
+		LOG(5)("client recv too slow. %zu\n", csize);
+		sis_socket_server_delete(server, sid_);
+	}
 
 	return true;
 }
