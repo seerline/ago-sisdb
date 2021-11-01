@@ -645,8 +645,8 @@ s_sis_object *_disk_reader_get_sdb_obj(s_sis_disk_reader *reader_, const char *k
                 s_sis_disk_idx_unit *idxunit = (s_sis_disk_idx_unit *)sis_struct_list_get(subidx->idxs, k);
                 sis_disk_rcatch_init_of_idx(rcatch, idxunit);
                 sis_disk_io_read_sdb(runit->ctrl, rcatch);
-                // printf("%d %d | %d %d\n", rcatch->rinfo->offset, rcatch->rinfo->size, kidx, sidx);
-                // sis_out_binary(".out.",sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+                printf("%d %d | %zu\n", rcatch->rinfo->offset, rcatch->rinfo->size, sis_memory_get_size(rcatch->memory));
+                sis_out_binary(".out.",sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
                 sis_memory_cat(memory, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
             }
         }

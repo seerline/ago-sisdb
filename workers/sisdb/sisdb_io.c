@@ -44,8 +44,8 @@ int sisdb_io_create(s_sisdb_cxt *sisdb_, const char *sname_, s_sis_json_node *no
 static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_json_node *node_)
 {
     cmd_->cmpmode = SISDB_FMAP_CMP_RANGE;
-    cmd_->start = 0;
-    cmd_->stop = 0;
+    cmd_->start = -1;
+    cmd_->stop = -1;
     cmd_->offset = 0;
     cmd_->count = 1;
     cmd_->key = key_;
@@ -71,6 +71,7 @@ static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_j
         s_sis_json_node *same = sis_json_cmp_child_node(node_, "same");
         if (same)
         {
+            cmd_->cmpmode = SISDB_FMAP_CMP_SAME;
             if (sis_json_cmp_child_node(same, "start"))
             {
                 cmd_->start = sis_json_get_int(same, "start", 0);;
@@ -86,7 +87,7 @@ static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_j
 // 返回NULL表示全部字段
 static s_sis_string_list *_read_fields( s_sis_json_node *node_)
 {
-	if (!sis_json_cmp_child_node(node_, "fields"))
+	if (!node_ || !sis_json_cmp_child_node(node_, "fields"))
 	{
 		return NULL;
 	}
@@ -151,7 +152,7 @@ s_sis_sds sisdb_io_get_chars_sds(s_sisdb_cxt *sisdb_, const char *key_, int rfmt
     }
     s_sis_sds o = NULL;
     s_sis_string_list *fields = _read_fields(node_);
-
+    // printf("===10 ==== %d\n", ((s_sis_struct_list *)cmd.unit->value)->count);
     if (!fields)
     {
 		switch (rfmt_)
@@ -190,6 +191,8 @@ static int _init_cmd_from_set(s_sisdb_fmap_cmd *cmd_, const char *key_, s_sis_sd
 {
     cmd_->cmpmode = SISDB_FMAP_CMP_SAME;
     cmd_->key = key_;
+    cmd_->isize = sis_sdslen(ask_);
+    cmd_->imem = ask_;
     // cmd_->start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
     // cmd_->start = 0;
     // cmd_->stop = 0;
@@ -209,7 +212,9 @@ int sisdb_io_update(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds imem_)
     _init_cmd_from_set(&cmd, key_, imem_);  // 获取参数
 
     int  o = sisdb_fmap_cxt_update(sisdb_->work_fmap_cxt, &cmd);
-    
+
+    printf("sisdb_io_update ==== %p %lu\n", sisdb_->work_fmap_cxt, sis_map_pointer_getsize(sisdb_->work_fmap_cxt->work_keys));
+
     return o;
 }
 int sisdb_io_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds vmem_)

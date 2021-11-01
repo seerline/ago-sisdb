@@ -65,7 +65,7 @@ bool sisdb_wsdb_init(void *worker_, void *argv_)
         }
         else
         {
-            context->safe_path = sis_sdsnew("data/safe/");
+            context->safe_path = sis_sdsnew("safe");
         }
     }
     context->work_sdbs = sis_sdsnew("*");

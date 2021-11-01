@@ -19,8 +19,8 @@ struct s_sis_method sisdb_server_methods[] = {
 
     {"open",     cmd_sisdb_server_open,    SIS_METHOD_ACCESS_ADMIN, NULL},   // 打开一个数据集
     {"close",    cmd_sisdb_server_close,   SIS_METHOD_ACCESS_ADMIN, NULL},   // 关闭一个数据集
-    {"save",     cmd_sisdb_server_save,    SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动存盘
-    {"pack",     cmd_sisdb_server_pack,    SIS_METHOD_ACCESS_ADMIN, NULL},   // 手动清理磁盘旧的数据
+    {"save",     cmd_sisdb_server_save,    SIS_METHOD_ACCESS_ADMIN|SIS_METHOD_ACCESS_NOLOG, NULL},   // 手动存盘
+    {"pack",     cmd_sisdb_server_pack,    SIS_METHOD_ACCESS_ADMIN|SIS_METHOD_ACCESS_NOLOG, NULL},   // 手动清理磁盘旧的数据
     {"call",     cmd_sisdb_server_call,    SIS_METHOD_ACCESS_READ,  NULL},   // 直接调用系统定义好的扩展方法
 };
 // 共享内存数据库
@@ -315,6 +315,7 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
     if (!workname)
     {
         int o = sis_worker_command(worker, cmdname, netmsg);
+        SIS_NET_SHOW_MSG("send srv==", netmsg);
         if (!netmsg->switchs.is_inside)
         {
             if (o == SIS_METHOD_OK)
@@ -341,6 +342,7 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
         if (workinfo)
         {
             int o = sis_worker_command(workinfo->worker, cmdname, netmsg);
+            SIS_NET_SHOW_MSG("send cli==", netmsg);
             if (!netmsg->switchs.is_inside)
             {
                 if (o == SIS_METHOD_OK)
@@ -422,7 +424,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
                     else
                     {
                         // 指令是否为写入
-                        if (method->access & SIS_METHOD_ACCESS_WRITE)
+                        if ((method->access & SIS_METHOD_ACCESS_WRITE) && !(method->access & SIS_METHOD_ACCESS_NOLOG))
                         {
                             // printf("wlog: %s %s\n", netmsg->key, netmsg->cmd);
                             // 只记录写盘的数据
@@ -702,6 +704,7 @@ int cmd_sisdb_server_save(void *worker_, void *argv_)
             oks++;
         }
     }
+    printf("==save nums==%d\n", oks);
     sis_message_destroy(msg);
     sis_net_ans_with_int(netmsg, oks); 
     return SIS_METHOD_OK;

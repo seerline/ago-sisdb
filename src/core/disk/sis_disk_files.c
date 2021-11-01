@@ -543,6 +543,7 @@ size_t sis_disk_files_read_fromidx(s_sis_disk_files *cls_, s_sis_disk_rcatch *rc
     // 此函数是否需要保存文件的原始位置
     size_t size = sis_disk_files_read(cls_, rcatch_->rinfo->fidx, rcatch_->rinfo->offset, 
         rcatch_->rinfo->size, &rcatch_->head, rcatch_->memory);
+    sis_out_binary("read_fromidx", sis_memory(rcatch_->memory), sis_memory_get_size(rcatch_->memory));
     return size;
 }
 

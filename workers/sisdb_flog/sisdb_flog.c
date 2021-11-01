@@ -87,7 +87,7 @@ void sisdb_flog_uninit(void *worker_)
 //////////////////////////////////////
 //  sub log callback
 //////////////////////////////////////
-static void cb_start(void *source_, int idate)
+static void cb_flog_start(void *source_, int idate)
 {
     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)source_;
     if (context->cb_sub_start)
@@ -97,7 +97,7 @@ static void cb_start(void *source_, int idate)
         context->cb_sub_start(context->cb_source, sdate);
     }
 }
-static void cb_stop(void *source_, int idate)
+static void cb_flog_stop(void *source_, int idate)
 {
     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)source_;
     if (context->cb_sub_stop)
@@ -107,7 +107,15 @@ static void cb_stop(void *source_, int idate)
         context->cb_sub_stop(context->cb_source, sdate);
     }
 }
-static void cb_original(void *source_, s_sis_disk_head *head_, void *out_, size_t olen_)
+static void cb_flog_break(void *source_, int idate)
+{
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)source_;
+    if (context->cb_sub_stop)
+    {
+        context->cb_sub_stop(context->cb_source, "0");
+    }
+}
+static void cb_flog_original(void *source_, s_sis_disk_head *head_, void *out_, size_t olen_)
 {
     s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)source_;
     if (context->cb_netmsg)
@@ -160,10 +168,10 @@ int cmd_sisdb_flog_sub(void *worker_, void *argv_)
 
     s_sis_disk_reader_cb *rlog_cb = SIS_MALLOC(s_sis_disk_reader_cb, rlog_cb);
     rlog_cb->cb_source = context;
-    rlog_cb->cb_start = cb_start;
-    rlog_cb->cb_original = cb_original;
-    rlog_cb->cb_stop = cb_stop;
-    rlog_cb->cb_break = cb_stop;
+    rlog_cb->cb_start    = cb_flog_start;
+    rlog_cb->cb_original = cb_flog_original;
+    rlog_cb->cb_stop     = cb_flog_stop;
+    rlog_cb->cb_break    = cb_flog_break;
 
     context->reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_LOG, rlog_cb);
 

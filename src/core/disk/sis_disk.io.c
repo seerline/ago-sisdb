@@ -566,48 +566,50 @@ size_t sis_disk_ctrl_unzip_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_
             LOG(5)("snappy_uncompress fail. %d %zu \n", rcatch_->head.hid, sis_memory_get_size(rcatch_->memory));
         }
         sis_memory_destroy(memory);
-        switch (rcatch_->rinfo->ktype)
-        {
-        case SIS_SDB_STYLE_MUL:
-        {
-            if (!rcatch_->mlist)
-            {
-                rcatch_->mlist = sis_pointer_list_create();
-                rcatch_->mlist->vfree = sis_sdsfree_call;
-            }
-            sis_pointer_list_clear(rcatch_->mlist);
-            rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
-            int count = sis_memory_get_ssize(rcatch_->memory);
-            for (int i = 0; i < count; i++)
-            {
-                int size = sis_memory_get_ssize(rcatch_->memory);
-                s_sis_sds item = sis_sdsnewlen(sis_memory(rcatch_->memory), size);
-                sis_memory_move(rcatch_->memory, size);
-                sis_pointer_list_push(rcatch_->mlist, item);
-            }
-            size = count;
-        }
-        break;
-        case SIS_SDB_STYLE_ONE:
-        {
-            rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
-            size = sis_memory_get_ssize(rcatch_->memory);
-            if (size != sis_memory_get_size(rcatch_->memory))
-            {
-                size = 0;
-            }
-            // 已经移动到数据区
-        }
-        break;
-        default: // SIS_SDB_STYLE_NON
-        {
-            rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
-            rcatch_->sidx = sis_memory_get_ssize(rcatch_->memory);
-            // 已经移动到数据区
-            size = sis_memory_get_size(rcatch_->memory);
-        }
-        break;
-        }
+        // switch (rcatch_->rinfo->ktype)
+        // {
+        // case SIS_SDB_STYLE_MUL:
+        // {
+        //     if (!rcatch_->mlist)
+        //     {
+        //         rcatch_->mlist = sis_pointer_list_create();
+        //         rcatch_->mlist->vfree = sis_sdsfree_call;
+        //     }
+        //     sis_pointer_list_clear(rcatch_->mlist);
+        //     rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
+        //     int count = sis_memory_get_ssize(rcatch_->memory);
+        //     for (int i = 0; i < count; i++)
+        //     {
+        //         int size = sis_memory_get_ssize(rcatch_->memory);
+        //         s_sis_sds item = sis_sdsnewlen(sis_memory(rcatch_->memory), size);
+        //         sis_memory_move(rcatch_->memory, size);
+        //         sis_pointer_list_push(rcatch_->mlist, item);
+        //     }
+        //     size = count;
+        // }
+        // break;
+        // case SIS_SDB_STYLE_ONE:
+        // {
+        //     rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
+        //     size = sis_memory_get_ssize(rcatch_->memory);
+        //     if (size != sis_memory_get_size(rcatch_->memory))
+        //     {
+        //         size = 0;
+        //     }
+        //     // 已经移动到数据区
+        // }
+        // break;
+        // default: // SIS_SDB_STYLE_NON
+        // {
+        //     sis_out_binary("unzip_fromidx", sis_memory(rcatch_->memory), sis_memory_get_size(rcatch_->memory));
+        //     rcatch_->kidx = sis_memory_get_ssize(rcatch_->memory);
+        //     rcatch_->sidx = sis_memory_get_ssize(rcatch_->memory);
+        //     sis_out_binary("unzip_fromidx", sis_memory(rcatch_->memory), sis_memory_get_size(rcatch_->memory));
+        //     // 已经移动到数据区
+        //     size = sis_memory_get_size(rcatch_->memory);
+        // }
+        // break;
+        // }
         return size;
     }
     return size;
@@ -911,6 +913,11 @@ int sis_disk_ctrl_move(s_sis_disk_ctrl *cls_, const char *path_)
     {
         s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->work_fps->lists, i);
         sis_str_change(newfn, 255, unit->fn, cls_->fpath, path_);
+        // printf("work move :%s %s %s --> %s\n", unit->fn, cls_->fpath, path_, newfn);
+        if (!sis_path_exists(newfn))
+        {
+            sis_path_mkdir(newfn);
+        }
         sis_file_rename(unit->fn, newfn);
     }
     if (cls_->work_fps->main_head.index)
@@ -919,6 +926,11 @@ int sis_disk_ctrl_move(s_sis_disk_ctrl *cls_, const char *path_)
         {
             s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->widx_fps->lists, i);
             sis_str_change(newfn, 255, unit->fn, cls_->fpath, path_);
+            // printf("widx move :%s --> %s\n", unit->fn, newfn);
+            if (!sis_path_exists(newfn))
+            {
+                sis_path_mkdir(newfn);
+            }
             sis_file_rename(unit->fn, newfn);
         }
     }

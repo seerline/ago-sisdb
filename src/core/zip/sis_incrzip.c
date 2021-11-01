@@ -672,9 +672,10 @@ int sis_incrzip_uncompress_step(s_sis_incrzip_class *s_, char *in_, size_t ilen_
 //                解压速度 慢1.7倍（有待优化）
 //                压缩解压一个周期 只有snappy的62%
  
-
 #include "sis_memory.h"
 #include "sis_snappy.h"
+#include "sis_db.h"
+
 #pragma pack(push,1)
 typedef struct _snap_ {
 	char    name[4];
@@ -752,14 +753,14 @@ int cb_sis_encode(void *src, char *in, size_t ilen)
     // sis_memory_set_size(memory, __size);
     // sis_out_binary("encode", in, ilen);
     __zipsize += ilen;
-    // if (memorys->count % 1000 == 0)
+    if (memorys->count % 1000 == 0)
     {
         printf("%d %d %d\n", __zipsize, (int)ilen, memorys->count);
     }
     return 0;
 }
 // 测试单结构体单股票的压缩
-int main()
+int main1()
 {
 	const char *db_snap = "{snap:{fields:{name:[C,4],open:[I,4],high:[U,4],lowp:[F,4,1,2],newp:[F,8,1,3],vols:[I,8],mony:[U,8],ask:[I,4,2]}}}";
 
@@ -783,17 +784,18 @@ int main()
         {
             _snap_ cursnap;
             memmove(&cursnap, &snaps[i],sizeof(_snap_));
-            // cursnap.open += sis_int_random(-100,100);
-            // cursnap.high += sis_int_random(-100,100);
-            // cursnap.lowp += sis_int_random(-10,10);
-            // cursnap.newp += sis_int_random(-10,10);
-            // cursnap.vols += sis_int_random(-100000,1000000);
-            // cursnap.mony += sis_int_random(-1000000,10000000);
-            // cursnap.askp[0] += sis_int_random(-1,1);
-            // cursnap.askp[1] += sis_int_random(-1,1);
+            cursnap.open += sis_int_random(-100,100);
+            cursnap.high += sis_int_random(-100,100);
+            cursnap.lowp += sis_int_random(-10,10);
+            cursnap.newp += sis_int_random(-10,10);
+            cursnap.vols += sis_int_random(-100000,1000000);
+            cursnap.mony += sis_int_random(-1000000,10000000);
+            cursnap.askp[0] += sis_int_random(-1,1);
+            cursnap.askp[1] += sis_int_random(-1,1);
             sis_memory_cat(memory, (char *)&cursnap, sizeof(_snap_));
         }
     }
+    sis_writefile("zip_one.dat", memory, sis_memory_get_size(memory));
     s_sis_memory *zipmemory = sis_memory_create();
     sis_memory_set_maxsize(zipmemory, zipnnums * snap_nums * sizeof(_snap_) + 16*1024*1024);
     s_sis_memory *unzipmemory = sis_memory_create();
@@ -828,19 +830,19 @@ int main()
     sis_memory_destroy(unzipmemory);
     sis_incrzip_class_destroy(zip);
     ////////// snappy 对比
-    // unzipmemory = sis_memory_create();
-    // sis_memory_set_maxsize(unzipmemory, zipnnums * snap_nums * sizeof(_snap_) + 16*1024*1024);
-    // nowmsec = sis_time_get_now_usec();
-    // printf("snappy start: %lld\n", nowmsec);
-    // sis_snappy_compress(sis_memory(memory), sis_memory_get_size(memory), zipmemory);
-    // printf("snappy compress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
-    // printf("zip : from %zu --> %zu\n", sis_memory_get_size(memory), sis_memory_get_size(zipmemory));
+    unzipmemory = sis_memory_create();
+    sis_memory_set_maxsize(unzipmemory, zipnnums * snap_nums * sizeof(_snap_) + 16*1024*1024);
+    nowmsec = sis_time_get_now_usec();
+    printf("snappy start: %lld\n", nowmsec);
+    sis_snappy_compress(sis_memory(memory), sis_memory_get_size(memory), zipmemory);
+    printf("snappy compress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
+    printf("zip : from %zu --> %zu\n", sis_memory_get_size(memory), sis_memory_get_size(zipmemory));
 
-    // nowmsec = sis_time_get_now_usec();
-    // sis_snappy_uncompress(sis_memory(zipmemory), sis_memory_get_size(zipmemory), unzipmemory);
-    // printf("snappy uncompress stop: cost : %zu %lld\n", sis_memory_get_size(unzipmemory), sis_time_get_now_usec() - nowmsec);
+    nowmsec = sis_time_get_now_usec();
+    sis_snappy_uncompress(sis_memory(zipmemory), sis_memory_get_size(zipmemory), unzipmemory);
+    printf("snappy uncompress stop: cost : %zu %lld\n", sis_memory_get_size(unzipmemory), sis_time_get_now_usec() - nowmsec);
 
-    // sis_memory_destroy(unzipmemory);
+    sis_memory_destroy(unzipmemory);
     ////   --- 结束 --- ///
     sis_memory_destroy(zipmemory);
     sis_memory_destroy(memory);
@@ -848,9 +850,32 @@ int main()
 	sis_dynamic_db_destroy(snap);
 	return 0;
 }
+int main3()
+{
+    msec_t nowmsec = sis_time_get_now_usec();
+    system("lz4 -k zip_two.dat zip_lz4.dat");
+    printf("lz4 compress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
+    nowmsec = sis_time_get_now_usec();
+    system("zstd -k zip_two.dat -o zip_zstd.dat");
+    printf("zstd compress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
 
+    nowmsec = sis_time_get_now_usec();
+    system("unlz4 -k zip_lz4.dat zip_lz4.sss");
+    printf("unlz4 uncompress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
+    nowmsec = sis_time_get_now_usec();
+    system("unzstd -k zip_zstd.dat -o zip_zstd.sss");
+    printf("unzstd uncompress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
+}
+// Compressed 601000000 bytes into 321839717 bytes ==> 53.55%                     
+// lz4 compress stop : cost :3642889
+// zip_two.dat          : 37.50%   (601000000 => 225392634 bytes, zip_zstd.dat)   
+// zstd compress stop : cost :4502655
+// zip_lz4.dat          : decoded 601000000 bytes                                 
+// unlz4 uncompress stop : cost :3432776
+// zip_zstd.dat        : 601000000 bytes                                          
+// unzstd uncompress stop : cost :3792309
 // 测试多结构体多股票的压缩
-int main1()
+int main()
 {
 	const char *db_snap = "{snap:{fields:{name:[C,4],open:[I,4],high:[U,4],lowp:[F,4,1,2],newp:[F,8,1,3],vols:[I,8],mony:[U,8],ask:[I,4,2]}}}";
 	const char *db_tick = "{tick:{fields:{flag:[C,1],newp:[I,4],askn:[U,4],vols:[U,4]}}}";
@@ -930,7 +955,7 @@ int main1()
         }
         if (sis_incrzip_getsize(zip) > 64*1024)
         {
-            sis_incrzip_compress_restart(zip);
+            sis_incrzip_compress_restart(zip, 0);
         }
     }
     sis_incrzip_compress_stop(zip);
@@ -1002,7 +1027,8 @@ int main1()
             }
         }
     }
-    printf("snappy write OK: %lld\n", sis_time_get_now_usec() - nowmsec);
+    sis_writefile("zip_two.dat", sis_memory(memory), sis_memory_get_size(memory));
+    printf("snappy write start: %lld\n", sis_time_get_now_usec() - nowmsec);
     sis_snappy_compress(sis_memory(memory), sis_memory_get_size(memory), zipmemory);
     printf("snappy compress stop : cost :%lld\n", sis_time_get_now_usec() - nowmsec);
     printf("zip : from %zu --> %zu\n", sis_memory_get_size(memory), sis_memory_get_size(zipmemory));

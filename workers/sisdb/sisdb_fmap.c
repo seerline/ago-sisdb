@@ -244,8 +244,11 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	else
 	{
+		// printf("===11 ==== %d\n", ((s_sis_struct_list *)unit->value)->count);
 		sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
+		// printf("===11 ==== %d\n", ((s_sis_struct_list *)unit->value)->count);
 	}
+	cmd_->unit = unit;
 	cmd_->ktype = unit->ktype;
 	int count = 0;
 	unit->reads++;
@@ -296,6 +299,7 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		{
 			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
 			int start = 0;
+			// printf("===12 ==== %zu %d %p\n", cmd_->isize, slist->count, cmd_->cb_fmap_read);
 			if (_fmap_calc_nots_count(cmd_, slist->count, &start, &count))
 			{
 				if (cmd_->cb_fmap_read)
@@ -339,6 +343,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		LOG(5)("no create fmap : %s %lld %lld %d\n", cmd_->key, cmd_->start, cmd_->stop, cmd_->ktype);
 		return 0;
 	}
+	// printf("unit == %d\n", unit->ktype);
 	switch (unit->ktype)
 	{
 	case SISDB_FMAP_TYPE_ONE:
@@ -378,6 +383,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 				return 0;
 			}
 			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
+			printf("unit == %d %zu %d %d %d\n", count, cmd_->isize, unit->sdb->size, slist->count, unit->sdb->field_solely->count);
 			if (slist->count < 1 || unit->sdb->field_solely->count == 0)
 			{
 				sis_struct_list_pushs(slist, cmd_->imem, count);
@@ -386,10 +392,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 			{
 				count = sisdb_fmap_cxt_solely_update(cxt_, unit, cmd_);
 			}
-			if (count > 0)
-			{
-				sisdb_fmap_unit_reidx(unit);
-			}
+			// 无索引
 		}
 		break;		
 	default:
