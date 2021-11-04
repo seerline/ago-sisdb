@@ -129,7 +129,7 @@ s_sis_sds sis_sdb_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in
 	}
 	s_sis_json_node *jone = sis_json_create_object();
 	s_sis_json_node *jtwo = sis_json_create_array();
-	// printf("to array : fnum = %d count = %d \n", fnums, count);
+	printf("to array : fnum = %d count = %d \n", fnums, count);
 	const char *val = (const char *)in_;
 	for (int k = 0; k < count; k++)
 	{
@@ -150,7 +150,7 @@ s_sis_sds sis_sdb_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in
 		}
 		val += indb->size;
 	}
-	// printf("to array : fnum = %d count = %d \n", fnums, count);
+	printf("to array : fnum = %d count = %d \n", fnums, count);
 	s_sis_sds o = NULL;	
 	if (key_)
 	{

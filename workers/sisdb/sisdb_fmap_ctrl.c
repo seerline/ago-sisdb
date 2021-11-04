@@ -408,117 +408,10 @@ int sisdb_fmap_cmp_same(s_sisdb_fmap_unit *unit_, msec_t  start_, s_sisdb_fmap_c
 #define CMP_MIDD_NONE  -3   // 没找到相等数据 但前后都有值 supply = 0 有效
 
 // 找到对应数据的第一条记录
-int _fmap_cmp_range_head(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_cmp *cmp_, int supply_)
+int _fmap_cmp_range_head(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_cmp *cmp_)
 {
-	int index = sisdb_fmap_unit_goto(unit_, mindex_);
-	int i = index;
-	int dir = 0;
-	int count = sisdb_fmap_unit_count(unit_);
-	cmp_->ocount =  0;
-	cmp_->oindex = -1;
-	int ago = 0;
-	while (i >= 0 && i < count)
-	{
-		msec_t ts = sisdb_fmap_unit_get_mindex(unit_, i);
-		if (mindex_ > ts)
-		{
-			if (cmp_->ocount > 0)
-			{
-				return ago ? CMP_FIND_AGO : CMP_FIND_OK;
-			}
-			if (dir == -1)
-			{
-				if (supply_)
-				{
-					mindex_ = ts;
-					cmp_->oindex = i;
-					cmp_->ocount ++;
-					i += dir;
-					ago = 1;
-					continue;
-				}
-				else
-				{
-					cmp_->oindex = i + 1;
-					return CMP_MIDD_NONE;
-				}
-			}
-			else if (dir == 0 && supply_)
-			{
-				mindex_ = ts;
-				cmp_->oindex = i;
-				cmp_->ocount ++;
-				dir = -1;
-				i += dir;
-				ago = 1;
-				continue;
-			}
-			dir = 1;
-			i += dir;
-		}
-		else if (mindex_ < ts)
-		{ 
-			if (cmp_->ocount > 0)
-			{
-				return ago ? CMP_FIND_AGO : CMP_FIND_OK;
-			}
-			if (dir == 1)
-			{
-				if (supply_)
-				{
-					mindex_ = sisdb_fmap_unit_get_mindex(unit_, i - 1);
-				}
-				else
-				{
-					cmp_->oindex = i;
-					return CMP_MIDD_NONE;
-				}
-			}
-			// oindex = i;
-			dir = -1;
-			i += dir;
-		}
-		else
-		{
-			if (cmp_->ocount == 0)
-			{
-				if (dir == 0)
-				{
-					for (int k = i + 1; k < count; k++)
-					{
-						msec_t kts = sisdb_fmap_unit_get_mindex(unit_, k);
-						if (mindex_ != kts) 
-						{
-							break;
-						}
-						cmp_->ocount++;
-					}
-					dir = -1;
-				}
-				cmp_->oindex = i;
-			}
-			else
-			{
-				if (dir == -1) 
-				{
-					cmp_->oindex = i;
-				}
-			}
-			cmp_->ocount ++;
-			i += dir;
-		}
-	}
-	return cmp_->ocount > 0 ? CMP_FIND_OK : i < 0 ? CMP_HEAD_NONE : CMP_TAIL_NONE;
-}
-// 找到对应数据的最后一条记录 
-int _fmap_cmp_range_tail(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_cmp *cmp_)
-{
-	int index = sisdb_fmap_unit_goto(unit_, mindex_);
-	if (index < 0)
-	{
-		return -1;
-	}
-	int i = index;
+	// 进入该函数 一定有数据
+	int i = sisdb_fmap_unit_goto(unit_, mindex_);
 	int dir = 0;
 	int count = sisdb_fmap_unit_count(unit_);
 	cmp_->ocount =  0;
@@ -526,7 +419,8 @@ int _fmap_cmp_range_tail(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_
 	while (i >= 0 && i < count)
 	{
 		msec_t ts = sisdb_fmap_unit_get_mindex(unit_, i);
-		if (mindex_ > ts)
+		// printf("dir = %d ts=%lld %lld count= %d\n", dir, ts, mindex_, cmp_->ocount);
+		if (ts < mindex_)
 		{
 			if (cmp_->ocount > 0)
 			{
@@ -535,12 +429,12 @@ int _fmap_cmp_range_tail(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_
 			if (dir == -1)
 			{
 				cmp_->oindex = i;
-				return CMP_FIND_AGO;
+				return CMP_FIND_AGO;  // 返回最接近的前值
 			}
 			dir = 1;
 			i += dir;
 		}
-		else if (mindex_ < ts)
+		else if (ts > mindex_)
 		{ 
 			if (cmp_->ocount > 0)
 			{
@@ -549,45 +443,113 @@ int _fmap_cmp_range_tail(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_
 			if (dir == 1)
 			{
 				cmp_->oindex = i - 1;
-				return CMP_FIND_AGO;
+				return CMP_FIND_AGO; // 返回最接近的前值
 			}
 			dir = -1;
 			i += dir;
 		}
 		else
 		{
-			if (cmp_->ocount == 0)
-			{
-				if (dir == 0)
-				{
-					for (int k = i + 1; k < count; k++)
-					{
-						msec_t kts = sisdb_fmap_unit_get_mindex(unit_, k);
-						if (mindex_ != kts) 
-						{
-							break;
-						}
-						cmp_->ocount++;
-					}
-					dir = 1;
-				}
-				cmp_->oindex = i;
-			}
-			else
-			{
-				if (dir == 1) 
-				{
-					cmp_->oindex = i;
-				}
-			}
 			cmp_->ocount ++;
+			cmp_->oindex = i;
+			if (dir == 1)
+			{
+				// 此循环计算相等数量
+				// for (int k = i + 1; k < count; k++)
+				// {
+				// 	msec_t kts = sisdb_fmap_unit_get_mindex(unit_, k);
+				// 	if (mindex_ != kts) 
+				// 	{
+				// 		break;
+				// 	}
+				// 	cmp_->ocount++;
+				// }
+				return CMP_FIND_OK;
+			}
+			dir = -1;
 			i += dir;
 		}
 	}
 	return cmp_->ocount > 0 ? CMP_FIND_OK : i < 0 ? CMP_HEAD_NONE : CMP_TAIL_NONE;
 }
+// 找到对应数据的最后一条记录 
+int _fmap_cmp_range_tail(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_cmp *cmp_)
+{
+	// 进入该函数 一定有数据
+	int i = sisdb_fmap_unit_goto(unit_, mindex_);
+	int dir = 0;
+	int count = sisdb_fmap_unit_count(unit_);
+	cmp_->ocount =  0;
+	cmp_->oindex = -1;
+	while (i >= 0 && i < count)
+	{
+		msec_t ts = sisdb_fmap_unit_get_mindex(unit_, i);
+		if (ts < mindex_)
+		{
+			if (cmp_->ocount > 0)
+			{
+				return CMP_FIND_OK;
+			}
+			if (dir == -1)
+			{
+				cmp_->oindex = i;
+				return CMP_FIND_AGO;  // 返回最接近的前值
+			}
+			dir = 1;
+			i += dir;
+		}
+		else if (ts > mindex_)
+		{ 
+			if (cmp_->ocount > 0)
+			{
+				return CMP_FIND_OK;
+			}
+			if (dir == 1)
+			{
+				cmp_->oindex = i - 1;
+				return CMP_FIND_AGO; // 返回最接近的前值
+			}
+			dir = -1;
+			i += dir;
+		}
+		else
+		{
+			cmp_->ocount ++;
+			cmp_->oindex = i;
+			if (dir == -1)
+			{
+				// 此循环计算相等数量
+				// for (int k = i - 1; k >= 0; k--)
+				// {
+				// 	msec_t kts = sisdb_fmap_unit_get_mindex(unit_, k);
+				// 	if (mindex_ != kts) 
+				// 	{
+				// 		break;
+				// 	}
+				// 	cmp_->ocount++;
+				// }
+				return CMP_FIND_OK;
+			}
+			dir = 1;
+			i += dir;
+		}
+	}
+	return cmp_->ocount > 0 ? CMP_FIND_OK : i < 0 ? CMP_HEAD_NONE : CMP_TAIL_NONE;
+}
+int sisdb_fmap_cmp_where(s_sisdb_fmap_unit *unit_, msec_t  start_, msec_t  stop_, s_sisdb_fmap_cmp *ans_)
+{
+	if (stop_ == 0)
+	{
+		return sisdb_fmap_cmp_same(unit_, start_, ans_);
+	}
+	else
+	{
+		LOG(8)("where :::: stop [%lld] != 0\n", stop_);
+	}
+	return -1;
+}
 // -1 表示没有匹配数据 
-int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, msec_t start_, msec_t stop_, s_sisdb_fmap_cmp *ans_)
+int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, int64 start_, int64 stop_, int8 ifprev_, s_sisdb_fmap_cmp *ans_)
 {
 	ans_->ocount = 0; ans_->oindex = -1; ans_->ostart = 0;
 	int count = sisdb_fmap_unit_count(unit_);
@@ -595,34 +557,46 @@ int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, msec_t start_, msec_t stop_, 
 	{
 		return -1;
 	}
-	if (start_ == 0)
+	if (start_ <= -1)
 	{
-		start_ = sisdb_fmap_unit_get_mindex(unit_, count - 1);
+		start_ = sisdb_fmap_unit_get_mindex(unit_, sis_max(0, count + start_));
 	}
-	if (stop_ == 0)
+	if (stop_ <= -1)
 	{
 		stop_ = sisdb_fmap_unit_get_mindex(unit_, count - 1);
 	}
-	int supply = stop_ == -1 ? 1 : 0;
-	if (stop_ == -1)
+	else if (stop_ == 0)
 	{
 		stop_ = start_;
 	}
 	s_sisdb_fmap_cmp cmphead = {0, -1, 0};
-	int headidx = _fmap_cmp_range_head(unit_, start_, &cmphead, supply);
+	int headidx = _fmap_cmp_range_head(unit_, start_, &cmphead);
 	// printf("%d | %d %d %d\n", headidx, cmphead.ostart, cmphead.oindex, cmphead.ocount);
-	if (supply == 0)
+	switch (headidx)
 	{
-		if (headidx == CMP_TAIL_NONE)
+	case CMP_HEAD_NONE:
+		cmphead.oindex = 0;
+		break;
+	case CMP_TAIL_NONE:
+		if (ifprev_ == 0)
 		{
 			return -1;
 		}
-		if (headidx == CMP_HEAD_NONE)
+		else
 		{
-			cmphead.oindex = 0;
+			cmphead.oindex = count - 1;
 		}
-		// CMP_MIDD_NONE 时 cmphead 索引有值
+		break;
+	case CMP_FIND_AGO:
+		if (ifprev_ == 0)
+		{
+			cmphead.oindex = sis_min(cmphead.oindex + 1, count - 1); 
+		}	
+		break;
+	default:
+		break;
 	}
+
 	s_sisdb_fmap_cmp cmptail = {0, -1, 0};
 	int tailidx = _fmap_cmp_range_tail(unit_, stop_, &cmptail);
 	// printf("%d | %d %d %d\n", tailidx, cmptail.ostart, cmptail.oindex, cmptail.ocount);
@@ -647,7 +621,7 @@ int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, msec_t start_, msec_t stop_, 
 }
 
 #if 0
-// 这里测试 sisdb_fmap_cmp_range 和 sisdb_fmap_cmp_same
+// 这里测试 sisdb_fmap_cmp_range 和 sisdb_fmap_cmp_where
 #pragma pack(push,1)
 typedef struct s_date_data
 {
@@ -725,7 +699,7 @@ int main1()
 
 	s_sisdb_fmap_cmp ans = {0, -1, 0};
 	{
-		sisdb_fmap_cmp_same(funit, 1630087572600, &ans);
+		sisdb_fmap_cmp_where(funit, 1630087572600, -1, &ans);
 		printf("same one  = %d %d %d\n", ans.ostart, ans.oindex, ans.ocount);
 	}
 	{
@@ -781,15 +755,15 @@ int main()
 
 	s_sisdb_fmap_cmp ans = {0, -1, 0};
 	{
-		sisdb_fmap_cmp_same(funit, 20210315, &ans);
+		sisdb_fmap_cmp_where(funit, 20210315, 0, &ans);
 		printf("same one  = %d %d %d\n", ans.ostart, ans.oindex, ans.ocount);
-		sisdb_fmap_cmp_same(funit, 20200310, &ans);
+		sisdb_fmap_cmp_where(funit, 20200310, 0, &ans);
 		printf("same mul  = %d %d %d\n", ans.ostart, ans.oindex, ans.ocount);
-		sisdb_fmap_cmp_same(funit, 20200311, &ans);
+		sisdb_fmap_cmp_where(funit, 20200311, 0, &ans);
 		printf("same none = %d %d %d\n", ans.ostart, ans.oindex, ans.ocount);
-		sisdb_fmap_cmp_same(funit, 20191009, &ans);
+		sisdb_fmap_cmp_where(funit, 20191009, 0, &ans);
 		printf("same none = %d %d %d\n", ans.ostart, ans.oindex, ans.ocount);
-		sisdb_fmap_cmp_same(funit, 20210411, &ans);
+		sisdb_fmap_cmp_where(funit, 20210411, 0, &ans);
 		printf("same none = %d %d %d\n", ans.ostart, ans.oindex, ans.ocount);
 	}
 	{

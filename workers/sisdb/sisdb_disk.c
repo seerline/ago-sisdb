@@ -319,26 +319,21 @@ void sisdb_wlog_close(s_sisdb_cxt *context)
 s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
 {
     // int nums = 0;
-    s_sis_sds msg = NULL;
+    s_sis_string_list *slist = sis_string_list_create();
     {
         s_sis_dict_entry *de;
         s_sis_dict_iter *di = sis_dict_get_iter(cxt->work_fmap_cxt->work_keys);
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
-            if (!msg)
-            {
-                msg = sis_sdsnew(SIS_OBJ_GET_CHAR(funit->kname));
-            }
-            else
-            {
-                msg = sis_sdscatfmt(msg, ",%s", SIS_OBJ_GET_CHAR(funit->kname));
-            }
+            // 虽然效率低 但是这里要去除重复的代码
+            sis_string_list_push_only(slist, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_SIZE(funit->kname));
         }
         sis_dict_iter_free(di);
     }  
-    printf("keys = %s\n", msg);
-    return msg;    
+    s_sis_sds msg = sis_string_list_sds(slist);
+    sis_string_list_destroy(slist);
+    return msg;  
 }
 
 s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
@@ -363,6 +358,8 @@ void sisdb_disk_save_start(s_sisdb_cxt *context)
     s_sis_sds work_path = sis_sds_save_get(context->work_path);
     s_sis_sds work_name = sis_sds_save_get(context->work_name);
     sis_mutex_lock(&context->wlog_lock);
+
+    sisdb_wlog_close(context);
     
     if (sis_disk_log_exist(work_path, work_name, context->work_date))
     {
@@ -376,7 +373,7 @@ void sisdb_disk_save_start(s_sisdb_cxt *context)
 int _disk_save_fmap_sdb(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
 {
     int count = 0;
-    printf("save ==== %s %d\n", SIS_OBJ_GET_CHAR(funit->kname), funit->fidxs->count);
+    // printf("save ==== %s %s %d\n", SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), funit->fidxs->count);
     for (int i = 0; i < funit->fidxs->count; i++)
     {
         s_sisdb_fmap_idx *fidx = sis_struct_list_get(funit->fidxs, i);
@@ -480,7 +477,7 @@ int sisdb_disk_save(s_sisdb_cxt *context)
             sis_sdsfree(sdbs);
         }
         {
-            // printf("save ==1== %p %d\n", context->work_fmap_cxt, sis_map_pointer_getsize(context->work_fmap_cxt->work_keys));
+            printf("save ==1== %p %d\n", context->work_fmap_cxt, sis_map_pointer_getsize(context->work_fmap_cxt->work_keys));
             s_sis_dict_entry *de;
             s_sis_dict_iter *di = sis_dict_get_iter(context->work_fmap_cxt->work_keys);
             while ((de = sis_dict_next(di)) != NULL)

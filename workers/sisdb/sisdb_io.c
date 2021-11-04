@@ -45,7 +45,7 @@ static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_j
 {
     cmd_->cmpmode = SISDB_FMAP_CMP_RANGE;
     cmd_->start = -1;
-    cmd_->stop = -1;
+    cmd_->stop = 0;
     cmd_->offset = 0;
     cmd_->count = 1;
     cmd_->key = key_;
@@ -64,17 +64,19 @@ static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_j
         {
             return -2;
         }
-        cmd_->stop = sis_json_get_int(range, "stop", -1);;
+        cmd_->stop = sis_json_get_int(range, "stop", 0);;
+        cmd_->ifprev = sis_json_get_int(range, "ifprev", 0);
     }
     else 
     {
-        s_sis_json_node *same = sis_json_cmp_child_node(node_, "same");
-        if (same)
+        s_sis_json_node *where = sis_json_cmp_child_node(node_, "where");
+        if (where)
         {
-            cmd_->cmpmode = SISDB_FMAP_CMP_SAME;
-            if (sis_json_cmp_child_node(same, "start"))
+            cmd_->cmpmode = SISDB_FMAP_CMP_WHERE;
+            cmd_->stop = 0;
+            if (sis_json_cmp_child_node(where, "start"))
             {
-                cmd_->start = sis_json_get_int(same, "start", 0);;
+                cmd_->start = sis_json_get_int(where, "start", 0);;
             }
             else
             {
@@ -82,6 +84,7 @@ static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_j
             }
         }
     }
+    printf("start = %lld %lld\n", cmd_->start, cmd_->stop);
     return 0;
 }
 // 返回NULL表示全部字段
@@ -152,7 +155,7 @@ s_sis_sds sisdb_io_get_chars_sds(s_sisdb_cxt *sisdb_, const char *key_, int rfmt
     }
     s_sis_sds o = NULL;
     s_sis_string_list *fields = _read_fields(node_);
-    // printf("===10 ==== %d\n", ((s_sis_struct_list *)cmd.unit->value)->count);
+    printf("===10 ==== %d\n", sisdb_fmap_unit_count(cmd.unit));
     if (!fields)
     {
 		switch (rfmt_)
@@ -189,13 +192,13 @@ s_sis_sds sisdb_io_get_chars_sds(s_sisdb_cxt *sisdb_, const char *key_, int rfmt
 
 static int _init_cmd_from_set(s_sisdb_fmap_cmd *cmd_, const char *key_, s_sis_sds ask_)
 {
-    cmd_->cmpmode = SISDB_FMAP_CMP_SAME;
+    cmd_->cmpmode = SISDB_FMAP_CMP_WHERE;
     cmd_->key = key_;
     cmd_->isize = sis_sdslen(ask_);
     cmd_->imem = ask_;
     // cmd_->start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
     // cmd_->start = 0;
-    // cmd_->stop = 0;
+    cmd_->stop = 0;
     // cmd_->offset = 0;
     // cmd_->count = 1;
     // if (!node_)
@@ -294,7 +297,7 @@ int sisdb_io_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
     {
         return 0;
     }
-    cmd.cmpmode = SISDB_FMAP_CMP_SAME;
+    cmd.cmpmode = SISDB_FMAP_CMP_WHERE;
     s_sis_json_node *range = sis_json_cmp_child_node(node_, "range");
     if (range)
     {
@@ -311,9 +314,10 @@ int sisdb_io_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
     }
     else 
     {
-        s_sis_json_node *same = sis_json_cmp_child_node(node_, "same");
+        s_sis_json_node *same = sis_json_cmp_child_node(node_, "where");
         if (same)
         {
+            cmd.stop = 0; // 暂时只支持定位
             if (sis_json_cmp_child_node(same, "start"))
             {
                 cmd.start = sis_json_get_int(same, "start", 0);;
