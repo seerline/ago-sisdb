@@ -276,6 +276,7 @@ int snodb_wlog_to_snos(s_snodb_cxt *snodb_)
 		snodb_->wfile_save = 0;
 		sis_message_destroy(msg);
 	}
+	// 这里来判断文件是否生成好 如果失败
 	return o;
 }
 
