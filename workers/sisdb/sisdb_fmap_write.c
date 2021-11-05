@@ -66,6 +66,17 @@ int sisdb_fmap_unit_set_idx(s_sisdb_fmap_unit *unit_, int startidx, int idate)
 {
 	int isign = unit_->scale == SIS_SDB_SCALE_YEAR ? idate / 10000 : idate;
 	int start = (startidx < 0 || startidx >= unit_->fidxs->count) ? 0 : startidx;
+	if (unit_->fidxs->count == 0)
+	{
+		s_sisdb_fmap_idx newidx;
+		newidx.isign = isign;
+		newidx.start = 0;
+		newidx.count = 1;
+		newidx.moved = 0;
+		newidx.writed = 1;
+		sis_struct_list_push(unit_->fidxs, &newidx);
+		return 0;
+	}
 	for (int i = start; i < unit_->fidxs->count; i++)
 	{
 		s_sisdb_fmap_idx *fidx = sis_struct_list_get(unit_->fidxs, i);
@@ -144,16 +155,16 @@ int sisdb_fmap_cxt_tsdb_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_
 	s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 	s_sisdb_fmap_cmp ans = { 0, -1, 0}; 
 	// 根据 cmd 信息计算针对列表的开始索引和数量
-	if (cmd_->cmpmode == SISDB_FMAP_CMP_SAME) // 完全匹配 
+	if (cmd_->cmpmode == SISDB_FMAP_CMP_WHERE) // 完全匹配 
 	{
-		if (sisdb_fmap_cmp_same(unit_, cmd_->start, &ans) < 0)
+		if (sisdb_fmap_cmp_where(unit_, cmd_->start, cmd_->stop, &ans) < 0)
 		{
 			return 0;
 		}
 	}
 	else // 尽量匹配
 	{
-		if (sisdb_fmap_cmp_range(unit_, cmd_->start, cmd_->stop, &ans) < 0)
+		if (sisdb_fmap_cmp_range(unit_, cmd_->start, cmd_->stop, 0, &ans) < 0)
 		{
 			return 0;
 		}
@@ -212,34 +223,64 @@ static int _fmap_cxt_vlist_add(s_sis_struct_list *slist, void *imem, int index)
 //  update
 //////////////////////////////////////////////////
 
+int _fmap_unit_solely_update_noidx(s_sisdb_fmap_unit *unit_, const char *imem_)
+{
+	s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
+	// 默认从尾部开始匹配
+	int start = slist->count - 1;
+	// 定位匹配记录位置
+	for (int i = start; i >= 0 ; i--)
+	{
+		const char *v = sis_struct_list_get(slist, i);
+		bool ok = true;
+		for (int k = 0; k < unit_->sdb->field_solely->count; k++)
+		{
+			s_sis_dynamic_field *fu = (s_sis_dynamic_field *)sis_pointer_list_get(unit_->sdb->field_solely, k);
+			if (memcmp(imem_ + fu->offset, v + fu->offset, fu->len))
+			{
+				ok = false;
+				break;
+			}
+		}
+		if (ok) //  所有字段都相同
+		{
+			sis_struct_list_update(slist, i, (void *)imem_);
+			return 0;
+		}
+	}
+	// 全部没有匹配 放在最后
+	_fmap_cxt_vlist_add(slist, (void *)imem_, slist->count);
+	return 1;
+}
 // 需要检验唯一性
 int _fmap_unit_solely_update(s_sisdb_fmap_unit *unit_, const char *imem_, int index_, uint64 mindex_)
 {
+// 如果index_ = -1 表示比第一个记录小
+// 如果index_ >= count 表示比最后记录大
+// 如果index_ 0 .. count - 1 表示匹配mindex的最后一个位置 
 	s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
-	int start = slist->count - 1;
-	if (index_ >= 0)
+	if (index_ < 0)
 	{
-		start = sis_min(index_, start);
+		_fmap_cxt_vlist_add(slist, (void *)imem_, -1);
+		return 1;
 	}
+	// else if (index_ >= slist->count)
+	// {
+	// 	_fmap_cxt_vlist_add(slist, (void *)imem_, slist->count);
+	// 	return 1;
+	// }
+	int start = slist->count - 1;
+	start = sis_min(index_, start);
 	// 定位索引
 	for (int i = start; i >= 0 ; i--)
 	{
 		const char *v = sis_struct_list_get(slist, i);
-		if (mindex_ > 0)
+		uint64 mindex = sis_dynamic_db_get_mindex(unit_->sdb, 0, (void *)v, unit_->sdb->size);
+		if (mindex < mindex_)
 		{
-			uint64 mindex = sis_dynamic_db_get_mindex(unit_->sdb, 0, (void *)v, unit_->sdb->size);
-			if (mindex < mindex_)
-			{
-				if (index_ < 0)
-				{
-					_fmap_cxt_vlist_add(slist, (void *)imem_, slist->count);
-				}
-				else
-				{
-					_fmap_cxt_vlist_add(slist, (void *)imem_, index_ + 1);
-				}
-				return 1;
-			}
+			// printf("_fmap_cxt_vlist_add 1, %d %d\n", index_, slist->count);
+			_fmap_cxt_vlist_add(slist, (void *)imem_, index_);
+			return 1;
 		}
 		bool ok = true;
 		for (int k = 0; k < unit_->sdb->field_solely->count; k++)
@@ -258,38 +299,33 @@ int _fmap_unit_solely_update(s_sisdb_fmap_unit *unit_, const char *imem_, int in
 		}
 	}
 	// 全部没有匹配 放在最后
-	if (index_ < 0)
-	{
-		_fmap_cxt_vlist_add(slist, (void *)imem_, slist->count);
-	}
-	else
-	{
-		_fmap_cxt_vlist_add(slist, (void *)imem_, index_);
-	}
+	// printf("_fmap_cxt_vlist_add 2, %d %d\n", index_, slist->count);
+	_fmap_cxt_vlist_add(slist, (void *)imem_, index_ + 1);
 	return 1;
 }
-
+// 到这里一定有需要匹配的字段
 int sisdb_fmap_cxt_solely_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_)
 {
 	int count = 0;
 	int nums = cmd_->isize / unit_->sdb->size;
 	const char *ptr = cmd_->imem;
 	int start_fidx = -1;
+	printf("unit == %d %zu %d\n", nums, cmd_->isize, unit_->sdb->size);
 	for (int i = 0; i < nums; i++)
 	{
 		if (!unit_->sdb->field_mindex)
 		{
-			// 没有 start 字段 通常 set 
-			count += _fmap_unit_solely_update(unit_, ptr, -1, 0);
+			// 没有索引字段 找到匹配字段 然后插入
+			count += _fmap_unit_solely_update_noidx(unit_, ptr);
 		}
 		else
 		{
 			uint64 mindex = sis_dynamic_db_get_mindex(unit_->sdb, 0, (void *)ptr, unit_->sdb->size);
 			int oindex = sisdb_fmap_cmp_find_tail(unit_, mindex);
 			int o = _fmap_unit_solely_update(unit_, ptr, oindex, mindex);
-
-			int ostart = sisdb_fmap_unit_get_start(unit_, mindex);
-			if (o == 1)
+			// o = 0 表示修改 o = 1 表示增加
+			int ostart = sisdb_fmap_unit_get_start(unit_, mindex); // 如果为时间索引 就转成日期
+			if (o == 0)
 			{
 				start_fidx = sisdb_fmap_unit_set_idx(unit_, start_fidx, ostart);
 			}
@@ -297,6 +333,7 @@ int sisdb_fmap_cxt_solely_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit
 			{
 				start_fidx = sisdb_fmap_unit_add_idx(unit_, start_fidx, ostart);
 			}
+			printf("unit fidxs == %d %d oindex %d|%lld %d %d\n", unit_->fidxs->count, start_fidx, oindex, mindex, o, ostart);
 			count += o;
 		}
 		ptr += unit_->sdb->size;

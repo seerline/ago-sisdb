@@ -13,20 +13,21 @@ int sisdb_fmap_cxt_tsdb_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s
 	s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 	s_sisdb_fmap_cmp ans = { 0, -1, 0}; 
 	// 根据 cmd 信息计算针对列表的开始索引和数量
-	if (cmd_->cmpmode == SISDB_FMAP_CMP_SAME) // 完全匹配 
+	if (cmd_->cmpmode == SISDB_FMAP_CMP_WHERE) // 完全匹配 
 	{
-		if (sisdb_fmap_cmp_same(unit_, cmd_->start, &ans) < 0)
+		if (sisdb_fmap_cmp_where(unit_, cmd_->start, cmd_->stop, &ans) < 0)
 		{
 			return 0;
 		}
 	}
 	else // 尽量匹配
 	{
-		if (sisdb_fmap_cmp_range(unit_, cmd_->start, cmd_->stop, &ans) < 0)
+		if (sisdb_fmap_cmp_range(unit_, cmd_->start, cmd_->stop, cmd_->ifprev, &ans) < 0)
 		{
 			return 0;
 		}
 	}
+	printf("read tsdb :%lld %lld %d | %d %d\n", cmd_->start, cmd_->stop, slist->count, ans.ocount, ans.oindex);
 	if (ans.ocount > 0 && ans.oindex >= 0)
 	{
 		if (cmd_->cb_fmap_read)
@@ -116,9 +117,11 @@ int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	int open_year = openyear; 
 	int stop_year = stopyear;
 	int index = 0;
+	printf("==511==, %d %d %d\n", unit_->fidxs->count, openyear, stopyear);
 	while (open_year <= stop_year && index < unit_->fidxs->count)
 	{
 		s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
+		printf("==512==, %d %d\n", open_year, pidx->isign);
 		if (open_year == pidx->isign)
 		{
 			if (pidx->start == -1)
@@ -179,13 +182,27 @@ int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	}
 	return count;
 }
+int _fmap_cxt_getlast_sign(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_)
+{
+	s_sisdb_fmap_idx *pidx = sis_struct_list_last(unit_->fidxs);
+	if (pidx)
+	{
+		return pidx->isign;
+	}
+	if (unit_->scale == SIS_SDB_SCALE_YEAR)
+	{
+		return sis_time_get_idate(0) / 10000;
+	}
+	return sis_time_get_idate(0);
+}
 // 从磁盘中读实际数据
 // 仅仅把相关的键值 相关的日期的数据加载到内存 其他什么事情也不做
 // 为了加快速度 如果请求数据在 unit 的时间区间内就直接返回 
-int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int start_, int stop_)
+int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int64 start_, int64 stop_)
 {
 	// 这里需要根据索引 去对应文件读取数据
 	// 传入的 cmd 中的 start stop 是原始数据 需要根据数据类型转换后 再去匹配索引的信息
+	// printf("==21==, %p %p %d %d\n", unit_,  cxt_->freader, unit_->ktype, unit_->scale);
 	if (!unit_ || !cxt_->freader)
 	{
 		return 0;
@@ -228,6 +245,7 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 		break;
 	case SISDB_FMAP_TYPE_NON:
 		{
+			// printf("==22==, %d %d\n", unit_->reads,  unit_->sdb->size);
 			if (unit_->reads == 0)
 			{
 				s_sis_object *obj = sis_disk_reader_get_obj(cxt_->freader, SIS_OBJ_GET_CHAR(unit_->kname), SIS_OBJ_GET_CHAR(unit_->sname), NULL);
@@ -236,9 +254,9 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 					sis_struct_list_clear(slist);
 					count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
-					// printf("==23==, %d %d  %d %d\n", slist->count, count, SIS_OBJ_GET_SIZE(obj),  unit_->sdb->size);
+					printf("==23==, %d %d  %d %d\n", slist->count, count, SIS_OBJ_GET_SIZE(obj),  unit_->sdb->size);
 					sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
-					// printf("==24==, %d %d\n", slist->count, count);
+					printf("==24==, %d %d\n", slist->count, count);
 					sis_object_destroy(obj);
 				}
 			}
@@ -253,14 +271,45 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					// 根据cmd中时间 匹配索引加载数据 已经加载过的不再加载
 					// 数据加载后更新 count
 					// 传入年份 如果已经读过了就直接返回 如果没有读过就去读
-					int start = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, start_);
-					int stop = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, stop_);
+					int start = 0;
+					int stop  = 0;
+					if (start_ <= 0 || stop_ <= 0)
+					{
+						int curr_date = _fmap_cxt_getlast_sign(cxt_, unit_);
+						start = start_ <= 0 ? curr_date : start_;
+						stop  = stop_ < 0 ? curr_date : stop_;
+						if (stop_ == 0)
+						{
+							stop = start; 
+						}
+					}
+					else
+					{
+						start = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, start_);
+						stop = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, stop_);
+					}
+					printf("==52==, %d %d %d %d\n", start,  stop, count, unit_->fidxs->count);
 					count = _fmap_cxt_getdata_year(cxt_, unit_, start, stop);
 				}
 				else
 				{
-					int start = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start_);
-					int stop = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, stop_);
+					int start = 0;
+					int stop  = 0;
+					if (start_ <= 0 || stop_ <= 0)
+					{
+						int curr_date = _fmap_cxt_getlast_sign(cxt_, unit_);
+						start = start_ <= 0 ? curr_date : start_;
+						stop  = stop_ < 0 ? curr_date : stop_;
+						if (stop_ == 0)
+						{
+							stop = start; 
+						}
+					}
+					else
+					{
+						start = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, start_);
+						stop = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_DATE, stop_);
+					}
 					// 无论是何类型都转换为日 要加载就加载一天 
 					count = _fmap_cxt_getdata_date(cxt_, unit_, start, stop);
 				}

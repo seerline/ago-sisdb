@@ -213,6 +213,10 @@ int sis_disk_writer_set_sdict(s_sis_disk_writer *writer_, const char *in_, size_
 // 写入数据 仅支持 LOG 不管数据多少 直接写盘 
 size_t sis_disk_writer_log(s_sis_disk_writer *writer_, void *in_, size_t ilen_)
 {
+    // if (!writer_->munit || !in_ || ilen_ < 1)
+    // {
+    //     return 0;
+    // }
     return  sis_disk_io_write_log(writer_->munit, in_, ilen_);
 }
 //////////////////////////////////////////

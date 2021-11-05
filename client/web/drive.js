@@ -133,15 +133,15 @@ client.ws.onmessage = function (message) {
   
     if (client.wait.commands[sign] !== undefined) {
       let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
-      if (msg.ans !== undefined)
+      if (msg.rans !== undefined)
       {
-        if (msg.msg)
+        if (msg.rmsg)
         {
-          client.wait.replys = msg.ans + ':' + msg.msg;
+          client.wait.replys = msg.rans + ':' + msg.rmsg;
         }
         else
         {
-          client.wait.replys = msg.ans;
+          client.wait.replys = msg.rans;
         }
       }
       else
@@ -206,7 +206,7 @@ function send_multiple_command(commands, callback) {
 
     let sendstr = make_command_packed(sign, commands[index].cmd);
 
-    console.log('<===', sendstr);
+    console.log('m<===', sendstr);
 
     client.ws.send(sendstr);
   }

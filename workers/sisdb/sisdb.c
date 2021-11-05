@@ -242,7 +242,7 @@ int cmd_sisdb_get(void *worker_, void *argv_)
     // 发送数据
 	if (o)
 	{
-        if(netmsg->rfmt & SISDB_FORMAT_CHARS)
+        if(rfmt & SISDB_FORMAT_CHARS)
         {
             sis_net_ans_with_chars(netmsg, o, sis_sdslen(o));
         }

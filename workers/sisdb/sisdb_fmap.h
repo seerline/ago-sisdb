@@ -121,18 +121,21 @@ typedef struct s_sisdb_fmap_cxt
 ////////////////////////////////////////////
 
 ////////////////////////////////////////////
-// 目前仅支持 start stop 区间查询 时序统一为日期 
+// 目前仅支持 start stop 按记录 区间查询
 // 也就是目前只支持按天修改删除和查询的尺度
-// start   stop
-//  0       0    表示取最新的那一日数据 当日 或 当年最后一天记录 
-// day1     0    表示取 day1 到 当日的所有数据 
-// day1    day2  表示取 day1 到 day2 的所有数据
-// day1    day1  表示取 == day1 的数据 可能有多条 也可能一条没有 没有的情况下返回 NULL  
-// day1    -1    表示取 == day1 的数据 如果没有匹配 用前一个有效日期数据返回 前面没有数据再返回 NULL 
+// stop == 0   表示只取start那条数据
+// stop ==-1   表示取start到最新的那条数据
+// stop ==day2 表示取start到day2的所有数据
+
+// start== -1  表示定位于最新的数据
+// start==day1 表示定位于主索引day1的位置
+//             如果定位day1失败但是前面仍然有数据 ifprev = 1时取前一记录为 start 定位
 #define SISDB_FMAP_CMP_RANGE   0 // 区间匹配查询和删除
-// 用于定位修改 只能定位一条数据 通常用于定位查询、修改或删除  
+// 支持 start stop 区间查询 严格匹配  
+// stop == 0 用于严格匹配 只能定位一条数据 通常用于定位查询、修改或删除  
+// stop != 0 定位多条数据 通常只用于定位查询和删除 
 // start 表示匹配时间 严格匹配 不按日期 找不到就返回 NULL
-#define SISDB_FMAP_CMP_SAME    1 // 严格匹配查询和删除
+#define SISDB_FMAP_CMP_WHERE   1 // 区间匹配查询和删除
 // 
 #define SISDB_FMAP_CMP_NONE    2 // 没有start stop 字段 
 
@@ -156,7 +159,8 @@ typedef struct s_sisdb_fmap_cmd
 	int8               offset;        // 以开始时间为定位 -1 向前一条记录 1 向后一条记录 
 	// 如果时间一样就一直到不一样的记录 
 	// offset 不能超过 255 基本是一年的数据
-	int                count;         // 取多少数据 0 忽略 > = 0
+	int8               ifprev;        // 1 如果没有匹配数据取前一个数据 
+	int                count;         // 取多少数据 0 忽略 > = 0 
 	// imem 的数据类型可能是 3种 s_sis_sds s_sis_node s_sis_struct_list->value
 	s_sisdb_fmap_unit *unit;          // 读取后对应的实例
 	void              *imem;          // 传入或传出的数据 传出的数据需要拷贝到 data 中 
@@ -209,9 +213,9 @@ int sisdb_fmap_cmp_find_head(s_sisdb_fmap_unit *unit_, msec_t  start_);
 // 找到一个最接近的后置位置
 int sisdb_fmap_cmp_find_tail(s_sisdb_fmap_unit *unit_, msec_t  start_);
 // 必须找到一个相等值，否则返回-1
-int sisdb_fmap_cmp_same(s_sisdb_fmap_unit *unit_, msec_t  start_, s_sisdb_fmap_cmp *ans_);
+int sisdb_fmap_cmp_where(s_sisdb_fmap_unit *unit_, msec_t start_, msec_t stop_, s_sisdb_fmap_cmp *ans_);
 // 找到匹配的区间数据，否则返回-1
-int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, msec_t  start_, msec_t  stop_, s_sisdb_fmap_cmp *ans_);
+int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, int64 start_, int64 stop_, int8 ifprev_, s_sisdb_fmap_cmp *ans_);
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sisdb_fmap_cxt --------------------------------//
@@ -257,6 +261,6 @@ int sisdb_fmap_cxt_tsdb_remove(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_)
 // s_sisdb_fmap_unit * sisdb_fmap_cxt_read_match(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_sisdb_fmap_cmd *cmd_);
 
 // 只根据索引从磁盘中读取数据 不增加索引块
-int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int start_, int stop_);
+int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int64 start_, int64 stop_);
 
 #endif /* _SIS_COLLECT_H */

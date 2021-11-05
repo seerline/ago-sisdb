@@ -438,7 +438,7 @@ int cmd_sisdb_client_chars_wait(void *worker_, void *argv_)
 
     sisdb_client_send_ask(context, ask);
 
-    int waitmsec = 1000;
+    int waitmsec = 10000;
     while(!msg->switchs.is_reply && waitmsec > 0)
     {
         sis_sleep(1);
@@ -484,7 +484,8 @@ int cmd_sisdb_client_bytes_wait(void *worker_, void *argv_)
 
     sisdb_client_send_ask(context, ask);
 
-    int waitmsec = 1000;
+    // 这里如果时间太久会应答错误 以后再处理
+    int waitmsec = 10000;
     while(!msg->switchs.is_reply && waitmsec > 0)
     {
         sis_sleep(1);

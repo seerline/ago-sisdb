@@ -244,9 +244,9 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	else
 	{
-		// printf("===11 ==== %d\n", ((s_sis_struct_list *)unit->value)->count);
+		printf("===11 ==== %s %lld %lld\n", cmd_->key, cmd_->start, cmd_->stop);
 		sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
-		// printf("===11 ==== %d\n", ((s_sis_struct_list *)unit->value)->count);
+		printf("===11 ==== %d\n", ((s_sis_struct_list *)unit->value)->count);
 	}
 	cmd_->unit = unit;
 	cmd_->ktype = unit->ktype;
@@ -383,7 +383,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 				return 0;
 			}
 			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
-			printf("unit == %d %zu %d %d %d\n", count, cmd_->isize, unit->sdb->size, slist->count, unit->sdb->field_solely->count);
+			// printf("unit == %d %zu %d %d %d\n", count, cmd_->isize, unit->sdb->size, slist->count, unit->sdb->field_solely->count);
 			if (slist->count < 1 || unit->sdb->field_solely->count == 0)
 			{
 				sis_struct_list_pushs(slist, cmd_->imem, count);
@@ -405,8 +405,10 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 				return 0;
 			}
 			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
+			printf("unit == %d %d\n", slist->count, count);
 			if (slist->count < 1)
 			{
+				// ??? 这里没有更新字典索引
 				sis_struct_list_pushs(slist, cmd_->imem, count);
 			}
 			else
