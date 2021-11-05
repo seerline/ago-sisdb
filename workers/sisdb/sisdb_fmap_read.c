@@ -182,7 +182,20 @@ int _fmap_cxt_getdata_date(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	}
 	return count;
 }
-int _fmap_cxt_getlast_sign(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_)
+int _fmap_cxt_get_head_sign(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_)
+{
+	s_sisdb_fmap_idx *pidx = sis_struct_list_first(unit_->fidxs);
+	if (pidx)
+	{
+		return pidx->isign;
+	}
+	if (unit_->scale == SIS_SDB_SCALE_YEAR)
+	{
+		return sis_time_get_idate(0) / 10000;
+	}
+	return sis_time_get_idate(0);
+}
+int _fmap_cxt_get_tail_sign(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_)
 {
 	s_sisdb_fmap_idx *pidx = sis_struct_list_last(unit_->fidxs);
 	if (pidx)
@@ -210,7 +223,7 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 	int count = 0;
 	switch (unit_->ktype)
 	{
-	case SISDB_FMAP_TYPE_ONE:
+	case SIS_SDB_STYLE_ONE:
 		{
 			if (unit_->reads == 0)
 			{
@@ -226,7 +239,7 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 			}
 		}
 		break;
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_MUL:
 		{
 			if (unit_->reads == 0)
 			{
@@ -243,9 +256,9 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 			}
 		}
 		break;
-	case SISDB_FMAP_TYPE_NON:
+	case SIS_SDB_STYLE_NON:
 		{
-			// printf("==22==, %d %d\n", unit_->reads,  unit_->sdb->size);
+			printf("==22==, %d %d\n", unit_->reads,  unit_->sdb->size);
 			if (unit_->reads == 0)
 			{
 				s_sis_object *obj = sis_disk_reader_get_obj(cxt_->freader, SIS_OBJ_GET_CHAR(unit_->kname), SIS_OBJ_GET_CHAR(unit_->sname), NULL);
@@ -254,7 +267,7 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					s_sis_struct_list *slist = (s_sis_struct_list *)unit_->value;
 					sis_struct_list_clear(slist);
 					count = SIS_OBJ_GET_SIZE(obj) / unit_->sdb->size;
-					printf("==23==, %d %d  %d %d\n", slist->count, count, SIS_OBJ_GET_SIZE(obj),  unit_->sdb->size);
+					printf("==23==, %d %d  %zu %d\n", slist->count, count, SIS_OBJ_GET_SIZE(obj),  unit_->sdb->size);
 					sis_struct_list_pushs(slist, SIS_OBJ_GET_CHAR(obj), count);
 					printf("==24==, %d %d\n", slist->count, count);
 					sis_object_destroy(obj);
@@ -275,9 +288,10 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					int stop  = 0;
 					if (start_ <= 0 || stop_ <= 0)
 					{
-						int curr_date = _fmap_cxt_getlast_sign(cxt_, unit_);
-						start = start_ <= 0 ? curr_date : start_;
-						stop  = stop_ < 0 ? curr_date : stop_;
+						int head_date = _fmap_cxt_get_head_sign(cxt_, unit_);
+						int tail_date = _fmap_cxt_get_tail_sign(cxt_, unit_);
+						start = start_ <= 0 ? head_date : start_;
+						stop  = stop_ < 0 ? tail_date : stop_;
 						if (stop_ == 0)
 						{
 							stop = start; 
@@ -297,9 +311,10 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					int stop  = 0;
 					if (start_ <= 0 || stop_ <= 0)
 					{
-						int curr_date = _fmap_cxt_getlast_sign(cxt_, unit_);
-						start = start_ <= 0 ? curr_date : start_;
-						stop  = stop_ < 0 ? curr_date : stop_;
+						int head_date = _fmap_cxt_get_head_sign(cxt_, unit_);
+						int tail_date = _fmap_cxt_get_tail_sign(cxt_, unit_);
+						start = start_ <= 0 ? head_date : start_;
+						stop  = stop_ < 0 ? tail_date : stop_;
 						if (stop_ == 0)
 						{
 							stop = start; 

@@ -387,6 +387,7 @@ s_sis_disk_map *sis_disk_map_create(s_sis_object *kname_, s_sis_object *sname_)
         o->sname = sis_object_incr(sname_);
     }
     o->sidxs = sis_sort_list_create(sizeof(s_sis_disk_map_unit));
+    o->sidxs->isascend = 1;
     return o;
 }
 void sis_disk_map_destroy(void *in_)

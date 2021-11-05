@@ -30,11 +30,6 @@
 // 堵塞处理 可能由于数据量巨大 而耗时
 // 后台处理 可以当内存超限后及时存盘 然后重新加载 直到数据处理成功
 
-#define SISDB_FMAP_TYPE_SDB   SIS_SDB_STYLE_SDB  // 有时序结构数据 默认二进制
-#define SISDB_FMAP_TYPE_NON   SIS_SDB_STYLE_NON  // 无时序结构数据 默认二进制
-#define SISDB_FMAP_TYPE_ONE   SIS_SDB_STYLE_ONE  // 无时序单一数据 默认字符型
-#define SISDB_FMAP_TYPE_MUL   SIS_SDB_STYLE_MUL  // 无时序列表数据 默认字符型
-
 #pragma pack(push,1)
 
 // 如果是只读 moved = writed = 0 那么写盘的时候该键值就不处理
@@ -63,6 +58,7 @@ typedef struct s_sisdb_fmap_unit
 								 // rmsec = 0 表示新建unit 还没有读取操作 
 								 //  最长每日会存一次盘 如果没有读只有写那么save时就会从内存清理掉
 	uint8                moved;  // 键值直接被删除
+	uint8                writed; // 无 fidxs 时有用
 	void                *value;  // 数据缓存区 
 	// 如果data为时序结构化数据   
 	s_sis_struct_list   *fidxs;  // 按时间排序的 索引表 s_sisdb_fmap_idx
@@ -80,8 +76,8 @@ typedef struct s_sisdb_fmap_cxt
 	s_sis_sds           work_name;
 	int                 work_date;    // 只有自动存盘后 日期才会切换 满足跨天数据
 	// 下面数据永不清理 数据表备份
-	int8                isnewsbds;    // 数据表是否更新
-	s_sis_map_list     *work_sdbs;    // sdb 的结构字典表 s_sis_dynamic_db
+	int8                sdbs_writed;  // 数据表是否更新
+	s_sis_map_list     *sdbs_defmap;  // sdb 的结构字典表 s_sis_dynamic_db
 	// 所有读取和写入的键值表
 	s_sis_map_pointer  *work_keys;    // 数据集合的字典表 s_sisdb_fmap_unit 这里实际存放数据，数量为股票个数x数据表数
 									  // SH600600.DAY 
@@ -233,6 +229,15 @@ s_sisdb_fmap_unit *sisdb_fmap_cxt_get(s_sisdb_fmap_cxt *cxt_, const char *key_);
 // 对数据表操作
 int sisdb_fmap_cxt_setdb(s_sisdb_fmap_cxt *cxt_, s_sis_dynamic_db *sdb_);
 s_sis_dynamic_db *sisdb_fmap_cxt_getdb(s_sisdb_fmap_cxt *cxt_, const char *sname_);
+// 根据key得到表
+s_sis_dynamic_db *sisdb_fmap_cxt_getdb_of_key(s_sisdb_fmap_cxt *cxt_, const char *key_);
+// 得到实际键值数量
+int sisdb_fmap_cxt_get_key_count(s_sisdb_fmap_cxt *cxt_);
+// 
+s_sis_sds sisdb_fmap_cxt_get_keys(s_sisdb_fmap_cxt *cxt_);
+
+s_sis_sds sisdb_fmap_cxt_get_sdbs(s_sisdb_fmap_cxt *cxt_,  int isname_, int iszip_);
+
 // 读取指定的数据
 int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_);
 // 插入一条数据
@@ -262,5 +267,8 @@ int sisdb_fmap_cxt_tsdb_remove(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_)
 
 // 只根据索引从磁盘中读取数据 不增加索引块
 int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, const char *key_, int64 start_, int64 stop_);
+
+// 持久化数据到硬盘
+int sisdb_fmap_cxt_save(s_sisdb_fmap_cxt *cxt_, const char *work_path_, const char *work_name_);
 
 #endif /* _SIS_COLLECT_H */

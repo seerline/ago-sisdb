@@ -396,3 +396,150 @@ int sisdb_fmap_cxt_mindex_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit
 	return count;
 }
 
+int _disk_save_fmap_sdb(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
+{
+    int count = 0;
+    // printf("save ==== %s %s %d\n", SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), funit->fidxs->count);
+    for (int i = 0; i < funit->fidxs->count; i++)
+    {
+        s_sisdb_fmap_idx *fidx = sis_struct_list_get(funit->fidxs, i);
+        printf("save ==== %s.%s %d %d %d\n", SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), fidx->moved, fidx->writed, funit->fidxs->count);
+        if (!fidx->writed)
+        {
+            continue;
+        }
+        count++;
+        if (fidx->moved)
+        {
+            sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), fidx->isign);
+        }
+        else
+        {
+            s_sis_struct_list *slist = (s_sis_struct_list *)funit->value;
+            if (slist->count > 0)
+            {
+                sis_disk_writer_sdb(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 
+                    sis_struct_list_first(slist), slist->count * slist->len);
+            }
+            fidx->writed = 0;
+        }
+    }
+    return count;  
+}
+
+int _disk_save_fmap(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
+{
+    int count = 1;
+    switch (funit->ktype)
+    {
+    case SIS_SDB_STYLE_ONE:
+        {
+            if (funit->moved)
+            {
+                sis_disk_writer_one_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
+            }
+            else
+            {
+                s_sis_sds str = (s_sis_sds)funit->value;
+                sis_disk_writer_one(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
+            }
+        }
+        break;
+    case SIS_SDB_STYLE_MUL:
+        {
+            if (funit->moved)
+            {
+                // s_sis_node *node = (s_sis_node *)unit->value;
+                // sis_disk_writer_mul_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
+            }
+            else
+            {
+                // s_sis_node *node = (s_sis_node *)funit->value;
+                // sis_disk_writer_mul(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
+            }
+        }
+        break;
+    case SIS_SDB_STYLE_NON:	
+        {
+            printf("save ==1== %d %d %d %d| %p\n", funit->ktype, funit->moved, funit->reads, funit->writed, funit->fidxs);
+            if (funit->moved)
+            {
+                sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 0);
+            }
+            else
+            {
+                if (funit->writed)
+                {
+                    s_sis_struct_list *slist = (s_sis_struct_list *)funit->value;
+                    if (slist->count > 0)
+                    {
+                        sis_disk_writer_sdb(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 
+                            sis_struct_list_first(slist), slist->count * slist->len);
+                    }
+                    printf("save ==ok== %d \n", slist->count);
+                    funit->writed = 0;
+                }
+            }
+        }
+        break;
+    default:
+        {
+            count = _disk_save_fmap_sdb(cxt, wfile, funit);
+        }
+        break;
+    }
+    return count;
+}
+
+int sisdb_fmap_cxt_save(s_sisdb_fmap_cxt *cxt_, const char *work_path_, const char *work_name_)
+{
+    int count = sisdb_fmap_cxt_get_key_count(cxt_);
+    if (count > 0)
+    {
+        s_sis_disk_writer *wfile = sis_disk_writer_create(work_path_, work_name_, SIS_DISK_TYPE_SDB);
+        // 不能删除老文件的信息
+        sis_disk_writer_open(wfile, 0);
+        {
+            s_sis_sds keys = sisdb_fmap_cxt_get_keys(cxt_);
+            sis_disk_writer_set_kdict(wfile, keys, sis_sdslen(keys));
+            s_sis_sds sdbs = sisdb_fmap_cxt_get_sdbs(cxt_, 0, 1);
+			if (sdbs)
+			{
+	            sis_disk_writer_set_sdict(wfile, sdbs, sis_sdslen(sdbs));
+            	sis_sdsfree(sdbs);
+			}
+            sis_sdsfree(keys);
+        }
+        {
+            printf("save ==s== %p %d\n", cxt_, count);
+            s_sis_dict_entry *de;
+            s_sis_dict_iter *di = sis_dict_get_iter(cxt_->work_keys);
+            while ((de = sis_dict_next(di)) != NULL)
+            {
+                s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
+                _disk_save_fmap(cxt_, wfile, funit);
+            }
+            sis_dict_iter_free(di);
+        }
+        sis_disk_writer_close(wfile);
+        sis_disk_writer_destroy(wfile);
+    }
+    else if (cxt_->sdbs_writed)
+    {
+        // 仅仅存结构
+        s_sis_disk_writer *wfile = sis_disk_writer_create(work_path_, work_name_, SIS_DISK_TYPE_SDB);
+        // 不能删除老文件的信息
+        sis_disk_writer_open(wfile, 0);
+        {
+            s_sis_sds sdbs = sisdb_fmap_cxt_get_sdbs(cxt_, 0, 1);
+			if (sdbs)
+			{
+				sis_disk_writer_set_sdict(wfile, sdbs, sis_sdslen(sdbs));
+				sis_sdsfree(sdbs);
+			}
+        }
+        sis_disk_writer_close(wfile);
+        sis_disk_writer_destroy(wfile);
+    }	
+	return count;
+}

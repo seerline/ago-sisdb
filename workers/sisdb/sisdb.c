@@ -172,7 +172,7 @@ int cmd_sisdb_show(void *worker_, void *argv_)
     s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    s_sis_sds sdbs = sisdb_io_show_sds(context);
+    s_sis_sds sdbs = sisdb_fmap_cxt_get_sdbs(context->work_fmap_cxt, 1, 0);
     if (!sdbs)
     {
         return SIS_METHOD_NULL;
@@ -572,7 +572,7 @@ int cmd_sisdb_save(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     // 先关闭 log 然后转移log文件 然后再打开新的log 
     // 并设置标记 此时只接收数据 等待save结束
-    // printf("====%d\n", context->work_fmap_cxt->isnewsbds);
+    // printf("====%d\n", context->work_fmap_cxt->sdbs_writed);
     sisdb_disk_save_start(context);   
     int o = sisdb_disk_save(context);  
     if (o == SIS_METHOD_OK)

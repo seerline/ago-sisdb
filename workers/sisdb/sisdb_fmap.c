@@ -54,8 +54,8 @@ s_sisdb_fmap_cxt *sisdb_fmap_cxt_create(const char *wpath_, const char *wname_)
     o->work_keys = sis_map_pointer_create();
 	o->work_keys->type->vfree = sisdb_fmap_unit_destroy;
     // 加载本地的所有数据结构
-    o->work_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
-	o->isnewsbds = 0;
+    o->sdbs_defmap = sis_map_list_create(sis_dynamic_db_destroy);
+	o->sdbs_writed = 0;
 	o->work_path = sis_sdsnew(wpath_);
 	o->work_name = sis_sdsnew(wname_);
 	o->freader = sis_disk_reader_create(o->work_path, o->work_name, SIS_DISK_TYPE_SDB, NULL);
@@ -70,7 +70,7 @@ void sisdb_fmap_cxt_destroy(s_sisdb_fmap_cxt *cxt_)
 	sis_sdsfree(cxt_->work_path);
 	sis_sdsfree(cxt_->work_name);
 	sis_map_pointer_destroy(cxt_->work_keys);
-	sis_map_list_destroy(cxt_->work_sdbs);
+	sis_map_list_destroy(cxt_->sdbs_defmap);
 	sis_free(cxt_);
 }
 
@@ -80,8 +80,8 @@ static void _fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
 	char name[255];
 	switch (dmap_->ktype)
 	{
-	case SISDB_FMAP_TYPE_ONE:
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_ONE:
+	case SIS_SDB_STYLE_MUL:
 		{
 			unit = sisdb_fmap_unit_create(dmap_->kname, NULL, dmap_->ktype, NULL);
 			sis_sprintf(name, 255, "%s", SIS_OBJ_SDS(dmap_->kname));
@@ -89,7 +89,7 @@ static void _fmap_cxt_new_of_map(s_sisdb_fmap_cxt *cxt_, s_sis_disk_map *dmap_)
 		break;
 	default:
 		{
-			s_sis_dynamic_db *table = sis_map_list_get(cxt_->work_sdbs, SIS_OBJ_SDS(dmap_->sname));
+			s_sis_dynamic_db *table = sis_map_list_get(cxt_->sdbs_defmap, SIS_OBJ_SDS(dmap_->sname));
 			unit = sisdb_fmap_unit_create(dmap_->kname, dmap_->sname, dmap_->ktype, table);
 			sis_sprintf(name, 255, "%s.%s", SIS_OBJ_SDS(dmap_->kname), SIS_OBJ_SDS(dmap_->sname));
 		}
@@ -120,7 +120,7 @@ int sisdb_fmap_cxt_init(s_sisdb_fmap_cxt *cxt_)
 	{
 		sis_disk_reader_destroy(cxt_->freader);
 	}
-	sis_map_list_clear(cxt_->work_sdbs);
+	sis_map_list_clear(cxt_->sdbs_defmap);
 	sis_map_pointer_clear(cxt_->work_keys);
 
 	cxt_->freader = sis_disk_reader_create(cxt_->work_path, cxt_->work_name, SIS_DISK_TYPE_SDB, NULL);
@@ -175,16 +175,16 @@ s_sisdb_fmap_unit *sisdb_fmap_cxt_new(s_sisdb_fmap_cxt *cxt_, const char *key_, 
 	s_sisdb_fmap_unit *unit = NULL;
 	switch (ktype_)
 	{
-	case SISDB_FMAP_TYPE_ONE:
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_ONE:
+	case SIS_SDB_STYLE_MUL:
 		{
 			unit = sisdb_fmap_unit_create(kobj, NULL, ktype_, NULL);
 		}		
 		break;
 	default:
 		{
-			s_sis_dynamic_db *table = sis_map_list_get(cxt_->work_sdbs, sname);
-			// printf("create... %p, %s %d\n", table, sname, sis_map_list_getsize(cxt_->work_sdbs));
+			s_sis_dynamic_db *table = sis_map_list_get(cxt_->sdbs_defmap, sname);
+			// printf("create... %p, %s %d\n", table, sname, sis_map_list_getsize(cxt_->sdbs_defmap));
 			unit = sisdb_fmap_unit_create(kobj, sobj, ktype_, table);
 		}
 		break;
@@ -214,19 +214,82 @@ s_sisdb_fmap_unit *sisdb_fmap_cxt_get(s_sisdb_fmap_cxt *cxt_, const char *key_)
 }
 int sisdb_fmap_cxt_setdb(s_sisdb_fmap_cxt *cxt_, s_sis_dynamic_db *sdb_)
 {
-	s_sis_dynamic_db *agodb = (s_sis_dynamic_db *)sis_map_list_get(cxt_->work_sdbs, sdb_->name);
+	s_sis_dynamic_db *agodb = (s_sis_dynamic_db *)sis_map_list_get(cxt_->sdbs_defmap, sdb_->name);
 	if (!agodb || !sis_dynamic_dbinfo_same(agodb, sdb_))
 	{
-		cxt_->isnewsbds = 1;
+		cxt_->sdbs_writed = 1;
 		sis_dynamic_db_incr(sdb_);
-		sis_map_list_set(cxt_->work_sdbs, sdb_->name, sdb_);	
+		sis_map_list_set(cxt_->sdbs_defmap, sdb_->name, sdb_);	
 		return 0;
 	}
 	return 1;
 }
 s_sis_dynamic_db *sisdb_fmap_cxt_getdb(s_sisdb_fmap_cxt *cxt_, const char *sname_)
 {
-	return (s_sis_dynamic_db *)sis_map_list_get(cxt_->work_sdbs, sname_);	
+	return (s_sis_dynamic_db *)sis_map_list_get(cxt_->sdbs_defmap, sname_);	
+}
+s_sis_dynamic_db *sisdb_fmap_cxt_getdb_of_key(s_sisdb_fmap_cxt *cxt_, const char *key_)
+{
+    s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, key_);
+    if (!unit)
+    {
+        unit = sisdb_fmap_cxt_new(cxt_, key_, SIS_SDB_STYLE_SDB);  
+    }	
+	return unit->sdb;
+}
+int sisdb_fmap_cxt_get_key_count(s_sisdb_fmap_cxt *cxt_)
+{
+	return sis_map_pointer_getsize(cxt_->work_keys);
+}
+
+s_sis_sds sisdb_fmap_cxt_get_keys(s_sisdb_fmap_cxt *cxt_)
+{
+	s_sis_string_list *slist = sis_string_list_create();
+    {
+        s_sis_dict_entry *de;
+        s_sis_dict_iter *di = sis_dict_get_iter(cxt_->work_keys);
+        while ((de = sis_dict_next(di)) != NULL)
+        {
+            s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
+            // 虽然效率低 但是这里要去除重复的代码
+            sis_string_list_push_only(slist, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_SIZE(funit->kname));
+        }
+        sis_dict_iter_free(di);
+    }  
+    s_sis_sds msg = sis_string_list_sds(slist);
+    sis_string_list_destroy(slist);
+    return msg;  
+}
+
+s_sis_sds sisdb_fmap_cxt_get_sdbs(s_sisdb_fmap_cxt *cxt_, int isname_, int iszip_)
+{
+    int count = sis_map_list_getsize(cxt_->sdbs_defmap);
+	if (count < 1)
+    {
+        return NULL;
+    }
+	s_sis_json_node *jone = sis_json_create_object();
+    s_sis_json_node *jdbs = sis_json_create_object();
+	for(int i = 0; i < count; i++)
+	{
+		s_sis_dynamic_db *table = (s_sis_dynamic_db *)sis_map_list_geti(cxt_->sdbs_defmap, i);
+		if (isname_)
+		{
+			sis_json_object_add_node(jdbs, table->name, sis_sdbinfo_to_json(table));
+		}
+		else
+		{
+			sis_json_object_add_node(jone, table->name, sis_sdbinfo_to_json(table));
+		}
+	}
+	if (isname_)
+	{
+		sis_json_object_add_node(jone, cxt_->work_name, jdbs);
+	}
+    s_sis_sds msg = sis_json_to_sds(jone, iszip_);
+    // printf("sdbs = %s\n", msg);
+    sis_json_delete_node(jone);
+    return msg;
 }
 
 // 以下函数都需要读取文件信息
@@ -255,7 +318,7 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	unit->rmsec = sis_time_get_now_msec();
 	switch (unit->ktype)
 	{
-	case SISDB_FMAP_TYPE_ONE:
+	case SIS_SDB_STYLE_ONE:
 		{
 			count = 1;
 			s_sis_sds str = (s_sis_sds)unit->value;
@@ -270,7 +333,7 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 			}
 		}
 		break;
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_MUL:
 		{
 			s_sis_node *snode = (s_sis_node *)unit->value;
 			int nums = sis_node_get_size(snode);
@@ -295,7 +358,7 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 			}
 		}
 		break;
-	case SISDB_FMAP_TYPE_NON:
+	case SIS_SDB_STYLE_NON:
 		{
 			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
 			int start = 0;
@@ -330,6 +393,9 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
 	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
+
+    printf("sisdb_fmap_cxt_update ==== %d\n", sisdb_fmap_cxt_get_key_count(cxt_));
+
 	if (!unit)
 	{
 		unit = sisdb_fmap_cxt_new(cxt_, cmd_->key, cmd_->ktype);
@@ -346,14 +412,14 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	// printf("unit == %d\n", unit->ktype);
 	switch (unit->ktype)
 	{
-	case SISDB_FMAP_TYPE_ONE:
+	case SIS_SDB_STYLE_ONE:
 		{
 			s_sis_sds str = (s_sis_sds)unit->value;
 			sis_sdsclear(str);
 			unit->value = sis_sdscatlen(str, cmd_->imem, cmd_->isize);
 		}
 		break;
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_MUL:
 		{
 			s_sis_node *node = (s_sis_node *)unit->value;
 			if (cmd_->cmpmode == SISDB_FMAP_CMP_NONE)
@@ -373,7 +439,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 			}
 		}
 		break;
-	case SISDB_FMAP_TYPE_NON:
+	case SIS_SDB_STYLE_NON:
 		{
 			int count = cmd_->isize / unit->sdb->size;
 			//这里应该判断数据完整性
@@ -393,6 +459,10 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 				count = sisdb_fmap_cxt_solely_update(cxt_, unit, cmd_);
 			}
 			// 无索引
+			if (count > 0)
+			{
+				unit->writed = 1;
+			}
 		}
 		break;		
 	default:
@@ -442,7 +512,7 @@ int sisdb_fmap_cxt_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	else
 	{
-		if (unit->ktype != SISDB_FMAP_TYPE_ONE)
+		if (unit->ktype != SIS_SDB_STYLE_ONE)
 		{
 			sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 		}
@@ -450,14 +520,14 @@ int sisdb_fmap_cxt_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	int count = 0;
 	switch (unit->ktype)
 	{
-	case SISDB_FMAP_TYPE_ONE:
+	case SIS_SDB_STYLE_ONE:
 		{
 			sis_sdsclear((s_sis_sds)unit->value);
 			unit->moved = 1;
 			count = 1;
 		}
 		break;
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_MUL:
 		{
 			s_sis_node *node = (s_sis_node *)unit->value;
 			int nums = sis_node_get_size(node);
@@ -476,7 +546,7 @@ int sisdb_fmap_cxt_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 			}
 		}
 		break;
-	case SISDB_FMAP_TYPE_NON:
+	case SIS_SDB_STYLE_NON:
 		{
 			s_sis_struct_list *slist = (s_sis_struct_list *)unit->value;
 			int start = 0;
@@ -514,10 +584,10 @@ int sisdb_fmap_cxt_remove(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	switch (unit->ktype)
 	{
-	case SISDB_FMAP_TYPE_ONE:
+	case SIS_SDB_STYLE_ONE:
 		sis_sdsclear(unit->value);
 		break;
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_MUL:
 		{
 			s_sis_node *node = (s_sis_node *)unit->value;
 			s_sis_node *next = sis_node_get(node, 0);

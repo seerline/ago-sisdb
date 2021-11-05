@@ -316,42 +316,6 @@ void sisdb_wlog_close(s_sisdb_cxt *context)
     context->wlog_open = 0;
 }
 
-s_sis_sds _sisdb_get_keys(s_sisdb_cxt *cxt)
-{
-    // int nums = 0;
-    s_sis_string_list *slist = sis_string_list_create();
-    {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(cxt->work_fmap_cxt->work_keys);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
-            // 虽然效率低 但是这里要去除重复的代码
-            sis_string_list_push_only(slist, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_SIZE(funit->kname));
-        }
-        sis_dict_iter_free(di);
-    }  
-    s_sis_sds msg = sis_string_list_sds(slist);
-    sis_string_list_destroy(slist);
-    return msg;  
-}
-
-s_sis_sds _sisdb_get_sdbs(s_sisdb_cxt *cxt)
-{
-    int count = sis_map_list_getsize(cxt->work_fmap_cxt->work_sdbs);
-    s_sis_json_node *sdbs_node = sis_json_create_object();
-    {
-        for(int i = 0; i < count; i++)
-        {
-            s_sis_dynamic_db *table = (s_sis_dynamic_db *)sis_map_list_geti(cxt->work_fmap_cxt->work_sdbs, i);
-            sis_json_object_add_node(sdbs_node, table->name, sis_sdbinfo_to_json(table));
-        }
-    }
-    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
-    printf("sdbs = %s\n", msg);
-    sis_json_delete_node(sdbs_node);
-    return msg;
-}
 
 void sisdb_disk_save_start(s_sisdb_cxt *context)
 {
@@ -370,86 +334,6 @@ void sisdb_disk_save_start(s_sisdb_cxt *context)
     // 后期为了安全应该备份需要修改的文件 如果中间有任何一个步骤出错 就全部恢复过去
     // 启动时加载时 也需要判断 如果 safe 中有数据就恢复后再处理一遍
 }
-int _disk_save_fmap_sdb(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
-{
-    int count = 0;
-    // printf("save ==== %s %s %d\n", SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), funit->fidxs->count);
-    for (int i = 0; i < funit->fidxs->count; i++)
-    {
-        s_sisdb_fmap_idx *fidx = sis_struct_list_get(funit->fidxs, i);
-        if (!fidx->writed)
-        {
-            continue;
-        }
-        count++;
-        if (fidx->moved)
-        {
-            sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), fidx->isign);
-        }
-        else
-        {
-            s_sis_struct_list *slist = (s_sis_struct_list *)funit->value;
-            sis_disk_writer_sdb(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 
-                sis_struct_list_first(slist), slist->count * slist->len);
-        }
-    }
-    return count;  
-}
-int _disk_save_fmap(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fmap_unit *funit)
-{
-    int count = 1;
-    switch (funit->ktype)
-    {
-    case SISDB_FMAP_TYPE_ONE:
-        {
-            if (funit->moved)
-            {
-                sis_disk_writer_one_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
-            }
-            else
-            {
-                s_sis_sds str = (s_sis_sds)funit->value;
-                sis_disk_writer_one(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
-            }
-        }
-        break;
-    case SISDB_FMAP_TYPE_MUL:
-        {
-            if (funit->moved)
-            {
-                // s_sis_node *node = (s_sis_node *)unit->value;
-                // sis_disk_writer_mul_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname));
-            }
-            else
-            {
-                // s_sis_node *node = (s_sis_node *)funit->value;
-                // sis_disk_writer_mul(wfile, SIS_OBJ_GET_CHAR(funit->kname), str, sis_sdslen(str));
-            }
-        }
-        break;
-    case SISDB_FMAP_TYPE_NON:	
-        {
-            if (funit->moved)
-            {
-                sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 0);
-            }
-            else
-            {
-                s_sis_struct_list *slist = (s_sis_struct_list *)funit->value;
-                sis_disk_writer_sdb(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 
-                    sis_struct_list_first(slist), slist->count * slist->len);
-                // printf("save ==== %d %d \n", slist->count, funit->ktype);
-            }
-        }
-        break;
-    default:
-        {
-            count = _disk_save_fmap_sdb(cxt, wfile, funit);
-        }
-        break;
-    }
-    return count;
-}
 
 int sisdb_disk_save(s_sisdb_cxt *context)
 {
@@ -458,57 +342,9 @@ int sisdb_disk_save(s_sisdb_cxt *context)
         return SIS_METHOD_REPEAT;
     }
     context->save_status = 1;
-    // sis_mutex_lock(&context->wlog_lock);
-    int count = sis_map_pointer_getsize(context->work_fmap_cxt->work_keys);
-    if (count > 0)
-    {
-        s_sis_disk_writer *wfile = sis_disk_writer_create(
-            sis_sds_save_get(context->work_path), 
-            sis_sds_save_get(context->work_name), 
-            SIS_DISK_TYPE_SDB);
-        // 不能删除老文件的信息
-        sis_disk_writer_open(wfile, 0);
-        {
-            s_sis_sds keys = _sisdb_get_keys(context);
-            sis_disk_writer_set_kdict(wfile, keys, sis_sdslen(keys));
-            s_sis_sds sdbs = _sisdb_get_sdbs(context);
-            sis_disk_writer_set_sdict(wfile, sdbs, sis_sdslen(sdbs));
-            sis_sdsfree(keys);
-            sis_sdsfree(sdbs);
-        }
-        {
-            printf("save ==1== %p %d\n", context->work_fmap_cxt, sis_map_pointer_getsize(context->work_fmap_cxt->work_keys));
-            s_sis_dict_entry *de;
-            s_sis_dict_iter *di = sis_dict_get_iter(context->work_fmap_cxt->work_keys);
-            while ((de = sis_dict_next(di)) != NULL)
-            {
-                s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
-                _disk_save_fmap(context->work_fmap_cxt, wfile, funit);
-            }
-            sis_dict_iter_free(di);
-        }
-        sis_disk_writer_close(wfile);
-        sis_disk_writer_destroy(wfile);
-    }
-    else if (context->work_fmap_cxt->isnewsbds)
-    {
-        // 仅仅存结构
-        s_sis_disk_writer *wfile = sis_disk_writer_create(
-            sis_sds_save_get(context->work_path), 
-            sis_sds_save_get(context->work_name), 
-            SIS_DISK_TYPE_SDB);
-        // 不能删除老文件的信息
-        sis_disk_writer_open(wfile, 0);
-        {
-            s_sis_sds sdbs = _sisdb_get_sdbs(context);
-            sis_disk_writer_set_sdict(wfile, sdbs, sis_sdslen(sdbs));
-            sis_sdsfree(sdbs);
-        }
-        sis_disk_writer_close(wfile);
-        sis_disk_writer_destroy(wfile);
-    }
-    
-    // sis_mutex_unlock(&context->wlog_lock);
+    sis_mutex_lock(&context->wlog_lock);
+    sisdb_fmap_cxt_save(context->work_fmap_cxt, sis_sds_save_get(context->work_path), sis_sds_save_get(context->work_name));    
+    sis_mutex_unlock(&context->wlog_lock);
     context->save_status = 2;
     return SIS_METHOD_OK;
 }

@@ -602,6 +602,7 @@ int   sis_node_list_get_size(s_sis_node_list *list_)
 s_sis_sort_list *sis_sort_list_create(int len_)
 {
 	s_sis_sort_list *o = SIS_MALLOC(s_sis_sort_list, o);
+	o->isascend = 0;
 	o->key = sis_struct_list_create(sizeof(int64));
 	o->value = sis_struct_list_create(len_);
 	return o;
@@ -636,7 +637,7 @@ void *sis_sort_list_set(s_sis_sort_list *list_, int64 key_, void *in_)
 	for (int i = 0; i < list_->key->count; i++)
 	{
 		int64 *key = (int64 *)sis_struct_list_get(list_->key, i);
-		if (*key < key_)
+		if ((list_->isascend && *key > key_) || (!list_->isascend && *key < key_))
 		{
 			sis_struct_list_insert(list_->key, i, &key_);
 			sis_struct_list_insert(list_->value, i, in_);
@@ -670,18 +671,36 @@ int _sort_list_find(s_sis_sort_list *list, int64 key, int start, int stop)
 	{
 		int mid = (stop - start) / 2 + start;
 		int64 *midv = (int64 *)sis_struct_list_get(list->key, mid);
-		if (*midv < key)
+		if (list->isascend)
 		{
-			stop = mid - 1;
-		}
-		else if (*midv > key)
-		{
-			start = mid + 1;
+			if (*midv > key)
+			{
+				stop = mid - 1;
+			}
+			else if (*midv < key)
+			{
+				start = mid + 1;
+			}
+			else
+			{
+				return mid;
+			}
 		}
 		else
 		{
-			return mid;
-		}		
+			if (*midv < key)
+			{
+				stop = mid - 1;
+			}
+			else if (*midv > key)
+			{
+				start = mid + 1;
+			}
+			else
+			{
+				return mid;
+			}		
+		}
 	}
 	return -1;
 }
