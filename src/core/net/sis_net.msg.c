@@ -230,7 +230,25 @@ static inline void sis_net_new_argvs(s_sis_net_message *netmsg_,  s_sis_object *
     }
     sis_pointer_list_push(netmsg_->argvs, obj_);    
 }
-
+int sis_message_get_cmd(const char *icmd_, s_sis_sds *service_, s_sis_sds *command_)
+{
+    int o = 0;
+    if (icmd_)
+    {
+        sis_str_divide_sds(icmd_, '.', service_, command_);
+        if (!command_)
+        {
+            command_ = service_;
+            service_ = NULL;
+            o = 1;
+        }
+        else
+        {
+            o = 2;
+        }
+    }
+    return o;
+}
 void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_)
 {
     sis_sdsfree(netmsg_->key);
@@ -273,6 +291,7 @@ void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_)
     netmsg_->switchs.has_service = netmsg_->service ? 1 : 0;
     netmsg_->switchs.has_cmd = netmsg_->cmd ? 1 : 0;
 }
+
 void sis_message_set_ans(s_sis_net_message *netmsg_, int ans_, int isclear_)
 {
     if (isclear_)

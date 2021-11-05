@@ -127,7 +127,8 @@ size_t sis_net_message_get_size(s_sis_net_message *);
 
 // 拷贝需要广播的数据
 void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, s_sis_sds cmd_, s_sis_sds key_);
-
+// 分解命令
+int sis_message_get_cmd(const char *icmd_, s_sis_sds service_, s_sis_sds command_);
 // 以下函数 只检查相关字段 其他都不管
 void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
 void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
