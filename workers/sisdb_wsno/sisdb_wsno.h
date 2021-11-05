@@ -10,6 +10,7 @@
 #define  SIS_WSNO_OPEN     2 // 是否打开
 #define  SIS_WSNO_HEAD     3 // 是否写了头
 #define  SIS_WSNO_EXIT     4 // 退出
+#define  SIS_WSNO_FAIL     5 // 打开失败
 
 // 支持chars 非压缩写入
 // 支持增量压缩格式写入 解压后再写入文件 开头会跳过非起始包 解压函数会自动忽略开头的非起始包
@@ -38,7 +39,7 @@ void sisdb_wsno_uninit(void *);
 
 int cmd_sisdb_wsno_getcb(void *worker_, void *argv_);
 
-void sisdb_wsno_start(s_sisdb_wsno_cxt *context);
+bool sisdb_wsno_start(s_sisdb_wsno_cxt *context);
 void sisdb_wsno_stop(s_sisdb_wsno_cxt *context);
 
 #endif

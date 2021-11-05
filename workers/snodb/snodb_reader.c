@@ -36,7 +36,7 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
         if (argnode)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
-            reader->ishead = sis_json_get_int(argnode->node, "ishead", 0);
+            reader->ishead = sis_json_get_int(argnode->node, "sub-head", 0);
             reader->sub_date = sis_json_get_int(argnode->node, "sub-date", context->work_date);
             sis_json_close(argnode);
         }
@@ -167,7 +167,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
         if (argnode)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
-            reader->ishead = sis_json_get_int(argnode->node, "ishead", 1);
+            reader->ishead = sis_json_get_int(argnode->node, "sub-head", 1);
             reader->sub_date = sis_json_get_int(argnode->node, "sub-date", context->work_date);
             sis_json_close(argnode);
         }

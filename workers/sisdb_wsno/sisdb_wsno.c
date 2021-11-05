@@ -63,20 +63,7 @@ void sisdb_wsno_uninit(void *worker_)
 //  callback define begin
 ///////////////////////////////////////////
 
-void sisdb_wsno_start(s_sisdb_wsno_cxt *context)
-{
-    // 老文件如果没有关闭再关闭一次
-    sisdb_wsno_stop(context);
 
-    sis_sdsfree(context->wsno_keys); context->wsno_keys = NULL;
-    sis_sdsfree(context->wsno_sdbs); context->wsno_sdbs = NULL;
-
-    context->writer = sis_disk_writer_create(
-        sis_sds_save_get(context->work_path), 
-        sis_sds_save_get(context->work_name), 
-        SIS_DISK_TYPE_SNO);
-    sis_disk_writer_open(context->writer, context->work_date);
-}
 void sisdb_wsno_stop(s_sisdb_wsno_cxt *context)
 {
     if (context->work_unzip)
@@ -93,7 +80,25 @@ void sisdb_wsno_stop(s_sisdb_wsno_cxt *context)
         context->writer = NULL;
     }
 }
+bool sisdb_wsno_start(s_sisdb_wsno_cxt *context)
+{
+    // 老文件如果没有关闭再关闭一次
+    sisdb_wsno_stop(context);
 
+    sis_sdsfree(context->wsno_keys); context->wsno_keys = NULL;
+    sis_sdsfree(context->wsno_sdbs); context->wsno_sdbs = NULL;
+
+    context->writer = sis_disk_writer_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SNO);
+    if (sis_disk_writer_open(context->writer, context->work_date) == 0)
+    {
+        LOG(5)("open wsno fail.\n");
+        return false;
+    }
+    return true;
+}
 msec_t _wsno_msec = 0;
 static int cb_sub_start(void *worker_, void *argv_)
 {
@@ -109,16 +114,26 @@ static int cb_sub_start(void *worker_, void *argv_)
         context->work_date = sis_atoll((char *)argv_);
     }
     LOG(5)("wsno start. %d\n", context->work_date);
-    sisdb_wsno_start(context);
+    if(!sisdb_wsno_start(context))
+    {
+        context->status = SIS_WSNO_FAIL;
+    }
+    else
+    {
+        context->status = SIS_WSNO_OPEN;
+    }
     _wsno_msec = sis_time_get_now_msec();
-    context->status = SIS_WSNO_OPEN;
     return SIS_METHOD_OK;
 }
 static int cb_sub_stop(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
-
+    if (context->status == SIS_WSNO_FAIL)
+    {
+        context->status = SIS_WSNO_INIT;
+        return SIS_METHOD_ERROR;
+    }
     LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
     sisdb_wsno_stop(context);
     LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
@@ -204,6 +219,10 @@ static int cb_sub_chars(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
+    if (context->status == SIS_WSNO_FAIL)
+    {
+        return SIS_METHOD_ERROR;
+    }
     _write_wsno_head(context, 0);
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
     sis_disk_writer_sno(context->writer, inmem->kname, inmem->sname, inmem->data, inmem->size);
@@ -217,7 +236,10 @@ static int cb_sub_incrzip(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsno_cxt *context = (s_sisdb_wsno_cxt *)worker->context;
-
+    if (context->status == SIS_WSNO_FAIL)
+    {
+        return SIS_METHOD_ERROR;
+    }
     _write_wsno_head(context, 1);
 
     s_sis_db_incrzip *inmem = (s_sis_db_incrzip *)argv_;

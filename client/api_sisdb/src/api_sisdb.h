@@ -74,7 +74,7 @@ _API_SISDB_DLLEXPORT_ void api_sisdb_client_close(int id_);
 //   多票多表（头匹配） key = "SH688,SZ300,SH000001.stk_snapshot,stk_transact"
 //   全票单表 key = "*.stk_transact"
 //   val : json格式参数 
-//         {"sub-date":20201012, "ishead":0}
+//         {"sub-date":20201012, "sub-head":0}
 // 取消订阅  cmd : unsub    | key ： NULL | val : NULL
 
 // 只管发送数据 如果有返回就从 reply 返回数据
