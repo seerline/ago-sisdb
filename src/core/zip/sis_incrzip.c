@@ -260,6 +260,7 @@ static inline void _sis_incrzip_compress_one(s_sis_incrzip_class *s_,
         case SIS_DYNAMIC_TYPE_MINU:
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_UINT:
+        case SIS_DYNAMIC_TYPE_PRICE:
             {
                 sis_bits_stream_put_incr_int(s_->cur_stream, 
                     _sis_field_get_uint(infield_, in_, index),
@@ -267,7 +268,6 @@ static inline void _sis_incrzip_compress_one(s_sis_incrzip_class *s_,
             }
             break;
         case SIS_DYNAMIC_TYPE_FLOAT:
-        case SIS_DYNAMIC_TYPE_PRICE:
             {
                 sis_bits_stream_put_incr_float(s_->cur_stream, 
                     _sis_field_get_float(infield_, in_, index),
@@ -481,6 +481,7 @@ static inline void _sis_incrzip_uncompress_one(s_sis_incrzip_class *s_,
         case SIS_DYNAMIC_TYPE_MINU:
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_UINT:
+        case SIS_DYNAMIC_TYPE_PRICE:
             {
                 _sis_field_set_uint(infield_, in_, 
                     sis_bits_stream_get_incr_int(s_->cur_stream, memory_ ? _sis_field_get_uint(infield_, memory_, index) : 0),
@@ -488,7 +489,6 @@ static inline void _sis_incrzip_uncompress_one(s_sis_incrzip_class *s_,
             }
             break;
         case SIS_DYNAMIC_TYPE_FLOAT:
-        case SIS_DYNAMIC_TYPE_PRICE:
             {
                 _sis_field_set_float(infield_, in_, 
                     sis_bits_stream_get_incr_float(s_->cur_stream, memory_ ? _sis_field_get_float(infield_, memory_, index) : 0.0, infield_->dot),

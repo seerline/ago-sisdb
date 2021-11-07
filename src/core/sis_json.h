@@ -115,6 +115,7 @@ char *sis_json_output_zip(s_sis_json_node *node_, size_t *len_);
 
 void sis_json_printf(s_sis_json_node *node_, int *i);
 //======== read option =============//
+bool sis_json_get_valid(s_sis_json_node *root_, const char *key_);
 
 int64 sis_json_get_int(s_sis_json_node *root_, const char *key_, int64 defaultvalue_);
 double sis_json_get_double(s_sis_json_node *root_, const char *key_, double defaultvalue_);

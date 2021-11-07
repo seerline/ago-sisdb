@@ -945,13 +945,15 @@ bool sis_socket_server_delete(s_sis_socket_server *server, int sid_)
 		return true;
 	}
 	session->write_stop = 1;
+	sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, cb_session_closed);
+	sis_net_list_stop(server->sessions, session->sid - 1);
+	// 确定停止了再回调断开链接
 	if (server->cb_disconnect_s2c) 
 	{
 		server->cb_disconnect_s2c(server->cb_source, sid_);
 	}
-	sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, cb_session_closed);
-	sis_net_list_stop(server->sessions, session->sid - 1);
 	LOG(5)("delete session.[%d == %d] %p\n", session->sid, sid_, session);
+
 	return true;	
 }
 

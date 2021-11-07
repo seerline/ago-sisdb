@@ -340,3 +340,49 @@ size_t sis_base64_decode(const char *in_, size_t ilen_, char *out_, size_t olen_
 	}
 	return osize;
 }
+
+#if 1
+#include <sis_zint.h>
+int main()
+{
+	// float f0 = 0.00123456789;
+	float f0  = -12312;
+	float f1  = 123.45679;
+	double f2 = 2606327.956;
+	double d0 = 0.000123456789;
+	double d1 = 123.456789;
+	double d2 = -12345678.456789;
+
+	printf("zint32 : %zu zint64 %zu\n", sizeof(zint32), sizeof(zint64));
+	printf("2.07 - 1 = %f %x \n", (2.07 - 1.0), -12312);
+
+	printf("f0 = %10x %10x d0 = %10llx %10llx\n", sis_double_to_int32(f0, 3, 0), sis_double_to_int32(f0, 3, 1),sis_double_to_int64(d0, 3, 0), sis_double_to_int64(d0, 3, 1));
+	printf("f1 = %10x %10x d1 = %10llx %10llx\n", sis_double_to_int32(f1, 3, 0), sis_double_to_int32(f1, 3, 1),sis_double_to_int64(d1, 3, 0), sis_double_to_int64(d1, 3, 1));
+	printf("f2 = %10x %10x d2 = %10llx %10llx\n", sis_double_to_int32(f2, 3, 0), sis_double_to_int32(f2, 2, 1),sis_double_to_int64(d2, 3, 0), sis_double_to_int64(d2, 3, 1));
+
+	zint32 z0  = sis_double_to_zint32(f0, 0, 1);
+	zint64 z80 = sis_double_to_zint64(d0, 3, 1);
+	printf("z0 = %d %15.5f z80 = %d %15.5f\n", 
+		sis_zint32_valid(z0), 
+		sis_zint32_to_double(z0), 
+		sis_zint64_valid(z80), 
+		sis_zint64_to_double(z80));
+	zint32 z1  = sis_double_to_zint32(f1, 3, 1);
+	zint64 z81 = sis_double_to_zint64(d1, 3, 1);
+	printf("z1 = %d %15.5f z81 = %d %15.5f\n", 
+		sis_zint32_valid(z1), 
+		sis_zint32_to_double(z1), 
+		sis_zint64_valid(z81), 
+		sis_zint64_to_double(z81));
+	zint32 z2  = sis_double_to_zint32(f2, 2, 1);
+	zint64 z82 = sis_double_to_zint64(d2, 3, 1);
+	printf("z2 = %d %15.5f z82 = %d %15.5f\n", 
+		sis_zint32_valid(z2), 
+		sis_zint32_to_double(z2), 
+		sis_zint64_valid(z82), 
+		sis_zint64_to_double(z82));
+
+	return 0;
+}
+
+#endif

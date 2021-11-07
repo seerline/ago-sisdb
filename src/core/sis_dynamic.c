@@ -388,6 +388,8 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					switch (outunit->style)
 					{
 					case SIS_DYNAMIC_TYPE_INT:
+						_sis_field_set_int(outunit, (char *)out_, i64, i);
+						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						_sis_field_set_int(outunit, (char *)out_, i64, i);
 						break;
@@ -417,6 +419,8 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					switch (outunit->style)
 					{
 					case SIS_DYNAMIC_TYPE_INT:
+						_sis_field_set_int(outunit, (char *)out_, (int64)u64, i);
+						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						_sis_field_set_int(outunit, (char *)out_, (int64)u64, i);
 						break;
@@ -459,7 +463,7 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						// 这里特殊处理一下
-						_sis_field_set_price(outunit, (char *)out_, (double)f64, i);
+						_sis_field_set_price(outunit, (char *)out_, (double)f64, inunit->dot, 1, i);
 						break;
 					case SIS_DYNAMIC_TYPE_CHAR:
 						// 不支持
@@ -487,7 +491,11 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						// 这里特殊处理一下
-						_sis_field_set_price(outunit, (char *)out_, (double)f64, i);
+						{
+							int dot = _sis_field_get_price_dot(inunit, in_, i);
+							int valid = _sis_field_get_price_valid(inunit, in_, i);
+							_sis_field_set_price(outunit, (char *)out_, (double)f64, dot, valid, i);
+						}
 						break;
 					case SIS_DYNAMIC_TYPE_CHAR:
 						// 不支持

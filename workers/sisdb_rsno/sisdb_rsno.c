@@ -190,7 +190,7 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
     }
     return 0;
 } 
-// #include "stk_struct.v3.h"
+// #include "stk_struct.v4.h"
 static int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
@@ -200,7 +200,20 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
     {
         printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
     }
-    // if (!sis_strcasecmp(kname_, "SH600600") && !sis_strcasecmp(sname_, "stk_snapshot"))
+    // sis_out_binary(sname_, out_, olen_);
+    // if (!sis_strcasecmp(kname_, "SH600600") || !sis_strcasecmp(kname_, "SZ000001"))
+    // {
+    //     if (!sis_strcasecmp(sname_, "stk_transact"))
+    //     {
+    //         s_v4_stk_transact *transact = (s_v4_stk_transact *)out_;
+    //         printf("[transact] %s: %zu %c %c\n", kname_, olen_, transact->flag, transact->type);
+    //     }
+    //     if (!sis_strcasecmp(sname_, "stk_orders"))
+    //     {
+    //         s_v4_stk_orders *orders = (s_v4_stk_orders *)out_;
+    //         printf("[orders] %s: %zu %c %c\n", kname_, olen_, orders->flag, orders->type);
+    //     }
+    // }
     // if (!sis_strcasecmp(kname_, "SH601318")|| !sis_strcasecmp(kname_, "SH688981")||!sis_strcasecmp(kname_,"SZ300987"))
     // {
     //     if (!sis_strcasecmp(sname_, "stk_snapshot"))

@@ -7,6 +7,7 @@
 #include <sis_conf.h>
 #include <sis_csv.h>
 #include <sis_math.h>
+#include <sis_zint.h>
 
 // 为什么要定义动态结构：
 // 每次增加功能都需要同步更新server和client，实际应用中不能保证同步更新，
@@ -234,21 +235,60 @@ static inline double _sis_field_get_float(s_sis_dynamic_field *unit_, const char
 	return o;
 }
 
-static inline double _sis_field_get_price(s_sis_dynamic_field *unit_, const char *val_, int index_)
+static inline int _sis_field_get_price_dot(s_sis_dynamic_field *unit_, const char *val_, int index_)
 {
-	double   o = 0.0;
-	int32 *v32;
-	int64 *v64;
-	int64 zoom = sis_zoom10(unit_->dot);
+	int   o = 0;
+	zint32 *v32;
+	zint64 *v64;
 	switch (unit_->len)
 	{
 	case 4:
-		v32 = (int32 *)(val_ + unit_->offset + index_*sizeof(uint32));
-		o = (double)((float32)*v32 / (float32)zoom);
+		v32 = (zint32 *)(val_ + unit_->offset + index_*sizeof(uint32));
+		o = sis_zint32_dot(*v32);
 		break;
 	case 8:
-		v64 = (int64 *)(val_ + unit_->offset + index_*sizeof(uint64));
-		o = (double)((float64)*v64 / (float64)zoom);
+		v64 = (zint64 *)(val_ + unit_->offset + index_*sizeof(uint64));
+		o = sis_zint64_dot(*v64);
+		break;
+	default:
+		break;
+	}
+	return o;	
+}
+static inline bool _sis_field_get_price_valid(s_sis_dynamic_field *unit_, const char *val_, int index_)
+{
+	bool   o = true;
+	zint32 *v32;
+	zint64 *v64;
+	switch (unit_->len)
+	{
+	case 4:
+		v32 = (zint32 *)(val_ + unit_->offset + index_*sizeof(uint32));
+		o = sis_zint32_valid(*v32);
+		break;
+	case 8:
+		v64 = (zint64 *)(val_ + unit_->offset + index_*sizeof(uint64));
+		o = sis_zint64_valid(*v64);
+		break;
+	default:
+		break;
+	}
+	return o;	
+}
+static inline double _sis_field_get_price(s_sis_dynamic_field *unit_, const char *val_, int index_)
+{
+	double   o = 0.0;
+	zint32 *v32;
+	zint64 *v64;
+	switch (unit_->len)
+	{
+	case 4:
+		v32 = (zint32 *)(val_ + unit_->offset + index_*sizeof(uint32));
+		o = sis_zint32_to_double(*v32);
+		break;
+	case 8:
+		v64 = (zint64 *)(val_ + unit_->offset + index_*sizeof(uint64));
+		o = sis_zint64_to_double(*v64);
 		break;
 	default:
 		break;
@@ -331,20 +371,21 @@ static inline void _sis_field_set_float(s_sis_dynamic_field *unit_, char *val_, 
 		break;
 	}
 }
-static inline void _sis_field_set_price(s_sis_dynamic_field *unit_, char *val_, double f64_, int index_)
+
+static inline void _sis_field_set_price(s_sis_dynamic_field *unit_, char *val_, double f64_, int dot_, int valid_, int index_)
 {
-	int32 v32 = 0;
-	int64 v64 = 0;
-	int64 zoom = sis_zoom10(unit_->dot);
+	zint32 v32 = {0};
+	zint64 v64 = {0};
+	int dot = dot_ < 0 ? unit_->dot : dot_;
 	switch (unit_->len)
 	{
 	case 4:
-		v32 = (int32)(f64_ * zoom);
+		v32 = sis_double_to_zint32(f64_, dot, valid_);
 		memmove(val_ + unit_->offset + index_*sizeof(float32), &v32, unit_->len);
 		break;
 	case 8:
 	default:
-		v64 = (int64)(f64_ * zoom);
+		v64 = sis_double_to_zint64(f64_, dot, valid_);
 		memmove(val_ + unit_->offset + index_*sizeof(float64), &v64, unit_->len);
 		break;
 	}
@@ -480,7 +521,8 @@ static inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynami
 		if (sis_json_find_node(innode_, key_))
 		{
 			f64 = sis_json_get_double(innode_, key_, 0.0);
-			_sis_field_set_price(field_, out_, f64, index_);
+			int valid = sis_json_get_valid(innode_, key_);
+			_sis_field_set_price(field_, out_, f64, -1, valid, index_);
 		}
 		break;
 	default:

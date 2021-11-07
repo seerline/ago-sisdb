@@ -40,8 +40,11 @@ static inline int64 sis_abs(int64 n)
 static inline int64 sis_zoom10(int n)  // 3 ==> 1000
 {
 	int64 o = 1;
-	int len = (n > 15) ? 15 : n;
-	for (int i = 0; i < len; i++) { o = o * 10; }
+	while(n > 0)
+	{
+		o = o * 10; 
+		n--;
+	}
 	return o;
 };
 

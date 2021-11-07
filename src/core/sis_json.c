@@ -1417,6 +1417,15 @@ int64 sis_json_get_int(s_sis_json_node *root_, const char *key_, int64 defaultva
 	}
 	return defaultvalue_;
 }
+bool sis_json_get_valid(s_sis_json_node *root_, const char *key_)
+{
+	s_sis_json_node *c = sis_json_find_node(root_, key_);
+	if (c && sis_strcasecmp(c->value, "NaN") && sis_strcasecmp(c->value, "nil"))
+	{
+		return true;
+	}
+	return false;
+}
 double sis_json_get_double(s_sis_json_node *root_, const char *key_, double defaultvalue_)
 {
 	s_sis_json_node *c = sis_json_find_node(root_, key_);

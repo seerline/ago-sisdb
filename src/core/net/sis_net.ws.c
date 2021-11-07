@@ -417,6 +417,10 @@ int sis_net_unpack_ws(s_sis_memory *in_, s_sis_net_tail *info_, s_sis_memory *ou
 {
     s_sis_ws_header wshead = {0};
 
+// #0  sis_bits_stream_get (bits_=1, s_=0x7fb31c001f20) at /mnt/hgfs/mysoft/olla/olla-backframe/src/../sisdb/src/core/zip/sis_bits.h:191
+// #1  sis_net_unpack_ws_check (head_=head_@entry=0x7fb3236f2e30, in_=in_@entry=0x7fb313081d10) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/net/sis_net.ws.c:211
+// #2  0x00000000004a2ed8 in sis_net_unpack_ws (in_=0x7fb313081d10, info_=0x7fb3236f2e90, out_=0x7fb31c001db0) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/net/sis_net.ws.c:420
+
     if (!sis_net_unpack_ws_check(&wshead, in_))
     {
         // 没有成功解析 等待下一个数据包
@@ -449,7 +453,7 @@ int sis_net_unpack_ws(s_sis_memory *in_, s_sis_net_tail *info_, s_sis_memory *ou
     else
     {
         LOG(5)("opcode error = %d.\n", wshead.opcode);
-        sis_out_binary("ii", sis_memory(in_), sis_memory_get_size(in_));
+        // sis_out_binary("ii", sis_memory(in_), sis_memory_get_size(in_));
         return -1;
     }
     return 1;

@@ -167,6 +167,7 @@ s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 void sis_net_context_destroy(void *cxt_)
 {
 	s_sis_net_context *cxt = (s_sis_net_context *)cxt_;
+	// ??? 这里要等待内存不再使用后才释放
 	sis_memory_destroy(cxt->recv_memory);
 	sis_net_nodes_destroy(cxt->recv_nodes);
 	sis_free(cxt->slots);
