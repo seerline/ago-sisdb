@@ -11,7 +11,7 @@
 
 s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sname_, int ktype_, s_sis_dynamic_db *sdb_)
 {
-	if ((ktype_ == SISDB_FMAP_TYPE_SDB || ktype_ == SISDB_FMAP_TYPE_NON) && !sdb_)
+	if ((ktype_ == SIS_SDB_STYLE_SDB || ktype_ == SIS_SDB_STYLE_NON) && !sdb_)
 	{
 		return NULL;
 	}
@@ -28,12 +28,12 @@ s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sn
 	o->ktype = ktype_;
 	switch (ktype_)
 	{
-	case SISDB_FMAP_TYPE_ONE:
+	case SIS_SDB_STYLE_ONE:
 		{
 			o->value = sis_sdsempty();
 		}		
 		break;
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_MUL:
 		{
 			o->value = sis_node_create();
 		}
@@ -42,11 +42,11 @@ s_sisdb_fmap_unit *sisdb_fmap_unit_create(s_sis_object *kname_, s_sis_object *sn
 		{
 			sis_dynamic_db_incr(sdb_);
 			o->sdb = sdb_;
-			// if (!o->sdb->field_time && !o->sdb->field_mindex && o->ktype != SISDB_FMAP_TYPE_NON)
-			if (!o->sdb->field_mindex  && o->ktype != SISDB_FMAP_TYPE_NON)
+			// if (!o->sdb->field_time && !o->sdb->field_mindex && o->ktype != SIS_SDB_STYLE_NON)
+			if (!o->sdb->field_mindex  && o->ktype != SIS_SDB_STYLE_NON)
 			{
 				// 这里需要判断如果没有时间和索引字段强制 转换类型
-				o->ktype = SISDB_FMAP_TYPE_NON;
+				o->ktype = SIS_SDB_STYLE_NON;
 			}
 			o->scale = sis_disk_get_sdb_scale(o->sdb);
 			o->value = sis_struct_list_create(sdb_->size);			
@@ -63,10 +63,10 @@ void sisdb_fmap_unit_destroy(void *unit_)
 	{
 		switch (o->ktype)
 		{
-		case SISDB_FMAP_TYPE_ONE:
+		case SIS_SDB_STYLE_ONE:
 			sis_sdsfree(o->value);
 			break;
-		case SISDB_FMAP_TYPE_MUL:
+		case SIS_SDB_STYLE_MUL:
 			{
 				s_sis_node *node = (s_sis_node *)o->value;
 				s_sis_node *next = sis_node_get(node, 0);
@@ -94,10 +94,10 @@ void sisdb_fmap_unit_clear(s_sisdb_fmap_unit *unit_)
 	// 只清理数据相关信息 键值和属性不变
 	switch (unit_->ktype)
 	{
-	case SISDB_FMAP_TYPE_ONE:
+	case SIS_SDB_STYLE_ONE:
 		sis_sdsclear(unit_->value);
 		break;
-	case SISDB_FMAP_TYPE_MUL:
+	case SIS_SDB_STYLE_MUL:
 		{
 			s_sis_node *node = (s_sis_node *)unit_->value;
 			s_sis_node *next = sis_node_get(node, 0);
@@ -159,10 +159,10 @@ int sisdb_fmap_unit_count(s_sisdb_fmap_unit *unit_)
 	{
 		switch (unit_->ktype)
 		{
-		case SISDB_FMAP_TYPE_ONE:
+		case SIS_SDB_STYLE_ONE:
 			o = 1;
 			break;
-		case SISDB_FMAP_TYPE_MUL:
+		case SIS_SDB_STYLE_MUL:
 			o = sis_node_get_size((s_sis_node *)unit_->value);
 			break;
 		default:
@@ -683,7 +683,7 @@ int main1()
 	s_sis_dynamic_db *timedb = sis_dynamic_db_create(sis_json_first_node(timejson->node));
 	sis_conf_close(timejson);
 	// 测试 timedb
-	s_sisdb_fmap_unit *funit = sisdb_fmap_unit_create(NULL, NULL, SISDB_FMAP_TYPE_SDB, timedb);
+	s_sisdb_fmap_unit *funit = sisdb_fmap_unit_create(NULL, NULL, SIS_SDB_STYLE_SDB, timedb);
 	for (int i = 0; i < 3; i++)
 	{
 		sis_struct_list_push(funit->fidxs, &_time_idxs[i]);
@@ -740,7 +740,7 @@ int main()
 	sis_conf_close(datejson);
 
 	// 测试 datedb
-	s_sisdb_fmap_unit *funit = sisdb_fmap_unit_create(NULL, NULL, SISDB_FMAP_TYPE_SDB, datedb);
+	s_sisdb_fmap_unit *funit = sisdb_fmap_unit_create(NULL, NULL, SIS_SDB_STYLE_SDB, datedb);
 	for (int i = 0; i < 3; i++)
 	{
 		sis_struct_list_push(funit->fidxs, &_date_idxs[i]);
