@@ -341,7 +341,7 @@ size_t sis_base64_decode(const char *in_, size_t ilen_, char *out_, size_t olen_
 	return osize;
 }
 
-#if 1
+#if 0
 #include <sis_zint.h>
 int main()
 {
@@ -350,7 +350,7 @@ int main()
 	float f1  = 123.45679;
 	double f2 = 2606327.956;
 	double d0 = 0.000123456789;
-	double d1 = 123.456789;
+	double d1 = 1234.456789;
 	double d2 = -12345678.456789;
 
 	printf("zint32 : %zu zint64 %zu\n", sizeof(zint32), sizeof(zint64));
@@ -381,6 +381,14 @@ int main()
 		sis_zint32_to_double(z2), 
 		sis_zint64_valid(z82), 
 		sis_zint64_to_double(z82));
+
+	int32 i1  = sis_double_to_int32(f1, 3, 1);
+	int64 i81 = sis_double_to_int64(d1, 3, 1);
+	printf("i1 = %d %15.5f i81 = %10lld %15.5f\n", 
+		sis_zint32_i(i1),
+		sis_int32_to_double(i1), 
+		sis_zint64(i81),
+		sis_int64_to_double(i81));
 
 	return 0;
 }

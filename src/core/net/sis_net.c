@@ -364,7 +364,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
-	if (!cxt)
+	if (!cxt || cxt->status == SIS_NET_DISCONNECT)
 	{
 		return ;
 	}
@@ -401,7 +401,8 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 		else if (o != 0) // 收到错误的握手信息
 		{
 			// 如果返回<零 就说明数据出错
-			sis_net_class_close_cxt(cls, sid_);
+			// sis_net_class_close_cxt(cls, sid_);
+			cxt->status = SIS_NET_DISCONNECT;
 		} // == 0 还没有收到数据		
 	}
 }
@@ -410,7 +411,7 @@ static void cb_server_send_after(void* handle_, int sid_, int status_)
 {
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
-	if (!cxt)
+	if (!cxt || cxt->status == SIS_NET_DISCONNECT)
 	{
 		LOG(5)("no find context. [%d:%d]\n", (int)sis_map_kint_getsize(cls->cxts), sid_);
 	}
@@ -423,7 +424,7 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 {
 	s_sis_net_class *cls = (s_sis_net_class *)handle_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, 0);
-	if (!cxt)
+	if (!cxt || cxt->status == SIS_NET_DISCONNECT)
 	{
 		return ;
 	}
@@ -486,6 +487,7 @@ static void cb_server_connected(void *handle_, int sid_)
 	}
 	else
 	{
+		cxt->status =  SIS_NET_NONE;
 		LOG(1)("connect already exists. [%d]\n", sid_);	
 		sis_memory_clear(cxt->recv_memory);
 		sis_net_nodes_clear(cxt->recv_nodes);
@@ -520,8 +522,8 @@ static void cb_server_disconnect(void *handle_, int sid_)
 				cls->cb_disconnect(cls->cb_source, sid_);
 			}
 		}
-		// 关闭对应实例
-		sis_net_class_close_cxt(cls, sid_);
+		// 关闭对应实例 这里不能关 一旦关闭会和正在处理的线程冲突
+		// sis_net_class_close_cxt(cls, sid_);
 	}
 
 }
@@ -537,6 +539,7 @@ static void cb_client_connected(void *handle_, int sid_)
 	}
 	else
 	{
+		cxt->status =  SIS_NET_NONE;
 		sis_memory_clear(cxt->recv_memory);
 		sis_net_nodes_clear(cxt->recv_nodes);
 	}
@@ -580,7 +583,7 @@ static void cb_client_disconnect(void *handle_, int sid_)
 				cls->cb_disconnect(cls->cb_source, sid_);
 			}
 		}
-		sis_net_class_close_cxt(cls, 0);
+		// sis_net_class_close_cxt(cls, 0);
 	}
 
 	if (cls->url->io == SIS_NET_IO_CONNECT)
@@ -591,6 +594,7 @@ static void cb_client_disconnect(void *handle_, int sid_)
 }
 void sis_net_class_close_cxt(s_sis_net_class *cls_, int sid_)
 {
+	// 这里应该循环检查有没有断开链接的然后删除
 	sis_map_kint_del(cls_->cxts, sid_);
 	LOG(8)("cxt %d close, now cxt count = %d \n", sid_, (int)sis_map_kint_getsize(cls_->cxts));	
 }
@@ -602,7 +606,7 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 	{
 		s_sis_net_node *next = cxt->recv_nodes->rhead;
 		int status = 0;
-		while (next)
+		while (next && cxt->status == SIS_NET_WORKING)
 		{
 			// sis_out_binary("recv_memory", sis_memory(cxt->recv_memory), sis_memory_get_size(cxt->recv_memory));
 			s_sis_net_message *netmsg = sis_net_message_create();
@@ -643,7 +647,8 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 				LOG(5)("read data error.[%d]\n", cxt->rid);
 				// 如果返回<零 就说明数据出错
 				// 这里要检查循环中删除会不会出问题
-				sis_net_class_close_cxt(cls, cxt->rid);
+				// sis_net_class_close_cxt(cls, cxt->rid);
+				cxt->status = SIS_NET_DISCONNECT;
 				break;				
 			}
 			next = next->next;
@@ -658,22 +663,40 @@ void *_thread_net_class_read(void* argv)
 	// cls->cur_read_cxt = NULL;
     while (sis_wait_thread_noexit(cls->read_thread))
     {
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(cls->cxts);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-			s_sis_net_context *cxt = (s_sis_net_context *)sis_dict_getval(de);
-			// if (!cls->cur_read_cxt)
-			// {
-			// 	cls->cur_read_cxt = cxt;
-			// }
-			if (cxt->status == SIS_NET_WORKING)
+		{
+			s_sis_dict_entry *de;
+			s_sis_dict_iter *di = sis_dict_get_iter(cls->cxts);
+			while ((de = sis_dict_next(di)) != NULL)
 			{
-				_make_read_data(cls, cxt);
+				s_sis_net_context *cxt = (s_sis_net_context *)sis_dict_getval(de);
+				// if (!cls->cur_read_cxt)
+				// {
+				// 	cls->cur_read_cxt = cxt;
+				// }
+				if (cxt->status == SIS_NET_WORKING)
+				{
+					_make_read_data(cls, cxt);
+					// 处理过程中不允许直接退出 需要等待跳出循环后
+				}
 			}
-        }
-        sis_dict_iter_free(di);
-       	sis_wait_thread_wait(cls->read_thread, cls->read_thread->wait_msec);
+			sis_dict_iter_free(di);
+		}
+		// 下面检查有没有断开的连接 有就清理
+		{
+			s_sis_dict_entry *de;
+			s_sis_dict_iter *di = sis_dict_get_iter(cls->cxts);
+			while ((de = sis_dict_next(di)) != NULL)
+			{
+				s_sis_net_context *cxt = (s_sis_net_context *)sis_dict_getval(de);
+				if (cxt->status == SIS_NET_DISCONNECT)
+				{
+					sis_map_kint_del(cls->cxts, cxt->rid);
+				}
+			}
+			sis_dict_iter_free(di);
+		}
+
+		sis_wait_thread_wait(cls->read_thread, cls->read_thread->wait_msec);
     }
     sis_wait_thread_stop(cls->read_thread);
 	return NULL;
@@ -745,6 +768,10 @@ int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_
 int sis_net_class_set_slot(s_sis_net_class *cls_, int sid_, char *compress_, char * crypt_, char * protocol_)
 {
 	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, sid_);
+	if (!cxt)
+	{
+		return -1;
+	}
 	uint8 compress = SIS_NET_ZIP_NONE;
 	uint8 crypt = SIS_NET_CRYPT_NONE;
 	uint8 protocol = SIS_NET_PROTOCOL_TCP;

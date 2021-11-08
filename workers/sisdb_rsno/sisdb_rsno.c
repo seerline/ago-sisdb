@@ -317,11 +317,11 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
     {
         sis_disk_reader_unsub(context->work_reader);
         // 下面代码在线程中死锁
-        while (context->status != SIS_RSNO_NONE)
-        {
-            printf("stop sub... %d\n", context->status);
-            sis_sleep(1000);
-        }
+        // while (context->status != SIS_RSNO_NONE)
+        // {
+        //     printf("stop sub... %d\n", context->status);
+        //     sis_sleep(1000);
+        // }
         printf("stop sub..1.. %d\n", context->status);
     }
 }

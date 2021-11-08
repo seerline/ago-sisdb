@@ -54,11 +54,9 @@ static inline zint32 sis_double_to_zint32(double in_, int dot_, bool valid_)
 };
 static inline int32 sis_double_to_int32(double in_, int dot_, bool valid_)
 {
-    
-    zint32 z = sis_double_to_zint32(in_, dot_, valid_);
-    int32 zo;
-    memmove(&zo, &z, sizeof(int32));
-	return zo;
+    zint32 z  = sis_double_to_zint32(in_, dot_, valid_);
+    int32 *i32 = (int32 *)&z;
+	return *i32;
 }
 static inline zint64 sis_double_to_zint64(double in_, int dot_, bool valid_)
 {
@@ -90,9 +88,8 @@ static inline zint64 sis_double_to_zint64(double in_, int dot_, bool valid_)
 static inline int64 sis_double_to_int64(double in_, int dot_, bool valid_)
 {
     zint64 z = sis_double_to_zint64(in_, dot_, valid_);
-    int64 zo;
-    memmove(&zo, &z, sizeof(int64));
-	return zo;
+	int64 *i64 = (int64 *)&z;
+	return *i64;
 }
 static inline bool sis_zint32_valid(zint32 in_)
 {
@@ -112,6 +109,20 @@ static inline double sis_zint32_to_double(zint32 in_)
     // printf("32 : %d %d %d %f \n", in_.sign, in_.attr, in_.zint, f);
 	return !in_.sign ? f : -f;
 };
+static inline double sis_int32_to_double(int32 in_)
+{
+    zint32 *in = (zint32 *)&in_;
+    return sis_zint32_to_double(*in);
+}
+static inline int32 sis_zint32_i(zint32 in_)
+{
+	return !in_.sign ? in_.zint : -in_.zint; 
+};
+static inline int32 sis_int32_i(int32 in_)
+{
+    zint32 *in = (zint32 *)&in_;
+	return !in->sign ? in->zint : -in->zint; 
+};
 static inline bool sis_zint64_valid(zint64 in_)
 {
 	return in_.attr != 31;
@@ -120,6 +131,7 @@ static inline int sis_zint64_dot(zint64 in_)
 {
 	return in_.attr != 31 ? in_.attr : 0;
 };
+
 static inline double sis_zint64_to_double(zint64 in_)
 {
     if (in_.attr == 31)
@@ -130,5 +142,14 @@ static inline double sis_zint64_to_double(zint64 in_)
     // printf("64 : %d %d %lld %f\n", in_.sign, in_.attr, in_.zint, f);
 	return !in_.sign ? f : -f;
 };
-
+static inline int64 sis_zint64(int64 in_)
+{
+    zint64 *in = (zint64 *)&in_;
+	return !in->sign ? in->zint : -in->zint; 
+};
+static inline double sis_int64_to_double(int64 in_)
+{
+    zint64 *in = (zint64 *)&in_;
+    return sis_zint64_to_double(*in);
+}
 #endif
