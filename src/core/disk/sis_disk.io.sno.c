@@ -104,6 +104,7 @@ void sis_disk_sno_rctrl_init(s_sis_disk_sno_rctrl *rctrl_)
     rctrl_->cursor_blk = 0;
     rctrl_->cursor_rec =-1;
 }
+// static int _ropo_nums = 0;
 // 弹出一条记录 只是移动 cursor 指针 
 s_sis_db_chars *sis_disk_sno_rctrl_rpop(s_sis_disk_sno_rctrl *rctrl_)
 {
@@ -114,12 +115,14 @@ s_sis_db_chars *sis_disk_sno_rctrl_rpop(s_sis_disk_sno_rctrl *rctrl_)
         s_sis_struct_list *slist = sis_pointer_list_get(rctrl_->rsno_idxs, rctrl_->cursor_blk);
 next:
         cursor = rctrl_->cursor_rec + 1;
-        // printf("%p %d|%d %d %d %d\n", slist, slist ? slist->count : 0, rctrl_->cursor_blk, cursor, rctrl_->rsno_idxs->count, rctrl_->rsno_mems->count);
+        // if (_ropo_nums++ % 10000 == 0)
+        // printf("%d|%d %d %d %d\n", slist->count, rctrl_->cursor_blk, cursor, rctrl_->rsno_idxs->count, rctrl_->rsno_mems->count);
         if (cursor < slist->count)
         {
             rctrl_->cursor_rec = cursor;
             s_sis_db_chars *curchars = sis_struct_list_get(slist, cursor);
-        // printf("%s %p|%d %d %d %d\n", curchars->kname, curchars->data, rctrl_->cursor_blk, cursor, rctrl_->rsno_idxs->count, rctrl_->rsno_mems->count);
+        // if (_ropo_nums % 10000 == 0)
+        // printf("%s %p|%d %d %d %d %d\n", curchars->kname, curchars->data, rctrl_->cursor_blk, rctrl_->rsno_idxs->count, cursor, slist->count,  rctrl_->rsno_mems->count);
             if (curchars->data)
             {
                 chars = curchars;
@@ -395,9 +398,9 @@ int _sis_disk_read_hid_sno(s_sis_disk_ctrl *ctrl, s_sis_memory *memory)
 void sis_disk_sno_rctrl_start(s_sis_disk_ctrl *cls_)
 {
     s_sis_db_chars *chars = sis_disk_sno_rctrl_rpop(cls_->sno_rctrl);
-    printf("start chars= %p\n", chars);
     s_sis_disk_reader_cb *callback = cls_->rcatch->callback; 
-    while (chars)
+    printf("start chars= %p %p %p\n", chars, callback->cb_bytedata, callback->cb_chardata);
+    while (chars && !cls_->isstop)
     {
         if(callback->cb_chardata)
         {
@@ -408,11 +411,13 @@ void sis_disk_sno_rctrl_start(s_sis_disk_ctrl *cls_)
         {
             int kidx = sis_disk_kdict_get_idx(cls_->map_kdicts, chars->kname);
             int sidx = sis_disk_sdict_get_idx(cls_->map_sdicts, chars->sname);
+            // printf("start chars= %d %d : %d\n", kidx, sidx, chars->size);
             callback->cb_bytedata(callback->cb_source, kidx, sidx, 
                 chars->data, chars->size);
         }        
         chars = sis_disk_sno_rctrl_rpop(cls_->sno_rctrl);
     }
+    printf("start chars ok= %p\n", chars);
 }
 int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
@@ -438,12 +443,14 @@ int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, 
             {
                 callback->cb_original(callback->cb_source, head_, sis_memory(memory), sis_memory_get_size(memory));
             }
-            // printf("+++++=== 1.1  %zu\n", sis_memory_get_size(memory));
+            printf("+++++=== 1.1  %d\n", ctrl->isstop);
             if (ctrl->sno_rctrl)
             {
                 sis_disk_sno_rctrl_start(ctrl);
+                printf("+++++=== 1.1.1 %d\n", ctrl->isstop);
                 sis_disk_sno_rctrl_clear(ctrl->sno_rctrl);
             }
+            printf("+++++=== 1.0  %d\n", ctrl->isstop);
             break;
         case SIS_DISK_HID_DICT_KEY:
             if(callback && callback->cb_dict_keys)
@@ -462,6 +469,7 @@ int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, 
             break;
         }
     }
+    // printf("sub 11111...................%d\n", ctrl->isstop);
     if (ctrl->isstop)
     {
         return -1;
@@ -614,7 +622,7 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
         _disk_io_callback_sno_dict(cls_, callback);
         sis_disk_io_sub_sno_part(cls_, cls_->rcatch); 
     }
-
+    printf("sub sno stop...................%d\n", cls_->isstop);
     // 不是因为中断而结束 就发送stop标志
     if (callback->cb_bytedata || callback->cb_chardata)
     {

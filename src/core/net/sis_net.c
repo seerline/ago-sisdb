@@ -690,6 +690,7 @@ void *_thread_net_class_read(void* argv)
 				s_sis_net_context *cxt = (s_sis_net_context *)sis_dict_getval(de);
 				if (cxt->status == SIS_NET_DISCONNECT)
 				{
+					printf("del data error.[%d]\n", cxt->rid);
 					sis_map_kint_del(cls->cxts, cxt->rid);
 				}
 			}
