@@ -326,12 +326,14 @@ int snodb_reader_history_start(s_snodb_reader *reader_)
 
 int snodb_reader_history_stop(s_snodb_reader *reader_)
 {
+	printf("snodb_reader_history_stop \n");
 	if (reader_->sub_disker)
 	{
-		sis_worker_command(reader_->sub_disker, "unsub", NULL);
+		// sis_worker_command(reader_->sub_disker, "unsub", NULL);
 		sis_worker_destroy(reader_->sub_disker);
 		reader_->sub_disker = NULL;
 	}
+	printf("snodb_reader_history_stop ok\n");
 	return 0;
 }
 

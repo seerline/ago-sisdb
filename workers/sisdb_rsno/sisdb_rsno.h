@@ -10,6 +10,7 @@
 #define  SIS_RSNO_WORK     1 // 自动运行模式
 #define  SIS_RSNO_CALL     2 // 订阅运行模式
 #define  SIS_RSNO_EXIT     3 // 退出
+// #define  SIS_RSNO_BREAK    4 // 中断订阅模式
 
 typedef struct s_sisdb_rsno_cxt
 {

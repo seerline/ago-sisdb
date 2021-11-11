@@ -638,9 +638,9 @@ int cmd_snodb_unsub(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-
+	printf("remove sub\n");
 	snodb_remove_reader(context, netmsg->cid);
-
+	printf("remove sub ok\n");
     return SIS_METHOD_OK;
 }
 

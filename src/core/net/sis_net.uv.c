@@ -895,17 +895,20 @@ bool sis_socket_server_send(s_sis_socket_server *server, int sid_, s_sis_object 
 	}
 	if (!inobj_) 
 	{
-		return false;
+		return false; 
 	}
 	// printf("sis_socket_server_send : %d\n", sid_);
 	// 放入队列就返回 其他交给内部处理
 	
-	size_t csize = sis_net_uv_catch_push(server->write_list, sid_ - 1, inobj_);
-	if (csize > 512*1024*1024)
-	{
-		LOG(5)("client recv too slow. %zu\n", csize);
-		sis_socket_server_delete(server, sid_);
-	}
+	// 直接断开链接会有问题 暂时不处理发送数据过多断开链接的问题
+	// size_t csize = 
+	sis_net_uv_catch_push(server->write_list, sid_ - 1, inobj_);
+	// if (csize > 16*1024*1024)
+	// {
+	// 	LOG(5)("client recv too slow. %zu\n", csize);
+	// 	sis_socket_server_delete(server, sid_);
+	// 	return false;
+	// }
 
 	return true;
 }

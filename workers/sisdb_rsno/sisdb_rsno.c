@@ -72,8 +72,12 @@ void sisdb_rsno_uninit(void *worker_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
 
-    sisdb_rsno_sub_stop(context);
-    context->status = SIS_RSNO_EXIT;
+    printf("%s : %d\n", __func__, context->status);
+    if (context->status == SIS_RSNO_WORK || context->status == SIS_RSNO_CALL )
+    {
+        sisdb_rsno_sub_stop(context);
+        context->status = SIS_RSNO_EXIT;
+    }
 
     sis_sds_save_destroy(context->work_path);
     sis_sds_save_destroy(context->work_name);
@@ -139,10 +143,13 @@ static void cb_break(void *context_, int idate)
         sisdb_incr_destroy(context->work_ziper);
         context->work_ziper = NULL;
     }
-    if (context->cb_sub_stop)
+    // if (context->status != SIS_RSNO_BREAK)
     {
-        context->cb_sub_stop(context->cb_source, "0");
-    } 
+        if (context->cb_sub_stop)
+        {
+            context->cb_sub_stop(context->cb_source, "0");
+        } 
+    }
 }
 static void cb_dict_keys(void *context_, void *key_, size_t size) 
 {
@@ -315,11 +322,12 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
 {
     if (context->work_reader)
     {
+        printf("stop sub..0.. %d %d\n", context->status, context->work_reader->status_sub);
         sis_disk_reader_unsub(context->work_reader);
         // 下面代码在线程中死锁
         while (context->status != SIS_RSNO_NONE)
         {
-            printf("stop sub... %d\n", context->status);
+            printf("stop sub... %d %d\n", context->status, context->work_reader->status_sub);
             sis_sleep(1000);
         }
         printf("stop sub..1.. %d\n", context->status);
@@ -388,7 +396,7 @@ int cmd_sisdb_rsno_unsub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
-
+    // context->status = SIS_RSNO_BREAK;
     sisdb_rsno_sub_stop(context);
 
     return SIS_METHOD_OK;
