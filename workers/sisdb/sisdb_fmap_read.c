@@ -106,6 +106,7 @@ int _fmap_cxt_getdata_from_disk(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_
 	}
 	// 重建索引
 	sisdb_fmap_unit_reidx(unit_);
+	sis_object_destroy(obj);
 	return 0;
 }
 // 返回加载的数据数量

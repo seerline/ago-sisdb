@@ -505,7 +505,7 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
         }
         else
         {
-            printf("auth %d %s %s\n", ok, username, password);
+            printf("auth %d %s %s %s\n", ok, username, password, userinfo->password);
             sis_net_ans_with_error(netmsg, "auth fail.", 10);
         }
         sis_json_close(handle);
@@ -555,11 +555,13 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
     {
         const char *username = sis_json_get_str(handle->node, "username");
         const char *password = sis_json_get_str(handle->node, "password");
+        printf("1 = %s %s\n", username, password);
         int iaccess = sis_sys_access_atoi(sis_json_get_str(handle->node, "access"));
-        sis_json_close(handle);
+        printf("2 = %s %s\n", username, password);
         s_sisdb_userinfo *userinfo = sis_map_list_get(context->users, username);
         if (!userinfo)
         {
+            printf("3 = %s %s\n", username, password);
             s_sisdb_userinfo *userinfo = sis_userinfo_create(
                 username, password, iaccess);
             sis_map_list_set(context->users, username, userinfo); 
@@ -574,6 +576,7 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
             }
         }
         sis_net_ans_with_ok(netmsg);
+        sis_json_close(handle);
     }
     return SIS_METHOD_OK;
 }
@@ -777,6 +780,7 @@ void sisdb_server_sysinfo_save(s_sisdb_server_cxt *context)
             const char *access = sis_sys_access_itoa(userinfo->access);
             sis_json_object_add_string(juser, "access", access, sis_strlen(access));
             sis_json_object_add_node(jusers, userinfo->username, juser);
+            printf("%d : %s %s\n", i, userinfo->password, userinfo->username);
         }  
     }
 	sis_json_object_add_node(jone, "userinfos", jusers); 

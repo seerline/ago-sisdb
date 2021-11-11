@@ -7,6 +7,7 @@ s_sisdb_userinfo *sis_userinfo_create(const char *username_, const char *passwor
     s_sisdb_userinfo *o = SIS_MALLOC(s_sisdb_userinfo, o);
     o->username = sis_sdsnew(username_);
     o->password = sis_sdsnew(password_);
+    printf("%s %s | %s %s\n", o->username, o->password, username_, password_);
     o->access = access_;
     return o;
 }

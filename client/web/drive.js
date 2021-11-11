@@ -133,15 +133,15 @@ client.ws.onmessage = function (message) {
   
     if (client.wait.commands[sign] !== undefined) {
       let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
-      if (msg.rans !== undefined)
+      if (msg.ans !== undefined)
       {
-        if (msg.rmsg)
+        if (msg.msg)
         {
-          client.wait.replys = msg.rans + ':' + msg.rmsg;
+          client.wait.replys = msg.ans + ':' + msg.msg;
         }
         else
         {
-          client.wait.replys = msg.rans;
+          client.wait.replys = msg.ans;
         }
       }
       else
