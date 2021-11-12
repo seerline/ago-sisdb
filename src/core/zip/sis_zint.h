@@ -8,17 +8,17 @@
 // 取值范围 0x0FFF FFFF 268435455 理论上保留两位小数可以支持到268万 无损失
 // 小数位最多6位
 typedef struct zint32 {
-	unsigned int  zint    : 28;
-	unsigned char attr    : 3;   // 0 有效无缩放 0x7 无效数据 1-6缩小倍数
-	unsigned char sign    : 1;   // 0 正 1 负
+	unsigned int zint    : 28;
+	unsigned int attr    : 3;   // 0 有效无缩放 0x7 无效数据 1-6缩小倍数
+	unsigned int sign    : 1;   // 0 正 1 负
 } zint32;
 
 // 取值范围 0x3FFF FFFF FFFF FFFF 
 // 小数位最多30位
 typedef struct zint64 {
-	unsigned long long     zint    : 58;
-	unsigned char attr    : 5;  // 0 有效无缩放 0x1F 无效数据  1-30缩小倍数
-	unsigned char sign    : 1;  // 0 正 1 负
+	unsigned long long zint    : 58;
+	unsigned long long attr    : 5;  // 0 有效无缩放 0x1F 无效数据  1-30缩小倍数
+	unsigned long long sign    : 1;  // 0 正 1 负
 } zint64;
 
 #pragma pack(pop)
@@ -116,12 +116,12 @@ static inline double sis_int32_to_double(int32 in_)
 }
 static inline int32 sis_zint32_i(zint32 in_)
 {
-	return !in_.sign ? in_.zint : -in_.zint; 
+	return !in_.sign ? in_.zint : -1 * in_.zint; 
 };
 static inline int32 sis_int32_i(int32 in_)
 {
     zint32 *in = (zint32 *)&in_;
-	return !in->sign ? in->zint : -in->zint; 
+	return !in->sign ? in->zint : -1 * in->zint; 
 };
 static inline bool sis_zint64_valid(zint64 in_)
 {
@@ -145,7 +145,7 @@ static inline double sis_zint64_to_double(zint64 in_)
 static inline int64 sis_zint64(int64 in_)
 {
     zint64 *in = (zint64 *)&in_;
-	return !in->sign ? in->zint : -in->zint; 
+	return !in->sign ? in->zint : -1 * in->zint; 
 };
 static inline double sis_int64_to_double(int64 in_)
 {
