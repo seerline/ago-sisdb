@@ -236,16 +236,18 @@ int sis_message_get_cmd(const char *icmd_, s_sis_sds *service_, s_sis_sds *comma
     if (icmd_)
     {
         sis_str_divide_sds(icmd_, '.', service_, command_);
-        if (!command_)
+        // printf("%s %p %p  %s %s \n", icmd_, service_, command_, *service_, *command_);
+        if (*command_ == NULL)
         {
-            command_ = service_;
-            service_ = NULL;
+            *command_ = *service_;
+            *service_ = NULL;
             o = 1;
         }
         else
         {
             o = 2;
         }
+        // printf("%s %p %p  %s %s \n", icmd_, service_, command_, *service_, *command_);
     }
     return o;
 }
