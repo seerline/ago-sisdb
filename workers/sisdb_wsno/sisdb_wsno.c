@@ -113,7 +113,6 @@ static int cb_sub_start(void *worker_, void *argv_)
     {
         context->work_date = sis_atoll((char *)argv_);
     }
-    LOG(5)("wsno start. %d\n", context->work_date);
     if(!sisdb_wsno_start(context))
     {
         context->status = SIS_WSNO_FAIL;
@@ -122,6 +121,7 @@ static int cb_sub_start(void *worker_, void *argv_)
     {
         context->status = SIS_WSNO_OPEN;
     }
+    LOG(5)("wsno start. %d status : %d\n", context->work_date, context->status);
     _wsno_msec = sis_time_get_now_msec();
     return SIS_METHOD_OK;
 }

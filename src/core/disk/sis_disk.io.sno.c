@@ -443,26 +443,26 @@ int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, 
             {
                 callback->cb_original(callback->cb_source, head_, sis_memory(memory), sis_memory_get_size(memory));
             }
-            printf("+++++=== 1.1  %d\n", ctrl->isstop);
+            // printf("+++++=== 1.1  %d\n", ctrl->isstop);
             if (ctrl->sno_rctrl)
             {
                 sis_disk_sno_rctrl_start(ctrl);
-                printf("+++++=== 1.1.1 %d\n", ctrl->isstop);
+                // printf("+++++=== 1.1.1 %d\n", ctrl->isstop);
                 sis_disk_sno_rctrl_clear(ctrl->sno_rctrl);
             }
-            printf("+++++=== 1.0  %d\n", ctrl->isstop);
+            // printf("+++++=== 1.0  %d\n", ctrl->isstop);
             break;
         case SIS_DISK_HID_DICT_KEY:
-            if(callback && callback->cb_dict_keys)
-            {
-                callback->cb_dict_keys(callback->cb_source, sis_memory(memory), sis_memory_get_size(memory));
-            }
+            // if(callback && callback->cb_dict_keys)
+            // {
+            //     callback->cb_dict_keys(callback->cb_source, sis_memory(memory), sis_memory_get_size(memory));
+            // }
             break;
         case SIS_DISK_HID_DICT_SDB:
-            if(callback && callback->cb_dict_sdbs)
-            {
-                callback->cb_dict_sdbs(callback->cb_source, sis_memory(memory), sis_memory_get_size(memory));
-            }
+            // if(callback && callback->cb_dict_sdbs)
+            // {
+            //     callback->cb_dict_sdbs(callback->cb_source, sis_memory(memory), sis_memory_get_size(memory));
+            // }
             break;
         default:
             LOG(5)("other hid : %d at sno.\n", head_->hid);
@@ -614,6 +614,8 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
     cls_->sno_count = 0;
     if (cls_->rcatch->iswhole)
     {
+        // 合并返回key和sdb
+        _disk_io_callback_sno_dict(cls_, callback);
         sis_disk_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_io_read_sno);
     }
     else

@@ -398,16 +398,16 @@ int cb_sis_disk_io_read_sdb(void *source_, s_sis_disk_head *head_, char *imem_, 
         }
         break;
     case SIS_DISK_HID_DICT_KEY:
-        if(callback && callback->cb_dict_keys)
-        {
-            callback->cb_dict_keys(callback->cb_source, imem_, isize_);
-        }
+        // if(callback && callback->cb_dict_keys)
+        // {
+        //     callback->cb_dict_keys(callback->cb_source, imem_, isize_);
+        // }
         break;
     case SIS_DISK_HID_DICT_SDB:
-        if(callback && callback->cb_dict_sdbs)
-        {
-            callback->cb_dict_sdbs(callback->cb_source, imem_, isize_);
-        }
+        // if(callback && callback->cb_dict_sdbs)
+        // {
+        //     callback->cb_dict_sdbs(callback->cb_source, imem_, isize_);
+        // }
         break;
     default:
         LOG(5)("other hid : %d at sdb.\n", head_->hid);
@@ -418,6 +418,29 @@ int cb_sis_disk_io_read_sdb(void *source_, s_sis_disk_head *head_, char *imem_, 
         return -1;
     }
     return 0;
+}
+static void _disk_io_callback_sdb_dict(s_sis_disk_ctrl *cls_)
+{
+    s_sis_disk_reader_cb *callback = cls_->rcatch->callback;   
+    if (callback->cb_dict_keys)
+    {
+        s_sis_sds msg = sis_disk_ctrl_get_keys_sds(cls_);
+        if (sis_sdslen(msg) > 2) 
+        {
+            callback->cb_dict_keys(callback->cb_source, msg, sis_sdslen(msg));
+        }
+        sis_sdsfree(msg);
+    }
+    if (callback->cb_dict_sdbs)
+    {
+        s_sis_sds msg = sis_disk_ctrl_get_sdbs_sds(cls_);
+        // printf("sdbs :%s\n", msg);
+        if (sis_sdslen(msg) > 2) 
+        {
+            callback->cb_dict_sdbs(callback->cb_source, msg, sis_sdslen(msg));
+        }
+        sis_sdsfree(msg);                
+    }
 }
 int sis_disk_io_sub_sdb(s_sis_disk_ctrl *cls_, void *cb_)
 {
@@ -433,6 +456,7 @@ int sis_disk_io_sub_sdb(s_sis_disk_ctrl *cls_, void *cb_)
         callback->cb_start(callback->cb_source, cls_->open_date);
     }
     // 每次都从头读起
+    _disk_io_callback_sdb_dict(cls_);
     sis_disk_files_read_fulltext(cls_->work_fps, cls_, cb_sis_disk_io_read_sdb);
 
     // 不是因为中断而结束 就发送stop标志
