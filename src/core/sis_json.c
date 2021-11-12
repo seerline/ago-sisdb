@@ -742,6 +742,7 @@ void sis_json_object_add_string(s_sis_json_node *node_, const char *key_, const 
 	s_sis_json_node *c = sis_json_create_node();
 	if (c)
 	{
+		// printf("node:%p\n", c);
 		c->type = SIS_JSON_STRING;
 		c->key = sis_strdup(key_, sis_strlen(key_));
 		c->value = sis_strdup(value_, len_);
@@ -890,6 +891,7 @@ s_sis_json_node *sis_json_create_node(void)
 {
 	s_sis_json_node *node = (s_sis_json_node *)sis_malloc(sizeof(s_sis_json_node));
 	memset(node, 0, sizeof(s_sis_json_node));
+	// printf("node:%p\n", node);
 	return node;
 }
 

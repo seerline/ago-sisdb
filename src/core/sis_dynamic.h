@@ -75,11 +75,11 @@
 #define SIS_DYNAMIC_SHIFT_NUMS    0x8  // 数量相同
 
 #define SIS_DYNAMIC_TYPE_NONE   0
-#define SIS_DYNAMIC_TYPE_INT    'I'
-#define SIS_DYNAMIC_TYPE_UINT   'U'
-#define SIS_DYNAMIC_TYPE_CHAR   'C'
-#define SIS_DYNAMIC_TYPE_FLOAT  'F'
-#define SIS_DYNAMIC_TYPE_PRICE  'P'
+#define SIS_DYNAMIC_TYPE_INT    'I'  // 1 2 4 8
+#define SIS_DYNAMIC_TYPE_UINT   'U'  // 1 2 4 8
+#define SIS_DYNAMIC_TYPE_CHAR   'C'  // 1 -- N
+#define SIS_DYNAMIC_TYPE_FLOAT  'F'  // 4 8
+#define SIS_DYNAMIC_TYPE_PRICE  'P'  // 4 8
 // 时间类型 定义
 #define SIS_DYNAMIC_TYPE_WSEC   'W'  // 微秒 8  
 #define SIS_DYNAMIC_TYPE_MSEC   'T'  // 毫秒 8  
@@ -416,7 +416,8 @@ static inline s_sis_sds sis_dynamic_field_to_csv(s_sis_sds in_, s_sis_dynamic_fi
 				break;
 			case SIS_DYNAMIC_TYPE_PRICE:
 				{
-					in_ = sis_csv_make_double(in_, _sis_field_get_price(field_, val_, index), field_->dot);
+					int dot = _sis_field_get_price_dot(field_, val_, index);
+					in_ = sis_csv_make_double(in_, _sis_field_get_price(field_, val_, index), dot > 0 ? dot : field_->dot);
 				}
 				break;
 			case SIS_DYNAMIC_TYPE_CHAR:
@@ -456,7 +457,8 @@ static inline void sis_dynamic_field_to_array(s_sis_json_node *in_, s_sis_dynami
 				break;
 			case SIS_DYNAMIC_TYPE_PRICE:
 				{
-					sis_json_array_add_double(in_, _sis_field_get_price(field_, val_, index), field_->dot);
+					int dot = _sis_field_get_price_dot(field_, val_, index);
+					sis_json_array_add_double(in_, _sis_field_get_price(field_, val_, index), dot > 0 ? dot : field_->dot);
 				}
 				break;
 			case SIS_DYNAMIC_TYPE_CHAR:
