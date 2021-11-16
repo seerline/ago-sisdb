@@ -234,6 +234,28 @@ void sis_time_format_date(char *out_, size_t olen_, int date_) //"2015-09-12"
 	int date = date_ % 10000;
 	sis_sprintf(out_, olen_, "%04d-%02d-%02d", date_ / 10000, date / 100, date % 100);
 }
+
+void sis_time_format_msec(char * out_, size_t olen_, msec_t tt_) //"09:30:00.123"
+{
+	if (!out_)
+	{
+		return;
+	}
+	if (tt_ == 0)
+	{
+		sis_strcpy(out_, olen_, "00:00:00.000");
+		return;
+	}
+	int msec = tt_ % 1000;
+	time_t tt = tt_ / 1000;
+	struct tm ptm = {0};
+	sis_time_check(tt, &ptm);
+
+	sis_sprintf(out_, olen_, "%02d:%02d:%02d.%03d",
+				ptm.tm_hour, ptm.tm_min, ptm.tm_sec, msec);
+
+}
+
 void sis_time_format_datetime(char *out_, size_t olen_, time_t tt_) //"20150912103000"
 {
 	if (!out_)

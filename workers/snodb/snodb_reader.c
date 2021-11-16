@@ -472,16 +472,23 @@ int snodb_reader_new_realtime(s_snodb_reader *reader_)
 
 int snodb_remove_reader(s_snodb_cxt *snodb_, int cid_)
 {
-	s_snodb_reader *reader = sis_map_kint_get(snodb_->cur_reader_map, cid_);
-	if (reader)
 	{
-		sis_map_kint_del(snodb_->cur_reader_map, cid_);
-		snodb_->cur_readers--;
-		snodb_->cur_readers = sis_max(snodb_->cur_readers, 0);
+		// 检查实时
+		s_snodb_reader *reader = sis_map_kint_get(snodb_->cur_reader_map, cid_);
+		if (reader)
+		{
+			sis_map_kint_del(snodb_->cur_reader_map, cid_);
+			snodb_->cur_readers--;
+			snodb_->cur_readers = sis_max(snodb_->cur_readers, 0);
+		}
 	}
-	else
 	{
-		sis_map_kint_del(snodb_->ago_reader_map, cid_);
+		// 检查历史 
+		s_snodb_reader *reader = sis_map_kint_get(snodb_->ago_reader_map, cid_);
+		if (reader)
+		{
+			sis_map_kint_del(snodb_->ago_reader_map, cid_);
+		}
 	}
 	return sis_map_kint_getsize(snodb_->cur_reader_map) + sis_map_kint_getsize(snodb_->ago_reader_map);
 }
