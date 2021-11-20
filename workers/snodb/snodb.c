@@ -49,7 +49,7 @@ s_sis_modules sis_modules_snodb = {
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_snodb_cxt --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
-#define  SNODB_DEBUG
+// #define  SNODB_DEBUG
 // 转化的压缩包
 #ifdef SNODB_DEBUG
 static int64 _zipnums = 0;
@@ -510,6 +510,7 @@ int _snodb_write_bytes(s_snodb_cxt *context, int kidx, int sidx, void *imem, siz
 		context->work_ziper = sisdb_incr_create();
 		sisdb_incr_set_keys(context->work_ziper, context->work_keys);
 		sisdb_incr_set_sdbs(context->work_ziper, context->work_sdbs);
+		// printf("cb_encode ===2=== %p %p \n", context->work_ziper, _snodb_write_incrzip);
 		sisdb_incr_zip_start(context->work_ziper, context, _snodb_write_incrzip);
 	}
 	if (!context->inputs)

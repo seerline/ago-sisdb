@@ -5,7 +5,426 @@
 #include "sis_obj.h"
 #include "os_str.h"
 
+/////////////////////////////////////////////////
+//  s_sis_net_mem_node
+/////////////////////////////////////////////////
+s_sis_net_mem_node *sis_net_mem_node_create(size_t size_)
+{
+	s_sis_net_mem_node *node = SIS_MALLOC(s_sis_net_mem_node, node);
+	node->maxsize = size_ + 1;
+	node->memory = sis_malloc(node->maxsize);
+	// printf("new node %p\n", node->memory);
+	return node;
+}
+void sis_net_mem_node_destroy(s_sis_net_mem_node *node_)
+{
+	// printf("del node %p\n", node_->memory);
+	sis_free(node_->memory);
+	sis_free(node_);
+}
+void sis_net_mem_node_clear(s_sis_net_mem_node *node_)
+{
+	node_->size = 0;
+	node_->rpos = 0;
+	node_->nums = 0;
+}
+void sis_net_mem_node_renew(s_sis_net_mem_node *node_, size_t size_)
+{
+	if (size_ > node_->maxsize)
+	{
+		node_->maxsize = size_ + 1;
+		char *newmem = sis_malloc(node_->maxsize);
+		if (node_->size > 0)
+		{
+			memmove(newmem, node_->memory, node_->size);
+		}
+		sis_free(node_->memory);
+		node_->memory = newmem;
+	}
+}
+/////////////////////////////////////////////////
+//  s_sis_net_mems
+/////////////////////////////////////////////////
+// 永远保证有一个节点
+s_sis_net_mems *sis_net_mems_create()
+{
+    s_sis_net_mems *o = SIS_MALLOC(s_sis_net_mems, o);
+	sis_mutex_init(&o->lock, NULL);
+	o->nouses = 64; // 大约保留1G的缓存
+	s_sis_net_mem_node *node = sis_net_mem_node_create(SIS_NET_MEMSIZE);
+	o->wnums = 1;
+	o->whead = node;
+	o->wtail = node;
+	o->wnode = node;
+	return o;
+}
+void sis_net_mems_destroy(s_sis_net_mems *nodes_)
+{
+    sis_mutex_lock(&nodes_->lock);
+	{
+		s_sis_net_mem_node *next = nodes_->rhead;
+		while (next)
+		{
+			s_sis_net_mem_node *node = next->next;
+			sis_net_mem_node_destroy(next);
+			next = node;
+		}
+	}
+	{
+		s_sis_net_mem_node *next = nodes_->whead;
+		while (next)
+		{
+			s_sis_net_mem_node *node = next->next;
+			sis_net_mem_node_destroy(next);
+			next = node;
+		}
+	}
+	sis_mutex_unlock(&nodes_->lock);
+	sis_mutex_destroy(&nodes_->lock);
+	sis_free(nodes_);
+}
 
+// 清理写缓存
+void _net_mems_move_write(s_sis_net_mems *nodes_)
+{
+	s_sis_net_mem_node *next = nodes_->whead;	
+	while (next)
+	{
+		s_sis_net_mem_node *node = next->next;
+		sis_net_mem_node_clear(next);
+		next = node;
+	}
+	nodes_->wsize = 0;
+	nodes_->wuses = 0;
+	nodes_->wnode = nodes_->whead;
+}
+static int64 _send_nums = 0;
+static int64 _send_size = 0;
+static int64 _recv_nums = 0;
+static int64 _recv_size = 0;
+
+// 清理读缓存
+void _net_mems_move_read(s_sis_net_mems *nodes_)
+{
+	s_sis_net_mem_node *next = nodes_->rhead;	
+	while (next)
+	{
+		s_sis_net_mem_node *node = next->next;
+		// _recv_nums++;
+		// _recv_size += next->size;
+		// if (_send_nums % 100 == 0)
+		// {
+		// 	printf("read  : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+		// }
+		sis_net_mem_node_clear(next);
+		next = node;
+	}
+	if (nodes_->rhead)
+	{
+		int nouse = nodes_->rnums + (nodes_->wnums - nodes_->wuses);
+		if (nouse > nodes_->nouses)
+		{
+			next = nodes_->rhead;	
+			while (next && nouse > nodes_->nouses)
+			{
+				s_sis_net_mem_node *node = next->next;
+				nodes_->wtail->next = next;
+				nodes_->wtail = next;
+				nodes_->wnums ++;
+				next = node;
+				nouse--;
+			}
+			while (next)
+			{
+				s_sis_net_mem_node *node = next->next;
+				sis_net_mem_node_destroy(next);
+				next = node;
+			}
+		}
+		else
+		{
+			nodes_->wtail->next = nodes_->rhead;
+			nodes_->wtail = nodes_->rtail;
+			nodes_->wnums += nodes_->rnums;
+		}
+		nodes_->wtail->next = NULL;
+	}
+	nodes_->rnums = 0;
+	nodes_->rhead = NULL;
+	nodes_->rtail = NULL;	
+	nodes_->rsize = 0;
+}
+void sis_net_mems_clear(s_sis_net_mems *nodes_)
+{
+    sis_mutex_lock(&nodes_->lock);
+	_net_mems_move_write(nodes_);
+	_net_mems_move_read(nodes_);
+    sis_mutex_unlock(&nodes_->lock);
+}
+// 传入新增数据的长度
+// 返回当前可写的节点
+s_sis_net_mem_node *_net_mems_reset_node(s_sis_net_mems *nodes_, size_t isize_)
+{
+	s_sis_net_mem_node *node = nodes_->wnode;
+	while (node)
+	{
+		if ((isize_ + node->size) > node->maxsize)
+		{
+			if (node->size == 0) // 表示进入空节点 如果大小不够就重新申请
+			{
+				sis_net_mem_node_renew(node, isize_);
+				break;
+			}
+		}
+		else
+		{
+			break;
+		}
+		node = node->next;
+	}
+	if (node)
+	{
+		return node;
+	}
+	node = sis_net_mem_node_create(SIS_NET_MEMSIZE);
+	nodes_->wtail->next = node;
+	nodes_->wtail = node;
+	// nodes_->wtail->next = NULL;
+	nodes_->wnode = node;
+	nodes_->wnums++;
+	return node;
+}
+
+int  sis_net_mems_push(s_sis_net_mems *nodes_, void *in_, size_t isize_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_ + sizeof(int));
+	nodes_->wnode = node;
+	if (node->size == 0)
+	{
+		nodes_->wuses++;
+	}
+	memmove(node->memory + node->size, &isize_, sizeof(int));
+	node->size += sizeof(int);
+	memmove(node->memory + node->size, in_, isize_);
+	node->size += isize_;
+	node->nums++;
+	// printf("push: %zu %d %d %d\n", node->size, node->nums, node->rpos, node->maxsize);
+	// 拷贝内存结束
+	nodes_->wsize += (isize_+ sizeof(int));
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wuses;
+}
+
+int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_t isize_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_ + sizeof(int8) + sizeof(int));
+	nodes_->wnode = node;
+	if (node->size == 0)
+	{
+		nodes_->wuses++;
+	}
+	size_t isize = isize_ + sizeof(int8);
+	memmove(node->memory + node->size, &isize, sizeof(int));
+	node->size += sizeof(int);
+	memmove(node->memory + node->size, &sign_, sizeof(int8));
+	node->size += sizeof(int8);
+	memmove(node->memory + node->size, in_, isize_);
+	node->size += isize_;
+	node->nums ++;
+	// if (node->nums % 100000 == 0)
+	// printf("push sign: %zu %d %d %d\n", node->size, node->nums, node->rpos, node->maxsize);
+	// 拷贝内存结束
+	// _send_nums++;
+	// _send_size+=isize;
+	// if (_send_nums % 100000 == 0)
+	// {
+	// 	printf("write : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+	// }
+	nodes_->wsize += (isize + sizeof(int));
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wuses;	
+}
+
+int  sis_net_mems_cat(s_sis_net_mems *nodes_, void *in_, size_t isize_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_);
+	nodes_->wnode = node;
+	if (node->size == 0)
+	{
+		nodes_->wuses++;
+		// _send_nums++;
+	}
+	// _send_size+=isize_;
+	// if (_send_nums % 100000 == 0)
+	// {
+	// 	printf("write : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+	// }
+	memmove(node->memory + node->size, in_, isize_);
+	node->size += isize_;
+	node->nums = 1; // 此时所哟欧数据都在一起 nums 失去意义恒定为 1
+	// 拷贝内存结束
+	nodes_->wsize += isize_;
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wuses;
+}
+
+s_sis_net_mem_node *sis_net_mems_rhead(s_sis_net_mems *nodes_)
+{
+	// {
+	// 	int count = 0;
+	// 	s_sis_net_mem_node *next = nodes_->rhead;
+	// 	while (next)
+	// 	{
+	// 		next = next->next;
+	// 		count++;
+	// 	}
+	// 	printf("rsnum = %d\n", count);
+	// }
+	// {
+	// 	int count = 0;
+	// 	s_sis_net_mem_node *next = nodes_->whead;
+	// 	while (next)
+	// 	{
+	// 		next = next->next;
+	// 		count++;
+	// 	}
+	// 	printf("wsnum = %d\n", count);
+	// }
+	return nodes_->rhead;
+}
+
+s_sis_net_mem *sis_net_mems_pop(s_sis_net_mems *nodes_)
+{
+	s_sis_net_mem_node *node = nodes_->rhead;
+	if (node->rpos >= node->size)
+	{
+		if (node->next)
+		{
+			nodes_->rtail->next = node;
+			nodes_->rtail = node;
+			nodes_->rhead = node->next;
+			node->next = NULL;		
+			sis_net_mem_node_clear(node);
+			node = nodes_->rhead;
+		}
+		else
+		{
+			sis_net_mem_node_clear(node);
+			return NULL;
+		}
+	}
+	if (node && node->rpos < node->size)
+	{
+		s_sis_net_mem *mem = (s_sis_net_mem *)(node->memory + node->rpos);
+		// printf("#### %p %p %d %d %d\n", mem, node->memory, node->rpos, node->size, node->maxsize);
+		node->rpos += mem->size + sizeof(int);
+		nodes_->rsize -= mem->size + sizeof(int);
+
+		// _recv_nums++;
+		// _recv_size+=mem->size;
+		// if (_recv_nums % 100000 == 0)
+		// {
+		// 	printf("read : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+		// }
+		return mem;
+	}
+	return NULL;
+}
+// 返回数据的尺寸
+int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_)
+{
+	if (nodes_->rsize > 0)
+	{
+		int count = 0;
+		s_sis_net_mem_node *node = nodes_->rhead;
+		while (node && node->rpos < node->size)
+		{
+			count++;
+			node = node->next;
+		}
+		if (count < 1)
+		{
+			LOG(5)("mems_read warn : %d %lld\n", count, (int64)nodes_->rsize);
+		}
+		return count;
+	}
+	// sis_mutex_lock(&nodes_->lock);
+	if (!sis_mutex_trylock(&nodes_->lock))
+	{	
+		// 下面这句是为了防止未释放读队列
+		_net_mems_move_read(nodes_);
+		int readnums = readnums_ == 0 ? nodes_->wuses : readnums_;
+		s_sis_net_mem_node *next = nodes_->whead;	
+		sis_net_mems_rhead(nodes_);
+		// printf("=== %p %d %d %d %d\n", next, nodes_->wuses, next ? next->size : -1, nodes_->rnums, nodes_->wsize);
+		while (next && next->size > 0 && nodes_->wuses > 0 && nodes_->rnums < readnums)
+		{
+			nodes_->wnums--;
+			nodes_->wuses--;
+			nodes_->wsize -= next->size;
+			nodes_->rnums++;
+			nodes_->rsize += next->size;
+			if (!nodes_->rhead)
+			{
+				nodes_->rhead = next;
+				nodes_->rtail = next;
+			} 
+			else
+			{
+				nodes_->rtail->next = next;
+				nodes_->rtail = next;
+			}
+			next = next->next;
+			if (next)
+			{
+				if (nodes_->whead == nodes_->wnode)
+				{
+					nodes_->wnode = next;
+				}
+				nodes_->whead = next;
+			}
+			else
+			{
+				s_sis_net_mem_node *node = sis_net_mem_node_create(SIS_NET_MEMSIZE);
+				nodes_->wnums = 1;
+				nodes_->whead = node;
+				nodes_->wtail = node;
+				nodes_->wnode = node;
+			}
+			nodes_->rtail->next = NULL;
+		}
+		// printf("=== %p %p %d %d\n", nodes_->whead, nodes_->wnode, nodes_->whead ? nodes_->whead->size : -1, nodes_->wnode ? nodes_->wnode->size : -1);
+		sis_mutex_unlock(&nodes_->lock);
+		return 	nodes_->rnums;
+	}
+	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
+	return 0;
+}
+int sis_net_mems_free_read(s_sis_net_mems *nodes_)
+{
+	int count = nodes_->rnums;
+    sis_mutex_lock(&nodes_->lock);
+	_net_mems_move_read(nodes_);
+    sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+int  sis_net_mems_count(s_sis_net_mems *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	int count = nodes_->rnums + nodes_->wnums;
+	sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+size_t  sis_net_mems_size(s_sis_net_mems *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	size_t size = nodes_->rsize + nodes_->wsize;
+	sis_mutex_unlock(&nodes_->lock);
+	return size;
+}
 
 /////////////////////////////////////////////////
 //  s_sis_net_node

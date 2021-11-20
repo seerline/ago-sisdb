@@ -361,9 +361,11 @@ int cmd_subdb_pub(void *worker_, void *argv_)
     {
         subdb_wlog_save(context, netmsg);
     }
+    // context->cb_net_message(context->cb_source, netmsg);
+    // 测试不经过筛选的速度
     sisdb_sub_cxt_pub(context->work_sub_cxt, netmsg);
     // SIS_NET_SHOW_MSG("subdb pub", netmsg);
-    sis_net_ans_with_noreply(netmsg);
+    // sis_net_ans_with_noreply(netmsg);
     return SIS_METHOD_OK;
 }
 

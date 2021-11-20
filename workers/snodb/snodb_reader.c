@@ -580,7 +580,7 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)context_;
 	// s_snodb_cxt *snodb = (s_snodb_cxt *)reader->father;
-	// printf("cb_encode %p %p\n", in_, reader->cb_sub_inctzip);
+	// printf("cb_encode %p %p\n", reader->sub_ziper, reader->cb_sub_inctzip);
 	if (reader->cb_sub_inctzip)
 	{
         s_sis_db_incrzip zmem = {0};
@@ -628,7 +628,8 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 	{
 		if (!in_)
 		{
-			sisdb_incr_zip_restart(reader->sub_ziper, 0);		
+			// if (ilen_ > 0 ) LOG(5)("==== curr_size = %d\n", sisdb_incr_getsize(reader->sub_ziper));
+			sisdb_incr_zip_restart(reader->sub_ziper, 0);	
 			return 0;
 		}
 		// 先从大表中得到实际名称
@@ -649,12 +650,12 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 		if (kidx < 0 || sidx < 0)
 		{
 			// LOG(5)("fail = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
-		// 通过此判断是否是需要的key和sdb
+			// 通过此判断是否是需要的key和sdb
 			return 0;
 		}
 
-		// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
 		sisdb_incr_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
+		// LOG(5)("==== cb_unzip_reply = %s %s -> %d  %d | %d  %d | === %d\n", kname, sname, kidx, sidx, kidx_, sidx_, sisdb_incr_getsize(reader->sub_ziper));
 
 	}
     return 0;

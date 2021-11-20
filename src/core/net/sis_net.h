@@ -118,7 +118,7 @@ typedef struct s_sis_net_context {
 	// 网络收到的内容 脱壳 解压 解密 后放入recv_buffer 解析后把完整的数据包 放入主队列 剩余数据保留等待下次收到数据
 	s_sis_memory      *recv_memory;  // 接收数据的残余缓存
 
-	s_sis_net_nodes   *recv_nodes;   // s_sis_memory 链表
+	s_sis_net_mems    *recv_nodes;   // s_sis_memory 链表
 
 	void              *father;       // s_sis_net_class *的指针
 	s_sis_net_slot    *slots;        // 根据协议对接不同功能函数	
@@ -180,6 +180,8 @@ bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_);
 ////////////////////////////////////////////////////////
 
 s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *mess_);
+
+s_sis_memory *sis_net_make_message(s_sis_net_context *cxt_, s_sis_net_message *mess_);
 int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_message *mess_);
 
 /////////////////////////////////////////////////////////////
