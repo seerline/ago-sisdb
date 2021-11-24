@@ -192,7 +192,7 @@ void sis_incrzip_compress_restart(s_sis_incrzip_class *s_, int init_)
         int size = sis_incrzip_getsize(s_);
         if (size > 0)
         {
-            // printf("--1.0-- %d\n", size);
+            // printf("--1.0-- %d %p\n", size, s_->cb_source);
             s_->cb_compress(s_->cb_source, (char *)s_->zip_memory, size);
             // 传递后就从头开始写数据了
             // 设置起始标记

@@ -13,7 +13,6 @@
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_net_message -----------------------------//
 ///////////////////////////////////////////////////////////////////////////
-
 s_sis_net_message *sis_net_message_create()
 {
 	s_sis_net_message *o = (s_sis_net_message *)sis_malloc(sizeof(s_sis_net_message));
@@ -46,6 +45,10 @@ void sis_net_message_decr(void *in_)
         if (in->map)
         {
             sis_map_pointer_destroy(in->map); 
+        }
+        if(in->memory)
+        {
+            sis_memory_destroy(in->memory);
         }
         sis_free(in_);	
     } 
@@ -259,8 +262,10 @@ void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const c
     {
         if (sname_)
         {
-            netmsg_->key =sis_sdsempty();
-            netmsg_->key = sis_sdscatfmt(netmsg_->key, "%s.%s", kname_, sname_);
+            char skey[128];
+            sis_sprintf(skey, 128, "%s.%s", kname_, sname_);
+            netmsg_->key = sis_sdsnew(skey);
+            // netmsg_->key = sis_sdscatfmt(netmsg_->key, "%s.%s", kname_, sname_);
         }
         else
         {

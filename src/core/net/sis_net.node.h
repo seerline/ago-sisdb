@@ -8,11 +8,67 @@
 #include "sis_net.msg.h"
 #include "sis_obj.h"
 #include "sis_json.h"
+
+/////////////////////////////////////////////////
+//  s_sis_net_mems
+/////////////////////////////////////////////////
+
+#define SIS_NET_MEMSIZE  16*1024*1024
+
+typedef struct s_sis_net_mem {
+	int                    size;    // 数据尺寸
+	char                   data[0]; // 数据区
+} s_sis_net_mem;
+
+typedef struct s_sis_net_mem_node {
+	size_t                 maxsize;  // 当前缓存大小
+	size_t                 size;     // 当前有效数据大小
+	size_t                 rpos;     // 当前读取数据偏移
+	int                    nums;     // 数据块个数
+    char                  *memory;   // s_sis_net_mem 数据区 固定 SIS_NET_MEMSIZE 大小
+    struct s_sis_net_mem_node *next;
+} s_sis_net_mem_node;
+
+typedef struct s_sis_net_mems {
+	s_sis_mutex_t       lock;  
+
+	int                 wnums;  // 所有节点数
+    s_sis_net_mem_node *whead;
+    s_sis_net_mem_node *wtail;
+	size_t              wsize;  // 当前有效数据尺寸
+	int                 wuses;  // 有数据的节点数
+    s_sis_net_mem_node *wnode;  // 最后一个写入数据节点
+
+	int                 rnums;  // 读链节点数
+    s_sis_net_mem_node *rhead;  // 已经取出的放这里 等待处理
+	s_sis_net_mem_node *rtail;
+	size_t              rsize;  // 当前有效数据尺寸
+
+	int                 nouses; // 数据最大块数 如果空数据块超过该值就自动清理 如果都有值就失效
+} s_sis_net_mems;
+
+s_sis_net_mems *sis_net_mems_create();
+void sis_net_mems_destroy(s_sis_net_mems *nodes_);
+void sis_net_mems_clear(s_sis_net_mems *nodes_);
+int  sis_net_mems_push(s_sis_net_mems *nodes_, void *in_, size_t isize_);
+int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_t isize_);
+s_sis_net_mem *sis_net_mems_pop(s_sis_net_mems *nodes_);
+// 直接增加 不写数据头 用于网络缓存数据
+int  sis_net_mems_cat(s_sis_net_mems *nodes_, void *in_, size_t isize_);
+s_sis_net_mem_node *sis_net_mems_rhead(s_sis_net_mems *nodes_);
+// count = 0 得到所有数据块 = n 得到最近 n 个数据块
+int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_);
+int  sis_net_mems_free_read(s_sis_net_mems *nodes_);
+
+// 队列是否为空
+int  sis_net_mems_count(s_sis_net_mems *nodes_);
+size_t  sis_net_mems_size(s_sis_net_mems *nodes_);
+
 /////////////////////////////////////////////////
 //  s_sis_net_nodes
 /////////////////////////////////////////////////
 
-// 队列结点
+// 队列结点 速度太慢
 typedef struct s_sis_net_node {
     s_sis_object          *obj;    // 数据区
     struct s_sis_net_node *next;

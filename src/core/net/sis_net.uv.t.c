@@ -162,23 +162,44 @@ static void cb_client_recv_after(void* handle_, int cid, char* in_, size_t ilen_
 }
 uv_thread_t server_thread;
 
+// void _thread_write(void* arg)
+// {
+// 	s_test_client *client = (s_test_client *)arg;
+// 	int id = client->sno;
+// 	int count = 20*1000*1000; 
+// 	// 10*1000*1000 10240000
+// 	s_sis_sds str = sis_sdsnewlen(NULL, sendsize);
+// 	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, str);
+// 	for (int i = 0; i < count; i++)
+// 	{
+// 		sis_socket_server_send(server, id, obj);
+// 		if (i%1000 == 0)
+// 		{
+// 			sis_sleep(2);
+// 		}
+// 	}
+// 	sis_object_destroy(obj);
+// 	printf("--- send end. %p %d \n", client, id);	
+// 	sis_free(client);
+// }
 void _thread_write(void* arg)
 {
 	s_test_client *client = (s_test_client *)arg;
 	int id = client->sno;
+	char buffer[16*1024];
 	int count = 20*1000*1000; 
 	// 10*1000*1000 10240000
-	s_sis_sds str = sis_sdsnewlen(NULL, sendsize);
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, str);
+	s_sis_memory *mem = sis_memory_create_size(sendsize);
+	sis_memory_cat(mem, buffer, 16*10);
 	for (int i = 0; i < count; i++)
 	{
-		sis_socket_server_send(server, id, obj);
+		sis_socket_server_send(server, id, mem);
 		if (i%1000 == 0)
 		{
 			sis_sleep(2);
 		}
 	}
-	sis_object_destroy(obj);
+	sis_memory_destroy(mem);
 	printf("--- send end. %p %d \n", client, id);	
 	sis_free(client);
 }
@@ -305,7 +326,7 @@ int main(int argc, char **argv)
 	while (__exit != 2)
 	{
 		// printf("--- check memory --- \n");
-		safe_memory_stop();
+		// safe_memory_stop();
 		sis_sleep(1000);
 		// sis_sleep(50);
 	}

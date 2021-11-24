@@ -158,7 +158,7 @@ s_sis_net_context *sis_net_context_create(s_sis_net_class *cls_, int rid_)
 	o->rid = rid_;
 	o->father = cls_;
 	o->recv_memory = sis_memory_create();
-	o->recv_nodes = sis_net_nodes_create();
+	o->recv_nodes = sis_net_mems_create();
 	o->slots = SIS_MALLOC(s_sis_net_slot, o->slots);
 	// 初始化过程全部用 json 交互
 	return o;
@@ -169,7 +169,7 @@ void sis_net_context_destroy(void *cxt_)
 	s_sis_net_context *cxt = (s_sis_net_context *)cxt_;
 	// ??? 这里要等待内存不再使用后才释放
 	sis_memory_destroy(cxt->recv_memory);
-	sis_net_nodes_destroy(cxt->recv_nodes);
+	sis_net_mems_destroy(cxt->recv_nodes);
 	sis_free(cxt->slots);
 	sis_free(cxt);
 }
@@ -289,17 +289,16 @@ void sis_net_class_destroy(s_sis_net_class *cls_)
 int sis_ws_send_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 {
 	s_sis_memory *ask = sis_memory_create();
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, ask); 
 	sis_net_ws_get_ask(ask);
 	if (cls->url->io == SIS_NET_IO_WAITCNT)
 	{
-		sis_socket_server_send(cls->server, cxt->rid, obj);
+		sis_socket_server_send(cls->server, cxt->rid, ask);
 	}
 	else
 	{
-		sis_socket_client_send(cls->client, obj);
+		sis_socket_client_send(cls->client, ask);
 	}
-	sis_object_destroy(obj);	
+	sis_memory_destroy(ask);
 	return 1; // 成功
 }
 // 接收握手请求 并回应
@@ -324,17 +323,15 @@ int sis_ws_recv_hand_ask(s_sis_net_class *cls, s_sis_net_context *cxt)
 	// printf("send hand ans: %d\n", cxt->rid);
 	// sis_out_binary("ans",sis_memory(ans), sis_memory_get_size(ans));
 	
-	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, ans); 
-	// int so = 0;
 	if (cls->url->io == SIS_NET_IO_WAITCNT)
 	{
-		sis_socket_server_send(cls->server, cxt->rid, obj);
+		sis_socket_server_send(cls->server, cxt->rid, ans);
 	}
 	else
 	{
-		sis_socket_client_send(cls->client, obj);
+		sis_socket_client_send(cls->client, ans);
 	}
-	sis_object_destroy(obj);	
+	sis_memory_destroy(ans);
 	return 1; // 成功 
 }
 
@@ -370,13 +367,9 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 	}
 	if (cxt->status == SIS_NET_WORKING)
 	{
-		s_sis_memory *memory = sis_memory_create_size(ilen_ + 1);
-		sis_memory_cat(memory, in_, ilen_);
-		s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
-		sis_net_nodes_push(cxt->recv_nodes, obj);
-		sis_object_destroy(obj);
+		sis_net_mems_push(cxt->recv_nodes, in_, ilen_);
 		// 发送通知
-		sis_wait_thread_notice(cls->read_thread);
+		// sis_wait_thread_notice(cls->read_thread);
 	}
 	else if (cxt->status == SIS_NET_HANDING)
 	{
@@ -431,13 +424,9 @@ static void cb_client_recv_after(void* handle_, int sid_, char* in_, size_t ilen
 	// printf("recv .... ");
 	if (cxt->status == SIS_NET_WORKING)
 	{
-		s_sis_memory *memory = sis_memory_create_size(ilen_ + 1);
-		sis_memory_cat(memory, in_, ilen_);
-		s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
-		sis_net_nodes_push(cxt->recv_nodes, obj);
-		sis_object_destroy(obj);
+		sis_net_mems_push(cxt->recv_nodes, in_, ilen_);
 		// 发送通知
-		sis_wait_thread_notice(cls->read_thread);
+		// sis_wait_thread_notice(cls->read_thread);
 	}
 	else if (cxt->status == SIS_NET_HANDING)
 	{
@@ -490,7 +479,7 @@ static void cb_server_connected(void *handle_, int sid_)
 		cxt->status =  SIS_NET_NONE;
 		LOG(1)("connect already exists. [%d]\n", sid_);	
 		sis_memory_clear(cxt->recv_memory);
-		sis_net_nodes_clear(cxt->recv_nodes);
+		sis_net_mems_clear(cxt->recv_nodes);
 	}
 	sis_socket_server_set_rwcb(cls->server, sid_, cb_server_recv_after, cb_server_send_after);
 	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
@@ -541,7 +530,7 @@ static void cb_client_connected(void *handle_, int sid_)
 	{
 		cxt->status =  SIS_NET_NONE;
 		sis_memory_clear(cxt->recv_memory);
-		sis_net_nodes_clear(cxt->recv_nodes);
+		sis_net_mems_clear(cxt->recv_nodes);
 	}
 	printf("connect count = %d \n", (int)sis_map_pointer_getsize(cls->cxts));	
 	sis_socket_client_set_rwcb(cls->client, cb_client_recv_after, cb_client_send_after);
@@ -599,27 +588,79 @@ void sis_net_class_close_cxt(s_sis_net_class *cls_, int sid_)
 	LOG(8)("cxt %d close, now cxt count = %d \n", sid_, (int)sis_map_kint_getsize(cls_->cxts));	
 }
 
+// void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
+// {
+// 	int count = sis_net_nodes_read(cxt->recv_nodes, 1024);
+// 	if (count > 0)
+// 	{
+// 		s_sis_net_node *next = cxt->recv_nodes->rhead;
+// 		int status = 0;
+// 		while (next && cxt->status == SIS_NET_WORKING)
+// 		{
+// 			// sis_out_binary("recv_memory", sis_memory(cxt->recv_memory), sis_memory_get_size(cxt->recv_memory));
+// 			s_sis_net_message *netmsg = sis_net_message_create();
+// 			if (status == 0)
+// 			{
+// 				if (sis_memory_get_size(cxt->recv_memory) == 0)
+// 				{
+// 					sis_memory_swap(SIS_OBJ_MEMORY(next->obj), cxt->recv_memory);
+// 				}
+// 				else
+// 				{
+// 					sis_memory_cat(cxt->recv_memory, SIS_OBJ_GET_CHAR(next->obj), SIS_OBJ_GET_SIZE(next->obj));
+// 				}
+// 			}
+// 			// sis_out_binary("recv_memory", sis_memory(cxt->recv_memory), sis_memory_get_size(cxt->recv_memory));
+// 			status = sis_net_recv_message(cxt, cxt->recv_memory, netmsg);
+// 			// printf("recv netmsg: %d %d\n", count, status);
+// 			if (status == 1)
+// 			{
+// 				netmsg->cid = cxt->rid;
+// 				// SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
+// 				if (cxt->cb_reply)
+// 				{
+// 					cxt->cb_reply(cxt->cb_source, netmsg);
+// 				}
+// 				sis_net_message_destroy(netmsg);
+// 				continue;
+// 			}			
+// 			else if (status == 0)
+// 			{
+// 				// 如果返回非零 就说明数据不够 等下一个数据过来再处理
+// 				next = next->next;
+// 				sis_net_message_destroy(netmsg);
+// 				continue;
+// 			}
+// 			else
+// 			{
+// 				LOG(5)("read data error.[%d]\n", cxt->rid);
+// 				// 如果返回<零 就说明数据出错
+// 				// 这里要检查循环中删除会不会出问题
+// 				// sis_net_class_close_cxt(cls, cxt->rid);
+// 				cxt->status = SIS_NET_DISCONNECT;
+// 				break;				
+// 			}
+// 			mem = sis_net_mems_pop(context->work_nodes);
+// 		}
+// 		sis_net_mems_free_read(context->work_nodes);
+// 	}
+// }
+
 void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 {
-	int count = sis_net_nodes_read(cxt->recv_nodes, 1024);
+	int count = sis_net_mems_read(cxt->recv_nodes, 0);
 	if (count > 0)
 	{
-		s_sis_net_node *next = cxt->recv_nodes->rhead;
+		printf("recv : %d %zu\n", count, cxt->recv_nodes->rsize);
+		s_sis_net_message *netmsg = sis_net_message_create();
 		int status = 0;
-		while (next && cxt->status == SIS_NET_WORKING)
+		s_sis_net_mem *mem = sis_net_mems_pop(cxt->recv_nodes);
+		while(mem && cxt->status == SIS_NET_WORKING)
 		{
 			// sis_out_binary("recv_memory", sis_memory(cxt->recv_memory), sis_memory_get_size(cxt->recv_memory));
-			s_sis_net_message *netmsg = sis_net_message_create();
 			if (status == 0)
 			{
-				if (sis_memory_get_size(cxt->recv_memory) == 0)
-				{
-					sis_memory_swap(SIS_OBJ_MEMORY(next->obj), cxt->recv_memory);
-				}
-				else
-				{
-					sis_memory_cat(cxt->recv_memory, SIS_OBJ_GET_CHAR(next->obj), SIS_OBJ_GET_SIZE(next->obj));
-				}
+				sis_memory_cat(cxt->recv_memory, mem->data, mem->size);
 			}
 			// sis_out_binary("recv_memory", sis_memory(cxt->recv_memory), sis_memory_get_size(cxt->recv_memory));
 			status = sis_net_recv_message(cxt, cxt->recv_memory, netmsg);
@@ -628,18 +669,17 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 			{
 				netmsg->cid = cxt->rid;
 				// SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
+				// if (netmsg->switchs.has_argvs)
 				if (cxt->cb_reply)
 				{
 					cxt->cb_reply(cxt->cb_source, netmsg);
 				}
-				sis_net_message_destroy(netmsg);
 				continue;
 			}			
 			else if (status == 0)
 			{
 				// 如果返回非零 就说明数据不够 等下一个数据过来再处理
-				next = next->next;
-				sis_net_message_destroy(netmsg);
+				mem = sis_net_mems_pop(cxt->recv_nodes);
 				continue;
 			}
 			else
@@ -651,9 +691,10 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 				cxt->status = SIS_NET_DISCONNECT;
 				break;				
 			}
-			next = next->next;
+			// mem = sis_net_mems_pop(cxt->recv_nodes);
 		}
-		sis_net_nodes_free_read(cxt->recv_nodes);
+		sis_net_message_destroy(netmsg);
+		sis_net_mems_free_read(cxt->recv_nodes);
 	}
 }
 void *_thread_net_class_read(void* argv)
@@ -706,7 +747,7 @@ bool sis_net_class_open(s_sis_net_class *cls_)
 {
 	if (!cls_->read_thread)
 	{
-		cls_->read_thread = sis_wait_thread_create(1000);
+		cls_->read_thread = sis_wait_thread_create(10);
 		if (!sis_wait_thread_open(cls_->read_thread, _thread_net_class_read, cls_))
 		{
 			sis_wait_thread_destroy(cls_->read_thread);
@@ -806,19 +847,19 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 	if (cxt)
 	{
 		// printf("reader read +++ [%d] %d | %p \n", mess_->cid, cxt->send_cxts->count ,cxt->send_cxts);
-		s_sis_object *sendobj = sis_net_send_message(cxt, mess_); 
+		s_sis_memory *sendmem = sis_net_make_message(cxt, mess_); 
 		// sis_out_binary("send", SIS_OBJ_GET_CHAR(sendobj), SIS_OBJ_GET_SIZE(sendobj));
-		if (sendobj)
+		if (sendmem)
 		{
 			if (cls_->url->io == SIS_NET_IO_WAITCNT)
 			{
-				sis_socket_server_send(cls_->server, mess_->cid, sendobj);
+				sis_socket_server_send(cls_->server, mess_->cid, sendmem);
 			}
 			else
 			{
-				sis_socket_client_send(cls_->client, sendobj);
+				sis_socket_client_send(cls_->client, sendmem);
 			}
-			sis_object_destroy(sendobj);
+			sis_memory_destroy(sendmem);
 		}	
 	}
 	sis_net_message_decr(mess_);
@@ -832,7 +873,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_message *mess_)
 {
 	s_sis_net_slot *call = cxt_->slots;
-	s_sis_memory *inmem = sis_memory_create();
+	s_sis_memory *inmem = sis_memory_create_size(16 * 1024);
 	s_sis_memory *inmemptr = inmem;
 	// 成功或者不成功 in_ 都会移动位置到新的位置
 	s_sis_net_tail info;
@@ -850,7 +891,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 	}
 	if (info.is_bytes)
 	{
-		s_sis_memory *outmem = sis_memory_create();
+		s_sis_memory *outmem = sis_memory_create_size(16 * 1024);
 		s_sis_memory *outmemptr = outmem;
 		if (info.is_crypt && call->slot_net_decrypt)
 		{
@@ -886,7 +927,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *mess_)
 {
 	s_sis_net_slot *call = cxt_->slots;
-	s_sis_memory *inmem = sis_memory_create();
+	s_sis_memory *inmem = sis_memory_create_size(16 * 1024);
 	s_sis_memory *inmemptr = inmem;
 	if (call->slot_net_encoded)
 	{
@@ -896,7 +937,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 			return NULL;
 		}
 	}
-	s_sis_memory *outmem = sis_memory_create();
+	s_sis_memory *outmem = sis_memory_create_size(16 * 1024);
 	s_sis_memory *outmemptr = outmem;
 
 	s_sis_net_tail info;
@@ -936,6 +977,58 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 
 	return obj;
 }
+
+s_sis_memory *sis_net_make_message(s_sis_net_context *cxt_, s_sis_net_message *mess_)
+{
+	s_sis_net_slot *call = cxt_->slots;
+	s_sis_memory *inmem = sis_memory_create_size(16 * 1024);
+	s_sis_memory *inmemptr = inmem;
+	if (call->slot_net_encoded)
+	{
+		if (!call->slot_net_encoded(mess_, inmemptr))
+		{
+			sis_memory_destroy(inmem);
+			return NULL;
+		}
+	}
+	s_sis_memory *outmem = sis_memory_create_size(16 * 1024);
+	s_sis_memory *outmemptr = outmem;
+
+	s_sis_net_tail info;
+	info.is_bytes = mess_->format == SIS_NET_FORMAT_BYTES ? 1 : 0;
+	info.is_compress = 0;
+	info.is_crypt = 0;
+	info.is_crc16 = 0;
+	if (info.is_bytes)
+	{
+		if (call->slot_net_compress)
+		{
+			if (call->slot_net_compress(inmemptr, outmemptr))
+			{
+				info.is_compress = 1;
+				SIS_MEMORY_SWAP(inmemptr, outmemptr);
+			}
+		}
+		if (call->slot_net_encrypt)
+		{
+			if (call->slot_net_encrypt(inmemptr, outmemptr))
+			{
+				info.is_crypt = 1;
+				SIS_MEMORY_SWAP(inmemptr, outmemptr);
+			}
+		}
+	}
+	if (call->slot_net_pack)
+	{
+		if (call->slot_net_pack(inmemptr, &info, outmemptr))
+		{
+			SIS_MEMORY_SWAP(inmemptr, outmemptr);
+		}
+	}
+	sis_memory_destroy(outmemptr);
+	return inmemptr;
+}
+
 
 #if 0
 // 测试网络通讯协议是否正常

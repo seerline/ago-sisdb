@@ -392,7 +392,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
 
     sis_net_message_incr(netmsg);
-    SIS_NET_SHOW_MSG("server recv:", netmsg);
+    // SIS_NET_SHOW_MSG("server recv:", netmsg);
     int access = sisdb_server_get_access(context, netmsg);
     if ( access < 0 && sis_strcasecmp("auth", netmsg->cmd))
     {

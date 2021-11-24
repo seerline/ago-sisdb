@@ -157,7 +157,7 @@
 #define  SIS_DISK_HID_SIC_NEW     0xC  // size(dsize)+最新时间+pages(dsize)+序号(dsize)
 // MAP文件的key+sdb的索引信息 active 在 1.255 之间表示有效 0 表示删除 
 // 后写入的 如果 ndate 一样会覆盖前面写入的数据 这样保证 map 只写增量数据 仅在pack 时才清理冗余的数据
-#define  SIS_DISK_HID_MSG_MAP   0xD // size(dsize)+klen(dsize)+kname+dblen(dsize)+dname+active(1)+ktype(1)+blocks(dsize)
+#define  SIS_DISK_HID_MSG_MAP     0xD // size(dsize)+klen(dsize)+kname+dblen(dsize)+dname+active(1)+ktype(1)+blocks(dsize)
 //        +[active(1)+ndate(dsize)]
 
 /////////////////////////////////////////////////////////

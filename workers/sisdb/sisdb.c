@@ -498,8 +498,8 @@ int cmd_sisdb_unsub(void *worker_, void *argv_)
 // 适合回放磁盘中大数据 模拟历史真实环境 
 int cmd_sisdb_psub(void *worker_, void *argv_)
 {
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    // s_sis_worker *worker = (s_sis_worker *)worker_; 
+    // s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
     int o = 0;
@@ -521,8 +521,8 @@ int cmd_sisdb_psub(void *worker_, void *argv_)
 int cmd_sisdb_unpsub(void *worker_, void *argv_)
 {
     // 只订阅最后一条记录 不开线程 
-    s_sis_worker *worker = (s_sis_worker *)worker_; 
-    s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
+    // s_sis_worker *worker = (s_sis_worker *)worker_; 
+    // s_sisdb_cxt *context = (s_sisdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
     int o = 0;

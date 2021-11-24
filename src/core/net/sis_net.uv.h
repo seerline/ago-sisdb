@@ -34,7 +34,7 @@ typedef int (cb_net_uv_reader)(void *);
 // 队列结点
 typedef struct s_sis_net_uv_node {
 	int                       cid;
-	s_sis_net_nodes          *nodes;
+	s_sis_net_mems           *nodes;
     struct s_sis_net_uv_node *next;
     struct s_sis_net_uv_node *prev;
 } s_sis_net_uv_node;
@@ -57,7 +57,7 @@ typedef struct s_sis_net_uv_catch {
 s_sis_net_uv_catch *sis_net_uv_catch_create(void *source_, cb_net_uv_reader *cb_reader_, int wait_nums_);
 void sis_net_uv_catch_destroy(s_sis_net_uv_catch *queue_);
 // 返回缓存大小
-size_t sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_object *obj_);
+size_t sis_net_uv_catch_push(s_sis_net_uv_catch *queue_, int cid_, s_sis_memory *mem_);
 void sis_net_uv_catch_stop(s_sis_net_uv_catch *queue_);
 
 s_sis_net_uv_node *sis_net_uv_catch_tail(s_sis_net_uv_catch *queue_);
@@ -139,7 +139,7 @@ void sis_socket_server_close(s_sis_socket_server *);
 bool sis_socket_server_open(s_sis_socket_server *);
 bool sis_socket_server_open6(s_sis_socket_server *);
 
-bool sis_socket_server_send(s_sis_socket_server *, int sid_, s_sis_object *in_);
+bool sis_socket_server_send(s_sis_socket_server *, int sid_, s_sis_memory *in_);
 
 bool sis_socket_server_delete(s_sis_socket_server *, int sid_);
 
@@ -204,6 +204,6 @@ void sis_socket_client_set_rwcb(s_sis_socket_client *,
 								cb_socket_recv_after cb_recv_, 
 								cb_socket_send_after cb_send_); // 必须保证发送的数据结构一致
 
-bool sis_socket_client_send(s_sis_socket_client *, s_sis_object *in_);
+bool sis_socket_client_send(s_sis_socket_client *, s_sis_memory *in_);
 
 #endif

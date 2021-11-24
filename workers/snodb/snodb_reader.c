@@ -472,16 +472,23 @@ int snodb_reader_new_realtime(s_snodb_reader *reader_)
 
 int snodb_remove_reader(s_snodb_cxt *snodb_, int cid_)
 {
-	s_snodb_reader *reader = sis_map_kint_get(snodb_->cur_reader_map, cid_);
-	if (reader)
 	{
-		sis_map_kint_del(snodb_->cur_reader_map, cid_);
-		snodb_->cur_readers--;
-		snodb_->cur_readers = sis_max(snodb_->cur_readers, 0);
+		// 检查实时
+		s_snodb_reader *reader = sis_map_kint_get(snodb_->cur_reader_map, cid_);
+		if (reader)
+		{
+			sis_map_kint_del(snodb_->cur_reader_map, cid_);
+			snodb_->cur_readers--;
+			snodb_->cur_readers = sis_max(snodb_->cur_readers, 0);
+		}
 	}
-	else
 	{
-		sis_map_kint_del(snodb_->ago_reader_map, cid_);
+		// 检查历史 
+		s_snodb_reader *reader = sis_map_kint_get(snodb_->ago_reader_map, cid_);
+		if (reader)
+		{
+			sis_map_kint_del(snodb_->ago_reader_map, cid_);
+		}
 	}
 	return sis_map_kint_getsize(snodb_->cur_reader_map) + sis_map_kint_getsize(snodb_->ago_reader_map);
 }
@@ -514,7 +521,7 @@ static int cb_output_reader(void *reader_, s_sis_object *obj_)
 	zmem.data = (uint8 *)SIS_OBJ_GET_CHAR(obj_);
 	zmem.size = SIS_OBJ_GET_SIZE(obj_);
 	zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
-	// printf("cb_output_reader = %d\n",reader->isinit);
+	// printf("cb_output_reader = %d %d\n",reader->isinit, reader->ishead);
 	if (!reader->isinit)
 	{
 		if (!zmem.init)
@@ -529,7 +536,7 @@ static int cb_output_reader(void *reader_, s_sis_object *obj_)
 		else
 		{
 			// 当前包是最新的起始包 就开始发送数据
-			// printf("last = %p  %p %d | %d\n", snodb->near_object, obj_, snodb->near_object == obj_, snodb->outputs->work_queue->rnums);
+			printf("near_obj = %p  %p %d | %d\n", snodb->near_object, obj_, snodb->near_object == obj_, snodb->outputs->work_queue->rnums);
 			if (snodb->near_object == obj_)
 			{
 				reader->isinit = true;
@@ -573,7 +580,7 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)context_;
 	// s_snodb_cxt *snodb = (s_snodb_cxt *)reader->father;
-	// printf("cb_encode %p %p\n", in_, reader->cb_sub_inctzip);
+	// printf("cb_encode %p %p\n", reader->sub_ziper, reader->cb_sub_inctzip);
 	if (reader->cb_sub_inctzip)
 	{
         s_sis_db_incrzip zmem = {0};
@@ -621,7 +628,8 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 	{
 		if (!in_)
 		{
-			sisdb_incr_zip_restart(reader->sub_ziper, 0);		
+			// if (ilen_ > 0 ) LOG(5)("==== curr_size = %d\n", sisdb_incr_getsize(reader->sub_ziper));
+			sisdb_incr_zip_restart(reader->sub_ziper);	
 			return 0;
 		}
 		// 先从大表中得到实际名称
@@ -642,12 +650,12 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 		if (kidx < 0 || sidx < 0)
 		{
 			// LOG(5)("fail = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
-		// 通过此判断是否是需要的key和sdb
+			// 通过此判断是否是需要的key和sdb
 			return 0;
 		}
 
-		// LOG(5)("cb_unzip_reply = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
 		sisdb_incr_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
+		// LOG(5)("==== cb_unzip_reply = %s %s -> %d  %d | %d  %d | === %d\n", kname, sname, kidx, sidx, kidx_, sidx_, sisdb_incr_getsize(reader->sub_ziper));
 
 	}
     return 0;
