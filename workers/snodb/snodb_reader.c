@@ -521,7 +521,7 @@ static int cb_output_reader(void *reader_, s_sis_object *obj_)
 	zmem.data = (uint8 *)SIS_OBJ_GET_CHAR(obj_);
 	zmem.size = SIS_OBJ_GET_SIZE(obj_);
 	zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
-	// printf("cb_output_reader = %d\n",reader->isinit);
+	// printf("cb_output_reader = %d %d\n",reader->isinit, reader->ishead);
 	if (!reader->isinit)
 	{
 		if (!zmem.init)
@@ -536,7 +536,7 @@ static int cb_output_reader(void *reader_, s_sis_object *obj_)
 		else
 		{
 			// 当前包是最新的起始包 就开始发送数据
-			// printf("last = %p  %p %d | %d\n", snodb->near_object, obj_, snodb->near_object == obj_, snodb->outputs->work_queue->rnums);
+			printf("near_obj = %p  %p %d | %d\n", snodb->near_object, obj_, snodb->near_object == obj_, snodb->outputs->work_queue->rnums);
 			if (snodb->near_object == obj_)
 			{
 				reader->isinit = true;
@@ -629,7 +629,7 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 		if (!in_)
 		{
 			// if (ilen_ > 0 ) LOG(5)("==== curr_size = %d\n", sisdb_incr_getsize(reader->sub_ziper));
-			sisdb_incr_zip_restart(reader->sub_ziper, 0);	
+			sisdb_incr_zip_restart(reader->sub_ziper);	
 			return 0;
 		}
 		// 先从大表中得到实际名称

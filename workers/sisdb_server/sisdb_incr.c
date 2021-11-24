@@ -148,6 +148,7 @@ void sisdb_incr_zip_start(s_sisdb_incr *worker, void *cb_source, cb_incrzip_enco
 	worker->incrzip = sis_incrzip_class_create();
 	worker->cb_source = cb_source;
 	worker->cb_encode = cb_encode;
+	worker->summ_size = 0;
 	// printf("cb_encode ===1=== %p %p \n", worker, worker->cb_encode);
 	_init_dict(worker);
 	sis_incrzip_compress_start(worker->incrzip, worker->part_size, worker, cb_worker_encode);
@@ -161,10 +162,14 @@ void sisdb_incr_zip_set(s_sisdb_incr *worker, int kidx, int sidx, char *in_, siz
 		return ;
 	}
 	int curr_size = sis_incrzip_getsize(worker->incrzip);
-    if (curr_size > worker->page_size)
+	
+	worker->summ_size += ilen_;
+	// LOG(5)("----- compress . %d %d\n", worker->summ_size, worker->page_size);
+    if ((worker->summ_size) > worker->page_size)
     {
-		LOG(5)("restart compress . %d %d\n", curr_size, worker->page_size);
+		LOG(5)("restart compress . %d %d\n", worker->summ_size, worker->page_size);
         sis_incrzip_compress_restart(worker->incrzip, 1);
+		worker->summ_size = 0;
     }
     int count = ilen_ / sdb->size;
     for (int i = 0; i < count; i++)
@@ -176,12 +181,9 @@ void sisdb_incr_zip_set(s_sisdb_incr *worker, int kidx, int sidx, char *in_, siz
 		}
     }
 }
-void sisdb_incr_zip_restart(s_sisdb_incr *worker, int init_)
+void sisdb_incr_zip_restart(s_sisdb_incr *worker)
 {
-	if (sis_incrzip_getsize(worker->incrzip) > 0)
-	{
-		sis_incrzip_compress_restart(worker->incrzip, init_);
-	}
+	sis_incrzip_compress_restart(worker->incrzip, 0);
 } 
 
 void sisdb_incr_zip_stop(s_sisdb_incr *worker)

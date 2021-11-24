@@ -77,7 +77,7 @@ static int cb_input_reader(void *context_, s_sis_object *imem_)
 	if (!imem_) // 为空表示无数据超时
 	{
 		// 数据超时就强制回调一次 只是为了尽快返回数据 不是要强制分段
-		sisdb_incr_zip_restart(context->work_ziper, 0);
+		sisdb_incr_zip_restart(context->work_ziper);
 	}
 	else
 	{
@@ -490,6 +490,7 @@ int _snodb_write_incrzip(void *context_, char *imem_, size_t isize_)
 	int isinit = sis_incrzip_isinit((uint8 *)imem_, isize_);
 	if (isinit == 1)
 	{
+		// printf("near_obj ::::  %p -> %p \n", context->near_object, obj);
 		context->near_object = obj;
 	}
 	sis_lock_list_push(context->outputs, obj);
@@ -522,7 +523,7 @@ int _snodb_write_bytes(s_snodb_cxt *context, int kidx, int sidx, void *imem, siz
 	sis_memory_cat_byte(memory, sidx, 2);
 	sis_memory_cat(memory, (char *)imem, isize);	
 	s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
-	// printf("-- input -- kidx_= %d, sidx_= %d isize = %zu\n", kidx, sidx, isize);
+	// printf("-- input -- kidx_= %d, sidx_= %d isize = %zu | %d %d\n", kidx, sidx, isize, context->work_ziper->page_size, context->work_ziper->part_size);
 	sis_fast_queue_push(context->inputs, obj);
 	
 	sis_object_destroy(obj);
