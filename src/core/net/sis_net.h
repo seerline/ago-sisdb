@@ -36,6 +36,14 @@
 #define SIS_NET_CRYPT_SSL      1
 
 // 网络协议 最外层的数据包
+// 以 tcp://127.0.0.1:7329
+// 以 redis://127.0.0.1:7329 redis协议格式
+// 以 ws://127.0.0.1:7329 
+// 以 wss://127.0.0.1:7329
+// 以 http://127.0.0.1:7329
+// 以 https://127.0.0.1:7329
+// 以 file://127.0.0.1:7329 和网络文件交互 需要用户名
+
 #define SIS_NET_PROTOCOL_TCP   0  // 默认为TCP打包协议 仍然是WS包协议
 #define SIS_NET_PROTOCOL_WS    1  // 可扩展为WS打包协议 如果是字符串就是原文 如果是字节流 最后必然有一个描述结构体 s_sis_net_tail
 #define SIS_NET_PROTOCOL_RDS   2  // 可扩展为redis协议 此时 format compress coded 全部失效

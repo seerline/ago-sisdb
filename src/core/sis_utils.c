@@ -7,6 +7,10 @@
 
 s_sis_sds sis_sdbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
 {
+	if (!in_)
+	{
+		in_ = sis_sdsempty();
+	}
 	in_ = sis_sdscatfmt(in_, "%s:", db_->name);
 	in_ = sis_sdscat(in_, "{fields:{");
 	char sign[5];
