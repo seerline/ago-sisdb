@@ -149,6 +149,12 @@ s_sis_sds sis_sdsdup(const s_sis_sds s)
     return sis_sdsnewlen(s, sis_sdslen(s));
 }
 
+void *sis_sdspos(void *s_)
+{
+    s_sis_sds s = (s_sis_sds)s_;
+    return (char *)s - sdsHdrSize(s[-1]);
+}
+
 /* Free an s_sis_sds string. No operation is performed if 's' is NULL. */
 void sis_sdsfree(s_sis_sds s)
 {

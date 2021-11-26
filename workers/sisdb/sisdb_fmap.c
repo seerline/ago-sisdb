@@ -288,6 +288,10 @@ s_sis_sds sisdb_fmap_cxt_get_sdbs(s_sisdb_fmap_cxt *cxt_, int isname_, int iszip
 	}
     s_sis_sds msg = sis_json_to_sds(jone, iszip_);
     // printf("sdbs = %s\n", msg);
+	if (!isname_)
+	{
+		sis_json_delete_node(jdbs);
+	}
     sis_json_delete_node(jone);
     return msg;
 }
@@ -307,7 +311,7 @@ int sisdb_fmap_cxt_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	else
 	{
-		printf("===11 ==== %s %lld %lld\n", cmd_->key, cmd_->start, cmd_->stop);
+		printf("===11 ==== %s %lld %lld %d\n", cmd_->key, cmd_->start, cmd_->stop, cmd_->offset);
 		sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 		printf("===11 ==== %d\n", ((s_sis_struct_list *)unit->value)->count);
 	}

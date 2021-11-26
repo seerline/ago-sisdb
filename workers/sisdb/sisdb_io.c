@@ -35,6 +35,10 @@ static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_j
     s_sis_json_node *range = sis_json_cmp_child_node(node_, "range");
     if (range)
     {
+        if (sis_json_cmp_child_node(range, "offset"))
+        {
+            cmd_->offset = sis_json_get_int(range, "offset", 0);;
+        }
         if (sis_json_cmp_child_node(range, "start"))
         {
             cmd_->start = sis_json_get_int(range, "start", 0);;
@@ -53,6 +57,11 @@ static int _init_cmd_from_get(s_sisdb_fmap_cmd *cmd_,  const char *key_, s_sis_j
         {
             cmd_->cmpmode = SISDB_FMAP_CMP_WHERE;
             cmd_->stop = 0;
+            // where 不支持偏移 通常用于定位查找
+            if (sis_json_cmp_child_node(where, "offset"))
+            {
+                cmd_->offset = sis_json_get_int(where, "offset", 0);;
+            }
             if (sis_json_cmp_child_node(where, "start"))
             {
                 cmd_->start = sis_json_get_int(where, "start", 0);;

@@ -98,10 +98,10 @@ void _net_mems_move_write(s_sis_net_mems *nodes_)
 	nodes_->wuses = 0;
 	nodes_->wnode = nodes_->whead;
 }
-static int64 _send_nums = 0;
-static int64 _send_size = 0;
-static int64 _recv_nums = 0;
-static int64 _recv_size = 0;
+// static int64 _send_nums = 0;
+// static int64 _send_size = 0;
+// static int64 _recv_nums = 0;
+// static int64 _recv_size = 0;
 
 // 清理读缓存
 void _net_mems_move_read(s_sis_net_mems *nodes_)

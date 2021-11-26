@@ -152,7 +152,7 @@ typedef struct s_sisdb_fmap_cmd
 	// 日期型以 start 为基准日期加载数据 默认stop为当日
 	msec_t             stop;          // 时间或索引字段的 结束值
 	// 如果超过 count 限制 就截断 count 优先级高
-	int8               offset;        // 以开始时间为定位 -1 向前一条记录 1 向后一条记录 
+	int                offset;        // 以开始时间为定位 -1 向前一条记录 1 向后一条记录 
 	// 如果时间一样就一直到不一样的记录 
 	// offset 不能超过 255 基本是一年的数据
 	int8               ifprev;        // 1 如果没有匹配数据取前一个数据 
@@ -209,7 +209,7 @@ int sisdb_fmap_cmp_find_head(s_sisdb_fmap_unit *unit_, msec_t  start_);
 // 找到一个最接近的后置位置
 int sisdb_fmap_cmp_find_tail(s_sisdb_fmap_unit *unit_, msec_t  start_);
 // 必须找到一个相等值，否则返回-1
-int sisdb_fmap_cmp_where(s_sisdb_fmap_unit *unit_, msec_t start_, msec_t stop_, s_sisdb_fmap_cmp *ans_);
+int sisdb_fmap_cmp_where(s_sisdb_fmap_unit *unit_, msec_t start_, int offset_, s_sisdb_fmap_cmp *ans_);
 // 找到匹配的区间数据，否则返回-1
 int sisdb_fmap_cmp_range(s_sisdb_fmap_unit *unit_, int64 start_, int64 stop_, int8 ifprev_, s_sisdb_fmap_cmp *ans_);
 
