@@ -141,7 +141,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
         // 清理上次返回的信息
         if (ask && msg_->switchs.is_reply)
         {
-            SIS_NET_SHOW_MSG("_cb_recv ask", msg_);
+            // SIS_NET_SHOW_MSG("_cb_recv ask", msg_);
             switch (msg_->rans)
             {
             case SIS_NET_ANS_SUB_OPEN:

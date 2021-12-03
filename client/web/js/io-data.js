@@ -38,7 +38,7 @@ var initLists = {
   sisdb_service : ['after'],
   sisdb_cmd : ['get'],
   sisdb_key : ['sh600600.stk_day'],
-  sisdb_ask : ['{"range":{"start:-1"}}']
+  sisdb_ask : ['{"range":{"start":0,"stop":-1}}', '{"where":{"start":19930911,"offset":-1}}']
 };
 
 function loadListData(wname){
@@ -63,6 +63,8 @@ function loadListData(wname){
 }
 
 function saveListData(wname, comstr){
+  var curr_name = wname + '_curr';
+  localStorage.setItem(curr_name, comstr);
   if (comstr == undefined || comstr == '')
   {
     return ;
@@ -99,4 +101,8 @@ $(function(){
   $('#send-ask').autocomplete({
     lookup: loadListData('sisdb_ask'),
   });
+  document.getElementById("send-service").value = localStorage.getItem('sisdb_service' + '_curr');;
+  document.getElementById("send-cmd").value = localStorage.getItem('sisdb_cmd' + '_curr');;
+  document.getElementById("send-key").value = localStorage.getItem('sisdb_key' + '_curr');;
+  document.getElementById("send-ask").value = localStorage.getItem('sisdb_ask' + '_curr');;
 });
