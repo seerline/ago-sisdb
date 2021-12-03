@@ -399,7 +399,6 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
-    printf("====1.1=====\n");
     // sis_net_message_incr(netmsg);
     // SIS_NET_SHOW_MSG("server recv:", netmsg);
     int access = sisdb_server_get_access(context, netmsg);
@@ -460,9 +459,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         {
             // 此时已经写完log 再开始处理
             // 注意这里必须堵塞处理 避免多线程冲突 也就是一个请求处理完再处理下一个
-            printf("====1=====\n");
             sisdb_server_send_service(worker, netmsg->service, netmsg->cmd, netmsg);
-            printf("====2=====\n");
         }
         else
         {
@@ -471,7 +468,6 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         }
     }
 	// sis_net_message_decr(netmsg);
-    printf("====1.2=====\n");
 	return 0;
 }
 

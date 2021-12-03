@@ -118,11 +118,11 @@ int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	int open_year = openyear; 
 	int stop_year = stopyear;
 	int index = 0;
-	printf("==511==, %d %d %d\n", unit_->fidxs->count, openyear, stopyear);
+	// printf("==511==, %d %d %d\n", unit_->fidxs->count, openyear, stopyear);
 	while (open_year <= stop_year && index < unit_->fidxs->count)
 	{
 		s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
-		printf("==512==, %d %d\n", open_year, pidx->isign);
+		// printf("==512==, %d %d\n", open_year, pidx->isign);
 		if (open_year == pidx->isign)
 		{
 			if (pidx->start == -1)
@@ -291,20 +291,27 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					{
 						int head_date = _fmap_cxt_get_head_sign(cxt_, unit_);
 						int tail_date = _fmap_cxt_get_tail_sign(cxt_, unit_);
-						start = start_ <= 0 ? head_date : start_;
+						start = start_ <= 0 ? start_ < 0 ? tail_date : head_date : start_;
 						stop  = stop_ < 0 ? tail_date : stop_;
 						if (stop_ == 0)
 						{
 							stop = start; 
 						}
+						// printf("==512==, %d %d %d %d\n", start,  stop, count, unit_->fidxs->count);
 					}
 					else
 					{
 						start = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, start_);
 						stop = sis_time_unit_convert(unit_->sdb->field_mindex->style, SIS_DYNAMIC_TYPE_YEAR, stop_);
 					}
-					printf("==52==, %d %d %d %d\n", start,  stop, count, unit_->fidxs->count);
 					count = _fmap_cxt_getdata_year(cxt_, unit_, start, stop);
+					printf("==52==, %lld %lld | %d %d %d %d\n", start_, stop_, start,  stop, count, unit_->fidxs->count);
+					// for (int i = 0; i < unit_->fidxs->count; i++)
+					// {
+					// 	s_sisdb_fmap_idx *fpidx = sis_struct_list_get(unit_->fidxs, i);
+					// 	printf("==52==, %d\n", fpidx->isign);
+					// }
+					
 				}
 				else
 				{
@@ -328,6 +335,7 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 					}
 					// 无论是何类型都转换为日 要加载就加载一天 
 					count = _fmap_cxt_getdata_date(cxt_, unit_, start, stop);
+					printf("==152==, %d %d %d %d\n", start,  stop, count, unit_->fidxs->count);
 				}
 			}
 		}
