@@ -651,7 +651,7 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 	int count = sis_net_mems_read(cxt->recv_nodes, 0);
 	if (count > 0)
 	{
-		printf("recv : %d %zu\n", count, cxt->recv_nodes->rsize);
+		// printf("recv : %d %zu\n", count, cxt->recv_nodes->rsize);
 		s_sis_net_message *netmsg = sis_net_message_create();
 		int status = 0;
 		s_sis_net_mem *mem = sis_net_mems_pop(cxt->recv_nodes);
@@ -668,12 +668,14 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 			if (status == 1)
 			{
 				netmsg->cid = cxt->rid;
-				// SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
+				SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
 				// if (netmsg->switchs.has_argvs)
 				if (cxt->cb_reply)
 				{
 					cxt->cb_reply(cxt->cb_source, netmsg);
 				}
+				sis_net_message_destroy(netmsg);
+				netmsg = sis_net_message_create();
 				continue;
 			}			
 			else if (status == 0)
@@ -842,7 +844,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 		return -1;
 	}
 	// SIS_NET_SHOW_MSG("send:", mess_);
-	sis_net_message_incr(mess_);
+	// sis_net_message_incr(mess_);
 	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, mess_->cid);
 	if (cxt)
 	{
@@ -862,7 +864,7 @@ int sis_net_class_send(s_sis_net_class *cls_, s_sis_net_message *mess_)
 			sis_memory_destroy(sendmem);
 		}	
 	}
-	sis_net_message_decr(mess_);
+	// sis_net_message_decr(mess_);
 	return 0;
 }
 

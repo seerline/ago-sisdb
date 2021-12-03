@@ -399,7 +399,29 @@ int sisdb_fmap_cmp_same(s_sisdb_fmap_unit *unit_, msec_t  start_, s_sisdb_fmap_c
 	}
 	return -1;
 }
-
+// 根据当前的搜索结果强制向前寻找记录
+// offset_ 仅仅为偏移记录数 不做变量值比较
+int sisdb_fmap_offset_prev(s_sisdb_fmap_unit *unit_, int  offset_, int count_, s_sisdb_fmap_cmp *ans_)
+{
+	// 此时 ans 有值
+	if (ans_->oindex < 0)
+	{
+		// 前面没有数据了
+		return -1;
+	}
+	for (int i = 0; i > offset_; i--)
+	{
+		if (ans_->oindex == 0)
+		{
+			break;
+		}
+		ans_->oindex--; 
+		ans_->ocount++;
+	}
+	ans_->ocount = sis_min(ans_->ocount, count_);
+	ans_->ostart = sisdb_fmap_unit_get_mindex(unit_, ans_->oindex);
+	return ans_->ocount;
+}
 // 默认如果设置了日期 无论如何只能得到之前或当前的数据
 #define CMP_FIND_OK     0   // 定位到数据
 #define CMP_FIND_AGO    1   // 没找到相等数据 返回数据为前置第一条 supply = 1 有效
@@ -536,15 +558,21 @@ int _fmap_cmp_range_tail(s_sisdb_fmap_unit *unit_, msec_t mindex_, s_sisdb_fmap_
 	}
 	return cmp_->ocount > 0 ? CMP_FIND_OK : i < 0 ? CMP_HEAD_NONE : CMP_TAIL_NONE;
 }
-int sisdb_fmap_cmp_where(s_sisdb_fmap_unit *unit_, msec_t  start_, msec_t  stop_, s_sisdb_fmap_cmp *ans_)
+int sisdb_fmap_cmp_where(s_sisdb_fmap_unit *unit_, msec_t  start_, int  offset_, s_sisdb_fmap_cmp *ans_)
 {
-	if (stop_ == 0)
+	int nums = sisdb_fmap_cmp_same(unit_, start_, ans_);
+	LOG(8)("where :: %d %d %d\n", start_, offset_, nums);
+	if (offset_ == 0)
 	{
-		return sisdb_fmap_cmp_same(unit_, start_, ans_);
+		return nums;
+	}
+	else if (offset_ < 0)
+	{
+		return sisdb_fmap_offset_prev(unit_, offset_, 1, ans_);
 	}
 	else
 	{
-		LOG(8)("where :::: stop [%lld] != 0\n", stop_);
+		LOG(8)("where :::: offset [%lld] > 0\n", offset_);
 	}
 	return -1;
 }

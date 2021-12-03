@@ -14,10 +14,11 @@
   <div>
     <div id="searchfield">
       <form>
-        <input type="text" name="currency3" class="biginput" id="send-service">
-        <input type="text" name="currency1" class="biginput" id="send-cmd">
-        <input type="text" name="currency2" class="biginput" id="send-key">
-        <input type="text" name="currency4" class="biginput" id="send-ask">
+        <input type="text" name="currency3" placeholder="service : sisdb" class="biginput" id="send-service">
+        <input type="text" name="currency1" placeholder="cmd : get" class="biginput" id="send-cmd">
+        <input type="text" name="currency2" placeholder="key : sh600600.stk_day" class="biginput" id="send-key">
+        <input type="text" name="currency4" class="biginput" id="send-ask"
+            placeholder='ask : {"range":{"start:-1"}}' >
       </form>
       <button onclick="connect()">connect</button>
       <button onclick="auth()">auth-admin</button>
@@ -77,7 +78,10 @@
       console.log("format error.", JSON.stringify(doc));
       return ;
     }
-    saveListData(JSON.stringify(doc));
+    saveListData("sisdb_service", doc.service);
+    saveListData("sisdb_cmd",     doc.cmd);
+    saveListData("sisdb_key",     doc.key);
+    saveListData("sisdb_ask",     doc.ask);
     send_single_command(
       { cmd : JSON.stringify(doc) },
       function reply(data) {

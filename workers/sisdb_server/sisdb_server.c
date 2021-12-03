@@ -309,6 +309,15 @@ void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_messag
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
+void sisdb_server_reply_no_auth(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
+{
+    // s_sis_net_message *newmsg = sis_net_message_create();
+    // newmsg->cid = netmsg->cid;
+    printf("====1.1.1=====%p\n", netmsg);
+    sis_net_ans_with_error(netmsg, "no auth.", 8);
+    sis_net_class_send(context->socket, netmsg);
+    // sis_net_message_destroy(newmsg);
+}
 void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const char *cmdname, s_sis_net_message *netmsg)
 {
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
@@ -390,14 +399,13 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
-
-    sis_net_message_incr(netmsg);
+    printf("====1.1=====\n");
+    // sis_net_message_incr(netmsg);
     // SIS_NET_SHOW_MSG("server recv:", netmsg);
     int access = sisdb_server_get_access(context, netmsg);
     if ( access < 0 && sis_strcasecmp("auth", netmsg->cmd))
     {
-        sis_net_ans_with_error(netmsg, "no auth.", 0);
-        sis_net_class_send(context->socket, netmsg);
+        sisdb_server_reply_no_auth(context, netmsg);
     }
     else
     {
@@ -451,7 +459,10 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         if (ismake)
         {
             // 此时已经写完log 再开始处理
+            // 注意这里必须堵塞处理 避免多线程冲突 也就是一个请求处理完再处理下一个
+            printf("====1=====\n");
             sisdb_server_send_service(worker, netmsg->service, netmsg->cmd, netmsg);
+            printf("====2=====\n");
         }
         else
         {
@@ -459,7 +470,8 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
             sis_net_class_send(context->socket, netmsg);
         }
     }
-	sis_net_message_decr(netmsg);
+	// sis_net_message_decr(netmsg);
+    printf("====1.2=====\n");
 	return 0;
 }
 

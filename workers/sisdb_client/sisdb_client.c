@@ -13,7 +13,8 @@
 ///////////////////////////////////////////////////
 
 struct s_sis_method sisdb_client_methods[] = {
-    {"setcb",            cmd_sisdb_client_setcb,        0, NULL},  // 堵塞直到数据返回
+    {"setcb",            cmd_sisdb_client_setcb,        0, NULL},  // 
+    {"status",           cmd_sisdb_client_status,       0, NULL},  // 0 不工作 1 工作中
     {"ask-chars-wait",   cmd_sisdb_client_chars_wait,   0, NULL},  // 堵塞直到数据返回
     {"ask-bytes-wait",   cmd_sisdb_client_bytes_wait,   0, NULL},  // 堵塞直到数据返回
     {"ask-chars-nowait", cmd_sisdb_client_chars_nowait, 0, NULL},  // 不堵塞
@@ -414,6 +415,12 @@ int cmd_sisdb_client_setcb(void *worker_, void *argv_)
     context->cb_disconnect = sis_message_get_method(msg, "cb_disconnect");
     return SIS_METHOD_OK;
 }
+int cmd_sisdb_client_status(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_client_cxt *context = (s_sisdb_client_cxt *)worker->context;
+    return context->status == SIS_CLI_STATUS_WORK;
+}
 int cmd_sisdb_client_chars_wait(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -441,8 +448,8 @@ int cmd_sisdb_client_chars_wait(void *worker_, void *argv_)
     int waitmsec = 10000;
     while(!msg->switchs.is_reply && waitmsec > 0)
     {
-        sis_sleep(1);
         waitmsec--;
+        sis_sleep(1);
     }
     // printf("start 1 : %d\n", (unsigned int)sis_thread_self());
     // sis_wait_start(&context->wait);

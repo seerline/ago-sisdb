@@ -113,6 +113,7 @@ static void cb_start(void *context_, int idate)
         context->cb_sub_start(context->cb_source, sdate);
     } 
     _speed_sno = sis_time_get_now_msec();
+    // printf("======. %d cost : %lld\n", idate, _speed_sno);
 }
 static void cb_stop(void *context_, int idate)
 {

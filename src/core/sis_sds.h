@@ -207,7 +207,13 @@ s_sis_sds sis_sdsnewlen(const void *init, size_t initlen);
 s_sis_sds sis_sdsnew(const char *init);
 s_sis_sds sis_sdsempty(void);
 s_sis_sds sis_sdsdup(const s_sis_sds s);
+void *sis_sdspos(void *);
 void sis_sdsfree(s_sis_sds s);
+
+/* #define  sis_sdsfree(s)   { \
+//     if (s) {  printf("%s %lld %p\n", __func__, (int64)sis_thread_self(), s);\
+//     sis_free(sis_sdspos(s)); }}
+*/
 s_sis_sds sis_sdsgrowzero(s_sis_sds s, size_t len);
 s_sis_sds sis_sdscatlen(s_sis_sds s, const void *t, size_t len);
 s_sis_sds sis_sdscat(s_sis_sds s, const char *t);

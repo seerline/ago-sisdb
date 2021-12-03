@@ -268,12 +268,12 @@ static void *_thread_rsdb_read_sub(void *argv_)
 
     context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB, rsdb_cb);
 
-    LOG(5)("sub sno open. [%d]\n", context->work_date);
+    LOG(5)("sub sdb open. [%d]\n", context->work_date);
     s_sis_msec_pair smsec;
     smsec.start = sis_time_make_time(context->work_date.start, 0) * 1000;
     smsec.stop = sis_time_make_time(context->work_date.stop, 235959) * 1000 + 999;
     sis_disk_reader_sub_sdb(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
-    LOG(5)("sub sno stop. [%d]\n", context->work_date);
+    LOG(5)("sub sdb stop. [%d]\n", context->work_date);
 
     sis_disk_reader_destroy(context->work_reader);
     context->work_reader = NULL;

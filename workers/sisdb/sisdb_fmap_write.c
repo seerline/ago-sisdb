@@ -157,7 +157,7 @@ int sisdb_fmap_cxt_tsdb_del(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s_
 	// 根据 cmd 信息计算针对列表的开始索引和数量
 	if (cmd_->cmpmode == SISDB_FMAP_CMP_WHERE) // 完全匹配 
 	{
-		if (sisdb_fmap_cmp_where(unit_, cmd_->start, cmd_->stop, &ans) < 0)
+		if (sisdb_fmap_cmp_where(unit_, cmd_->start, 0, &ans) < 0)
 		{
 			return 0;
 		}
