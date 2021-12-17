@@ -461,6 +461,7 @@ char *sis_memory_read_line(s_sis_memory *m_, size_t *len_)
     }
     return NULL;
 }
+// 有些很恶心的csv文件 居然有 0x00 的存在 需要过滤掉
 size_t sis_memory_get_line_sign(s_sis_memory *m_)
 {
 	if (!m_ || (m_->offset == m_->size))
@@ -470,7 +471,8 @@ size_t sis_memory_get_line_sign(s_sis_memory *m_)
 	char rtn = '\n';
 	char *ptr = sis_memory(m_);
 	size_t len = 0;
-	while (*ptr && (unsigned char)*ptr != rtn)
+	// while (*ptr && (unsigned char)*ptr != rtn)
+	while ((*ptr && (unsigned char)*ptr != rtn) || *ptr == 0x0)
 	{
 		if ((m_->offset + len) < m_->size - 1)
 		{

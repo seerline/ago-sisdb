@@ -264,7 +264,7 @@ int sis_file_csv_read_sub(const char *name_, char c_, void *cb_source, sis_metho
 	unit.argv = NULL;
 	unit.argsize = NULL;
 
-	size_t rsize = 0;
+	// size_t rsize = 0;
 	sis_file_seek(o->fp, 0, SEEK_SET);
 	s_sis_memory *memory = sis_memory_create();
 	while (1)
@@ -276,12 +276,12 @@ int sis_file_csv_read_sub(const char *name_, char c_, void *cb_source, sis_metho
 			break;
 		}
 		size_t offset = sis_memory_get_line_sign(memory);
-		rsize += bytes;
-		if (offset == 0)
-		{
-			sis_out_binary("--", sis_memory(memory), 128);
-		}
-		printf("1 rsize = %zu %zu | %zu %zu: offset = %zu\n", rsize, sis_memory_get_size(memory), memory->offset, memory->size, offset);
+		// rsize += bytes;
+		// if (offset == 0)
+		// {
+		// 	sis_out_binary("--", sis_memory(memory), 128);
+		// }
+		// printf("1 rsize = %zu %zu | %zu %zu: offset = %zu\n", rsize, sis_memory_get_size(memory), memory->offset, memory->size, offset);
 		// 偏移位置包括回车字符 0 表示没有回车符号，需要继续读
 		// sis_sleep(1000);
 		while (offset)
