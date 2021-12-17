@@ -409,7 +409,9 @@ void snodb_reader_destroy(void *reader_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
 	// 必须先关闭读句柄 数据才会不再写入 再关闭其他
-	// LOG(8)("reader close. cid = %d %d %p %p \n", reader->cid, reader->sub_disk, reader->reader, reader->sub_disker);
+	// LOG(8)("reader close. cid = %d %d %p %p | %p %p\n", reader->cid, reader->sub_disk, 
+	// 	reader->reader, reader->sub_disker,
+	// 	reader->sub_unziper, reader->sub_ziper);
 	if (reader->reader)
 	{
 		sis_lock_reader_close(reader->reader);	
@@ -477,6 +479,7 @@ int snodb_remove_reader(s_snodb_cxt *snodb_, int cid_)
 		s_snodb_reader *reader = sis_map_kint_get(snodb_->cur_reader_map, cid_);
 		if (reader)
 		{
+			// 实时订阅下面这句会异常
 			sis_map_kint_del(snodb_->cur_reader_map, cid_);
 			snodb_->cur_readers--;
 			snodb_->cur_readers = sis_max(snodb_->cur_readers, 0);
@@ -765,11 +768,13 @@ int snodb_reader_realtime_stop(s_snodb_reader *reader_)
 		{
 			sisdb_incr_zip_stop(reader_->sub_ziper);
 			sisdb_incr_destroy(reader_->sub_ziper);
+			reader_->sub_ziper = NULL;
 		}
 		if (reader_->sub_unziper)
 		{
 			sisdb_incr_zip_stop(reader_->sub_unziper);
 			sisdb_incr_destroy(reader_->sub_unziper);
+			reader_->sub_unziper = NULL;
 		}
 	}
 	if (reader_->reader)

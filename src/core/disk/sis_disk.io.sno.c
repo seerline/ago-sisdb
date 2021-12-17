@@ -526,7 +526,7 @@ int sis_disk_io_sub_sno_part(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     s_sis_pointer_list *subparts = sis_pointer_list_create(); 
     // 获取数据索引列表 --> filters
     _disk_io_sub_sno_parts(cls_, rcatch_, subparts);
-    LOG(5)("sub filters count =  %d \n", subparts->count);
+    LOG(5)("sub filters count =  %d %s %s\n", subparts->count, rcatch_->sub_keys, rcatch_->sub_sdbs);
     if(subparts->count < 1)
     {
         sis_pointer_list_destroy(subparts);
@@ -624,7 +624,7 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
         _disk_io_callback_sno_dict(cls_, callback);
         sis_disk_io_sub_sno_part(cls_, cls_->rcatch); 
     }
-    printf("sub sno stop...................%d\n", cls_->isstop);
+    // printf("sub sno stop...................%d\n", cls_->isstop);
     // 不是因为中断而结束 就发送stop标志
     if (callback->cb_bytedata || callback->cb_chardata)
     {

@@ -15,6 +15,7 @@ s_sisdb_incr *sisdb_incr_create()
 
 void sisdb_incr_destroy(s_sisdb_incr *worker)
 {
+	// printf("=== free %p\n", worker->work_keys);
 	sis_map_list_destroy(worker->work_keys);
 	sis_map_list_destroy(worker->work_sdbs);
 	sis_free(worker);
@@ -161,9 +162,7 @@ void sisdb_incr_zip_set(s_sisdb_incr *worker, int kidx, int sidx, char *in_, siz
 		LOG(5)("no find sdb. %d : %d \n", sidx, sis_map_list_getsize(worker->work_sdbs));
 		return ;
 	}
-	// int curr_size = 
-	sis_incrzip_getsize(worker->incrzip);
-	
+	// int curr_size = sis_incrzip_getsize(worker->incrzip);
 	worker->summ_size += ilen_;
 	// LOG(5)("----- compress . %d %d\n", worker->summ_size, worker->page_size);
     if ((worker->summ_size) > worker->page_size)
