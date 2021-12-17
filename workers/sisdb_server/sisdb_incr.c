@@ -15,6 +15,7 @@ s_sisdb_incr *sisdb_incr_create()
 
 void sisdb_incr_destroy(s_sisdb_incr *worker)
 {
+	// printf("=== free %p\n", worker->work_keys);
 	sis_map_list_destroy(worker->work_keys);
 	sis_map_list_destroy(worker->work_sdbs);
 	sis_free(worker);
