@@ -10,6 +10,22 @@
 // 	{ SIS_NET_ANS_ERROR,   "noknown error."},
 // };
 
+// 如果把网络类比与找小明拿一份5月的工作计划，那么：
+// service 服务名   找什么人 - 找小明
+// command 指令名   找小明干什么 - 拿东西
+// subject 主体名   拿什么东西 - 拿工作计划
+// message 附属信息 什么样的工作计划 - 5月份的工作计划 
+// typedef struct s_sis_net_switch {
+// 	unsigned char service : 1;  // 请求有 service 应答有  --- 
+// 	unsigned char command : 1;  // 请求有 command 应答有  ---
+// 	unsigned char subject : 1;  // 请求有 subject 应答有  subject
+// 	unsigned char answer  : 1;  // 请求有 ---     应答有  answer - 整数 - 由此字段可知道是否应答 有answer一定表示应答包
+// 	unsigned char msgfmt  : 1;  // 附属信息格式 0 - 字符 1 - 二进制
+//     unsigned char msgmul  : 1;  // 是否为内部包 如果是 不扩散
+//     unsigned char message : 1;  // 表示有附属信息  0 - 无附属信息 1 - 表示有附属信息
+// 	unsigned char more    : 1;  // 表示有扩展字段  0 - 无扩展 1 - 扩展字段存储为 (klen+key+vlen+val)
+// } s_sis_net_switch;
+
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_net_message -----------------------------//
 ///////////////////////////////////////////////////////////////////////////

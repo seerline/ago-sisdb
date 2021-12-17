@@ -392,11 +392,13 @@ static int cb_reply(void *worker_, int rans_, const char *key_, const char *val_
 {
     s_sis_message *msg = (s_sis_message *)worker_;
     sis_sdsfree(msg->key);
+    msg->key = NULL;
     if (key_)
     {
         msg->key = sis_sdsnew(key_);
     }
     sis_sdsfree(msg->rmsg); 
+    msg->rmsg = NULL;
     if (val_)
     {
         msg->rmsg = sis_sdsnewlen(val_, vsize_);
@@ -445,10 +447,14 @@ int cmd_sisdb_client_chars_wait(void *worker_, void *argv_)
 
     sisdb_client_send_ask(context, ask);
 
-    int waitmsec = 10000;
-    while(!msg->switchs.is_reply && waitmsec > 0)
+    // int waitmsec = 10000;
+    // while(!msg->switchs.is_reply && waitmsec > 0)
+    // {
+    //     waitmsec--;
+    //     sis_sleep(1);
+    // }
+    while(!msg->switchs.is_reply && !SIS_SERVER_EXIT)
     {
-        waitmsec--;
         sis_sleep(1);
     }
     // printf("start 1 : %d\n", (unsigned int)sis_thread_self());
@@ -492,11 +498,15 @@ int cmd_sisdb_client_bytes_wait(void *worker_, void *argv_)
     sisdb_client_send_ask(context, ask);
 
     // 这里如果时间太久会应答错误 以后再处理
-    int waitmsec = 10000;
-    while(!msg->switchs.is_reply && waitmsec > 0)
+    // int waitmsec = 10000;
+    // while(!msg->switchs.is_reply && waitmsec > 0)
+    // {
+    //     sis_sleep(1);
+    //     waitmsec--;
+    // }
+    while(!msg->switchs.is_reply && !SIS_SERVER_EXIT)
     {
         sis_sleep(1);
-        waitmsec--;
     }
     // printf("start 1 : %d\n", (unsigned int)sis_thread_self());
     // sis_wait_start(&context->wait);

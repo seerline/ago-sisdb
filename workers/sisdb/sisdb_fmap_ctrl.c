@@ -404,11 +404,12 @@ int sisdb_fmap_cmp_same(s_sisdb_fmap_unit *unit_, msec_t  start_, s_sisdb_fmap_c
 int sisdb_fmap_offset_prev(s_sisdb_fmap_unit *unit_, int  offset_, int count_, s_sisdb_fmap_cmp *ans_)
 {
 	// 此时 ans 有值
-	if (ans_->oindex < 0)
+	if (ans_->oindex < 0 || ans_->oindex < -1 * offset_)
 	{
 		// 前面没有数据了
 		return -1;
 	}
+	// printf("sss1 : %d %d %d\n", ans_->ocount, ans_->oindex, ans_->ostart);
 	for (int i = 0; i > offset_; i--)
 	{
 		if (ans_->oindex == 0)
@@ -420,6 +421,7 @@ int sisdb_fmap_offset_prev(s_sisdb_fmap_unit *unit_, int  offset_, int count_, s
 	}
 	ans_->ocount = sis_min(ans_->ocount, count_);
 	ans_->ostart = sisdb_fmap_unit_get_mindex(unit_, ans_->oindex);
+	// printf("sss2 : %d %d %d\n", ans_->ocount, ans_->oindex, ans_->ostart);
 	return ans_->ocount;
 }
 // 默认如果设置了日期 无论如何只能得到之前或当前的数据

@@ -668,7 +668,7 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 			if (status == 1)
 			{
 				netmsg->cid = cxt->rid;
-				SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
+				// SIS_NET_SHOW_MSG("recv netmsg:", netmsg);
 				// if (netmsg->switchs.has_argvs)
 				if (cxt->cb_reply)
 				{

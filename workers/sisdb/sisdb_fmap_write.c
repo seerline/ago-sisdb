@@ -461,7 +461,7 @@ int _disk_save_fmap(s_sisdb_fmap_cxt *cxt, s_sis_disk_writer *wfile, s_sisdb_fma
         break;
     case SIS_SDB_STYLE_NON:	
         {
-            printf("save ==1== %d %d %d %d| %p\n", funit->ktype, funit->moved, funit->reads, funit->writed, funit->fidxs);
+            // printf("save ==1== %d %d %d %d| %p\n", funit->ktype, funit->moved, funit->reads, funit->writed, funit->fidxs);
             if (funit->moved)
             {
                 sis_disk_writer_sdb_remove(wfile, SIS_OBJ_GET_CHAR(funit->kname), SIS_OBJ_GET_CHAR(funit->sname), 0);
