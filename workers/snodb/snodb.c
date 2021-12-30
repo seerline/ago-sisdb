@@ -631,6 +631,11 @@ int cmd_snodb_sub(void *worker_, void *argv_)
 	s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	// SIS_NET_SHOW_MSG("register sub === ", netmsg);
+	int nowday = sis_time_get_idate(0);
+	if (nowday > context->work_date)
+	{
+		context->work_date = nowday;
+	}
 	snodb_register_reader(context, netmsg);
 	
 	return SIS_METHOD_OK;
