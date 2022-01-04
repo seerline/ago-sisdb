@@ -295,12 +295,23 @@ int sis_struct_list_append(s_sis_struct_list *src_, s_sis_struct_list *dst_)
 
 int sis_struct_list_pack(s_sis_struct_list *list_)
 {
-	char *tmp = (char *)sis_malloc(list_->count * list_->len);
-	memmove(tmp, (char *)list_->buffer + (list_->start * list_->len), list_->count * list_->len);
-	sis_free(list_->buffer);
-	list_->buffer = tmp;
-	list_->start = 0;
-	list_->maxcount = list_->count;
+	if (list_->count > 0)
+	{
+		char *tmp = (char *)sis_malloc(list_->count * list_->len);
+		memmove(tmp, (char *)list_->buffer + (list_->start * list_->len), list_->count * list_->len);
+		sis_free(list_->buffer);
+		list_->buffer = tmp;
+		list_->start = 0;
+		list_->maxcount = list_->count;
+	}
+	else
+	{
+		sis_free(list_->buffer);
+		list_->buffer = NULL;
+		list_->start = 0;
+		list_->count = 0;
+		list_->maxcount = 0;
+	}
 	return list_->count;
 }
 

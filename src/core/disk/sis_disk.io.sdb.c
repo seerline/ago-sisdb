@@ -545,9 +545,9 @@ int cb_sis_disk_io_read_sdb_widx(void *source_, s_sis_disk_head *head_, char *im
                 {
                     sis_sprintf(name, 255, "%s", kname);
                 }
+                printf("== %s %s %p %p\n", name, kname, kdict, sdict);
                 sis_sdsfree(kname);
                 // printf("%d %s %s\n", cls_->style, cls_->work_fps->cur_name, name);
-
                 s_sis_disk_idx *node = sis_disk_idx_create(kdict->name, sdict ? sdict->name : NULL);
                 int blocks = sis_memory_get_ssize(memory);
                 for (int i = 0; i < blocks; i++)
@@ -661,11 +661,11 @@ int cb_sis_disk_io_read_sdb_map(void *source_, s_sis_disk_head *head_, char *ime
             {
                 sis_disk_map_merge(agomap, map);
                 sis_disk_map_destroy(map);
-                for (int i = 0; i < sis_sort_list_getsize(agomap->sidxs); i++)
-                {
-                    s_sis_disk_map_unit *unit = sis_sort_list_get(agomap->sidxs, i);
-                    printf("+++map : %s %d %d\n", name, unit->active, unit->idate);
-                }
+                // for (int i = 0; i < sis_sort_list_getsize(agomap->sidxs); i++)
+                // {
+                //     s_sis_disk_map_unit *unit = sis_sort_list_get(agomap->sidxs, i);
+                //     printf("+++map : %s %d %d\n", name, unit->active, unit->idate);
+                // }
             }
             else
             {

@@ -27,7 +27,7 @@ int sisdb_fmap_cxt_tsdb_read(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, s
 			return 0;
 		}
 	}
-	printf("read tsdb :%lld %lld %d | %d %d\n", cmd_->start, cmd_->stop, slist->count, ans.ocount, ans.oindex);
+	printf("read tsdb :%lld %lld %d %d | %d %d\n", cmd_->start, cmd_->stop, cmd_->offset, slist->count, ans.ocount, ans.oindex);
 	if (ans.ocount > 0 && ans.oindex >= 0)
 	{
 		if (cmd_->cb_fmap_read)
@@ -122,7 +122,7 @@ int _fmap_cxt_getdata_year(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, int
 	while (open_year <= stop_year && index < unit_->fidxs->count)
 	{
 		s_sisdb_fmap_idx *pidx = sis_struct_list_get(unit_->fidxs, index);
-		// printf("==512==, %d %d\n", open_year, pidx->isign);
+		printf("==512==, %d %d\n", open_year, pidx->isign);
 		if (open_year == pidx->isign)
 		{
 			if (pidx->start == -1)

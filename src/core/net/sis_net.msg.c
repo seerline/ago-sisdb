@@ -16,15 +16,65 @@
 // subject 主体名   拿什么东西 - 拿工作计划
 // message 附属信息 什么样的工作计划 - 5月份的工作计划 
 // typedef struct s_sis_net_switch {
-// 	unsigned char service : 1;  // 请求有 service 应答有  --- 
-// 	unsigned char command : 1;  // 请求有 command 应答有  ---
-// 	unsigned char subject : 1;  // 请求有 subject 应答有  subject
-// 	unsigned char answer  : 1;  // 请求有 ---     应答有  answer - 整数 - 由此字段可知道是否应答 有answer一定表示应答包
-// 	unsigned char msgfmt  : 1;  // 附属信息格式 0 - 字符 1 - 二进制
-//     unsigned char msgmul  : 1;  // 是否为内部包 如果是 不扩散
-//     unsigned char message : 1;  // 表示有附属信息  0 - 无附属信息 1 - 表示有附属信息
-// 	unsigned char more    : 1;  // 表示有扩展字段  0 - 无扩展 1 - 扩展字段存储为 (klen+key+vlen+val)
+//     unsigned char service : 1;  // 请求有 service 应答有  --- 
+//     unsigned char cmd     : 1;  // 请求有 command 应答有  ---
+//     unsigned char subject : 1;  // 请求有 subject 应答有  subject
+//     unsigned char answer  : 1;  // 请求有 ---     应答有  answer - 整数 - 由此字段可知道是否应答 有answer一定表示应答包
+//     unsigned char msg     : 1;  // 表示有附属信息  0 - 无附属信息 1 - 表示有附属信息
+//     unsigned char fmt     : 1;  // msg的信息格式  0 - 字符 1 - 二进制
+//     unsigned char more    : 1;  // 表示有扩展字段  0 - 无扩展 1 - 扩展字段存储为 (klen+key+vlen+val)
+//     unsigned char crc32   : 1;  // 是否有crc校验  0 - 无 1 - 在数据末尾有4位字节表示crc校验 只有校验无误的包才合法 避免脏数据引起的系统崩溃
 // } s_sis_net_switch;
+    // unsigned char init    : 1;  // 是否为初始化包  0 - 无需保留 1 - 保存
+    // unsigned char next    : 1;  // 是否有分页数据  0 - 无分页 1 表示有分页 格式为 总页数+当前页号+总记录数
+    //  分页数据建议放入more中处理
+// 字符传输默认为 JSON 字符串 fmt 默认为字符型 其他字段按kv结构存放
+// 二进制传输第一个字节为 switch 然后按顺序获取信息填入解析体中 扩展字段第一个为字段数量 然后是kv结构
+// 注意 无论什么情况下 都需遵循ws协议包格式 数据头通常为 (size)name:(switch)(data)
+// *********************** //
+// 如果是转发服务器 需要解析数据包 保存set信息用于初始化客户端信息 对其他命令直接转发 数据做引用计数不做内存拷贝
+//        客户端连接成功 首先发送缓存的 set 数据包 然后从当前数据包头开始 转发数据 不做历史存留
+//        如果慢客户端 积累500M数据 自动断开连接
+// ************************ //
+// 内外网穿透 *** 配置映射表后 A P B 只能一一对应 场景P主动连A和B
+//    A 一旦联通 P , P 就主动去连接 B, PB 联不通 就挂断 AP
+//    AP一通 P就需要缓存A的数据D1 PB联通后把D1原样发送给B
+//    BP一通 P就需要缓存B的数据D2 PA联通状态下把D2原样发送给A 完成跳板
+// ************************ //
+// 点对点微服务原理
+// 启动 锁定本机UDP可用端口 并接收该端口消息 写入本地信息 同步远端信息 UDP仅仅用来做服务发现和整体监控
+// 同步信息完成后 生成一个服务展示台 提供8000口web本机监控
+//      明确哪些服务是可以直接连接的 哪些是需要通过其他IP转连的相当于路由链接
+// 默认开放8000-9000的所有端口防火墙
+// 用户服务首先登录 如果有登录就必须找到 auth 的服务 并继承 auth 的父节点名
+//  register("网络名","根节点IP","username","password");
+//         网络名为NULL 默认设置为ZZZ名称
+//         根节点为NULL表示仅仅在本网段去发现服务 如果本网段有中继 也可以跳出
+//         username 不能为NULL 必须有值
+//         password 为NULL 默认找非验证网络 通常用于本机调试适用
+//  NULL NULL ding NULL 用于本机测试
+//  main 192.168.3.118 ding NULL 首先链接118的8001端口 获取信息 链接不通就UDP获取邻居的信息
+
+// 创建时可能会花一些时间 主要判断用户信息和服务名等是否合法 
+// 合法的服务名最后会以 netname.username.servicename 的方式存在map 表中 方便定位和调用
+// service = olla_service_create(serviceinfo)
+//    serviceinfo 包括 网络信息 netinfo 用户信息 userinfo 权限信息 authinfo 服务名和版本 serviceinfo
+// 
+// olla_service_register_method(service, methodinfo)
+//    methodinfo 包括 方法名 mname 对应函数 cb 简介说明 minfo 权限信息 authinfo 
+// 
+
+// olla_service_open(service)
+// olla_service_close(service)
+// olla_service_start(service)
+// olla_service_stop(service)
+// olla_service_destroy(service)
+
+// 消息体的公用函数
+// olla_message_create()
+// olla_message_set()
+// olla_message_get()
+// olla_message_destroy()
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_net_message -----------------------------//

@@ -66,7 +66,7 @@ SET(SISDB_PATH ${CMAKE_SOURCE_DIR}/)
 LIST(APPEND IGNOREPATH ".DS_Store")
 LIST(APPEND IGNOREPATH "o")
 IF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    LIST(APPEND IGNOREPATH "market_api_wb")
+    # LIST(APPEND IGNOREPATH "market_api_wb")
 ENDIF ()    
 
 # make modules control file

@@ -703,6 +703,10 @@ int cmd_sisdb_clear(void *worker_, void *argv_)
             sisdb_sub_cxt_unsub(context->work_sub_cxt, sis_message_get_int(msg, "cid"));
         }
 	}
+    if (sis_strcasecmp(mode, "memory"))
+	{
+        // 清理所有内存数据
+	}
     return SIS_METHOD_OK;
 }
 

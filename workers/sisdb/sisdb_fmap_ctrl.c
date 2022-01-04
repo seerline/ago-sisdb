@@ -112,11 +112,18 @@ void sisdb_fmap_unit_clear(s_sisdb_fmap_unit *unit_)
 	default:
 		sis_struct_list_clear(unit_->fidxs);
 		sis_struct_list_clear(unit_->value);
+		sis_struct_list_pack(unit_->fidxs);
+		sis_struct_list_pack(unit_->value);
 		break;
 	}
 	unit_->reads = 0;
 	unit_->rmsec = 0;
 	unit_->moved = 0;
+	unit_->writed = 0;
+	unit_->start = 0;
+	unit_->stop = 0;
+	unit_->step = 0;
+
 }
 
 void sisdb_fmap_unit_reidx(s_sisdb_fmap_unit *unit_)
@@ -419,9 +426,14 @@ int sisdb_fmap_offset_prev(s_sisdb_fmap_unit *unit_, int  offset_, int count_, s
 		ans_->oindex--; 
 		ans_->ocount++;
 	}
+	// printf("sss2 : %d %lld\n", ans_->oindex, sisdb_fmap_unit_get_mindex(unit_, 235));
+	// printf("sss2 : %d %lld\n", ans_->oindex, sisdb_fmap_unit_get_mindex(unit_, 234));
+	// printf("sss2 : %d %lld\n", ans_->oindex, sisdb_fmap_unit_get_mindex(unit_, 233));
+	// printf("sss2 : %d %lld\n", ans_->oindex, sisdb_fmap_unit_get_mindex(unit_, 237));
+	// printf("sss2 : %d %lld\n", ans_->oindex, sisdb_fmap_unit_get_mindex(unit_, 236));
 	ans_->ocount = sis_min(ans_->ocount, count_);
 	ans_->ostart = sisdb_fmap_unit_get_mindex(unit_, ans_->oindex);
-	// printf("sss2 : %d %d %d\n", ans_->ocount, ans_->oindex, ans_->ostart);
+	// printf("sss3 : %d %d %d\n", ans_->ocount, ans_->oindex, ans_->ostart);
 	return ans_->ocount;
 }
 // 默认如果设置了日期 无论如何只能得到之前或当前的数据

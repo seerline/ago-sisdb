@@ -313,7 +313,7 @@ int sis_disk_reader_filters(s_sis_disk_reader *reader_, s_sis_disk_reader_unit *
                 rsub = sis_disk_reader_sub_create(info);
                 sis_map_list_set(reader_->subidxs, info, rsub);
             }
-            printf("== add : %d %s %s\n", count, SIS_OBJ_SDS(subidx->kname), SIS_OBJ_SDS(subidx->sname));
+            // printf("== add : %d %s %s\n", count, SIS_OBJ_SDS(subidx->kname), SIS_OBJ_SDS(subidx->sname));
             sis_disk_reader_sub_push(rsub, unit_, subidx);
             count++;
         }

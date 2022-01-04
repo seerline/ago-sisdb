@@ -27,6 +27,8 @@
 #define SIS_NET_ANS_NOAUTH      -1  // 未登录验证
 
 #define SIS_NET_ANS_OK           0  // 数据正确
+#define SIS_NET_ANS_SUB_KEY      3  // 订阅时返回的键值 OPEN时初始化 然后递增
+#define SIS_NET_ANS_SUB_SDB      4  // 订阅是返回的结构 OPEN时初始化 然后递增
 #define SIS_NET_ANS_SUB_OPEN     5  // 订阅开始
 #define SIS_NET_ANS_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
 #define SIS_NET_ANS_SUB_STOP     7  // 订阅结束

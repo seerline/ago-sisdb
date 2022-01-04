@@ -398,7 +398,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 {
 	s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(cxt_, cmd_->key);
 
-    printf("sisdb_fmap_cxt_update ==== %d\n", sisdb_fmap_cxt_get_key_count(cxt_));
+    // printf("sisdb_fmap_cxt_update ==== %d %p\n", sisdb_fmap_cxt_get_key_count(cxt_), unit);
 
 	if (!unit)
 	{
@@ -406,6 +406,14 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 	}
 	else
 	{
+		// 这里计算 start stop 的值
+		if (unit->ktype == SIS_SDB_STYLE_SDB)
+		{
+			int count = cmd_->isize / unit->sdb->size;
+			cmd_->start = sis_dynamic_db_get_mindex(unit->sdb, 0, cmd_->imem, cmd_->isize);
+			cmd_->stop  = sis_dynamic_db_get_mindex(unit->sdb, count - 1, cmd_->imem, cmd_->isize);
+		}
+		// printf("unit count == %d | %lld %lld\n", ((s_sis_struct_list *)unit->value)->count, cmd_->start, cmd_->stop);
 		sisdb_fmap_cxt_read_data(cxt_, unit, cmd_->key, cmd_->start, cmd_->stop);
 	}
 	if (!unit)
@@ -413,7 +421,7 @@ int sisdb_fmap_cxt_update(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_cmd *cmd_)
 		LOG(5)("no create fmap : %s %lld %lld %d\n", cmd_->key, cmd_->start, cmd_->stop, cmd_->ktype);
 		return 0;
 	}
-	// printf("unit == %d\n", unit->ktype);
+	// printf("unit count == %d\n", ((s_sis_struct_list *)unit->value)->count);
 	switch (unit->ktype)
 	{
 	case SIS_SDB_STYLE_ONE:

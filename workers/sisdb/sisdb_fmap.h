@@ -52,6 +52,8 @@ typedef struct s_sisdb_fmap_unit
     s_sis_object        *kname;  // 可能多次引用 - 指向dict表的name
     s_sis_object        *sname;  // 可能多次引用 - 指向dict表的name
 	uint8                ktype;  // 该键值的数据类型
+	s_sis_dynamic_db    *sdb;    // 对应的结构表
+	/////////////////////////////
 	uint8                reads;  // 读取次数 0 表示还没有读 最大 255 每天减少 1/2 销毁时根据该值大小排序
 	// 以上信息来源于 map 的索引信息
 	msec_t               rmsec;  // 最近读的毫秒数 只记录读的毫秒数 大多数键值写入后就不读了，默认36小时没有再读就释放
@@ -66,7 +68,6 @@ typedef struct s_sisdb_fmap_unit
 	msec_t               start;  // 开始时间
 	msec_t               stop;   // 结束时间
 	double               step;   // 间隔时间，每条记录大约间隔时间，
-	s_sis_dynamic_db    *sdb;    // 对应的结构表
 } s_sisdb_fmap_unit;
 
 // 映射表定义
@@ -270,5 +271,10 @@ int sisdb_fmap_cxt_read_data(s_sisdb_fmap_cxt *cxt_, s_sisdb_fmap_unit *unit_, c
 
 // 持久化数据到硬盘
 int sisdb_fmap_cxt_save(s_sisdb_fmap_cxt *cxt_, const char *work_path_, const char *work_name_);
+
+// 清理内存数据 必须在存盘后操作
+// level_ == 0 清理所有
+//        == 1 清理日线下所有数据
+int sisdb_fmap_cxt_free_data(s_sisdb_fmap_cxt *cxt_, int level_);
 
 #endif /* _SIS_COLLECT_H */

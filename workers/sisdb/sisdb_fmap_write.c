@@ -543,3 +543,30 @@ int sisdb_fmap_cxt_save(s_sisdb_fmap_cxt *cxt_, const char *work_path_, const ch
     }	
 	return count;
 }
+
+int sisdb_fmap_cxt_free_data(s_sisdb_fmap_cxt *cxt_, int level_)
+{
+	s_sis_dict_entry *de;
+	s_sis_dict_iter *di = sis_dict_get_iter(cxt_->work_keys);
+	while ((de = sis_dict_next(di)) != NULL)
+	{
+		s_sisdb_fmap_unit *funit = (s_sisdb_fmap_unit *)sis_dict_getval(de);
+		switch(level_)
+		{
+			case 0:
+				sisdb_fmap_unit_clear(funit);
+				break;
+			case 1:
+				{
+					if (funit->scale == SIS_SDB_SCALE_DATE)
+					{
+						sisdb_fmap_unit_clear(funit);
+					}
+				}
+				break;
+		}
+	}
+	sis_dict_iter_free(di);
+	return 0;
+}
+
