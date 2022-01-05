@@ -562,6 +562,8 @@ int sisdb_fmap_cxt_free_data(s_sisdb_fmap_cxt *cxt_, int level_)
 					{
 						sisdb_fmap_unit_clear(funit);
 					}
+					// 如果是年数据 只保存当前年的数据在内存，以前的数据从内存中清除
+					
 				}
 				break;
 		}
