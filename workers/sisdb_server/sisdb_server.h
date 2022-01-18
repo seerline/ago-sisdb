@@ -63,6 +63,10 @@ int _sisdb_server_load(s_sisdb_server_cxt *context);
 int cmd_sisdb_server_auth(void *worker_, void *argv_);
 int cmd_sisdb_server_show(void *worker_, void *argv_);
 int cmd_sisdb_server_setuser(void *worker_, void *argv_);
+
+int cmd_sisdb_server_sub(void *worker_, void *argv_);
+int cmd_sisdb_server_unsub(void *worker_, void *argv_);
+
 int cmd_sisdb_server_open(void *worker_, void *argv_);
 int cmd_sisdb_server_close(void *worker_, void *argv_);
 int cmd_sisdb_server_save(void *worker_, void *argv_);

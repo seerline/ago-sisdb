@@ -157,7 +157,7 @@ int cmd_sisdb_psub(void *worker_, void *argv_);
 int cmd_sisdb_unpsub(void *worker_, void *argv_);
 // 直接从磁盘获取数据
 int cmd_sisdb_read(void *worker_, void *argv_);// 从磁盘加载数据
-
+// 存盘后会清理所有日下的内存数据 日上的数据仅仅保留最近1年 以保证内存空间可用
 int cmd_sisdb_save (void *worker_, void *argv_);// 存盘
 int cmd_sisdb_pack (void *worker_, void *argv_);// 合并整理数据
 int cmd_sisdb_init(void *worker_, void *argv_);

@@ -12,8 +12,8 @@
 typedef struct s_sisdb_rsdb_cxt
 {
 	int                status;
-	s_sis_sds          work_path;
-	s_sis_sds          work_name;
+	s_sis_sds_save    *work_path;
+	s_sis_sds_save    *work_name;
 
     s_sis_date_pair    work_date;      // 按天检索数据
     s_sis_sds          work_keys;
@@ -37,7 +37,7 @@ typedef struct s_sisdb_rsdb_cxt
 
 bool  sisdb_rsdb_init(void *, void *);
 void  sisdb_rsdb_uninit(void *);
-void sisdb_rsno_working(void *);
+void sisdb_rsdb_working(void *);
 
 int cmd_sisdb_rsdb_get(void *worker_, void *argv_);
 int cmd_sisdb_rsdb_sub(void *worker_, void *argv_);

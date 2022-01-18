@@ -203,11 +203,11 @@ static int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
-    _read_nums++;
-    if (_read_nums % 100000 == 0)
-    {
-        printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
-    }
+    // _read_nums++;
+    // if (_read_nums % 100000 == 0)
+    // {
+    //     printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
+    // }
     // sis_out_binary(sname_, out_, olen_);
     // if (!sis_strcasecmp(kname_, "SH600600") || !sis_strcasecmp(kname_, "SZ000001"))
     // {
@@ -437,3 +437,85 @@ void sisdb_rsno_working(void *worker_)
         LOG(5)("sub history end. [%d]\n", context->work_date);
     }
 }
+
+#if 1
+// 测试 snapshot 转 新格式的例子
+const char *sisdb_rsno = "\"sisdb_rsno\" : { \
+    \"work-path\" : \"../../data/\" }";
+
+#include "server.h"
+#include "sis_db.h"
+#include "stk_struct.v0.h"
+
+int _recv_count = 0;
+
+int cb_sub_start1(void *worker_, void *argv_)
+{
+    printf("%s : %s\n", __func__, (char *)argv_);
+    _recv_count = 0;
+    return 0;
+}
+
+int cb_sub_stop1(void *worker_, void *argv_)
+{
+    printf("%s : %s\n", __func__, (char *)argv_);
+    return 0;
+}
+int cb_dict_keys1(void *worker_, void *argv_)
+{
+    // printf("%s : %s\n", __func__, (char *)argv_);
+    printf("=====%s : \n", __func__);
+    return 0;
+}
+int cb_dict_sdbs1(void *worker_, void *argv_)
+{
+    // printf("%s : %s\n", __func__, (char *)argv_);
+    printf("=====%s : \n", __func__);
+    return 0;
+}
+
+int cb_sub_chars1(void *worker_, void *argv_)
+{
+    s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
+    if (_recv_count % 1000000 == 0)
+    {
+        printf("%d %s %s : %d\n", _recv_count, inmem->kname, inmem->sname, inmem->size);
+    }
+    if (!sis_strcasecmp(inmem->sname, "stk_snapshot"))
+    {
+        s_v4_stk_snapshot *snap = (s_v4_stk_snapshot *)inmem->data;
+        // printf("%s %lld %d %lld\n", inmem->kname, snap->time, sis_zint32_i(snap->newp), snap->volume);
+    }
+    _recv_count++;
+    return 0;
+}
+
+int main()
+{
+    sis_server_init();
+    s_sis_worker *nowwork = NULL;
+    {
+        s_sis_json_handle *handle = sis_json_load(sisdb_rsno, sis_strlen(sisdb_rsno));
+        nowwork = sis_worker_create(NULL, handle->node);
+        sis_json_close(handle);
+    }
+
+    s_sis_message *msg = sis_message_create(); 
+    sis_message_set(msg, "source", nowwork, NULL);
+    sis_message_set_int(msg, "sub-date", 20210617);
+    sis_message_set_method(msg, "cb_sub_start"     ,cb_sub_start1      );
+    sis_message_set_method(msg, "cb_sub_stop"      ,cb_sub_stop1       );
+    sis_message_set_method(msg, "cb_dict_sdbs"     ,cb_dict_sdbs1      );
+    sis_message_set_method(msg, "cb_dict_keys"     ,cb_dict_keys1      );
+    sis_message_set_method(msg, "cb_sub_chars"     ,cb_sub_chars1    );
+    sis_worker_command(nowwork, "sub", msg);
+    sis_message_destroy(msg); 
+    while (1)
+    {
+        sis_sleep(5000);
+    }
+    
+    sis_worker_destroy(nowwork);
+    sis_server_uninit();
+}
+#endif

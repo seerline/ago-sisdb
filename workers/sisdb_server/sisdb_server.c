@@ -17,6 +17,9 @@ struct s_sis_method sisdb_server_methods[] = {
 
     {"setuser",  cmd_sisdb_server_setuser, SIS_METHOD_ACCESS_ADMIN, NULL},   // 设置用户信息
 
+    {"sub",      cmd_sisdb_server_sub,     SIS_METHOD_ACCESS_READ, NULL},    // 订阅多个数据集数据 并按时序输出
+    {"unsub",    cmd_sisdb_server_unsub,   SIS_METHOD_ACCESS_READ, NULL},    // 订阅多个数据集数据 并按时序输出
+
     {"open",     cmd_sisdb_server_open,    SIS_METHOD_ACCESS_ADMIN, NULL},   // 打开一个数据集
     {"close",    cmd_sisdb_server_close,   SIS_METHOD_ACCESS_ADMIN, NULL},   // 关闭一个数据集
     {"save",     cmd_sisdb_server_save,    SIS_METHOD_ACCESS_ADMIN|SIS_METHOD_ACCESS_NOLOG, NULL},   // 手动存盘
@@ -645,7 +648,18 @@ int sisdb_server_open(s_sis_worker *worker_, const char *workname_, const char *
     // printf("==2== works = %d\n", sis_map_list_getsize(context->works));
     return 1;
 }
-
+// 对每个用户单独开启用一个线程用于处理该用户的订阅数据 这是一个耗时的操作 只允许读
+// 可操作多个数据集合的数据
+int cmd_sisdb_server_sub(void *worker_, void *argv_)
+{
+    // 
+    return SIS_METHOD_OK;
+}
+int cmd_sisdb_server_unsub(void *worker_, void *argv_)
+{
+    // 
+    return SIS_METHOD_OK;
+}
 int cmd_sisdb_server_open(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

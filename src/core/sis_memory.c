@@ -331,6 +331,10 @@ double sis_memory_get_double(s_sis_memory *m_)
 
 size_t sis_memory_readfile(s_sis_memory *m_, s_sis_file_handle fp_, size_t len_)
 {
+	if (!fp_)
+	{
+		return 0;
+	}
 	char *mem = (char *)sis_malloc(len_ + 1);
 	size_t bytes = sis_file_read(fp_, mem, len_);
 	if (bytes <= 0)

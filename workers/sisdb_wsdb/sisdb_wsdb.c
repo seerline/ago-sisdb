@@ -9,8 +9,8 @@
 static s_sis_method _sisdb_wsdb_methods[] = {
   {"start",  cmd_sisdb_wsdb_start, 0, NULL},
   {"stop",   cmd_sisdb_wsdb_stop, 0, NULL},
-  {"write",  cmd_sisdb_wsdb_write, 0, NULL},
-  {"push",   cmd_sisdb_wsdb_push, 0, NULL},
+  {"write",  cmd_sisdb_wsdb_write, 0, NULL},  // 直接把数据写入磁盘
+  {"push",   cmd_sisdb_wsdb_push, 0, NULL},   // 追加数据到末尾 直到 stop 时才存入磁盘
 };
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
@@ -36,27 +36,9 @@ bool sisdb_wsdb_init(void *worker_, void *argv_)
     s_sisdb_wsdb_cxt *context = SIS_MALLOC(s_sisdb_wsdb_cxt, context);
     worker->context = context;
     {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
-        if (sonnode)
-        {
-            context->work_path = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_path = sis_sdsnew("data/");
-        }
-    }
-    {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-name");
-        if (sonnode)
-        {
-            context->work_name = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_name = sis_sdsempty();
-        }
-    }
+        context->work_path = sis_sds_save_create(sis_json_get_str(node, "work-path"), "data");   
+        context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), "snodb");    
+    } 
     {
         s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "safe-path");
         if (sonnode)
@@ -84,8 +66,8 @@ void sisdb_wsdb_uninit(void *worker_)
     sisdb_wsdb_stop(context);
 
     sis_map_pointer_destroy(context->work_datas);
-    sis_sdsfree(context->work_path);
-    sis_sdsfree(context->work_name);
+    sis_sds_save_destroy(context->work_path);
+    sis_sds_save_destroy(context->work_name);
     sis_sdsfree(context->safe_path);
     sis_sdsfree(context->work_keys);
     sis_sdsfree(context->work_sdbs);
@@ -109,7 +91,7 @@ void sisdb_wsdb_start(s_sisdb_wsdb_cxt *context)
     sis_sdsfree(context->work_sdbs); context->work_sdbs = NULL;
 
     context->writer = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB);
-    sis_disk_writer_open(context->writer, 0);
+    sis_disk_writer_open(context->writer, 0); // 这里传入 0 可能只会写入当天的文件中
     context->status = SIS_WSDB_OPEN;
 }
 void sisdb_wsdb_stop(s_sisdb_wsdb_cxt *context)
@@ -166,8 +148,9 @@ int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
 
-    sisdb_wsdb_start(context);
     s_sis_message *msg = (s_sis_message *)argv_; 
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
     {
         s_sis_sds str = sis_message_get_str(msg, "work-keys");
         if (str)
@@ -184,6 +167,7 @@ int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
             context->work_sdbs = sis_sdsdup(str);
         }
     }
+    sisdb_wsdb_start(context);
     context->wheaded = 0;
     context->status = SIS_WSDB_OPEN;
     return SIS_METHOD_OK; 
@@ -223,22 +207,9 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }    
     s_sis_message *msg = (s_sis_message *)argv_; 
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
+
     int style = SIS_SDB_STYLE_SDB;
     if (sis_message_exist(msg, "style"))
     {

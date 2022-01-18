@@ -20,7 +20,7 @@ struct s_sis_method _sisdb_rsdb_methods[] = {
 s_sis_modules sis_modules_sisdb_rsdb = {
     sisdb_rsdb_init,
     NULL,
-    NULL,
+    sisdb_rsdb_working,
     NULL,
     sisdb_rsdb_uninit,
     NULL,
@@ -44,28 +44,10 @@ bool sisdb_rsdb_init(void *worker_, void *argv_)
         context->work_date.stop  = sis_json_get_int(work_date, "1", 0);
     }
     {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
-        if (sonnode)
-        {
-            context->work_path = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_path = sis_sdsnew("data/");
-        }
+        context->work_path = sis_sds_save_create(sis_json_get_str(node, "work-path"), "data");   
+        context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), "snodb");    
     }
-    {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-name");
-        if (sonnode)
-        {
-            context->work_name = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_name = sis_sdsnew("sisdb");
-        }
-    }
-    {
+     {
         const char *str = sis_json_get_str(node, "sub-sdbs");
         if (str)
         {
@@ -93,14 +75,17 @@ void sisdb_rsdb_uninit(void *worker_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
-    sisdb_rsdb_sub_stop(context);
-    context->status = SIS_RSDB_EXIT;
 
-    sis_sdsfree(context->work_path);
-    sis_sdsfree(context->work_name);
+    if (context->status == SIS_RSDB_WORK || context->status == SIS_RSDB_CALL )
+    {
+        sisdb_rsdb_sub_stop(context);
+        context->status = SIS_RSDB_EXIT;
+    }
+
+    sis_sds_save_destroy(context->work_path);
+    sis_sds_save_destroy(context->work_name);
     sis_sdsfree(context->work_keys);
     sis_sdsfree(context->work_sdbs);
-
     sis_sdsfree(context->ziper_keys);
     sis_sdsfree(context->ziper_sdbs);
 
@@ -149,6 +134,26 @@ static void cb_stop(void *context_, int idate)
     } 
     context->work_date.move = idate;
 }
+static void cb_break(void *context_, int idate)
+{
+    s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
+    printf("sdb sub break. %d cost : %lld\n", idate, sis_time_get_now_msec() - _speed_sno);
+     // stop 放这里
+    if (context->work_ziper)
+    {
+        sisdb_incr_zip_stop(context->work_ziper);
+        sisdb_incr_destroy(context->work_ziper);
+        context->work_ziper = NULL;
+    }
+    // if (context->status != SIS_RSNO_BREAK)
+    {
+        if (context->cb_sub_stop)
+        {
+            context->cb_sub_stop(context->cb_source, "0");
+        } 
+    }
+    context->work_date.move = 0;
+}
 static void cb_dict_keys(void *context_, void *key_, size_t size) 
 {
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
@@ -196,15 +201,15 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
     return 0;
 } 
 // #include "stk_struct.v3.h"
-static int _read_nums = 0;
+// static int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)context_;
-    _read_nums++;
-    if (_read_nums % 100000 == 0)
-    {
-        printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
-    }
+    // _read_nums++;
+    // if (_read_nums % 100000 == 0)
+    // {
+    //     printf("%s %s %zu | %d\n", kname_, sname_, olen_,  _read_nums);
+    // }
     // if (!sis_strcasecmp(kname_, "SH600600") && !sis_strcasecmp(sname_, "stk_snapshot"))
     // if (!sis_strcasecmp(kname_, "SH601318")|| !sis_strcasecmp(kname_, "SH688981")||!sis_strcasecmp(kname_,"SZ300987"))
     // {
@@ -264,9 +269,12 @@ static void *_thread_rsdb_read_sub(void *argv_)
     rsdb_cb->cb_dict_sdbs = cb_dict_sdbs;
     rsdb_cb->cb_chardata = cb_chardata;
     rsdb_cb->cb_stop = cb_stop;
-    rsdb_cb->cb_break = cb_stop;
+    rsdb_cb->cb_break = cb_break;
 
-    context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB, rsdb_cb);
+    context->work_reader = sis_disk_reader_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SDB, rsdb_cb);
 
     LOG(5)("sub sdb open. [%d]\n", context->work_date);
     s_sis_msec_pair smsec;
@@ -287,6 +295,7 @@ static void *_thread_rsdb_read_sub(void *argv_)
         context->work_ziper = NULL;
     }
 
+    LOG(5)("sub sdb stop. ok [%d - %d] %d\n", context->work_date.start, context->work_date.stop, context->status);
     context->status = SIS_RSDB_NONE;
     return NULL;
 }
@@ -322,7 +331,7 @@ s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context)
     s_sis_msec_pair smsec;
     smsec.start = sis_time_make_time(context->work_date.start, 0) * 1000;
     smsec.stop = sis_time_make_time(context->work_date.stop, 235959) * 1000 + 999;
-    s_sis_object *obj = sis_disk_reader_get_obj(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
+    s_sis_object *obj = d(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
     LOG(5)("get sdb stop. [%d]\n", context->work_date.stop);
 
     sis_disk_reader_destroy(context->work_reader);
@@ -334,22 +343,8 @@ s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context)
 /////////////////////////////////////////
 void _sisdb_rsdb_init(s_sisdb_rsdb_cxt *context, s_sis_message *msg)
 {
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
     {
         s_sis_sds str = sis_message_get_str(msg, "sub-keys");
         if (str)
@@ -408,6 +403,7 @@ int cmd_sisdb_rsdb_get(void *worker_, void *argv_)
     s_sis_object *obj = sisdb_rsdb_get_obj(context);
     if (obj)
     {
+        // 这里拿到的应该是原始二进制数据
         sis_message_set(msg, "info", obj, sis_object_destroy);
     }
 
@@ -471,28 +467,30 @@ void sisdb_rsdb_working(void *worker_)
     s_sisdb_rsdb_cxt *context = (s_sisdb_rsdb_cxt *)worker->context;
     
     SIS_WAIT_OR_EXIT(context->status == SIS_RSDB_WORK);  
-
-	// if (context->work_date.start > 0 && context->work_date.stop >= context->work_date.start)
-	// {
-	// 	int start = context->work_date.start;
-	// 	int stop = context->work_date.stop;
-    //     while (start <= stop)
-    //     {
-    //         SIS_EXIT_SIGNAL
-    //         msec_t costmsec = sis_time_get_now_msec();
-    //         LOG(5)("sub history start. [%d]\n", start);
-    //         if (market_file_3t4_sub(worker, start))
-    //         {
-    //             SIS_WAIT_OR_EXIT(context->work_date.move == start);
-    //         }
-    //         LOG(5)("sub history end. [%d] cost :%lld\n", start, sis_time_get_now_msec() - costmsec);
-    //         start = sis_time_get_offset_day(start, 1);
-    //     }
-	// }
-    if (context->status == SIS_RSDB_WORK)
-    {
-        LOG(5)("sub history start. [%d]\n", context->work_date.start);
-        sisdb_rsdb_sub_start(context);
-        LOG(5)("sub history end. [%d]\n", context->work_date.start);
-    }
+	if (context->work_date.start > 0 && context->work_date.stop >= context->work_date.start)
+	{
+		int start = context->work_date.start;
+		int stop = context->work_date.stop;
+        context->work_date.move = start - 1;
+        while (start <= stop)
+        {
+            SIS_EXIT_SIGNAL
+            msec_t costmsec = sis_time_get_now_msec();
+            LOG(5)("sub history start. [%d]\n", start);
+            sisdb_rsdb_sub_start(context);
+            SIS_WAIT_OR_EXIT(context->work_date.move == start || context->work_date.move == 0);
+            LOG(5)("sub history end. [%d] cost :%lld\n", start, sis_time_get_now_msec() - costmsec);
+            if (context->work_date.move == 0)
+            {
+                break;
+            }
+            start = sis_time_get_offset_day(start, 1);
+        }
+	}
+    // if (context->status == SIS_RSDB_WORK)
+    // {
+    //     LOG(5)("sub history start. [%d]\n", context->work_date.start);
+    //     sisdb_rsdb_sub_start(context);
+    //     LOG(5)("sub history end. [%d]\n", context->work_date.start);
+    // }
 }

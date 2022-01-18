@@ -12,8 +12,8 @@
 typedef struct s_sisdb_wsdb_cxt
 {
 	int                status;
-	s_sis_sds          work_path;
-	s_sis_sds          work_name;
+	s_sis_sds_save    *work_path;
+	s_sis_sds_save    *work_name;
     s_sis_sds          safe_path;     // pack 时需要
 	s_sis_disk_writer *writer;        // 写盘类
 
@@ -21,7 +21,7 @@ typedef struct s_sisdb_wsdb_cxt
 	s_sis_sds          work_keys;     // 筛选后的 
 	s_sis_sds          work_sdbs;     // 筛选后的
 
-	s_sisdb_incr       *work_unzip;    // 解压 s_snodb_compress 中来的数据
+	s_sisdb_incr      *work_unzip;    // 解压 s_snodb_compress 中来的数据
 
 	s_sis_map_pointer *work_datas;
 } s_sisdb_wsdb_cxt;

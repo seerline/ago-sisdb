@@ -309,3 +309,73 @@ int cmd_sisdb_flog_remove(void *worker_, void *argv_)
 //     }
 //     return o == 1 ? SIS_METHOD_OK : SIS_METHOD_NULL;   
 // }
+
+#if 0
+
+// 测试写入文件的速度
+int _sendnum = 1*1000*1000;
+
+int main()
+{
+    sis_server_init();
+
+    s_sis_worker *rlog = sis_worker_create_of_conf(NULL, "wlog", "{ classname:sisdb_flog }");
+    LOG(5)("rlog = %p\n", rlog);
+    s_sis_message *msg = sis_message_create();
+    sis_message_set_str(msg, "work-path", ".", 1);
+    sis_message_set_str(msg, "work-name", "wlog", 4);
+    sis_message_set_int(msg, "work-date", 20211010);
+    // sis_message_set(msg, "source", worker, NULL);
+    // sis_message_set_method(msg, "cb_sub_start", NULL);
+    // sis_message_set_method(msg, "cb_sub_stop", NULL);
+    // sis_message_set_method(msg, "cb_netmsg", cb_rlog_netmsg);
+    sis_worker_command(rlog, "open", msg);
+
+    msg->key = sis_sdsnew("1234567890");
+    s_sis_memory *imem = sis_memory_create();
+    for (int i = 0; i < 1000; i++)
+    {
+        sis_memory_cat(imem, "1234567890", 10);
+    }
+    
+    s_sisdb_flog_cxt *context = (s_sisdb_flog_cxt *)rlog->context;
+    
+    msec_t _openmsec = sis_time_get_now_msec(); 
+    for (int i = 0; i < _sendnum; i++)
+    {
+        sis_disk_writer_log(context->writer, sis_memory(imem), sis_memory_get_size(imem));
+        // sis_worker_command(rlog, "write", msg);    
+    }
+    sis_worker_command(rlog, "close", msg);
+    printf("cost msec = %lld\n", sis_time_get_now_msec() - _openmsec); // 10G/3592 = 2.784G/s
+
+    // _openmsec = sis_time_get_now_msec(); 
+    // int wfp = sis_open("wlog/info.log", SIS_FILE_IO_TRUNC | SIS_FILE_IO_RDWR | SIS_FILE_IO_CREATE, SIS_FILE_MODE_NORMAL);
+    // for (int i = 0; i < _sendnum; i++)
+    // {
+    //     sis_write(wfp, sis_memory(imem), sis_memory_get_size(imem));
+    // }
+    // sis_close(wfp);
+    // printf("cost wfile msec = %lld\n", sis_time_get_now_msec() - _openmsec); // 344950
+
+    {
+        _openmsec = sis_time_get_now_msec();
+        s_sis_file_handle wfp = sis_file_open("wlog/finfo.log", SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
+        for (int i = 0; i < _sendnum; i++)
+        {
+            sis_file_write(wfp, sis_memory(imem), sis_memory_get_size(imem)); // 10G/12062 = 829M/s
+            // sis_file_fsync(wfp);  // 10G/66490 = 150M/s
+        }
+        sis_file_fsync(wfp);  // 10G/12803 = 810M/s
+        sis_file_close(wfp);
+        printf("cost ffile msec = %lld\n", sis_time_get_now_msec() - _openmsec); // 344950
+    }
+
+    sis_memory_destroy(imem);
+    sis_message_destroy(msg);
+    sis_worker_destroy(rlog);  
+
+    sis_server_uninit();  
+}
+
+#endif

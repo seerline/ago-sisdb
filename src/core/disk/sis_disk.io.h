@@ -260,7 +260,7 @@ typedef struct s_sis_disk_head {
 
 typedef struct s_sis_disk_files_unit {
     s_sis_sds             fn;         // 文件名
-    s_sis_handle          fp;         // 文件句柄
+    s_sis_file_handle     fp_1;         // 文件句柄
     size_t                offset;     // 当前偏移位置
     uint32                invalid;
     uint32                validly;
