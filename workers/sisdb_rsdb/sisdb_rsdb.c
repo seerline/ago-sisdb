@@ -325,13 +325,16 @@ void sisdb_rsdb_sub_stop(s_sisdb_rsdb_cxt *context)
 }
 s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context)
 {
-    context->work_reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB, NULL);
+    context->work_reader = sis_disk_reader_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SDB, NULL);
 
     LOG(5)("get sdb open. [%d]\n", context->work_date.start);
     s_sis_msec_pair smsec;
     smsec.start = sis_time_make_time(context->work_date.start, 0) * 1000;
     smsec.stop = sis_time_make_time(context->work_date.stop, 235959) * 1000 + 999;
-    s_sis_object *obj = d(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
+    s_sis_object *obj = sis_disk_reader_get_obj(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
     LOG(5)("get sdb stop. [%d]\n", context->work_date.stop);
 
     sis_disk_reader_destroy(context->work_reader);

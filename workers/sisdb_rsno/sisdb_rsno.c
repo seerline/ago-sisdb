@@ -199,7 +199,7 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
     return 0;
 } 
 // #include "stk_struct.v4.h"
-static int _read_nums = 0;
+// static int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
@@ -438,7 +438,7 @@ void sisdb_rsno_working(void *worker_)
     }
 }
 
-#if 1
+#if 0
 // 测试 snapshot 转 新格式的例子
 const char *sisdb_rsno = "\"sisdb_rsno\" : { \
     \"work-path\" : \"../../data/\" }";
@@ -481,11 +481,11 @@ int cb_sub_chars1(void *worker_, void *argv_)
     {
         printf("%d %s %s : %d\n", _recv_count, inmem->kname, inmem->sname, inmem->size);
     }
-    if (!sis_strcasecmp(inmem->sname, "stk_snapshot"))
-    {
-        s_v4_stk_snapshot *snap = (s_v4_stk_snapshot *)inmem->data;
+    // if (!sis_strcasecmp(inmem->sname, "stk_snapshot"))
+    // {
+        // s_v4_stk_snapshot *snap = (s_v4_stk_snapshot *)inmem->data;
         // printf("%s %lld %d %lld\n", inmem->kname, snap->time, sis_zint32_i(snap->newp), snap->volume);
-    }
+    // }
     _recv_count++;
     return 0;
 }
