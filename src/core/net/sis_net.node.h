@@ -52,6 +52,8 @@ void sis_net_mems_destroy(s_sis_net_mems *nodes_);
 void sis_net_mems_clear(s_sis_net_mems *nodes_);
 int  sis_net_mems_push(s_sis_net_mems *nodes_, void *in_, size_t isize_);
 int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_t isize_);
+int  sis_net_mems_push_kv(s_sis_net_mems *nodes_, int kidx_, int sidx_, void *in_, size_t isize_);
+
 s_sis_net_mem *sis_net_mems_pop(s_sis_net_mems *nodes_);
 // 直接增加 不写数据头 用于网络缓存数据
 int  sis_net_mems_cat(s_sis_net_mems *nodes_, void *in_, size_t isize_);

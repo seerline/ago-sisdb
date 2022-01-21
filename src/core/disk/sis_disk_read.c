@@ -630,7 +630,7 @@ s_sis_object *_disk_reader_get_sdb_obj(s_sis_disk_reader *reader_, const char *k
     if (sis_map_list_getsize(reader_->subidxs) > 0)
     {
         s_sis_memory *memory = sis_memory_create();
-        s_sis_object * obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
+        s_sis_object *obj = sis_object_create(SIS_OBJECT_MEMORY, memory);
         reader_->status_sub = 1;
         // 只有一个键
         s_sis_disk_reader_sub *subwork = (s_sis_disk_reader_sub *)sis_map_list_geti(reader_->subidxs, 0);

@@ -40,28 +40,9 @@ bool sisdb_flog_init(void *worker_, void *argv_)
     worker->context = context;
 
     context->work_date = sis_time_get_idate(0);
-    {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-path");
-        if (sonnode)
-        {
-            context->work_path = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_path = sis_sdsnew("data");
-        }  
-    }
-    {
-        s_sis_json_node *sonnode = sis_json_cmp_child_node(node, "work-name");
-        if (sonnode)
-        {
-            context->work_name = sis_sdsnew(sonnode->value);
-        }
-        else
-        {
-            context->work_name = sis_sdsnew("wlog");
-        }  
-    } 
+	context->work_path = sis_sds_save_create(sis_json_get_str(node, "work-path"), "data");   
+    context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), node->key);   
+ 
     context->write_memory = sis_memory_create();
     return true;
 }
@@ -79,8 +60,8 @@ void sisdb_flog_uninit(void *worker_)
     {
         cmd_sisdb_flog_close(worker, NULL);
     }
-    sis_sdsfree(context->work_path);
-    sis_sdsfree(context->work_name);
+    sis_sds_save_destroy(context->work_path);
+    sis_sds_save_destroy(context->work_name);
     sis_memory_destroy(context->write_memory);
     sis_free(context);
 }
@@ -139,22 +120,8 @@ int cmd_sisdb_flog_sub(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }
     s_sis_message *msg = (s_sis_message *)argv_;
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
     if (sis_message_exist(msg, "work-date"))
     {
         context->work_date = sis_message_get_int(msg, "work-date");
@@ -173,7 +140,10 @@ int cmd_sisdb_flog_sub(void *worker_, void *argv_)
     rlog_cb->cb_stop     = cb_flog_stop;
     rlog_cb->cb_break    = cb_flog_break;
 
-    context->reader = sis_disk_reader_create(context->work_path, context->work_name, SIS_DISK_TYPE_LOG, rlog_cb);
+    context->reader = sis_disk_reader_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_LOG, rlog_cb);
 
     LOG(5)("sub log open. [%d]\n", context->work_date);
     sis_disk_reader_sub_log(context->reader, context->work_date);
@@ -214,28 +184,17 @@ int cmd_sisdb_flog_open(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }
     s_sis_message *msg = (s_sis_message *)argv_;
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-path");
-        if (str)
-        {
-            sis_sdsfree(context->work_path);
-            context->work_path = sis_sdsdup(str);
-        }
-    }
-    {
-        s_sis_sds str = sis_message_get_str(msg, "work-name");
-        if (str)
-        {
-            sis_sdsfree(context->work_name);
-            context->work_name = sis_sdsdup(str);
-        }
-    }
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
     if (sis_message_exist(msg, "work-date"))
     {
         context->work_date = sis_message_get_int(msg, "work-date");
     }
     context->status = SIS_FLOG_WRITE;
-    context->writer = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_LOG);
+    context->writer = sis_disk_writer_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_LOG);
     
     sis_disk_writer_open(context->writer, context->work_date);
 

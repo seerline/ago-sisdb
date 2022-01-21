@@ -93,6 +93,9 @@ typedef struct s_sis_net_message {
 	int                 rnext;     // 后续的数据
     s_sis_sds           rmsg;      // [应答专用｜不必要] 表示为字符类型的返回数据
     int8                rfmt;      // [应答专用] rmsg 数据的类型和格式 特指 rmsg 整数 数组 ...
+
+    s_sis_sds           info;       // [信息] 
+	s_sis_sds           subject;    // [信息] 
 	// 有扩展字典时有值
 	s_sis_map_pointer  *map;       // 
 } s_sis_net_message;
@@ -165,5 +168,8 @@ void sis_net_ans_with_null(s_sis_net_message *);
 void sis_net_ans_with_sub_start(s_sis_net_message *, const char *info_);
 void sis_net_ans_with_sub_wait(s_sis_net_message *,  const char *info_);
 void sis_net_ans_with_sub_stop(s_sis_net_message *,  const char *info_);
+
+// 获取字符数据
+int64 sis_message_info_to_int(s_sis_net_message *netmsg_);
 
 #endif //_SIS_CRYPT_H

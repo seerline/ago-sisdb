@@ -45,7 +45,7 @@ bool sisdb_rsdb_init(void *worker_, void *argv_)
     }
     {
         context->work_path = sis_sds_save_create(sis_json_get_str(node, "work-path"), "data");   
-        context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), "snodb");    
+        context->work_name = sis_sds_save_create(sis_json_get_str(node, "work-name"), node->key);    
     }
      {
         const char *str = sis_json_get_str(node, "sub-sdbs");
@@ -364,13 +364,18 @@ void _sisdb_rsdb_init(s_sisdb_rsdb_cxt *context, s_sis_message *msg)
             context->work_sdbs = sis_sdsdup(str);
         }
     }
+    int curdate = sis_time_get_idate(0);
+    if (sis_message_exist(msg, "sub-date"))
+    {
+        curdate = sis_message_get_int(msg, "sub-date");
+    }
     if (sis_message_exist(msg, "start-date"))
     {
         context->work_date.start = sis_message_get_int(msg, "start-date");
     }
     else
     {
-        context->work_date.start = sis_time_get_idate(0);
+        context->work_date.start = curdate;
     }
     if (sis_message_exist(msg, "stop-date"))
     {
@@ -378,7 +383,7 @@ void _sisdb_rsdb_init(s_sisdb_rsdb_cxt *context, s_sis_message *msg)
     }
     else
     {
-        context->work_date.stop = sis_time_get_idate(0);
+        context->work_date.stop = curdate;
     }
     context->cb_source      = sis_message_get(msg, "source");
     context->cb_sub_start   = sis_message_get_method(msg, "cb_sub_start"  );

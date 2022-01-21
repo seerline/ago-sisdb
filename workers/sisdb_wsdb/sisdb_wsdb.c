@@ -90,7 +90,10 @@ void sisdb_wsdb_start(s_sisdb_wsdb_cxt *context)
     sis_sdsfree(context->work_keys); context->work_keys = NULL;
     sis_sdsfree(context->work_sdbs); context->work_sdbs = NULL;
 
-    context->writer = sis_disk_writer_create(context->work_path, context->work_name, SIS_DISK_TYPE_SDB);
+    context->writer = sis_disk_writer_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SDB);
     sis_disk_writer_open(context->writer, 0); // 这里传入 0 可能只会写入当天的文件中
     context->status = SIS_WSDB_OPEN;
 }

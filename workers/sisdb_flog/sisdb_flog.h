@@ -15,8 +15,8 @@ typedef struct s_sisdb_flog_cxt
 {
 	int                 status;
 
-	s_sis_sds           work_path;
-	s_sis_sds           work_name;
+	s_sis_sds_save     *work_path;   // 数据库路径 sisdb
+	s_sis_sds_save     *work_name;   // 数据库名字 sisdb
 	int                 work_date;
 	s_sis_memory       *write_memory;
 
