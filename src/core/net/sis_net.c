@@ -726,6 +726,7 @@ void *_thread_net_class_read(void* argv)
 		}
 		// 下面检查有没有断开的连接 有就清理
 		{
+			s_sis_struct_list *rids = sis_struct_list_create(sizeof(int));
 			s_sis_dict_entry *de;
 			s_sis_dict_iter *di = sis_dict_get_iter(cls->cxts);
 			while ((de = sis_dict_next(di)) != NULL)
@@ -733,11 +734,17 @@ void *_thread_net_class_read(void* argv)
 				s_sis_net_context *cxt = (s_sis_net_context *)sis_dict_getval(de);
 				if (cxt->status == SIS_NET_DISCONNECT)
 				{
-					printf("del data error.[%d]\n", cxt->rid);
-					sis_map_kint_del(cls->cxts, cxt->rid);
+					sis_struct_list_push(rids, &cxt->rid);
 				}
 			}
 			sis_dict_iter_free(di);
+			// 由于字典遍历中删除 会有很小概率出现问题，所有通常仅仅记录信息 后面再删
+			for (int i = 0; i < rids->count; i++)
+			{
+				int *rid = (int *)sis_struct_list_get(rids, i);
+				sis_map_kint_del(cls->cxts, *rid);
+			}
+			sis_struct_list_destroy(rids);
 		}
 
 		sis_wait_thread_wait(cls->read_thread, cls->read_thread->wait_msec);
