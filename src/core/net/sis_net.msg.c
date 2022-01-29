@@ -524,3 +524,8 @@ void sis_net_ans_with_sub_stop(s_sis_net_message *netmsg_, const char *info_)
     netmsg_->switchs.has_ans = 1;
     SIS_NET_SET_STR(netmsg_->switchs.has_msg, netmsg_->rmsg, info_);
 }
+
+int64 sis_message_info_to_int(s_sis_net_message *netmsg_)
+{
+    return netmsg_->info ? sis_atoll(netmsg_->info) : 0;
+}

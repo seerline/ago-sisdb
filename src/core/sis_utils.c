@@ -710,3 +710,36 @@ int sis_get_map_sdbs(s_sis_sds sdbs_, s_sis_map_list *map_sdbs_)
 	sis_json_close(injson);
 	return sis_map_list_getsize(map_sdbs_);
 }
+
+s_sis_sds sis_map_as_keys(s_sis_map_list *map_keys_)
+{
+	int count = sis_map_list_getsize(map_keys_);
+	s_sis_sds o = NULL;
+	for (int i = 0; i < count; i++)
+	{
+		s_sis_sds key = sis_map_list_geti(map_keys_, i);
+		if (o)
+		{
+			o = sis_sdscatfmt(o, ",%s", key);
+		}
+		else
+		{
+			o = sis_sdsnew(key);
+		}
+	}
+	return o;
+}
+
+s_sis_sds sis_map_as_sdbs(s_sis_map_list *map_sdbs_)
+{
+    s_sis_json_node *innode = sis_json_create_object();
+    int count = sis_map_list_getsize(map_sdbs_);
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_dynamic_db *db = sis_map_list_geti(map_sdbs_, i);
+		sis_json_object_add_node(innode, db->name, sis_sdbinfo_to_json(db));
+    }
+    s_sis_sds o = sis_json_to_sds(innode, 1);
+	sis_json_delete_node(innode);
+	return o;
+}

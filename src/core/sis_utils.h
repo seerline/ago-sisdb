@@ -74,6 +74,10 @@ int sis_get_map_keys(s_sis_sds keys_, s_sis_map_list *map_keys_);
 
 int sis_get_map_sdbs(s_sis_sds sdbs_, s_sis_map_list *map_sdbs_);
 
+s_sis_sds sis_map_as_keys(s_sis_map_list *map_keys_);
+
+s_sis_sds sis_map_as_sdbs(s_sis_map_list *map_sdbs_);
+
 #ifdef __cplusplus
 }
 #endif
