@@ -73,20 +73,20 @@ typedef struct s_sis_url {
 	s_sis_map_sds *dict;  // 其他字段的对应表 用于不常用的字典数据
 } s_sis_url;
 
-// 二进制协议会在每个数据包最后放入此结构 解包时先从最后取出该结构 
-// 该结构可以增加crc数据校验等功能
-// 因为数据是否被压缩只有压缩后才能直到是否成功 不成功用原文 所以这个结构必须放到数据末尾
-// 也可用此数据判断二进制数据是否合法
-// 字符串数据没有该结构 统一不压缩 不加密
-// 如果需要压缩加密把字符串当字节流处理就可以了
-// 根据ws协议头就知道后面的数据是什么格式 二进制就跟这个结构 字符出就没有这个结构
-typedef struct s_sis_net_tail {
-	unsigned char is_bytes : 1;     // 数据以什么格式传播
-	unsigned char is_compress : 1;  // 数据是否被压缩
-	unsigned char is_crypt : 1;     // 数据是否被加密 
-	unsigned char is_crc16 : 1;     // 是否有crc16校验 如果有去前面取16个字节用于校验
-	unsigned char other : 4;        // 备用
-} s_sis_net_tail;
+// // 二进制协议会在每个数据包最后放入此结构 解包时先从最后取出该结构 
+// // 该结构可以增加crc数据校验等功能
+// // 因为数据是否被压缩只有压缩后才能直到是否成功 不成功用原文 所以这个结构必须放到数据末尾
+// // 也可用此数据判断二进制数据是否合法
+// // 字符串数据没有该结构 统一不压缩 不加密
+// // 如果需要压缩加密把字符串当字节流处理就可以了
+// // 根据ws协议头就知道后面的数据是什么格式 二进制就跟这个结构 字符出就没有这个结构
+// typedef struct s_sis_net_tail {
+// 	unsigned char is_bytes : 1;     // 数据以什么格式传播
+// 	unsigned char is_compress : 1;  // 数据是否被压缩
+// 	unsigned char is_crypt : 1;     // 数据是否被加密 
+// 	unsigned char is_crc16 : 1;     // 是否有crc16校验 如果有去前面取16个字节用于校验
+// 	unsigned char other : 4;        // 备用
+// } s_sis_net_tail;
 
 // 序列化和反序列化 程序内部的数据和网络通讯协议互转
 typedef bool (*sis_net_encoded_define)(s_sis_net_message *in_, s_sis_memory *out_);

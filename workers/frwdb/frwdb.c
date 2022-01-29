@@ -208,8 +208,7 @@ int cmd_frwdb_start(void *worker_, void *argv_)
     s_frwdb_cxt *context = (s_frwdb_cxt *)worker->context;
 	s_sis_message *netmsg = (s_sis_message *)argv_;
 
-	int curr_date = sis_message_info_to_int(netmsg); 
-	curr_date = curr_date ? curr_date : sis_time_get_idate(0);
+	int curr_date = sis_net_msg_info_as_date(netmsg); 
 	if (context->status == FRWDB_STATUS_WRING)
 	{
 		// 已经开始写入 什么也不做

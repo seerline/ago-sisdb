@@ -275,7 +275,7 @@ void sisdb_server_reply_error(s_sisdb_server_cxt *context, s_sis_net_message *ne
     {
         reply = sis_sdscatfmt(reply, "[%s].", netmsg->cmd);
     }
-    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_msg_tag_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
@@ -286,7 +286,7 @@ void sisdb_server_reply_null(s_sisdb_server_cxt *context, s_sis_net_message *net
     {
         reply = sis_sdscatfmt(reply, "[%s].", name);
     }    
-    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_msg_tag_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
@@ -297,7 +297,7 @@ void sisdb_server_reply_no_method(s_sisdb_server_cxt *context, s_sis_net_message
     {
         reply = sis_sdscatfmt(reply, "[%s].", name);
     }
-    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_msg_tag_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
@@ -308,7 +308,7 @@ void sisdb_server_reply_no_service(s_sisdb_server_cxt *context, s_sis_net_messag
     {
         reply = sis_sdscatfmt(reply, "[%s].", name);
     }    
-    sis_net_ans_with_error(netmsg, reply, sis_sdslen(reply));
+    sis_net_msg_tag_error(netmsg, reply, sis_sdslen(reply));
     sis_net_class_send(context->socket, netmsg);
     sis_sdsfree(reply);
 }
@@ -316,8 +316,8 @@ void sisdb_server_reply_no_auth(s_sisdb_server_cxt *context, s_sis_net_message *
 {
     // s_sis_net_message *newmsg = sis_net_message_create();
     // newmsg->cid = netmsg->cid;
-    printf("====1.1.1=====%p\n", netmsg);
-    sis_net_ans_with_error(netmsg, "no auth.", 8);
+    // printf("====1.1.1=====%p\n", netmsg);
+    sis_net_msg_tag_error(netmsg, "no auth.", 8);
     sis_net_class_send(context->socket, netmsg);
     // sis_net_message_destroy(newmsg);
 }
@@ -328,7 +328,7 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
     {
         int o = sis_worker_command(worker, cmdname, netmsg);
         SIS_NET_SHOW_MSG("send srv==", netmsg);
-        if (!netmsg->switchs.is_inside)
+        if (netmsg->mode != SIS_MSG_MODE_INSIDE)
         {
             if (o == SIS_METHOD_OK)
             {
@@ -355,7 +355,7 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
         {
             int o = sis_worker_command(workinfo->worker, cmdname, netmsg);
             SIS_NET_SHOW_MSG("send cli==", netmsg);
-            if (!netmsg->switchs.is_inside)
+            if (netmsg->mode != SIS_MSG_MODE_INSIDE)
             {
                 if (o == SIS_METHOD_OK)
                 {
@@ -363,7 +363,7 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
                 } 
                 else if (o == SIS_METHOD_NULL)
                 {
-                    sisdb_server_reply_null(context, netmsg, netmsg->key);
+                    sisdb_server_reply_null(context, netmsg, netmsg->subject);
                 }
                 else if (o == SIS_METHOD_NOCMD)
                 {
@@ -484,13 +484,13 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
 
     if (!context->user_access)
     {
-        sis_net_ans_with_ok(netmsg);
+        sis_net_msg_tag_ok(netmsg);
         return SIS_METHOD_OK;
     }
-    s_sis_json_handle *handle = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+    s_sis_json_handle *handle = sis_json_load(netmsg->info, sis_sdslen(netmsg->info));
     if (!handle)
     {
-        sis_net_ans_with_error(netmsg, "auth ask error.", 15);
+        sis_net_msg_tag_error(netmsg, "auth ask error.", 15);
     }
     else
     {
@@ -512,12 +512,12 @@ int cmd_sisdb_server_auth(void *worker_, void *argv_)
         }
         if (ok == 0)
         {
-            sis_net_ans_with_ok(netmsg);
+            sis_net_msg_tag_ok(netmsg);
         }
         else
         {
             printf("auth %d %s %s %s\n", ok, username, password, userinfo->password);
-            sis_net_ans_with_error(netmsg, "auth fail.", 10);
+            sis_net_msg_tag_error(netmsg, "auth fail.", 10);
         }
         sis_json_close(handle);
     }
@@ -545,7 +545,7 @@ int cmd_sisdb_server_show(void *worker_, void *argv_)
             sdbs = sis_sdscatfmt(sdbs, ",%S", workinfo->workname);
         }
     }  
-    sis_net_ans_with_chars(netmsg, sdbs, sis_sdslen(sdbs));
+    sis_net_message_set_char(netmsg, sdbs, sis_sdslen(sdbs));
     sis_sdsfree(sdbs);
     return SIS_METHOD_OK;
 }
@@ -557,10 +557,10 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
     s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    s_sis_json_handle *handle = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+    s_sis_json_handle *handle = sis_json_load(netmsg->info, sis_sdslen(netmsg->info));
     if (!handle)
     {
-        sis_net_ans_with_error(netmsg, "setuser ask error.", 15);
+        sis_net_msg_tag_error(netmsg, "setuser ask error.", 15);
     }
     else
     {
@@ -586,7 +586,7 @@ int cmd_sisdb_server_setuser(void *worker_, void *argv_)
                 sisdb_server_sysinfo_save(context);
             }
         }
-        sis_net_ans_with_ok(netmsg);
+        sis_net_msg_tag_ok(netmsg);
         sis_json_close(handle);
     }
     return SIS_METHOD_OK;
@@ -666,9 +666,9 @@ int cmd_sisdb_server_open(void *worker_, void *argv_)
     // s_sisdb_server_cxt *context = (s_sisdb_server_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    int o = sisdb_server_open(worker, netmsg->key, netmsg->ask);
+    int o = sisdb_server_open(worker, netmsg->subject, netmsg->info);
     
-    sis_net_ans_with_int(netmsg, o); 
+    sis_net_msg_tag_int(netmsg, o); 
 
     return SIS_METHOD_OK;
 }
@@ -680,7 +680,7 @@ int cmd_sisdb_server_close(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     
     int oks = 0;
-    const char *workname = (const char *)netmsg->key;
+    const char *workname = (const char *)netmsg->subject;
     if (!workname)
     {
         // 停止所有工作
@@ -709,7 +709,7 @@ int cmd_sisdb_server_close(void *worker_, void *argv_)
             oks++;
         }
     }
-    sis_net_ans_with_int(netmsg, oks); 
+    sis_net_msg_tag_int(netmsg, oks); 
     return SIS_METHOD_OK;
 }
 
@@ -731,7 +731,7 @@ int cmd_sisdb_server_save(void *worker_, void *argv_)
     }
     printf("==save nums==%d\n", oks);
     sis_message_destroy(msg);
-    sis_net_ans_with_int(netmsg, oks); 
+    sis_net_msg_tag_int(netmsg, oks); 
     return SIS_METHOD_OK;
 } 
 
@@ -752,7 +752,7 @@ int cmd_sisdb_server_pack(void *worker_, void *argv_)
         }
     }
     sis_message_destroy(msg);
-    sis_net_ans_with_int(netmsg, oks); 
+    sis_net_msg_tag_int(netmsg, oks); 
 
     return SIS_METHOD_OK;
 }
@@ -780,7 +780,7 @@ int cmd_sisdb_server_call(void *worker_, void *argv_)
     // }
     // sis_dict_iter_free(di);
 
-    // sis_net_ans_with_chars(netmsg, sdbs, sis_sdslen(sdbs));
+    // sis_net_message_set_char(netmsg, sdbs, sis_sdslen(sdbs));
 
     // sis_sdsfree(sdbs);
     return SIS_METHOD_OK;

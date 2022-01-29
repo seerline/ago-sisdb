@@ -24,6 +24,8 @@ int sisdb_io_create(s_sisdb_cxt *sisdb_, const char *sname_, s_sis_json_node *no
 s_sis_sds sisdb_io_get_sds(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_);
 // 如果获得的数据是二进制的 就转成json格式数据返回
 s_sis_sds sisdb_io_get_chars_sds(s_sisdb_cxt *sisdb_, const char *key_, int rfmt_, s_sis_json_node *node_);
+// 修改数据
+int sisdb_io_update(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds imem_);
 
 // 以json方式写入数据 自动创建数据结构表
 int sisdb_io_set_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds vmem_);

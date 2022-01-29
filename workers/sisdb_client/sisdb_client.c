@@ -116,16 +116,16 @@ void sisdb_client_send_ask(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask)
     s_sis_net_message *netmsg = sis_net_message_create();
     netmsg->cid = context->cid;
     netmsg->name = sis_sdsnewlong(ask->sno);
-
+    // cmd 可能有服务名
+    sis_net_message_set_scmd(netmsg, ask->cmd);
+    sis_net_message_set_subject(netmsg, ask->key, NULL);
     if  (ask->format == SIS_NET_FORMAT_CHARS)
     {
-        sis_net_ask_with_chars(netmsg, ask->cmd, ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
+        sis_net_message_set_char(netmsg, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
     }
     else
     {
-        sis_message_set_cmd(netmsg, ask->cmd);
-        sis_message_set_key(netmsg, ask->key, NULL);
-        sis_net_ask_with_bytes(netmsg, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
+        sis_net_message_set_byte(netmsg, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
     }
     // SIS_NET_SHOW_MSG("client", netmsg);
     sis_net_class_send(context->session, netmsg);
@@ -139,61 +139,45 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
     {
         s_sisdb_client_ask *ask = sisdb_client_ask_get(context, msg_->name);
         // 清理上次返回的信息
-        if (ask && msg_->switchs.is_reply)
+        if (ask && msg_->switchs.sw_tag)
         {
             // SIS_NET_SHOW_MSG("_cb_recv ask", msg_);
-            switch (msg_->rans)
+            switch (msg_->tag)
             {
-            case SIS_NET_ANS_SUB_OPEN:
-            case SIS_NET_ANS_SUB_WAIT:
-            case SIS_NET_ANS_SUB_STOP:
+            case SIS_NET_TAG_SUB_OPEN:
+            case SIS_NET_TAG_SUB_WAIT:
+            case SIS_NET_TAG_SUB_STOP:
                 if(ask->cb_reply)
                 {
-                    ask->cb_reply(ask->cb_source, msg_->rans, NULL, msg_->rmsg, msg_->rmsg ? sis_sdslen(msg_->rmsg) : 0);
+                    ask->cb_reply(ask->cb_source, msg_->tag, NULL, msg_->info, msg_->info ? sis_sdslen(msg_->info) : 0);
                 }
-                // if (msg_->rans == SIS_NET_ANS_SUB_STOP)
-                // {
-                //     sisdb_client_ask_unsub(context, ask);
-                // }
                 break;
-            case SIS_NET_ANS_OK:
+            case SIS_NET_TAG_OK:
                 if(ask->cb_reply)
                 {
-                    if (msg_->switchs.has_argvs)
-                    {
-                        if (ask->cb_reply)
-                        {
-                            for (int i = 0; i < msg_->argvs->count; i++)
-                            {
-                                s_sis_object *obj = sis_pointer_list_get(msg_->argvs, i);
-                                ask->cb_reply(ask->cb_source, SIS_NET_ANS_OK, msg_->key, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
-                            }
-                        }
-                    }
-                    else
+                    if (msg_->switchs.sw_info)
                     {
                         if(ask->cb_reply)
                         {
-                            ask->cb_reply(ask->cb_source, SIS_NET_ANS_OK, msg_->key, msg_->rmsg, msg_->rmsg ? sis_sdslen(msg_->rmsg) : 0);
+                            ask->cb_reply(ask->cb_source, SIS_NET_TAG_OK, msg_->subject, msg_->info, msg_->info ? sis_sdslen(msg_->info) : 0);
                         }                                                      
-                    }
-                    
+                    }                    
                 }        
                 break;
-            case SIS_NET_ANS_NIL:
+            case SIS_NET_TAG_NIL:
                 if(ask->cb_reply)
                 {
                     // 其他返回NULL
-                    ask->cb_reply(ask->cb_source, SIS_NET_ANS_NIL, NULL, NULL, 0);
+                    ask->cb_reply(ask->cb_source, SIS_NET_TAG_NIL, NULL, NULL, 0);
                     // 返回 NULL 表示可不理会返回值 需要错误信息调用函数
                 }        
                 break;
-            case SIS_NET_ANS_ERROR:
+            case SIS_NET_TAG_ERROR:
             default:
                 if(ask->cb_reply)
                 {
                     // 其他返回NULL
-                    ask->cb_reply(ask->cb_source, SIS_NET_ANS_ERROR, msg_->key, msg_->rmsg, msg_->rmsg ? sis_sdslen(msg_->rmsg) : 0);
+                    ask->cb_reply(ask->cb_source, SIS_NET_TAG_ERROR, msg_->subject, msg_->info, msg_->info ? sis_sdslen(msg_->info) : 0);
                     // 返回 NULL 表示可不理会返回值 需要错误信息调用函数
                 }        
                 break;
@@ -208,7 +192,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
     if (context->status == SIS_CLI_STATUS_AUTH)
     {
         // 判断是否验证通过
-        if(msg_->switchs.is_reply && msg_->rans == SIS_NET_ANS_OK)
+        if(msg_->switchs.sw_tag && msg_->tag == SIS_NET_TAG_OK)
         {        
             // 发送订阅信息
             sis_safe_map_lock(context->asks);
@@ -229,7 +213,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
         }
         else
         {
-            LOG(5)("auth fail. %d %s\n", msg_->rans, msg_->rmsg ? msg_->rmsg : "nil");
+            LOG(5)("auth fail. %d %s\n", msg_->tag, msg_->info ? msg_->info : "nil");
         }
     }    	
 }
@@ -252,7 +236,8 @@ static void _cb_connected(void *source_, int sid)
             msg->cid = context->cid;
             char ask[128];
             sis_sprintf(ask, 128, "{\"username\":\"%s\",\"password\":\"%s\"}", context->username, context->password);
-            sis_net_ask_with_chars(msg, "auth", NULL, ask, sis_strlen(ask));
+            sis_net_message_set_cmd(msg, "auth");
+            sis_net_message_set_char(msg, ask, sis_strlen(ask));
             sis_net_class_send(context->session, msg);
             sis_net_message_destroy(msg);
         }
@@ -357,7 +342,9 @@ void sisdb_client_ask_unsub(s_sisdb_client_cxt *context, s_sisdb_client_ask *ask
 
     s_sis_net_message *msg = sis_net_message_create();
     msg->cid = context->cid;
-    sis_net_ask_with_chars(msg, "unsub", ask->key, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
+    sis_net_message_set_cmd(msg, "unsub");
+    sis_net_message_set_subject(msg, ask->key, NULL);
+    sis_net_message_set_char(msg, ask->val, ask->val ? sis_sdslen(ask->val) : 0);
     sis_net_class_send(context->session, msg);
     sis_net_message_destroy(msg);
     // 订阅结束后 删除本地订阅信息
@@ -391,20 +378,10 @@ bool sisdb_client_ask_sub_exists(
 static int cb_reply(void *worker_, int rans_, const char *key_, const char *val_, size_t vsize_)
 {
     s_sis_message *msg = (s_sis_message *)worker_;
-    sis_sdsfree(msg->key);
-    msg->key = NULL;
-    if (key_)
-    {
-        msg->key = sis_sdsnew(key_);
-    }
-    sis_sdsfree(msg->rmsg); 
-    msg->rmsg = NULL;
-    if (val_)
-    {
-        msg->rmsg = sis_sdsnewlen(val_, vsize_);
-    }
-    msg->rans = rans_;
-    msg->switchs.is_reply = 1;
+    
+    sis_net_message_set_subject(msg, key_, NULL);
+    sis_net_message_set_info(msg, (char *)val_, vsize_);
+    sis_net_message_set_tag(msg, rans_);
     return 0; 
 }
 int cmd_sisdb_client_setcb(void *worker_, void *argv_)
@@ -442,26 +419,19 @@ int cmd_sisdb_client_chars_wait(void *worker_, void *argv_)
 		cb_reply);
 
     ask->format = SIS_NET_FORMAT_CHARS;
-
-    msg->switchs.is_reply = 0;
+    msg->switchs.sw_tag = 0;
 
     sisdb_client_send_ask(context, ask);
 
-    // int waitmsec = 10000;
-    // while(!msg->switchs.is_reply && waitmsec > 0)
-    // {
-    //     waitmsec--;
-    //     sis_sleep(1);
-    // }
-    while(!msg->switchs.is_reply && !SIS_SERVER_EXIT)
+    while(!msg->switchs.sw_tag && !SIS_SERVER_EXIT)
     {
         sis_sleep(1);
     }
     // printf("start 1 : %d\n", (unsigned int)sis_thread_self());
     // sis_wait_start(&context->wait);
-    if (msg->switchs.is_reply)
+    if (msg->switchs.sw_tag)
     {
-        if (msg->rans < SIS_NET_ANS_OK)
+        if (msg->tag < SIS_NET_TAG_OK)
         {
             return SIS_METHOD_ERROR; 
         }
@@ -493,7 +463,7 @@ int cmd_sisdb_client_bytes_wait(void *worker_, void *argv_)
 		cb_reply);
 
     ask->format = SIS_NET_FORMAT_BYTES;
-    msg->switchs.is_reply = 0;
+    msg->switchs.sw_tag = 0;
 
     sisdb_client_send_ask(context, ask);
 
@@ -504,15 +474,15 @@ int cmd_sisdb_client_bytes_wait(void *worker_, void *argv_)
     //     sis_sleep(1);
     //     waitmsec--;
     // }
-    while(!msg->switchs.is_reply && !SIS_SERVER_EXIT)
+    while(!msg->switchs.sw_tag && !SIS_SERVER_EXIT)
     {
         sis_sleep(1);
     }
     // printf("start 1 : %d\n", (unsigned int)sis_thread_self());
     // sis_wait_start(&context->wait);
-    if (msg->switchs.is_reply)
+    if (msg->switchs.sw_tag)
     {
-        if (msg->rans < SIS_NET_ANS_OK)
+        if (msg->tag < SIS_NET_TAG_OK)
         {
             return SIS_METHOD_ERROR; 
         }

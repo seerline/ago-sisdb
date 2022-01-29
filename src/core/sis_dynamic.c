@@ -97,6 +97,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	s_sis_json_node *fields = sis_json_cmp_child_node(node_, "fields");
 	if (!fields)
 	{
+		LOG(8)("no fields.\n");
 		return NULL;	
 	}
 	
@@ -182,6 +183,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	}
 	if (offset == 0)
 	{
+		// LOG(8)("offset == 0.\n");
 		sis_map_list_destroy(dyna->fields);
 		sis_free(dyna);
 		return NULL;

@@ -47,35 +47,39 @@ sis_net.h   提供给外部用户访问的接口和类型
 
 |   值 | 定义              | 说明                                              | info 可能值 |
 | ---: | :---------------- | :------------------------------------------------ | :---------- |
-| -100 | SIS_TAG_INVALID   | 请求已经失效                                      | NULL        |
-|   -3 | SIS_TAG_NIL       | 请求的数据为空                                    | NULL        |
-|   -2 | SIS_TAG_ERROR     | 未知原因错误 msg中可能存放字符串的错误原因        | STRING      |
-|   -1 | SIS_TAG_NOAUTH    | 未登录验证                                        | NULL        |
-|    0 | SIS_TAG_OK        | 数据正确 通常表示为请求完成的应答                 | NULL        |
-|    1 | SIS_TAG_INT       | 返回整数 二进制64位整数                           | INT64       |
-|    2 | SIS_TAG_CHAR      | 返回字符串 字符串                                 | STRING      |
-|    3 | SIS_TAG_CHARS     | 返回字符串列表 count+[size+data]                  | CHARS       |
-|    4 | SIS_TAG_BYTE      | 返回二进制 数据流                                 | DATA        |
-|    5 | SIS_TAG_BYTES     | 返回二进制列表 count+[size+data]                  | DATAS       |
-|   10 | SIS_TAG_SUB_OPEN  | 订阅打开 字符串日期                               | DATE        |
-|   11 | SIS_TAG_SUB_KEY   | 订阅时返回的键值 START 时初始化 然后递增 逗号分隔 | STRING      |
-|   12 | SIS_TAG_SUB_SDB   | 订阅是返回的结构 START 时初始化 然后递增          | JSON        |
-|   13 | SIS_TAG_SUB_START | 订阅开始 字符串日期                               | DATE        |
-|   14 | SIS_TAG_SUB_WAIT  | 订阅缓存数据结束 等待新的数据 字符串日期          | DATE        |
-|   15 | SIS_TAG_SUB_STOP  | 订阅结束 字符串日期                               | DATE        |
-|   16 | SIS_TAG_SUB_CLOSE | 订阅关闭 字符串日期                               | DATE        |
-|  100 | SIS_TAG_MSG_SET   | 此数据为信息包 下级连接按接收顺序传递 数据流      | DATA        |
-|  101 | SIS_TAG_MSG_PUB   | 此数据为广播包 下级连接直接广播 数据流            | DATA        |
+| -100 | SIS_NET_TAG_INVALID   | 请求已经失效                                      | STRING     |
+|   -3 | SIS_NET_TAG_NIL       | 请求的数据为空                                    | STRING     |
+|   -2 | SIS_NET_TAG_ERROR     | 未知原因错误 msg中可能存放字符串的错误原因        | STRING      |
+|   -1 | SIS_NET_TAG_NOAUTH    | 未登录验证                                        | STRING    |
+|    0 | SIS_NET_TAG_OK        | 数据正确 通常表示为请求完成的应答                 | NULL        |
+|    1 | SIS_NET_TAG_INT       | 返回整数 二进制64位整数                           | INT64       |
+|    2 | SIS_NET_TAG_JSON      | 返回JSON字符串                                 | STRING      |
+|    3 | SIS_NET_TAG_ARRAY     | 返回ARRAY字符串                 | STRING       |
+|    4 | SIS_NET_TAG_CHAR      | 返回字符串 字符串                                 | STRING      |
+|    5 | SIS_NET_TAG_CHARS     | 返回字符串列表 count+[size+data]                  | CHARS       |
+|    6 | SIS_NET_TAG_BYTE      | 返回二进制 数据流                                 | DATA        |
+|    7 | SIS_NET_TAG_BYTES     | 返回二进制列表 count+[size+data]                  | DATAS       |
+|   100 | SIS_NET_TAG_SUB_OPEN  | 订阅打开 字符串日期                               | DATE        |
+|   101 | SIS_NET_TAG_SUB_KEY   | 订阅时返回的键值 START 时初始化 然后递增  | 逗号分隔 STRING      |
+|   102 | SIS_NET_TAG_SUB_SDB   | 订阅是返回的结构 START 时初始化 然后递增          | JSON        |
+|   103 | SIS_NET_TAG_SUB_START | 订阅开始 字符串日期                               | DATE        |
+|   104 | SIS_NET_TAG_SUB_WAIT  | 订阅缓存数据结束 等待新的数据 字符串日期          | DATE        |
+|   105 | SIS_NET_TAG_SUB_STOP  | 订阅结束 字符串日期                               | DATE        |
+|   106 | SIS_NET_TAG_SUB_CLOSE | 订阅关闭 字符串日期                               | DATE        |
+
+#### tag 预定义信息
+
+|  100 | SIS_NET_TAG_MSG_SET   | 此数据为信息包 下级连接按接收顺序传递 数据流      | DATA        |
+|  101 | SIS_NET_TAG_MSG_PUB   | 此数据为广播包 下级连接直接广播 数据流            | DATA        |
 
 #### 二进制数据包的末尾 有一个字节的标志位
 
-| 值   | 格式           | 说明         |
-| :--- | :------------- | :----------- |
-| 0    | 原始二进制数据 | 直接数据存取 |
-| 1..2 | 有校验         | 3种校验方式  |
-| 3..4 | 有压缩         | 3种压缩方式  |
-| 5..6 | 有加密         | 3种加密方式  |
-| 7    | 预留           | 预留         |
+| 关键字   | 位长          | 值域          | 说明         |
+| :--- | :-- | :------------- | :----------- |
+| - | - | - | 0 - 原始二进制数据 |
+| crc16 | 1  |   0..1     | 是否有crc16数据校验  |
+| compress | 3 | 0..7     | 7种压缩方式  |
+| 6..7 | 4 | 0..15        | 15种加密方式  |
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // 对于 json 格式请求和应答

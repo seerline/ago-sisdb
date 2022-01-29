@@ -401,7 +401,7 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
 
 int sis_net_pack_ws(s_sis_memory *in_, s_sis_net_tail *info, s_sis_memory *out_)
 {
-    if (info->is_bytes == 0)
+    if (info->bytes == 0)
     {
         sis_net_pack_ws_message(1, in_, out_, NULL);
     }
@@ -433,17 +433,17 @@ int sis_net_unpack_ws(s_sis_memory *in_, s_sis_net_tail *info_, s_sis_memory *ou
     }
     if (wshead.opcode == 1)
     {
-        info_->is_bytes = 0;   // 字符串
-        info_->is_compress = 0;
-        info_->is_crypt = 0;
-        info_->is_crc16 = 0;
+        info_->bytes = 0;   // 字符串
+        info_->compress = 0;
+        info_->crypt = 0;
+        info_->crc16 = 0;
     }
     else 
     if (wshead.opcode == 2)
     {
         size_t size = sis_memory_get_size(out_);
         memmove(info_, sis_memory(out_) + size - sizeof(s_sis_net_tail),sizeof(s_sis_net_tail));
-        if (info_->is_crc16)
+        if (info_->crc16)
         {
             // 这里处理crc16验证 如果不匹配返回错误
         }

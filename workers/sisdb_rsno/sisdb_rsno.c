@@ -188,13 +188,13 @@ static void cb_dict_sdbs(void *context_, void *sdb_, size_t size)
 static int cb_encode(void *context_, char *in_, size_t ilen_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
-    if (context->cb_sub_inctzip)
+    if (context->cb_sub_incrzip)
     {
         s_sis_db_incrzip inmem = {0};
         inmem.data = (uint8 *)in_;
         inmem.size = ilen_;
         inmem.init = sis_incrzip_isinit(inmem.data, inmem.size);
-        context->cb_sub_inctzip(context->cb_source, &inmem);
+        context->cb_sub_incrzip(context->cb_source, &inmem);
     }
     return 0;
 } 
@@ -247,7 +247,7 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
         inmem.size = olen_;
         context->cb_sub_chars(context->cb_source, &inmem);
     }
-    if (context->cb_sub_inctzip)
+    if (context->cb_sub_incrzip)
     {
         if (!context->work_ziper)
         {
@@ -370,7 +370,7 @@ void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
     context->cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop"   );
     context->cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs"  );
     context->cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys"  );
-    context->cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_incrzip");
+    context->cb_sub_incrzip = sis_message_get_method(msg, "cb_sub_incrzip");
     context->cb_sub_chars   = sis_message_get_method(msg, "cb_sub_chars"  );
 }
 int cmd_sisdb_rsno_sub(void *worker_, void *argv_)

@@ -71,7 +71,7 @@ typedef struct s_snodb_reader
 	// 返回数据 s_sis_db_chars
 	sis_method_define  *cb_sub_chars;
 	// 返回压缩的数据 
-	sis_method_define  *cb_sub_inctzip;  // s_sis_db_incrzip
+	sis_method_define  *cb_sub_incrzip;  // s_sis_db_incrzip
 
     sis_method_define  *cb_sub_start;    // char *
     sis_method_define  *cb_sub_realtime; // char *
@@ -119,7 +119,7 @@ typedef struct s_snodb_cxt
 	sis_method_define  *wfile_cb_sub_stop ;
 	sis_method_define  *wfile_cb_dict_keys;
 	sis_method_define  *wfile_cb_dict_sdbs;
-	sis_method_define  *wfile_cb_sub_inctzip;
+	sis_method_define  *wfile_cb_sub_incrzip;
 	s_sis_worker       *wfile_worker; // 当前使用的写文件类
 
 	s_sis_json_node    *rfile_config;

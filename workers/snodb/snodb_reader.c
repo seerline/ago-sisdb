@@ -6,7 +6,7 @@
 #include <snodb.h>
 
 
-static int cb_sub_inctzip(void *source, void *argv);
+static int cb_sub_incrzip(void *source, void *argv);
 static int cb_sub_chars(void *source, void *argv);
 static int cb_sub_start(void *source, void *argv);
 static int cb_sub_realtime(void *source, void *argv);
@@ -30,9 +30,9 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
     reader->father = context;
     reader->ishead = 0;
 	reader->sub_date = context->work_date;
-    if (netmsg->ask)
+    if (netmsg->info)
     {
-        s_sis_json_handle *argnode = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+        s_sis_json_handle *argnode = sis_json_load(netmsg->info, sis_sdslen(netmsg->info));
         if (argnode)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
@@ -48,7 +48,7 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 	}
 	if (reader->iszip)
 	{
-		reader->cb_sub_inctzip  = cb_sub_inctzip;
+		reader->cb_sub_incrzip  = cb_sub_incrzip;
 	}
 	else
 	{
@@ -60,11 +60,11 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 	reader->cb_dict_keys 		= cb_dict_keys;
 	reader->cb_dict_sdbs 		= cb_dict_sdbs;
 	
-    sis_str_divide_sds(netmsg->key, '.', &reader->sub_keys, &reader->sub_sdbs);
+    sis_str_divide_sds(netmsg->subject, '.', &reader->sub_keys, &reader->sub_sdbs);
 	if (!reader->sub_keys || !reader->sub_sdbs || 
 		sis_sdslen(reader->sub_keys) < 1 || sis_sdslen(reader->sub_sdbs) < 1)
 	{
-		LOG(5)("format error. %s\n", netmsg->key);
+		LOG(5)("format error. %s\n", netmsg->subject);
 		snodb_reader_destroy(reader);
 		return SIS_METHOD_ERROR;
 	}
@@ -145,7 +145,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 {
     s_snodb_cxt *context = (s_snodb_cxt *)context_;
 
-	if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+	if (sis_is_multiple_sub(netmsg->subject, sis_sdslen(netmsg->subject)))
 	{
 		return SIS_METHOD_NIL;
 	}
@@ -161,9 +161,9 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
     reader->father = context;
     reader->ishead = 1;
 	reader->sub_date = context->work_date;
-    if (netmsg->ask)
+    if (netmsg->info)
     {
-        s_sis_json_handle *argnode = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+        s_sis_json_handle *argnode = sis_json_load(netmsg->info, sis_sdslen(netmsg->info));
         if (argnode)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
@@ -177,7 +177,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 		reader->iszip = true;
 	}
 	reader->sub_whole = false;
-    sis_str_divide_sds(netmsg->key, '.', &reader->sub_keys, &reader->sub_sdbs);
+    sis_str_divide_sds(netmsg->subject, '.', &reader->sub_keys, &reader->sub_sdbs);
 	if (!reader->sub_keys || !reader->sub_sdbs || 
 		sis_sdslen(reader->sub_keys) < 1 || sis_sdslen(reader->sub_sdbs) < 1)
 	{
@@ -211,12 +211,12 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 		}
 		else
 		{
-			sis_net_ans_with_bytes(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));    
+			sis_net_message_set_byte(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));    
 		}	
 	}
 	else
 	{
-		sis_net_ans_with_chars(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
+		sis_net_message_set_char(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
 	}
 	snodb_reader_destroy(reader);
 	sis_object_destroy(obj);
@@ -236,9 +236,9 @@ static int _bitzip_nums = 0;
 static int64 _bitzip_size = 0;
 static msec_t _bitzip_msec = 0;
 #endif
-static int cb_sub_inctzip(void *source, void *argv)
+static int cb_sub_incrzip(void *source, void *argv)
 {
-    // printf("%s\n", __func__);
+    printf("%s\n", __func__);
     s_snodb_reader *reader = (s_snodb_reader *)source;
     s_snodb_cxt *context = (s_snodb_cxt *)reader->father;
     s_sis_db_incrzip *inmem = (s_sis_db_incrzip *)argv;
@@ -255,9 +255,9 @@ static int cb_sub_inctzip(void *source, void *argv)
         _bitzip_msec = sis_time_get_now_msec();
     } 
 #endif
-    sis_message_set_cmd(newinfo, "zpub");
-	sis_net_ans_with_bytes(newinfo, (char *)inmem->data, inmem->size); 
-	// SIS_NET_SHOW_MSG("send", newinfo);
+    sis_net_message_set_cmd(newinfo, "zpub");
+	sis_net_message_set_byte(newinfo, (char *)inmem->data, inmem->size); 
+	SIS_NET_SHOW_MSG("send", newinfo);
     if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -278,18 +278,18 @@ static int cb_sub_chars(void *source, void *argv)
 	s_sis_net_message *newinfo = sis_net_message_create();
 	newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
 	newinfo->cid = reader->cid;
-	sis_message_set_cmd(newinfo, "pub");
-	sis_message_set_key(newinfo, inmem->kname, inmem->sname);
+	sis_net_message_set_cmd(newinfo, "pub");
+	sis_net_message_set_subject(newinfo, inmem->kname, inmem->sname);
 	if (reader->rfmt & SISDB_FORMAT_BYTES)
 	{
-		sis_net_ans_with_bytes(newinfo, inmem->data, inmem->size); 
+		sis_net_message_set_byte(newinfo, inmem->data, inmem->size); 
 	}
 	else
 	{
 		s_sis_dynamic_db *db = sis_map_list_get(context->map_sdbs, inmem->sname);
 		s_sis_sds omem = sis_db_format_sds(db, NULL, reader->rfmt, (const char *)inmem->data, inmem->size, 0);
 		// printf("%s %d : %s\n",db->name, reader->rfmt, omem);
-		sis_net_ans_with_chars(newinfo, omem, sis_sdslen(omem));
+		sis_net_message_set_char(newinfo, omem, sis_sdslen(omem));
 		sis_sdsfree(omem); 
 	}
 	if (context->cb_net_message)
@@ -308,7 +308,7 @@ static int cb_sub_start(void *source, void *argv)
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
-    sis_net_ans_with_sub_start(newinfo, workdate);
+    sis_net_msg_tag_sub_start(newinfo, workdate);
     if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -325,7 +325,7 @@ static int cb_sub_realtime(void *source, void *argv)
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
-    sis_net_ans_with_sub_wait(newinfo, workdate);
+    sis_net_msg_tag_sub_wait(newinfo, workdate);
     if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -344,7 +344,7 @@ static int cb_sub_stop(void *source, void *argv)
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
-    sis_net_ans_with_sub_stop(newinfo, workdate);
+    sis_net_msg_tag_sub_stop(newinfo, workdate);
     if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -367,9 +367,9 @@ static int cb_dict_keys(void *source, void *argv)
     newinfo->cid = reader->cid;
     newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
 	
-	sis_message_set_cmd(newinfo, "set");
-	sis_message_set_key(newinfo, "_keys_", NULL);
-    sis_net_ans_with_chars(newinfo, keys, sis_strlen(keys));
+	sis_net_message_set_cmd(newinfo, "set");
+	sis_net_message_set_tag(newinfo, SIS_NET_TAG_SUB_KEY);
+    sis_net_message_set_char(newinfo, keys, sis_strlen(keys));
 	if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -386,9 +386,9 @@ static int cb_dict_sdbs(void *source, void *argv)
     s_sis_net_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->serial ? sis_sdsdup(reader->serial) : NULL;
-	sis_message_set_cmd(newinfo, "set");
-	sis_message_set_key(newinfo, "_sdbs_", NULL);
-	sis_net_ans_with_chars(newinfo, sdbs, sis_strlen(sdbs));
+	sis_net_message_set_cmd(newinfo, "set");
+	sis_net_message_set_tag(newinfo, SIS_NET_TAG_SUB_SDB);
+	sis_net_message_set_char(newinfo, sdbs, sis_strlen(sdbs));
 	if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -499,14 +499,14 @@ int snodb_remove_reader(s_snodb_cxt *snodb_, int cid_)
 
 static void cb_output_reader_send(s_snodb_reader *reader, s_sis_db_incrzip *imem)
 {
-	// printf("cb_output_reader_send = %d : %d\n", reader->sub_whole, imem->init);
+	printf("cb_output_reader_send = %d : %d\n", reader->sub_whole, imem->init);
 	if (reader->sub_whole)
 	{
-		// printf("cb_output_reader_send = %p : %d\n", reader->cb_sub_inctzip, imem->init);
+		printf("cb_output_reader_send = %p : %d\n", reader->cb_sub_incrzip, imem->init);
 		// 订阅全部就直接发送
-		if (reader->cb_sub_inctzip)
+		if (reader->cb_sub_incrzip)
 		{	
-			reader->cb_sub_inctzip(reader, imem);
+			reader->cb_sub_incrzip(reader, imem);
 		}
 	}
 	else
@@ -524,7 +524,7 @@ static int cb_output_reader(void *reader_, s_sis_object *obj_)
 	zmem.data = (uint8 *)SIS_OBJ_GET_CHAR(obj_);
 	zmem.size = SIS_OBJ_GET_SIZE(obj_);
 	zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
-	// printf("cb_output_reader = %d %d\n",reader->isinit, reader->ishead);
+	printf("cb_output_reader = %d %d [%d]\n",reader->isinit, reader->ishead, reader->cid);  
 	if (!reader->isinit)
 	{
 		if (!zmem.init)
@@ -583,14 +583,14 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)context_;
 	// s_snodb_cxt *snodb = (s_snodb_cxt *)reader->father;
-	// printf("cb_encode %p %p\n", reader->sub_ziper, reader->cb_sub_inctzip);
-	if (reader->cb_sub_inctzip)
+	printf("cb_encode %p %p\n", reader->sub_ziper, reader->cb_sub_incrzip);
+	if (reader->cb_sub_incrzip)
 	{
         s_sis_db_incrzip zmem = {0};
         zmem.data = (uint8 *)in_;
         zmem.size = ilen_;
         zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
-		reader->cb_sub_inctzip(reader, &zmem);
+		reader->cb_sub_incrzip(reader, &zmem);
 	}
     return 0;
 } 
@@ -627,11 +627,11 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 		inmem.size = ilen_;
 		reader->cb_sub_chars(reader, &inmem);
 	}
-	if (reader->cb_sub_inctzip)
+	if (reader->cb_sub_incrzip)
 	{
 		if (!in_)
 		{
-			// if (ilen_ > 0 ) LOG(5)("==== curr_size = %d\n", sisdb_incr_getsize(reader->sub_ziper));
+			if (ilen_ > 0 ) LOG(5)("==== curr_size = %d\n", sisdb_incr_getsize(reader->sub_ziper));
 			sisdb_incr_zip_restart(reader->sub_ziper);	
 			return 0;
 		}
@@ -652,13 +652,13 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 		int sidx = sisdb_incr_get_sidx(reader->sub_ziper, sname);
 		if (kidx < 0 || sidx < 0)
 		{
-			// LOG(5)("fail = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
+			LOG(5)("fail = %s %s -> %d  %d | %d  %d\n", kname, sname, kidx, sidx, kidx_, sidx_);
 			// 通过此判断是否是需要的key和sdb
 			return 0;
 		}
 
 		sisdb_incr_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
-		// LOG(5)("==== cb_unzip_reply = %s %s -> %d  %d | %d  %d | === %d\n", kname, sname, kidx, sidx, kidx_, sidx_, sisdb_incr_getsize(reader->sub_ziper));
+		LOG(5)("==== cb_unzip_reply = %s %s -> %d  %d | %d  %d | === %d\n", kname, sname, kidx, sidx, kidx_, sidx_, sisdb_incr_getsize(reader->sub_ziper));
 
 	}
     return 0;

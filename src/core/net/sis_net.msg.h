@@ -20,18 +20,28 @@
 #define SIS_NET_FORMAT_BYTES   1 
 // 只有ver和fmt 会作为请求方的默认值保留 除非客户再次更新ver和fmt否则按 默认->上次传送值
 
-// ans 的定义
-#define SIS_NET_ANS_INVALID   -100  // 请求已经失效
-#define SIS_NET_ANS_NIL         -3  // 数据为空
-#define SIS_NET_ANS_ERROR       -2  // 未知原因错误 
-#define SIS_NET_ANS_NOAUTH      -1  // 未登录验证
+// -126..0 为应答的错误定义
+#define SIS_NET_TAG_INVALID   -100  // 请求已经失效
+#define SIS_NET_TAG_NIL         -3  // 数据为空
+#define SIS_NET_TAG_ERROR       -2  // 未知原因错误 
+#define SIS_NET_TAG_NOAUTH      -1  // 未登录验证
+#define SIS_NET_TAG_OK           0  // 数据正确 通常表示为请求完成的应答
+// 1..126 为info字段的数据类型 若没有默认为二进制
+#define SIS_NET_TAG_INT          1  // 返回整数 二进制64位整数
+#define SIS_NET_TAG_JSON         2  // 返回JSON字符串
+#define SIS_NET_TAG_ARRAY        3  // 返回ARRAY字符串
+#define SIS_NET_TAG_CHAR         4  // 返回字符串
+#define SIS_NET_TAG_CHARS        5  // 返回字符串列表 count+[size+data]
+#define SIS_NET_TAG_BYTE         6  // 返回二进制数据流
+#define SIS_NET_TAG_BYTES        7  // 返回二进制列表 count+[size+data]
 
-#define SIS_NET_ANS_OK           0  // 数据正确
-#define SIS_NET_ANS_SUB_KEY      3  // 订阅时返回的键值 OPEN时初始化 然后递增
-#define SIS_NET_ANS_SUB_SDB      4  // 订阅是返回的结构 OPEN时初始化 然后递增
-#define SIS_NET_ANS_SUB_OPEN     5  // 订阅开始
-#define SIS_NET_ANS_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
-#define SIS_NET_ANS_SUB_STOP     7  // 订阅结束
+#define SIS_NET_TAG_SUB_OPEN   100  // 订阅打开 字符串日期
+#define SIS_NET_TAG_SUB_KEY    101  // 订阅时返回的键值 START 时初始化 然后递增 逗号分隔
+#define SIS_NET_TAG_SUB_SDB    102  // 订阅是返回的结构 START 时初始化 然后递增
+#define SIS_NET_TAG_SUB_START  103  // 订阅开始 字符串日期
+#define SIS_NET_TAG_SUB_WAIT   104  // 订阅缓存数据结束 等待新的数据 字符串日期
+#define SIS_NET_TAG_SUB_STOP   105  // 订阅结束 字符串日期
+#define SIS_NET_TAG_SUB_CLOSE  106  // 订阅关闭 字符串日期
 
 // 如果把网络类比与找小明拿一份5月的工作计划，那么：
 // service 找什么人 - 找小明
@@ -39,30 +49,44 @@
 // key 拿什么东西 - 拿工作计划
 // ask 什么样的工作计划 - 5月份的工作计划 
 typedef struct s_sis_net_switch {
-	unsigned char is_reply    : 1;  // 表示为应答包  应答有  ans ** 字符格式以此来判定是否为应答
-	unsigned char is_inside   : 1;  // 是否为内部包 如果是 不扩散
-	unsigned char is_1        : 1;  // 备用
-	unsigned char has_ver     : 1;  // 请求有 ver     应答有  ver
-	unsigned char has_fmt     : 1;  // 请求有 fmt     应答有  fmt
-	unsigned char has_service : 1;  // 请求有 service 应答有  --- 
-	unsigned char has_cmd     : 1;  // 请求有 cmd     应答有  ---
-	unsigned char has_ans     : 1;  // 请求有 ---     应答有  ans
-
-	unsigned char has_key     : 1;  // 请求有 key     应答有  key
-	unsigned char has_ask     : 1;  // 请求有 ask     应答有  ---
-	unsigned char has_msg     : 1;  // 请求有 ---     应答有  msg
-	unsigned char has_next    : 1;  // 请求有 ---     应答有  next 有后续包
-	unsigned char has_argvs   : 1;  // 请求有 argvs   应答有  argvs
-	unsigned char has_more    : 1;  // 表示有扩展字段  0 - 无扩展
-	unsigned char fmt_msg     : 1;  // 信息格式 0 - 字符 1 - 二进制
-	unsigned char fmt_argv    : 1;  // 数据格式 0 - 字符 1 - 二进制
+	unsigned char sw_sno     : 1;  // 是否带包序号 为64位整数
+	unsigned char sw_service : 1;  // 服务名 寻找哪个服务
+	unsigned char sw_cmd     : 1;  // 指令名 寻找该服务下的哪个命令
+	unsigned char sw_subject : 1;  // 主体名
+	unsigned char sw_tag     : 1;  // 指明数据包的类型 0 表示成功 其他表示各种信息
+	unsigned char sw_info    : 1;  // 附属信息
+	unsigned char sw_more    : 1;  // 是否有扩展数据 扩展字段存储为 (klen+key+vlen+val)
+	unsigned char sw_mark    : 1;  // 记号 == 1 表示为二进制数据, 以区分JSON字符串
 } s_sis_net_switch;
+
+// 二进制协议会在每个数据包最后放入此结构 解包时先从最后取出该结构 
+// 该结构可以增加crc数据校验等功能
+// 因为数据是否被压缩只有压缩后才能直到是否成功 不成功用原文 所以这个结构必须放到数据末尾
+// 也可用此数据判断二进制数据是否合法
+// 字符串数据没有该结构 统一不压缩 不加密
+// 如果需要压缩加密把字符串当字节流处理就可以了
+// 根据ws协议头就知道后面的数据是什么格式 二进制就跟这个结构 字符出就没有这个结构
+// 二进制数据包最后一个字节 - 检查只对 s_sis_net_switch 后的实体数据进行处理
+typedef struct s_sis_net_tail {
+	unsigned char bytes    : 1;  // 数据以什么格式传播
+	unsigned char crc16    : 1;  // 是否有crc16数据校验 如果有去前面取16偏移用于校验
+	unsigned char compress : 2;  // 是否被压缩 0:｜1:snappy｜2:incrzip｜3:前置一个字节中支持255种压缩方式 
+	unsigned char crypt    : 4;  // 是否被加密 0:｜1..7 | 15:前置一个字节中支持255种加解密方式 
+	// compress的前置信息 + crypt的前置信息 + s_sis_net_tail 为最后的信息描述
+} s_sis_net_tail;
 
 // 定义错误信息返回
 typedef struct s_sis_net_errinfo {
 	int      rno;
 	char    *rinfo;
 } s_sis_net_errinfo;
+
+
+
+#define SIS_MSG_MODE_NORMAL   0  // 此数据为信息包 下级连接按接收顺序传递 数据流
+#define SIS_MSG_MODE_INSIDE   1  // 此数据为信息包 下级连接按接收顺序传递 数据流
+#define SIS_MSG_MODE_SET     10  // 此数据为信息包 下级连接按接收顺序传递 数据流
+#define SIS_MSG_MODE_PUB     11  // 此数据为广播包 下级连接直接广播 数据流
 
 // 把请求和应答统一结合到 s_sis_net_message 中
 // 应答目前约定只支持一级数组，
@@ -71,50 +95,44 @@ typedef struct s_sis_net_errinfo {
 typedef struct s_sis_net_message {
     // 公共部分
     int                 cid;       // 哪个客户端的信息 -1 表示向所有用户发送
-    int8                ver;       // [非必要] 协议版本
 	uint32              refs;      // 引用次数
-    s_sis_sds	        name;      // [必要] 请求的名字 用户名+时间戳+序列号 唯一标志请求的名称，需要原样返回；
 	// 用户请求的投递地址 方便无状态接收数据  不超过128个字符    
-    int8                comp;      // 如果包不完整需要等到完整包到达再解析
+    s_sis_sds	        name;      // [必要] 请求的名字 用户名+时间戳+序列号 唯一标志请求的名称，需要原样返回；
+	int8                mode;      // 是否为内部通讯包
+    
+    int8                format;    // 是否以字符串方式进行打包和拆包 默认 SIS_NET_FORMAT_CHARS
+    int8                comp;      // 如果包不完整需要等到完整包到达再解析 主要用于拆包后的组合复原 该值决定了WSS的头标记
 	s_sis_memory       *memory;    // 网络来去的原始数据包 转发时直接发送该数据
 
-    int8                format;    // 根据此标记进行打包和拆包 默认 SIS_NET_FORMAT_CHARS
-
+    // 数据包解析后的信息
     s_sis_net_switch    switchs;   // 字典开关
-    // 当发送和接收到的是不定长列表数据时 写入argvs中 
-    s_sis_pointer_list *argvs;     // 按顺序获取 s_sis_object -> s_sis_sds 
-    // 请求相关部分
-	s_sis_sds	        service;   // [非必要] 请求信息专用,指定去哪个service执行命令 http格式这里填路径
-	s_sis_sds	        cmd;       // [非必要] 请求信息专用,要执行什么命令  get set....
-    s_sis_sds	        key;       // [请求专用｜不必要] 对谁执行命令
-    s_sis_sds	        ask;       // [请求专用｜不必要] 执行命令的参数，必须为字符类型 
-    // 应答相关部分
-    int                 rans;      // [应答专用｜必要] 表示为应答编号 整数
-	int                 rnext;     // 后续的数据
-    s_sis_sds           rmsg;      // [应答专用｜不必要] 表示为字符类型的返回数据
-    int8                rfmt;      // [应答专用] rmsg 数据的类型和格式 特指 rmsg 整数 数组 ...
+	int64               sno;       // 包序号
+	s_sis_sds	        service;   // 请求信息专用,指定去哪个service执行命令 http格式这里填路径
+	s_sis_sds	        cmd;       // 请求信息专用,要执行什么命令  get set....
+	s_sis_sds           subject;   // 
+	int8                tag;       // 标签
 
-    s_sis_sds           info;       // [信息] 
-	s_sis_sds           subject;    // [信息] 
-	// 有扩展字典时有值
-	s_sis_map_pointer  *map;       // 
+    s_sis_sds           info;      // 
+	// 当发送和接收到的是不定长列表数据时 写入 infos 中 tag = SIS_NET_TAG_CHARS SIS_NET_TAG_BYTES
+    s_sis_pointer_list *argvs;     // 按顺序获取 s_sis_object 
+
+	// 这里通常是网络进程之间交互的扩展信息
+	s_sis_map_pointer  *more;      // 扩展字段定义 网络通讯时 有值就扩展出来 ｜ 暂时不用
+	// 这里通常是线程之间交互的扩展信息
+	s_sis_map_pointer  *map;       // 这里是用户自定义的kv
 } s_sis_net_message;
 
+
 #define SIS_NET_SHOW_MSG(_s_,_n_) { s_sis_net_message *_msg_ = (s_sis_net_message *)_n_; \
-	uint16 *sw = (uint16 *)&_msg_->switchs; \
-	if (_msg_->switchs.is_reply) {\
-		printf("ans %s: [%d] %x : %d %s %s  argvs :%d\n", _s_, _msg_->cid, *sw, \
-			_msg_->rans, _msg_->key ? _msg_->key : "nil",\
-			_msg_->rmsg ? _msg_->rmsg : "nil",\
-			_msg_->argvs ? _msg_->argvs->count : 0);\
-	} else {\
-		printf("ask %s: [%d] %x : %s %s %s %s argvs :%d\n", _s_, _msg_->cid, *sw, \
-			_msg_->service ? _msg_->service : "nil",\
-			_msg_->cmd ? _msg_->cmd : "nil",\
-			_msg_->key ? _msg_->key : "nil",\
-			_msg_->ask ? _msg_->ask : "nil",\
-			_msg_->argvs ? _msg_->argvs->count : 0);\
-	}}
+	uint8 *sw = (uint8 *)&_msg_->switchs; \
+	printf("net %s: [%d] %x [%d]: %lld | %d %s %s %s %s argvs :%d\n", _s_, \
+	    _msg_->cid, *sw, _msg_->mode, _msg_->sno, _msg_->tag,\
+		_msg_->service ? _msg_->service : "nil",\
+		_msg_->cmd ? _msg_->cmd : "nil",\
+		_msg_->subject ? _msg_->subject : "nil",\
+		_msg_->info ? _msg_->info : "nil",\
+		_msg_->argvs ? _msg_->argvs->count : 0);\
+	}
 
 ////////////////////////////////////////////////////////
 //  标准网络格式的消息结构
@@ -131,45 +149,54 @@ void sis_net_message_clear(s_sis_net_message *);
 size_t sis_net_message_get_size(s_sis_net_message *);
 
 // 拷贝需要广播的数据
-void sis_net_message_publish(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, s_sis_sds cmd_, s_sis_sds key_);
-// 分解命令
-int sis_message_get_cmd(const char *icmd_, s_sis_sds *service_, s_sis_sds *command_);
+void sis_net_message_relay(s_sis_net_message *, s_sis_net_message *, int cid_, s_sis_sds name_, 
+	s_sis_sds service_, s_sis_sds cmd_, s_sis_sds subject_);
+
 // 以下函数 只检查相关字段 其他都不管
-void sis_message_set_key(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
-void sis_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
-void sis_message_set_ans(s_sis_net_message *netmsg_, int ans_, int isclear_);
-void sis_message_set_argvs(s_sis_net_message *netmsg_, const char *in_, size_t ilen_, int isclear_);
-void sis_message_set_object(s_sis_net_message *netmsg_, void *obj_, int isclear_);
+void sis_net_message_set_subject(s_sis_net_message *netmsg_, const char *kname_, const char *sname_);
+void sis_net_message_set_scmd(s_sis_net_message *netmsg_, const char *scmd_);
+void sis_net_message_set_cmd(s_sis_net_message *netmsg_, const char *cmd_);
+void sis_net_message_set_service(s_sis_net_message *netmsg_, const char *service_);
+void sis_net_message_set_tag(s_sis_net_message *netmsg_, int tag_);
+void sis_net_message_set_notag(s_sis_net_message *netmsg_);
+
+void sis_net_message_set_info(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
+
+void sis_net_message_set_info_i(s_sis_net_message *netmsg_, int64 val_);
+
+void sis_net_message_init_chars(s_sis_net_message *netmsg_);
+
+void sis_net_message_set_chars(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
+
+void sis_net_message_init_bytes(s_sis_net_message *netmsg_);
+
+void sis_net_message_set_bytes(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
+
+void sis_net_message_set_char(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
+
+void sis_net_message_set_byte(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
+////////////////////////////////////////////////////////
+//  s_sis_net_message 提取数据函数
+////////////////////////////////////////////////////////
+void sis_net_msg_set_inside(s_sis_net_message *);
+
+// 获取字符数据
+int64 sis_net_msg_info_as_int(s_sis_net_message *netmsg_);
+
+int sis_net_msg_info_as_date(s_sis_net_message *netmsg_);
 
 ////////////////////////////////////////////////////////
 //  s_sis_net_message 操作类函数
 ////////////////////////////////////////////////////////
+void sis_net_msg_tag_ok(s_sis_net_message *);
+void sis_net_msg_tag_int(s_sis_net_message *, int64 in_);
+void sis_net_msg_tag_error(s_sis_net_message *, char *rval_, size_t vlen_);
+void sis_net_msg_tag_null(s_sis_net_message *);
+void sis_net_msg_tag_sub_start(s_sis_net_message *, const char *info_);
+void sis_net_msg_tag_sub_wait(s_sis_net_message *,  const char *info_);
+void sis_net_msg_tag_sub_stop(s_sis_net_message *,  const char *info_);
+void sis_net_msg_tag_sub_open(s_sis_net_message *, const char *info_);
+void sis_net_msg_tag_sub_close(s_sis_net_message *, const char *info_);
 
-void sis_net_ask_with_chars(s_sis_net_message *netmsg_, 
-    char *cmd_, char *key_, char *val_, size_t vlen_);
-
-void sis_net_ask_with_bytes(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
-
-// in_被吸入
-void sis_net_ans_with_chars(s_sis_net_message *, const char *in_, size_t ilen_);
-
-void sis_net_ans_with_bytes(s_sis_net_message *, const char *in_, size_t ilen_);
-// 获取字符数据
-s_sis_sds sis_net_get_val(s_sis_net_message *netmsg_);
-// 获取二进制数据流
-s_sis_sds sis_net_get_argvs(s_sis_net_message *netmsg_, int index);
-
-void sis_net_ans_with_noreply(s_sis_net_message *);
-
-void sis_net_ans_with_int(s_sis_net_message *, int in_);
-void sis_net_ans_with_ok(s_sis_net_message *);
-void sis_net_ans_with_error(s_sis_net_message *, char *rval_, size_t vlen_);
-void sis_net_ans_with_null(s_sis_net_message *);
-void sis_net_ans_with_sub_start(s_sis_net_message *, const char *info_);
-void sis_net_ans_with_sub_wait(s_sis_net_message *,  const char *info_);
-void sis_net_ans_with_sub_stop(s_sis_net_message *,  const char *info_);
-
-// 获取字符数据
-int64 sis_message_info_to_int(s_sis_net_message *netmsg_);
 
 #endif //_SIS_CRYPT_H

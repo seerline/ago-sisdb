@@ -24,7 +24,7 @@ typedef struct s_sisdb_rsno_cxt
 
     s_sis_sds          ziper_keys;
     s_sis_sds          ziper_sdbs;
-	s_sisdb_incr      *work_ziper;     // cb_sub_inctzip 有值时 需要压缩读出的数据
+	s_sisdb_incr      *work_ziper;     // cb_sub_incrzip 有值时 需要压缩读出的数据
     s_sis_thread       work_thread;    // 读文件时间长 需要启动一个线程处理
 
     void              *cb_source;      // 
@@ -32,7 +32,7 @@ typedef struct s_sisdb_rsno_cxt
     sis_method_define *cb_sub_stop;     // 必须是字符的日期
     sis_method_define *cb_dict_sdbs;    // 表结构 json字符串 
     sis_method_define *cb_dict_keys;    // 代码串 字符串
-    sis_method_define *cb_sub_inctzip;  // 增量压缩格式
+    sis_method_define *cb_sub_incrzip;  // 增量压缩格式
     sis_method_define *cb_sub_chars;    // s_sis_db_chars
 
 }s_sisdb_rsno_cxt;

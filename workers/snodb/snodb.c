@@ -49,7 +49,7 @@ s_sis_modules sis_modules_snodb = {
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_snodb_cxt --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
-// #define  SNODB_DEBUG
+#define  SNODB_DEBUG
 // 转化的压缩包
 #ifdef SNODB_DEBUG
 static int64 _zipnums = 0;
@@ -63,7 +63,6 @@ static size_t _insize = 0;
 static int cb_input_reader(void *context_, s_sis_object *imem_)
 {	
 	s_snodb_cxt *context = (s_snodb_cxt *)context_;
-	
 	if (!context->work_ziper || context->stoping == 1)
 	{
 		return -1;
@@ -231,7 +230,7 @@ bool snodb_init(void *worker_, void *argv_)
 
 		// 加载成功后 wlog 文件会被重写 以此来保证数据前后的一致性
 		// snodb_wlog_remove(context);
-		//  如何保证磁盘的code索引和重启后索引保持一致 
+		//  如何保证磁盘的code索引和重启后索引保持一致  s
 		//  传入数据时不能清理 keys 和 sdbs 才能不出错
 		// 然后启动一个读者 订阅 outputs 中数据 然后实时写盘
 		context->wlog_reader = snodb_reader_create();
@@ -341,16 +340,16 @@ int cmd_snodb_set(void *worker_, void *argv_)
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-	if (!sis_strcasecmp(netmsg->key, "_keys_") && netmsg->switchs.has_ask)
+	if (netmsg->tag == SIS_NET_TAG_SUB_KEY)
 	{
 		sis_sdsfree(context->work_keys);
-		context->work_keys = sis_sdsdup(netmsg->ask);
+		context->work_keys = sis_sdsdup(netmsg->info);
 	}
-	if (!sis_strcasecmp(netmsg->key, "_sdbs_") && netmsg->ask)
+	if (netmsg->tag == SIS_NET_TAG_SUB_SDB)
 	{
 		sis_sdsfree(context->work_sdbs);
 		// 从外界过来的sdbs可能格式不对，需要转换
-		s_sis_json_handle *injson = sis_json_load(netmsg->ask, sis_sdslen(netmsg->ask));
+		s_sis_json_handle *injson = sis_json_load(netmsg->info, sis_sdslen(netmsg->info));
 		if (!injson)
 		{
 			return SIS_METHOD_ERROR;
@@ -392,7 +391,7 @@ int cmd_snodb_start(void *worker_, void *argv_)
     s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 	SIS_NET_SHOW_MSG("start", netmsg);
-	int workdate = netmsg->ask ? sis_atoll(netmsg->ask) : sis_time_get_idate(0);
+	int workdate = sis_net_msg_info_as_date(netmsg);
 
 	_snodb_write_start(context, workdate);
 	LOG(5)("snodb init ok : %d %d\n", context->status, context->work_date);
@@ -436,7 +435,7 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 	LOG(5)("snodb stop. wlog : %p readers : %d workdate : %d = %s\n", 
 		context->wlog_worker, 
 		sis_map_kint_getsize(context->cur_reader_map), 
-		context->work_date, netmsg->ask);
+		context->work_date, netmsg->info);
 		
 	s_sis_dict_entry *de;
 	s_sis_dict_iter *di = sis_dict_get_iter(context->cur_reader_map);
@@ -446,7 +445,7 @@ int cmd_snodb_stop(void *worker_, void *argv_)
 		if (reader->status != SIS_SUB_STATUS_STOP)
 		{
 			LOG(5)("snodb stop. cid : %d workdate : %d = %s\n", 
-				reader->cid, context->work_date, netmsg->ask);
+				reader->cid, context->work_date, netmsg->info);
 			snodb_reader_realtime_stop(reader);
 			reader->status = SIS_SUB_STATUS_STOP;
 		}
@@ -494,7 +493,6 @@ int _snodb_write_incrzip(void *context_, char *imem_, size_t isize_)
 		context->near_object = obj;
 	}
 	sis_lock_list_push(context->outputs, obj);
-
 	sis_object_destroy(obj);
 	return 0;
 }
@@ -548,6 +546,7 @@ bool _snodb_write_init(s_snodb_cxt *context)
         context->status = SIS_SUB_STATUS_WORK;
     }
 	int count = sis_map_kint_getsize(context->cur_reader_map);
+	// printf("=====11===%d %d\n", count, context->cur_readers);
     if (count <= context->cur_readers)
     {
         return true;
@@ -596,9 +595,9 @@ int cmd_snodb_pub(void *worker_, void *argv_)
     }
 	char kname[128]; 
 	char sname[128]; 
-	int  cmds = sis_str_divide(netmsg->key, '.', kname, sname);
-	// printf("%s %s\n",__func__, netmsg->key ? netmsg->key : "nil");
-	s_sis_sds inmem = sis_net_get_argvs(netmsg, 0);
+	int  cmds = sis_str_divide(netmsg->subject, '.', kname, sname);
+	// printf("%s %s\n",__func__, netmsg->subject ? netmsg->subject : "nil");
+	s_sis_sds inmem = netmsg->info;
 	if (cmds == 2 && inmem)
 	{
 		int kidx = sis_map_list_get_index(context->map_keys, kname);
@@ -630,7 +629,7 @@ int cmd_snodb_sub(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
 	s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-	// SIS_NET_SHOW_MSG("register sub === ", netmsg);
+	SIS_NET_SHOW_MSG("register sub === ", netmsg);
 	int nowday = sis_time_get_idate(0);
 	if (nowday > context->work_date)
 	{
@@ -656,8 +655,8 @@ int cmd_snodb_get(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
 	s_snodb_cxt *context = (s_snodb_cxt *)worker->context;
 	s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-	// printf("%s %d\n",__func__, sis_strsub(netmsg->key, "*"));
-	if (sis_is_multiple_sub(netmsg->key, sis_sdslen(netmsg->key)))
+	// printf("%s %d\n",__func__, sis_strsub(netmsg->subject, "*"));
+	if (sis_is_multiple_sub(netmsg->subject, sis_sdslen(netmsg->subject)))
 	{
 		// 不支持多键值获取
 		return SIS_METHOD_ERROR;

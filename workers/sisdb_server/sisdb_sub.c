@@ -107,11 +107,11 @@ void  sisdb_sub_cxt_init(s_sisdb_sub_cxt *cxt_, void *source_, sis_method_define
 
 static int sisdb_sub_notice(s_sis_map_pointer *map, s_sis_net_message *msg, int ishead)
 {
-	s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_map_pointer_get(map, msg->key);
+	s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_map_pointer_get(map, msg->subject);
 	if (!subunit)
 	{
-        subunit = sisdb_sub_unit_create(msg->key, ishead);
-		sis_map_pointer_set(map, msg->key, subunit);
+        subunit = sisdb_sub_unit_create(msg->subject, ishead);
+		sis_map_pointer_set(map, msg->subject, subunit);
 	}
 	for (int i = 0; i < subunit->netmsgs->count; i++)
 	{
@@ -129,9 +129,9 @@ static int sisdb_sub_notice(s_sis_map_pointer *map, s_sis_net_message *msg, int 
 int sisdb_sub_cxt_sub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
 {
     int o = 0;
-    if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
+    if (netmsg_->subject && sis_sdslen(netmsg_->subject) > 0)
     {
-        if (sis_str_exist_ch(netmsg_->key, sis_sdslen(netmsg_->key), "*,", 2))
+        if (sis_str_exist_ch(netmsg_->subject, sis_sdslen(netmsg_->subject), "*,", 2))
         {
             o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 0);
         }
@@ -147,7 +147,7 @@ int sisdb_sub_cxt_hsub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
 {
     SIS_NET_SHOW_MSG("hsub === ", netmsg_);
     int o = 0;
-    if (netmsg_->key && sis_sdslen(netmsg_->key) > 0)
+    if (netmsg_->subject && sis_sdslen(netmsg_->subject) > 0)
     {
         o = sisdb_sub_notice(cxt_->sub_mulkeys, netmsg_, 1);
     }
@@ -207,7 +207,7 @@ static void _make_notice_send(s_sisdb_sub_cxt *context, s_sis_net_message *inetm
 {
     s_sis_net_message *newmsg = sis_net_message_create();
 
-    sis_net_message_publish(inetmsg, newmsg, onetmsg->cid, onetmsg->name, inetmsg->cmd, inetmsg->key);
+    sis_net_message_relay(inetmsg, newmsg, onetmsg->cid, onetmsg->name, inetmsg->service, inetmsg->cmd, inetmsg->subject);
 
     // 这里暂时不处理格式转换问题 广播什么数据就发送什么数据
     // 需要转换时 根据数据表的结构 自动转换
@@ -224,7 +224,7 @@ int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
 {
     // 先处理单键值订阅
     {
-        s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_map_pointer_get(cxt_->sub_onekeys, netmsg_->key);
+        s_sisdb_sub_unit *subunit = (s_sisdb_sub_unit *)sis_map_pointer_get(cxt_->sub_onekeys, netmsg_->subject);
         // printf("subunit pub: %p %s\n", subunit, collect_->name);
         if (subunit)
         {
@@ -252,13 +252,13 @@ int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
                 notice = true;
                 break;
             case SIS_SUB_ONEKEY_CMP:
-                if (sis_str_subcmp(netmsg_->key,  subunit->sub_keys, ',') >= 0)
+                if (sis_str_subcmp(netmsg_->subject,  subunit->sub_keys, ',') >= 0)
                 {
                     notice = true;
                 }
                 break;
             case SIS_SUB_ONEKEY_MUL:
-                if (sis_str_subcmp_strict(netmsg_->key,  subunit->sub_keys, ',') >= 0)
+                if (sis_str_subcmp_strict(netmsg_->subject,  subunit->sub_keys, ',') >= 0)
                 {
                     notice = true;
                 }
@@ -267,7 +267,7 @@ int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
                 {
                     // 都是小串
                     char kname[128], sname[128]; 
-                    int cmds = sis_str_divide(netmsg_->key, '.', kname, sname);
+                    int cmds = sis_str_divide(netmsg_->subject, '.', kname, sname);
                     if (cmds == 2 && 
                         (!sis_strcasecmp(subunit->sub_keys, "*") || sis_str_subcmp(kname, subunit->sub_keys, ',') >= 0) &&
                         (!sis_strcasecmp(subunit->sub_sdbs, "*") || sis_str_subcmp(sname, subunit->sub_sdbs, ',') >= 0))
@@ -280,7 +280,7 @@ int sisdb_sub_cxt_pub(s_sisdb_sub_cxt *cxt_, s_sis_net_message *netmsg_)
                 {
                     // 都是小串
                     char kname[128], sname[128]; 
-                    int cmds = sis_str_divide(netmsg_->key, '.', kname, sname);
+                    int cmds = sis_str_divide(netmsg_->subject, '.', kname, sname);
                     if (cmds == 2 && 
                         (!sis_strcasecmp(subunit->sub_keys, "*") || sis_str_subcmp_strict(kname, subunit->sub_keys, ',') >= 0) &&
                         (!sis_strcasecmp(subunit->sub_sdbs, "*") || sis_str_subcmp_strict(sname, subunit->sub_sdbs, ',') >= 0))

@@ -243,33 +243,6 @@ int sisdb_io_set_one_chars(s_sisdb_cxt *sisdb_, const char *key_, s_sis_sds argv
 }
 
 
-int sisdb_io_set_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_pointer_list *vlist_)
-{
-    if(!vlist_ || vlist_->count < 1)
-    {
-        return -1;
-    }
-    // s_sisdb_fmap_unit *unit = sisdb_fmap_cxt_get(sisdb_->work_fmap_cxt, key_);
-    // if (!unit)
-    // {
-    //     unit = sisdb_fmap_cxt_new(sisdb_->work_fmap_cxt, key_, SIS_SDB_STYLE_SDB);  
-    // }
-
-    int o = 0;
-    for (int i = 0; i < vlist_->count; i++)
-    {
-        s_sis_sds str = SIS_OBJ_SDS((s_sis_object *)sis_pointer_list_get(vlist_, i));
-        o += sisdb_io_update(sisdb_, key_, str);
-    }
-    return o;
-}
-
-int sisdb_io_set_one_bytes(s_sisdb_cxt *sisdb_, const char *key_, s_sis_pointer_list *vlist_)
-{
-    // 单键值 暂时不支持
-    return 0;
-}
-
 // 必须带参数 否则不执行删除操作
 int sisdb_io_del(s_sisdb_cxt *sisdb_, const char *key_, s_sis_json_node *node_)
 {

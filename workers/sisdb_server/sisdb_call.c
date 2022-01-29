@@ -32,7 +32,7 @@ int cmd_sisdb_server_inout(void *worker_, void *argv_)
 
     s_sis_sds o = _sisdb_server_inout(context);
 
-    sis_net_ans_with_chars(netmsg, o, sis_sdslen(o));
+    sis_net_message_set_char(netmsg, o, sis_sdslen(o));
 
     return SIS_METHOD_OK;
 }

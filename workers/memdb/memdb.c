@@ -30,17 +30,10 @@ s_sis_modules sis_modules_memdb = {
 
 s_memdb_unit *memdb_unit_create(s_sis_net_message *netmsg)
 {
-    if (netmsg->switchs.has_argvs)
+    if (netmsg->info)
     {
         s_memdb_unit *o = SIS_MALLOC(s_memdb_unit, o);
-        o->style = 1;
-        o->obj = sis_pointer_list_get(netmsg->argvs, 0);
-        sis_object_incr(o->obj);
-    }
-    else if (netmsg->ask)
-    {
-        s_memdb_unit *o = SIS_MALLOC(s_memdb_unit, o);
-        o->obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(netmsg->ask));
+        o->obj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(netmsg->info));
         return o;
     }
     return NULL;
@@ -108,7 +101,7 @@ int cmd_memdb_init(void *worker_, void *argv_)
     sisdb_sub_cxt_init(context->work_sub_cxt, context->cb_source, context->cb_net_message);
 
     context->status = 1;
-    // sis_net_ans_with_ok(netmsg);
+    // sis_net_msg_tag_ok(netmsg);
     return SIS_METHOD_OK;
 }
 
@@ -118,20 +111,20 @@ int cmd_memdb_get(void *worker_, void *argv_)
     s_memdb_cxt *context = (s_memdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
 
-    s_memdb_unit *unit = sis_map_pointer_get(context->work_keys, netmsg->key);
+    s_memdb_unit *unit = sis_map_pointer_get(context->work_keys, netmsg->subject);
     if (!unit)
     {
-        sis_net_ans_with_null(netmsg);
+        sis_net_msg_tag_null(netmsg);
     }
     else
     {
         if (unit->style == 1)
         {
-            sis_net_ans_with_bytes(netmsg, SIS_OBJ_GET_CHAR(unit->obj), SIS_OBJ_GET_SIZE(unit->obj));
+            sis_net_message_set_byte(netmsg, SIS_OBJ_GET_CHAR(unit->obj), SIS_OBJ_GET_SIZE(unit->obj));
         }
         else
         {
-            sis_net_ans_with_chars(netmsg, SIS_OBJ_GET_CHAR(unit->obj), SIS_OBJ_GET_SIZE(unit->obj));
+            sis_net_message_set_char(netmsg, SIS_OBJ_GET_CHAR(unit->obj), SIS_OBJ_GET_SIZE(unit->obj));
         }
     }
     return SIS_METHOD_OK;
@@ -145,12 +138,12 @@ int cmd_memdb_set(void *worker_, void *argv_)
     s_memdb_unit *unit = memdb_unit_create(netmsg);
     if (unit)
     {
-        sis_map_pointer_set(context->work_keys, netmsg->key, unit);
-        sis_net_ans_with_ok(netmsg);
+        sis_map_pointer_set(context->work_keys, netmsg->subject, unit);
+        sis_net_msg_tag_ok(netmsg);
     }
     else
     {
-        sis_net_ans_with_error(netmsg, "no data.", 0);
+        sis_net_msg_tag_error(netmsg, "no data.", 0);
     }
     return SIS_METHOD_OK;
 }
@@ -160,7 +153,7 @@ int cmd_memdb_sub(void *worker_, void *argv_)
     s_memdb_cxt *context = (s_memdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     int o = sisdb_sub_cxt_sub(context->work_sub_cxt, netmsg);
-    sis_net_ans_with_int(netmsg, o);
+    sis_net_msg_tag_int(netmsg, o);
     return SIS_METHOD_OK;
 }
 
@@ -170,7 +163,7 @@ int cmd_memdb_hsub(void *worker_, void *argv_)
     s_memdb_cxt *context = (s_memdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     int o = sisdb_sub_cxt_hsub(context->work_sub_cxt, netmsg);
-    sis_net_ans_with_int(netmsg, o);
+    sis_net_msg_tag_int(netmsg, o);
     return SIS_METHOD_OK;
 
 }
@@ -181,7 +174,7 @@ int cmd_memdb_pub(void *worker_, void *argv_)
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     sisdb_sub_cxt_pub(context->work_sub_cxt, netmsg);
     // SIS_NET_SHOW_MSG("memdb pub", netmsg);
-    sis_net_ans_with_noreply(netmsg);
+    sis_net_msg_set_inside(netmsg);
     return SIS_METHOD_OK;
 }
 
@@ -191,6 +184,6 @@ int cmd_memdb_unsub(void *worker_, void *argv_)
     s_memdb_cxt *context = (s_memdb_cxt *)worker->context;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
     int o = sisdb_sub_cxt_unsub(context->work_sub_cxt, netmsg->cid);
-    sis_net_ans_with_int(netmsg, o);
+    sis_net_msg_tag_int(netmsg, o);
      return SIS_METHOD_OK;
 }

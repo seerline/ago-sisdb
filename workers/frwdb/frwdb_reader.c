@@ -5,7 +5,7 @@
 #include "sis_utils.h"
 #include <frwdb.h>
 
-static int cb_sub_inctzip(void *source, void *argv);
+static int cb_sub_incrzip(void *source, void *argv);
 static int cb_sub_chars(void *source, void *argv);
 static int cb_sub_start(void *source, void *argv);
 static int cb_sub_realtime(void *source, void *argv);
@@ -51,7 +51,7 @@ int frwdb_register_reader(s_frwdb_cxt *context_, s_sis_message *netmsg)
 	}
 	if (reader->iszip)
 	{
-		reader->cb_sub_inctzip  = cb_sub_inctzip;
+		reader->cb_sub_incrzip  = cb_sub_incrzip;
 	}
 	else
 	{
@@ -230,12 +230,12 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 		}
 		else
 		{
-			sis_net_ans_with_bytes(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));    
+		    sis_net_message_set_byte(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));  
 		}	
 	}
 	else
 	{
-		sis_net_ans_with_chars(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
+		sis_net_message_set_char(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));  
 	}
 	frwdb_reader_destroy(reader);
 	sis_object_destroy(obj);
@@ -255,7 +255,7 @@ static int _bitzip_nums = 0;
 static int64 _bitzip_size = 0;
 static msec_t _bitzip_msec = 0;
 #endif
-static int cb_sub_inctzip(void *source, void *argv)
+static int cb_sub_incrzip(void *source, void *argv)
 {
     // printf("%s\n", __func__);
     s_frwdb_reader *reader = (s_frwdb_reader *)source;
@@ -274,8 +274,8 @@ static int cb_sub_inctzip(void *source, void *argv)
         _bitzip_msec = sis_time_get_now_msec();
     } 
 #endif
-    sis_message_set_cmd(newinfo, "zpub");
-	sis_net_ans_with_bytes(newinfo, (char *)inmem->data, inmem->size); 
+    sis_net_message_set_cmd(newinfo, "zpub");
+	sis_net_message_set_byte(newinfo, (char *)inmem->data, inmem->size); 
 	// SIS_NET_SHOW_MSG("send", newinfo);
     if (context->cb_net_message)
 	{
@@ -297,18 +297,18 @@ static int cb_sub_chars(void *source, void *argv)
 	s_sis_message *newinfo = sis_net_message_create();
 	newinfo->name = reader->cname ? sis_sdsdup(reader->cname) : NULL;
 	newinfo->cid = reader->cid;
-	sis_message_set_cmd(newinfo, "pub");
-	sis_message_set_key(newinfo, inmem->kname, inmem->sname);
+	sis_net_message_set_cmd(newinfo, "pub");
+	sis_net_message_set_subject(newinfo, inmem->kname, inmem->sname);
 	if (reader->rfmt & SISDB_FORMAT_BYTES)
 	{
-		sis_net_ans_with_bytes(newinfo, inmem->data, inmem->size); 
+		sis_net_message_set_byte(newinfo, inmem->data, inmem->size); 
 	}
 	else
 	{
 		s_sis_dynamic_db *db = sis_map_list_get(context->map_sdbs, inmem->sname);
 		s_sis_sds omem = sis_db_format_sds(db, NULL, reader->rfmt, (const char *)inmem->data, inmem->size, 0);
 		// printf("%s %d : %s\n",db->name, reader->rfmt, omem);
-		sis_net_ans_with_chars(newinfo, omem, sis_sdslen(omem));
+		sis_net_message_set_char(newinfo, omem, sis_sdslen(omem));
 		sis_sdsfree(omem); 
 	}
 	if (context->cb_net_message)
@@ -327,7 +327,7 @@ static int cb_sub_start(void *source, void *argv)
     s_sis_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->cname ? sis_sdsdup(reader->cname) : NULL;
-    sis_net_ans_with_sub_start(newinfo, workdate);
+    sis_net_msg_tag_sub_start(newinfo, workdate);
     if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -344,7 +344,7 @@ static int cb_sub_realtime(void *source, void *argv)
     s_sis_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->cname ? sis_sdsdup(reader->cname) : NULL;
-    sis_net_ans_with_sub_wait(newinfo, workdate);
+    sis_net_msg_tag_sub_wait(newinfo, workdate);
     if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -363,7 +363,7 @@ static int cb_sub_stop(void *source, void *argv)
     s_sis_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->cname ? sis_sdsdup(reader->cname) : NULL;
-    sis_net_ans_with_sub_stop(newinfo, workdate);
+    sis_net_msg_tag_sub_stop(newinfo, workdate);
     if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -386,9 +386,9 @@ static int cb_dict_keys(void *source, void *argv)
     newinfo->cid = reader->cid;
     newinfo->name = reader->cname ? sis_sdsdup(reader->cname) : NULL;
 	
-	sis_message_set_cmd(newinfo, "set");
-	sis_message_set_key(newinfo, "_keys_", NULL);
-    sis_net_ans_with_chars(newinfo, keys, sis_strlen(keys));
+	sis_net_message_set_cmd(newinfo, "set");
+	sis_net_message_set_tag(newinfo, SIS_NET_TAG_SUB_KEY);
+    sis_net_message_set_char(newinfo, keys, sis_strlen(keys));
 	if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -405,9 +405,9 @@ static int cb_dict_sdbs(void *source, void *argv)
     s_sis_message *newinfo = sis_net_message_create();
     newinfo->cid = reader->cid;
     newinfo->name = reader->cname ? sis_sdsdup(reader->cname) : NULL;
-	sis_message_set_cmd(newinfo, "set");
-	sis_message_set_key(newinfo, "_sdbs_", NULL);
-	sis_net_ans_with_chars(newinfo, sdbs, sis_strlen(sdbs));
+	sis_net_message_set_cmd(newinfo, "set");
+	sis_net_message_set_tag(newinfo, SIS_NET_TAG_SUB_SDB);
+	sis_net_message_set_char(newinfo, sdbs, sis_strlen(sdbs));
 	if (context->cb_net_message)
 	{
 		context->cb_net_message(context->cb_source, newinfo);
@@ -521,11 +521,11 @@ int frwdb_remove_reader(s_frwdb_cxt *frwdb_, int cid_)
 // 	// printf("cb_output_reader_send = %d : %d\n", reader->sub_whole, imem->init);
 // 	if (reader->sub_whole)
 // 	{
-// 		// printf("cb_output_reader_send = %p : %d\n", reader->cb_sub_inctzip, imem->init);
+// 		// printf("cb_output_reader_send = %p : %d\n", reader->cb_sub_incrzip, imem->init);
 // 		// 订阅全部就直接发送
-// 		if (reader->cb_sub_inctzip)
+// 		if (reader->cb_sub_incrzip)
 // 		{	
-// 			reader->cb_sub_inctzip(reader, imem);
+// 			reader->cb_sub_incrzip(reader, imem);
 // 		}
 // 	}
 // 	else
@@ -602,14 +602,14 @@ int frwdb_remove_reader(s_frwdb_cxt *frwdb_, int cid_)
 // {
 // 	s_frwdb_reader *reader = (s_frwdb_reader *)context_;
 // 	// s_frwdb_cxt *snodb = (s_frwdb_cxt *)reader->father;
-// 	// printf("cb_encode %p %p\n", reader->sub_ziper, reader->cb_sub_inctzip);
-// 	if (reader->cb_sub_inctzip)
+// 	// printf("cb_encode %p %p\n", reader->sub_ziper, reader->cb_sub_incrzip);
+// 	if (reader->cb_sub_incrzip)
 // 	{
 //         s_sis_db_incrzip zmem = {0};
 //         zmem.data = (uint8 *)in_;
 //         zmem.size = ilen_;
 //         zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
-// 		reader->cb_sub_inctzip(reader, &zmem);
+// 		reader->cb_sub_incrzip(reader, &zmem);
 // 	}
 //     return 0;
 // } 
@@ -646,7 +646,7 @@ int frwdb_remove_reader(s_frwdb_cxt *frwdb_, int cid_)
 // 		inmem.size = ilen_;
 // 		reader->cb_sub_chars(reader, &inmem);
 // 	}
-// 	if (reader->cb_sub_inctzip)
+// 	if (reader->cb_sub_incrzip)
 // 	{
 // 		if (!in_)
 // 		{
@@ -892,7 +892,7 @@ int frwdb_reader_history_start(s_frwdb_reader *reader_)
     sis_message_set_method(msg, "cb_dict_keys" ,  reader_->cb_dict_keys);
 	if (reader_->iszip)
 	{
-		sis_message_set_method(msg, "cb_sub_incrzip", reader_->cb_sub_inctzip);
+		sis_message_set_method(msg, "cb_sub_incrzip", reader_->cb_sub_incrzip);
 	}
 	else
 	{

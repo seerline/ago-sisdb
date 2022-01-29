@@ -37,9 +37,9 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 {
 	s_sis_net_class *socket = (s_sis_net_class *)socket_;
 
-	if (!msg->switchs.is_reply && msg->switchs.has_argvs)
+	if (!msg->switchs.sw_tag && msg->switchs.sw_info)
 	{
-		s_sis_sds reply = SIS_OBJ_GET_CHAR(sis_pointer_list_get(msg->argvs, 0));
+		s_sis_sds reply = msg->info;
 
 		recv_nums++;
 		recv_size += sis_sdslen(reply);
@@ -74,8 +74,8 @@ static void cb_recv_data(void *socket_, s_sis_net_message *msg)
 		// // sis_out_binary(".2.", reply, 16);
 		// s_sis_net_message *newmsg = sis_net_message_create();
 		// newmsg->cid = connectid;
-		// // sis_net_ans_with_bytes(newmsg, reply, sis_sdslen(reply));
-		// sis_net_ans_with_bytes(newmsg, reply, 8);
+		// // sis_net_message_set_byte(newmsg, reply, sis_sdslen(reply));
+		// sis_net_message_set_byte(newmsg, reply, 8);
 		// sis_net_class_send(socket, newmsg);
 		// sis_net_message_destroy(newmsg);
 	}
@@ -107,7 +107,7 @@ static void *thread_send_data(void *arg)
 		// sis_out_binary(".1.", imem, 16);
 		s_sis_net_message *msg = sis_net_message_create();
 		msg->cid = pclient->cid;
-		sis_net_ask_with_bytes(msg, imem, bagssize);
+		sis_net_message_set_byte(msg, imem, bagssize);
 		sis_net_class_send(session, msg);
 		sis_net_message_destroy(msg);
 		// sis_sleep(1);

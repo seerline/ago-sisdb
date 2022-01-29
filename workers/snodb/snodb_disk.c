@@ -35,33 +35,33 @@ static int cb_snodb_wlog_load(void *worker_, void *argv_)
 {
     s_snodb_cxt *context = (s_snodb_cxt *)worker_;
     s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
-	if (!sis_strcasecmp("zpub", netmsg->cmd))
+	
+	switch (netmsg->tag)
 	{
-		if (!_snodb_write_init(context))
-    	{
-			for (int i = 0; i < netmsg->argvs->count; i++)
-			{
-				s_sis_object *obj = sis_pointer_list_get(netmsg->argvs, i);
-				_snodb_write_incrzip(context, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
-			}
-    	}
-	}
-	else // "set"
-	{
-		s_sis_sds mess = sis_net_get_val(netmsg);
-		if (mess)
+	case SIS_NET_TAG_SUB_KEY:
 		{
-			if (!sis_strcasecmp("_keys_", netmsg->key))
+			sis_sdsfree(context->work_keys);
+			context->work_keys = sis_sdsdup(netmsg->info);
+		}
+		break;	
+	case SIS_NET_TAG_SUB_SDB:
+		{
+			sis_sdsfree(context->work_sdbs);
+			context->work_sdbs = sis_sdsdup(netmsg->info);
+		}
+		break;
+	default:
+		if (!sis_strcasecmp("zpub", netmsg->cmd))
+		{
+			if (!_snodb_write_init(context))
 			{
-				sis_sdsfree(context->work_keys);
-				context->work_keys = sis_sdsdup(mess);
-			}
-			if (!sis_strcasecmp("_sdbs_", netmsg->key))
-			{
-				sis_sdsfree(context->work_sdbs);
-				context->work_sdbs = sis_sdsdup(mess);			
+				if (netmsg->info)
+				{
+					_snodb_write_incrzip(context, netmsg->info, sis_sdslen(netmsg->info));
+				}
 			}
 		}
+		break;
 	}
     return SIS_METHOD_OK;
 }
@@ -89,21 +89,21 @@ int snodb_wlog_load(s_snodb_cxt *snodb_)
 int snodb_wlog_save(s_snodb_cxt *snodb_, int sign_, char *imem_, size_t isize_)
 {
 	s_sis_net_message *netmsg = sis_net_message_create();
-	switch (sign_)
+	switch (sign_) 
 	{
 	case SICDB_FILE_SIGN_KEYS:
-    	sis_message_set_cmd(netmsg, "set");
-		sis_message_set_key(netmsg, "_keys_", NULL);
-		sis_net_ans_with_chars(netmsg, imem_, isize_);
+    	sis_net_message_set_cmd(netmsg, "set");
+		sis_net_message_set_tag(netmsg, SIS_NET_TAG_SUB_KEY);
+		sis_net_message_set_char(netmsg, imem_, isize_);
 		break;
 	case SICDB_FILE_SIGN_SDBS:
-    	sis_message_set_cmd(netmsg, "set");
-		sis_message_set_key(netmsg, "_sdbs_", NULL);
-		sis_net_ans_with_chars(netmsg, imem_, isize_);
+    	sis_net_message_set_cmd(netmsg, "set");
+		sis_net_message_set_tag(netmsg, SIS_NET_TAG_SUB_SDB);
+		sis_net_message_set_char(netmsg, imem_, isize_);
 		break;	
 	default: // SICDB_FILE_SIGN_ZPUB
-    	sis_message_set_cmd(netmsg, "zpub");
-		sis_net_ans_with_bytes(netmsg, imem_, isize_);
+    	sis_net_message_set_cmd(netmsg, "zpub");
+		sis_net_message_set_byte(netmsg, imem_, isize_);
 		break;
 	}
 	snodb_->wlog_method->proc(snodb_->wlog_worker, netmsg);
@@ -171,39 +171,42 @@ static int cb_snodb_wfile_load(void *worker_, void *argv_)
 	{
 		return SIS_METHOD_ERROR;
 	}
-	if (!sis_strcasecmp("zpub", netmsg->cmd))
+	switch (netmsg->tag)
 	{
-		for (int i = 0; i < netmsg->argvs->count; i++)
-		{ 
-			s_sis_object *obj = sis_pointer_list_get(netmsg->argvs, i);
-			if (context->wfile_cb_sub_inctzip)
-			{
-				s_sis_db_incrzip zmem = {0};
-				zmem.data = (uint8 *)SIS_OBJ_GET_CHAR(obj);
-				zmem.size = SIS_OBJ_GET_SIZE(obj);
-				zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
-				context->wfile_cb_sub_inctzip(context->wfile_worker, &zmem);
-			}
-		}
-	}
-	else // "set"
-	{
-		if (!sis_strcasecmp("_keys_", netmsg->key))
+	case SIS_NET_TAG_SUB_KEY:
 		{
 			LOG(5)("read wlog keys. \n");
 			if (context->wfile_cb_dict_keys)
 			{
-				context->wfile_cb_dict_keys(context->wfile_worker, sis_net_get_val(netmsg));
+				context->wfile_cb_dict_keys(context->wfile_worker, netmsg->info);
 			}
 		}
-		if (!sis_strcasecmp("_sdbs_", netmsg->key))
+		break;	
+	case SIS_NET_TAG_SUB_SDB:
 		{
 			LOG(5)("read wlog sdbs. \n");
 			if (context->wfile_cb_dict_sdbs)
 			{
-				context->wfile_cb_dict_sdbs(context->wfile_worker, sis_net_get_val(netmsg));
+				context->wfile_cb_dict_sdbs(context->wfile_worker, netmsg->info);
 			}
 		}
+		break;
+	default:
+		if (!sis_strcasecmp("zpub", netmsg->cmd))
+		{
+			if (netmsg->info)
+			{
+				if (context->wfile_cb_sub_incrzip)
+				{
+					s_sis_db_incrzip zmem = {0};
+					zmem.data = (uint8 *)netmsg->info;
+					zmem.size = sis_sdslen(netmsg->info);
+					zmem.init = sis_incrzip_isinit(zmem.data, zmem.size);
+					context->wfile_cb_sub_incrzip(context->wfile_worker, &zmem);
+				}
+			}
+		}
+		break;
 	}
     return SIS_METHOD_OK;
 }
@@ -257,7 +260,7 @@ int snodb_wlog_to_snos(s_snodb_cxt *snodb_)
 		snodb_->wfile_cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop");
 		snodb_->wfile_cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys");
 		snodb_->wfile_cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs");
-		snodb_->wfile_cb_sub_inctzip = sis_message_get_method(msg, "cb_sub_incrzip");
+		snodb_->wfile_cb_sub_incrzip = sis_message_get_method(msg, "cb_sub_incrzip");
 		sis_message_destroy(msg);
 	}
 	// 从wlog直接取数据
@@ -306,7 +309,7 @@ int snodb_reader_history_start(s_snodb_reader *reader_)
     sis_message_set_method(msg, "cb_dict_keys" ,  reader_->cb_dict_keys);
 	if (reader_->iszip)
 	{
-		sis_message_set_method(msg, "cb_sub_incrzip", reader_->cb_sub_inctzip);
+		sis_message_set_method(msg, "cb_sub_incrzip", reader_->cb_sub_incrzip);
 	}
 	else
 	{

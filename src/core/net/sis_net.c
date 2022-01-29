@@ -726,6 +726,7 @@ void *_thread_net_class_read(void* argv)
 		}
 		// 下面检查有没有断开的连接 有就清理
 		{
+			s_sis_struct_list *rids = sis_struct_list_create(sizeof(int));
 			s_sis_dict_entry *de;
 			s_sis_dict_iter *di = sis_dict_get_iter(cls->cxts);
 			while ((de = sis_dict_next(di)) != NULL)
@@ -733,11 +734,17 @@ void *_thread_net_class_read(void* argv)
 				s_sis_net_context *cxt = (s_sis_net_context *)sis_dict_getval(de);
 				if (cxt->status == SIS_NET_DISCONNECT)
 				{
-					printf("del data error.[%d]\n", cxt->rid);
-					sis_map_kint_del(cls->cxts, cxt->rid);
+					sis_struct_list_push(rids, &cxt->rid);
 				}
 			}
 			sis_dict_iter_free(di);
+			// 由于字典遍历中删除 会有很小概率出现问题，所有通常仅仅记录信息 后面再删
+			for (int i = 0; i < rids->count; i++)
+			{
+				int *rid = (int *)sis_struct_list_get(rids, i);
+				sis_map_kint_del(cls->cxts, *rid);
+			}
+			sis_struct_list_destroy(rids);
 		}
 
 		sis_wait_thread_wait(cls->read_thread, cls->read_thread->wait_msec);
@@ -891,18 +898,18 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 		sis_memory_destroy(inmemptr);
 		return -1;
 	}
-	if (info.is_bytes)
+	if (info.bytes)
 	{
 		s_sis_memory *outmem = sis_memory_create_size(16 * 1024);
 		s_sis_memory *outmemptr = outmem;
-		if (info.is_crypt && call->slot_net_decrypt)
+		if (info.crypt && call->slot_net_decrypt)
 		{
 			if (call->slot_net_decrypt(inmemptr, outmemptr))
 			{
 				SIS_MEMORY_SWAP(inmemptr, outmemptr);
 			}
 		}
-		if (info.is_compress && call->slot_net_uncompress)
+		if (info.compress && call->slot_net_uncompress)
 		{
 			if (call->slot_net_uncompress(inmemptr, outmemptr))
 			{
@@ -912,7 +919,7 @@ int sis_net_recv_message(s_sis_net_context *cxt_, s_sis_memory *in_, s_sis_net_m
 		sis_memory_destroy(outmemptr);
 	}
 	// sis_out_binary("recv", sis_memory(inmemptr), sis_memory_get_size(inmemptr));
-	mess_->format = info.is_bytes;  // 这里设置数据区格式
+	mess_->format = info.bytes;  // 这里设置数据区格式
 
  	if (call->slot_net_decoded)
 	{
@@ -943,17 +950,17 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	s_sis_memory *outmemptr = outmem;
 
 	s_sis_net_tail info;
-	info.is_bytes = mess_->format == SIS_NET_FORMAT_BYTES ? 1 : 0;
-	info.is_compress = 0;
-	info.is_crypt = 0;
-	info.is_crc16 = 0;
-	if (info.is_bytes)
+	info.bytes = mess_->format == SIS_NET_FORMAT_BYTES ? 1 : 0;
+	info.compress = 0;
+	info.crypt = 0;
+	info.crc16 = 0;
+	if (info.bytes)
 	{
 		if (call->slot_net_compress)
 		{
 			if (call->slot_net_compress(inmemptr, outmemptr))
 			{
-				info.is_compress = 1;
+				info.compress = 1;
 				SIS_MEMORY_SWAP(inmemptr, outmemptr);
 			}
 		}
@@ -961,7 +968,7 @@ s_sis_object *sis_net_send_message(s_sis_net_context *cxt_, s_sis_net_message *m
 		{
 			if (call->slot_net_encrypt(inmemptr, outmemptr))
 			{
-				info.is_crypt = 1;
+				info.crypt = 1;
 				SIS_MEMORY_SWAP(inmemptr, outmemptr);
 			}
 		}
@@ -997,17 +1004,17 @@ s_sis_memory *sis_net_make_message(s_sis_net_context *cxt_, s_sis_net_message *m
 	s_sis_memory *outmemptr = outmem;
 
 	s_sis_net_tail info;
-	info.is_bytes = mess_->format == SIS_NET_FORMAT_BYTES ? 1 : 0;
-	info.is_compress = 0;
-	info.is_crypt = 0;
-	info.is_crc16 = 0;
-	if (info.is_bytes)
+	info.bytes = mess_->format == SIS_NET_FORMAT_BYTES ? 1 : 0;
+	info.compress = 0;
+	info.crypt = 0;
+	info.crc16 = 0;
+	if (info.bytes)
 	{
 		if (call->slot_net_compress)
 		{
 			if (call->slot_net_compress(inmemptr, outmemptr))
 			{
-				info.is_compress = 1;
+				info.compress = 1;
 				SIS_MEMORY_SWAP(inmemptr, outmemptr);
 			}
 		}
@@ -1015,7 +1022,7 @@ s_sis_memory *sis_net_make_message(s_sis_net_context *cxt_, s_sis_net_message *m
 		{
 			if (call->slot_net_encrypt(inmemptr, outmemptr))
 			{
-				info.is_crypt = 1;
+				info.crypt = 1;
 				SIS_MEMORY_SWAP(inmemptr, outmemptr);
 			}
 		}
@@ -1062,29 +1069,19 @@ void exithandle(int sig)
 void cb_recv(void *sock_, s_sis_net_message *msg)
 {
 	s_sis_net_class *socket = (s_sis_net_class *)sock_;
-	if (!msg->switchs.is_reply)
+	SIS_NET_SHOW_MSG("recv:", msg);
+	if (!msg->switchs.sw_tag)
 	{
-		printf("--- recv ask: [%d] %d : %s %s %s %s [++%d++]\n", msg->cid, __sno, 
-			msg->service ? msg->service : "nil",
-			msg->cmd ? msg->cmd : "nil",
-			msg->key ? msg->key : "nil",
-			msg->ask ? msg->ask : "nil",
-			(int)sis_map_kint_getsize(socket->cxts));
 		s_sis_sds reply = sis_sdsempty();
-		reply = sis_sdscatfmt(reply, "%S %S ok.", msg->cmd, msg->key);
+		reply = sis_sdscatfmt(reply, "%S %S %S ok.", msg->service, msg->cmd, msg->subject);
 		
-		sis_net_ans_with_bytes(msg, reply, sis_sdslen(reply));
+		sis_net_message_set_byte(msg, reply, sis_sdslen(reply));
 		sis_net_class_send(socket, msg);
 		// 测试连续发送 会出错
-		sis_net_ans_with_chars(msg, reply, sis_sdslen(reply));
+		sis_net_message_set_char(msg, reply, sis_sdslen(reply));
 		sis_net_class_send(socket, msg);
 		sis_sdsfree(reply);
 	}
-	else
-	{
-		printf("--- recv ans: [%d] %d : %s\n", msg->cid, msg->rans, msg->rmsg ? msg->rmsg : "nil");
-	}
-	
 }
 static void _cb_connected(void *handle_, int sid)
 {
@@ -1097,18 +1094,20 @@ static void _cb_connected(void *handle_, int sid)
 	{		
 		s_sis_net_message *msg = sis_net_message_create();
 	    msg->cid = sid;
-		sis_net_ask_with_chars(msg, "set", "myname", "ding", 4);
-		// // sis_net_ask_with_bytes(msg, "set", "myname", "ding", 4);
+		sis_net_message_set_service(msg, "sisdb");
+		sis_net_message_set_cmd(msg, "set");
+		sis_net_message_set_subject(msg, "myname", "xp");
+		sis_net_message_set_char(msg, "ding", 4);
 		// int rtn = 
 		sis_net_class_send(socket, msg);
 
 		// s_sis_net_message *msg1 = sis_net_message_create();
-		// sis_net_ask_with_bytes(msg1, "set", "myname1", "ding", 4);
+		// sis_net_message_set_byte(msg1, "set", "myname1", "ding", 4);
 		// sis_net_class_send(socket, msg1);
 		// sis_net_message_destroy(msg1);
 
 		// s_sis_net_message *msg2 = sis_net_message_create();
-		// sis_net_ask_with_bytes(msg2, "set", "myname2", "ding", 4);
+		// sis_net_message_set_byte(msg2, "set", "myname2", "ding", 4);
 		// sis_net_class_send(socket, msg2);
 		// sis_net_message_destroy(msg2);
 
@@ -1168,8 +1167,8 @@ int main(int argc, const char **argv)
 	// 		msg->cid = 1;
 	// 	}
 	// 	s_sis_sds reply = sis_sdsnew("this ok.");
-	// 	sis_net_ans_with_bytes(msg, reply, sis_sdslen(reply));
-	// 	// sis_net_ask_with_bytes(msg, "pub", "info", "ding", 4);
+	// 	sis_net_message_set_byte(msg, reply, sis_sdslen(reply));
+	// 	// sis_net_message_set_byte(msg, "pub", "info", "ding", 4);
 	// 	sis_sdsfree(reply);
 	// 	for (int i = 0; i < 100000; i++)
 	// 	{
@@ -1184,7 +1183,7 @@ int main(int argc, const char **argv)
 	// if (sis_map_pointer_getsize(session->cxts) == 2)
 	// {
 	// 	s_sis_net_message *msg = sis_net_message_create();
-	// 	sis_net_ask_with_bytes(msg, "pub", "myname", "ding", 4);
+	// 	sis_net_message_set_byte(msg, "pub", "myname", "ding", 4);
 
 	// 	s_sis_net_message *msg2 = sis_net_message_clone(msg);
 	// 	msg->cid = 2;

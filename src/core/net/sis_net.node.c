@@ -834,78 +834,54 @@ int sis_net_list_stop(s_sis_net_list *list_, int index_)
 //  解码函数
 ////////////////////////////////////////////////////////
 
-bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
+bool _net_encoded_chars(s_sis_net_message *netmsg_, s_sis_memory *out_)
 {
     s_sis_json_node *node = sis_json_create_object();
-	if (in_->switchs.has_ver) 
+	if (netmsg_->switchs.sw_sno) 
 	{
-		sis_json_object_set_int(node, "ver", in_->ver);
+		sis_json_object_set_int(node, "sno", netmsg_->sno);
 	}
-	if (in_->switchs.has_fmt) 
+	if (netmsg_->switchs.sw_service)
 	{
-		sis_json_object_set_int(node, "fmt", in_->format);
-	}
-	if (in_->switchs.is_reply)
+		sis_json_object_set_string(node, "service", netmsg_->service, SIS_SDS_SIZE(netmsg_->service)); 
+	}		
+	if (netmsg_->switchs.sw_cmd)
 	{
-		// 必须有 ans 不然字符模式下无法判断是应答包
-		if (in_->switchs.has_ans)
+		sis_json_object_set_string(node, "cmd", netmsg_->cmd, SIS_SDS_SIZE(netmsg_->cmd)); 
+	}		
+	if (netmsg_->switchs.sw_subject)
+	{
+		sis_json_object_set_string(node, "subject", netmsg_->subject, SIS_SDS_SIZE(netmsg_->subject)); 
+	}	
+	if (netmsg_->switchs.sw_tag)
+	{
+		sis_json_object_set_int(node, "tag", netmsg_->tag);
+	}		
+	if (netmsg_->tag == SIS_NET_TAG_CHARS || netmsg_->tag == SIS_NET_TAG_BYTES)
+	{
+		if (netmsg_->argvs)
 		{
-			sis_json_object_set_int(node, "ans", in_->rans); 
+			// 这里增加数组信息
+			for (int i = 0; i < netmsg_->argvs->count; i++)
+			{
+				// s_sis_object *obj = sis_pointer_list_get(netmsg_->argvs, i);
+				// sis_memory_cat_ssize(out_, SIS_OBJ_GET_SIZE(obj));
+				// sis_memory_cat(out_, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+			}
 		}
 		else
 		{
-			// 如果没有ans就返回一个为0的ans 字符通讯包以ans判断是否应答包
-			sis_json_object_set_string(node, "ans", "0", 1); 
+			sis_json_object_set_string(node, "infos", "[[]]", 4); 
 		}
-		if (in_->switchs.has_cmd)
-		{
-			sis_json_object_set_string(node, "cmd", in_->cmd, SIS_SDS_SIZE(in_->cmd)); 
-		}		
-		if (in_->switchs.has_key)
-		{
-			sis_json_object_set_string(node, "key", in_->key, SIS_SDS_SIZE(in_->key)); 
-		}	
-		if (in_->switchs.has_msg)
-		{
-			sis_json_object_set_string(node, "msg", in_->rmsg, SIS_SDS_SIZE(in_->rmsg)); 
-		}		
-		if (in_->switchs.has_next)
-		{
-			sis_json_object_set_int(node, "next", in_->rnext); 
-		}		
 	}
 	else
 	{
-		if (in_->switchs.has_service)
+		if (netmsg_->switchs.sw_info)
 		{
-			sis_json_object_set_string(node, "service", in_->service, SIS_SDS_SIZE(in_->service)); 
-		}		
-		if (in_->switchs.has_cmd)
-		{
-			sis_json_object_set_string(node, "cmd", in_->cmd, SIS_SDS_SIZE(in_->cmd)); 
-		}		
-		if (in_->switchs.has_key)
-		{
-			sis_json_object_set_string(node, "key", in_->key, SIS_SDS_SIZE(in_->key)); 
-		}		
-		if (in_->switchs.has_ask)
-		{
-			sis_json_object_set_string(node, "ask", in_->ask, SIS_SDS_SIZE(in_->ask)); 
-		}		
+			sis_json_object_set_string(node, "info", netmsg_->info, SIS_SDS_SIZE(netmsg_->info)); 
+		}	
 	}
-	if (in_->switchs.has_argvs) 
-	{
-		// 这里以后有需求再补
-	}
-	// printf("_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n%s \n", 
-	// 		in_->style, 
-	// 		(int)in_->rcmd,
-	// 		in_->serial? in_->serial : "nil",
-	// 		in_->cmd ? in_->cmd : "nil",
-	// 		in_->key? in_->key : "nil",
-	// 		in_->val? in_->val : "nil",
-	// 		in_->rval? in_->rval : "nil"
-	// 		);
+	// 这里处理 more 的字段定义
 
     size_t len = 0;
     char *str = sis_json_output_zip(node, &len);
@@ -960,26 +936,14 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 		return _net_encoded_chars(in_, out_);
 	}
 	// 二进制流
-	sis_memory_cat(out_, "B", 1); 
+	in_->switchs.sw_mark = 1;
 	sis_memory_cat(out_, (char *)&in_->switchs, sizeof(s_sis_net_switch));
-	sis_net_int_set_memory(out_, in_->switchs.has_ver, in_->ver);
-	sis_net_int_set_memory(out_, in_->switchs.has_fmt, in_->format);
-	if (in_->switchs.is_reply)
-	{
-		sis_net_int_set_memory(out_, in_->switchs.has_ans, in_->rans);
-		sis_net_str_set_memory(out_, in_->switchs.has_cmd, in_->cmd, SIS_SDS_SIZE(in_->cmd));
-		sis_net_str_set_memory(out_, in_->switchs.has_key, in_->key, SIS_SDS_SIZE(in_->key));
-		sis_net_str_set_memory(out_, in_->switchs.has_msg, in_->rmsg, SIS_SDS_SIZE(in_->rmsg));
-		sis_net_int_set_memory(out_, in_->switchs.has_next, in_->rnext);
-	}
-	else
-	{
-		sis_net_str_set_memory(out_, in_->switchs.has_service, in_->service, SIS_SDS_SIZE(in_->service));
-		sis_net_str_set_memory(out_, in_->switchs.has_cmd, in_->cmd, SIS_SDS_SIZE(in_->cmd));
-		sis_net_str_set_memory(out_, in_->switchs.has_key, in_->key, SIS_SDS_SIZE(in_->key));
-		sis_net_str_set_memory(out_, in_->switchs.has_ask, in_->ask, SIS_SDS_SIZE(in_->ask));
-	}
-	if (in_->switchs.has_argvs)
+	sis_net_int_set_memory(out_, in_->switchs.sw_sno, in_->sno);
+	sis_net_str_set_memory(out_, in_->switchs.sw_service, in_->service, SIS_SDS_SIZE(in_->service));
+	sis_net_str_set_memory(out_, in_->switchs.sw_cmd, in_->cmd, SIS_SDS_SIZE(in_->cmd));
+	sis_net_str_set_memory(out_, in_->switchs.sw_subject, in_->subject, SIS_SDS_SIZE(in_->subject));
+	sis_net_int_set_memory(out_, in_->switchs.sw_tag, in_->tag);
+	if (in_->tag == SIS_NET_TAG_CHARS || in_->tag == SIS_NET_TAG_BYTES)
 	{
 		if (in_->argvs)
 		{
@@ -995,6 +959,10 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 		{
 			sis_memory_cat_ssize(out_, 0);
 		}
+	}
+	else
+	{
+		sis_net_str_set_memory(out_, in_->switchs.sw_info, in_->info, SIS_SDS_SIZE(in_->info));
 	}
     return true;
 }
@@ -1023,54 +991,33 @@ s_sis_sds _sis_json_node_get_sds(s_sis_json_node *node_, const char *key_)
 }
 void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *mess)
 {
-	s_sis_json_node *ver = sis_json_cmp_child_node(node_, "ver");  
-	if (ver)
+	s_sis_json_node *sno = sis_json_cmp_child_node(node_, "sno");  
+	if (sno)
 	{
-        mess->ver = sis_json_get_int(node_, "ver", 0);    
-		mess->switchs.has_ver = 1;
+        mess->sno = sis_json_get_int(node_, "sno", 0);    
+		mess->switchs.sw_sno = 1;
 	}
-	s_sis_json_node *fmt = sis_json_cmp_child_node(node_, "fmt");  
-	if (fmt)
+	mess->service = _sis_json_node_get_sds(node_, "service");    
+	mess->switchs.sw_service = mess->service ? 1 : 0;
+	mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
+	mess->switchs.sw_cmd = mess->cmd ? 1 : 0;
+	mess->subject = _sis_json_node_get_sds(node_, "subject");    
+	mess->switchs.sw_subject = mess->subject ? 1 : 0;
+	s_sis_json_node *tag = sis_json_cmp_child_node(node_, "tag");  
+	if (tag)
 	{
-        mess->format = sis_json_get_int(node_, "fmt", 0);   
-		mess->switchs.has_fmt = 1;
+        mess->tag = sis_json_get_int(node_, "tag", 0);    
+		mess->switchs.sw_tag = 1;
 	}
-    s_sis_json_node *rans = sis_json_cmp_child_node(node_, "ans");
-	if (rans)
+	mess->info = _sis_json_node_get_sds(node_, "info");    
+	mess->switchs.sw_info = mess->info ? 1 : 0;
+
+	s_sis_json_node *more = sis_json_cmp_child_node(node_, "more");  
+	if (more)
 	{
-		// 应答包
-		mess->switchs.is_reply = 1;
-		mess->switchs.has_ans = rans->type == SIS_JSON_STRING ? 0 : 1;
-		mess->rans = rans->value ? sis_atoll(rans->value) : 0; 	
-        mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
-		mess->switchs.has_cmd = mess->cmd ? 1 : 0;
-        mess->key = _sis_json_node_get_sds(node_, "key");    
-		mess->switchs.has_key = mess->key ? 1 : 0;
-        mess->rmsg = _sis_json_node_get_sds(node_, "msg");    
-		mess->switchs.has_msg = mess->rmsg ? 1 : 0;
-        mess->rnext = sis_json_get_int(node_, "next", 0);   
-		mess->switchs.has_next = mess->rnext > 0 ? 1 : 0;
+		// ......
+		mess->switchs.sw_more = 1;
 	}
-	else
-	{
-		// 表示为请求
-		mess->switchs.is_reply = 0;
-		mess->switchs.has_ans = 0;
-        mess->service = _sis_json_node_get_sds(node_, "service");    
-		mess->switchs.has_service = mess->service ? 1 : 0;
-        mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
-		mess->switchs.has_cmd = mess->cmd ? 1 : 0;
-        mess->key = _sis_json_node_get_sds(node_, "key");    
-		mess->switchs.has_key = mess->key ? 1 : 0;
-        mess->ask = _sis_json_node_get_sds(node_, "ask");    
-		mess->switchs.has_ask = mess->ask ? 1 : 0;
-	}
-	s_sis_json_node *argvs = sis_json_cmp_child_node(node_, "argvs");  
-	if (argvs)
-	{
-		// mess->switchs.has_argvs = 1;
-		// 这里以后有需求再补
-	} 
 }
 
 bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
@@ -1101,9 +1048,9 @@ static inline s_sis_sds sis_net_memory_get_sds(s_sis_memory *imem_, int isok_)
 	}
 	return o;
 }
-static inline int sis_net_memory_get_int(s_sis_memory *imem_, int isok_)
+static inline int64 sis_net_memory_get_int(s_sis_memory *imem_, int isok_)
 {
-	int o = 0;
+	int64 o = 0;
 	if (isok_) 
 	{
 		size_t size = sis_memory_get_ssize(imem_);
@@ -1132,56 +1079,59 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
         mess->name = sis_sdsnewlen(sis_memory(in_), cursor);
     }
 	sis_memory_move(in_, cursor + 1);
-	if (*sis_memory(in_) != 'B')
+	s_sis_net_switch *sw = (s_sis_net_switch *)sis_memory(in_);
+	// printf("switch : %x %c\n", *((uint8 *)sw), *((char *)sw));
+	if (sw->sw_mark == 0)
 	{
+		// 判断数据格式
 		mess->format = SIS_NET_FORMAT_CHARS;
 		bool o = sis_net_decoded_chars(in_, out_);
 		sis_memory_jumpto(in_, start);
 		return o;
 	}
 	mess->format = SIS_NET_FORMAT_BYTES;
-	sis_memory_move(in_, 1);
 	memmove(&mess->switchs, sis_memory(in_), sizeof(s_sis_net_switch));
 	sis_memory_move(in_, sizeof(s_sis_net_switch));
-	mess->ver = sis_net_memory_get_int(in_, mess->switchs.has_ver);
-	if (mess->switchs.has_fmt)
+	mess->sno = sis_net_memory_get_int(in_, mess->switchs.sw_sno);
+	mess->service = sis_net_memory_get_sds(in_, mess->switchs.sw_service);
+	mess->cmd = sis_net_memory_get_sds(in_, mess->switchs.sw_cmd);
+	mess->subject = sis_net_memory_get_sds(in_, mess->switchs.sw_subject);
+	mess->tag = sis_net_memory_get_int(in_, mess->switchs.sw_tag);
+	// 这里可以增加列表数据的存储
+	switch (mess->tag)
 	{
-		// 没有字段用默认的格式 或上层指定
-		mess->format = sis_net_memory_get_int(in_, mess->switchs.has_fmt);
+	case SIS_NET_TAG_CHARS:
+	case SIS_NET_TAG_BYTES:
+		/* code */
+		break;	
+	default:
+		mess->info = sis_net_memory_get_sds(in_, mess->switchs.sw_info);
+		break;
 	}
-	if (mess->switchs.is_reply)
+	
+	// if (mess->switchs.has_argvs)
+	// {
+	// 	size_t count = sis_memory_get_ssize(in_);
+	// 	if (!mess->argvs)
+	// 	{
+	// 		mess->argvs = sis_pointer_list_create();
+	// 		mess->argvs->vfree = sis_object_decr;
+	// 	}
+	// 	for (int i = 0; i < count; i++)
+	// 	{
+	// 		size_t size = sis_memory_get_ssize(in_);
+	// 		s_sis_sds val = sis_sdsnewlen(sis_memory(in_), size);
+	// 		sis_memory_move(in_, size);
+	// 		s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, val);
+	// 		sis_object_incr(obj);
+	// 		sis_pointer_list_push(mess->argvs, obj);
+	// 		sis_object_destroy(obj);
+	// 	}
+	// }
+	// 最后处理扩展字段问题
+	if (mess->switchs.sw_more)
 	{
-		mess->rans = sis_net_memory_get_int(in_, mess->switchs.has_ans);
-		mess->cmd = sis_net_memory_get_sds(in_, mess->switchs.has_cmd);
-		mess->key = sis_net_memory_get_sds(in_, mess->switchs.has_key);
-		mess->rmsg = sis_net_memory_get_sds(in_, mess->switchs.has_msg);
-		mess->rnext = sis_net_memory_get_int(in_, mess->switchs.has_next);
-	}
-	else
-	{
-		mess->service = sis_net_memory_get_sds(in_, mess->switchs.has_service);
-		mess->cmd = sis_net_memory_get_sds(in_, mess->switchs.has_cmd);
-		mess->key = sis_net_memory_get_sds(in_, mess->switchs.has_key);
-		mess->ask = sis_net_memory_get_sds(in_, mess->switchs.has_ask);
-	}
-	if (mess->switchs.has_argvs)
-	{
-		size_t count = sis_memory_get_ssize(in_);
-		if (!mess->argvs)
-		{
-			mess->argvs = sis_pointer_list_create();
-			mess->argvs->vfree = sis_object_decr;
-		}
-		for (int i = 0; i < count; i++)
-		{
-			size_t size = sis_memory_get_ssize(in_);
-			s_sis_sds val = sis_sdsnewlen(sis_memory(in_), size);
-			sis_memory_move(in_, size);
-			s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, val);
-			sis_object_incr(obj);
-			sis_pointer_list_push(mess->argvs, obj);
-			sis_object_destroy(obj);
-		}
+		
 	}
 	sis_memory_jumpto(in_, start);
     return true;

@@ -71,7 +71,7 @@ typedef struct s_frwdb_reader
 	// 返回数据 s_sis_db_chars
 	sis_method_define  *cb_sub_chars;
 	// 返回压缩的数据 
-	sis_method_define  *cb_sub_inctzip;  // s_sis_db_incrzip
+	sis_method_define  *cb_sub_incrzip;  // s_sis_db_incrzip
 
     sis_method_define  *cb_sub_start;    // char *
     sis_method_define  *cb_sub_realtime; // char *
