@@ -208,7 +208,7 @@ static void _make_notice_send(s_sisdb_sub_cxt *context, s_sis_net_message *inetm
     s_sis_net_message *newmsg = sis_net_message_create();
 
     sis_net_message_relay(inetmsg, newmsg, onetmsg->cid, onetmsg->name, inetmsg->service, inetmsg->cmd, inetmsg->subject);
-
+    newmsg->format = SIS_NET_FORMAT_BYTES;
     // 这里暂时不处理格式转换问题 广播什么数据就发送什么数据
     // 需要转换时 根据数据表的结构 自动转换
     // printf("%p\n", context->cb_net_message);

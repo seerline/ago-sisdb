@@ -10,7 +10,7 @@
 #include "sis_memory.h"
 #include "sis_utils.h"
 
-#if 1
+#if 0
 
 const char *config = "{ wlog : { classname : sisdb_flog }, classname:frwdb }";
 
