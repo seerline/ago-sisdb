@@ -380,7 +380,7 @@ static int cb_reply(void *worker_, int rans_, const char *key_, const char *val_
     s_sis_message *msg = (s_sis_message *)worker_;
     
     sis_net_message_set_subject(msg, key_, NULL);
-    sis_net_message_set_info(msg, (char *)val_, vsize_);
+    sis_net_message_set_info(msg, val_, vsize_);
     sis_net_message_set_tag(msg, rans_);
     return 0; 
 }

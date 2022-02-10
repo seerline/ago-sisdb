@@ -349,9 +349,9 @@ void sis_net_message_set_notag(s_sis_net_message *netmsg_)
     netmsg_->switchs.sw_tag = 0;
 }
 
-void sis_net_message_set_info(s_sis_net_message *netmsg_, char *val_, size_t vlen_)
+void sis_net_message_set_info(s_sis_net_message *netmsg_, void *val_, size_t vlen_)
 {
-    SIS_NET_SET_BUF(netmsg_->switchs.sw_info, netmsg_->info, val_, vlen_);
+    SIS_NET_SET_BUF(netmsg_->switchs.sw_info, netmsg_->info, (char *)val_, vlen_);
 }
 
 void sis_net_message_set_info_i(s_sis_net_message *netmsg_, int64 i64_)

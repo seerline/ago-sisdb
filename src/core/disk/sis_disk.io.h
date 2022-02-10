@@ -604,7 +604,9 @@ int sis_disk_ctrl_write_stop(s_sis_disk_ctrl *cls_);
 
 // 删除文件组
 void sis_disk_ctrl_remove(s_sis_disk_ctrl *cls_);
-// 把源文件整理为目标文件
+// 合并日上可能存在的分段数据
+int sis_disk_ctrl_merge(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_);
+// 清理文件中无效数据 
 int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_);
 // 把源文件移动到指定位置  0 成功
 int sis_disk_ctrl_move(s_sis_disk_ctrl *cls_, const char *path_);

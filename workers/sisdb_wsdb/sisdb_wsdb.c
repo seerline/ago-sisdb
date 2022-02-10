@@ -8,9 +8,10 @@
 
 static s_sis_method _sisdb_wsdb_methods[] = {
   {"start",  cmd_sisdb_wsdb_start, 0, NULL},
-  {"stop",   cmd_sisdb_wsdb_stop, 0, NULL},
+  {"stop",   cmd_sisdb_wsdb_stop,  0, NULL},
   {"write",  cmd_sisdb_wsdb_write, 0, NULL},  // 直接把数据写入磁盘
-  {"push",   cmd_sisdb_wsdb_push, 0, NULL},   // 追加数据到末尾 直到 stop 时才存入磁盘
+  {"merge",  cmd_sisdb_wsdb_merge, 0, NULL},  // 仅仅合并和整理日频数据 如果写入时为整年写入
+  {"push",   cmd_sisdb_wsdb_push,  0, NULL},  // 追加数据到末尾 直到 stop 时才存入磁盘
 };
 ///////////////////////////////////////////////////
 // *** s_sis_modules sis_modules_[dir name]  *** //
@@ -99,24 +100,24 @@ void sisdb_wsdb_start(s_sisdb_wsdb_cxt *context)
 }
 void sisdb_wsdb_stop(s_sisdb_wsdb_cxt *context)
 {
-    int size = sis_map_pointer_getsize(context->work_datas);
-    if (size > 0)
-    {
-        char kname[128],sname[128];
-        s_sis_dict_entry *de;
-        s_sis_dict_iter *di = sis_dict_get_iter(context->work_datas);
-        while ((de = sis_dict_next(di)) != NULL)
-        {
-            s_sis_struct_list *slist = (s_sis_struct_list *)sis_dict_getval(de);
-            sis_str_divide((char *)sis_dict_getkey(de), '.', kname, sname);
-            sis_disk_writer_sdb(context->writer, kname, sname, 
-                sis_struct_list_first(slist), slist->count * slist->len);
-            // printf("---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
-        }
-        sis_dict_iter_free(di);        
-    }
     if (context->writer)
     {
+        int size = sis_map_pointer_getsize(context->work_datas);
+        if (size > 0)
+        {
+            char kname[128],sname[128];
+            s_sis_dict_entry *de;
+            s_sis_dict_iter *di = sis_dict_get_iter(context->work_datas);
+            while ((de = sis_dict_next(di)) != NULL)
+            {
+                s_sis_struct_list *slist = (s_sis_struct_list *)sis_dict_getval(de);
+                sis_str_divide((char *)sis_dict_getkey(de), '.', kname, sname);
+                sis_disk_writer_sdb(context->writer, kname, sname, 
+                    sis_struct_list_first(slist), slist->count * slist->len);
+                // printf("---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
+            }
+            sis_dict_iter_free(di);        
+        }
         sis_disk_writer_stop(context->writer);
         sis_disk_writer_close(context->writer);
         sis_disk_writer_destroy(context->writer);
@@ -195,7 +196,10 @@ void sisdb_wsdb_write(s_sisdb_wsdb_cxt *context, int style, s_sis_message *msg)
     default:
         {
             s_sis_db_chars *chars = sis_message_get(msg, "chars");
-            sis_disk_writer_sdb(context->writer, chars->kname, chars->sname, chars->data, chars->size);
+            if (chars)
+            {
+                sis_disk_writer_sdb(context->writer, chars->kname, chars->sname, chars->data, chars->size);
+            }
         }
         break;
     }
@@ -236,6 +240,25 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
     return SIS_METHOD_OK; 
 }
 
+int cmd_sisdb_wsdb_merge(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_wsdb_cxt *context = (s_sisdb_wsdb_cxt *)worker->context;
+    
+    if (context->status != SIS_WSDB_NONE)
+    {
+        return SIS_METHOD_ERROR;
+    }    
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
+
+    // 仅仅处理日上数据
+    // 
+    // sis_disk_writer_sdb(context->writer, chars->kname, chars->sname, chars->data, chars->size);
+
+    return SIS_METHOD_OK; 
+}
 int cmd_sisdb_wsdb_push(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

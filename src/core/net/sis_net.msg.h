@@ -160,7 +160,7 @@ void sis_net_message_set_service(s_sis_net_message *netmsg_, const char *service
 void sis_net_message_set_tag(s_sis_net_message *netmsg_, int tag_);
 void sis_net_message_set_notag(s_sis_net_message *netmsg_);
 
-void sis_net_message_set_info(s_sis_net_message *netmsg_, char *val_, size_t vlen_);
+void sis_net_message_set_info(s_sis_net_message *netmsg_, void *val_, size_t vlen_);
 
 void sis_net_message_set_info_i(s_sis_net_message *netmsg_, int64 val_);
 

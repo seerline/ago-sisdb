@@ -102,6 +102,7 @@ typedef struct s_frwdb_cxt
 
 	int                 save_time;   // 自动存盘时间 0 不存盘 40000 早上4点存盘
 	int                 work_date;   // 工作日期
+	int                 work_year;   // 当前处理的年 = 0 不处理合并年上 > 0 年切换时先执行上一年数据合并 再继续
 
     s_sis_net_mems     *work_nodes;   // 数据节点
     s_sis_wait_thread  *read_thread;  // 读数据的线程
@@ -148,11 +149,16 @@ void  frwdb_working(void *);
 // *****************//
 // 初始化 需要传入 workdate,keys,sdbs 
 int cmd_frwdb_init(void *worker_, void *argv_);
+
+int cmd_frwdb_create(void *worker_, void *argv_);
+
 int cmd_frwdb_setdb(void *worker_, void *argv_);
 // 数据流开始写入 
 int cmd_frwdb_start(void *worker_, void *argv_);
 // 数据流写入完成 设置标记 方便发送订阅完成信号
 int cmd_frwdb_stop(void *worker_, void *argv_);
+
+int cmd_frwdb_merge(void *worker_, void *argv_);
 
 int cmd_frwdb_set(void *worker_, void *argv_);
 

@@ -30,6 +30,8 @@ bool  sisdb_wsdb_init(void *, void *);
 void  sisdb_wsdb_uninit(void *);
 
 int cmd_sisdb_wsdb_write(void *worker_, void *argv_);
+int cmd_sisdb_wsdb_merge(void *worker_, void *argv_);
+
 int cmd_sisdb_wsdb_push(void *worker_, void *argv_);
 
 int cmd_sisdb_wsdb_start(void *worker_, void *argv_);

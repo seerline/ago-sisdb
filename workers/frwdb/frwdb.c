@@ -14,11 +14,13 @@
 // NULL 默认为读取
 struct s_sis_method frwdb_methods[] = {
 // 写入操作
+    {"create",    cmd_frwdb_create, SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 json 格式
     {"setdb",     cmd_frwdb_setdb,  SIS_METHOD_ACCESS_RDWR, NULL},   // 设置数据表 可叠加 
     {"start",     cmd_frwdb_start,  SIS_METHOD_ACCESS_RDWR, NULL},   // 开始发送数据 设置写入状态日期
     {"set",       cmd_frwdb_set,    SIS_METHOD_ACCESS_RDWR, NULL},   // 写入数据 json单条数据 key sdb data
     {"bset",      cmd_frwdb_bset,   SIS_METHOD_ACCESS_RDWR, NULL},   // 写入数据 二进制数据 key sdb data
     {"stop",      cmd_frwdb_stop,   SIS_METHOD_ACCESS_RDWR, NULL},   // 数据写入完成 存盘 并按规则 pack
+    {"merge",     cmd_frwdb_merge,  SIS_METHOD_ACCESS_RDWR, NULL},   // 数据写入完成 存盘 并按规则 
 // 读取操作
     {"sub",       cmd_frwdb_sub,    SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据流 
     {"unsub",     cmd_frwdb_unsub,  SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅数据流 
@@ -95,6 +97,13 @@ bool frwdb_init(void *worker_, void *argv_)
 			sis_json_object_add_string(context->wfile_config, "work-name", work_name, sis_sdslen(work_name));
 		}
     }
+	else
+	{
+		context->wfile_config = sis_json_create_object();
+		sis_json_object_add_string(context->wfile_config, "work-path", work_path, sis_sdslen(work_path));
+		sis_json_object_add_string(context->wfile_config, "work-name", work_name, sis_sdslen(work_name));
+		sis_json_object_add_string(context->wfile_config, "classname", "sisdb_wsdb", 10);
+	}
 	// 读取文件的格式
     s_sis_json_node *rfilenode = sis_json_cmp_child_node(node, "rfile");
     if (rfilenode)
@@ -111,6 +120,13 @@ bool frwdb_init(void *worker_, void *argv_)
 			sis_json_object_add_string(context->rfile_config, "work-name", work_name, sis_sdslen(work_name));
 		}
     }
+	else
+	{
+		context->rfile_config = sis_json_create_object();
+		sis_json_object_add_string(context->rfile_config, "work-path", work_path, sis_sdslen(work_path));
+		sis_json_object_add_string(context->rfile_config, "work-name", work_name, sis_sdslen(work_name));
+		sis_json_object_add_string(context->rfile_config, "classname", "sisdb_rsdb", 10);
+	}
 
 	context->work_nodes = sis_net_mems_create();
 
@@ -175,6 +191,31 @@ void frwdb_uninit(void *worker_)
     sis_sds_save_destroy(context->work_name);
 	sis_free(context);
 }
+int cmd_frwdb_create(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_frwdb_cxt *context = (s_frwdb_cxt *)worker->context;
+    s_sis_net_message *netmsg = (s_sis_net_message *)argv_;
+    printf("create ... %s\n", netmsg->subject);
+    s_sis_json_handle *injson = sis_json_load(netmsg->info, netmsg->info ? sis_sdslen(netmsg->info) : 0); 
+    if (!injson)
+    {
+        sis_net_msg_tag_error(netmsg, "no parse create info.", 0);
+        return SIS_METHOD_OK;
+    }
+    s_sis_dynamic_db *db = sis_dynamic_db_create(injson->node);
+	sis_map_list_set(context->map_sdbs, netmsg->subject, db);
+    sis_json_close(injson);
+    if(db)
+    {
+        sis_net_msg_tag_ok(netmsg);
+    }
+    else
+    {
+        sis_net_msg_tag_error(netmsg, "create sdb fail.", 0);
+    }
+    return SIS_METHOD_OK;
+}
 
 int cmd_frwdb_setdb(void *worker_, void *argv_)
 {
@@ -209,6 +250,7 @@ int cmd_frwdb_start(void *worker_, void *argv_)
 	s_sis_message *netmsg = (s_sis_message *)argv_;
 
 	int curr_date = sis_net_msg_info_as_date(netmsg); 
+	printf("frw start: %s\n", netmsg->info);
 	if (context->status == FRWDB_STATUS_WRING)
 	{
 		// 已经开始写入 什么也不做
@@ -235,7 +277,40 @@ int cmd_frwdb_start(void *worker_, void *argv_)
 
 	return SIS_METHOD_OK;
 }
+int frwdb_wfile_merge(s_frwdb_cxt *context, int iyear)
+{
+	// 这里开始对曾经写入的历史日线数据进行自动合并
+	// 默认情况下 写入数据时日线上的数据是一天一条数据
+	s_sis_worker *wfile = sis_worker_create(NULL, context->wfile_config);
+	if (!wfile)
+	{
+		return 0;
+	}
+	s_sis_message *msg = sis_message_create();
 
+	sis_worker_command(wfile, "merge", msg); 
+
+	sis_message_destroy(msg);
+
+	sis_worker_destroy(wfile);
+	return 0;
+}
+int cmd_frwdb_merge(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_frwdb_cxt *context = (s_frwdb_cxt *)worker->context;
+	if (context->status != FRWDB_STATUS_NONE)
+	{
+		// 没有写入动作 什么也不做
+		return SIS_METHOD_ERROR;
+	}
+	s_sis_message *netmsg = (s_sis_message *)argv_;
+	int curr_year = sis_net_msg_info_as_date(netmsg) / 10000;
+	// merge 当天的所有数据
+	frwdb_wfile_merge(context, curr_year);
+
+	return SIS_METHOD_OK;
+}
 int cmd_frwdb_stop(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -245,11 +320,22 @@ int cmd_frwdb_stop(void *worker_, void *argv_)
 		// 没有写入动作 什么也不做
 		return SIS_METHOD_ERROR;
 	}	
+	s_sis_message *netmsg = (s_sis_message *)argv_;
+	int curr_date = sis_net_msg_info_as_date(netmsg); 
+	int curr_year = curr_date / 10000;
+
 	// 设置状态为写入完成 此时不能
 	context->status = FRWDB_STATUS_STOPW;
 
 	frwdb_write_stop(context);
 
+	if (context->work_year > 0 && curr_year > context->work_year)
+	{
+		// 切换年时合并日上数据
+		frwdb_wfile_merge(context, context->work_year);
+	}
+
+	context->work_year = curr_year;
 	context->work_date = 0;
 	context->status = FRWDB_STATUS_NONE;
 
@@ -313,7 +399,6 @@ int cmd_frwdb_bset(void *worker_, void *argv_)
 	{
 		return SIS_METHOD_ERROR;
 	}
-
 	s_sis_message *netmsg = (s_sis_message *)argv_;
 	s_sis_sds omem = netmsg->info;
     if (!netmsg->subject || !omem || sis_sdslen(omem) < 1)
@@ -573,7 +658,7 @@ int frwdb_wfile_save(s_frwdb_cxt *context)
 	{
 		s_sis_node_list *nodes = (s_sis_node_list *)sis_dict_getval(de);
 		sis_str_divide(sis_dict_getkey(de), '.', kname, sname);
-		// 转数据到memory
+		// 转数据到 memory
 		if (frwdb_wfile_nodes_to_memory(nodes, imem))
 		{
 			chars.data = sis_memory(imem);
@@ -624,6 +709,8 @@ void frwdb_write_stop(s_frwdb_cxt *context)
 	// 不清理表结构 下次直接用
 	// sis_map_list_clear(context->map_keys); 
 	// sis_map_list_clear(context->map_sdbs);
+
+	// 
 }
 
 void _frwdb_make_data(s_frwdb_cxt *context, int kidx, int sidx, char *imem, size_t isize)
@@ -642,7 +729,7 @@ void _frwdb_make_data(s_frwdb_cxt *context, int kidx, int sidx, char *imem, size
 		curdata = sis_node_list_create(1024, curdb->size);
 		sis_map_pointer_set(context->map_data, subject, curdata);
 	}
-	// s_sis_dynamic_db *curdb, s_sis_sds omem)
+	// 数据只能增加 不判断重复数据
 	int count = isize / curdb->size;
 	for (int i = 0; i < count; i++)
 	{

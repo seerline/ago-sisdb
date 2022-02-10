@@ -250,13 +250,13 @@ int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_
 int  sis_net_mems_push_kv(s_sis_net_mems *nodes_, int kidx_, int sidx_, void *in_, size_t isize_)
 {
 	sis_mutex_lock(&nodes_->lock);
-	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_ + sizeof(int8) + sizeof(int));
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_ + 2 * sizeof(int) + sizeof(int));
 	nodes_->wnode = node;
 	if (node->size == 0)
 	{
 		nodes_->wuses++;
 	}
-	size_t isize = isize_ + sizeof(int8);
+	size_t isize = isize_ + 2 * sizeof(int);
 	memmove(node->memory + node->size, &isize, sizeof(int));
 	node->size += sizeof(int);
 	memmove(node->memory + node->size, &kidx_, sizeof(int));

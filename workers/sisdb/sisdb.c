@@ -40,6 +40,7 @@ struct s_sis_method sisdb_methods[] = {
     {"wlog",      cmd_sisdb_wlog  ,     SIS_METHOD_ACCESS_NONET, NULL},   // 写入没有写盘的log信息
     {"clear",     cmd_sisdb_clear ,     SIS_METHOD_ACCESS_NONET, NULL},   // 停止某个客户的所有查询
 };
+
 // 共享内存数据库
 s_sis_modules sis_modules_sisdb = {
     sisdb_init,
