@@ -613,7 +613,7 @@ void sis_dict_destroy(s_sis_dict *d)
     _dict_clear(d,&d->ht[1],NULL);
     sis_free(d);
 }
-
+/* 从字典d中返回指定键值key对应的值*/
 s_sis_dict_entry *sis_dict_find(s_sis_dict *d, const void *key)
 {
     s_sis_dict_entry *he;

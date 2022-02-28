@@ -36,6 +36,7 @@ void *_sis_dict_sds_dup(const void *val)
 {
 	return sis_sdsnew(val);
 }
+// 字符串复制函数
 void *_sis_dict_str_dup(const void *val)
 {
 	int size = sis_strlen((char *)val);
@@ -69,15 +70,16 @@ void _sis_dict_obj_free(void *val)
 	s_sis_object *obj = (s_sis_object *)val;
 	sis_object_decr(obj);
 }
-
+// 键为字符串的字典类型的默认初始化实现（不包含对值的析构函数）
 s_sis_dict_type _sis_dict_type_nofree_val_s = {
-	_sis_dict_strcase_hash,	/* hash function */
+	_sis_dict_strcase_hash,	   /* hash function */
 	_sis_dict_str_dup,		   /* key dup */
 	NULL,					   /* val dup */
 	_sis_dict_strcase_compare, /* key compare */
 	_sis_dict_str_free,		   /* key destructor */
 	NULL					   /* val destructor */
 };
+// 键为整数的字典类型的默认初始化实现
 s_sis_dict_type _sis_dict_type_int_key_s = {
 	_sis_dict_int_hash,	       /* hash function */
 	_sis_dict_int_dup,		   /* key dup */
@@ -204,18 +206,18 @@ int sis_map_list_getsize(s_sis_map_list *mlist_)
 	return mlist_->list->count;
 }
 
-//////////////////////////////////////////
-//  s_sis_map_pointer 基础定义
-//////////////////////////////////////////
-
+// 创建并初始化一个HASH表
 s_sis_map_pointer *sis_map_pointer_create()
 {
+	// 首先为类对象分配内存空间，并将所有内存初始化为0
 	s_sis_dict_type *type = SIS_MALLOC(s_sis_dict_type, type);
+	// 赋予默认初始化实现
 	memmove(type, &_sis_dict_type_nofree_val_s, sizeof(s_sis_dict_type));
+	// 实例化一个HASH表对象并返回
 	s_sis_map_pointer *map = sis_dict_create(type, NULL);
 	return map;
 };
-
+// 创建一个HASH表，并指定HASH值的析构函数
 s_sis_map_pointer *sis_map_pointer_create_v(void *vfree_)
 {
 	s_sis_map_pointer *map = sis_map_pointer_create();
@@ -233,6 +235,7 @@ void  sis_map_pointer_clear(s_sis_map_pointer *map_)
 {
 	sis_dict_empty(map_, NULL);
 }
+/* 从字典中返回指定键值key对应的值，如果找不到就返回NULL*/
 void *sis_map_pointer_get(s_sis_map_pointer *map_, const char *key_)
 {
 	if (!map_)
@@ -296,6 +299,7 @@ int sis_map_int_set(s_sis_map_int *map_, const char *key_, int64 value_)
 //////////////////////////////////////////
 //  s_sis_map_sds 基础定义
 //////////////////////////////////////////
+/** 创建一个键类型为string，值类型为sds的字典 */
 s_sis_map_sds *sis_map_sds_create()
 {
 	s_sis_dict_type *type = SIS_MALLOC(s_sis_dict_type, type);
@@ -312,7 +316,7 @@ int sis_map_sds_set(s_sis_map_sds *map_, const char *key_, char *val_)
 //////////////////////////////////////////
 //  s_sis_map_kint 基础定义
 //////////////////////////////////////////
-
+/** 创建一个键类型为int的字典 */
 s_sis_map_kint *sis_map_kint_create()
 {
 	s_sis_dict_type *type = SIS_MALLOC(s_sis_dict_type, type);
@@ -321,6 +325,7 @@ s_sis_map_kint *sis_map_kint_create()
 	return map;
 
 }
+/** 从字典中查找数据，键类型为int */
 void *sis_map_kint_get(s_sis_map_kint *map_, int64 key_)
 {
 	if (!map_)

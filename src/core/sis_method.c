@@ -5,6 +5,12 @@
 //  s_sis_methods
 /////////////////////////////////
 
+/**
+ * @brief 创建sis_methods列表
+ * @param {s_sis_method} *methods_
+ * @param {int} count_
+ * @return {*}
+ */
 s_sis_methods *sis_methods_create(s_sis_method *methods_, int count_)
 {
 	s_sis_map_pointer *map = sis_map_pointer_create();
@@ -19,7 +25,7 @@ void sis_methods_destroy(s_sis_methods *map_)
 {
     sis_map_pointer_destroy(map_);
 }
-
+// 将methods_添加到HASH表map_
 int sis_methods_register(s_sis_methods *map_, s_sis_method *methods_)
 {
 	s_sis_method *method = (s_sis_method *)sis_map_pointer_get(map_, methods_->name); 

@@ -87,7 +87,7 @@ static inline void sis_trim(char *s)
 		s[len - i] = 0;
 	}
 }
-
+// 返回目标字符串的长度
 static inline size_t sis_strlen(const char *str_)
 {
 	return str_ ? strlen(str_) : 0;

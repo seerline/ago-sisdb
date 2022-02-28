@@ -4,6 +4,7 @@
 #include <fnmatch.h>
 #include <sys/stat.h>
 
+/* Replace \ to / in the path string */
 void sis_file_fixpath(char *in_)
 {
 	int size = strlen(in_);
@@ -219,6 +220,7 @@ void sis_file_getname(const char *fn_, char *out_, int olen_)
 	sis_strncpy(out_, olen_, fn_, len);
 	out_[len] = 0;
 }
+
 bool sis_file_exists(const char *fn_)
 {
 	sis_file_fixpath((char *)fn_);

@@ -95,6 +95,7 @@ typedef struct s_sis_net_errinfo {
 typedef struct s_sis_net_message {
     // 公共部分
     int                 cid;       // 哪个客户端的信息 -1 表示向所有用户发送
+	//QQQ 引用次数干什么用的？
 	uint32              refs;      // 引用次数
 	// 用户请求的投递地址 方便无状态接收数据  不超过128个字符    
     s_sis_sds	        name;      // [必要] 请求的名字 用户名+时间戳+序列号 唯一标志请求的名称，需要原样返回；

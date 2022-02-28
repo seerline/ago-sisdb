@@ -38,7 +38,7 @@ typedef struct s_sis_thread {
 #ifdef __cplusplus
 extern "C" {
 #endif
-// 线程函数定义
+
 bool sis_thread_create(cb_thread_working func_, void* val_, s_sis_thread *thread_);
 // 等待线程结束
 void sis_thread_finish(s_sis_thread *thread_);

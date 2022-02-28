@@ -18,8 +18,11 @@
 #define SIS_OBJECT_MEMORY  1  // sis_memory 结构体的指针
 #define SIS_OBJECT_LIST    2  // sis_struct_list 结构体的指针
 #define SIS_OBJECT_NETMSG  3  // s_sis_net_message 指针
-
+/**
+ * @brief 网络数据的顶层封装结构，用以封装SDS字符串、sis_memory、sis_struct_list和s_sis_net_message，其作用与C#里面Object类相似
+ */
 typedef struct s_sis_object {
+    //QQQ 这里是否可以使用枚举类型？
     unsigned char           style;
     unsigned int            refs;  // 引用数 一般为1, 最大嵌套不超过 SIS_OBJECT_MAX_REFS 超过返回空
     void                   *ptr;

@@ -92,10 +92,15 @@ void sis_net_message_destroy(void *in_)
 {
 	sis_net_message_decr(in_);
 }
+/**
+ * @brief 网络消息的引用次数自增+1
+ * @param in_ 网络消息
+ */
 void sis_net_message_incr(s_sis_net_message *in_)
 {
     if (in_ && in_->refs != 0xFFFFFFFF) 
     {
+        //QQQ 这里需要考虑线程安全么？
         in_->refs++;
     }
 }

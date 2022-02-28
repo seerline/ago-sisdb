@@ -2,8 +2,8 @@
 #include <sis_file.h>
 #include <sis_math.h>
 
-#include "stk_def.h"
-#include "stk_struct.v0.h"
+// #include "stk_def.h"
+// #include "stk_struct.v0.h"
 
 #include "worker.h"
 #include "server.h"

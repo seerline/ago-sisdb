@@ -18,15 +18,15 @@
 /////////////////////////////////////////////////
 
 // 任务运行模式 间隔秒数运行，按分钟时间点运行
-#define SIS_WORK_MODE_NONE     0  // 
+#define SIS_WORK_MODE_NONE     0  // 不运行
 #define SIS_WORK_MODE_GAPS     1  // 在指定时间内 每隔 delay 毫秒运行一次working
 #define SIS_WORK_MODE_PLANS    2  // 计划任务 按数组中指定时间触发working 单位为分钟
 #define SIS_WORK_MODE_ONCE     3  // 默认值，每次启动该类只运行一次working 执行完就销毁
 #define SIS_WORK_MODE_NOTICE   4  // 等候通知去执行working, 执行期间的通知忽略, 执行后再等下一个通知
 
 typedef struct s_sis_work_thread {
-	int  		 		work_mode; 
-	bool                isfirst;
+	int  		 		work_mode;     // 任务模式，NONE，GAPS，PLANS，ONCE，NOTICE
+	bool                isfirst;       // 对于之要求执行一次的任务，用于判断是否是第一次执行，初始为false，表示已完成第0次执行，改为true时表示已经完成第一次执行
 	s_sis_struct_list  *work_plans;    // plans-work 定时任务 uint16 的数组
 	s_sis_time_gap      work_gap; 	   // always-work 循环运行的配置
     s_sis_wait_thread  *work_thread;   //
