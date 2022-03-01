@@ -237,6 +237,7 @@ size_t sis_net_message_get_size(s_sis_net_message *msg_)
 // }
 
 #define SIS_NET_SET_STR(w,s,f) { w = f ? 1 : 0; sis_sdsfree(s); s = f ? sis_sdsnew(f) : NULL; }
+#define SIS_NET_SET_SDS(w,s,f) { w = f ? 1 : 0; sis_sdsfree(s); s = f ? sis_sdsdup(f) : NULL; }
 #define SIS_NET_SET_BUF(w,s,f,l) { w = (f && l > 0) ? 1 : 0; sis_sdsfree(s); s = (f && l > 0) ? sis_sdsnewlen(f,l) : NULL; }
 
 void sis_net_message_relay(s_sis_net_message *agomsg_, s_sis_net_message *newmsg_, 
@@ -247,9 +248,9 @@ void sis_net_message_relay(s_sis_net_message *agomsg_, s_sis_net_message *newmsg
     // newmsg_->mode = SIS_MSG_MODE_PUB;
 
     // 服务名可更改
-    SIS_NET_SET_STR(newmsg_->switchs.sw_service, newmsg_->service, service_);
-    SIS_NET_SET_STR(newmsg_->switchs.sw_cmd, newmsg_->cmd, cmd_);    
-    SIS_NET_SET_STR(newmsg_->switchs.sw_subject, newmsg_->subject, subject_);    
+    SIS_NET_SET_SDS(newmsg_->switchs.sw_service, newmsg_->service, service_);
+    SIS_NET_SET_SDS(newmsg_->switchs.sw_cmd, newmsg_->cmd, cmd_);    
+    SIS_NET_SET_SDS(newmsg_->switchs.sw_subject, newmsg_->subject, subject_);    
     
     newmsg_->switchs.sw_sno = agomsg_->switchs.sw_sno;
     newmsg_->sno = agomsg_->sno;
@@ -257,8 +258,8 @@ void sis_net_message_relay(s_sis_net_message *agomsg_, s_sis_net_message *newmsg
     newmsg_->switchs.sw_tag  = agomsg_->switchs.sw_tag;
     newmsg_->tag = agomsg_->tag;
 
-    SIS_NET_SET_STR(newmsg_->switchs.sw_info, newmsg_->info, agomsg_->info);    
-
+    SIS_NET_SET_SDS(newmsg_->switchs.sw_info, newmsg_->info, agomsg_->info);  
+      
     // 操作列表数据
     if (agomsg_->switchs.sw_tag == SIS_NET_TAG_CHARS || agomsg_->switchs.sw_tag == SIS_NET_TAG_BYTES)
     if (agomsg_->argvs && agomsg_->argvs->count > 0)
