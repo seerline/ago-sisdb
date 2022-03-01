@@ -95,7 +95,7 @@ void sis_disk_writer_close(s_sis_disk_writer *writer_)
     writer_->status = 0;
 }
 
-// 所有基础类和子类文件key保持最新一致 但仍然有可能老的子类文件不一致
+// 所有基础类和子类文件key保持最新一致 但仍然 有可能老的子类文件不一致
 void sis_disk_writer_kdict_changed(s_sis_disk_writer *writer_, const char *kname_)
 {
     // 向打开的子文件传递
@@ -423,7 +423,7 @@ static size_t _disk_writer_sunit(s_sis_disk_ctrl *ctrl, s_sis_disk_kdict *kdict_
 size_t sis_disk_writer_sdb_year(s_sis_disk_writer *writer_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
 {
     size_t osize = 0;
-    // 根据数据定位文件名 并修改units 
+    // 根据数据定位文件名 并修改 units 
     s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict_->sdbs, sdict_->sdbs->count - 1);
     int count = ilen_ / sdb->size; 
     s_sis_disk_ctrl *ctrl = NULL;
@@ -544,10 +544,12 @@ size_t sis_disk_writer_sdb_nots(s_sis_disk_writer *writer_, s_sis_disk_kdict *kd
     {
         s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(ctrl->map_sdicts, SIS_OBJ_SDS(sdict_->name));
         s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, SIS_OBJ_SDS(kdict_->name));
-        printf("sis_disk_writer_sdb_nots:  %s %s\n", kdict ? SIS_OBJ_SDS(kdict->name) : "nil", 
-                sdict ? SIS_OBJ_SDS(sdict->name) : "nil");
 
         osize += sis_disk_io_write_non(ctrl, kdict, sdict, in_, ilen_);
+        printf("sis_disk_writer_sdb_nots:  %s %s | %zu\n", 
+                kdict ? SIS_OBJ_SDS(kdict->name) : "nil", 
+                sdict ? SIS_OBJ_SDS(sdict->name) : "nil",
+                osize);
         // s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict_->sdbs, sdict_->sdbs->count - 1);
         // int count = ilen_ / sdb->size;
         sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_NON, 0, 0);
@@ -580,6 +582,7 @@ size_t sis_disk_writer_sdb(s_sis_disk_writer *writer_, const char *kname_, const
 
     size_t osize = 0;
     int scale = sis_disk_get_sdb_scale(sdb);
+    printf("sis_disk_writer_sdb : %d scale = %d\n", writer_->style, scale);
     switch (scale)
     {
     case SIS_SDB_SCALE_YEAR:

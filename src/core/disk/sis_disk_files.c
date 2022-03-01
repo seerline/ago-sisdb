@@ -73,8 +73,11 @@ void sis_disk_files_close(s_sis_disk_files *cls_)
                 if (unit->status & SIS_DISK_STATUS_NOSTOP)
                 {
                     cls_->main_tail.fcount = cls_->lists->count;
-                    cls_->main_tail.invalid = unit->invalid;
+                    cls_->main_tail.novalid = unit->novalid;
                     cls_->main_tail.validly = unit->validly;
+                    LOG(5)("write tail ok. %d %zu %zu count = %d | valid: %d %d\n", unit->fp_1, 
+                        sis_file_seek(unit->fp_1, 0, SEEK_CUR), unit->offset, 
+                        cls_->main_tail.fcount, cls_->main_tail.novalid, cls_->main_tail.validly);
                     sis_file_write(unit->fp_1, (const char *)&cls_->main_tail, sizeof(s_sis_disk_main_tail));
                     unit->offset += sizeof(s_sis_disk_main_tail);
                     LOG(5)("write tail ok. %d %zu %zu count = %d\n", unit->fp_1, 
@@ -87,7 +90,7 @@ void sis_disk_files_close(s_sis_disk_files *cls_)
             unit->offset = 0;
             unit->status = SIS_DISK_STATUS_CLOSED;
             unit->fp_1 = NULL;
-            unit->invalid = 0;
+            unit->novalid = 0;
             unit->validly = 0;
         }
     }
@@ -166,6 +169,7 @@ int sis_disk_files_open_append(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
     {
         return -1;
     }
+    // LOG(5)("open ok..1..: %s\n", unit->fn);
     // SIS_FILE_IO_DSYNC
     unit->fp_1 = sis_file_open(unit->fn, SIS_FILE_IO_BINARY | SIS_FILE_IO_RDWR, 0 );
     if (!unit->fp_1)
@@ -184,8 +188,12 @@ int sis_disk_files_open_append(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
     {
         unit->offset = sis_file_seek(unit->fp_1, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);
         sis_file_read(unit->fp_1, (char *)&cls_->main_tail, sizeof(s_sis_disk_main_tail));
+        // 再移动回去
+        // LOG(5)("open ok: %zu %zu | %lld\n", unit->offset, sizeof(s_sis_disk_main_tail), sis_file_seek(unit->fp_1, 0, SEEK_CUR));
+        sis_file_seek(unit->fp_1, -1 * (int)sizeof(s_sis_disk_main_tail), SEEK_END);
+        // LOG(5)("open ok: %zu %zu | %lld\n", unit->offset, sizeof(s_sis_disk_main_tail), sis_file_seek(unit->fp_1, 0, SEEK_CUR));
         unit->validly = cls_->main_tail.validly;
-        unit->invalid = cls_->main_tail.invalid;
+        unit->novalid = cls_->main_tail.novalid;
         // ??? 可以在这里检查文件是否合法
     }
     else
@@ -193,6 +201,7 @@ int sis_disk_files_open_append(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
         unit->offset = sis_file_seek(unit->fp_1, 0, SEEK_END);
         // ??? 可以在这里检查文件是否完整 不完整需要从头遍历到完整的位置
     }
+    // LOG(5)("open ok..2..: %zu %d\n", unit->offset, cls_->main_head.style);
     // ??? 不同日期的LOG文件可能会有问题
     memmove(&cls_->main_head, &head, sizeof(s_sis_disk_main_head));
     unit->status = SIS_DISK_STATUS_APPEND | SIS_DISK_STATUS_NOSTOP;
@@ -424,7 +433,7 @@ size_t sis_disk_files_write_saveidx(s_sis_disk_files *cls_, s_sis_disk_wcatch *w
             return 0;
         } 
     }
-    // 如果块大于PAGE 就会分块写入 fin = 0 直到 fin = 1 才是一个完整块
+    // 如果块大于 PAGE 就会分块写入 fin = 0 直到 fin = 1 才是一个完整块
     size_t size = sis_safe_write(&wcatch_->head, unit->fcatch, unit->fp_1, sis_memory(wcatch_->memory), insize);
     wcatch_->winfo.fidx = cls_->cur_unit;
     wcatch_->winfo.offset = unit->offset;

@@ -330,13 +330,21 @@ s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context)
         sis_sds_save_get(context->work_name), 
         SIS_DISK_TYPE_SDB, NULL);
 
+    if (sis_disk_reader_open(context->work_reader))
+    {
+        sis_disk_reader_destroy(context->work_reader);
+        context->work_reader = NULL;
+        return NULL;
+    }
     LOG(5)("get sdb open. [%d]\n", context->work_date.start);
     s_sis_msec_pair smsec;
     smsec.start = sis_time_make_time(context->work_date.start, 0) * 1000;
     smsec.stop = sis_time_make_time(context->work_date.stop, 235959) * 1000 + 999;
     s_sis_object *obj = sis_disk_reader_get_obj(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
-    LOG(5)("get sdb stop. [%d]\n", context->work_date.stop);
+    LOG(5)("get sdb stop. [%d] %p %zu\n", context->work_date.stop, obj, SIS_OBJ_GET_SIZE(obj));
+    // sis_out_binary("...", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
 
+    sis_disk_reader_close(context->work_reader);
     sis_disk_reader_destroy(context->work_reader);
     context->work_reader = NULL;
     return obj;

@@ -175,7 +175,6 @@ size_t sis_disk_writer_one(s_sis_disk_writer *, const char *kname_, void *in_, s
 // 单键值多记录数据 inlist_ : s_sis_sds 的列表
 size_t sis_disk_writer_mul(s_sis_disk_writer *, const char *kname_, s_sis_pointer_list *inlist_);
 
-
 // 结构化时序和无时序数据 
 int sis_disk_writer_sdb_remove(s_sis_disk_writer *, const char *kname_, const char *sname_, int isign_);
 // 单键值单记录数据 
