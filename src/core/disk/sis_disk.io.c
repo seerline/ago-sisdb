@@ -632,22 +632,31 @@ int sis_disk_ctrl_read_start(s_sis_disk_ctrl *cls_)
     {
         if (!sis_file_exists(cls_->widx_fps->cur_name))
         {
-            LOG(5)
-            ("idxfile no exists.[%s]\n", cls_->widx_fps->cur_name);
+            LOG(5)("idxfile no exists.[%s]\n", cls_->widx_fps->cur_name);
             return SIS_DISK_CMD_NO_EXISTS_IDX;
         }
     }
-    // printf("-7--ss-- %d\n", cls_->work_fps->main_head.wtime);
+    // printf("-7--ss-- %d %d\n", cls_->work_fps->main_head.wdate, SIS_DISK_IS_SDB(cls_->style));
     int o = sis_disk_files_open(cls_->work_fps, SIS_DISK_ACCESS_RDONLY);
     if (o)
     {
-        LOG(5)
-        ("open file fail.[%s:%d]\n", cls_->work_fps->cur_name, o);
+        LOG(5)("open file fail.[%s:%d]\n", cls_->work_fps->cur_name, o);
         return SIS_DISK_CMD_NO_OPEN;
     }
     if (SIS_DISK_IS_SDB(cls_->style))
     {
         o = sis_disk_io_read_sdb_widx(cls_);
+        int count = sis_map_list_getsize(cls_->map_idxs);
+        for (int i = 0; i < count; i++)
+        {
+            s_sis_disk_idx *rnode = (s_sis_disk_idx *)sis_map_list_geti(cls_->map_idxs, i);
+            printf("::::: %d %s %s\n", i, SIS_OBJ_GET_CHAR(rnode->kname), SIS_OBJ_GET_CHAR(rnode->sname));
+            for (int k = 0; k < rnode->idxs->count; k++)
+            {
+                s_sis_disk_idx_unit *unit = (s_sis_disk_idx_unit *)sis_struct_list_get(rnode->idxs, k);
+                printf(":::== %d %lld %lld\n", k, unit->offset, unit->size); 
+            }     
+        } 
         if (o != SIS_DISK_CMD_OK)
         {
             return o;
@@ -791,6 +800,7 @@ int sis_disk_ctrl_write_start(s_sis_disk_ctrl *cls_)
 }
 
 // 写入结束标记，并生成索引文件
+// 这里要判断是否需要自动pack 当无效数据大于 60% 时就执行pack
 int sis_disk_ctrl_write_stop(s_sis_disk_ctrl *cls_)
 {
     if (cls_->status == SIS_DISK_STATUS_CLOSED)
@@ -886,8 +896,6 @@ int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_)
             s_sis_disk_idx_unit *unit = (s_sis_disk_idx_unit *)sis_struct_list_get(rnode->idxs, k);
             sis_disk_rcatch_init_of_idx(rcatch, unit);
             sis_disk_io_read_sdb(src_, rcatch);
-            // s_sis_disk_kdict *kdict = sis_disk_map_get_kdict()
-            // sis_disk_wcatch_setname(wcatch, kdict->name, sdict->name);
             memmove(&wcatch->head, &rcatch->head, sizeof(s_sis_disk_head));
             memmove(&wcatch->winfo, rcatch->rinfo, sizeof(s_sis_disk_idx_unit));
             sis_memory_swap(wcatch->memory, rcatch->memory);
@@ -904,6 +912,120 @@ int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_)
     return 1;
 }
 
+int sis_disk_ctrl_merge(s_sis_disk_ctrl *src_)
+{
+    if (src_->style == SIS_DISK_TYPE_LOG || src_->style == SIS_DISK_TYPE_SIC || src_->style == SIS_DISK_TYPE_SNO)
+    {
+        return 0;
+    }
+    int nowdate = src_->open_date;
+    char despath[255];
+    sis_sprintf(despath, 255, "%s/tmp/", src_->fpath);
+    s_sis_disk_ctrl *tmp_ = sis_disk_ctrl_create(src_->style, despath, src_->fname, nowdate);
+
+    // 开始新文件
+    sis_disk_ctrl_remove(tmp_);
+    // 先初始化原文件 读索引
+    sis_disk_ctrl_read_start(src_);
+    // 再初始化目标文件 准备工作
+    sis_disk_ctrl_write_start(tmp_);
+    // 然后遍历索引 读取一块就写入一块
+    int count = sis_map_list_getsize(src_->map_idxs);
+    printf("=== %s --> %s : %d count = %d\n", src_->fpath, despath, nowdate, count);
+    s_sis_disk_rcatch *rcatch = src_->rcatch;
+    s_sis_disk_wcatch *wcatch = tmp_->wcatch;
+    sis_disk_wcatch_init(wcatch);
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_disk_idx *rnode = sis_map_list_geti(src_->map_idxs, i);
+        for (int k = 0; k < rnode->idxs->count; k++)
+        {
+            s_sis_disk_idx_unit *unit = (s_sis_disk_idx_unit *)sis_struct_list_get(rnode->idxs, k);
+            sis_disk_rcatch_init_of_idx(rcatch, unit);
+            // printf("=== read: %d %d\n", rcatch->rinfo->offset, rcatch->rinfo->size);
+            sis_disk_io_read_sdb(src_, rcatch);
+            // printf("=== read: %d %d\n", sis_memory_get_size(rcatch->memory), rcatch->rinfo->size);
+            sis_disk_wcatch_setname(wcatch, rnode->kname, rnode->sname);
+            memmove(&wcatch->head, &rcatch->head, sizeof(s_sis_disk_head));
+            memmove(&wcatch->winfo, rcatch->rinfo, sizeof(s_sis_disk_idx_unit));
+            // printf("=== write :%d %d | %zu\n", wcatch->head.hid, wcatch->head.zip, sis_memory_get_size(rcatch->memory));
+            // sis_out_binary("..2..", sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+            switch (wcatch->head.hid)
+            {
+            case SIS_DISK_HID_DICT_KEY:
+                sis_memory_cat(wcatch->memory, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+                sis_disk_io_write_noidx(tmp_->work_fps, wcatch); 
+                // sis_disk_files_write_saveidx(tmp_->work_fps, wcatch); 
+                s_sis_disk_idx *node = sis_disk_idx_create(NULL, NULL);    
+                sis_disk_idx_set_unit(node, &wcatch->winfo);    
+                sis_map_list_set(tmp_->map_idxs, SIS_DISK_SIGN_KEY, node);  
+                sis_memory_clear(wcatch->memory);              /* code */
+                break;
+            case SIS_DISK_HID_DICT_SDB:
+                {
+                    sis_memory_cat(wcatch->memory, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+                    sis_disk_io_write_noidx(tmp_->work_fps, wcatch); 
+                    // sis_disk_files_write_saveidx(tmp_->work_fps, wcatch); 
+                    s_sis_disk_idx *node = sis_disk_idx_create(NULL, NULL);    
+                    sis_disk_idx_set_unit(node, &wcatch->winfo);    
+                    sis_map_list_set(tmp_->map_idxs, SIS_DISK_SIGN_SDB, node);  
+                    sis_memory_clear(wcatch->memory);    
+                }
+                /* code */
+                break; 
+            case SIS_DISK_HID_MSG_SDB:
+            case SIS_DISK_HID_MSG_NON:
+                if (k == 0)
+                {
+                    int kidx = sis_disk_kdict_get_idx(src_->map_kdicts, SIS_OBJ_GET_CHAR(wcatch->kname));
+                    int sidx = sis_disk_sdict_get_idx(src_->map_sdicts, SIS_OBJ_GET_CHAR(wcatch->sname));
+                    // printf("--- : %d %d\n", kidx, sidx);
+                    sis_memory_cat_ssize(wcatch->memory, kidx);
+                    sis_memory_cat_ssize(wcatch->memory, sidx);
+                }
+                sis_memory_cat(wcatch->memory, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
+                break;  
+            case SIS_DISK_HID_MSG_SIC:
+            case SIS_DISK_HID_SIC_NEW:
+            case SIS_DISK_HID_MSG_MAP:
+            case SIS_DISK_HID_MSG_ONE:
+            case SIS_DISK_HID_MSG_MUL:        
+            default:
+                break;
+            }
+        }
+        // printf("=== write : %d %s %s %s %s %zu\n", wcatch->head.zip,
+        //     SIS_OBJ_GET_CHAR(wcatch->kname), SIS_OBJ_GET_CHAR(wcatch->sname),
+        //     SIS_OBJ_GET_CHAR(rnode->kname), SIS_OBJ_GET_CHAR(rnode->sname),
+        //     sis_memory_get_size(wcatch->memory));
+
+        // sis_out_binary("..1..", sis_memory(wcatch->memory), sis_memory_get_size(wcatch->memory));
+        if (sis_memory_get_size(wcatch->memory) > 0)
+        {
+            // 更新索引
+            sis_disk_io_write_noidx(tmp_->work_fps, wcatch); 
+            // sis_disk_files_write_saveidx(tmp_->work_fps, wcatch); 
+            s_sis_disk_idx *wnode = sis_disk_idx_get(tmp_->map_idxs, rnode->kname, rnode->sname);
+            sis_disk_idx_set_unit(wnode, &wcatch->winfo);
+            sis_memory_clear(wcatch->memory);
+            // {
+            //     printf("=== no idx : %s %s %s %s %zu\n", 
+            //         SIS_OBJ_GET_CHAR(wcatch->kname), SIS_OBJ_GET_CHAR(wcatch->sname), 
+            //         SIS_OBJ_GET_CHAR(rnode->kname), SIS_OBJ_GET_CHAR(rnode->sname), 
+            //         sis_memory_get_size(wcatch->memory));
+            // }
+        }
+    } 
+    // 关闭原文件
+    sis_disk_ctrl_read_stop(src_);
+    // 写目标索引 和 文件尾 关闭文件
+    sis_disk_ctrl_write_stop(tmp_);
+
+    sis_disk_ctrl_remove(src_);
+    sis_disk_ctrl_move(tmp_, src_->fpath);
+
+    return 1;
+}
 //??? 这里以后要判断是否改名成功 如果一个失败就全部恢复出来
 int sis_disk_ctrl_move(s_sis_disk_ctrl *cls_, const char *path_)
 {

@@ -74,8 +74,6 @@ void sisdb_wsdb_uninit(void *worker_)
     sis_sdsfree(context->work_sdbs);
 
     sis_free(context);
-    
-    sis_free(context);
     worker->context = NULL;
 }
 
@@ -146,7 +144,7 @@ static int _write_wsdb_head(s_sisdb_wsdb_cxt *context, int iszip)
 
 ///////////////////////////////////////////
 //  method define
-/////////////////////////////////////////
+///////////////////////////////////////////
 int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -155,6 +153,7 @@ int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
     s_sis_message *msg = (s_sis_message *)argv_; 
     sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
     sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
+    sisdb_wsdb_start(context);
     {
         s_sis_sds str = sis_message_get_str(msg, "work-keys");
         if (str)
@@ -171,7 +170,6 @@ int cmd_sisdb_wsdb_start(void *worker_, void *argv_)
             context->work_sdbs = sis_sdsdup(str);
         }
     }
-    sisdb_wsdb_start(context);
     context->wheaded = 0;
     context->status = SIS_WSDB_OPEN;
     return SIS_METHOD_OK; 
@@ -214,8 +212,6 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
         return SIS_METHOD_ERROR;
     }    
     s_sis_message *msg = (s_sis_message *)argv_; 
-    sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
-    sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
 
     int style = SIS_SDB_STYLE_SDB;
     if (sis_message_exist(msg, "style"))
@@ -225,6 +221,8 @@ int cmd_sisdb_wsdb_write(void *worker_, void *argv_)
     
     if (context->status == SIS_WSDB_NONE)
     {
+        sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
+        sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
         // 打开文件
         sisdb_wsdb_start(context);
         // 写文件
@@ -254,9 +252,16 @@ int cmd_sisdb_wsdb_merge(void *worker_, void *argv_)
     sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
 
     // 仅仅处理日上数据
-    // 
-    // sis_disk_writer_sdb(context->writer, chars->kname, chars->sname, chars->data, chars->size);
+    int idate = sis_net_msg_info_as_date(msg);
+    s_sis_disk_ctrl *ctrl = sis_disk_ctrl_create(
+        SIS_DISK_TYPE_SDB_YEAR,
+        sis_sds_save_get(context->work_path),
+        sis_sds_save_get(context->work_name),
+        idate);
 
+    sis_disk_ctrl_merge(ctrl);
+    // 其他时间尺度的数据也需要合并
+    sis_disk_ctrl_destroy(ctrl);
     return SIS_METHOD_OK; 
 }
 int cmd_sisdb_wsdb_push(void *worker_, void *argv_)

@@ -789,7 +789,7 @@ int sis_disk_io_read_sno_widx(s_sis_disk_ctrl *cls_)
         }
         sis_disk_files_read_fulltext(cls_->widx_fps, cls_, cb_sis_disk_io_read_sno_widx);
         sis_disk_files_close(cls_->widx_fps);
-         return SIS_DISK_CMD_OK;
+        return SIS_DISK_CMD_OK;
     }
     return SIS_DISK_CMD_NO_IDX;
 }

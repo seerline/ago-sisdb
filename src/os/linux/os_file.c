@@ -110,7 +110,8 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 		}
 		if (mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
 		{
-			fp = fopen(fn_, "a+");
+			// fp = fopen(fn_, "a+");
+			fp = fopen(fn_, "rb+");
 		}
 		else
 		{
@@ -122,6 +123,8 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 		if (mode_ & SIS_FILE_IO_CREATE || mode_ & SIS_FILE_IO_TRUNC || mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
 		{
 			fp = fopen(fn_, "a+");
+			fclose(fp);
+			fp = fopen(fn_, "rb+");
 		}
 	}
 	return fp;
@@ -180,6 +183,7 @@ size_t sis_file_read(s_sis_file_handle fp_, char *in_, size_t len_)
 size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_)
 {
 	size_t size = fwrite((char *)in_, 1, len_, fp_);
+	// printf("=======: %llx %lld\n", sis_file_seek(fp_, 0, SEEK_CUR),  sis_file_seek(fp_, 0, SEEK_CUR)); 
 	// fflush(fp_);
 	return size;
 }

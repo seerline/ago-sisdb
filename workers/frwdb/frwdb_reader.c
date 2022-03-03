@@ -153,7 +153,6 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 		// 不支持多键值获取
 		return SIS_METHOD_NIL;
 	}
-
 	s_frwdb_reader *reader = frwdb_reader_create();
 	reader->iszip = false;
 	reader->cid = netmsg->cid;
@@ -192,10 +191,12 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 		frwdb_reader_destroy(reader);
 		return SIS_METHOD_ERROR;
 	}
-
+	
 	s_sis_object *obj = NULL;
-	// printf("%s %d %d\n", __func__, reader->sub_date ,context->work_date);
-	if (reader->sub_date != context->work_date || (context->status == SIS_SUB_STATUS_STOP))
+	printf("%s %d %d %d | %s %s\n", __func__, reader->sub_date ,context->work_date, context->status, reader->sub_keys, reader->sub_sdbs);
+	if (reader->sub_date != context->work_date || 
+		(context->status == SIS_SUB_STATUS_STOP) || 
+		(context->status == SIS_SUB_STATUS_NONE))
 	{
 		reader->sub_disk = true;
 		// 请求历史数据 
@@ -203,10 +204,12 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 	}
 	else
 	{		
+		// printf("===1.2==\n");	
 		reader->sub_disk = false;
 		// 从实时数据中获取对应数据
 		s_sis_memory *imem = sis_memory_create_size(16 * 1024 * 1024);
 		s_sis_node_list *nodes = sis_map_pointer_get(context->map_data, netmsg->subject);
+		// printf("nodes = %d %s\n", sis_map_pointer_getsize(context->map_data), netmsg->subject);
 		if (frwdb_wfile_nodes_to_memory(nodes, imem))
 		{
 			obj = sis_object_create(SIS_OBJECT_MEMORY, imem);
@@ -221,7 +224,6 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 		frwdb_reader_destroy(reader);
 		return SIS_METHOD_NIL;
 	}
-
 	if (reader->rfmt & SISDB_FORMAT_BYTES)
 	{
 		if (reader->iszip)
