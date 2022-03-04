@@ -188,9 +188,8 @@ void sis_wait_thread_notice(s_sis_wait_thread *swt_)
  */
 bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void *source_)
 {
-<<<<<<< HEAD
-	return sis_thread_create(func_, source_, &swt_->work_thread);
-=======
+
+
     if (!sis_thread_create(func_, source_, &swt_->work_thread))
     {
         return false;
@@ -200,7 +199,7 @@ bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void
 		sis_sleep(1);
 	}
 	return true;
->>>>>>> 1bac443f4a8bff4711f8bb0b447367be6c15f0df
+
 }
 // 设置线程标志为SIS_WAIT_STATUS_EXIT， 但不会马上退出
 void sis_wait_thread_close(s_sis_wait_thread *swt_)
