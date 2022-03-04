@@ -63,16 +63,16 @@
   }
   function auth() {
     send_single_command(
-      { cmd : `{"cmd":"auth","ask":{"username":"admin","password":"admin5678"}}` },
+      { cmd : `{"cmd":"auth","info":{"username":"admin","password":"admin5678"}}` },
       function reply(data) {
         output.innerHTML = data;
       });
   }
   function send_string() {
     var doc = {cmd:(document.getElementById("send-cmd")).value,
-      key:(document.getElementById("send-key")).value,
+      subject:(document.getElementById("send-key")).value,
       service:(document.getElementById("send-service")).value,
-      ask:(document.getElementById("send-ask")).value};
+      info:(document.getElementById("send-ask")).value};
     if (!isJSON(JSON.stringify(doc)))
     {
       console.log("format error.", JSON.stringify(doc));

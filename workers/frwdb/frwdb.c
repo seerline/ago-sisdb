@@ -100,10 +100,15 @@ bool frwdb_init(void *worker_, void *argv_)
 	else
 	{
 		context->wfile_config = sis_json_create_object();
+		context->wfile_config->key = sis_sdsnew("wfile");
 		sis_json_object_add_string(context->wfile_config, "work-path", work_path, sis_sdslen(work_path));
 		sis_json_object_add_string(context->wfile_config, "work-name", work_name, sis_sdslen(work_name));
 		sis_json_object_add_string(context->wfile_config, "classname", "sisdb_wsdb", 10);
 	}
+	// s_sis_sds winfo = sis_json_to_sds(context->wfile_config, 1);
+	// printf("winfo =%s\n", winfo);
+	// winfo = sis_json_to_sds(context->wfile_config, 1);
+	// printf("winfo =%s\n", winfo);
 	// 读取文件的格式
     s_sis_json_node *rfilenode = sis_json_cmp_child_node(node, "rfile");
     if (rfilenode)
@@ -123,6 +128,7 @@ bool frwdb_init(void *worker_, void *argv_)
 	else
 	{
 		context->rfile_config = sis_json_create_object();
+		context->rfile_config->key = sis_sdsnew("rfile");
 		sis_json_object_add_string(context->rfile_config, "work-path", work_path, sis_sdslen(work_path));
 		sis_json_object_add_string(context->rfile_config, "work-name", work_name, sis_sdslen(work_name));
 		sis_json_object_add_string(context->rfile_config, "classname", "sisdb_rsdb", 10);
@@ -287,9 +293,8 @@ int frwdb_wfile_merge(s_frwdb_cxt *context, int iyear)
 		return 0;
 	}
 	s_sis_message *msg = sis_message_create();
-
-	sis_worker_command(wfile, "merge", msg); 
-
+	sis_net_message_set_info_i(msg, iyear * 10000 + 1231);
+	sis_worker_command(wfile, "merge", msg);
 	sis_message_destroy(msg);
 
 	sis_worker_destroy(wfile);
@@ -307,6 +312,8 @@ int cmd_frwdb_merge(void *worker_, void *argv_)
 	s_sis_message *netmsg = (s_sis_message *)argv_;
 	int curr_year = sis_net_msg_info_as_date(netmsg) / 10000;
 	// merge 当天的所有数据
+	printf("frw merge: %s\n", netmsg->info);
+
 	frwdb_wfile_merge(context, curr_year);
 
 	return SIS_METHOD_OK;
@@ -324,6 +331,7 @@ int cmd_frwdb_stop(void *worker_, void *argv_)
 	int curr_date = sis_net_msg_info_as_date(netmsg); 
 	int curr_year = curr_date / 10000;
 
+	printf("frw stop: %s\n", netmsg->info);
 	// 设置状态为写入完成 此时不能
 	context->status = FRWDB_STATUS_STOPW;
 
@@ -332,6 +340,7 @@ int cmd_frwdb_stop(void *worker_, void *argv_)
 	if (context->work_year > 0 && curr_year > context->work_year)
 	{
 		// 切换年时合并日上数据
+		// merge 用于合并数据 stop 时会自动判断是否是否需要清理冗余数据
 		frwdb_wfile_merge(context, context->work_year);
 	}
 
@@ -624,12 +633,14 @@ int frwdb_wfile_save(s_frwdb_cxt *context)
 	int count = sis_map_pointer_getsize(context->map_data);
 	if (count < 1)
 	{
+		LOG(8)("no data.\n");
 		return 0;
 	}
 	// 从内存数据写入到数据库
 	s_sis_worker *wfile = sis_worker_create(NULL, context->wfile_config);
 	if (!wfile)
 	{
+		LOG(8)("no create wfile.\n");
 		return 0;
 	}
 	s_sis_message *msg = sis_message_create();
@@ -680,8 +691,9 @@ void frwdb_write_stop(s_frwdb_cxt *context)
 	// 停止读数线程
 	if (context->read_thread)
 	{
+		// 发个通知把数据刷到数据区
 		sis_wait_thread_destroy(context->read_thread);
-        context->read_thread = NULL;
+		context->read_thread = NULL;
 	}	
 	// 停止订阅实时的读者
 	frwdb_reader_curr_stop(context);
@@ -735,7 +747,7 @@ void _frwdb_make_data(s_frwdb_cxt *context, int kidx, int sidx, char *imem, size
 	{
 		sis_node_list_push(curdata, imem + i * curdb->size);
 	}
-
+	printf("nodes = %d\n", sis_node_list_get_size(curdata));
 	// 这里处理实时数据订阅 或者其他密集型操作
 	s_sis_db_chars chars;
 	chars.kname = kname;
@@ -747,31 +759,38 @@ void _frwdb_make_data(s_frwdb_cxt *context, int kidx, int sidx, char *imem, size
 		frwdb_reader_curr_write(context, &chars);
 	}
 }
+void _frwdb_read_data(s_frwdb_cxt *context)
+{
+	int count = sis_net_mems_read(context->work_nodes, 0);
+	// printf("read %d %d %d\n",count, context->work_nodes->rnums, context->work_nodes->wnums);
+	if (count > 0)
+	{
+		s_sis_net_mem *mem = sis_net_mems_pop(context->work_nodes);
+		while(mem)
+		{
+			int *kidx = (int *)(mem->data + 0);
+			int *sidx = (int *)(mem->data + 4);
+			_frwdb_make_data(context, *kidx, *sidx, mem->data + 8, mem->size - 8);
+			mem = sis_net_mems_pop(context->work_nodes);
+			// sis_sleep(1);
+		}
+		sis_net_mems_free_read(context->work_nodes);
+		// LOG(5)("free %d %d %d\n", count, context->work_nodes->rnums, context->work_nodes->wnums);
+	}
 
+}
 static void *_thread_reader(void *argv_)
 {
     s_frwdb_cxt *context = (s_frwdb_cxt *)argv_;
     sis_wait_thread_start(context->read_thread);
+	// printf("read == %d %d\n", context->work_nodes->rnums, context->work_nodes->wnums);
     while (sis_wait_thread_noexit(context->read_thread))    
     {
-        int count = sis_net_mems_read(context->work_nodes, 0);
-        if (count > 0)
-        {
-            // printf("read %d %d %d\n",count, context->work_nodes->rnums, context->work_nodes->wnums);
-            s_sis_net_mem *mem = sis_net_mems_pop(context->work_nodes);
-            while(mem)
-            {
-                int *kidx = (int *)(mem->data + 0);
-				int *sidx = (int *)(mem->data + 4);
-				_frwdb_make_data(context, *kidx, *sidx, mem->data + 8, mem->size - 8);
-                mem = sis_net_mems_pop(context->work_nodes);
-                // sis_sleep(1);
-            }
-            sis_net_mems_free_read(context->work_nodes);
-            // LOG(5)("free %d %d %d\n", count, context->work_nodes->rnums, context->work_nodes->wnums);
-        }
+		// printf("read %d %d\n", context->work_nodes->rnums, context->work_nodes->wnums);
+		_frwdb_read_data(context);
        	sis_wait_thread_wait(context->read_thread, context->read_thread->wait_msec);
     }
+	_frwdb_read_data(context);
     sis_wait_thread_stop(context->read_thread);
 	context->read_thread = NULL;
     return NULL;

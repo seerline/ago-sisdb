@@ -424,7 +424,7 @@ int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_)
 		sis_mutex_unlock(&nodes_->lock);
 		return 	nodes_->rnums;
 	}
-	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
+	printf("==3== lock ok. %d :: %d\n", nodes_->rnums, nodes_->wnums);
 	return 0;
 }
 int sis_net_mems_free_read(s_sis_net_mems *nodes_)

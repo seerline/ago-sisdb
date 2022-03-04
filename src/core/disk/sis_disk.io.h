@@ -227,7 +227,7 @@ typedef struct s_sis_disk_main_head {
 typedef struct s_sis_disk_main_tail {
 	SIS_DISK_BLOCK_HEAD
     uint32   fcount;       // 当前关联文件总数 
-    uint32   invalid;      // 无效块数 最小的块一定大于1个字节 根据该值判定是否需要pack
+    uint32   novalid;      // 无效块数 最小的块一定大于1个字节 根据该值判定是否需要pack
     uint32   validly;      // 有效块数 
     uint8    other[19];    // 备用 多留16字节备用
     char     crc[16];      // 数据检验 索引应该和工作crc一致 创建时生成 后面不变 比较IDX和SDB可以大致知道文件是否匹配
@@ -260,10 +260,10 @@ typedef struct s_sis_disk_head {
 
 typedef struct s_sis_disk_files_unit {
     s_sis_sds             fn;         // 文件名
-    s_sis_file_handle     fp_1;         // 文件句柄
+    s_sis_file_handle     fp_1;       // 文件句柄
     size_t                offset;     // 当前偏移位置
-    uint32                invalid;
-    uint32                validly;
+    uint32                novalid;    // 无效数量
+    uint32                validly;    // 有效数量
     uint8                 status;     // 文件状态
     s_sis_memory         *fcatch;     // 必须加写缓存 如果写入块太小 写盘耗时会成倍增加
 } s_sis_disk_files_unit;
@@ -605,7 +605,7 @@ int sis_disk_ctrl_write_stop(s_sis_disk_ctrl *cls_);
 // 删除文件组
 void sis_disk_ctrl_remove(s_sis_disk_ctrl *cls_);
 // 合并日上可能存在的分段数据
-int sis_disk_ctrl_merge(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_);
+int sis_disk_ctrl_merge(s_sis_disk_ctrl *src_);
 // 清理文件中无效数据 
 int sis_disk_ctrl_pack(s_sis_disk_ctrl *src_, s_sis_disk_ctrl *des_);
 // 把源文件移动到指定位置  0 成功

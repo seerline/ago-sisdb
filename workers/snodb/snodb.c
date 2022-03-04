@@ -348,7 +348,7 @@ int cmd_snodb_set(void *worker_, void *argv_)
 	if (netmsg->tag == SIS_NET_TAG_SUB_SDB)
 	{
 		sis_sdsfree(context->work_sdbs);
-		// 从外界过来的sdbs可能格式不对，需要转换
+		// 从外界过来的 sdbs 可能格式不对，需要转换
 		s_sis_json_handle *injson = sis_json_load(netmsg->info, sis_sdslen(netmsg->info));
 		if (!injson)
 		{

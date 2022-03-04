@@ -612,20 +612,25 @@ s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *knam
 // 多表按时序输出通过该函数获取全部数据后 排序输出
 s_sis_object *_disk_reader_get_sdb_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
 {
+    // printf("==1== %s %s %d %d\n", kname_, sname_, reader_->status_sub, reader_->status_open);
     if (reader_->status_open == 0 || reader_->status_sub == 1 || !kname_ || !sname_)
     {
         return NULL;
     }
+    // printf("==2== %s %s \n", kname_, sname_);
     if (sis_is_multiple_sub(kname_, sis_strlen(kname_)) || sis_is_multiple_sub(sname_, sis_strlen(sname_)))
     {
         LOG(5)("no mul key or sdb: %s\n", kname_, sname_);
         return NULL;
     }
+    // printf("==3== %s %s \n", kname_, sname_);
     reader_->isone = 1;
     sis_disk_reader_init(reader_, kname_, sname_, smsec_, 0);
 
     // 只读结构化数据
     sis_disk_reader_make_sdb(reader_);
+
+    // printf("==4== %d \n", sis_map_list_getsize(reader_->subidxs));
 
     if (sis_map_list_getsize(reader_->subidxs) > 0)
     {
@@ -644,8 +649,9 @@ s_sis_object *_disk_reader_get_sdb_obj(s_sis_disk_reader *reader_, const char *k
             {
                 s_sis_disk_idx_unit *idxunit = (s_sis_disk_idx_unit *)sis_struct_list_get(subidx->idxs, k);
                 sis_disk_rcatch_init_of_idx(rcatch, idxunit);
+                
                 sis_disk_io_read_sdb(runit->ctrl, rcatch);
-                // printf("%d %lld | %zu\n", rcatch->rinfo->offset, rcatch->rinfo->size, sis_memory_get_size(rcatch->memory));
+                // printf("%d %llu | %zu\n", rcatch->rinfo->offset, rcatch->rinfo->size, sis_memory_get_size(rcatch->memory));
                 // sis_out_binary(".out.",sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
                 sis_memory_cat(memory, sis_memory(rcatch->memory), sis_memory_get_size(rcatch->memory));
             }
@@ -810,9 +816,7 @@ static int cb_key_stop(void *reader_, void *avgv_)
     {   
         return 0;
     }
-
 _sub_next:
-
     {
         s_sis_disk_reader_unit *runit = (s_sis_disk_reader_unit *)sis_pointer_list_get(subwork->units, subwork->unit_cursor);
         s_sis_disk_idx *subidx = (s_sis_disk_idx *)sis_pointer_list_get(subwork->kidxs, subwork->unit_cursor);
