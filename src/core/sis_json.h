@@ -74,6 +74,9 @@ void sis_json_object_add_node(s_sis_json_node *source_, const char *key_, s_sis_
 void sis_json_object_add_int(s_sis_json_node *node_, const char *key_, int64 value_);
 void sis_json_object_set_int(s_sis_json_node *node_, const char *key_, int64 value_);
 
+void sis_json_object_add_bool(s_sis_json_node *node_, const char *key_, bool value_);
+void sis_json_object_set_bool(s_sis_json_node *node_, const char *key_, bool value_);
+
 void sis_json_object_add_uint(s_sis_json_node *node_, const char *key_, uint64 value_);
 void sis_json_object_set_uint(s_sis_json_node *node_, const char *key_, uint64 value_);
 
