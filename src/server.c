@@ -173,7 +173,6 @@ void sis_server_uninit()
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 1024, "%s.conf", argv[0]);
-	LOG(8)("loading conf file [%s]\n", _server.conf_name);
 	int c = 1;
 	while (c < argc)
 	{
@@ -193,6 +192,7 @@ int main(int argc, char *argv[])
 		}
 		c++;
 	}
+	LOG(8)("loading conf file [%s]\n", _server.conf_name);
 	if (_server.work_mode & SERVER_WORK_MODE_DEBUG)
 	{
 		// 如果是debug模式就开启内存检查

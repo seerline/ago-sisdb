@@ -247,6 +247,15 @@ int sis_disk_files_remove(s_sis_disk_files *cls_)
     }
     return cls_->lists->count;
 }
+/**
+ * @brief 
+ * @param cls_ 
+ * @param access_ 
+ * SIS_DISK_ACCESS_RDONLY    1  文件只读打开,
+ * SIS_DISK_ACCESS_APPEND    2  文件可写打开 从文件尾写入数据,
+ * SIS_DISK_ACCESS_CREATE    3  新文件打开 从第一个文件写入
+ * @return int 
+ */
 int sis_disk_files_open(s_sis_disk_files *cls_, int access_)
 {
     cls_->access = access_;

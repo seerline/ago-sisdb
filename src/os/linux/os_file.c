@@ -123,8 +123,8 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 		if (mode_ & SIS_FILE_IO_CREATE || mode_ & SIS_FILE_IO_TRUNC || mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
 		{
 			fp = fopen(fn_, "a+");
-			fclose(fp);
-			fp = fopen(fn_, "rb+");
+		//	fclose(fp);
+		//	fp = fopen(fn_, "rb+");
 		}
 	}
 	return fp;
