@@ -211,6 +211,7 @@ int sis_disk_reader_open(s_sis_disk_reader *reader_);
 // 仅仅对应sdb文件
 void sis_disk_reader_close(s_sis_disk_reader *reader_);
 
+s_sis_dynamic_db *sis_disk_reader_getdb(s_sis_disk_reader *reader_, const char *sname_);
 // 获取单值和列表值 返回值需要释放 数据实际类型 s_sis_memory
 s_sis_object * sis_disk_reader_get_one(s_sis_disk_reader *, const char *kname_);
 // 返回值 单条数据类型为 s_sis_sds

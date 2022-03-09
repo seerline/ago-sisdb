@@ -882,6 +882,7 @@ bool _net_encoded_chars(s_sis_net_message *netmsg_, s_sis_memory *out_)
 		}	
 	}
 	// 这里处理 more 的字段定义
+	// printf("sis_net_encoded_json [%d]: %d %s\n",netmsg_->tag, netmsg_->switchs.sw_info, netmsg_->info);
 
     size_t len = 0;
     char *str = sis_json_output_zip(node, &len);

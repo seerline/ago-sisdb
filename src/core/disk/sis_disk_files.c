@@ -75,12 +75,12 @@ void sis_disk_files_close(s_sis_disk_files *cls_)
                     cls_->main_tail.fcount = cls_->lists->count;
                     cls_->main_tail.novalid = unit->novalid;
                     cls_->main_tail.validly = unit->validly;
-                    LOG(5)("write tail ok. %d %zu %zu count = %d | valid: %d %d\n", unit->fp_1, 
+                    LOG(5)("write tail ok. %p %zu %zu count = %d | valid: %d %d\n", unit->fp_1, 
                         sis_file_seek(unit->fp_1, 0, SEEK_CUR), unit->offset, 
                         cls_->main_tail.fcount, cls_->main_tail.novalid, cls_->main_tail.validly);
                     sis_file_write(unit->fp_1, (const char *)&cls_->main_tail, sizeof(s_sis_disk_main_tail));
                     unit->offset += sizeof(s_sis_disk_main_tail);
-                    LOG(5)("write tail ok. %d %zu %zu count = %d\n", unit->fp_1, 
+                    LOG(5)("write tail ok. %p %zu %zu count = %d\n", unit->fp_1, 
                         sis_file_seek(unit->fp_1, 0, SEEK_CUR), unit->offset, 
                         cls_->main_tail.fcount);
                 }

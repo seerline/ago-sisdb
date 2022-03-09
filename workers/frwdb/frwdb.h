@@ -29,8 +29,8 @@
 // 有且只能有1个人写入数据 读数据的人可以多个 
 
 #define FRWDB_STATUS_NONE    0
-#define FRWDB_STATUS_WRING   1   // 当前写入进行中
-#define FRWDB_STATUS_STOPW   2   // 当前写入停止
+#define FRWDB_STATUS_WRING   1   // 当前写入进行中 单日1天数据写入
+#define FRWDB_STATUS_STOPW   2   // 当前写入停止 单日数据写入完毕
 
 #pragma pack(push,1)
 
@@ -158,10 +158,14 @@ int cmd_frwdb_start(void *worker_, void *argv_);
 // 数据流写入完成 设置标记 方便发送订阅完成信号
 int cmd_frwdb_stop(void *worker_, void *argv_);
 
+// 把缓存的数据写入磁盘 
+int cmd_frwdb_save(void *worker_, void *argv_);
+
 int cmd_frwdb_merge(void *worker_, void *argv_);
 
 int cmd_frwdb_set(void *worker_, void *argv_);
-
+// 如果设置了 start 状态 表示按天写入数据 保存队列 直到 stop 再写盘 
+// 如果是直接写 表示按键值写入数据 直到 save 再一起写盘
 int cmd_frwdb_bset(void *worker_, void *argv_);
 // 需要传入 kidx sidx val 收到数据后压缩存储
 int cmd_frwdb_ipub(void *worker_, void *argv_);  // s_frwdb_bytes

@@ -20,6 +20,7 @@ struct s_sis_method frwdb_methods[] = {
     {"set",       cmd_frwdb_set,    SIS_METHOD_ACCESS_RDWR, NULL},   // 写入数据 json单条数据 key sdb data
     {"bset",      cmd_frwdb_bset,   SIS_METHOD_ACCESS_RDWR, NULL},   // 写入数据 二进制数据 key sdb data
     {"stop",      cmd_frwdb_stop,   SIS_METHOD_ACCESS_RDWR, NULL},   // 数据写入完成 存盘 并按规则 pack
+    {"save",      cmd_frwdb_save,   SIS_METHOD_ACCESS_RDWR, NULL},   // 对完整数据存盘
     {"merge",     cmd_frwdb_merge,  SIS_METHOD_ACCESS_RDWR, NULL},   // 数据写入完成 存盘 并按规则 
 // 读取操作
     {"sub",       cmd_frwdb_sub,    SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据流 
@@ -100,7 +101,7 @@ bool frwdb_init(void *worker_, void *argv_)
 	else
 	{
 		context->wfile_config = sis_json_create_object();
-		context->wfile_config->key = sis_sdsnew("wfile");
+		context->wfile_config->key = sis_strdup("wfile", 5);
 		sis_json_object_add_string(context->wfile_config, "work-path", work_path, sis_sdslen(work_path));
 		sis_json_object_add_string(context->wfile_config, "work-name", work_name, sis_sdslen(work_name));
 		sis_json_object_add_string(context->wfile_config, "classname", "sisdb_wsdb", 10);
@@ -128,7 +129,7 @@ bool frwdb_init(void *worker_, void *argv_)
 	else
 	{
 		context->rfile_config = sis_json_create_object();
-		context->rfile_config->key = sis_sdsnew("rfile");
+		context->rfile_config->key = sis_strdup("rfile", 5);
 		sis_json_object_add_string(context->rfile_config, "work-path", work_path, sis_sdslen(work_path));
 		sis_json_object_add_string(context->rfile_config, "work-name", work_name, sis_sdslen(work_name));
 		sis_json_object_add_string(context->rfile_config, "classname", "sisdb_rsdb", 10);
@@ -209,17 +210,19 @@ int cmd_frwdb_create(void *worker_, void *argv_)
         sis_net_msg_tag_error(netmsg, "no parse create info.", 0);
         return SIS_METHOD_OK;
     }
+	injson->node->key = sis_strdup(netmsg->subject, sis_sdslen(netmsg->subject));
     s_sis_dynamic_db *db = sis_dynamic_db_create(injson->node);
-	sis_map_list_set(context->map_sdbs, netmsg->subject, db);
-    sis_json_close(injson);
     if(db)
     {
+		// sis_dynamic_db_setname(db, netmsg->subject);
+		sis_map_list_set(context->map_sdbs, netmsg->subject, db);
         sis_net_msg_tag_ok(netmsg);
     }
     else
     {
         sis_net_msg_tag_error(netmsg, "create sdb fail.", 0);
     }
+    sis_json_close(injson);
     return SIS_METHOD_OK;
 }
 
@@ -276,7 +279,7 @@ int cmd_frwdb_start(void *worker_, void *argv_)
 	{
 		return SIS_METHOD_ERROR;
 	}
-
+	printf("frw start: :: %d %d %d\n", curr_date, context->work_date, context->status);
 	frwdb_write_start(context, curr_date);
 
 	context->status = FRWDB_STATUS_WRING;
@@ -350,7 +353,78 @@ int cmd_frwdb_stop(void *worker_, void *argv_)
 
     return SIS_METHOD_OK;
 }
+int frwdb_wfile_save(s_frwdb_cxt *context)
+{
+	int count = sis_map_pointer_getsize(context->map_data);
+	if (count < 1)
+	{
+		LOG(8)("no data.\n");
+		return 0;
+	}
+	// 从内存数据写入到数据库
+	s_sis_worker *wfile = sis_worker_create(NULL, context->wfile_config);
+	if (!wfile)
+	{
+		LOG(8)("no create wfile.\n");
+		return 0;
+	}
+	s_sis_message *msg = sis_message_create();
+	s_sis_sds keys = sis_map_as_keys(context->map_keys);
+	sis_message_set_str(msg, "work-keys", keys, sis_sdslen(keys));
+	sis_sdsfree(keys);
 
+	s_sis_sds sdbs = sis_map_as_sdbs(context->map_sdbs);
+	sis_message_set_str(msg, "work-sdbs", sdbs, sis_sdslen(sdbs));
+	sis_sdsfree(sdbs);
+
+	sis_worker_command(wfile, "start", msg); 
+
+	char kname[128];
+	char sname[128];
+	s_sis_db_chars chars;
+	chars.kname = kname;
+	chars.sname = sname;
+	sis_message_set(msg, "chars", &chars, NULL);
+
+	s_sis_memory *imem = sis_memory_create_size(16 * 1024 * 1024);
+	
+	s_sis_dict_entry *de;
+	s_sis_dict_iter *di = sis_dict_get_iter(context->map_data);
+	while ((de = sis_dict_next(di)) != NULL)
+	{
+		s_sis_node_list *nodes = (s_sis_node_list *)sis_dict_getval(de);
+		sis_str_divide(sis_dict_getkey(de), '.', kname, sname);
+		// 转数据到 memory
+		if (frwdb_wfile_nodes_to_memory(nodes, imem))
+		{
+			chars.data = sis_memory(imem);
+			chars.size = sis_memory_get_size(imem);
+			sis_worker_command(wfile, "write", msg);			
+		}
+	}
+	sis_dict_iter_free(di);
+
+	sis_memory_destroy(imem);
+
+	sis_worker_command(wfile, "stop", msg); 
+	sis_message_destroy(msg);
+	sis_worker_destroy(wfile);
+	return 1;
+}
+int cmd_frwdb_save(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_frwdb_cxt *context = (s_frwdb_cxt *)worker->context;
+	printf("save status = %d\n", context->status);
+	if (context->status == FRWDB_STATUS_NONE)
+	{
+		if (!frwdb_wfile_save(context))
+		{
+			LOG(5)("frwdb wfile fail.\n");
+		}
+	}	
+    return SIS_METHOD_OK;
+}
 int cmd_frwdb_set(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -400,38 +474,87 @@ int cmd_frwdb_set(void *worker_, void *argv_)
 
     return SIS_METHOD_OK;
 }
+
+void _frwdb_make_data_chr(s_frwdb_cxt *context, char *kname, s_sis_dynamic_db *curdb, char *imem, size_t isize)
+{
+	char subject[128];
+	sis_sprintf(subject, 128, "%s.%s", kname, curdb->name);
+	s_sis_node_list *curdata = sis_map_pointer_get(context->map_data, subject);
+	if (!curdata)
+	{
+		curdata = sis_node_list_create(1024, curdb->size);
+		sis_map_pointer_set(context->map_data, subject, curdata);
+	}
+	// 数据只能增加 不判断重复数据
+	int count = isize / curdb->size;
+	for (int i = 0; i < count; i++)
+	{
+		sis_node_list_push(curdata, imem + i * curdb->size);
+	}
+	// 这里处理实时数据订阅 或者其他密集型操作
+	s_sis_db_chars chars;
+	chars.kname = kname;
+	chars.sname = curdb->name;
+	chars.size  = curdb->size;
+	for (int i = 0; i < count; i++)
+	{
+		chars.data = imem + i * curdb->size;
+		frwdb_reader_curr_write(context, &chars);
+	}
+}
 int cmd_frwdb_bset(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_frwdb_cxt *context = (s_frwdb_cxt *)worker->context;
-	if (context->status != FRWDB_STATUS_WRING)
-	{
-		return SIS_METHOD_ERROR;
-	}
 	s_sis_message *netmsg = (s_sis_message *)argv_;
 	s_sis_sds omem = netmsg->info;
-    if (!netmsg->subject || !omem || sis_sdslen(omem) < 1)
-    {
-		return SIS_METHOD_ERROR;
-	}
-	char kname[128];
-	char sname[128];
-	sis_str_divide(netmsg->subject, '.', kname, sname);
-	s_sis_dynamic_db *curdb = sis_map_list_get(context->map_sdbs, sname);
-	if(!curdb)
+	if (!netmsg->subject || !omem || sis_sdslen(omem) < 1)
 	{
 		return SIS_METHOD_ERROR;
 	}
-	int kidx = sis_map_list_get_index(context->map_keys, kname);
-	// 这里检查键值是否有增加
-	if (kidx < 0)
+	if (context->status == FRWDB_STATUS_WRING)
 	{
-		sis_map_list_set(context->map_keys, kname, sis_sdsnew(kname));
-	}
-	int sidx = sis_map_list_get_index(context->map_sdbs, sname);
-	sis_net_mems_push_kv(context->work_nodes, kidx, sidx, omem, sis_sdslen(omem));
+		// 这里按天写入数据
+		char kname[128];
+		char sname[128];
+		sis_str_divide(netmsg->subject, '.', kname, sname);
+		s_sis_dynamic_db *curdb = sis_map_list_get(context->map_sdbs, sname);
+		if(!curdb)
+		{
+			return SIS_METHOD_ERROR;
+		}
+		int kidx = sis_map_list_get_index(context->map_keys, kname);
+		// 这里检查键值是否有增加
+		if (kidx < 0)
+		{
+			sis_map_list_set(context->map_keys, kname, sis_sdsnew(kname));
+		}
+		int sidx = sis_map_list_get_index(context->map_sdbs, sname);
+		sis_net_mems_push_kv(context->work_nodes, kidx, sidx, omem, sis_sdslen(omem));
 
-    return SIS_METHOD_OK;
+		return SIS_METHOD_OK;
+	}
+	if (context->status == FRWDB_STATUS_NONE)
+	{
+		// 这里直接整块数据写入
+		char kname[128];
+		char sname[128];
+		sis_str_divide(netmsg->subject, '.', kname, sname);
+		s_sis_dynamic_db *curdb = sis_map_list_get(context->map_sdbs, sname);
+		if(!curdb)
+		{
+			return SIS_METHOD_ERROR;
+		}
+		int kidx = sis_map_list_get_index(context->map_keys, kname);
+		// 这里检查键值是否有增加
+		if (kidx < 0)
+		{
+			sis_map_list_set(context->map_keys, kname, sis_sdsnew(kname));
+		}
+		_frwdb_make_data_chr(context, kname, curdb, omem, sis_sdslen(omem));
+		return SIS_METHOD_OK;
+	}
+	return SIS_METHOD_ERROR;
 }
 
 int cmd_frwdb_sub(void *worker_, void *argv_)
@@ -628,64 +751,7 @@ int frwdb_wfile_nodes_to_memory(s_sis_node_list *nodes, s_sis_memory *imem)
 	return sis_memory_get_size(imem);
 }
 
-int frwdb_wfile_save(s_frwdb_cxt *context)
-{
-	int count = sis_map_pointer_getsize(context->map_data);
-	if (count < 1)
-	{
-		LOG(8)("no data.\n");
-		return 0;
-	}
-	// 从内存数据写入到数据库
-	s_sis_worker *wfile = sis_worker_create(NULL, context->wfile_config);
-	if (!wfile)
-	{
-		LOG(8)("no create wfile.\n");
-		return 0;
-	}
-	s_sis_message *msg = sis_message_create();
-	s_sis_sds keys = sis_map_as_keys(context->map_keys);
-	sis_message_set_str(msg, "work-keys", keys, sis_sdslen(keys));
-	sis_sdsfree(keys);
 
-	s_sis_sds sdbs = sis_map_as_sdbs(context->map_sdbs);
-	sis_message_set_str(msg, "work-sdbs", sdbs, sis_sdslen(sdbs));
-	sis_sdsfree(sdbs);
-
-	sis_worker_command(wfile, "start", msg); 
-
-	char kname[128];
-	char sname[128];
-	s_sis_db_chars chars;
-	chars.kname = kname;
-	chars.sname = sname;
-	sis_message_set(msg, "chars", &chars, NULL);
-
-	s_sis_memory *imem = sis_memory_create_size(16 * 1024 * 1024);
-	
-	s_sis_dict_entry *de;
-	s_sis_dict_iter *di = sis_dict_get_iter(context->map_data);
-	while ((de = sis_dict_next(di)) != NULL)
-	{
-		s_sis_node_list *nodes = (s_sis_node_list *)sis_dict_getval(de);
-		sis_str_divide(sis_dict_getkey(de), '.', kname, sname);
-		// 转数据到 memory
-		if (frwdb_wfile_nodes_to_memory(nodes, imem))
-		{
-			chars.data = sis_memory(imem);
-			chars.size = sis_memory_get_size(imem);
-			sis_worker_command(wfile, "write", msg);			
-		}
-	}
-	sis_dict_iter_free(di);
-
-	sis_memory_destroy(imem);
-
-	sis_worker_command(wfile, "stop", msg); 
-	sis_message_destroy(msg);
-	sis_worker_destroy(wfile);
-	return 1;
-}
 void frwdb_write_stop(s_frwdb_cxt *context)
 {
 	// 停止读数线程
@@ -721,11 +787,9 @@ void frwdb_write_stop(s_frwdb_cxt *context)
 	// 不清理表结构 下次直接用
 	// sis_map_list_clear(context->map_keys); 
 	// sis_map_list_clear(context->map_sdbs);
-
-	// 
 }
 
-void _frwdb_make_data(s_frwdb_cxt *context, int kidx, int sidx, char *imem, size_t isize)
+void _frwdb_make_data_idx(s_frwdb_cxt *context, int kidx, int sidx, char *imem, size_t isize)
 {
 	s_sis_dynamic_db *curdb = sis_map_list_geti(context->map_sdbs, sidx);
 	s_sis_sds kname = sis_map_list_geti(context->map_keys, kidx);
@@ -770,7 +834,7 @@ void _frwdb_read_data(s_frwdb_cxt *context)
 		{
 			int *kidx = (int *)(mem->data + 0);
 			int *sidx = (int *)(mem->data + 4);
-			_frwdb_make_data(context, *kidx, *sidx, mem->data + 8, mem->size - 8);
+			_frwdb_make_data_idx(context, *kidx, *sidx, mem->data + 8, mem->size - 8);
 			mem = sis_net_mems_pop(context->work_nodes);
 			// sis_sleep(1);
 		}

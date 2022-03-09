@@ -139,9 +139,10 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
     {
         s_sisdb_client_ask *ask = sisdb_client_ask_get(context, msg_->name);
         // 清理上次返回的信息
+        // SIS_NET_SHOW_MSG("_cb_recv ask", msg_);
+        // printf("aaaaa: %d %p : %d\n", msg_->switchs.sw_tag, ask, msg_->tag);
         if (ask && msg_->switchs.sw_tag)
         {
-            // SIS_NET_SHOW_MSG("_cb_recv ask", msg_);
             switch (msg_->tag)
             {
             case SIS_NET_TAG_SUB_OPEN:
@@ -155,13 +156,10 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
             case SIS_NET_TAG_OK:
                 if(ask->cb_reply)
                 {
-                    if (msg_->switchs.sw_info)
+                    if(ask->cb_reply)
                     {
-                        if(ask->cb_reply)
-                        {
-                            ask->cb_reply(ask->cb_source, SIS_NET_TAG_OK, msg_->subject, msg_->info, msg_->info ? sis_sdslen(msg_->info) : 0);
-                        }                                                      
-                    }                    
+                        ask->cb_reply(ask->cb_source, SIS_NET_TAG_OK, msg_->subject, msg_->info, msg_->info ? sis_sdslen(msg_->info) : 0);
+                    }                                                      
                 }        
                 break;
             case SIS_NET_TAG_NIL:
@@ -382,6 +380,7 @@ static int cb_reply(void *worker_, int rans_, const char *key_, const char *val_
     sis_net_message_set_subject(msg, key_, NULL);
     sis_net_message_set_info(msg, (void *)val_, vsize_);
     sis_net_message_set_tag(msg, rans_);
+
     return 0; 
 }
 int cmd_sisdb_client_setcb(void *worker_, void *argv_)
@@ -427,7 +426,7 @@ int cmd_sisdb_client_chars_wait(void *worker_, void *argv_)
     {
         sis_sleep(1);
     }
-    // printf("start 1 : %d\n", (unsigned int)sis_thread_self());
+    // printf("start 1 : %u\n", (unsigned int)sis_thread_self());
     // sis_wait_start(&context->wait);
     if (msg->switchs.sw_tag)
     {

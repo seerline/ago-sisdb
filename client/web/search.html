@@ -18,7 +18,7 @@
         <input type="text" name="currency1" placeholder="cmd : get" class="biginput" id="send-cmd" value="dddd">
         <input type="text" name="currency2" placeholder="key : sh600600.stk_day" class="biginput" id="send-key">
         <input type="text" name="currency4" class="biginput" id="send-ask"
-            placeholder='ask : {"range":{"start:-1"}}' >
+            placeholder='info : {"start-date":20110101, "stop-date":20111231}' >
       </form>
       <button onclick="connect()">connect</button>
       <button onclick="auth()">auth-admin</button>
@@ -80,8 +80,8 @@
     }
     saveListData("sisdb_service", doc.service);
     saveListData("sisdb_cmd",     doc.cmd);
-    saveListData("sisdb_key",     doc.key);
-    saveListData("sisdb_ask",     doc.ask);
+    saveListData("sisdb_key",     doc.subject);
+    saveListData("sisdb_ask",     doc.info);
     send_single_command(
       { cmd : JSON.stringify(doc) },
       function reply(data) {

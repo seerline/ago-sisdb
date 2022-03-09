@@ -323,7 +323,7 @@ void sisdb_rsdb_sub_stop(s_sisdb_rsdb_cxt *context)
         }
     }
 }
-s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context)
+s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context, int rfmt)
 {
     context->work_reader = sis_disk_reader_create(
         sis_sds_save_get(context->work_path), 
@@ -336,13 +336,33 @@ s_sis_object *sisdb_rsdb_get_obj(s_sisdb_rsdb_cxt *context)
         context->work_reader = NULL;
         return NULL;
     }
-    LOG(5)("get sdb open. [%d]\n", context->work_date.start);
+    LOG(5)("get sdb open. [%d - %d]\n", context->work_date.start, context->work_date.stop);
     s_sis_msec_pair smsec;
     smsec.start = sis_time_make_time(context->work_date.start, 0) * 1000;
     smsec.stop = sis_time_make_time(context->work_date.stop, 235959) * 1000 + 999;
     s_sis_object *obj = sis_disk_reader_get_obj(context->work_reader, context->work_keys, context->work_sdbs, &smsec);
-    LOG(5)("get sdb stop. [%d] %p %zu\n", context->work_date.stop, obj, SIS_OBJ_GET_SIZE(obj));
-    // sis_out_binary("...", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+    if (obj)
+    {
+        LOG(5)("get sdb stop. [%d] %p %zu\n", context->work_date.stop, obj, SIS_OBJ_GET_SIZE(obj));
+        // 这里拿到的应该是原始二进制数据
+        // sis_out_binary("..1..", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+        if (rfmt & SISDB_FORMAT_CHARS)
+        {
+            s_sis_dynamic_db *db = sis_disk_reader_getdb(context->work_reader, context->work_sdbs);
+            if (db)
+            {
+                // 这里未来可以做格式转换处理
+                s_sis_sds omem = sis_db_format_sds(db, NULL, rfmt, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), 0);
+                sis_object_decr(obj);
+                obj = sis_object_create(SIS_OBJECT_SDS, omem);
+            }
+            else
+            {
+                sis_object_decr(obj);
+                obj = NULL;
+            }			
+        }
+    }
 
     sis_disk_reader_close(context->work_reader);
     sis_disk_reader_destroy(context->work_reader);
@@ -416,16 +436,17 @@ int cmd_sisdb_rsdb_get(void *worker_, void *argv_)
     _sisdb_rsdb_init(context, msg);
     context->status = SIS_RSDB_CALL;
 
-    s_sis_object *obj = sisdb_rsdb_get_obj(context);
+    int rfmt = sis_message_get_int(msg, "format");
+    s_sis_object *obj = sisdb_rsdb_get_obj(context, rfmt);
     if (obj)
     {
-        // 这里拿到的应该是原始二进制数据
         sis_message_set(msg, "info", obj, sis_object_destroy);
     }
 
     context->status = SIS_RSDB_NONE;
     return SIS_METHOD_OK;
 }
+
 int cmd_sisdb_rsdb_sub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

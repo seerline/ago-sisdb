@@ -282,6 +282,19 @@ void sis_disk_reader_close(s_sis_disk_reader *reader_)
     }
 }
 
+
+s_sis_dynamic_db *sis_disk_reader_getdb(s_sis_disk_reader *reader_, const char *sname_)
+{
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(reader_->munit->map_sdicts, sname_);
+    s_sis_dynamic_db *db = NULL;
+    if (sdict)
+    {
+        db = sis_disk_sdict_last(sdict);
+    }
+    return db;
+}
+
+
 void sis_disk_reader_init(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_, int issub_)
 {
     sis_map_list_clear(reader_->subidxs);
@@ -392,6 +405,7 @@ void _disk_reader_make_sdb_from_file(s_sis_disk_reader *reader_)
     {
         return;
     }
+    
     // 3.检查日下时序数据
     {
         int open = sis_time_get_idate(reader_->search_msec.start / 1000);
@@ -612,26 +626,25 @@ s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *reader_, const char *knam
 // 多表按时序输出通过该函数获取全部数据后 排序输出
 s_sis_object *_disk_reader_get_sdb_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
 {
-    // printf("==1== %s %s %d %d\n", kname_, sname_, reader_->status_sub, reader_->status_open);
+    printf("==1== %s %s %d %d\n", kname_, sname_, reader_->status_sub, reader_->status_open);
     if (reader_->status_open == 0 || reader_->status_sub == 1 || !kname_ || !sname_)
     {
         return NULL;
     }
-    // printf("==2== %s %s \n", kname_, sname_);
+    printf("==2== %s %s \n", kname_, sname_);
     if (sis_is_multiple_sub(kname_, sis_strlen(kname_)) || sis_is_multiple_sub(sname_, sis_strlen(sname_)))
     {
         LOG(5)("no mul key or sdb: %s\n", kname_, sname_);
         return NULL;
     }
-    // printf("==3== %s %s \n", kname_, sname_);
+    printf("==3== %s %s \n", kname_, sname_);
     reader_->isone = 1;
     sis_disk_reader_init(reader_, kname_, sname_, smsec_, 0);
 
     // 只读结构化数据
     sis_disk_reader_make_sdb(reader_);
 
-    // printf("==4== %d \n", sis_map_list_getsize(reader_->subidxs));
-
+    printf("==4== %d \n", sis_map_list_getsize(reader_->subidxs));
     if (sis_map_list_getsize(reader_->subidxs) > 0)
     {
         s_sis_memory *memory = sis_memory_create();
