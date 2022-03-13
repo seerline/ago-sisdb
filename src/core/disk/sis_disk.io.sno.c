@@ -399,7 +399,7 @@ void sis_disk_sno_rctrl_start(s_sis_disk_ctrl *cls_)
 {
     s_sis_db_chars *chars = sis_disk_sno_rctrl_rpop(cls_->sno_rctrl);
     s_sis_disk_reader_cb *callback = cls_->rcatch->callback; 
-    printf("start chars= %p %p %p\n", chars, callback->cb_bytedata, callback->cb_chardata);
+    LOG(9)("start chars= %p %p %p\n", chars, callback->cb_bytedata, callback->cb_chardata);
     while (chars && !cls_->isstop)
     {
         if(callback->cb_chardata)
@@ -417,7 +417,7 @@ void sis_disk_sno_rctrl_start(s_sis_disk_ctrl *cls_)
         }        
         chars = sis_disk_sno_rctrl_rpop(cls_->sno_rctrl);
     }
-    printf("start chars ok= %p\n", chars);
+    LOG(9)("start chars ok= %p\n", chars);
 }
 int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
@@ -526,7 +526,7 @@ int sis_disk_io_sub_sno_part(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     s_sis_pointer_list *subparts = sis_pointer_list_create(); 
     // 获取数据索引列表 --> filters
     _disk_io_sub_sno_parts(cls_, rcatch_, subparts);
-    LOG(5)("sub filters count =  %d %s %s\n", subparts->count, rcatch_->sub_keys, rcatch_->sub_sdbs);
+    LOG(9)("sub filters count =  %d %s %s\n", subparts->count, rcatch_->sub_keys, rcatch_->sub_sdbs);
     if(subparts->count < 1)
     {
         sis_pointer_list_destroy(subparts);

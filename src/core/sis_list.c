@@ -516,6 +516,9 @@ void sis_node_list_destroy(void *list_)
 }
 void sis_node_list_clear(s_sis_node_list *list_)
 {
+	if(!list_||list_->nodes)
+		return;
+	
 	int count = list_->nodes->count - 1;
 	if (count > 0)
 	{
@@ -546,7 +549,7 @@ int   sis_node_list_push(s_sis_node_list *list_, void *in_)
 
 void *sis_node_list_get(s_sis_node_list *list_, int index_)
 {
-	if (index_ < 0 || index_ > list_->count - 1)
+	if (!list_ || index_ < 0 || index_ > list_->count - 1)
 	{
 		return NULL;
 	}

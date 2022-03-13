@@ -695,6 +695,8 @@ s_sis_dict_iter *_dict_get_iter(s_sis_dict *d)
 }
 
 s_sis_dict_iter *sis_dict_get_iter(s_sis_dict *d) {
+    if(d==NULL)
+        return NULL;
     s_sis_dict_iter *i = _dict_get_iter(d);
     i->safe = 1;
     return i;
@@ -702,7 +704,10 @@ s_sis_dict_iter *sis_dict_get_iter(s_sis_dict *d) {
 
 s_sis_dict_entry *sis_dict_next(s_sis_dict_iter *iter)
 {
-    while (1) {
+    if(!iter)
+        return NULL;
+    while (1)
+    {
         if (iter->entry == NULL) {
             s_sis_dictht *ht = &iter->d->ht[iter->table];
             if (iter->index == -1 && iter->table == 0) {

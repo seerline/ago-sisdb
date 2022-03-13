@@ -15,6 +15,16 @@ uint64_t _sis_dict_int_hash(const void *key) // 只能是 int64
 {
 	return sis_dict_get_casehash_func((unsigned char *)key, sizeof(int64));
 }
+/**
+ * @brief 键值为int64时的默认hash函数，added by zhangchao
+ * @param key 
+ * @return uint64_t 
+ */
+uint64_t _sis_dict_int64_hash(const void *key) // 只能是 int64
+{
+	return (uint64_t)key;
+}
+
 uint64_t _sis_dict_obj_hash(const void *key)
 {
 	return sis_dict_get_casehash_func((unsigned char *)SIS_OBJ_GET_CHAR((s_sis_object *)key), SIS_OBJ_GET_SIZE((s_sis_object *)key));
@@ -27,6 +37,17 @@ int _sis_dict_int_compare(const void *key1, const void *key2)
 {
 	return *((int64 *)key1) == *((int64 *)key2);
 }
+/**
+ * @brief 键类型为int64时的键比较函数，add by zhangchao
+ * @param key1 
+ * @param key2 
+ * @return int 
+ */
+int _sis_dict_int64_compare(const void *key1, const void *key2)
+{
+	return key1 == key2;
+}
+
 int _sis_dict_obj_compare(const void *key1, const void *key2)
 {
 	// return sis_strcasecmp(SIS_OBJ_GET_CHAR((s_sis_object *)key1), SIS_OBJ_GET_CHAR((s_sis_object *)key2)) == 0;
@@ -51,6 +72,16 @@ void *_sis_dict_int_dup(const void *val)
 	// printf("===== %lld,\n", *o);
 	return o;
 }
+/**
+ * @brief 键类型为int64时的默认键复制函数，added by zhangchao
+ * @param val 
+ * @return void* 
+ */
+void *_sis_dict_int64_dup(const void *val)
+{
+	return val;
+}
+
 void *_sis_dict_obj_dup(const void *val)
 {
 	s_sis_object *obj = (s_sis_object *)val;
@@ -79,15 +110,19 @@ s_sis_dict_type _sis_dict_type_nofree_val_s = {
 	_sis_dict_str_free,		   /* key destructor */
 	NULL					   /* val destructor */
 };
-// 键为整数的字典类型的默认初始化实现
+
+/**
+ * @brief 键为64位整数的默认初始化实现，added by zhangchao
+ */
 s_sis_dict_type _sis_dict_type_int_key_s = {
-	_sis_dict_int_hash,	       /* hash function */
-	_sis_dict_int_dup,		   /* key dup */
+	_sis_dict_int64_hash,	       /* hash function */
+	_sis_dict_int64_dup,		   /* key dup */
 	NULL,					   /* val dup */
-	_sis_dict_int_compare,     /* key compare */
-	_sis_dict_str_free,		   /* key destructor */
+	_sis_dict_int64_compare,     /* key compare */
+	NULL,		   /* key destructor */
 	NULL					   /* val destructor */
 };
+
 s_sis_dict_type _sis_dict_type_obj_key_s = {
 	_sis_dict_obj_hash,	       /* hash function */
 	_sis_dict_obj_dup,		   /* key dup */
@@ -325,6 +360,7 @@ s_sis_map_kint *sis_map_kint_create()
 	return map;
 
 }
+
 /** 从字典中查找数据，键类型为int */
 void *sis_map_kint_get(s_sis_map_kint *map_, int64 key_)
 {
@@ -332,7 +368,8 @@ void *sis_map_kint_get(s_sis_map_kint *map_, int64 key_)
 	{
 		return NULL;
 	}
-	s_sis_dict_entry *he = sis_dict_find(map_, (void *)&key_);
+	// s_sis_dict_entry *he = sis_dict_find(map_, (void *)&key_);
+	s_sis_dict_entry *he = sis_dict_find(map_, (const void *)key_);
 	if (!he)
 	{
 		return NULL;
@@ -342,12 +379,15 @@ void *sis_map_kint_get(s_sis_map_kint *map_, int64 key_)
 }
 int sis_map_kint_set(s_sis_map_kint *map_, int64 key_, void *val_)
 {
-	sis_dict_replace(map_, (void *)&key_, val_);	
+	sis_dict_replace(map_,  (const void *)key_,val_);	
+	// sis_dict_replace(map_, (void *)&key_, val_);	
 	return 0;
 }
+
 void sis_map_kint_del(s_sis_map_kint *map_, int64 key_)
 {
-	sis_dict_delete(map_, (void *)&key_);
+	sis_dict_delete(map_, (const void*)key_);
+	// sis_dict_delete(map_, (void *)&key_);
 }
 //////////////////////////////////////////
 //  s_sis_map_kobj 基础定义
@@ -365,9 +405,23 @@ s_sis_map_kobj *sis_map_kobj_create()
 int main()
 {
 	s_sis_map_kint *map = sis_map_kint_create();
-	sis_map_kint_set(map, 0, NULL);
-	sis_map_kint_set(map, 1, NULL);
-	sis_map_kint_del(map, 0);
+	for (size_t i = 0; i < 10000000; i++)
+	{
+		sis_map_kint_set(map, i, i);
+	}
+	for (size_t i = 0; i < 10000000; i++)
+	{
+		if(i!=sis_map_kint_get(map, i)){
+			LOG(5)
+			("error,%ld\n",i);
+			break;
+		}
+	}
+	LOG(5)
+	("success");
+	// sis_map_kint_set(map, 0, NULL);
+	// sis_map_kint_set(map, 1, NULL);
+	// sis_map_kint_del(map, 0);
 	sis_map_kint_destroy(map);
 }
 // int main()

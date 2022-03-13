@@ -168,8 +168,8 @@ void sis_server_uninit()
 	sis_map_pointer_destroy(_server.modules);
 }
 
-#ifndef TEST_DEBUG 
-
+ #ifndef TEST_DEBUG 
+ 
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 1024, "%s.conf", argv[0]);

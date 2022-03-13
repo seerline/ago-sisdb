@@ -2,8 +2,10 @@
 #define _OS_THREAD_H
 
 // #include <sis_os.h>
+#ifdef WINDOWS
 #include <os_time.h>
 #include <minwinbase.h>
+
 
 // 超过时间才返回该值，如果强制退出不返回该值
 #define SIS_ETIMEDOUT ETIMEDOUT  // 60
@@ -152,5 +154,5 @@ atomic_fetch_sub_##short_type(atomic_##short_type##_t *a,		\
 #ifdef __cplusplus
 }
 #endif
-
+#endif // DEBUG
 #endif /* _SIS_THREAD_H */
