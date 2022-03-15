@@ -233,7 +233,6 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 
 	return SIS_METHOD_OK;
 }
- 
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_frwdb_reader callback -----------------------//

@@ -587,7 +587,6 @@ int cmd_frwdb_get(void *worker_, void *argv_)
 	return frwdb_read(context, msg);
 }
 
-
 // 因为可能发到中间时也会调用该函数 init 时需要保证环境和最初的环境一致
 int cmd_frwdb_init(void *worker_, void *argv_)
 {
@@ -811,7 +810,7 @@ void _frwdb_make_data_idx(s_frwdb_cxt *context, int kidx, int sidx, char *imem, 
 	{
 		sis_node_list_push(curdata, imem + i * curdb->size);
 	}
-	printf("nodes = %d\n", sis_node_list_get_size(curdata));
+	// printf("nodes = %d\n", sis_node_list_get_size(curdata));
 	// 这里处理实时数据订阅 或者其他密集型操作
 	s_sis_db_chars chars;
 	chars.kname = kname;

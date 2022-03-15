@@ -182,9 +182,11 @@ int cmd_frwdb_zpub(void *worker_, void *argv_);  // s_sis_db_incrzip
 int cmd_frwdb_sub(void *worker_, void *argv_);
 // 取消订阅
 int cmd_frwdb_unsub(void *worker_, void *argv_);
-// 取消订阅
+// 获取数据
 int cmd_frwdb_get(void *worker_, void *argv_);
-
+// 删除数据
+int cmd_frwdb_del(void *worker_, void *argv_);
+// 
 int cmd_frwdb_wlog(void *worker_, void *argv_);
 int cmd_frwdb_rlog(void *worker_, void *argv_);
 
@@ -197,7 +199,6 @@ int frwdb_register_reader(s_frwdb_cxt *context_, s_sis_net_message *netmsg);
 int frwdb_remove_reader(s_frwdb_cxt *context_, int cid_);
 // 直接读取单键值数据
 int frwdb_read(s_frwdb_cxt *context_, s_sis_net_message *netmsg);
-
 
 //////////////////////////////////////////////////////////////////
 //------------------------s_frwdb_reader -----------------------//

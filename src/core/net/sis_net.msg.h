@@ -131,7 +131,7 @@ typedef struct s_sis_net_message {
 		_msg_->cmd ? _msg_->cmd : "nil",\
 		_msg_->subject ? _msg_->subject : "nil",\
 		_msg_->info ? sis_sdslen(_msg_->info) : 0,\
-		_msg_->info ? _msg_->info : "nil",\
+		_msg_->switchs.sw_mark == 0 ? _msg_->info : "...",\
 		_msg_->argvs ? _msg_->argvs->count : 0);\
 	}
 
