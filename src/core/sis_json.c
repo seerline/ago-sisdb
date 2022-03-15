@@ -680,6 +680,32 @@ void sis_json_object_set_int(s_sis_json_node *node_, const char *key_, int64 val
 		sis_lldtoa(value_, c->value, 32, 10);
 	}
 }
+void sis_json_object_add_bool(s_sis_json_node *node_, const char *key_, bool value_)
+{
+	// _sis_json_check_write(h_);
+	s_sis_json_node *c = sis_json_create_node();
+	if (c)
+	{
+		c->type = SIS_JSON_BOOL;
+		c->key = sis_strdup(key_, sis_strlen(key_));
+		c->value = value_ ? sis_strdup("true", 4) : sis_strdup("false", 5); 
+		sis_json_array_add_node(node_, c);
+	}
+}
+void sis_json_object_set_bool(s_sis_json_node *node_, const char *key_, bool value_)
+{
+	// _sis_json_check_write(h_);
+	s_sis_json_node *c = sis_json_cmp_child_node(node_, key_);
+	if (!c)
+	{
+		sis_json_object_add_bool(node_, key_, value_);
+	}
+	else
+	{
+		sis_free(c->value);
+		c->value = value_ ? sis_strdup("true", 4) : sis_strdup("false", 5); 
+	}
+}
 void sis_json_object_add_uint(s_sis_json_node *node_, const char *key_, uint64 value_)
 {
 	// _sis_json_check_write(h_);
@@ -1776,7 +1802,9 @@ int main()
 	return 0;
 
 }
-int main2()
+#endif
+#if 0
+int main()
 {
 	safe_memory_start();
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
@@ -1816,26 +1844,21 @@ int main2()
 	int iii=1;
 	sis_json_show(h->node,&iii);
 	
-	// s_sis_json_node *jone = sis_json_create_array();
-	// s_sis_json_node *jval = NULL;
-
-	// 	jval = sis_json_create_array();
-	// 	sis_json_array_add_string(jval, "111", 3);
-	// 	sis_json_array_add_string(jval, "222", 3);
-	// 	sis_json_array_add_node(jone, jval);
-
-	// sis_json_object_add_node(h->node, "values", jone);
+	s_sis_json_node *jone = sis_json_create_object();
+	sis_json_object_add_bool(jone, "status", 1);
+	sis_json_object_add_bool(jone, "status1", 0);
+	sis_json_object_add_node(h->node, "values", jone);
 
 	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"format"));
 	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"count"));
 	// printf("----------------\n");
-	// sis_json_show(h->node,&iii);
+	sis_json_show(h->node,&iii);
 
 	size_t len = 0;
 	char *str = sis_json_output(h->node, &len);
 	printf("%p [%ld]\n", h->node, len);
 	printf("|%s|\n",str);
-	sis_free(str);
+	sis_free(str); 
 
 	str = (char *)sis_json_get_str(h->node, "argv");
 	printf("argv : %s \n",str);
