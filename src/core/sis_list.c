@@ -1136,6 +1136,8 @@ s_sis_pointer_list *sis_pointer_list_create()
 }
 void sis_pointer_list_destroy(void *list_)
 {
+	if(!list_)
+		return;
 	s_sis_pointer_list *list = (s_sis_pointer_list *)list_;
 	sis_pointer_list_clear(list);
 	if (list->buffer)
@@ -1148,6 +1150,8 @@ void sis_pointer_list_destroy(void *list_)
 }
 void sis_pointer_list_clear(s_sis_pointer_list *list_)
 {
+	if(!list_)
+		return;
 	char **ptr = (char **)list_->buffer;
 	for (int i = 0; i < list_->count; i++)
 	{
