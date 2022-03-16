@@ -939,7 +939,10 @@ void sis_json_delete_node(s_sis_json_node *node_)
 	{
 		// printf("-%p %p %p---\n",node_->father,node_->father->child,node_->next);
 		node_->father->child = node_->next;
-		if(node_->next) {node_->next->father = node_->father;}
+		if(node_->next)
+		{
+			node_->next->father = node_->father;
+		}
 	}
 	if (node_->child)
 	{

@@ -307,6 +307,17 @@ static void cb_socket_recv(void *worker_, s_sis_net_message *msg)
     sis_lock_list_push(context->socket_recv, obj);
     sis_object_destroy(obj);
 }
+void sisdb_server_reply_ok(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
+{
+    if (netmsg->switchs.sw_tag == 0)
+    {
+        netmsg->tag = SIS_NET_TAG_OK;
+        netmsg->switchs.sw_tag = 1;
+    }
+    // sis_net_message_set_info(netmsg, NULL, 0);
+    // sis_net_message_set_cmd(netmsg, NULL);
+    sis_net_class_send(context->socket, netmsg);
+}
 void sisdb_server_reply_error(s_sisdb_server_cxt *context, s_sis_net_message *netmsg)
 {
     s_sis_sds reply = sis_sdsnew("method call fail ");
@@ -373,13 +384,18 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
     if (!workname)
     {
         int o = sis_worker_command(worker, cmdname, netmsg);
-        SIS_NET_SHOW_MSG("send srv==", netmsg);
+        // SIS_NET_SHOW_MSG("send srv==", netmsg);
         if (netmsg->mode != SIS_MSG_MODE_INSIDE)
         {
             if (o == SIS_METHOD_OK)
             {
+<<<<<<< HEAD
                 sis_net_class_send(context->socket, netmsg);
             }
+=======
+                sisdb_server_reply_ok(context, netmsg);
+            }  
+>>>>>>> origin/master
             else if (o == SIS_METHOD_NULL)
             {
                 sisdb_server_reply_null(context, netmsg, cmdname);
@@ -400,13 +416,18 @@ void sisdb_server_send_service(s_sis_worker *worker, const char *workname, const
         if (workinfo)
         {
             int o = sis_worker_command(workinfo->worker, cmdname, netmsg);
-            SIS_NET_SHOW_MSG("send cli==", netmsg);
+            // SIS_NET_SHOW_MSG("send cli==", netmsg);
             if (netmsg->mode != SIS_MSG_MODE_INSIDE)
             {
                 if (o == SIS_METHOD_OK)
                 {
+<<<<<<< HEAD
                     sis_net_class_send(context->socket, netmsg);
                 }
+=======
+                    sisdb_server_reply_ok(context, netmsg);
+                } 
+>>>>>>> origin/master
                 else if (o == SIS_METHOD_NULL)
                 {
                     sisdb_server_reply_null(context, netmsg, netmsg->subject);
@@ -456,7 +477,7 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
     // 将in_->ptr强制转换为s_sis_net_message
     s_sis_net_message *netmsg = SIS_OBJ_NETMSG(in_);
     // sis_net_message_incr(netmsg);
-    // SIS_NET_SHOW_MSG("server recv:", netmsg);
+    SIS_NET_SHOW_MSG("server recv:", netmsg);
     int access = sisdb_server_get_access(context, netmsg);
     // 用户在没有权限的情况下，必须先通过auth指令获得授权
     if (access < 0 && sis_strcasecmp("auth", netmsg->cmd))
@@ -521,7 +542,6 @@ static int cb_reader_recv(void *worker_, s_sis_object *in_)
         else
         {
             sisdb_server_reply_no_method(context, netmsg, netmsg->cmd);
-            sis_net_class_send(context->socket, netmsg);
         }
     }
     // sis_net_message_decr(netmsg);

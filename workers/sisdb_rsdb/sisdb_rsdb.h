@@ -40,6 +40,7 @@ void  sisdb_rsdb_uninit(void *);
 void sisdb_rsdb_working(void *);
 
 int cmd_sisdb_rsdb_get(void *worker_, void *argv_);
+
 int cmd_sisdb_rsdb_sub(void *worker_, void *argv_);
 int cmd_sisdb_rsdb_unsub(void *worker_, void *argv_);
 int cmd_sisdb_rsdb_setcb(void *worker_, void *argv_);

@@ -79,7 +79,7 @@ int frwdb_register_reader(s_frwdb_cxt *context_, s_sis_message *netmsg)
 	{
 		reader->sub_whole = false;
 	}
-	printf("%s %d %d | %d\n", __func__, reader->sub_date ,context->work_date, context->status);
+	printf("%s %d %d | %d\n", __func__, reader->sub_date, context->work_date, context->status);
 	if (reader->sub_date > 0 && reader->sub_date != context->work_date)
 	{
 		reader->sub_disk = true;
@@ -114,28 +114,16 @@ s_sis_object *frwdb_read_get_obj(s_frwdb_reader *reader_)
 	sis_message_set_int(msg, "stop-date",  reader_->stop_date);
 	sis_message_set_str(msg, "sub-keys",   reader_->sub_keys, sis_sdslen(reader_->sub_keys));
 	sis_message_set_str(msg, "sub-sdbs",   reader_->sub_sdbs, sis_sdslen(reader_->sub_sdbs));
+	sis_message_set_int(msg, "format",     reader_->rfmt);
 	// 只能得到单表单键的数据
 	s_sis_object *obj = NULL;
 	if (sis_worker_command(reader_->sub_disker, "get", msg) == SIS_METHOD_OK)
 	{
 		obj = sis_message_get(msg, "info");
-		if (reader_->rfmt & SISDB_FORMAT_CHARS)
+		if (obj)
 		{
-			s_sis_dynamic_db *db = sis_map_list_get(snodb->map_sdbs, reader_->sub_sdbs);
-			if (db)
-			{
-				// 这里未来可以做格式转换处理
-				s_sis_sds omem = sis_db_format_sds(db, NULL, reader_->rfmt, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), 0);
-				obj = sis_object_create(SIS_OBJECT_SDS, omem);
-			}
-			else
-			{
-				obj = NULL;
-			}			
-		}
-		else
-		{
-			sis_object_incr(obj);		
+			sis_object_incr(obj);
+			// sis_out_binary("..2..", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
 		}
 	}
 	sis_message_destroy(msg);
@@ -229,6 +217,7 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 		if (reader->iszip)
 		{
 			// 数据压缩后再发送
+			LOG(5)("not zip.\n");
 		}
 		else
 		{
@@ -244,7 +233,6 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 
 	return SIS_METHOD_OK;
 }
- 
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_frwdb_reader callback -----------------------//

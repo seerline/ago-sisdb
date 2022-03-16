@@ -126,13 +126,13 @@ typedef struct s_sis_net_message {
 
 #define SIS_NET_SHOW_MSG(_s_,_n_) { s_sis_net_message *_msg_ = (s_sis_net_message *)_n_; \
 	uint8 *sw = (uint8 *)&_msg_->switchs; \
-	printf("net %s: [%d] %x [%d]: %lld | %d %s %s %s [%zu]%s argvs :%d\n", _s_, \
-	    _msg_->cid, *sw, _msg_->mode, _msg_->sno, _msg_->tag,\
+	printf("net %s: [%d] %x [%d:%d]: %lld | %d %s %s %s [%zu]%s argvs :%d\n", _s_, \
+	    _msg_->cid, *sw, _msg_->mode, _msg_->format, _msg_->sno, _msg_->tag,\
 		_msg_->service ? _msg_->service : "nil",\
 		_msg_->cmd ? _msg_->cmd : "nil",\
 		_msg_->subject ? _msg_->subject : "nil",\
 		_msg_->info ? sis_sdslen(_msg_->info) : 0,\
-		_msg_->info ? _msg_->info : "nil",\
+		_msg_->switchs.sw_mark == 0 ? _msg_->info : "...",\
 		_msg_->argvs ? _msg_->argvs->count : 0);\
 	}
 

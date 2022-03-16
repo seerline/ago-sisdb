@@ -63,7 +63,7 @@ void sis_log_open(const char *log_, int level_, int limit_)
 	if (!_sis_log.outscreen)
 	{
 		_sis_log.logfp = sis_file_open(_sis_log.filename, 
-			SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
+			SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE | SIS_FILE_IO_APPEND, 0);
 		if (!_sis_log.logfp)
 		{
 			printf("open log file fail.[%s]\n", _sis_log.filename);
