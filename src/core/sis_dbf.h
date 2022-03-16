@@ -38,7 +38,7 @@ typedef struct s_sis_file_dbf
 	s_sis_dbf_head     head;
 
 	s_sis_struct_list *fields;   // 存储所有字段  s_sis_dbf_field 结构体列表
-	s_sis_map_buffer  *map_fields;   // 存储所有字段  s_sis_dbf_field 结构体列表
+	s_sis_map_pointer *map_fields;   // 存储所有字段  s_sis_dbf_field 结构体列表
 
 	char  *buffer;
 

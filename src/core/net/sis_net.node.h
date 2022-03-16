@@ -5,84 +5,142 @@
 #include "sis_list.h"
 #include "sis_malloc.h"
 #include "sis_memory.h"
+#include "sis_net.msg.h"
+#include "sis_obj.h"
+#include "sis_json.h"
 
-//------------------------sdsnode ------------------------------//
-// 非常好的数据结构，基本可以满足所有网络通许所有的信息了                //
-//--------------------------------------------------------------//
+/////////////////////////////////////////////////
+//  s_sis_net_mems
+/////////////////////////////////////////////////
 
-#define SIS_NET_SERIAL   0x01    // 有 serial
-#define SIS_NET_CMD      0x02    // 有 cmd
-#define SIS_NET_KEY      0x04    // 有 key
-#define SIS_NET_VAL      0x08    // 有 val
-#define SIS_NET_ARGVS    0x10    // 有 argvs
-#define SIS_NET_INSIDE   0x20    // 内部通信
-#define SIS_NET_ASK      0x40    // 请求
-// #define SIS_NET_ANS      0x80    // 应答
-#define SIS_NET_RCMD     0x80    // 应答标志
+#define SIS_NET_MEMSIZE  16*1024*1024
 
-#define SIS_NET_ANS_NIL         -1  // 数据为空
-#define SIS_NET_ANS_OK           0  // 数据正确
-#define SIS_NET_ANS_ERROR        1  // 数据错误
-#define SIS_NET_ANS_NOAUTH       2  // 未登录验证
-#define SIS_NET_ANS_SUB_START    5  // 订阅开始
-#define SIS_NET_ANS_SUB_WAIT     6  // 订阅缓存数据结束 等待新的数据
-#define SIS_NET_ANS_SUB_STOP     7  // 订阅结束
+typedef struct s_sis_net_mem {
+	int                    size;    // 数据尺寸
+	char                   data[0]; // 数据区
+} s_sis_net_mem;
+
+typedef struct s_sis_net_mem_node {
+	size_t                 maxsize;  // 当前缓存大小
+	size_t                 size;     // 当前有效数据大小
+	size_t                 rpos;     // 当前读取数据偏移
+	int                    nums;     // 数据块个数
+    char                  *memory;   // s_sis_net_mem 数据区 固定 SIS_NET_MEMSIZE 大小
+    struct s_sis_net_mem_node *next;
+} s_sis_net_mem_node;
+
+typedef struct s_sis_net_mems {
+	s_sis_mutex_t       lock;  
+
+	int                 wnums;  // 所有节点数
+    s_sis_net_mem_node *whead;
+    s_sis_net_mem_node *wtail;
+	size_t              wsize;  // 当前有效数据尺寸
+	int                 wuses;  // 有数据的节点数
+    s_sis_net_mem_node *wnode;  // 最后一个写入数据节点
+
+	int                 rnums;  // 读链节点数
+    s_sis_net_mem_node *rhead;  // 已经取出的放这里 等待处理
+	s_sis_net_mem_node *rtail;
+	size_t              rsize;  // 当前有效数据尺寸
+
+	int                 nouses; // 数据最大块数 如果空数据块超过该值就自动清理 如果都有值就失效
+} s_sis_net_mems;
+
+s_sis_net_mems *sis_net_mems_create();
+void sis_net_mems_destroy(s_sis_net_mems *nodes_);
+void sis_net_mems_clear(s_sis_net_mems *nodes_);
+int  sis_net_mems_push(s_sis_net_mems *nodes_, void *in_, size_t isize_);
+int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_t isize_);
+int  sis_net_mems_push_kv(s_sis_net_mems *nodes_, int kidx_, int sidx_, void *in_, size_t isize_);
+
+s_sis_net_mem *sis_net_mems_pop(s_sis_net_mems *nodes_);
+// 直接增加 不写数据头 用于网络缓存数据
+int  sis_net_mems_cat(s_sis_net_mems *nodes_, void *in_, size_t isize_);
+s_sis_net_mem_node *sis_net_mems_rhead(s_sis_net_mems *nodes_);
+// count = 0 得到所有数据块 = n 得到最近 n 个数据块
+int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_);
+int  sis_net_mems_free_read(s_sis_net_mems *nodes_);
+
+// 队列是否为空
+int  sis_net_mems_count(s_sis_net_mems *nodes_);
+size_t  sis_net_mems_size(s_sis_net_mems *nodes_);
+
+/////////////////////////////////////////////////
+//  s_sis_net_nodes
+/////////////////////////////////////////////////
+
+// 队列结点 速度太慢
+typedef struct s_sis_net_node {
+    s_sis_object          *obj;    // 数据区
+    struct s_sis_net_node *next;
+} s_sis_net_node;
+
+typedef struct s_sis_net_nodes {
+	s_sis_mutex_t      lock;  
+
+    int64              wnums;
+    s_sis_net_node    *whead;
+    s_sis_net_node    *wtail;
+
+    int64              rnums;
+    s_sis_net_node    *rhead;  // 已经被pop出去 保存在这里 除非下一次pop或free
+	s_sis_net_node    *rtail;
+
+	size_t             size;
+} s_sis_net_nodes;
 
 
-// request 方决定网络数据传输方式 是按字节流还是 JSON 字符串
-#define SIS_NET_FORMAT_CHARS   0 
-#define SIS_NET_FORMAT_BYTES   1 
+s_sis_net_nodes *sis_net_nodes_create();
+void sis_net_nodes_destroy(s_sis_net_nodes *nodes_);
+void sis_net_nodes_clear(s_sis_net_nodes *nodes_);
 
-// 把请求和应答统一结合到 s_sis_net_message 中
-// 应答目前约定只支持一级数组，
-typedef struct s_sis_net_message {
-	int                 cid;       // 哪个客户端的信息 -1 表示向所有用户发送
-	// 通常server等待消息然后再回送消息 但不排除在某些网络限制情况下 server向client请求数据
-	uint32              refs;      // 引用次数
+int  sis_net_nodes_push(s_sis_net_nodes *nodes_, s_sis_object *obj_);
+int  sis_net_nodes_read(s_sis_net_nodes *nodes_, int );
+int  sis_net_nodes_free_read(s_sis_net_nodes *nodes_);
+// 队列是否为空
+int  sis_net_nodes_count(s_sis_net_nodes *nodes_);
 
-	s_sis_sds	        serial;    // 来源信息专用, 数据来源信息，需要原样返回；用户写的投递地址 s_sis_object   
+size_t  sis_net_nodes_size(s_sis_net_nodes *nodes_);
+///////////////////////////////////////////////////////////////////////////
+//----------------------s_sis_net_list --------------------------------//
+//  以整数为索引 存储指针的列表
+///////////////////////////////////////////////////////////////////////////
+#define SIS_NET_NOUSE  0  // 可以使用
+#define SIS_NET_USEED  1  // 正在使用
+#define SIS_NET_CLOSE  2  // 已经关闭
 
-	uint8               format;    // 数据是字符串还是字节流 根据此标记进行打包和拆包
-	//
-	uint8               style;     // 是应答还是请求 提供给二进制数据使用
-   
-	s_sis_sds	        cmd;       // 请求信息专用,当前消息的cmd  sisdb.get 
-	s_sis_sds	        key;       // 请求信息专用,当前消息的key  sh600600,sh600601.day,info  
-	s_sis_sds	        val;       // 请求信息的参数，为json格式 
+typedef struct s_sis_net_list {
+	time_t         wait_sec;     // 是否等待 300 秒 0 就是直接分配
+	time_t        *stop_sec;     // stop_time 上次删除时的时间 
+	int		       max_count;    // 当前最大个数
+	int		       cur_count;    // 当前有效个数
+	unsigned char *used;         // 是否有效 初始为 0 
+	void          *buffer;       // used 为 0 需调用vfree
+	void (*vfree)(void *, int);       // == NULL 不释放对应内存
+} s_sis_net_list;
 
-	int64               rcmd;      // 应答的类型 由这个整数确定应答为什么类型
-	s_sis_sds	        rval;      // 应答缓存
-	uint16              rfmt;      // 返回数据格式 临时变量
+s_sis_net_list *sis_net_list_create(void *); 
+void sis_net_list_destroy(s_sis_net_list *list_);
+void sis_net_list_clear(s_sis_net_list *list_);
 
-	// 存放字节流数据 ??? 没必要用s_sis_object 等待修改为 s_sis_sds
-	s_sis_pointer_list *argvs;     // 按顺序获取 s_sis_sds 
+int sis_net_list_new(s_sis_net_list *list_, void *in_);
+void *sis_net_list_get(s_sis_net_list *, int index_);
 
-	// s_sis_message      *msg;       // 用于方法传递参数使用 
-} s_sis_net_message;
+int sis_net_list_first(s_sis_net_list *);
+int sis_net_list_next(s_sis_net_list *, int index_);
+int sis_net_list_uses(s_sis_net_list *);
 
+int sis_net_list_stop(s_sis_net_list *list_, int index_);
 
 ////////////////////////////////////////////////////////
-//  所有的线程和网络端数据交换统统用这个格式的消息结构
+//  标准编码解码函数
 ////////////////////////////////////////////////////////
-
-s_sis_net_message *sis_net_message_create();
-
-void sis_net_message_destroy(void *in_);
-
-void sis_net_message_incr(s_sis_net_message *);
-void sis_net_message_decr(void *);
-
-void sis_net_message_clear(s_sis_net_message *);
-size_t sis_net_message_get_size(s_sis_net_message *);
-
-s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_);
-
-////////////////////////////////////////////////////////
-//  解码函数
-////////////////////////////////////////////////////////
-
+// 总是返回真
 bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_);
+// 返回失败 表示数据出错 断开链接 重新开始
 bool sis_net_decoded_normal(s_sis_memory* in_, s_sis_net_message *out_);
+// json 转 netmsg
+void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *out_);
 
 #endif
-//_SIS_NODE_H

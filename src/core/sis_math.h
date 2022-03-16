@@ -10,22 +10,41 @@
 #define  sis_max(a,b)    (((a) > (b)) ? (a) : (b))
 #define  sis_min(a,b)    (((a) < (b)) ? (a) : (b))
 
-#define SIS_MINI(a, b) (a && b ? (((a) < (b)) ? (a) : (b)) : (a ? a : b))
+#define SIS_MINI(a, b) ((a) && (b) ? (((a) < (b)) ? (a) : (b)) : (a ? a : b))
 
-#define SIS_IS_ZERO(a) ((a > -0.0000001) && ( a < 0.0000001))
+#define SIS_IS_ZERO(a) ((a) == 0 || (((a) > -0.0000001) && ((a) < 0.0000001)))
 #define SIS_MINF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) < (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 #define SIS_MAXF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) > (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 
-#define SIS_DIVF(a, b) (SIS_IS_ZERO(b) ? 0.0 : (double)a / (double)b)
+#define SIS_DIVF(a, b) (SIS_IS_ZERO(b) ? 0.0 : (double)(a) / (double)(b))
+
+#define SIS_FTOI(f, z) ((long long)((f)*(z) + 0.5))
+#define SIS_ITOF(f, z) ((double)(f)/(double)(z))
+
+// a <= a
+#define SIS_FLOOR(f, z) ((double)((long long)((f)*(z)))/(double)(z))
+// a >= a
+#define SIS_CEIL(f, z)  ((double)((long long)((f)*(z) + 0.5))/(double)(z))
 
 //限制返回值a在某个区域内
 #define  sis_between(a,min,max)    (((a) < (min)) ? (min) : (((a) > (max)) ? (max) : (a)))
 
+static inline int64 sis_abs(int64 n)  
+{
+	if (n < 0)
+	{
+		return -1 * n;
+	}
+	return n;
+}
 static inline int64 sis_zoom10(int n)  // 3 ==> 1000
 {
 	int64 o = 1;
-	int len = (n > 15) ? 15 : n;
-	for (int i = 0; i < len; i++) { o = o * 10; }
+	while(n > 0)
+	{
+		o = o * 10; 
+		n--;
+	}
 	return o;
 };
 

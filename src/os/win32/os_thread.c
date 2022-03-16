@@ -57,6 +57,10 @@ s_sis_thread_id_t sis_thread_self()
 {
 	return (s_sis_thread_id_t)GetCurrentThreadId();
 }
+unsigned int sis_thread_handle(s_sis_thread_id_t id_) 
+{
+	return (unsigned int)id_;
+}
 void sis_thread_kill(s_sis_thread_id_t thread)
 {
 	LPDWORD code = NULL;
@@ -72,7 +76,7 @@ void sis_thread_kill(s_sis_thread_id_t thread)
 // #define sis_thread_mutex_init(m,v) InitializeCriticalSection(m)
 // #define sis_thread_mutex_lock(m) EnterCriticalSection(m)
 // #define sis_thread_mutex_unlock(m) LeaveCriticalSection(m)
-
+ 
 int sis_mutex_create(s_sis_mutex_t *m)
 {
 	// assert(m);
@@ -305,17 +309,18 @@ int  sis_rwlock_trylock_w(s_sis_rwlock_t *rwlock_)
 /////////////////////////////////////
 //  s_sis_wait
 /////////////////////////////////////
-
 void sis_thread_wait_create(s_sis_wait *wait_)
 {
-	wait_->semaphore = CreateSemaphoreA (NULL, 0, 0xFFFFFFFF, NULL);
-	sis_mutex_create(&wait_->mutex);
+	// wait_->event = CreateSemaphoreA (NULL, 0, 0xFFFFFFFF, NULL);
+    // 0xFFFFFFFF 似乎被认为是-1
+    wait_->event = CreateSemaphoreA (NULL, 0, 0xFFFFFF, NULL);
+	wait_->mutex = CreateMutexA (NULL, FALSE, NULL);
 }
 
 void sis_thread_wait_destroy(s_sis_wait *wait_)
 {
-	CloseHandle(wait_->semaphore);
-	sis_mutex_destroy(&wait_->mutex);
+	CloseHandle(wait_->event);
+    CloseHandle(wait_->mutex);
 }
 void sis_thread_wait_init(s_sis_wait *wait_)
 {
@@ -327,21 +332,21 @@ void sis_thread_wait_kill(s_sis_wait *wait_)
 {
 	if (wait_->count > 0)
 	{
-        ReleaseSemaphore (wait_->semaphore, wait_->count, NULL);
+        ReleaseSemaphore (wait_->event, wait_->count, NULL);
 	}
 }
 void sis_thread_wait_notice(s_sis_wait *wait_)
 {
 	if (wait_->count > 0)
 	{
-        ReleaseSemaphore (wait_->semaphore, 1, NULL);
+        ReleaseSemaphore (wait_->event, 1, NULL);
 	}
 }
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
 	wait_->count++;
-	int o = SignalObjectAndWait(&wait_->mutex, wait_->semaphore, delay_ * 1000, FALSE);
-	sis_mutex_lock(&wait_->mutex);
+	int o = SignalObjectAndWait(wait_->mutex, wait_->event, delay_ * 1000, FALSE);
+	WaitForSingleObject (wait_->mutex, INFINITE);
 	wait_->count--;
 	return o == WAIT_OBJECT_0 ? 0 : SIS_ETIMEDOUT;
 	// 返回 SIS_ETIMEDOUT 就正常处理
@@ -349,17 +354,17 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // 毫秒
 {
 	wait_->count++;
-	int o = SignalObjectAndWait(&wait_->mutex, wait_->semaphore, msec_, FALSE);
-	sis_mutex_lock(&wait_->mutex);
+	int o = SignalObjectAndWait(wait_->mutex, wait_->event, msec_, FALSE);
+	WaitForSingleObject(wait_->mutex, INFINITE);
 	wait_->count--;
 	return o == WAIT_OBJECT_0 ? 0 : SIS_ETIMEDOUT;
 	// 返回 SIS_ETIMEDOUT 就正常处理
 }
 void sis_thread_wait_start(s_sis_wait *wait_)
 {
-	sis_mutex_lock(&wait_->mutex);
+	WaitForSingleObject (wait_->mutex, INFINITE);
 }
 void sis_thread_wait_stop(s_sis_wait *wait_)
 {
-	sis_mutex_unlock(&wait_->mutex);
+    ReleaseMutex (wait_->mutex);
 }

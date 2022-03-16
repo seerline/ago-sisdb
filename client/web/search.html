@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en-US">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>sisdb demo</title>
+  <link rel="stylesheet" type="text/css" media="all" href="style.css">
+  <script type="text/javascript" src="js/jquery-1.9.1.min.js"></script>
+  <script type="text/javascript" src="js/jquery.autocomplete.min.js"></script>
+  <script type="text/javascript" src="js/io-data.js"></script>
+</head>
+
+<body>
+  <div>
+    <div id="searchfield">
+      <form>
+        <input type="text" name="currency3" placeholder="service : sisdb" class="biginput" id="send-service">
+        <input type="text" name="currency1" placeholder="cmd : get" class="biginput" id="send-cmd" value="dddd">
+        <input type="text" name="currency2" placeholder="key : sh600600.stk_day" class="biginput" id="send-key">
+        <input type="text" name="currency4" class="biginput" id="send-ask"
+            placeholder='info : {"start-date":20110101, "stop-date":20111231}' >
+      </form>
+      <button onclick="connect()">connect</button>
+      <button onclick="auth()">auth-admin</button>
+      <button onclick="send_string()">submit</button>
+    </div>
+  </div>
+  <div id='recv-msg'></div>
+</body>
+</html>
+
+<script src="./drive.js"></script>
+
+<script>
+  var output = document.getElementById("recv-msg");
+
+  function isJSON(str) {
+    if (typeof str == 'string') {
+        try {
+            var obj=JSON.parse(str);
+            if(typeof obj == 'object' && obj ){
+                return true;
+            }else{
+                return false;
+            }
+
+        } catch(e) {
+            console.log('error：'+str+'!!!'+e);
+            return false;
+        }
+    }
+    console.log('It is not a string!')
+  }
+  function send_command(doc) {    
+    send_single_command(
+      { cmd : doc.value },
+      function reply(data) {
+        output.innerHTML = data;
+      });
+  }
+  function connect() {
+    connect_server();
+  }
+  function auth() {
+    send_single_command(
+      { cmd : `{"cmd":"auth","info":{"username":"admin","password":"admin5678"}}` },
+      function reply(data) {
+        output.innerHTML = data;
+      });
+  }
+  function send_string() {
+    var doc = {cmd:(document.getElementById("send-cmd")).value,
+      subject:(document.getElementById("send-key")).value,
+      service:(document.getElementById("send-service")).value,
+      info:(document.getElementById("send-ask")).value};
+    if (!isJSON(JSON.stringify(doc)))
+    {
+      console.log("format error.", JSON.stringify(doc));
+      return ;
+    }
+    saveListData("sisdb_service", doc.service);
+    saveListData("sisdb_cmd",     doc.cmd);
+    saveListData("sisdb_key",     doc.subject);
+    saveListData("sisdb_ask",     doc.info);
+    send_single_command(
+      { cmd : JSON.stringify(doc) },
+      function reply(data) {
+        output.innerHTML = data;
+      });
+  }
+
+</script>

@@ -39,7 +39,7 @@ int _sis_file_dbf_parse(s_sis_file_dbf *dbf_)
 		{
 			field->dot = 0;
 		}
-		sis_map_buffer_set(dbf_->map_fields, field->name, field);
+		sis_map_pointer_set(dbf_->map_fields, field->name, field);
         sis_struct_list_push(dbf_->fields, field);
 	}
 	//有时候实际记录数没有那么多，会造成内存溢出
@@ -67,7 +67,7 @@ s_sis_file_dbf * sis_file_dbf_open(const char *name_,int mode_, int access_)
 
 	o->fp = fp;
 	o->fields = sis_struct_list_create(sizeof(s_sis_dbf_field));
-	o->map_fields = sis_map_buffer_create();
+	o->map_fields = sis_map_pointer_create_v(sis_free_call);
 
     _sis_file_dbf_parse(o);
 	// printf("field=%d  record=%d\n", o->fields->count, o->head.count);
@@ -81,7 +81,7 @@ void sis_file_dbf_close(s_sis_file_dbf *dbf_)
 	if(!dbf_) {return ;}
 	sis_free(dbf_->buffer);   
     sis_struct_list_destroy(dbf_->fields);
-	sis_map_buffer_destroy(dbf_->map_fields);
+	sis_map_pointer_destroy(dbf_->map_fields);
 	sis_free(dbf_);    
 }
 char * _sis_file_dbf_find_record(s_sis_file_dbf *dbf_, int index)
@@ -94,7 +94,7 @@ char * _sis_file_dbf_find_record(s_sis_file_dbf *dbf_, int index)
 }
 s_sis_dbf_field * _sis_file_dbf_find_field(s_sis_file_dbf *dbf_, const char *key_)
 {
-	s_sis_dbf_field * field = (s_sis_dbf_field *)sis_map_buffer_get(dbf_->map_fields, key_);
+	s_sis_dbf_field * field = (s_sis_dbf_field *)sis_map_pointer_get(dbf_->map_fields, key_);
 	return field;
 
 	// s_sis_dbf_field * field ;

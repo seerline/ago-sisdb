@@ -3,218 +3,886 @@
 #include "sis_json.h"
 #include "sis_math.h"
 #include "sis_obj.h"
-///////////////////////////////////////////////////////////////////////////
-//------------------------s_sis_net_message -----------------------------//
-///////////////////////////////////////////////////////////////////////////
+#include "os_str.h"
 
-s_sis_net_message *sis_net_message_create()
+/////////////////////////////////////////////////
+//  s_sis_net_mem_node
+/////////////////////////////////////////////////
+s_sis_net_mem_node *sis_net_mem_node_create(size_t size_)
 {
-	s_sis_net_message *o = (s_sis_net_message *)sis_malloc(sizeof(s_sis_net_message));
-	memset(o, 0, sizeof(s_sis_net_message));
-	o->refs = 1;
+	s_sis_net_mem_node *node = SIS_MALLOC(s_sis_net_mem_node, node);
+	node->maxsize = size_ + 1;
+	node->memory = sis_malloc(node->maxsize);
+	// printf("new node %p\n", node->memory);
+	return node;
+}
+void sis_net_mem_node_destroy(s_sis_net_mem_node *node_)
+{
+	// printf("del node %p\n", node_->memory);
+	sis_free(node_->memory);
+	sis_free(node_);
+}
+void sis_net_mem_node_clear(s_sis_net_mem_node *node_)
+{
+	node_->size = 0;
+	node_->rpos = 0;
+	node_->nums = 0;
+}
+void sis_net_mem_node_renew(s_sis_net_mem_node *node_, size_t size_)
+{
+	if (size_ > node_->maxsize)
+	{
+		node_->maxsize = size_ + 1;
+		char *newmem = sis_malloc(node_->maxsize);
+		if (node_->size > 0)
+		{
+			memmove(newmem, node_->memory, node_->size);
+		}
+		sis_free(node_->memory);
+		node_->memory = newmem;
+	}
+}
+/////////////////////////////////////////////////
+//  s_sis_net_mems
+/////////////////////////////////////////////////
+// 永远保证有一个节点
+s_sis_net_mems *sis_net_mems_create()
+{
+    s_sis_net_mems *o = SIS_MALLOC(s_sis_net_mems, o);
+	sis_mutex_init(&o->lock, NULL);
+	o->nouses = 64; // 大约保留1G的缓存
+	s_sis_net_mem_node *node = sis_net_mem_node_create(SIS_NET_MEMSIZE);
+	o->wnums = 1;
+	o->whead = node;
+	o->wtail = node;
+	o->wnode = node;
 	return o;
 }
-
-void _sis_net_message_del(s_sis_net_message *in_)
+void sis_net_mems_destroy(s_sis_net_mems *nodes_)
 {
-	if(in_->argvs)
+    sis_mutex_lock(&nodes_->lock);
 	{
-		sis_pointer_list_destroy(in_->argvs);
-	}
-	sis_sdsfree(in_->serial);
-	sis_sdsfree(in_->cmd);
-	sis_sdsfree(in_->key);
-	sis_sdsfree(in_->val);
-	sis_sdsfree(in_->rval);
-
-	sis_free(in_);	
-}
-void sis_net_message_destroy(void *in_)
-{
-	sis_net_message_decr(in_);
-}
-void sis_net_message_incr(s_sis_net_message *in_)
-{
-    if (in_ && in_->refs != 0xFFFFFFFF) 
-    {
-        in_->refs++;
-    }
-}
-void sis_net_message_decr(void *in_)
-{
-    s_sis_net_message *in = (s_sis_net_message *)in_;
-    if (!in)
-    {
-        return ;
-    }
-    if (in->refs == 1) 
-    {
-        _sis_net_message_del(in);
-    } 
-    else 
-    {
-        in->refs--;
-    }	
-}
-
-void sis_net_message_clear(s_sis_net_message *in_)
-{
-	sis_sdsfree(in_->serial);
-	sis_sdsfree(in_->cmd);
-	sis_sdsfree(in_->key);
-	sis_sdsfree(in_->val);
-	sis_sdsfree(in_->rval);
-	in_->serial = NULL;
-	in_->cmd = NULL;
-	in_->key = NULL;
-	in_->val = NULL;
-	in_->rval = NULL;
-
-	if(in_->argvs)
-	{
-		sis_pointer_list_clear(in_->argvs);
-	}
-	in_->cid = 0;
-	in_->style = 0;
-	in_->rcmd = 0;
-	// refs 不能改
-}
-size_t _sis_net_message_list_size(s_sis_pointer_list *list_)
-{
-	size_t size = 0;
-	if (list_)
-	{
-		size += list_->count * sizeof(void *);
-		for (int i = 0; i < list_->count; i++)
+		s_sis_net_mem_node *next = nodes_->rhead;
+		while (next)
 		{
-			s_sis_object *obj = (s_sis_object *)sis_pointer_list_get(list_, i);
-			size += SIS_OBJ_GET_SIZE(obj);
+			s_sis_net_mem_node *node = next->next;
+			sis_net_mem_node_destroy(next);
+			next = node;
 		}
 	}
-	return size;
-}
-size_t sis_net_message_get_size(s_sis_net_message *msg_)
-{
-	size_t size = sizeof(s_sis_net_message);
-	size += msg_->serial ? sis_sdslen(msg_->serial) : 0;
-	size += msg_->cmd ? sis_sdslen(msg_->cmd) : 0;
-	size += msg_->key ? sis_sdslen(msg_->key) : 0;
-	size += msg_->val ? sis_sdslen(msg_->val) : 0;
-	size += msg_->rval ? sis_sdslen(msg_->rval) : 0;
-	size += _sis_net_message_list_size(msg_->argvs);
-	return size;
-}
-
-void _sis_net_message_list_clone(s_sis_pointer_list *inlist_, s_sis_pointer_list *outlist_)
-{
-	for (int i = 0; i < inlist_->count; i++)
 	{
-		s_sis_object *obj = (s_sis_object *)sis_pointer_list_get(inlist_, i);
-		sis_object_incr(obj);
-		sis_pointer_list_push(outlist_, obj);
+		s_sis_net_mem_node *next = nodes_->whead;
+		while (next)
+		{
+			s_sis_net_mem_node *node = next->next;
+			sis_net_mem_node_destroy(next);
+			next = node;
+		}
 	}
+	sis_mutex_unlock(&nodes_->lock);
+	sis_mutex_destroy(&nodes_->lock);
+	sis_free(nodes_);
 }
 
-s_sis_net_message *sis_net_message_clone(s_sis_net_message *in_)
+// 清理写缓存
+void _net_mems_move_write(s_sis_net_mems *nodes_)
 {
-	if (in_ == NULL)
+	s_sis_net_mem_node *next = nodes_->whead;	
+	while (next)
+	{
+		s_sis_net_mem_node *node = next->next;
+		sis_net_mem_node_clear(next);
+		next = node;
+	}
+	nodes_->wsize = 0;
+	nodes_->wuses = 0;
+	nodes_->wnode = nodes_->whead;
+}
+// static int64 _send_nums = 0;
+// static int64 _send_size = 0;
+// static int64 _recv_nums = 0;
+// static int64 _recv_size = 0;
+
+// 清理读缓存
+void _net_mems_move_read(s_sis_net_mems *nodes_)
+{
+	s_sis_net_mem_node *next = nodes_->rhead;	
+	while (next)
+	{
+		s_sis_net_mem_node *node = next->next;
+		// _recv_nums++;
+		// _recv_size += next->size;
+		// if (_send_nums % 100 == 0)
+		// {
+		// 	printf("read  : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+		// }
+		sis_net_mem_node_clear(next);
+		next = node;
+	}
+	if (nodes_->rhead)
+	{
+		int nouse = nodes_->rnums + (nodes_->wnums - nodes_->wuses);
+		if (nouse > nodes_->nouses)
+		{
+			next = nodes_->rhead;	
+			while (next && nouse > nodes_->nouses)
+			{
+				s_sis_net_mem_node *node = next->next;
+				nodes_->wtail->next = next;
+				nodes_->wtail = next;
+				nodes_->wnums ++;
+				next = node;
+				nouse--;
+			}
+			while (next)
+			{
+				s_sis_net_mem_node *node = next->next;
+				sis_net_mem_node_destroy(next);
+				next = node;
+			}
+		}
+		else
+		{
+			nodes_->wtail->next = nodes_->rhead;
+			nodes_->wtail = nodes_->rtail;
+			nodes_->wnums += nodes_->rnums;
+		}
+		nodes_->wtail->next = NULL;
+	}
+	nodes_->rnums = 0;
+	nodes_->rhead = NULL;
+	nodes_->rtail = NULL;	
+	nodes_->rsize = 0;
+}
+void sis_net_mems_clear(s_sis_net_mems *nodes_)
+{
+    sis_mutex_lock(&nodes_->lock);
+	_net_mems_move_write(nodes_);
+	_net_mems_move_read(nodes_);
+    sis_mutex_unlock(&nodes_->lock);
+}
+// 传入新增数据的长度
+// 返回当前可写的节点
+s_sis_net_mem_node *_net_mems_reset_node(s_sis_net_mems *nodes_, size_t isize_)
+{
+	s_sis_net_mem_node *node = nodes_->wnode;
+	while (node)
+	{
+		if ((isize_ + node->size) > node->maxsize)
+		{
+			if (node->size == 0) // 表示进入空节点 如果大小不够就重新申请
+			{
+				sis_net_mem_node_renew(node, isize_);
+				break;
+			}
+		}
+		else
+		{
+			break;
+		}
+		node = node->next;
+	}
+	if (node)
+	{
+		return node;
+	}
+	node = sis_net_mem_node_create(SIS_NET_MEMSIZE);
+	nodes_->wtail->next = node;
+	nodes_->wtail = node;
+	// nodes_->wtail->next = NULL;
+	nodes_->wnode = node;
+	nodes_->wnums++;
+	return node;
+}
+
+int  sis_net_mems_push(s_sis_net_mems *nodes_, void *in_, size_t isize_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_ + sizeof(int));
+	nodes_->wnode = node;
+	if (node->size == 0)
+	{
+		nodes_->wuses++;
+	}
+	memmove(node->memory + node->size, &isize_, sizeof(int));
+	node->size += sizeof(int);
+	memmove(node->memory + node->size, in_, isize_);
+	node->size += isize_;
+	node->nums++;
+	// printf("push: %zu %d %d %d\n", node->size, node->nums, node->rpos, node->maxsize);
+	// 拷贝内存结束
+	nodes_->wsize += (isize_+ sizeof(int));
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wuses;
+}
+
+int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_t isize_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_ + sizeof(int8) + sizeof(int));
+	nodes_->wnode = node;
+	if (node->size == 0)
+	{
+		nodes_->wuses++;
+	}
+	size_t isize = isize_ + sizeof(int8);
+	memmove(node->memory + node->size, &isize, sizeof(int));
+	node->size += sizeof(int);
+	memmove(node->memory + node->size, &sign_, sizeof(int8));
+	node->size += sizeof(int8);
+	memmove(node->memory + node->size, in_, isize_);
+	node->size += isize_;
+	node->nums ++;
+	// if (node->nums % 100000 == 0)
+	// printf("push sign: %zu %d %d %d\n", node->size, node->nums, node->rpos, node->maxsize);
+	// 拷贝内存结束
+	// _send_nums++;
+	// _send_size+=isize;
+	// if (_send_nums % 100000 == 0)
+	// {
+	// 	printf("write : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+	// }
+	nodes_->wsize += (isize + sizeof(int));
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wuses;	
+}
+
+int  sis_net_mems_push_kv(s_sis_net_mems *nodes_, int kidx_, int sidx_, void *in_, size_t isize_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_ + 2 * sizeof(int) + sizeof(int));
+	nodes_->wnode = node;
+	if (node->size == 0)
+	{
+		nodes_->wuses++;
+	}
+	size_t isize = isize_ + 2 * sizeof(int);
+	memmove(node->memory + node->size, &isize, sizeof(int));
+	node->size += sizeof(int);
+	memmove(node->memory + node->size, &kidx_, sizeof(int));
+	node->size += sizeof(int);
+	memmove(node->memory + node->size, &sidx_, sizeof(int));
+	node->size += sizeof(int);
+	memmove(node->memory + node->size, in_, isize_);
+	node->size += isize_;
+	node->nums ++;
+	nodes_->wsize += (isize + sizeof(int));
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wuses;	
+}
+
+int  sis_net_mems_cat(s_sis_net_mems *nodes_, void *in_, size_t isize_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	s_sis_net_mem_node *node = _net_mems_reset_node(nodes_, isize_);
+	nodes_->wnode = node;
+	if (node->size == 0)
+	{
+		nodes_->wuses++;
+		// _send_nums++;
+	}
+	// _send_size+=isize_;
+	// if (_send_nums % 100000 == 0)
+	// {
+	// 	printf("write : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+	// }
+	memmove(node->memory + node->size, in_, isize_);
+	node->size += isize_;
+	node->nums = 1; // 此时所哟欧数据都在一起 nums 失去意义恒定为 1
+	// 拷贝内存结束
+	nodes_->wsize += isize_;
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wuses;
+}
+
+s_sis_net_mem_node *sis_net_mems_rhead(s_sis_net_mems *nodes_)
+{
+	// {
+	// 	int count = 0;
+	// 	s_sis_net_mem_node *next = nodes_->rhead;
+	// 	while (next)
+	// 	{
+	// 		next = next->next;
+	// 		count++;
+	// 	}
+	// 	printf("rsnum = %d\n", count);
+	// }
+	// {
+	// 	int count = 0;
+	// 	s_sis_net_mem_node *next = nodes_->whead;
+	// 	while (next)
+	// 	{
+	// 		next = next->next;
+	// 		count++;
+	// 	}
+	// 	printf("wsnum = %d\n", count);
+	// }
+	return nodes_->rhead;
+}
+
+s_sis_net_mem *sis_net_mems_pop(s_sis_net_mems *nodes_)
+{
+	s_sis_net_mem_node *node = nodes_->rhead;
+	if (node->rpos >= node->size)
+	{
+		if (node->next)
+		{
+			nodes_->rtail->next = node;
+			nodes_->rtail = node;
+			nodes_->rhead = node->next;
+			node->next = NULL;		
+			sis_net_mem_node_clear(node);
+			node = nodes_->rhead;
+		}
+		else
+		{
+			sis_net_mem_node_clear(node);
+			return NULL;
+		}
+	}
+	if (node && node->rpos < node->size)
+	{
+		s_sis_net_mem *mem = (s_sis_net_mem *)(node->memory + node->rpos);
+		// printf("#### %p %p %d %d %d\n", mem, node->memory, node->rpos, node->size, node->maxsize);
+		node->rpos += mem->size + sizeof(int);
+		nodes_->rsize -= mem->size + sizeof(int);
+
+		// _recv_nums++;
+		// _recv_size+=mem->size;
+		// if (_recv_nums % 100000 == 0)
+		// {
+		// 	printf("read : %lld %lld %lld %lld\n", _send_nums, _send_size, _recv_nums, _recv_size);
+		// }
+		return mem;
+	}
+	return NULL;
+}
+// 返回数据的尺寸
+int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_)
+{
+	if (nodes_->rsize > 0)
+	{
+		int count = 0;
+		s_sis_net_mem_node *node = nodes_->rhead;
+		while (node && node->rpos < node->size)
+		{
+			count++;
+			node = node->next;
+		}
+		if (count < 1)
+		{
+			LOG(5)("mems_read warn : %d %lld\n", count, (int64)nodes_->rsize);
+		}
+		return count;
+	}
+	// sis_mutex_lock(&nodes_->lock);
+	if (!sis_mutex_trylock(&nodes_->lock))
+	{	
+		// 下面这句是为了防止未释放读队列
+		_net_mems_move_read(nodes_);
+		int readnums = readnums_ == 0 ? nodes_->wuses : readnums_;
+		s_sis_net_mem_node *next = nodes_->whead;	
+		sis_net_mems_rhead(nodes_);
+		// printf("=== %p %d %d %d %d\n", next, nodes_->wuses, next ? next->size : -1, nodes_->rnums, nodes_->wsize);
+		while (next && next->size > 0 && nodes_->wuses > 0 && nodes_->rnums < readnums)
+		{
+			nodes_->wnums--;
+			nodes_->wuses--;
+			nodes_->wsize -= next->size;
+			nodes_->rnums++;
+			nodes_->rsize += next->size;
+			if (!nodes_->rhead)
+			{
+				nodes_->rhead = next;
+				nodes_->rtail = next;
+			} 
+			else
+			{
+				nodes_->rtail->next = next;
+				nodes_->rtail = next;
+			}
+			next = next->next;
+			if (next)
+			{
+				if (nodes_->whead == nodes_->wnode)
+				{
+					nodes_->wnode = next;
+				}
+				nodes_->whead = next;
+			}
+			else
+			{
+				s_sis_net_mem_node *node = sis_net_mem_node_create(SIS_NET_MEMSIZE);
+				nodes_->wnums = 1;
+				nodes_->whead = node;
+				nodes_->wtail = node;
+				nodes_->wnode = node;
+			}
+			nodes_->rtail->next = NULL;
+		}
+		// printf("=== %p %p %d %d\n", nodes_->whead, nodes_->wnode, nodes_->whead ? nodes_->whead->size : -1, nodes_->wnode ? nodes_->wnode->size : -1);
+		sis_mutex_unlock(&nodes_->lock);
+		return 	nodes_->rnums;
+	}
+	printf("==3== lock ok. %d :: %d\n", nodes_->rnums, nodes_->wnums);
+	return 0;
+}
+int sis_net_mems_free_read(s_sis_net_mems *nodes_)
+{
+	int count = nodes_->rnums;
+    sis_mutex_lock(&nodes_->lock);
+	_net_mems_move_read(nodes_);
+    sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+int  sis_net_mems_count(s_sis_net_mems *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	int count = nodes_->rnums + nodes_->wnums;
+	sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+size_t  sis_net_mems_size(s_sis_net_mems *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	size_t size = nodes_->rsize + nodes_->wsize;
+	sis_mutex_unlock(&nodes_->lock);
+	return size;
+}
+
+/////////////////////////////////////////////////
+//  s_sis_net_node
+/////////////////////////////////////////////////
+s_sis_net_node *sis_net_node_create(s_sis_object *obj_)
+{
+    s_sis_net_node *node = SIS_MALLOC(s_sis_net_node, node);
+    if (obj_)
+    {
+        sis_object_incr(obj_);
+        node->obj = obj_;
+    }
+    node->next = NULL;
+    return node;    
+}
+void sis_net_node_destroy(s_sis_net_node *node_)
+{
+    if(node_->obj)
+    {
+        sis_object_decr(node_->obj);
+    }
+    sis_free(node_);
+}
+s_sis_net_nodes *sis_net_nodes_create()
+{
+    s_sis_net_nodes *o = SIS_MALLOC(s_sis_net_nodes, o);
+	sis_mutex_init(&o->lock, NULL);
+	return o;
+}
+int _net_nodes_free_read(s_sis_net_nodes *nodes_)
+{
+	int count = 0;
+	
+	if (nodes_->rhead)
+	{
+		s_sis_net_node *next = nodes_->rhead;	
+		while (next)
+		{
+			s_sis_net_node *node = next->next;
+			nodes_->size -= SIS_OBJ_GET_SIZE(next->obj);
+			sis_net_node_destroy(next);
+			next = node;
+			count++;
+		}
+		nodes_->rhead = NULL;
+	}
+	nodes_->rtail = NULL;	
+	nodes_->rnums = 0;
+	return count;	
+}
+void sis_net_nodes_destroy(s_sis_net_nodes *nodes_)
+{
+    sis_mutex_lock(&nodes_->lock);
+	_net_nodes_free_read(nodes_);
+	s_sis_net_node *next = nodes_->whead;	
+	while (next)
+	{
+		s_sis_net_node *node = next->next;
+		sis_net_node_destroy(next);
+		next = node;
+	}
+    sis_mutex_unlock(&nodes_->lock);
+	sis_mutex_destroy(&nodes_->lock);
+	sis_free(nodes_);
+}
+void sis_net_nodes_clear(s_sis_net_nodes *nodes_)
+{
+    sis_mutex_lock(&nodes_->lock);
+	_net_nodes_free_read(nodes_);
+	s_sis_net_node *next = nodes_->whead;	
+	while (next)
+	{
+		s_sis_net_node *node = next->next;
+		sis_net_node_destroy(next);
+		next = node;
+	}
+	nodes_->whead = NULL;
+	nodes_->wtail = NULL;
+	nodes_->wnums = 0;
+	nodes_->size = 0;
+    sis_mutex_unlock(&nodes_->lock);
+}
+int  sis_net_nodes_push(s_sis_net_nodes *nodes_, s_sis_object *obj_)
+{
+	s_sis_net_node *newnode = sis_net_node_create(obj_);
+	sis_mutex_lock(&nodes_->lock);
+	nodes_->wnums++;
+	if (!nodes_->whead)
+	{
+		nodes_->whead = newnode;
+		nodes_->wtail = newnode;
+	}
+	else if (nodes_->whead == nodes_->wtail)
+	{
+		nodes_->whead->next = newnode;
+		nodes_->wtail = newnode;
+	}
+	else
+	{
+		nodes_->wtail->next = newnode;
+		nodes_->wtail = newnode;
+	}
+	nodes_->size += SIS_OBJ_GET_SIZE(newnode->obj);
+	sis_mutex_unlock(&nodes_->lock);
+	return nodes_->wnums;
+}
+
+int sis_net_nodes_read(s_sis_net_nodes *nodes_, int readnums_)
+{
+	if (nodes_->rnums > 0)
+	{
+		return nodes_->rnums;
+	}
+	if (!sis_mutex_trylock(&nodes_->lock))
+	{	
+		if (readnums_ == 0)
+		{
+			nodes_->rnums = nodes_->wnums;
+			nodes_->rhead = nodes_->whead;
+			nodes_->rtail = nodes_->wtail;
+			nodes_->wnums = 0;
+			nodes_->whead = NULL;
+			nodes_->wtail = NULL;
+		}
+		else
+		{
+			s_sis_net_node *next = nodes_->whead;	
+			while (next)
+			{
+				nodes_->rnums++;
+				nodes_->wnums--;
+				if (!nodes_->rhead)
+				{
+					nodes_->rhead = next;
+					nodes_->rtail = next;
+				} 
+				else
+				{
+					nodes_->rtail->next = next;
+					nodes_->rtail = next;
+				}
+				next = next->next;
+				if (next)
+				{
+					nodes_->whead = next;
+				}
+				else
+				{
+					nodes_->whead = NULL;
+					nodes_->wtail = NULL;
+				}
+				nodes_->rtail->next = NULL;
+				if (nodes_->rnums >= readnums_)
+				{
+					break;
+				}
+			}
+		}
+		sis_mutex_unlock(&nodes_->lock);
+		return 	nodes_->rnums;
+	}
+	// printf("==3== lock ok. %lld :: %d\n", nodes_->nums, nodes_->sendnums);
+	return 0;
+}
+int sis_net_nodes_free_read(s_sis_net_nodes *nodes_)
+{
+	int count = 0;
+    sis_mutex_lock(&nodes_->lock);
+	count = _net_nodes_free_read(nodes_);
+    sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+int  sis_net_nodes_count(s_sis_net_nodes *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	int count = nodes_->rnums + nodes_->wnums;
+	sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+size_t  sis_net_nodes_size(s_sis_net_nodes *nodes_)
+{
+	// sis_mutex_lock(&nodes_->lock);
+	// int count = nodes_->rnums + nodes_->wnums;
+	// sis_mutex_unlock(&nodes_->lock);
+	return nodes_->size;
+}
+
+///////////////////////////////////////////////////////////////////////////
+//----------------------s_sis_net_list --------------------------------//
+//  以整数为索引 存储指针的列表
+//  如果有wait就说明释放index需要等待一个超时
+///////////////////////////////////////////////////////////////////////////
+s_sis_net_list *sis_net_list_create(void *vfree_)
+{
+	s_sis_net_list *o = SIS_MALLOC(s_sis_net_list, o);
+	o->max_count = 1024;
+	o->used = sis_malloc(o->max_count);
+	memset(o->used, SIS_NET_NOUSE ,o->max_count);
+	o->stop_sec = sis_malloc(sizeof(time_t) * o->max_count);
+	memset(o->stop_sec, 0 ,sizeof(time_t) * o->max_count);
+	o->buffer = sis_malloc(sizeof(void *) * o->max_count);
+	memset(o->buffer, 0 ,sizeof(void *) * o->max_count);
+	o->vfree = vfree_;
+	o->wait_sec = 60; // 默认3分钟后释放资源
+	return o;
+}
+void sis_net_list_destroy(s_sis_net_list *list_)
+{
+	sis_net_list_clear(list_);
+	sis_free(list_->used);
+	sis_free(list_->buffer);
+	sis_free(list_->stop_sec);
+	sis_free(list_);
+}
+void sis_net_list_clear(s_sis_net_list *list_)
+{
+	char **ptr = (char **)list_->buffer;
+	for (int i = 0; i < list_->max_count; i++)
+	{
+		if (list_->vfree && ptr[i])
+		{
+			list_->vfree(ptr[i], 1);
+			ptr[i] = NULL;
+		}
+		list_->used[i] = SIS_NET_NOUSE;
+		list_->stop_sec[i] = 0;
+	}
+	list_->cur_count = 0;
+}
+
+int _net_list_set_grow(s_sis_net_list *list_, int count_)
+{
+	if (count_ > list_->max_count)
+	{
+		int maxcount = (count_ / 1024 + 1) * 1024;
+		unsigned char *used = sis_malloc(maxcount);
+		memset(used, SIS_NET_NOUSE , maxcount);
+		time_t *stop_sec = sis_malloc(sizeof(time_t) * maxcount);
+		memset(stop_sec, 0 ,sizeof(time_t) * maxcount);
+		void *buffer = sis_malloc(sizeof(void *) * maxcount);
+		memset(buffer, 0 ,sizeof(void *) * maxcount);
+
+		memmove(list_->used, used, list_->max_count);
+		memmove(list_->stop_sec, stop_sec, sizeof(time_t) * list_->max_count);
+		memmove(list_->buffer, buffer, sizeof(void *) * list_->max_count);
+		list_->max_count = maxcount;
+	}
+	return list_->max_count;
+}
+
+void _net_list_free(s_sis_net_list *list_, int index_)
+{
+	char **ptr = (char **)list_->buffer;
+	if (list_->vfree && ptr[index_])
+	{
+		list_->vfree(ptr[index_], 1);
+		ptr[index_] = NULL;
+	}
+	list_->stop_sec[index_] = 0;
+}
+
+int sis_net_list_new(s_sis_net_list *list_, void *in_)
+{
+	time_t now_sec = sis_time_get_now();
+	int index = -1;
+	for (int i = 0; i < list_->max_count; i++)
+	{
+		// printf("==new== %d %d %d | %d %d\n", i, list_->used[i], list_->wait_sec, now_sec, list_->stop_sec[i]);
+		if (list_->used[i] == SIS_NET_NOUSE)
+		{
+			index = i;
+			break;
+		}
+		if (list_->wait_sec > 0 && list_->used[i] == SIS_NET_CLOSE && 
+			(now_sec - list_->stop_sec[i]) > list_->wait_sec)
+		{
+			_net_list_free(list_, i);
+			list_->used[i] = SIS_NET_NOUSE;
+			index = i;
+			break;
+		}
+	}
+	if (index < 0)
+	{
+		index = list_->max_count;
+		_net_list_set_grow(list_, list_->max_count + 1);
+	}
+	char **ptr = (char **)list_->buffer;
+	ptr[index] = (char *)in_;
+	list_->used[index] = SIS_NET_USEED;
+	// list_->stop_sec[index] = now_sec;
+	list_->cur_count++;
+	return index;
+}
+void *sis_net_list_get(s_sis_net_list *list_, int index_)
+{
+	if (index_ < 0 || index_ >= list_->max_count)
+	{
+		return NULL;
+	}	
+	if (list_->used[index_] != SIS_NET_USEED)
 	{
 		return NULL;
 	}
-	s_sis_net_message *o = sis_net_message_create();
-	o->cid = in_->cid;
-	if (in_->serial)
+	char **ptr = (char **)list_->buffer;
+	return ptr[index_];
+}
+int sis_net_list_first(s_sis_net_list *list_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->max_count; i++)
 	{
-		o->serial = sis_sdsdup(in_->serial);
+		if (list_->used[i] == SIS_NET_USEED)
+		{
+			index = i;
+			break;
+		}
 	}
-	o->style = in_->style;
-	o->format = in_->format;
-	if (in_->cmd)
+	return index;
+}
+int sis_net_list_next(s_sis_net_list *list_, int index_)
+{
+	if (list_->cur_count < 1)
 	{
-		o->cmd = sis_sdsdup(in_->cmd);
+		return -1;
 	}
-	if (in_->key)
+	int index = index_;
+	int start = index_ + 1;
+	while (start != index_)
 	{
-		o->key = sis_sdsdup(in_->key);
+		if (start > list_->max_count - 1)
+		{
+			start = 0;
+		}
+		if (list_->used[start] == SIS_NET_USEED)
+		{
+			index = start;
+			break;
+		}
+		start++;		
 	}
-	if (in_->val)
-	{
-		o->val = sis_sdsdup(in_->val);
-	}
-	o->rcmd = in_->rcmd;
-	if (in_->rval)
-	{
-		o->rval = sis_sdsdup(in_->rval);
-	}
-	if (in_->argvs)
-	{
-		o->argvs = sis_pointer_list_create();
-		o->argvs->vfree = sis_object_decr;
-		_sis_net_message_list_clone(in_->argvs, o->argvs);
-	}
-	return o;
+	return index;
+}
+int sis_net_list_uses(s_sis_net_list *list_)
+{
+	return list_->cur_count;
 }
 
-// 写入其他数据 argv 是 s_sis_object 底层用法 用户自行发送信息 一般不用 encoded 编码
-int sis_net_message_write_argv(s_sis_net_message *mess_, s_sis_object *val_)
+int sis_net_list_stop(s_sis_net_list *list_, int index_)
 {
-	if (!mess_->argvs)
+	if (index_ < 0 || index_ >= list_->max_count)
 	{
-		mess_->argvs = sis_pointer_list_create();
-		mess_->argvs->vfree = sis_object_decr;
+		return -1;
+	}	
+	// printf("==stop=1= %d %d | %d %d\n", index_, list_->used[index_], list_->wait_sec, list_->stop_sec[index_]);
+	if (list_->used[index_] != SIS_NET_USEED)
+	{
+		return -1;
 	}
-	sis_object_incr(val_);
-	sis_pointer_list_push(mess_->argvs, val_);
-    return mess_->argvs->count;     
+	if (list_->wait_sec > 0)
+	{
+		list_->stop_sec[index_] = sis_time_get_now();
+		list_->used[index_] = SIS_NET_CLOSE;
+		char **ptr = (char **)list_->buffer;
+		if (list_->vfree && ptr[index_])
+		{
+			list_->vfree(ptr[index_], 0);
+		}
+		list_->cur_count--;
+	}
+	else
+	{
+		_net_list_free(list_, index_);
+		list_->used[index_] = SIS_NET_NOUSE;
+		list_->cur_count--;
+	}
+	// printf("==stop=2= %d %d | %d %d\n", index_, list_->used[index_], list_->wait_sec, list_->stop_sec[index_]);
+	return index_;
 }
-void sis_net_message_clear_argv(s_sis_net_message *mess_)
-{
-	sis_pointer_list_clear(mess_->argvs);
-}
+
+
 ////////////////////////////////////////////////////////
 //  解码函数
 ////////////////////////////////////////////////////////
 
-bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
+bool _net_encoded_chars(s_sis_net_message *netmsg_, s_sis_memory *out_)
 {
-
     s_sis_json_node *node = sis_json_create_object();
-	if (in_->style & SIS_NET_CMD && in_->cmd) 
+	if (netmsg_->switchs.sw_sno) 
 	{
-		sis_json_object_set_string(node, "cmd", in_->cmd, sis_sdslen(in_->cmd));
+		sis_json_object_set_int(node, "sno", netmsg_->sno);
 	}
-	if (in_->style & SIS_NET_KEY && in_->key)
+	if (netmsg_->switchs.sw_service)
 	{
-		sis_json_object_set_string(node, "key", in_->key, sis_sdslen(in_->key));
-	}
-	if (in_->style & SIS_NET_ASK)
+		sis_json_object_set_string(node, "service", netmsg_->service, SIS_SDS_SIZE(netmsg_->service)); 
+	}		
+	if (netmsg_->switchs.sw_cmd)
 	{
-		if (in_->style & SIS_NET_VAL && in_->val)
+		sis_json_object_set_string(node, "cmd", netmsg_->cmd, SIS_SDS_SIZE(netmsg_->cmd)); 
+	}		
+	if (netmsg_->switchs.sw_subject)
+	{
+		sis_json_object_set_string(node, "subject", netmsg_->subject, SIS_SDS_SIZE(netmsg_->subject)); 
+	}	
+	if (netmsg_->switchs.sw_tag)
+	{
+		sis_json_object_set_int(node, "tag", netmsg_->tag);
+	}		
+	if (netmsg_->tag == SIS_NET_TAG_CHARS || netmsg_->tag == SIS_NET_TAG_BYTES)
+	{
+		if (netmsg_->argvs)
 		{
-			sis_json_object_set_jstr(node, "val", in_->val, sis_sdslen(in_->val));
+			// 这里增加数组信息
+			for (int i = 0; i < netmsg_->argvs->count; i++)
+			{
+				// s_sis_object *obj = sis_pointer_list_get(netmsg_->argvs, i);
+				// sis_memory_cat_ssize(out_, SIS_OBJ_GET_SIZE(obj));
+				// sis_memory_cat(out_, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+			}
+		}
+		else
+		{
+			sis_json_object_set_string(node, "infos", "[[]]", 4); 
 		}
 	}
 	else
 	{
-		// if (in_->style & SIS_NET_RCMD)
+		if (netmsg_->switchs.sw_info)
 		{
-			// 必须有rcmd 不然字符模式下无法判断是应答包
-			sis_json_object_set_int(node, "rcmd", in_->rcmd); 
-		} 
-		if (in_->style & SIS_NET_VAL && in_->rval)
-		{
-			sis_json_object_set_string(node, "rval", in_->rval, sis_sdslen(in_->rval)); 
-		}		
+			sis_json_object_set_string(node, "info", netmsg_->info, SIS_SDS_SIZE(netmsg_->info)); 
+		}	
 	}
-	// printf("_net_encoded_chars: %x %d %s \n%s \n%s \n%s \n%s \n", 
-	// 		in_->style, 
-	// 		(int)in_->rcmd,
-	// 		in_->serial? in_->serial : "nil",
-	// 		in_->cmd ? in_->cmd : "nil",
-	// 		in_->key? in_->key : "nil",
-	// 		in_->val? in_->val : "nil"
-	// 		,in_->rval? in_->rval : "nil"
-	// 		);
+	// 这里处理 more 的字段定义
+	// printf("sis_net_encoded_json [%d]: %d %s\n",netmsg_->tag, netmsg_->switchs.sw_info, netmsg_->info);
 
     size_t len = 0;
     char *str = sis_json_output_zip(node, &len);
@@ -227,84 +895,41 @@ bool _net_encoded_chars(s_sis_net_message *in_, s_sis_memory *out_)
     return true;
 }
 
-s_sis_sds _sis_json_node_get_sds(s_sis_json_node *node_, const char *key_)
+static inline void sis_net_str_set_memory(s_sis_memory *imem_, int isok_, const char *msg_, size_t size_)
 {
-    s_sis_sds o = NULL;
-    s_sis_json_node *node = sis_json_cmp_child_node(node_, key_);
-    if (!node)
-    {
-        return NULL;
-    }
-    if (node->type == SIS_JSON_INT || node->type == SIS_JSON_DOUBLE || node->type == SIS_JSON_STRING)
-    {
-		// printf("%s : %s\n",key_, node->value);
-        o = sis_sdsnew(node->value);
-    }
-    else if (node->type == SIS_JSON_ARRAY || node->type == SIS_JSON_OBJECT)
-    {
-		// int iii = 1;
-		// sis_json_show(node, &iii);
-		size_t len = 0;
-		char *str = sis_json_output_zip(node, &len);
-		o = sis_sdsnewlen(str, len);
-		sis_free(str);
-    }
-    return o;
+	if (isok_) 
+	{
+		sis_memory_cat_ssize(imem_, msg_ ? size_ : 0);
+		if (msg_ && size_ > 0)
+		{
+			sis_memory_cat(imem_, (char *)msg_, size_);
+		}
+	}
 }
-bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
+static inline void sis_net_int_set_memory(s_sis_memory *imem_, int isok_, int msg_)
 {
-    s_sis_net_message *mess = (s_sis_net_message *)out_;
-    size_t size = sis_memory_get_size(in_);
-	sis_memory(in_)[size] = 0;
-	// sis_out_binary("---",sis_memory(in_), size);
-    s_sis_json_handle *handle = sis_json_load(sis_memory(in_), size);
-    if (!handle)
-    {
-        LOG(5)("json parse error.\n");
-        return false;
-    }
-    s_sis_json_node *rcmd = sis_json_cmp_child_node(handle->node, "rcmd");
-	if (rcmd)
+	if (isok_) 
 	{
-		// 应答包
-		mess->style = SIS_NET_RCMD;
-		mess->rcmd = rcmd->value ? sis_atoll(rcmd->value) : 0; 	
-        mess->rval = _sis_json_node_get_sds(handle->node, "rval");    
-		mess->style = mess->rval ? (mess->style | SIS_NET_VAL) : mess->style;
+		if (msg_ != 0)
+		{
+			char ii[32];
+			sis_lldtoa(msg_, ii, 32, 10);
+			sis_memory_cat_ssize(imem_, sis_strlen(ii));
+			sis_memory_cat(imem_, ii, sis_strlen(ii));
+		}
+		else
+		{
+			sis_memory_cat_ssize(imem_, 0);
+		}
 	}
-	else
-	{
-		// 表示为请求
-		mess->style = SIS_NET_ASK;
-        mess->val = _sis_json_node_get_sds(handle->node, "val");    
-		mess->style = mess->val ? (mess->style | SIS_NET_VAL) : mess->style;
-	}
-	mess->cmd = _sis_json_node_get_sds(handle->node, "cmd");
-	mess->style = mess->cmd ? (mess->style | SIS_NET_CMD) : mess->style;
-	mess->key = _sis_json_node_get_sds(handle->node, "key");
-	mess->style = mess->key ? (mess->style | SIS_NET_KEY) : mess->style;
-	// printf("sis_net_decoded_chars:%x %llx %s \n%s \n%s \n%s \n%s \n", mess->style, mess->rcmd,
-	// 		mess->serial? mess->serial : "nil",
-	// 		mess->cmd ? mess->cmd : "nil",
-	// 		mess->key? mess->key : "nil",
-	// 		mess->val? mess->val : "nil",
-	// 		mess->rval? mess->rval : "nil");
-
-    sis_json_close(handle);
-	if (!mess->style)
-	{
-		return false;
-	}
-    return true;
 }
-
 bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 {
 	// 编码 一般只写 argvs 中的数据
     sis_memory_clear(out_);
-    if (in_->serial)
+    if (in_->name)
     {
-        sis_memory_cat(out_, in_->serial, sis_sdslen(in_->serial));
+        sis_memory_cat(out_, in_->name, sis_sdslen(in_->name));
     }
     sis_memory_cat(out_, ":", 1);
 	if (in_->format == SIS_NET_FORMAT_CHARS)
@@ -312,33 +937,14 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 		return _net_encoded_chars(in_, out_);
 	}
 	// 二进制流
-	sis_memory_cat(out_, "B", 1); 
-	sis_memory_cat_byte(out_, in_->style, 1);
-	if (in_->style & SIS_NET_CMD) 
-	{
-		sis_memory_cat_ssize(out_, in_->cmd ? sis_sdslen(in_->cmd) : 0);
-		if (in_->cmd)
-		{
-			sis_memory_cat(out_, in_->cmd, sis_sdslen(in_->cmd));
-		}
-	}
-	if (in_->style & SIS_NET_KEY)
-	{
-		sis_memory_cat_ssize(out_, in_->key ? sis_sdslen(in_->key) : 0);
-		if (in_->key)
-		{
-			sis_memory_cat(out_, in_->key, sis_sdslen(in_->key));
-		}
-	}
-	if (in_->style & SIS_NET_VAL)
-	{
-		sis_memory_cat_ssize(out_, in_->val ? sis_sdslen(in_->val) : 0);
-		if (in_->val)
-		{
-			sis_memory_cat(out_, in_->val, sis_sdslen(in_->val));
-		}
-	}
-	if (in_->style & SIS_NET_ARGVS)
+	in_->switchs.sw_mark = 1;
+	sis_memory_cat(out_, (char *)&in_->switchs, sizeof(s_sis_net_switch));
+	sis_net_int_set_memory(out_, in_->switchs.sw_sno, in_->sno);
+	sis_net_str_set_memory(out_, in_->switchs.sw_service, in_->service, SIS_SDS_SIZE(in_->service));
+	sis_net_str_set_memory(out_, in_->switchs.sw_cmd, in_->cmd, SIS_SDS_SIZE(in_->cmd));
+	sis_net_str_set_memory(out_, in_->switchs.sw_subject, in_->subject, SIS_SDS_SIZE(in_->subject));
+	sis_net_int_set_memory(out_, in_->switchs.sw_tag, in_->tag);
+	if (in_->tag == SIS_NET_TAG_CHARS || in_->tag == SIS_NET_TAG_BYTES)
 	{
 		if (in_->argvs)
 		{
@@ -348,16 +954,121 @@ bool sis_net_encoded_normal(s_sis_net_message *in_, s_sis_memory *out_)
 				s_sis_object *obj = sis_pointer_list_get(in_->argvs, i);
 				sis_memory_cat_ssize(out_, SIS_OBJ_GET_SIZE(obj));
 				sis_memory_cat(out_, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
-				// sis_out_binary("encode", SIS_OBJ_GET_CHAR(obj), 16);
 			}
 		}
+		else
+		{
+			sis_memory_cat_ssize(out_, 0);
+		}
+	}
+	else
+	{
+		sis_net_str_set_memory(out_, in_->switchs.sw_info, in_->info, SIS_SDS_SIZE(in_->info));
 	}
     return true;
+}
+
+s_sis_sds _sis_json_node_get_sds(s_sis_json_node *node_, const char *key_)
+{
+    s_sis_sds o = NULL;
+    s_sis_json_node *node = sis_json_cmp_child_node(node_, key_);
+    if (!node)
+    {
+        return NULL;
+    }
+    if (node->type == SIS_JSON_STRING)
+    {
+		// printf("%s : %s\n",key_, node->value);
+        o = sis_sdsnew(node->value);
+    }
+    else if (node->type == SIS_JSON_ARRAY || node->type == SIS_JSON_OBJECT)
+    {
+		size_t size = 0;
+		char *str = sis_json_output_zip(node, &size);
+		o = sis_sdsnewlen(str, size);
+		sis_free(str);
+    }
+    return o;
+}
+void sis_json_to_netmsg(s_sis_json_node* node_, s_sis_net_message *mess)
+{
+	s_sis_json_node *sno = sis_json_cmp_child_node(node_, "sno");  
+	if (sno)
+	{
+        mess->sno = sis_json_get_int(node_, "sno", 0);    
+		mess->switchs.sw_sno = 1;
+	}
+	mess->service = _sis_json_node_get_sds(node_, "service");    
+	mess->switchs.sw_service = mess->service ? 1 : 0;
+	mess->cmd = _sis_json_node_get_sds(node_, "cmd");    
+	mess->switchs.sw_cmd = mess->cmd ? 1 : 0;
+	mess->subject = _sis_json_node_get_sds(node_, "subject");    
+	mess->switchs.sw_subject = mess->subject ? 1 : 0;
+	s_sis_json_node *tag = sis_json_cmp_child_node(node_, "tag");  
+	if (tag)
+	{
+        mess->tag = sis_json_get_int(node_, "tag", 0);    
+		mess->switchs.sw_tag = 1;
+	}
+	mess->info = _sis_json_node_get_sds(node_, "info");    
+	mess->switchs.sw_info = mess->info ? 1 : 0;
+
+	s_sis_json_node *more = sis_json_cmp_child_node(node_, "more");  
+	if (more)
+	{
+		// ......
+		mess->switchs.sw_more = 1;
+	}
+}
+
+bool sis_net_decoded_chars(s_sis_memory *in_, s_sis_net_message *out_)
+{
+    // s_sis_net_message *mess = (s_sis_net_message *)out_;
+    s_sis_json_handle *handle = sis_json_load(sis_memory(in_), sis_memory_get_size(in_));
+    if (!handle)
+    {
+        LOG(5)("json parse error.\n");
+        return false;
+    }
+	sis_json_to_netmsg(handle->node, out_);
+    sis_json_close(handle);
+    return true;
+}
+
+static inline s_sis_sds sis_net_memory_get_sds(s_sis_memory *imem_, int isok_)
+{
+	s_sis_sds o = NULL;
+	if (isok_) 
+	{
+		size_t size = sis_memory_get_ssize(imem_);
+		if (size > 0)
+		{
+			o = sis_sdsnewlen(sis_memory(imem_), size);
+		}
+		sis_memory_move(imem_, size);
+	}
+	return o;
+}
+static inline int64 sis_net_memory_get_int(s_sis_memory *imem_, int isok_)
+{
+	int64 o = 0;
+	if (isok_) 
+	{
+		size_t size = sis_memory_get_ssize(imem_);
+		if (size > 0)
+		{
+			char ii[32];
+			sis_strncpy(ii, 32, sis_memory(imem_), size);
+			o = sis_atoll(ii);
+		}
+		sis_memory_move(imem_, size);
+	}
+	return o;
 }
 bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
 {
 	size_t start = sis_memory_get_address(in_);
-    int cursor = sis_str_pos(sis_memory(in_), sis_min((int)sis_memory_get_size(in_) ,64), ':');
+    int cursor = sis_str_pos(sis_memory(in_), sis_min((int)sis_memory_get_size(in_) ,128), ':');
     if (cursor < 0)
     {
         return false;
@@ -366,60 +1077,62 @@ bool sis_net_decoded_normal(s_sis_memory *in_, s_sis_net_message *out_)
     sis_net_message_clear(mess);
     if (cursor > 0)
     {
-        mess->serial = sis_sdsnewlen(sis_memory(in_), cursor);
+        mess->name = sis_sdsnewlen(sis_memory(in_), cursor);
     }
 	sis_memory_move(in_, cursor + 1);
-
-	if (*sis_memory(in_) != 'B')
+	s_sis_net_switch *sw = (s_sis_net_switch *)sis_memory(in_);
+	// printf("switch : %x %c\n", *((uint8 *)sw), *((char *)sw));
+	if (sw->sw_mark == 0)
 	{
-		out_->format = SIS_NET_FORMAT_CHARS;
+		// 判断数据格式
+		mess->format = SIS_NET_FORMAT_CHARS;
 		bool o = sis_net_decoded_chars(in_, out_);
 		sis_memory_jumpto(in_, start);
 		return o;
 	}
 	mess->format = SIS_NET_FORMAT_BYTES;
-	sis_memory_move(in_, 1);
-	mess->style = sis_memory_get_byte(in_, 1);
-	if (mess->style & SIS_NET_CMD) 
+	memmove(&mess->switchs, sis_memory(in_), sizeof(s_sis_net_switch));
+	sis_memory_move(in_, sizeof(s_sis_net_switch));
+	mess->sno = sis_net_memory_get_int(in_, mess->switchs.sw_sno);
+	mess->service = sis_net_memory_get_sds(in_, mess->switchs.sw_service);
+	mess->cmd = sis_net_memory_get_sds(in_, mess->switchs.sw_cmd);
+	mess->subject = sis_net_memory_get_sds(in_, mess->switchs.sw_subject);
+	mess->tag = sis_net_memory_get_int(in_, mess->switchs.sw_tag);
+	// 这里可以增加列表数据的存储
+	switch (mess->tag)
 	{
-		size_t size = sis_memory_get_ssize(in_);
-		if (size > 0)
-		{
-			mess->cmd = sis_sdsnewlen(sis_memory(in_), size);
-		}
-		sis_memory_move(in_, size);
+	case SIS_NET_TAG_CHARS:
+	case SIS_NET_TAG_BYTES:
+		/* code */
+		break;	
+	default:
+		mess->info = sis_net_memory_get_sds(in_, mess->switchs.sw_info);
+		break;
 	}
-	if (mess->style & SIS_NET_KEY) 
+	
+	// if (mess->switchs.has_argvs)
+	// {
+	// 	size_t count = sis_memory_get_ssize(in_);
+	// 	if (!mess->argvs)
+	// 	{
+	// 		mess->argvs = sis_pointer_list_create();
+	// 		mess->argvs->vfree = sis_object_decr;
+	// 	}
+	// 	for (int i = 0; i < count; i++)
+	// 	{
+	// 		size_t size = sis_memory_get_ssize(in_);
+	// 		s_sis_sds val = sis_sdsnewlen(sis_memory(in_), size);
+	// 		sis_memory_move(in_, size);
+	// 		s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, val);
+	// 		sis_object_incr(obj);
+	// 		sis_pointer_list_push(mess->argvs, obj);
+	// 		sis_object_destroy(obj);
+	// 	}
+	// }
+	// 最后处理扩展字段问题
+	if (mess->switchs.sw_more)
 	{
-		size_t size = sis_memory_get_ssize(in_);
-		if (size > 0)
-		{
-			mess->key = sis_sdsnewlen(sis_memory(in_), size);
-		}
-		sis_memory_move(in_, size);
-	}
-	if (mess->style & SIS_NET_VAL) 
-	{
-		size_t size = sis_memory_get_ssize(in_);
-		if (size > 0)
-		{
-			mess->val = sis_sdsnewlen(sis_memory(in_), size);
-		}
-		sis_memory_move(in_, size);
-	}
-	if (mess->style & SIS_NET_ARGVS) 
-	{
-		size_t count = sis_memory_get_ssize(in_);
-		for (int i = 0; i < count; i++)
-		{
-			size_t size = sis_memory_get_ssize(in_);
-			s_sis_sds val = sis_sdsnewlen(sis_memory(in_), size);
-			sis_memory_move(in_, size);
-			s_sis_object *obj = sis_object_create(SIS_OBJECT_SDS, val);
-			sis_net_message_write_argv(mess, obj);
-			// sis_out_binary("decode", val, 16);
-			sis_object_destroy(obj);
-		}
+		
 	}
 	sis_memory_jumpto(in_, start);
     return true;

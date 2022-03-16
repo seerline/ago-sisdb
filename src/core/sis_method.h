@@ -9,7 +9,7 @@
 
 typedef int (sis_method_define)(void *, void *);
 
-#define SIS_METHOD_ARGV  "argv"
+#define SIS_METHOD_ARGV        "argv"
 #define SIS_METHOD_VOID_TRUE   ((void *)1)
 #define SIS_METHOD_VOID_FALSE  ((void *)0)
 
@@ -20,6 +20,8 @@ typedef int (sis_method_define)(void *, void *);
 #define SIS_METHOD_NOCMD   -1
 #define SIS_METHOD_NOWORK  -2
 #define SIS_METHOD_NULL    -3
+#define SIS_METHOD_REPEAT  -5
+#define SIS_METHOD_NOANS   -6  // 对端1秒未响应
 
 #define SIS_INT_TO_VOID(n)  ((void *)(uint64)n)
 #define SIS_VOID_TO_INT(v)  ((int)(uint64)v)
@@ -28,8 +30,8 @@ typedef int (sis_method_define)(void *, void *);
 #define SIS_METHOD_ACCESS_READ      1  // 1    可读
 #define SIS_METHOD_ACCESS_WRITE     2  // 1    可写
 #define SIS_METHOD_ACCESS_DEL       4  // 1    可删
-// #define SIS_METHOD_ACCESS_SUB       8  // 1    订阅
 #define SIS_METHOD_ACCESS_NONET   0x100  // 禁止网络数据包 仅限于进程间调用
+#define SIS_METHOD_ACCESS_NOLOG   0x200  // 禁止写LOG 通常用于屏蔽和LOG冲突的操作
 
 #define SIS_METHOD_ACCESS_RDWR    3  // 11   可写
 #define SIS_METHOD_ACCESS_ADMIN   7  // 111  可删除

@@ -25,7 +25,7 @@ size_t sis_net_ws_get_ans(char *key_, s_sis_memory *memory_)
         __ws_define_hash[i] = key_[i];
     }
     char anskey[32];
-    shacalc(__ws_define_hash, anskey);
+    sis_shacalc(__ws_define_hash, anskey);
     anskey[28] = 0;
     sis_memory_clear(memory_);
     sis_memory_cat(memory_, __ws_define_ans, sis_strlen(__ws_define_ans));
@@ -86,13 +86,13 @@ int sis_net_ws_chk_ans(s_sis_memory *in_)
     return 0;
 }
 
-int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s_sis_memory_info *info)
+int sis_net_pack_ws_message(int isstr_, s_sis_memory *in_, s_sis_memory *out_, s_sis_net_tail *info)
 {
     size_t insize = sis_memory_get_size(in_);
     size_t infosize = 0;
     if (info) 
     {
-        infosize = sizeof(s_sis_memory_info);
+        infosize = sizeof(s_sis_net_tail);
     }
     int count = (insize + infosize) / WS_MAX_SEND_BUFF;
     count += (insize + infosize) % WS_MAX_SEND_BUFF ? 1 : 0;
@@ -399,23 +399,27 @@ int sis_net_unpack_ws_message(s_sis_ws_header *head_, s_sis_memory *in_, s_sis_m
     return 1;
 }
 
-int sis_net_pack_ws(s_sis_memory *in_, s_sis_memory_info *info, s_sis_memory *out_)
+int sis_net_pack_ws(s_sis_memory *in_, s_sis_net_tail *info, s_sis_memory *out_)
 {
-    if (info->is_bytes == 0)
+    if (info->bytes == 0)
     {
         sis_net_pack_ws_message(1, in_, out_, NULL);
     }
     else
     {
         sis_net_pack_ws_message(0, in_, out_, info);
-        // sis_memory_cat(out_, (char *)info, sizeof(s_sis_memory_info));
+        // sis_memory_cat(out_, (char *)info, sizeof(s_sis_net_tail));
     }
     return 1;
 }
 // 需要增加处理多包的能力
-int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory *out_)
+int sis_net_unpack_ws(s_sis_memory *in_, s_sis_net_tail *info_, s_sis_memory *out_)
 {
     s_sis_ws_header wshead = {0};
+
+// #0  sis_bits_stream_get (bits_=1, s_=0x7fb31c001f20) at /mnt/hgfs/mysoft/olla/olla-backframe/src/../sisdb/src/core/zip/sis_bits.h:191
+// #1  sis_net_unpack_ws_check (head_=head_@entry=0x7fb3236f2e30, in_=in_@entry=0x7fb313081d10) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/net/sis_net.ws.c:211
+// #2  0x00000000004a2ed8 in sis_net_unpack_ws (in_=0x7fb313081d10, info_=0x7fb3236f2e90, out_=0x7fb31c001db0) at /mnt/hgfs/mysoft/olla/olla-backframe/sisdb/src/core/net/sis_net.ws.c:420
 
     if (!sis_net_unpack_ws_check(&wshead, in_))
     {
@@ -429,68 +433,28 @@ int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory 
     }
     if (wshead.opcode == 1)
     {
-        info_->is_bytes = 0;   // 字符串
-        info_->is_compress = 0;
-        info_->is_crypt = 0;
-        info_->is_crc16 = 0;
+        info_->bytes = 0;   // 字符串
+        info_->compress = 0;
+        info_->crypt = 0;
+        info_->crc16 = 0;
     }
     else 
     if (wshead.opcode == 2)
     {
         size_t size = sis_memory_get_size(out_);
-        memmove(info_, sis_memory(out_) + size - sizeof(s_sis_memory_info),sizeof(s_sis_memory_info));
-        if (info_->is_crc16)
+        memmove(info_, sis_memory(out_) + size - sizeof(s_sis_net_tail),sizeof(s_sis_net_tail));
+        if (info_->crc16)
         {
             // 这里处理crc16验证 如果不匹配返回错误
         }
-        sis_memory_set_size(out_, size - sizeof(s_sis_memory_info));
+        sis_memory_set_size(out_, size - sizeof(s_sis_net_tail));
         // 这里可以判断数据包是否可识别 不能识别就返回 -1  
     }
     else
     {
         LOG(5)("opcode error = %d.\n", wshead.opcode);
+        // sis_out_binary("ii", sis_memory(in_), sis_memory_get_size(in_));
         return -1;
     }
     return 1;
 }
-
-// int sis_net_unpack_ws(s_sis_memory *in_, s_sis_memory_info *info_, s_sis_memory *out_)
-// {
-//     s_sis_ws_header wshead = {0};
-
-//     if (!sis_net_unpack_ws_message(&wshead, in_, out_))
-//     {
-//         // 没有成功解析 应该合并数据
-//         return 0;
-//     }
-//     else
-//     {
-//         // 其他值表示数据获取完整        
-//     }
-    
-//     if (wshead.opcode == 1)
-//     {
-//         info_->is_bytes = 0;   // 字符串
-//         info_->is_compress = 0;
-//         info_->is_crypt = 0;
-//         info_->is_crc16 = 0;
-//     }
-//     else 
-//     if (wshead.opcode == 2)
-//     {
-//         size_t size = sis_memory_get_size(out_);
-//         memmove(info_, sis_memory(out_) + size - sizeof(s_sis_memory_info), sizeof(s_sis_memory_info));
-//         if (info_->is_crc16)
-//         {
-//             // 这里处理crc16验证 如果不匹配返回错误
-//         }
-//         sis_memory_set_size(out_, size - sizeof(s_sis_memory_info));
-//         // 这里可以判断数据包是否可识别 不能识别就返回 -1  
-//     }
-//     else
-//     {
-//         LOG(5)("opcode error = %d.\n", wshead.opcode);
-//         return -1;
-//     }
-//     return 1;
-// }

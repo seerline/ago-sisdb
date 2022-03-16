@@ -456,16 +456,13 @@
 //     return (ok==0);
 // }
 
-int sis_net_pack_rds(s_sis_memory* in_, s_sis_memory_info *info,s_sis_memory *out_)
+int sis_net_pack_rds(s_sis_memory* in_, s_sis_net_tail *info,s_sis_memory *out_)
 {
-    sis_memory_clone(in_, out_);
     return 1;
 }
-int sis_net_unpack_rds(s_sis_memory* in_, s_sis_memory_info *info_, s_sis_memory *out_)
+int sis_net_unpack_rds(s_sis_memory* in_, s_sis_net_tail *info_, s_sis_memory *out_)
 {
     // 这个要判断包是否完整了
-    // sis_memory_clone(in_, out_);
-    // return 1;
     return 0;
 }
 

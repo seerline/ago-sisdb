@@ -69,6 +69,6 @@ void sis_time_format_now(char *out_, size_t olen)
 	time_t now = sis_time_get_now(); 
 	struct tm ptm = {0};
 	sis_localtime(&ptm, &now);
-	snprintf(out_, olen, "[%04d-%02d-%02d %02d:%02d:%02d]", (ptm.tm_year + 1900) % 100, (ptm.tm_mon + 1), ptm.tm_mday, ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
+	snprintf(out_, olen, "%04d%02d%02d-%02d%02d%02d", (ptm.tm_year + 1900) % 100, (ptm.tm_mon + 1), ptm.tm_mday, ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
 }
 

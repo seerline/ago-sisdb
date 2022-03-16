@@ -6,13 +6,15 @@
 #include <sis_malloc.h>
 #include <sis_str.h>
 
-#define SIS_MEMORY_SIZE  32*1024  // read buffer size
+// #define SIS_MEMORY_SIZE  65536  // read buffer size
+#define SIS_MEMORY_SIZE  1024*1024*16  // read buffer size
 // 传说中32K读取文件速度最快，千万不要改大了
+// 64位机似乎64K更快
 
 typedef struct s_sis_memory {
-    size_t  size;
-	size_t  maxsize;
-	size_t  offset;  
+    size_t  size;     // 有数据的长度
+	size_t  maxsize;  // 缓存总长度
+	size_t  offset;   // 有效数据的起始位置
     char   *buffer; 
 } s_sis_memory;
 
@@ -28,6 +30,8 @@ void sis_memory_destroy(void *);
 
 void sis_memory_clone(s_sis_memory *src_, s_sis_memory *des_);
 
+void sis_memory_swap(s_sis_memory *m1_, s_sis_memory *m2_);
+
 void sis_memory_pack(s_sis_memory *m_);
 void sis_memory_clear(s_sis_memory *m_);
 
@@ -35,6 +39,9 @@ size_t sis_memory_cat(s_sis_memory *, char *, size_t);  // memory tail cat, and 
 
 size_t sis_memory_cat_int(s_sis_memory *, int);  // memory tail cat, and repack buffer
 int sis_memory_get_int(s_sis_memory *);
+
+size_t sis_memory_cat_int64(s_sis_memory *, int64);  // memory tail cat, and repack buffer
+int64 sis_memory_get_int64(s_sis_memory *);
 
 size_t sis_memory_cat_double(s_sis_memory *, double);  // memory tail cat, and repack buffer
 double sis_memory_get_double(s_sis_memory *);

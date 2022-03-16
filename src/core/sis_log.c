@@ -63,7 +63,7 @@ void sis_log_open(const char *log_, int level_, int limit_)
 	if (!_sis_log.outscreen)
 	{
 		_sis_log.logfp = sis_file_open(_sis_log.filename, 
-			SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
+			SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE | SIS_FILE_IO_APPEND, 0);
 		if (!_sis_log.logfp)
 		{
 			printf("open log file fail.[%s]\n", _sis_log.filename);
@@ -158,7 +158,7 @@ void sis_log(const char *fmt_, ...)
 	{	
 		va_start(args, fmt_);
 		sis_sprintf(_sis_log.buffer, 1023, "%s[%x]%s.%s", 
-			_sis_log.showtime, (unsigned int)_sis_log.id, _sis_log.funcname, fmt_);
+			_sis_log.showtime, sis_thread_handle(_sis_log.id), _sis_log.funcname, fmt_);
 		vfprintf(_sis_log.logfp, _sis_log.buffer, args);
 		fflush(_sis_log.logfp);
 		va_end(args);
@@ -198,7 +198,7 @@ void sis_out_percent_stop()
 	printf("\b\b\b\b100%%\n");
 }
 
-size_t sis_writefile(char *name, void *value, size_t len)
+size_t sis_writefile(const char *name, void *value, size_t len)
 {
 	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
 	if (fp)
@@ -209,7 +209,7 @@ size_t sis_writefile(char *name, void *value, size_t len)
 	}
 	return 0;
 }
-size_t sis_readfile(char *name, void *value, size_t len)
+size_t sis_readfile(const char *name, void *value, size_t len)
 {
 	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ, 0);
 	if (fp)

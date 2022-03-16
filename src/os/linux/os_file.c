@@ -55,46 +55,81 @@ size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_)
 	return write(fp_, in_, len_);
 }
 
+// s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
+// {
+// 	sis_file_fixpath((char *)fn_);
+// 	s_sis_file_handle fp = NULL;
+// 	char mode[5];
+// 	int index = 0;
+// 	if (mode_ & SIS_FILE_IO_TRUNC)
+// 	{
+// 		mode[index] = 'w';
+// 		index++;
+// 	}
+// 	else
+// 	{
+// 		if (mode_ & SIS_FILE_IO_CREATE)
+// 		{
+// 			mode[index] = 'a';
+// 			index++;
+// 		}
+// 	}
+// 	if (index == 0)
+// 	{
+// 		mode[index] = 'r';
+// 		index++;
+// 	}
+// 	// mode[index] = 'b';
+// 	// index++;
+// 	// if ((mode_ & SIS_FILE_IO_READ && mode_ & SIS_FILE_IO_WRITE) || mode_ & SIS_FILE_IO_RDWR)
+// 	if (mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
+// 	{
+// 		mode[index] = '+';
+// 		index++;
+// 	}
+// 	mode[index] = 0;
+
+// 	fp = fopen(fn_, mode);
+
+// 	// printf("[%p] %s %s \n ",fp,  fn_, mode);
+
+// 	return fp;
+// }
+
 s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 {
 	sis_file_fixpath((char *)fn_);
 	s_sis_file_handle fp = NULL;
-	char mode[5];
-	int index = 0;
-	if (mode_ & SIS_FILE_IO_TRUNC)
+	if (sis_file_exists(fn_))
 	{
-		mode[index] = 'w';
-		index++;
+		if (mode_ & SIS_FILE_IO_TRUNC)
+		{
+			fp = fopen(fn_, "w");
+			fclose(fp);
+		}
+		if (mode_ & SIS_FILE_IO_APPEND)
+		{
+			fp = fopen(fn_, "a+");
+		}
+		else if (mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
+		{
+			// fp = fopen(fn_, "a+");
+			fp = fopen(fn_, "rb+");
+		}
+		else
+		{
+			fp = fopen(fn_, "r");
+		}	
 	}
 	else
 	{
-		if (mode_ & SIS_FILE_IO_CREATE)
+		if (mode_ & SIS_FILE_IO_CREATE || mode_ & SIS_FILE_IO_TRUNC || mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
 		{
-			mode[index] = 'a';
-			index++;
+			fp = fopen(fn_, "a+");
+			fclose(fp);
+			fp = fopen(fn_, "rb+");
 		}
-		mode[index] = 'r';
-		index++;
-		// if (mode_ & SIS_FILE_IO_READ)
-		// {
-		// 	mode[index] = 'r';
-		// 	index++;
-		// }
 	}
-	mode[index] = 'b';
-	index++;
-	// if ((mode_ & SIS_FILE_IO_READ && mode_ & SIS_FILE_IO_WRITE) || mode_ & SIS_FILE_IO_RDWR)
-	if (mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
-	{
-		mode[index] = '+';
-		index++;
-	}
-	mode[index] = 0;
-
-	fp = fopen(fn_, mode);
-
-	// printf("[%d] %s %s \n ",(int)fp,  fn_, mode);
-
 	return fp;
 }
 long long sis_file_seek(s_sis_file_handle fp_, size_t offset_, int where_)
@@ -151,8 +186,13 @@ size_t sis_file_read(s_sis_file_handle fp_, char *in_, size_t len_)
 size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_)
 {
 	size_t size = fwrite((char *)in_, 1, len_, fp_);
+	// printf("=======: %llx %lld\n", sis_file_seek(fp_, 0, SEEK_CUR),  sis_file_seek(fp_, 0, SEEK_CUR)); 
 	// fflush(fp_);
 	return size;
+}
+int sis_file_fsync(s_sis_file_handle fp_)
+{
+	return fsync(fileno(fp_));
 }
 
 void sis_file_getpath(const char *fn_, char *out_, int olen_)
@@ -243,17 +283,17 @@ bool sis_path_mkdir(const char *path_)
 	}
 }
 
-void sis_file_rename(char *oldn_, char *newn_)
+int sis_file_rename(char *oldn_, char *newn_)
 {
 	sis_file_fixpath((char *)oldn_);
 	sis_file_fixpath((char *)newn_);
-	rename(oldn_, newn_);
+	return rename(oldn_, newn_);
 }
 
-void sis_file_delete(const char *fn_)
+int sis_file_delete(const char *fn_)
 {
 	sis_file_fixpath((char *)fn_);
-	unlink(fn_);
+	return unlink(fn_);
 	// remove(fn_);
 }
 
@@ -274,9 +314,10 @@ void sis_path_complete(char *path_, int maxlen_)
 		}
 	}
 }
+#ifndef __APPLE__
 #define FNM_FILE_NAME (1 << 0)
 #define FNM_CASEFOLD  (1 << 4)
-
+#endif
 char *sis_path_get_files(const char *path_, int mode_)
 {
 	char fname[255];

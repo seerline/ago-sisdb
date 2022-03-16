@@ -59,7 +59,7 @@ typedef struct s_sis_wait_queue {
 //  这是一个一写一读的快速队列 优先保证写入速度 适用于需要快速插入 提取数据处理耗时且缓慢的场景
 /////////////////////////////////////////////////
 typedef struct s_sis_fast_queue {
-    // s_sis_mutex_t      rlock;  // 单用户用不到
+    s_sis_mutex_t      rlock;  // 在清理时使用
     int                rnums;  
     s_sis_unlock_node *rhead;  // 读时try锁wlock 锁住就 直接截断whead -> rtail 
     s_sis_unlock_node *rtail;
@@ -122,7 +122,7 @@ void sis_wait_queue_set_busy(s_sis_wait_queue *queue_, int );
 
 s_sis_fast_queue *sis_fast_queue_create(
     void *cb_source_, cb_lock_reader *cb_reader_,
-    int wait_nums_, int zero_msec_);
+    int wait_msec_, int zero_msec_);
 void sis_fast_queue_destroy(s_sis_fast_queue *queue_);
 void sis_fast_queue_clear(s_sis_fast_queue *queue_);
 int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_);

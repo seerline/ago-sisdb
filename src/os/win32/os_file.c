@@ -75,12 +75,9 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 			mode[index] = 'a';
 			index++;
 		}
-		if (mode_ & SIS_FILE_IO_READ)
-		{
-			mode[index] = 'r';
-			index++;
-		}
 	}
+	mode[index] = 'r';
+	index++;
 	mode[index] = 'b';
 	index++;
 	if (mode_ & SIS_FILE_IO_READ && mode_ & SIS_FILE_IO_WRITE)
@@ -89,7 +86,6 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 		index++;
 	}
 	mode[index] = 0;
-
 	fopen_s(&fp, fn_, mode);
 	return fp;
 }
@@ -118,7 +114,10 @@ size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_)
 	// fflush(fp_);
 	return size;
 }
-
+int sis_file_fsync(s_sis_file_handle fp_)
+{
+	return 0;//fsync(fileno(fp_));
+}
 void sis_file_getpath(const char *fn_, char *out_, int olen_)
 {
 	sis_file_fixpath((char *)fn_);
@@ -207,17 +206,17 @@ bool sis_path_mkdir(const char *path_)
 	}
 }
 
-void sis_file_rename(char *oldn_, char *newn_)
+int sis_file_rename(char *oldn_, char *newn_)
 {
 	sis_file_fixpath(oldn_);
 	sis_file_fixpath(newn_);
-	rename(oldn_, newn_);
+	return rename(oldn_, newn_);
 }
 
-void sis_file_delete(const char *fn_)
+int sis_file_delete(const char *fn_)
 {
 	sis_file_fixpath((char *)fn_);
-	unlink(fn_);
+	return unlink(fn_);
 	// remove(fn_);
 }
 

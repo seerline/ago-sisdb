@@ -123,8 +123,8 @@
 // 如果数据不合法就返回 0 数据解析正确就返回当前数据块大小
 // bool sis_net_unpack_rds(s_sis_net_class *, s_sis_net_message *out_, s_sis_memory *in_);
 
-int sis_net_pack_rds(s_sis_memory* in_, s_sis_memory_info *,s_sis_memory *out_);
-int sis_net_unpack_rds(s_sis_memory* in_, s_sis_memory_info *, s_sis_memory *out_);
+int sis_net_pack_rds(s_sis_memory* in_, s_sis_net_tail *,s_sis_memory *out_);
+int sis_net_unpack_rds(s_sis_memory* in_, s_sis_net_tail *, s_sis_memory *out_);
 
 bool sis_net_encoded_rds(s_sis_net_message *in_, s_sis_memory *out_);
 bool sis_net_decoded_rds(s_sis_memory* in_, s_sis_net_message *out_);

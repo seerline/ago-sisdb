@@ -35,6 +35,7 @@ void sis_struct_list_clear(s_sis_struct_list *list_);
 int sis_struct_list_pushs(s_sis_struct_list *, void *in_, int count_);
 int sis_struct_list_push(s_sis_struct_list *, void *in_);
 int sis_struct_list_insert(s_sis_struct_list *, int index_, void *in_);
+int sis_struct_list_inserts(s_sis_struct_list *, int index_, void *in_, int count_);
 int sis_struct_list_update(s_sis_struct_list *, int index_, void *in_);
 void *sis_struct_list_first(s_sis_struct_list *);
 void *sis_struct_list_last(s_sis_struct_list *);
@@ -44,6 +45,7 @@ void *sis_struct_list_next(s_sis_struct_list *list_, void *);
 void *sis_struct_list_offset(s_sis_struct_list *list_, void *, int offset_);
 
 void sis_struct_list_set_size(s_sis_struct_list *list_, int len_);
+void sis_struct_list_set_maxsize(s_sis_struct_list *list_, int maxlen_);
 int sis_struct_list_set(s_sis_struct_list *, void *in_, int inlen_);
 
 int sis_struct_list_setone(s_sis_struct_list *, int index_, void *in_);
@@ -67,7 +69,8 @@ int sis_struct_list_pack(s_sis_struct_list *list_);
 
 
 typedef struct s_sis_sort_list {
-	s_sis_struct_list *key;     // int 类型
+	int8               isascend; // 是否为升序
+	s_sis_struct_list *key;     // int64 类型
 	s_sis_struct_list *value;   // 结构类型
 } s_sis_sort_list;
 
@@ -75,15 +78,16 @@ typedef struct s_sis_sort_list {
 extern "C" {
 #endif
 s_sis_sort_list *sis_sort_list_create(int len_); 
-void sis_sort_list_destroy(s_sis_sort_list *list_);
+void sis_sort_list_destroy(void *);
 void sis_sort_list_clear(s_sis_sort_list *list_);
+void sis_sort_list_clone(s_sis_sort_list *src_,s_sis_sort_list *des_);
 
-void *sis_sort_list_set(s_sis_sort_list *, int key_, void *in_);
+void *sis_sort_list_set(s_sis_sort_list *, int64 key_, void *in_);
 void *sis_sort_list_first(s_sis_sort_list *);
 void *sis_sort_list_last(s_sis_sort_list *);
 void *sis_sort_list_get(s_sis_sort_list *, int index_);
 
-void *sis_sort_list_find(s_sis_sort_list *, int key_);
+void *sis_sort_list_find(s_sis_sort_list *, int64 key_);
 
 void *sis_sort_list_next(s_sis_sort_list *list_, void *value_);
 void *sis_sort_list_prev(s_sis_sort_list *list_, void *value_);
@@ -137,6 +141,10 @@ extern "C" {
 s_sis_double_list *sis_double_list_create(); 
 void sis_double_list_destroy(void *);
 
+int sis_sort_double_list(const void *arg1, const void *arg2);
+
+int sis_sort_uint32_list(const void *arg1, const void *arg2);
+
 // 排序必须放置到新的数组中
 void sis_double_list_sort(s_sis_double_list *src_);
 
@@ -187,10 +195,13 @@ extern "C" {
 #endif
 s_sis_pointer_list *sis_pointer_list_create(); 
 
-void sis_pointer_list_destroy(s_sis_pointer_list *list_);
+void sis_pointer_list_destroy(void *list_);
 void sis_pointer_list_clear(s_sis_pointer_list *list_);
 
+int sis_pointer_list_clone(s_sis_pointer_list *src_, s_sis_pointer_list *des_);
+
 int sis_pointer_list_push(s_sis_pointer_list *, void *in_);
+int sis_pointer_list_set(s_sis_pointer_list *, void *in_);
 int sis_pointer_list_update(s_sis_pointer_list *, int index_, void *in_);
 int sis_pointer_list_insert(s_sis_pointer_list *, int index_, void *in_);
 
@@ -207,6 +218,35 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 }
 #endif
 
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_fsort_list ---------------------------------//
+//  以浮点数排序的指针类型数据
+//////////////////////////////////////////////////////////////////////////
+
+typedef struct s_sis_fsort_list {
+	s_sis_struct_list  *key;     // int 类型
+	s_sis_pointer_list *value;   // 结构类型
+} s_sis_fsort_list;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+s_sis_fsort_list *sis_fsort_list_create(void *vfree_); 
+void sis_fsort_list_destroy(void *);
+void sis_fsort_list_clear(s_sis_fsort_list *list_);
+int  sis_fsort_list_set(s_sis_fsort_list *, double key_, void *in_);
+void *sis_fsort_list_get(s_sis_fsort_list *, int index_);
+
+double sis_fsort_list_getkey(s_sis_fsort_list *, int index_);
+
+// 找对应数据指针
+int sis_fsort_list_find(s_sis_fsort_list *, void *value_);
+
+void sis_fsort_list_del(s_sis_fsort_list *list_, int index_);
+int sis_fsort_list_getsize(s_sis_fsort_list *list_);
+#ifdef __cplusplus
+}
+#endif
 ///////////////////////////////////////////////////////////////////////////
 //----------------------s_sis_index_list --------------------------------//
 //  以整数为索引 存储指针的列表
@@ -242,11 +282,42 @@ int sis_index_list_del(s_sis_index_list *list_, int index_);
 }
 #endif
 
+typedef struct s_sis_node {
+	struct s_sis_node *next, *prev;
+	int                index;
+	void              *value;        
+} s_sis_node;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+s_sis_node *sis_node_create(); 
+void sis_node_destroy(void *node_);
+
+void sis_node_clear(void *node_);
+
+int sis_node_push(s_sis_node *, void *data_);
+
+s_sis_node *sis_node_get(s_sis_node *, int index_);
+
+s_sis_node *sis_node_next(s_sis_node *);
+
+void *sis_node_set(s_sis_node *, int index_, void *data_);
+
+void *sis_node_del(s_sis_node *, int index_);
+
+int sis_node_get_size(s_sis_node *);
+
+#ifdef __cplusplus
+}
+#endif
 typedef struct s_sis_node_list {
 	int                 node_size;
 	int                 node_count; // 单结点最大数量
-	int                 count;
-	s_sis_pointer_list *nodes;     // 数据列表 s_sis_struct_list
+	int                 count;      // 实际的数据量
+	int                 nouse;      // 被弹出的数量
+	s_sis_pointer_list *nodes;      // 数据列表 s_sis_struct_list
 } s_sis_node_list;
 
 #ifdef __cplusplus
@@ -258,6 +329,8 @@ void sis_node_list_clear(s_sis_node_list *list_);
 
 int   sis_node_list_push(s_sis_node_list *, void *in_);
 void *sis_node_list_get(s_sis_node_list *, int index_);
+
+void *sis_node_list_pop(s_sis_node_list *);
 
 int   sis_node_list_get_size(s_sis_node_list *);
 #ifdef __cplusplus

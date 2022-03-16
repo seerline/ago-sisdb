@@ -4,9 +4,10 @@
 var client = {};
 
 function connect_server() {
-  client.ws = new WebSocket('ws://192.168.3.118:7329');
+  // client.ws = new WebSocket('ws://192.168.3.118:7329');
   // client.ws = new WebSocket('ws://woan2007.ticp.io:7329');
-  // client.ws = new WebSocket('ws://127.0.0.1:7329');
+  // client.ws = new WebSocket('ws://192.168.1.202:7329');
+  client.ws = new WebSocket('ws://127.0.0.1:7329');
   console.log('connection ...');
   // client.ws = new WebSocket('ws://localhost:8888');
   // ws.binaryType = 'blob';
@@ -54,7 +55,6 @@ function make_command_packed(sign, input) {
   let command = input.split(' ');
 
   let cmd = sign + ':{';
-  let argv = false;
   for (let k = 0; k < command.length; k++) {
     let isjson = '"';
     if(command[k][0]==='['||command[k][0]==='{')
@@ -68,20 +68,15 @@ function make_command_packed(sign, input) {
     else
     if (k === 1)
     {
-      cmd += '"key":' + isjson + command[k] + isjson;
+      cmd += '"subject":' + isjson + command[k] + isjson;
     }
     else
     if (k === 2)
     {
-      cmd += '"val":' + isjson + command[k] + isjson;
+      cmd += '"info":' + isjson + command[k] + isjson;
     }
     else
     {
-      if (!argv)
-      {
-        cmd += '"argv":[';
-        argv = true;
-      }
       cmd += isjson + command[k] + isjson;
     }
     if (k < command.length - 1) 
@@ -132,15 +127,15 @@ client.ws.onmessage = function (message) {
   
     if (client.wait.commands[sign] !== undefined) {
       let msg = JSON.parse(message.data.substr(start + 1, message.data.length));
-      if (msg.rcmd !== undefined)
+      if (msg.tag !== undefined)
       {
-        if (msg.rval)
+        if (msg.info)
         {
-          client.wait.replys = msg.rcmd + ':' + msg.rval;
+          client.wait.replys = msg.tag + ':' + msg.info;
         }
         else
         {
-          client.wait.replys = msg.rcmd;
+          client.wait.replys = msg.tag;
         }
       }
       else
@@ -205,7 +200,7 @@ function send_multiple_command(commands, callback) {
 
     let sendstr = make_command_packed(sign, commands[index].cmd);
 
-    console.log('<===', sendstr);
+    console.log('m<===', sendstr);
 
     client.ws.send(sendstr);
   }

@@ -31,9 +31,25 @@ void sis_memory_destroy(void *m_)
 }
 void sis_memory_clone(s_sis_memory *src_, s_sis_memory *des_)
 {
+	sis_memory_clear(des_);
 	sis_memory_cat(des_, sis_memory(src_), sis_memory_get_size(src_));
 }
-
+void sis_memory_swap(s_sis_memory *m1_, s_sis_memory *m2_)
+{
+	s_sis_memory m;
+	m.buffer    = m1_->buffer  ; 
+	m.size      = m1_->size    ; 
+	m.maxsize   = m1_->maxsize ; 
+	m.offset    = m1_->offset  ; 
+	m1_->buffer  = m2_->buffer  ; 
+	m1_->size    = m2_->size    ; 
+	m1_->maxsize = m2_->maxsize ; 
+	m1_->offset  = m2_->offset  ; 
+	m2_->buffer  = m.buffer  ; 
+	m2_->size    = m.size    ; 
+	m2_->maxsize = m.maxsize ; 
+	m2_->offset  = m.offset  ; 
+}
 // void sis_memory_pack(s_sis_memory *m_)
 // {
 // 	if (m_->val > m_->buffer)
@@ -54,7 +70,7 @@ void sis_memory_pack(s_sis_memory *m_)
 	{
 		return;
 	}
-	if (m_->offset > m_->size - 1)
+	if (m_->offset > m_->size - 1) // 数据用完
 	{
 		m_->size = 0;
 		m_->offset = 0;
@@ -65,6 +81,7 @@ void sis_memory_pack(s_sis_memory *m_)
 		if (m_->size > 0)
 		{
 			memmove(m_->buffer, m_->buffer + m_->offset, m_->size);
+			memset(m_->buffer + m_->size, 0, m_->offset);
 		}
 		m_->offset = 0;
 	}
@@ -93,8 +110,21 @@ void sis_memory_grow(s_sis_memory *m_, size_t nsize_)
 	if (nsize_ > m_->maxsize)
 	{
 		size_t grow = sis_min(SIS_MEMORY_SIZE, (nsize_ + m_->maxsize) / 2);
-		m_->maxsize = nsize_ + grow;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		// m_->maxsize = nsize_ + grow;
+		// m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		size_t newsize = nsize_ + grow;
+		char *newbuffer = sis_malloc(newsize);
+		size_t cursize = m_->size - m_->offset;
+		if (cursize > 0)
+		{
+			// printf("%p : %d,%d,%d,%d,%d \n", newbuffer, newsize, nsize_, m_->maxsize, m_->offset, m_->size);
+			memmove(newbuffer, m_->buffer + m_->offset, cursize);
+		}
+		m_->size = cursize;
+		m_->offset = 0;
+		sis_free(m_->buffer);
+		m_->buffer = newbuffer;
+		m_->maxsize = newsize;
 	}	
 }
 size_t sis_memory_cat(s_sis_memory *m_, char *in_, size_t ilen_)
@@ -119,6 +149,20 @@ int sis_memory_get_int(s_sis_memory *m_)
 	int o = 0;
 	memmove(&o, sis_memory(m_), sizeof(int));
 	sis_memory_move(m_, sizeof(int));
+	return o;
+}
+size_t sis_memory_cat_int64(s_sis_memory *m_, int64 in_)
+{
+	sis_memory_grow(m_, sizeof(int64) + m_->size);
+	memmove(m_->buffer + m_->size, &in_, sizeof(int64));
+	m_->size += sizeof(int64);
+	return sizeof(int64);
+}  
+int64 sis_memory_get_int64(s_sis_memory *m_)
+{
+	int64 o = 0;
+	memmove(&o, sis_memory(m_), sizeof(int64));
+	sis_memory_move(m_, sizeof(int64));
 	return o;
 }
 
@@ -287,6 +331,10 @@ double sis_memory_get_double(s_sis_memory *m_)
 
 size_t sis_memory_readfile(s_sis_memory *m_, s_sis_file_handle fp_, size_t len_)
 {
+	if (!fp_)
+	{
+		return 0;
+	}
 	char *mem = (char *)sis_malloc(len_ + 1);
 	size_t bytes = sis_file_read(fp_, mem, len_);
 	if (bytes <= 0)
@@ -359,8 +407,20 @@ size_t sis_memory_set_maxsize(s_sis_memory *m_, size_t len_)
 	// printf("%zu -- %zu\n", len_, m_->maxsize);
 	if (len_ > m_->maxsize)
 	{
-		m_->maxsize = len_ + 256;
-		m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		// m_->maxsize = len_ + 256;
+		// m_->buffer = (char *)sis_realloc(m_->buffer, m_->maxsize);
+		size_t newsize = len_ + 256;
+		char *newbuffer = sis_malloc(newsize);
+		size_t cursize = m_->size - m_->offset;
+		if (cursize > 0)
+		{
+			memmove(newbuffer, m_->buffer + m_->offset, cursize);
+		}
+		m_->size = cursize;
+		m_->offset = 0;
+		sis_free(m_->buffer);
+		m_->buffer = newbuffer;
+		m_->maxsize = newsize;
 	}
 	return m_->maxsize;
 }
@@ -405,15 +465,18 @@ char *sis_memory_read_line(s_sis_memory *m_, size_t *len_)
     }
     return NULL;
 }
+// 有些很恶心的csv文件 居然有 0x00 的存在 需要过滤掉
 size_t sis_memory_get_line_sign(s_sis_memory *m_)
 {
-	if (!m_)
+	if (!m_ || (m_->offset == m_->size))
 	{
 		return 0;
 	}
+	char rtn = '\n';
 	char *ptr = sis_memory(m_);
 	size_t len = 0;
-	while (*ptr && (unsigned char)*ptr != '\n')
+	// while (*ptr && (unsigned char)*ptr != rtn)
+	while ((*ptr && (unsigned char)*ptr != rtn) || *ptr == 0x0)
 	{
 		if ((m_->offset + len) < m_->size - 1)
 		{
@@ -426,7 +489,7 @@ size_t sis_memory_get_line_sign(s_sis_memory *m_)
 			return 0;
 		}
 	}
-	if ((unsigned char)*ptr == '\n')
+	if ((unsigned char)*ptr == rtn)
 	{
 		len++;
 	} // skip return key

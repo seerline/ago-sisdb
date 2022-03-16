@@ -1,146 +1,149 @@
-
+ï»¿
 #include <os_thread.h>
 #include <os_malloc.h>
 
-// »¥³âËø
+// äº’æ–¥é”
 
-// ¡¡¡¡Ê¹ÓÃ³¡¾°£º
+// ã€€ã€€ä½¿ç”¨åœºæ™¯ï¼š
 
-// ¡¡¡¡¡¡¡¡¶ÁĞ´»¥³â¡¢¶Á»¥³â£¬ioÃÜ¼¯ĞÔ²»ÄÇÃ´¸ßµÄ³¡¾°
+// ã€€ã€€ã€€ã€€è¯»å†™äº’æ–¥ã€è¯»äº’æ–¥ï¼Œioå¯†é›†æ€§ä¸é‚£ä¹ˆé«˜çš„åœºæ™¯
 
-// ¡¡¡¡»ñÈ¡»¥³âËø»á×èÈû£¬Ïß³Ì»áĞİÃß£¬¿ÉÒÔ»ñÈ¡ËøÊ±£¬ÏµÍ³»á»½ĞÑÏß³Ì¡£´æÔÚÏß³ÌµÄ¹ÒÆğºÍ»½ĞÑ£¬ËùÒÔĞ§ÂÊÉÏ»áÓĞÓ°Ïì¡£
+// ã€€ã€€è·å–äº’æ–¥é”ä¼šé˜»å¡ï¼Œçº¿ç¨‹ä¼šä¼‘çœ ï¼Œå¯ä»¥è·å–é”æ—¶ï¼Œç³»ç»Ÿä¼šå”¤é†’çº¿ç¨‹ã€‚å­˜åœ¨çº¿ç¨‹çš„æŒ‚èµ·å’Œå”¤é†’ï¼Œæ‰€ä»¥æ•ˆç‡ä¸Šä¼šæœ‰å½±å“ã€‚
 
-// ¡¡¡¡
+// ã€€ã€€
 
-// ¡¡¡¡c++11Ö®Ç°:
+// ã€€ã€€c++11ä¹‹å‰:
 
-// ¡¡¡¡int pthread_mutex_init(pthread_mutex_t *restrict mutex,const pthread_mutexattr_t *restrict attr);
+// ã€€ã€€int pthread_mutex_init(pthread_mutex_t *restrict mutex,const pthread_mutexattr_t *restrict attr);
 
-// ¡¡¡¡int pthread_mutex_destroy(pthread_mutex_t *mutex);
+// ã€€ã€€int pthread_mutex_destroy(pthread_mutex_t *mutex);
 
-// ¡¡¡¡int pthread_mutex_lock(pthread_mutex_t *mutex);
+// ã€€ã€€int pthread_mutex_lock(pthread_mutex_t *mutex);
 
-// ¡¡¡¡int pthread_mutex_trylock(pthread_mutex_t *mutex);¡¡¡¡
+// ã€€ã€€int pthread_mutex_trylock(pthread_mutex_t *mutex);ã€€ã€€
 
-// ¡¡¡¡int pthread_mutex_unlock(pthread_mutex_t *mutex);
-
- 
-
-// ¡¡¡¡c++11 Ìá¹©ÁËmutexµÄ·â×°Àà£¬·â×°ÁËÖ®Ç°»¥³âËøÏà¹Ø²Ù×÷µÄapi£¬Ê¹ÓÃ¸ü¼Ó·½±ã£º
-
-// ¡¡¡¡
+// ã€€ã€€int pthread_mutex_unlock(pthread_mutex_t *mutex);
 
  
 
-// ×ÔĞıËø
+// ã€€ã€€c++11 æä¾›äº†mutexçš„å°è£…ç±»ï¼Œå°è£…äº†ä¹‹å‰äº’æ–¥é”ç›¸å…³æ“ä½œçš„apiï¼Œä½¿ç”¨æ›´åŠ æ–¹ä¾¿ï¼š
 
-// ¡¡¡¡Ê¹ÓÃ³¡¾°£º
-
-// ¡¡¡¡¶ÁĞ´»¥³â£¬¶Á»¥³â£¬io¶ÁĞ´ÃÜ¼¯ĞÍ¸ß¡£
-
-// ¡¡¡¡×ÔĞıËø²»ÄÜ»ñÈ¡µ½Ëø×ÊÔ´Ê±²»»áĞİÃß£¬»á×ÔĞı×ª¡£ºÄcpu£¬µ«ÊÇ²»»áÓĞÏß³Ì¹ÒÆğºÍ»½ĞÑµÄ¹ı³Ì¡£
-
-// ¡¡¡¡
-
-// ¡¡¡¡Ïà¹Øapi:
-
-// ¡¡¡¡int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
-
-// ¡¡¡¡int pthread_spin_destroy(pthread_spinlock_t *lock);
+// ã€€ã€€
 
  
 
-// ¡¡¡¡int pthread_spin_lock(pthread_spinlock_t *lock);
+// è‡ªæ—‹é”
 
-// ¡¡¡¡int pthread_spin_trylock(pthread_spinlock_t *lock);
+// ã€€ã€€ä½¿ç”¨åœºæ™¯ï¼š
 
-// ¡¡¡¡int pthread_spin_unlock(pthread_spinlock_t *lock);
+// ã€€ã€€è¯»å†™äº’æ–¥ï¼Œè¯»äº’æ–¥ï¼Œioè¯»å†™å¯†é›†å‹é«˜ã€‚
 
-// ¡¡¡¡int pthread_spin_destroy(pthread_spinlock_t *lock);
+// ã€€ã€€è‡ªæ—‹é”ä¸èƒ½è·å–åˆ°é”èµ„æºæ—¶ä¸ä¼šä¼‘çœ ï¼Œä¼šè‡ªæ—‹è½¬ã€‚è€—cpuï¼Œä½†æ˜¯ä¸ä¼šæœ‰çº¿ç¨‹æŒ‚èµ·å’Œå”¤é†’çš„è¿‡ç¨‹ã€‚
 
-// ¡¡¡¡
+// ã€€ã€€
 
-// ¶ÁĞ´Ëø
+// ã€€ã€€ç›¸å…³api:
 
-// ¡¡¡¡Ê¹ÓÃ³¡¾°£º
+// ã€€ã€€int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
 
-// ¡¡¡¡¶ÁĞ´»¥³â£¬¶Á²»»¥³â¡£
-
-// ¡¡¡¡¶ÁĞ´ËøÏñ×ÔĞıËøÒ»Ñù£¬ÔÚ²»ÄÜ»ñÈ¡ËøµÄÊ±ºò £¬Ïß³Ì²»»á¹ÒÆğ£¬»á×ÔĞı¡£
+// ã€€ã€€int pthread_spin_destroy(pthread_spinlock_t *lock);
 
  
 
-// ¡¡¡¡Ïà¹Øapi:
+// ã€€ã€€int pthread_spin_lock(pthread_spinlock_t *lock);
 
-// ¡¡¡¡int pthread_rwlock_init(pthread_rwlock_t *restrict rwlock,const pthread_rwlockattr_t *restrict attr);
+// ã€€ã€€int pthread_spin_trylock(pthread_spinlock_t *lock);
 
-// ¡¡¡¡int pthread_rwlock_destroy(pthread_rwlock_t *rwlock);
+// ã€€ã€€int pthread_spin_unlock(pthread_spinlock_t *lock);
 
- 
+// ã€€ã€€int pthread_spin_destroy(pthread_spinlock_t *lock);
 
-// ¡¡¡¡int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);¡¡¡¡
+// ã€€ã€€
 
-// ¡¡¡¡int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock);
+// è¯»å†™é”
 
-// ¡¡¡¡int pthread_rwlock_timedrdlock(pthread_rwlock_t *restrict rwlock,const struct timespec *restrict abs_timeout);
+// ã€€ã€€ä½¿ç”¨åœºæ™¯ï¼š
 
- 
+// ã€€ã€€è¯»å†™äº’æ–¥ï¼Œè¯»ä¸äº’æ–¥ã€‚
 
-// ¡¡¡¡int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
-
-// ¡¡¡¡int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock);
-
-// ¡¡¡¡int pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rwlock,const struct timespec *restrict abs_timeout);
-
-// ¡¡¡¡
-
-// ¡¡¡¡int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
+// ã€€ã€€è¯»å†™é”åƒè‡ªæ—‹é”ä¸€æ ·ï¼Œåœ¨ä¸èƒ½è·å–é”çš„æ—¶å€™ ï¼Œçº¿ç¨‹ä¸ä¼šæŒ‚èµ·ï¼Œä¼šè‡ªæ—‹ã€‚
 
  
 
-// Ìõ¼ş±äÁ¿
+// ã€€ã€€ç›¸å…³api:
 
-// ¡¡¡¡»¥³âËøÓĞÒ»¸öÃ÷ÏÔµÄÈ±µã£ºÖ»ÓĞÁ½ÖÖ×´Ì¬£¬Ëø¶¨ºÍ·ÇËø¶¨
+// ã€€ã€€int pthread_rwlock_init(pthread_rwlock_t *restrict rwlock,const pthread_rwlockattr_t *restrict attr);
 
-// ¡¡¡¡¶øÌõ¼ş±äÁ¿ÔòÍ¨¹ıÔÊĞíÏß³Ì×èÈû²¢µÈ´ıÁíÒ»Ïß³Ì·¢ËÍ»½ĞÑĞÅºÅµÄ·½·¨ÃÖ²¹»¥³âËøµÄ²»×ã£¬Ëü³£ºÍ»¥³âËøÒ»ÆğÊ¹ÓÃ¡£¡¡¡¡
-
-// ¡¡¡¡
-
-// ¡¡¡¡Ïà¹Øapi:
-
-// ¡¡¡¡int pthread_cond_init(pthread_cond_t *restrict cond,const pthread_condattr_t *restrict attr);
-
-// ¡¡¡¡int pthread_cond_destroy(pthread_cond_t *cond);
+// ã€€ã€€int pthread_rwlock_destroy(pthread_rwlock_t *rwlock);
 
  
 
-// ¡¡¡¡int pthread_cond_wait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex);
+// ã€€ã€€int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);ã€€ã€€
 
-// ¡¡¡¡int pthread_cond_timedwait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex,const struct timespec *restrict abstime);
+// ã€€ã€€int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock);
 
-// ¡¡¡¡
+// ã€€ã€€int pthread_rwlock_timedrdlock(pthread_rwlock_t *restrict rwlock,const struct timespec *restrict abs_timeout);
 
-// ¡¡¡¡int pthread_cond_signal(pthread_cond_t *cond);
+ 
 
-// ¡¡¡¡int pthread_cond_broadcast(pthread_cond_t *cond);
+// ã€€ã€€int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
 
-// ¡¡¡¡
+// ã€€ã€€int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock);
 
-// ĞÅºÅÁ¿
+// ã€€ã€€int pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rwlock,const struct timespec *restrict abs_timeout);
 
-// ¡¡¡¡¡¡¡¡Ö÷ÒªÓÃÍ¾ÊÇÏß³Ìµ÷¶È¡¢Í¨¹ıµ÷¶ÈË³ĞòÀ´±£Ö¤¹²Ïí×ÊÔ´¡£»¥³âËøÖ÷ÒªÓÃÍ¾ÊÇËø¹²Ïí×ÊÔ´/
+// ã€€ã€€
 
-// ¡¡¡¡¡¡¡¡int sem_init(sem_t *sem, int pshared, unsigned int value);
+// ã€€ã€€int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
 
-// ¡¡¡¡¡¡¡¡int sem_wait(sem_t *sem);
+ 
 
-// ¡¡¡¡¡¡¡¡int sem_trywait(sem_t *sem);
+// æ¡ä»¶å˜é‡
 
-// ¡¡¡¡¡¡¡¡int sem_timedwait(sem_t *sem, const struct timespec *abs_timeout);
+// ã€€ã€€äº’æ–¥é”æœ‰ä¸€ä¸ªæ˜æ˜¾çš„ç¼ºç‚¹ï¼šåªæœ‰ä¸¤ç§çŠ¶æ€ï¼Œé”å®šå’Œéé”å®š
 
-// ¡¡¡¡¡¡¡¡int sem_post(sem_t *sem);
+// ã€€ã€€è€Œæ¡ä»¶å˜é‡åˆ™é€šè¿‡å…è®¸çº¿ç¨‹é˜»å¡å¹¶ç­‰å¾…å¦ä¸€çº¿ç¨‹å‘é€å”¤é†’ä¿¡å·çš„æ–¹æ³•å¼¥è¡¥äº’æ–¥é”çš„ä¸è¶³ï¼Œå®ƒå¸¸å’Œäº’æ–¥é”ä¸€èµ·ä½¿ç”¨ã€‚ã€€ã€€
 
-// ¡¡¡¡¡¡¡¡int sem_destroy(sem_t *sem);¡¡
+// ã€€ã€€
+
+// ã€€ã€€ç›¸å…³api:
+
+// ã€€ã€€int pthread_cond_init(pthread_cond_t *restrict cond,const pthread_condattr_t *restrict attr);
+
+// ã€€ã€€int pthread_cond_destroy(pthread_cond_t *cond);
+
+ 
+
+// ã€€ã€€int pthread_cond_wait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex);
+
+// ã€€ã€€int pthread_cond_timedwait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex,const struct timespec *restrict abstime);
+
+// ã€€ã€€
+
+// ã€€ã€€int pthread_cond_signal(pthread_cond_t *cond);
+
+// ã€€ã€€int pthread_cond_broadcast(pthread_cond_t *cond);
+
+// ã€€ã€€
+
+// ä¿¡å·é‡
+
+// ã€€ã€€ã€€ã€€ä¸»è¦ç”¨é€”æ˜¯çº¿ç¨‹è°ƒåº¦ã€é€šè¿‡è°ƒåº¦é¡ºåºæ¥ä¿è¯å…±äº«èµ„æºã€‚äº’æ–¥é”ä¸»è¦ç”¨é€”æ˜¯é”å…±äº«èµ„æº/
+
+// ã€€ã€€ã€€ã€€int sem_init(sem_t *sem, int pshared, unsigned int value);
+
+// ã€€ã€€ã€€ã€€int sem_wait(sem_t *sem);
+
+// ã€€ã€€ã€€ã€€int sem_trywait(sem_t *sem);
+
+// ã€€ã€€ã€€ã€€int sem_timedwait(sem_t *sem, const struct timespec *abs_timeout);
+
+// ã€€ã€€ã€€ã€€int sem_post(sem_t *sem);
+
+// ã€€ã€€ã€€ã€€int sem_destroy(sem_t *sem);ã€€
+
+// #include <unistd.h>
+// #include <sched.h>
 
 // int _now_cpu_index = 0;
 
@@ -171,14 +174,14 @@ bool sis_thread_create(cb_thread_working func_, void* val_, s_sis_thread *thread
 	{
 		return false;
 	}
-	irc = pthread_attr_setstacksize(&attr, 1024 * 64); //²âÊÔ2008-07-15
+	irc = pthread_attr_setstacksize(&attr, 1024 * 64); //æµ‹è¯•2008-07-15
 	if (irc)
 	{
 		return false;
 	}
 	irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	// Èç¹û²»ÓÃ´Ë·½Ê½£¬»áÔì³ÉÌõ¼ş±äÁ¿¹ã²¥¶ªÊ§ÎÊÌâ
-	// irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE); // join ×èÈûµÈ
+	// å¦‚æœä¸ç”¨æ­¤æ–¹å¼ï¼Œä¼šé€ æˆæ¡ä»¶å˜é‡å¹¿æ’­ä¸¢å¤±é—®é¢˜
+	// irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE); // join é˜»å¡ç­‰
 	if (irc)
 	{
 		return false;
@@ -204,7 +207,7 @@ void sis_thread_finish(s_sis_thread *thread_)
 	}
 }
 
-// µÈ´ıÏß³Ì½áÊø
+// ç­‰å¾…çº¿ç¨‹ç»“æŸ
 void sis_thread_join(s_sis_thread *thread_)
 {
 	int msec = thread_->timeout < 500 ? 500 : thread_->timeout;
@@ -214,7 +217,7 @@ void sis_thread_join(s_sis_thread *thread_)
 		msec-=10;
 		if (msec < 0)
 		{
-			// ·ÀÖ¹ÓÃ»§Ê¹ÓÃ²»µ±Ê±ÑÓÊ±ÍË³ö
+			// é˜²æ­¢ç”¨æˆ·ä½¿ç”¨ä¸å½“æ—¶å»¶æ—¶é€€å‡º
 			break;
 		}
 	}
@@ -230,7 +233,17 @@ s_sis_thread_id_t sis_thread_self()
 {
 	return (s_sis_thread_id_t)pthread_self();
 }
-
+#ifdef __APPLE__
+unsigned int sis_thread_handle(s_sis_thread_id_t id_) 
+{
+	return id_->__sig;
+}
+#else
+unsigned int sis_thread_handle(s_sis_thread_id_t id_) 
+{
+	return (unsigned int)id_;
+}
+#endif
 /////////////////////////////////////
 //
 //////////////////////////////////////////
@@ -240,8 +253,8 @@ int sis_mutex_create(s_sis_mutex_t *mutex_)
 	pthread_mutexattr_init(&attr);
 	
 	// pthread_mutexattr_settype(&attr, SIS_PTHREAD_MUTEX_ERRORCHECK);
-	// ÉèÖÃÔÊĞíµİ¹é¼ÓËø(Ä¬ÈÏ²»Ö§³Ö)
-	// ÏÂÃæµÄËøÓĞÊ±ºò»á·µ»ØÃ¦×´Ì¬
+	// è®¾ç½®å…è®¸é€’å½’åŠ é”(é»˜è®¤ä¸æ”¯æŒ)
+	// ä¸‹é¢çš„é”æœ‰æ—¶å€™ä¼šè¿”å›å¿™çŠ¶æ€
 	pthread_mutexattr_settype(&attr, SIS_PTHREAD_MUTEX_RECURSIVE);
 	return pthread_mutex_init(mutex_, &attr);
 }
@@ -257,7 +270,16 @@ int  sis_rwlock_init(s_sis_rwlock_t *rwlock_)
 	return pthread_rwlock_init(rwlock_, NULL);
 
 }
-
+#ifdef __APPLE__
+int sis_mutex_wait_lock_r(s_sis_rwlock_t *rwlock_, int msec_)
+{
+	return 0;
+}
+int sis_mutex_wait_lock_w(s_sis_rwlock_t *rwlock_, int msec_)
+{
+	return 0;
+}
+#else
 int sis_mutex_wait_lock_r(s_sis_rwlock_t *rwlock_, int msec_)
 {
 	struct timeval tv;
@@ -276,7 +298,7 @@ int sis_mutex_wait_lock_w(s_sis_rwlock_t *rwlock_, int msec_)
 	ts.tv_nsec = tv.tv_usec * 1000;
 	return pthread_rwlock_timedwrlock(rwlock_, &ts);
 }
-
+#endif
 /////////////////////////////////////
 //
 //////////////////////////////////////////
@@ -289,8 +311,8 @@ void sis_thread_wait_stop(s_sis_wait *wait_)
 	sis_mutex_unlock(&wait_->mutex);
 }
 #ifndef __XRELEASE__
-// Òª²âÊÔ£¬ÔİÊ±ÏÈÕâÑù£¬ºóÆÚÒª¼ì²éÎÊÌâ
-int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // Ãë
+// è¦æµ‹è¯•ï¼Œæš‚æ—¶å…ˆè¿™æ ·ï¼ŒåæœŸè¦æ£€æŸ¥é—®é¢˜
+int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // ç§’
 {
 	struct timeval tv;
 	struct timespec ts;
@@ -298,12 +320,12 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // Ãë
 	ts.tv_sec = tv.tv_sec + delay_;
 	ts.tv_nsec = tv.tv_usec * 1000;
 	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
-	// ·µ»Ø SIS_ETIMEDOUT ¾ÍÕı³£´¦Àí
+	// è¿”å› SIS_ETIMEDOUT å°±æ­£å¸¸å¤„ç†
 }
-int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // ºÁÃë
+int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // æ¯«ç§’
 {
-	struct timeval tv;   // Î¢Ãë
-	struct timespec ts;  // ÄÉÃë
+	struct timeval tv;   // å¾®ç§’
+	struct timespec ts;  // çº³ç§’
 	sis_time_get_day(&tv, NULL);
 	ts.tv_sec = tv.tv_sec + (int)(msec_ / 1000);
 	int msec = tv.tv_usec + (msec_ % 1000) * 1000;
@@ -318,11 +340,11 @@ int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // ºÁÃë
 	}
 	// printf("offset %ld=%ld %ld=%ld\n",ts.tv_sec,tv.tv_sec, ts.tv_nsec, tv.tv_usec);
 	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
-	// ·µ»Ø SIS_ETIMEDOUT ¾ÍÕı³£´¦Àí
+	// è¿”å› SIS_ETIMEDOUT å°±æ­£å¸¸å¤„ç†
 }
 #else
 
-int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // Ãë
+int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // ç§’
 {
 	delay_ = 3;
 	while (delay_)
@@ -333,7 +355,7 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // Ãë
 	}
 	return SIS_ETIMEDOUT;
 }
-int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // ºÁÃë
+int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // æ¯«ç§’
 {
 	msec_ = 10;
 	while (msec_)
@@ -367,10 +389,13 @@ void sis_thread_wait_init(s_sis_wait *wait_)
 }
 void sis_thread_wait_notice(s_sis_wait *wait_)
 {
-	pthread_mutex_lock(&wait_->mutex);
-	// pthread_cond_signal(&wait_->cond);
-	pthread_cond_broadcast(&wait_->cond);
-	pthread_mutex_unlock(&wait_->mutex);
+	// pthread_mutex_lock(&wait_->mutex);
+	if (!pthread_mutex_trylock(&wait_->mutex)) // ä¿è¯å·²ç»å¤„äºç­‰å¾…çŠ¶æ€ å¦åˆ™æ­»é”
+	{
+		// pthread_cond_signal(&wait_->cond);
+		pthread_cond_broadcast(&wait_->cond);
+		pthread_mutex_unlock(&wait_->mutex);
+	}
 }
 void sis_thread_wait_kill(s_sis_wait *wait_)
 {
@@ -387,8 +412,8 @@ void sis_thread_wait_kill(s_sis_wait *wait_)
 
 int __exit = 0;
 int __kill = 0;
-s_sis_wait __thread_wait; //Ïß³ÌÄÚ²¿ÑÓÊ±´¦Àí
-s_sis_wait __thread_wait_b; //Ïß³ÌÄÚ²¿ÑÓÊ±´¦Àí
+s_sis_wait __thread_wait; //çº¿ç¨‹å†…éƒ¨å»¶æ—¶å¤„ç†
+s_sis_wait __thread_wait_b; //çº¿ç¨‹å†…éƒ¨å»¶æ—¶å¤„ç†
 
 s_sis_thread ta ;
 s_sis_thread tb ;

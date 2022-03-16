@@ -1,813 +1,829 @@
-﻿#include "sis_disk.h"
-
+﻿
+#include "sis_disk.h"
 
 ///////////////////////////
-//  write
+//  s_sis_disk_writer
 ///////////////////////////
-
-size_t sis_disk_write_work(s_sis_disk_class *cls_, int hid_, s_sis_disk_wcatch *wcatch_)
-{ 
-
-    size_t size = 0;
-
-    size = sis_files_write(cls_->work_fps, hid_, wcatch_);
-
-    if (wcatch_ && cls_->work_fps->main_head.index)
-    {
-        s_sis_disk_index *node = sis_disk_index_get(cls_->index_infos, wcatch_->key, wcatch_->sdb);        
-        printf("write : %s %d \n ",SIS_OBJ_SDS(wcatch_->key), hid_);
-        wcatch_->winfo.active++;
-        sis_struct_list_push(node->index, &wcatch_->winfo); // 写完盘后增加一条索引记录
-    }
-    return size;
-}
-
-////////////////////
-//  write
-///////////////////
-size_t sis_disk_file_write_stream(s_sis_disk_class *cls_, void *in_, size_t ilen_)
+// 如果目录下已经有不同类型文件 返回错误
+s_sis_disk_writer *sis_disk_writer_create(const char *path_, const char *name_, int style_)
 {
-    size_t size = 0;
-    
-    if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_STREAM)
-    {
-        s_sis_disk_wcatch *wcatch = cls_->src_wcatch;
-        sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
-        if (sis_memory_get_size(wcatch->memory) > cls_->work_fps->max_page_size)
-        {
-            size = sis_files_write(cls_->work_fps, SIS_DISK_HID_STREAM, wcatch);
-            // printf("wlog %d\n", size);
-            sis_disk_wcatch_clear(wcatch);
-        }
-    }
-    return size;
-}
+    s_sis_disk_writer *o = SIS_MALLOC(s_sis_disk_writer, o);
+    o->style = style_;
+    o->fpath = path_ ? sis_sdsnew(path_) : sis_sdsnew("./"); 
+    o->fname = name_ ? sis_sdsnew(name_) : sis_sdsnew("sisdb");
 
-size_t sis_disk_file_write_sdb_log(s_sis_disk_class *cls_,
-                                   s_sis_disk_dict *key, s_sis_disk_dict *sdb, void *in_, size_t ilen_)
-{
-
-    size_t size = 0;
-    s_sis_disk_dict_unit *unit = sis_disk_dict_last(sdb);
-    // printf(" %s %s: %d %zu \n", SIS_OBJ_SDS(key->name), SIS_OBJ_SDS(sdb->name), unit->db->size, ilen_);
-    if (unit && (ilen_ % unit->db->size) == 0)
-    {
-        s_sis_memory *memory = cls_->src_wcatch->memory;
-        int count = ilen_ / unit->db->size;
-        for (int i = 0; i < count; i++)
-        {
-            sis_memory_cat_ssize(memory, key->index);
-            sis_memory_cat_ssize(memory, sdb->index);
-            sis_memory_cat(memory, (char *)in_ + i * unit->db->size, unit->db->size);
-        }
-        if (sis_memory_get_size(memory) > cls_->work_fps->max_page_size)
-        {
-            size = sis_disk_write_work(cls_, SIS_DISK_HID_MSG_LOG, cls_->src_wcatch);
-            sis_disk_wcatch_clear(cls_->src_wcatch);
-        }
-    }
-    return size;
-}
-
-size_t sis_disk_file_write_sno(s_sis_disk_class *cls_)
-{
-    size_t size = 0;
-    int count = sis_map_list_getsize(cls_->sno_wcatch);
-    for (int i = 0; i < count; i++)
-    {
-        s_sis_disk_wcatch *wcatch = (s_sis_disk_wcatch *)sis_map_list_geti(cls_->sno_wcatch, i);
-        if (sis_memory_get_size(wcatch->memory) > 0)
-        {
-            size += sis_disk_write_work(cls_, SIS_DISK_HID_MSG_SNO, wcatch);
-            sis_disk_wcatch_clear(wcatch);
-        }      
-    }
-    // 写完页面加1
-    cls_->sno_pages++;
-    // 写页结束符号
-    size += sis_disk_write_work(cls_, SIS_DISK_HID_SNO_END, NULL);
-    cls_->sno_size = 0;
-    cls_->sno_series = 0;
-    return size;
-}
-
-size_t sis_disk_file_write_sdb_sno(s_sis_disk_class *cls_,
-                                   s_sis_disk_dict *key, s_sis_disk_dict *sdb, void *in_, size_t ilen_)
-{
-    s_sis_disk_dict_unit *unit = sis_disk_dict_last(sdb);
-    // printf("%p %s %d %zu %d\n", unit, SIS_OBJ_SDS(sdb->name), sdb->units->count, ilen_ , unit->db->size);
-    if (unit && (ilen_ % unit->db->size) == 0)
-    {
-        char infoname[255];
-        sis_sprintf(infoname, 255, "%s.%s", SIS_OBJ_SDS(key->name), SIS_OBJ_SDS(sdb->name));        
-        s_sis_disk_wcatch *wcatch = (s_sis_disk_wcatch *)sis_map_list_get(cls_->sno_wcatch, infoname);
-        if (!wcatch)
-        {
-            wcatch = sis_disk_wcatch_create(key->name, sdb->name);
-            sis_map_list_set(cls_->sno_wcatch, infoname, wcatch);
-        }
-        if (sis_memory_get_size(wcatch->memory) < 1)
-        {
-            cls_->sno_size += sis_memory_cat_ssize(wcatch->memory, key->index);
-            cls_->sno_size += sis_memory_cat_ssize(wcatch->memory, sdb->index);
-            wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
-        }
-        // sno 因为是序列化存储 不计算停止时间
-        // msec_t stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
-        // wcatch->winfo.stop = sis_max(wcatch->winfo.stop, stop);
-
-        wcatch->winfo.kdict = key->units->count;
-        wcatch->winfo.sdict = sdb->units->count;
-        wcatch->winfo.ipage = cls_->sno_pages;
-
-        int count = ilen_ / unit->db->size;
-        for (int i = 0; i < count; i++)
-        {
-            cls_->sno_size += sis_memory_cat_ssize(wcatch->memory, cls_->sno_series);
-            cls_->sno_series++;
-            cls_->sno_size += sis_memory_cat(wcatch->memory, (char *)in_ + i * unit->db->size, unit->db->size);
-        }
-        // printf("%zu --> %zu\n", cls_->sno_size ,cls_->work_fps->max_page_size);
-        if (cls_->sno_size > cls_->work_fps->max_page_size)
-        {
-            // printf("%zu %zu %zu %d\n", cls_->sno_size, cls_->work_fps->max_page_size, cls_->sno_series, cls_->sno_pages);
-            sis_disk_file_write_sno(cls_);
-        }
-    }
-    return 0;
-}
-
-int sis_write_sdb_merge(s_sis_disk_class *cls_, s_sis_disk_wcatch *wcatch_)
-{
-    s_sis_disk_index *node = sis_disk_index_get(cls_->index_infos, wcatch_->key, wcatch_->sdb);
-
-    // 判断来源数据是否时序的数据
-    // 如果来源数据不是序列化的就直接删除老的 
-    if ((wcatch_->winfo.start == 0 && wcatch_->winfo.stop == 0) || 
-         wcatch_->winfo.start > wcatch_->winfo.stop)
-    {
-        sis_struct_list_clear(node->index);
-    }   
-    else
-    {
-        // 暂时处理为时间有重叠就覆盖老的
-        int idx = 0;
-        while(idx < node->index->count)
-        {
-            s_sis_disk_index_unit *unit = (s_sis_disk_index_unit *)sis_struct_list_get(node->index, idx);
-            if (sis_is_mixed(wcatch_->winfo.start, wcatch_->winfo.stop, unit->start, unit->stop))
-            {
-                sis_struct_list_delete(node->index, idx, 1);
-                continue;
-            }
-            idx++;
-        }   
-    }     
-    return 0;
-}
-size_t sis_disk_file_write_sdb_one(s_sis_disk_class *cls_,
-                                    s_sis_disk_dict *key, s_sis_disk_dict *sdb, void *in_, size_t ilen_)
-{
-    size_t size = 0;
-
-    s_sis_disk_dict_unit *unit = sis_disk_dict_last(sdb);
-    if (unit && (ilen_ % unit->db->size) == 0)
-    {
-        s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key->name, sdb->name);
-
-        int count = ilen_ / unit->db->size;
-        wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
-        wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
-        printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
-
-        wcatch->winfo.kdict = key->units->count;
-        wcatch->winfo.sdict = sdb->units->count;
-
-        // 这里可以判断新的块和老的块是否有冲突 甚至老的和新的数据结构不同也可以在这里处理
-        sis_write_sdb_merge(cls_, wcatch);
-
-        sis_memory_cat_ssize(wcatch->memory, key->index);
-        sis_memory_cat_ssize(wcatch->memory, sdb->index);
-        sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
-        size = sis_disk_write_work(cls_, SIS_DISK_HID_MSG_SDB, wcatch);
-        sis_disk_wcatch_destroy(wcatch);
-    }
-    return size;
-}
-
-#define CHECK_IS_SDB(s) (s == SIS_DISK_TYPE_LOG || s == SIS_DISK_TYPE_SNO || s == SIS_DISK_TYPE_SDB) ? 1 : 0
-
-
-size_t _sis_disk_file_write_sdb(s_sis_disk_class *cls_,
-                                s_sis_disk_dict *key_, s_sis_disk_dict *sdb_, 
-                                void *in_, size_t ilen_)
-{
-    // 针对不同的类型对数据进行处理
-    size_t size = 0;
-    switch (cls_->work_fps->main_head.style)
-    {
-    case SIS_DISK_TYPE_LOG:
-        size = sis_disk_file_write_sdb_log(cls_, key_, sdb_, in_, ilen_);
-        break;
-    case SIS_DISK_TYPE_SNO:
-        size = sis_disk_file_write_sdb_sno(cls_, key_, sdb_, in_, ilen_);
-        break;
-    default: // SIS_DISK_TYPE_SDB
-        size = sis_disk_file_write_sdb_one(cls_, key_, sdb_, in_, ilen_);
-        break;
-    }
-    return size;
-}
-
-#define SET_MOMORY_STR(m, s, z)          \
-    {                                    \
-        sis_memory_cat_ssize(m, z);      \
-        sis_memory_cat(m, (char *)s, z); \
-    }
-
-size_t _sis_disk_file_write_kdb(s_sis_disk_class *cls_,
-                               const char *key_, s_sis_disk_dict *sdb_, void *in_, size_t ilen_)
-{
-    size_t size = 0;
-    s_sis_disk_dict_unit *unit = sis_disk_dict_last(sdb_);
-    if (unit && (ilen_ % unit->db->size) == 0)
-    {
-        s_sis_object *key = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(key_));
-
-        s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key, sdb_->name);
-        
-        int count = ilen_ / unit->db->size;
-        wcatch->winfo.start = sis_dynamic_db_get_time(unit->db, 0, in_, ilen_);
-        wcatch->winfo.stop = sis_dynamic_db_get_time(unit->db, count - 1, in_, ilen_);
-        // printf("write : %d %d %d \n", count, wcatch->winfo.start , wcatch->winfo.stop);
-
-        wcatch->winfo.kdict = 0;
-        wcatch->winfo.sdict = sdb_->units->count;
-
-        sis_write_sdb_merge(cls_, wcatch);
-        SET_MOMORY_STR(wcatch->memory, key_, sis_strlen((char *)key_));
-        sis_memory_cat_ssize(wcatch->memory, sdb_->index);
-        sis_memory_cat(wcatch->memory, (char *)in_, ilen_);
-        size = sis_disk_write_work(cls_, SIS_DISK_HID_MSG_KDB, wcatch);
-
-        sis_disk_wcatch_destroy(wcatch);
-
-        sis_object_destroy(key);
-    }
-    return size;
-}
-
-size_t _sis_disk_file_write_key(s_sis_disk_class *cls_, s_sis_disk_dict *key_, const char *in_, size_t ilen_)
-{
-    size_t size = 0;
-    s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key_->name, NULL);
-    wcatch->winfo.kdict = key_->units->count;
-    wcatch->winfo.sdict = 0;
-
-    sis_write_sdb_merge(cls_, wcatch);
-    sis_memory_cat_ssize(wcatch->memory, key_->index);
-    SET_MOMORY_STR(wcatch->memory, in_, ilen_);
-    size = sis_disk_write_work(cls_, SIS_DISK_HID_MSG_KEY, wcatch);
-    sis_disk_wcatch_destroy(wcatch);
-    return size;
-}
-
-size_t _sis_disk_file_write_any(s_sis_disk_class *cls_, const char *key_, const char *in_, size_t ilen_)
-{
-    size_t size = 0;
-    s_sis_object *key = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(key_));
-    
-    s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(key, NULL);
-    wcatch->winfo.kdict = 0;
-    wcatch->winfo.sdict = 0;
-    sis_write_sdb_merge(cls_, wcatch);
-    SET_MOMORY_STR(wcatch->memory, key_, sis_strlen((char *)key_));
-    SET_MOMORY_STR(wcatch->memory, in_, ilen_);
-    size = sis_disk_write_work(cls_, SIS_DISK_HID_MSG_ANY, wcatch);
-    sis_disk_wcatch_destroy(wcatch);
-    sis_object_destroy(key);
-    return size;
-}
-size_t sis_disk_file_write_sdbi(s_sis_disk_class *cls_,
-                                int keyi_, int sdbi_, void *in_, size_t ilen_)
-{
-    if (!in_ || !ilen_)
-    {
-        return 0;
-    }
-    int size = 0;
-    s_sis_disk_dict *key = (s_sis_disk_dict *)sis_map_list_geti(cls_->keys, keyi_);
-    s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, sdbi_);
-    if (key && sdb)
-    {
-        size = _sis_disk_file_write_sdb(cls_, key, sdb, in_, ilen_);
-    } 
-    return size;    
-}
-int sis_disk_class_add_key(s_sis_disk_class *cls_, const char *key_)
-{
-    s_sis_sds msg = sis_sdsempty();
-    msg = sis_sdscatfmt(msg, "%s", key_);
-    int o = sis_disk_class_set_key(cls_, true, msg, sis_sdslen(msg));
-    sis_sdsfree(msg);
+    o->status = 0;
+    o->munit = NULL;
+    o->units = sis_map_list_create(sis_disk_ctrl_destroy);;
+    o->map_keys = sis_map_list_create(sis_sdsfree_call);;
+    o->map_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
+    o->map_year = sis_map_list_create(NULL);
+    o->map_date = sis_map_list_create(NULL);
     return o;
 }
-
-size_t sis_disk_file_write_sdb(s_sis_disk_class *cls_,
-                                const char *key_, const char *sdb_, void *in_, size_t ilen_)
+void sis_disk_writer_destroy(void *writer_)
 {
-    if (!in_ || !ilen_)
+    s_sis_disk_writer *writer = (s_sis_disk_writer *)writer_;
+    if (writer->status)
     {
-        return 0;
+        sis_disk_writer_close(writer);
     }
-    if (!CHECK_IS_SDB(cls_->work_fps->main_head.style))
+    if (writer->munit)
     {
-        return 0;
+        sis_disk_ctrl_destroy(writer->munit);
     }
-    int size = 0;
+    sis_map_list_destroy(writer->units);
+    sis_map_list_destroy(writer->map_year);
+    sis_map_list_destroy(writer->map_date);
+    sis_map_list_destroy(writer->map_sdbs);
+    sis_map_list_destroy(writer->map_keys);
 
-    s_sis_disk_dict *key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
-    if (!key && key_)
-    {
-        // 增加新的key
-        sis_disk_class_add_key(cls_, key_);
-        key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
-    }
-    s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_get(cls_->sdbs, sdb_);
-    // if (!sis_strcasecmp(key_, "SZ002979")||!sis_strcasecmp(key_, "SZ002980"))
-    // {
-    //     int index = sis_map_list_get_index(cls_->keys, key_);
-    //     printf("check : %d %s %s %s\n", index, key_, sdb_, sdb ? SIS_OBJ_SDS(sdb->name) : "nil");
-    // }
-    if (key && sdb)
-    {
-        size = _sis_disk_file_write_sdb(cls_, key, sdb, in_, ilen_);
-    }
-    return size;
+    sis_sdsfree(writer->fpath);
+    sis_sdsfree(writer->fname);
+    sis_free(writer);
 }
-size_t sis_disk_file_write_kdb(s_sis_disk_class *cls_,
-                                const char *key_, const char *sdb_, void *in_, size_t ilen_)
-{ 
-    if (!in_ || !ilen_)
-    {
-        return 0;
-    }
-    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB)
-    {
-        return 0;
-    }
-    int size = 0;
 
-    s_sis_disk_dict *sdb = (s_sis_disk_dict *)sis_map_list_get(cls_->sdbs, sdb_);
-    if (sdb && key_)
-    {
-        size = _sis_disk_file_write_kdb(cls_, key_, sdb, in_, ilen_);
-    }
-    return size;
-}
-size_t sis_disk_file_write_key(s_sis_disk_class *cls_,
-                                const char *key_, void *in_, size_t ilen_)
-{ 
-    if (!in_ || !ilen_)
-    {
-        return 0;
-    }
-    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB)
-    {
-        return 0;
-    }
-    int size = 0;
-
-    s_sis_disk_dict *key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
-    if (!key && key_)
-    {
-        // 增加新的key
-        sis_disk_class_add_key(cls_, key_);
-        key = (s_sis_disk_dict *)sis_map_list_get(cls_->keys, key_);
-    }
-    if (key)
-    {
-        size = _sis_disk_file_write_key(cls_, key, in_, ilen_);
-    }
-    return size;
-}
-size_t sis_disk_file_write_any(s_sis_disk_class *cls_,
-                                const char *key_, void *in_, size_t ilen_)
-{ 
-    if (!in_ || !ilen_)
-    {
-        return 0;
-    }
-    if (cls_->work_fps->main_head.style != SIS_DISK_TYPE_SDB)
-    {
-        return 0;
-    }
-    int size = 0;
-
-    if (key_)
-    {
-        size = _sis_disk_file_write_any(cls_, key_, in_, ilen_);
-    }
-    return size;
-}
-// newkeys
-s_sis_sds sis_disk_file_get_keys(s_sis_disk_class *cls_, bool onlyincr_)
+int sis_disk_writer_open(s_sis_disk_writer *writer_, int idate_)
 {
-    s_sis_sds msg = sis_sdsempty();
-    int nums = 0;
+    if (writer_->status)
     {
-        int count = sis_map_list_getsize(cls_->keys);
-        for(int i = 0; i < count; i++)
-        {
-            s_sis_disk_dict *info = (s_sis_disk_dict *)sis_map_list_geti(cls_->keys, i);
-            for(int k = 0; k < info->units->count; k++)
-            {
-                s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);
-                // LOG(1)("w writed = %s %d\n", SIS_OBJ_GET_CHAR(info->name), unit->writed);
-                if (onlyincr_ && unit->writed)
-                {
-                    continue;
-                }
-                if (nums > 0)
-                {
-                    msg = sis_sdscatfmt(msg, ",%s", SIS_OBJ_SDS(info->name));
-                }
-                else
-                {
-                    msg = sis_sdscatfmt(msg, "%s", SIS_OBJ_SDS(info->name));
-                }
-                nums++;
-                if (onlyincr_) 
-                {
-                    unit->writed = 1;
-                }      
-            }
-        }
+        return 0;
     }
-    return msg;
-}
-size_t sis_disk_file_write_key_dict(s_sis_disk_class *cls_)
-{
-    size_t size = 0;
-    // 写 键表
-    s_sis_sds msg = sis_disk_file_get_keys(cls_, true);
-    printf("new key:%s\n", msg);
-    if (sis_sdslen(msg) > 2)
+    switch (writer_->style)
     {
-        s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_KEY));
-        s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(mapobj, NULL);
-        sis_memory_cat(wcatch->memory, msg, sis_sdslen(msg));
-        size = sis_disk_write_work(cls_, SIS_DISK_HID_DICT_KEY, wcatch);
-        sis_disk_wcatch_destroy(wcatch);
-        sis_object_destroy(mapobj);
-    }
-    sis_sdsfree(msg);
-    return size;
-}
-s_sis_sds sis_disk_file_get_sdbs(s_sis_disk_class *cls_, bool onlyincr_)
-{
-    int count = sis_map_list_getsize(cls_->sdbs);
-    s_sis_json_node *sdbs_node = sis_json_create_object();
-    {
-        for(int i = 0; i < count; i++)
-        {
-            s_sis_disk_dict *info = (s_sis_disk_dict *)sis_map_list_geti(cls_->sdbs, i);
-            printf("+++++ %d %d %s\n",count, info->units->count, SIS_OBJ_SDS(info->name));
-            for(int k = 0; k < info->units->count; k++)
-            {
-                s_sis_disk_dict_unit *unit = sis_disk_dict_get(info, k);
-                // LOG(1)("w writed = %s %d %d\n", SIS_OBJ_GET_CHAR(info->name), unit->writed, unit->db->size);
-                if (onlyincr_ && unit->writed)
-                {
-                    continue;
-                }
-                if (onlyincr_) 
-                {
-                    unit->writed = 1;
-                }
-                sis_json_object_add_node(sdbs_node, SIS_OBJ_SDS(info->name), sis_dynamic_dbinfo_to_json(unit->db));
-            }
-        }
-    }
-    s_sis_sds msg = sis_json_to_sds(sdbs_node, true);
-    printf("sdbs :%s\n", msg);
-    sis_json_delete_node(sdbs_node);
-    return msg;
-}
-
-size_t sis_disk_file_write_sdb_dict(s_sis_disk_class *cls_)
-{
-    size_t size = 0;
-    s_sis_sds msg = sis_disk_file_get_sdbs(cls_, true);
-    printf("new sdb:%s\n", msg);
-    if (sis_sdslen(msg) > 2)
-    {
-        s_sis_object *mapobj = sis_object_create(SIS_OBJECT_SDS, sis_sdsnew(SIS_DISK_SIGN_SDB));
-        s_sis_disk_wcatch *wcatch = sis_disk_wcatch_create(mapobj, NULL);
-        sis_memory_cat(wcatch->memory, msg, sis_sdslen(msg));
-        size = sis_disk_write_work(cls_, SIS_DISK_HID_DICT_SDB, wcatch);
-        sis_disk_wcatch_destroy(wcatch);
-        sis_object_destroy(mapobj);
-    }
-    sis_sdsfree(msg);
-    return size;
-}
-
-// 索引每次都重写一遍
-size_t sis_disk_file_write_index(s_sis_disk_class *cls_)
-{
-    size_t size = 0;
-    // 到这里头已经写了 尾不用写，直接写中间的内容
-    s_sis_memory *memory = cls_->src_wcatch->memory;
-    sis_memory_clear(memory);
-    s_sis_disk_index *keynode = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, SIS_DISK_SIGN_KEY);
-    if (keynode)
-    {
-        sis_memory_cat_ssize(memory, keynode->index->count);
-        for (int k = 0; k < keynode->index->count; k++)
-        {
-            s_sis_disk_index_unit *unit = sis_disk_index_get_unit(keynode, k);
-            sis_memory_cat_ssize(memory, unit->fidx);
-            sis_memory_cat_ssize(memory, unit->offset);
-            sis_memory_cat_ssize(memory, unit->size);
-        }
-        size += sis_files_write(cls_->index_fps, SIS_DISK_HID_INDEX_KEY, cls_->src_wcatch);
-    }
-    sis_memory_clear(memory);
-    s_sis_disk_index *sdbnode = (s_sis_disk_index *)sis_map_list_get(cls_->index_infos, SIS_DISK_SIGN_SDB);
-    if (sdbnode)
-    {
-        sis_memory_cat_ssize(memory, sdbnode->index->count);
-        for (int k = 0; k < sdbnode->index->count; k++)
-        {
-            s_sis_disk_index_unit *unit = sis_disk_index_get_unit(sdbnode, k);
-            sis_memory_cat_ssize(memory, unit->fidx);
-            sis_memory_cat_ssize(memory, unit->offset);
-            sis_memory_cat_ssize(memory, unit->size);
-        }
-        size += sis_files_write(cls_->index_fps, SIS_DISK_HID_INDEX_SDB, cls_->src_wcatch);
-    }
-    int count = sis_map_list_getsize(cls_->index_infos);
-    sis_memory_clear(memory);
-    for (int i = 0; i < count; i++)
-    {
-        s_sis_disk_index *node = (s_sis_disk_index *)sis_map_list_geti(cls_->index_infos, i);
-        // 排除key和sdb
-        if (node == sdbnode || node == keynode)
-        {
-            continue;
-        }
-        // printf("write_index %s %d \n", SIS_OBJ_SDS(node->key), node->index->count);
-        size_t klen = sis_sdslen(SIS_OBJ_SDS(node->key));
-        sis_memory_cat_ssize(memory, klen);
-        sis_memory_cat(memory, SIS_OBJ_SDS(node->key), klen);
-        if (node->sdb)
-        {
-            size_t slen = sis_sdslen(SIS_OBJ_SDS(node->sdb));
-            sis_memory_cat_ssize(memory, slen);
-            sis_memory_cat(memory, SIS_OBJ_SDS(node->sdb), slen);
-        }
-        else
-        {
-            sis_memory_cat_ssize(memory, 0);
-        }        
-        sis_memory_cat_ssize(memory, node->index->count);
-        for (int k = 0; k < node->index->count; k++)
-        {
-            s_sis_disk_index_unit *unit = (s_sis_disk_index_unit *)sis_struct_list_get(node->index, k);
-            sis_memory_cat_byte(memory, unit->active, 1);
-            sis_memory_cat_byte(memory, unit->kdict, 1);
-            sis_memory_cat_byte(memory, unit->sdict, 1);
-            sis_memory_cat_byte(memory, unit->fidx, 1);
-            sis_memory_cat_ssize(memory, unit->offset);
-            sis_memory_cat_ssize(memory, unit->size);
-            sis_memory_cat_ssize(memory, unit->start);
-            if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_SNO)
-            {
-                sis_memory_cat_ssize(memory, unit->ipage);
-            }
-            else
-            {
-                sis_memory_cat_ssize(memory, unit->stop - unit->start);
-            }
-        }
-        if (sis_memory_get_size(memory) > SIS_DISK_MAXLEN_MINPAGE)
-        {
-            if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_SNO)
-            {
-                size += sis_files_write(cls_->index_fps, SIS_DISK_HID_INDEX_SNO, cls_->src_wcatch);
-            }
-            else
-            {
-                size += sis_files_write(cls_->index_fps, SIS_DISK_HID_INDEX_MSG, cls_->src_wcatch);    
-            }           
-            sis_memory_clear(memory);
-        }   
-    }
-    if (sis_memory_get_size(memory) > 0)
-    {
-        if (cls_->work_fps->main_head.style == SIS_DISK_TYPE_SNO)
-        {
-            size += sis_files_write(cls_->index_fps, SIS_DISK_HID_INDEX_SNO, cls_->src_wcatch);
-        }
-        else
-        {
-            size += sis_files_write(cls_->index_fps, SIS_DISK_HID_INDEX_MSG, cls_->src_wcatch);    
-        }
-        sis_memory_clear(memory);
-    }   
-
-    LOG(5)("write_index end %zu \n", size);
-    return size;
-}
-
-size_t sis_disk_file_write_surplus(s_sis_disk_class *cls_)
-{
-    size_t size = 0;
-    switch (cls_->work_fps->main_head.style)
-    {
-    case SIS_DISK_TYPE_STREAM:
-    {
-        if (sis_memory_get_size(cls_->src_wcatch->memory) > 0)
-        {
-            size = sis_disk_write_work(cls_, SIS_DISK_HID_STREAM, cls_->src_wcatch);
-            sis_disk_wcatch_clear(cls_->src_wcatch);
-        }
-    }
-    break;
-    case SIS_DISK_TYPE_LOG:
-    {
-        if (sis_memory_get_size(cls_->src_wcatch->memory) > 0)
-        {
-            size = sis_disk_write_work(cls_, SIS_DISK_HID_MSG_LOG, cls_->src_wcatch);
-            sis_disk_wcatch_clear(cls_->src_wcatch);
-        }
-    }
-    break;
+    case SIS_DISK_TYPE_SIC:
+        writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SIC, writer_->fpath, writer_->fname, idate_);
+        break;   
     case SIS_DISK_TYPE_SNO:
-    {
-        size = sis_disk_file_write_sno(cls_);
-        LOG(5)("write sno : %zu\n", size);
-    }
-    break;
-    default: // SIS_DISK_TYPE_SDB  // 所有数据及时写入，
-
+        writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SNO, writer_->fpath, writer_->fname, idate_);
+        break;   
+    case SIS_DISK_TYPE_SDB:
+        writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SDB, writer_->fpath, writer_->fname, idate_);
+        break;   
+    default: // SIS_DISK_TYPE_LOG
+        writer_->munit = sis_disk_ctrl_create(SIS_DISK_TYPE_LOG, writer_->fpath, writer_->fname, idate_);
         break;
     }
-    return size;
-}
-
-void sis_disk_file_delete(s_sis_disk_class *cls_)
-{
-    int count = sis_files_delete(cls_->work_fps);
-    LOG(5)("delete file count = %d.\n", count);
-}
-
-void sis_disk_file_move(s_sis_disk_class *cls_, const char *path_)
-{
-    char fn[255];
-    char newfn[255];
-    for (int  i = 0; i < cls_->work_fps->lists->count; i++)
+    if (sis_disk_ctrl_write_start(writer_->munit) < 0)
     {
-        s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->work_fps->lists, i);
-        sis_file_getname(unit->fn, fn, 255);
-        sis_sprintf(newfn, 255, "%s/%s", path_, fn);
-        sis_file_rename(unit->fn, newfn);
+        sis_disk_ctrl_destroy(writer_->munit);
+        writer_->munit = NULL;
+        return 0;
     }
-    if (cls_->work_fps->main_head.index)
+    writer_->status = 1;
+    return 1;
+}
+// 关闭所有文件 重写索引
+void sis_disk_writer_close(s_sis_disk_writer *writer_)
+{
+    if (writer_->status && writer_->munit)
     {
-        for (int  i = 0; i < cls_->index_fps->lists->count; i++)
+        if (writer_->style == SIS_DISK_TYPE_SDB)
         {
-            s_sis_files_unit *unit = (s_sis_files_unit *)sis_struct_list_get(cls_->index_fps->lists, i);
-            sis_file_getname(unit->fn, fn, 255);
-            sis_sprintf(newfn, 255, "%s/%s", path_, fn);
-            sis_file_rename(unit->fn, newfn);
+            // printf("%d %d\n", writer_->munit->new_kinfos->count, writer_->munit->new_sinfos->count);
+            sis_disk_ctrl_write_kdict(writer_->munit);
+            sis_disk_ctrl_write_sdict(writer_->munit);
+        }
+        sis_disk_ctrl_write_stop(writer_->munit);
+        int count = sis_map_list_getsize(writer_->units);
+        for (int i = 0; i < count; i++)
+        {
+            s_sis_disk_ctrl *ctrl = sis_map_list_geti(writer_->units, i);
+            sis_disk_ctrl_write_stop(ctrl);
         }
     }
+    writer_->status = 0;
 }
-int sis_disk_file_valid_idx(s_sis_disk_class *cls_)
+
+// 所有基础类和子类文件key保持最新一致 但仍然 有可能老的子类文件不一致
+void sis_disk_writer_kdict_changed(s_sis_disk_writer *writer_, const char *kname_)
 {
-    if (cls_->work_fps->main_head.index)
+    // 向打开的子文件传递
+    int count = sis_map_list_getsize(writer_->units);
+    for (int i = 0; i < count; i++)
     {
-        if (!sis_file_exists(cls_->index_fps->cur_name))
+        s_sis_disk_ctrl *unit = (s_sis_disk_ctrl *)sis_map_list_geti(writer_->units, i);
+        sis_disk_ctrl_set_kdict(unit, kname_);
+    }
+}
+// 基础类为结构全集，子类文件只保留当前时序的结构说明
+void sis_disk_writer_sdict_changed(s_sis_disk_writer *writer_, s_sis_dynamic_db *db_)
+{
+    int count = sis_map_list_getsize(writer_->units);
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_disk_ctrl *unit = (s_sis_disk_ctrl *)sis_map_list_geti(writer_->units, i);
+        int scale = sis_disk_get_sdb_scale(db_);
+        if (scale == SIS_SDB_SCALE_YEAR)
         {
-            LOG(5)
-            ("idxfile no exists.[%s]\n", cls_->index_fps->cur_name);
-            return SIS_DISK_CMD_NO_EXISTS_IDX;
+            if (unit->work_fps->main_head.style != SIS_DISK_TYPE_SDB_YEAR)
+            {
+                continue;
+            }
         }
-        return SIS_DISK_CMD_OK;
-    }
-    return SIS_DISK_CMD_NO_IDX;
-}
-
-// 检查文件是否有效
-int sis_disk_file_valid(s_sis_disk_class *cls_)
-{
-    // 通常判断work和index的尾部是否一样 一样表示完整 否则
-    // 检查work file 是否完整 如果不完整就设置最后一个块的位置 并重建索引
-    // 如果work file 完整 就检查索引文件是否完整 不完整就重建索引
-    // 重建失败就返回 1
-    return SIS_DISK_CMD_OK;
-}
-
-int sis_disk_file_write_start(s_sis_disk_class *cls_)
-{
-    if (!cls_->isinit)
-    {
-        return -10;
-    }
-    int access = SIS_DISK_ACCESS_APPEND;
-    if (!sis_file_exists(cls_->work_fps->cur_name))
-    {
-        access = SIS_DISK_ACCESS_CREATE;
-    }
-    if (access == SIS_DISK_ACCESS_CREATE)
-    {
-        // 这里要设置从0页开始
-        cls_->sno_pages = 0;
-        // 以从新创建新文件的方式打开文件 如果以前有文件直接删除创建新的
-        if (sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_CREATE))
+        if (scale == SIS_SDB_SCALE_DATE)
         {
-            LOG(2)
-            ("create file fail. [%s]\n", cls_->work_fps->cur_name);
-            return -5;
+            if (unit->work_fps->main_head.style != SIS_DISK_TYPE_SDB_DATE)
+            {
+                continue;
+            }
+        }
+        if (scale == SIS_SDB_SCALE_NOTS)
+        {
+            if (unit->work_fps->main_head.style != SIS_DISK_TYPE_SDB_NOTS)
+            {
+                continue;
+            }
+        }
+        sis_disk_ctrl_set_sdict(unit, db_);
+    }
+}
+
+// 写入键值信息 - 可以多次写 新增的添加到末尾 仅支持 SNO SDB NET
+// 打开一个文件后 强制同步一下当前的KS,然后每次更新KS都同步
+// 以保证后续写入数据时MAP是最新的
+int sis_disk_writer_set_kdict(s_sis_disk_writer *writer_, const char *in_, size_t ilen_)
+{
+    if (writer_->status == 0 || writer_->style == SIS_DISK_TYPE_LOG || !in_ || ilen_ < 1)
+    {
+        return 0;
+    }
+    s_sis_string_list *klist = sis_string_list_create();
+    sis_string_list_load(klist, in_, ilen_, ",");
+    int count = sis_string_list_getsize(klist);
+    for (int i = 0; i < count; i++)
+    {
+        const char *key = sis_string_list_get(klist, i);
+        sis_disk_ctrl_set_kdict(writer_->munit, key);
+        sis_disk_writer_kdict_changed(writer_, key);
+    }
+    sis_string_list_destroy(klist);
+    // 写盘
+    {
+        sis_disk_ctrl_write_kdict(writer_->munit);
+        int count = sis_map_list_getsize(writer_->units);
+        for (int i = 0; i < count; i++)
+        {
+            s_sis_disk_ctrl *unit = (s_sis_disk_ctrl *)sis_map_list_geti(writer_->units, i);
+            sis_disk_ctrl_write_kdict(unit);
+        }
+    }
+    return  sis_map_list_getsize(writer_->munit->map_kdicts);  
+}    
+// 设置表结构体 - 根据不同的时间尺度设置不同的标记 仅支持 SNO SDB NET
+// 只传递增量和变动的DB
+int sis_disk_writer_set_sdict(s_sis_disk_writer *writer_, const char *in_, size_t ilen_)
+{
+    if (writer_->status == 0 || writer_->style == SIS_DISK_TYPE_LOG || !in_ || ilen_ < 16) // {k:{fields:[[]]}}
+    {
+        return 0;
+    }
+    s_sis_json_handle *injson = sis_json_load(in_, ilen_);
+    if (!injson)
+    {
+        return 0;
+    }
+    s_sis_json_node *innode = sis_json_first_node(injson->node); 
+    while (innode)
+    {
+        s_sis_dynamic_db *newdb = sis_dynamic_db_create(innode);
+        if (newdb)
+        {
+            sis_disk_ctrl_set_sdict(writer_->munit, newdb);
+            sis_disk_writer_sdict_changed(writer_, newdb);
+            sis_dynamic_db_decr(newdb);
+        }  
+        innode = sis_json_next_node(innode);
+    }
+    sis_json_close(injson);
+    {
+        sis_disk_ctrl_write_sdict(writer_->munit);
+        int count = sis_map_list_getsize(writer_->units);
+        for (int i = 0; i < count; i++)
+        {
+            s_sis_disk_ctrl *unit = (s_sis_disk_ctrl *)sis_map_list_geti(writer_->units, i);
+            sis_disk_ctrl_write_sdict(unit);
+        }
+    }
+    return  sis_map_list_getsize(writer_->munit->map_sdicts);    
+}
+//////////////////////////////////////////
+//   log 
+//////////////////////////////////////////
+// 写入数据 仅支持 LOG 不管数据多少 直接写盘 
+size_t sis_disk_writer_log(s_sis_disk_writer *writer_, void *in_, size_t ilen_)
+{
+    // if (!writer_->munit || !in_ || ilen_ < 1)
+    // {
+    //     return 0;
+    // }
+    return  sis_disk_io_write_log(writer_->munit, in_, ilen_);
+}
+//////////////////////////////////////////
+//   net sno
+//////////////////////////////////////////
+
+// 开始写入数据 后面的数据只有符合条件才会写盘 仅支持 SNO SDB NET
+int sis_disk_writer_start(s_sis_disk_writer *writer_)
+{
+    int o = -1;
+    switch (writer_->style)
+    {
+    case SIS_DISK_TYPE_SIC:
+        sis_disk_ctrl_write_kdict(writer_->munit);
+        sis_disk_ctrl_write_sdict(writer_->munit);
+        o = sis_disk_io_write_sic_start(writer_->munit);
+        break;
+    case SIS_DISK_TYPE_SNO:
+        sis_disk_ctrl_write_kdict(writer_->munit);
+        sis_disk_ctrl_write_sdict(writer_->munit);
+        o = sis_disk_io_write_sno_start(writer_->munit);
+        break;
+    case SIS_DISK_TYPE_SDB:
+        break;
+    default:
+        break;
+    }
+    return o;
+}
+// 数据传入结束 剩余全部写盘 仅支持 SNO SDB NET
+void sis_disk_writer_stop(s_sis_disk_writer *writer_)
+{
+    switch (writer_->style)
+    {
+    case SIS_DISK_TYPE_SIC:
+        sis_disk_io_write_sic_stop(writer_->munit);
+        break;
+    case SIS_DISK_TYPE_SNO:
+        sis_disk_io_write_sno_stop(writer_->munit);
+        break;
+    case SIS_DISK_TYPE_SDB:
+        break;
+    default:
+        break;
+    } 
+}
+// int __tempnums = 0;
+// 写入数据 仅支持 NET 
+int sis_disk_writer_sic(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SIC) 
+    {
+        return -1;
+    }  
+    // __tempnums++;
+    // if (__tempnums % 1000 == 0)
+    // {
+    // printf("%d %d %d\n", __tempnums, sis_map_list_getsize(writer_->munit->map_sdicts), sis_map_list_getsize(writer_->munit->map_kdicts));
+    // } 
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(writer_->munit->map_sdicts, sname_);
+    if (!sdict)
+    {
+        return 0;
+    }
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        LOG(8)("new key: %s\n", kname_);
+        kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
+        sis_disk_ctrl_write_kdict(writer_->munit);
+        // 对于net新增代码后 必须要好好处理key增长的问题
+        sis_incrzip_compress_addkey(writer_->munit->net_incrzip, 1);
+    }
+    return sis_disk_io_write_sic(writer_->munit, kdict, sdict, in_, ilen_);
+}
+
+int sis_disk_writer_sno(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SNO) 
+    {
+        return -1;
+    }  
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(writer_->munit->map_sdicts, sname_);
+    if (!sdict)
+    {
+        return 0;
+    }
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        LOG(8)("new key: %s\n", kname_);
+        kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
+        sis_disk_ctrl_write_kdict(writer_->munit);
+    }
+    return sis_disk_io_write_sno(writer_->munit, kdict, sdict, in_, ilen_);
+}
+//////////////////////////////////////////
+//   sdb 
+//////////////////////////////////////////
+// int _disk_writer_is_year10(int open_, int stop_)
+// {
+//     int open_year = open_ / 100000 * 10;
+//     int stop_year = stop_ / 100000 * 10;
+//     if (open_year == stop_year)
+//     {
+//         return 1;
+//     }
+//     return  0;
+// }
+int _disk_writer_is_year(int open_, int stop_)
+{
+    int open_year = open_ / 10000;
+    int stop_year = stop_ / 10000;
+    if (open_year == stop_year)
+    {
+        return 1;
+    }
+    return  0;
+}
+s_sis_disk_ctrl *_disk_writer_get_year(s_sis_disk_writer *writer_, int idate_)
+{
+    // int nyear = idate_ / 100000 * 10;
+    int nyear = idate_ / 10000;
+    char syear[32];
+    sis_llutoa(nyear, syear, 32, 10);
+    s_sis_disk_ctrl *ctrl = sis_map_list_get(writer_->units, syear);
+    if (!ctrl)
+    {
+        ctrl = sis_disk_ctrl_create(SIS_DISK_TYPE_SDB_YEAR, writer_->fpath, writer_->fname, idate_);
+        if (sis_disk_ctrl_write_start(ctrl))
+        {
+            sis_disk_ctrl_destroy(ctrl);
+            return NULL;
+        }
+        sis_map_list_set(writer_->units, syear, ctrl);
+    }
+    if (ctrl)
+    {
+        // 这里要检查 字典表是否一致 不一致就要立即更新并写盘
+        sis_disk_ctrl_cmp_kdict(writer_->munit, ctrl);
+        sis_disk_ctrl_cmp_sdict(writer_->munit, ctrl);
+        // 先写可能增加的字典信息
+        sis_disk_ctrl_write_kdict(ctrl);
+        sis_disk_ctrl_write_sdict(ctrl);
+    }
+    return ctrl;
+}
+s_sis_disk_ctrl *_disk_writer_get_date(s_sis_disk_writer *writer_, int idate_)
+{
+    char sdate[32];
+    sis_llutoa(idate_, sdate, 32, 10);
+    s_sis_disk_ctrl *ctrl = sis_map_list_get(writer_->units, sdate);
+    if (!ctrl)
+    {
+        ctrl = sis_disk_ctrl_create(SIS_DISK_TYPE_SDB_DATE, writer_->fpath, writer_->fname, idate_);
+        if (sis_disk_ctrl_write_start(ctrl))
+        {
+            sis_disk_ctrl_destroy(ctrl);
+            return NULL;
+        }
+        sis_map_list_set(writer_->units, sdate, ctrl);
+    }
+    if (ctrl)
+    {
+        // 这里要检查 字典表是否一致 不一致就要立即更新并写盘
+        sis_disk_ctrl_cmp_kdict(writer_->munit, ctrl);
+        sis_disk_ctrl_cmp_sdict(writer_->munit, ctrl);
+        // 先写可能增加的字典信息
+        sis_disk_ctrl_write_kdict(ctrl);
+        sis_disk_ctrl_write_sdict(ctrl);
+    }
+    return ctrl;
+}
+s_sis_disk_ctrl *_disk_writer_get_nots(s_sis_disk_writer *writer_)
+{
+    s_sis_disk_ctrl *ctrl = sis_map_list_get(writer_->units, SIS_DISK_NOTS_CHAR);
+    if (!ctrl)
+    {
+        ctrl = sis_disk_ctrl_create(SIS_DISK_TYPE_SDB_NOTS, writer_->fpath, writer_->fname, 0);
+        if (sis_disk_ctrl_write_start(ctrl))
+        {
+            sis_disk_ctrl_destroy(ctrl);
+            return NULL;
+        }
+        sis_map_list_set(writer_->units, SIS_DISK_NOTS_CHAR, ctrl);
+    }
+    if (ctrl)
+    {
+        // 这里要检查 字典表是否一致 不一致就要立即更新并写盘
+        sis_disk_ctrl_cmp_kdict(writer_->munit, ctrl);
+        sis_disk_ctrl_cmp_sdict(writer_->munit, ctrl);
+        // 先写可能增加的字典信息
+        sis_disk_ctrl_write_kdict(ctrl);
+        sis_disk_ctrl_write_sdict(ctrl);
+    }
+    return ctrl;
+}
+static size_t _disk_writer_sunit(s_sis_disk_ctrl *ctrl, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
+{
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, SIS_OBJ_SDS(kdict_->name));
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(ctrl->map_sdicts, SIS_OBJ_SDS(sdict_->name));
+    return sis_disk_io_write_sdb(ctrl, kdict, sdict, in_, ilen_);
+}
+size_t sis_disk_writer_sdb_year(s_sis_disk_writer *writer_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
+{
+    size_t osize = 0;
+    // 根据数据定位文件名 并修改 units 
+    s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict_->sdbs, sdict_->sdbs->count - 1);
+    int count = ilen_ / sdb->size; 
+    s_sis_disk_ctrl *ctrl = NULL;
+    msec_t start = sis_dynamic_db_get_time(sdb, 0, in_, ilen_);
+    start = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, start);
+    msec_t stop = sis_dynamic_db_get_time(sdb, count - 1, in_, ilen_);
+    stop = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, stop);
+    if (_disk_writer_is_year(start, stop))
+    {
+        ctrl = _disk_writer_get_year(writer_, start);
+        if (ctrl)
+        {
+            // 得到实际的字典
+            osize += _disk_writer_sunit(ctrl, kdict_, sdict_, in_, ilen_);
+            sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_SDB, start / 10000, 0);
         }
     }
     else
     {
-        // 以在文件后面追加数据的方式打开文件
-        // 对已经存在的文件进行合法性检查 如果文件不完整 就打开失败 由外部程序来处理异常，这样相对安全
-        int vo = sis_disk_file_valid(cls_);
-        if ( vo != SIS_DISK_CMD_OK)
+        int nowday = start;
+        int nowidx = 0;
+        int nowrec = 1;
+        for (int i = 1; i < count; i++)
         {
-            LOG(5)
-            ("open is no valid.[%s]\n", cls_->work_fps->cur_name);
-            return -2;
-        }
-        if (sis_files_open(cls_->work_fps, SIS_DISK_ACCESS_APPEND))
-        {
-            LOG(5)
-            ("open file fail.[%s]\n", cls_->work_fps->cur_name);
-            return -3;
-        }    
-        if (cls_->work_fps->main_head.index && sis_disk_file_valid_idx(cls_) == SIS_DISK_CMD_OK)
-        {
-            sis_map_list_clear(cls_->index_infos);
-            if (sis_files_open(cls_->index_fps, SIS_DISK_ACCESS_RDONLY))
+            int curr = sis_dynamic_db_get_time(sdb, i, in_, ilen_);
+            curr = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, curr);
+            if (!_disk_writer_is_year(curr, nowday))
             {
-                LOG(5)
-                ("open idxfile fail.[%s]\n", cls_->index_fps->cur_name);
-                return -4;
+                ctrl = _disk_writer_get_year(writer_, nowday);
+                // write 
+                if (ctrl)
+                {
+                    osize += _disk_writer_sunit(ctrl, kdict_, sdict_, ((char *)in_) + nowidx * sdb->size, nowrec * sdb->size);
+                    sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_SDB, nowday / 10000, 0);
+                }
+                nowrec = 1;
+                nowday = curr;
+                nowidx = i;
             }
-            // 加载索引项
-            // 读取到 索引数据时 需要设置最大可用的 cls_->sno_pages 的值
-            sis_files_read_fulltext(cls_->index_fps, cls_, cb_sis_disk_file_read_index);
-            sis_disk_file_read_dict(cls_);
-            sis_files_close(cls_->index_fps);
-        }        
-    } 
-    cls_->status = SIS_DISK_STATUS_OPENED;
-
-    // 打开已有文件会先加载字典 写字典表如果发现和加载的字典表一样就不重复写入
-
-    cls_->sno_size = 0;   // 当前块的总大小
-    cls_->sno_series = 0; // 当前块的序号 每个新的page重新计数
-
-    return 0;
+            else
+            {
+                nowrec++;
+            }
+        }
+        ctrl = _disk_writer_get_year(writer_, nowday);
+        // write
+        if (ctrl)
+        {
+            osize += _disk_writer_sunit(ctrl, kdict_, sdict_, ((char *)in_) + nowidx * sdb->size, nowrec * sdb->size);
+            sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_SDB, nowday / 10000, 0);
+        }
+    }
+    return osize;
+}
+size_t sis_disk_writer_sdb_date(s_sis_disk_writer *writer_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
+{
+    size_t osize = 0;
+    // 根据数据定位文件名 并修改units 
+    s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict_->sdbs, sdict_->sdbs->count - 1);
+    int count = ilen_ / sdb->size; 
+    s_sis_disk_ctrl *ctrl = NULL;
+    msec_t start = sis_dynamic_db_get_time(sdb, 0, in_, ilen_);
+    start = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, start);
+    msec_t stop = sis_dynamic_db_get_time(sdb, count - 1, in_, ilen_);
+    stop = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, stop);
+    if (start ==  stop)
+    {
+        ctrl = _disk_writer_get_date(writer_, start);
+        if (ctrl)
+        {
+            osize += _disk_writer_sunit(ctrl, kdict_, sdict_, in_, ilen_);
+            sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_SDB, start, 0);
+        }
+    }
+    else
+    {
+        int nowday = start;
+        int nowidx = 0;
+        int nowrec = 1;
+        for (int i = 1; i < count; i++)
+        {
+            int curr = sis_dynamic_db_get_time(sdb, i, in_, ilen_);
+            curr = sis_time_unit_convert(sdb->field_time->style, SIS_DYNAMIC_TYPE_DATE, curr);
+            if (nowday != curr)
+            {
+                ctrl = _disk_writer_get_date(writer_, nowday);
+                // write 
+                if (ctrl)
+                {
+                    osize += _disk_writer_sunit(ctrl, kdict_, sdict_, ((char *)in_) + nowidx * sdb->size, nowrec * sdb->size);
+                    sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_SDB, nowday, 0);
+                }
+                nowrec = 1;
+                nowday = curr;
+                nowidx = i;
+            }
+            else
+            {
+                nowrec++;
+            }
+        }
+        ctrl = _disk_writer_get_date(writer_, nowday);
+        // write
+        if (ctrl)
+        {
+            osize += _disk_writer_sunit(ctrl, kdict_, sdict_, ((char *)in_) + nowidx * sdb->size, nowrec * sdb->size);
+            sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_SDB, nowday, 0);
+        }
+    }
+    return osize;
 }
 
-// 写入结束标记，并生成索引文件
-int sis_disk_file_write_stop(s_sis_disk_class *cls_)
+size_t sis_disk_writer_sdb_nots(s_sis_disk_writer *writer_, s_sis_disk_kdict *kdict_, s_sis_disk_sdict *sdict_, void *in_, size_t ilen_)
 {
-    if (cls_->status == SIS_DISK_STATUS_CLOSED)
+    size_t osize = 0;
+    s_sis_disk_ctrl *ctrl = _disk_writer_get_nots(writer_);
+    if (ctrl)
+    {
+        s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(ctrl->map_sdicts, SIS_OBJ_SDS(sdict_->name));
+        s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, SIS_OBJ_SDS(kdict_->name));
+
+        osize += sis_disk_io_write_non(ctrl, kdict, sdict, in_, ilen_);
+        printf("sis_disk_writer_sdb_nots:  %s %s | %zu\n", 
+                kdict ? SIS_OBJ_SDS(kdict->name) : "nil", 
+                sdict ? SIS_OBJ_SDS(sdict->name) : "nil",
+                osize);
+        // s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict_->sdbs, sdict_->sdbs->count - 1);
+        // int count = ilen_ / sdb->size;
+        sis_disk_io_write_map(writer_->munit, kdict_, sdict_, SIS_SDB_STYLE_NON, 0, 0);
+    }
+    return osize;
+}
+
+// 写入标准数据 kname 如果没有就新增 sname 必须字典已经有了数据 
+// 需要根据数据的时间字段 确定对应的文件 并自动分离不同时间段的数据
+size_t sis_disk_writer_sdb(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, void *in_, size_t ilen_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return 0;
+    }   
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(writer_->munit->map_sdicts, sname_);
+    if (!sdict)
     {
         return 0;
     }
-    // 根据文件类型写索引，并关闭文件
-    sis_disk_file_write_surplus(cls_);
-
-    if (cls_->work_fps->main_head.index)
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
     {
-        cls_->index_fps->main_head.workers = cls_->work_fps->lists->count;
-        // 当前索引就1个文件 以后有需求再说
-        // 难点是要先统计索引的时间和热度，以及可以加载内存的数据量 来计算出把索引分为几个
-        // 具体思路是 设定内存中给索引 1G 那么根据索引未压缩的数据量 按热度先后排序
-        // 保留经常访问的数据到0号文件 其他分别放到1或者2号....
-        // open后就会写索引头
-        // 索引文件每次都重新写
-        if (sis_files_open(cls_->index_fps, SIS_DISK_ACCESS_CREATE))
-        {
-            LOG(5)
-            ("open idxfile fail.[%s] %d\n", cls_->index_fps->cur_name, cls_->index_fps->main_head.workers);
-            return -2;
-        }
-        sis_disk_file_write_index(cls_);
-        sis_files_close(cls_->index_fps);
+        kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
+        sis_disk_ctrl_write_kdict(writer_->munit);
+        sis_disk_writer_kdict_changed(writer_, kname_);
     }
-    // 必须等索引写好才关闭工作句柄
-    sis_files_close(cls_->work_fps);
+    // 对主文件来说只有一条记录
+    s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict->sdbs, sdict->sdbs->count - 1);
 
-    sis_disk_class_clear(cls_);
-    cls_->status = SIS_DISK_STATUS_CLOSED;
+    size_t osize = 0;
+    int scale = sis_disk_get_sdb_scale(sdb);
+    printf("sis_disk_writer_sdb : %d scale = %d\n", writer_->style, scale);
+    switch (scale)
+    {
+    case SIS_SDB_SCALE_YEAR:
+        osize = sis_disk_writer_sdb_year(writer_, kdict, sdict, in_, ilen_);
+        break;
+    case SIS_SDB_SCALE_DATE:
+        osize = sis_disk_writer_sdb_date(writer_, kdict, sdict, in_, ilen_);
+        break;
+    default: // SIS_SDB_SCALE_NOTS
+        osize = sis_disk_writer_sdb_nots(writer_, kdict, sdict, in_, ilen_);
+        break;
+    }
+    return osize;
+}
+
+size_t sis_disk_writer_one(s_sis_disk_writer *writer_, const char *kname_, void *in_, size_t ilen_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return 0;
+    }
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
+        sis_disk_ctrl_write_kdict(writer_->munit);
+    }
+    size_t osize = 0;
+    s_sis_disk_ctrl *ctrl = _disk_writer_get_nots(writer_);
+    if (ctrl)
+    {
+        s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, kname_);
+        osize += sis_disk_io_write_one(ctrl, kdict, in_, ilen_);
+    }
+    if (osize > 0)
+    {
+        sis_disk_io_write_map(writer_->munit, kdict, NULL, SIS_SDB_STYLE_ONE, 0, 0);
+    }
+    return osize;
+}
+size_t sis_disk_writer_mul(s_sis_disk_writer *writer_, const char *kname_, s_sis_pointer_list *inlist_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return 0;
+    }
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        kdict = sis_disk_ctrl_set_kdict(writer_->munit, kname_);
+        sis_disk_ctrl_write_kdict(writer_->munit);
+    }
+    size_t osize = 0;
+    s_sis_disk_ctrl *ctrl = _disk_writer_get_nots(writer_);
+    if (ctrl)
+    {
+        s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(ctrl->map_kdicts, kname_);
+        osize += sis_disk_io_write_mul(ctrl, kdict, inlist_);
+    }
+    if (osize > 0)
+    {
+        sis_disk_io_write_map(writer_->munit, kdict, NULL, SIS_SDB_STYLE_MUL, 0, 0);
+    }
+    return osize;
+}
+
+// 结构化时序和无时序数据 
+int sis_disk_writer_sdb_remove(s_sis_disk_writer *writer_, const char *kname_, const char *sname_, int isign_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return -1;
+    }   
+    s_sis_disk_sdict *sdict = sis_disk_map_get_sdict(writer_->munit->map_sdicts, sname_);
+    if (!sdict)
+    {
+        return -2;
+    }
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        return -3;
+    }
+    s_sis_dynamic_db *sdb = sis_pointer_list_get(sdict->sdbs, sdict->sdbs->count - 1);
+    int scale = sis_disk_get_sdb_scale(sdb);
+    switch (scale)
+    {
+    case SIS_SDB_SCALE_YEAR: // isign_ :: 2021
+        sis_disk_io_write_map(writer_->munit, kdict, sdict, SIS_SDB_STYLE_SDB, isign_, 1);
+        break;
+    case SIS_SDB_SCALE_DATE: // isign_ :: 20211210
+        sis_disk_io_write_map(writer_->munit, kdict, sdict, SIS_SDB_STYLE_SDB, isign_, 1);
+        break;
+    default: // SIS_SDB_SCALE_NOTS
+        sis_disk_io_write_map(writer_->munit, kdict, sdict, SIS_SDB_STYLE_NON, isign_, 1);
+        break;
+    }
     return 0;
+}
+// 单键值单记录数据 
+int sis_disk_writer_one_remove(s_sis_disk_writer *writer_, const char *kname_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return -1;
+    }   
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        return -3;
+    }
+    sis_disk_io_write_map(writer_->munit, kdict, NULL, SIS_SDB_STYLE_ONE, 0, 1);
+    return 0;
+}
+// 单键值多记录数据 inlist_ : s_sis_sds 的列表
+int sis_disk_writer_mul_remove(s_sis_disk_writer *writer_, const char *kname_)
+{
+    if (writer_->style != SIS_DISK_TYPE_SDB)
+    {
+        return -1;
+    }   
+    s_sis_disk_kdict *kdict = sis_disk_map_get_kdict(writer_->munit->map_kdicts, kname_);
+    if (!kdict)
+    {
+        return -3;
+    }
+    sis_disk_io_write_map(writer_->munit, kdict, NULL, SIS_SDB_STYLE_MUL, 0, 1);
+    return 0;
+}
+
+///////////////////////////
+//  s_sis_disk_control
+///////////////////////////
+
+// 这个函数专门清理 SBD 扩展类型的数据
+// int sis_disk_control_remove_sdbs(const char *path_, const char *name_)
+// {
+//     // 暂时不支持
+//     // 1.检索目录下面所有相关文件 生成文件列表
+//     // 2.统计文件数据大小 和磁盘空闲大小 如果空闲足够 就继续 否则返回错误
+//     // 3.挨个锁住文件和索引，mv文件到日期命名的safe目录
+//     // 4.如果有文件移动失败 就等待继续 直到全部移动完成
+//     // -- 不直接删除 避免误操作 数据库文件存储已经做到所有不同组文件分离 -- //
+//     return 0;
+// }
+// 这里style_为以下7种类型 传入后得到相应文件名然后操作
+// #define  SIS_DISK_TYPE_LOG         1  // name.20210121.log
+// #define  SIS_DISK_TYPE_SNO         2  // name/2021/20210121.sno
+// #define  SIS_DISK_TYPE_SDB         3  // name/name.sdb
+// #define  SIS_DISK_TYPE_SDB_NOTS    4  // name/nots/name.sdb name.idx
+// #define  SIS_DISK_TYPE_SDB_YEAR    5  // name/year/2010.sdb
+// #define  SIS_DISK_TYPE_SDB_DATE    6  // name/date/2021/20210606.sdb
+// #define  SIS_DISK_TYPE_NET         7  // name/2021/20210121.net
+
+int sis_disk_control_remove(const char *path_, const char *name_, int style_, int idate_)
+{
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, path_, name_, idate_);
+    sis_disk_ctrl_remove(munit);
+    sis_disk_ctrl_destroy(munit);
+    return 1;
+}
+int sis_disk_control_exist(const char *path_, const char *name_, int style_, int idate_)
+{
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    sis_disk_ctrl_read_stop(munit);
+    sis_disk_ctrl_destroy(munit);
+    return (o == SIS_DISK_CMD_OK) ? 1 : 0;
+}
+
+// 移动文件至目标目录
+int sis_disk_control_move(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_)
+{
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(style_, srcpath_, name_, idate_);
+    sis_disk_ctrl_move(munit, dstpath_);
+    sis_disk_ctrl_destroy(munit);
+    return 1;
+}
+
+// 复制文件至目标目录
+int sis_disk_control_copy(const char *srcpath_, const char *name_, int style_, int idate_, const char *dstpath_)
+{
+    s_sis_disk_ctrl *unit = sis_disk_ctrl_create(style_, srcpath_, name_, idate_);
+    // char agofn[255];
+    // char newfn[512];
+    // for (int  i = 0; i < unit->work_fps->lists->count; i++)
+    // {
+    //     s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->work_fps->lists, i);
+    //     sis_file_getname(unit->fn, agofn, 255);
+
+    //     sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+    //     sis_file_copy(unit->fn, newfn);
+    // }
+    // if (unit->work_fps->main_head.index)
+    // {
+    //     for (int  i = 0; i < cls_->widx_fps->lists->count; i++)
+    //     {
+    //         s_sis_disk_files_unit *unit = (s_sis_disk_files_unit *)sis_pointer_list_get(cls_->widx_fps->lists, i);
+    //         sis_file_getname(unit->fn, agofn, 255);
+    //         sis_sprintf(newfn, 255, "%s/%s", path_, agofn);
+    //         sis_file_copy(unit->fn, newfn);
+    //     }
+    // }
+    sis_disk_ctrl_destroy(unit);
+    return 1;
+}
+int sis_disk_log_exist(const char *path_, const char *name_, int idate_)
+{
+    int isok = 0;
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_LOG, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    if (o == SIS_DISK_CMD_NO_IDX || o == SIS_DISK_CMD_OK)
+    {
+        isok = 1;
+    }
+    sis_disk_ctrl_destroy(munit);
+    return isok;
+}
+
+int sis_disk_sic_exist(const char *path_, const char *name_, int idate_)
+{
+    int isok = 0;
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SIC, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    if (o == SIS_DISK_CMD_OK)
+    {
+        isok = 1;
+    }
+    sis_disk_ctrl_destroy(munit);
+    return isok;
+}
+
+int sis_disk_sno_exist(const char *path_, const char *name_, int idate_)
+{
+    int isok = 0;
+    s_sis_disk_ctrl *munit = sis_disk_ctrl_create(SIS_DISK_TYPE_SNO, path_, name_, idate_);
+    int o = sis_disk_ctrl_read_start(munit);
+    if (o == SIS_DISK_CMD_OK)
+    {
+        isok = 1;
+    }
+    sis_disk_ctrl_destroy(munit);
+    return isok;
 }

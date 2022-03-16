@@ -1,4 +1,4 @@
-#ifndef _OS_TIME_H
+ï»¿#ifndef _OS_TIME_H
 #define _OS_TIME_H
 
 #include <time.h>
@@ -9,16 +9,24 @@
 
 void sis_localtime(struct tm *m, const time_t* t);
 
-//»ñÈ¡µ±Ç°ÃëÊı
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//è·å–å½“å‰ç§’æ•°
 time_t sis_time_get_now(); 
-//»ñµÃµ±Ç°ºÁÃëÊı
+//è·å¾—å½“å‰æ¯«ç§’æ•°
 unsigned long long sis_time_get_now_msec(); 
-//»ñµÃµ±Ç°Î¢ÃëÊı
+//è·å¾—å½“å‰å¾®ç§’æ•°
 unsigned long long sis_time_get_now_usec(); 
-// ¼ì²éttÓÃµ±Ç°Ê±¼äÌæ»»
+// æ£€æŸ¥ttç”¨å½“å‰æ—¶é—´æ›¿æ¢
 void sis_time_check(time_t tt_, struct tm *ptm_);
-//Ë¯Ãßµ¥Î»ºÁÃë
+//ç¡çœ å•ä½æ¯«ç§’
 void sis_sleep(int msec);
 
 void sis_time_format_now(char *out_, size_t olen);
+
+#ifdef __cplusplus
+}
+#endif
 #endif //_OS_TIME_H

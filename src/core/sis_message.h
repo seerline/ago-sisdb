@@ -6,12 +6,13 @@
 #include <sis_map.h>
 #include <sis_list.h>
 #include <sis_method.h>
+#include <sis_net.msg.h>
 
 #define SIS_MESSGE_TYPE_OWNER    0  // 自定义
 #define SIS_MESSGE_TYPE_INT      1
 #define SIS_MESSGE_TYPE_DOUBLE   2
 #define SIS_MESSGE_TYPE_SDS      3
-#define SIS_MESSGE_TYPE_STRLIST  4  // 字符串列表
+#define SIS_MESSGE_TYPE_BYTES    4
 #define SIS_MESSGE_TYPE_NODE     5
 #define SIS_MESSGE_TYPE_BOOL     6
 #define SIS_MESSGE_TYPE_METHOD   9
@@ -25,11 +26,9 @@ typedef struct s_sis_message_unit {
 /////////////////////////////////////////////////
 //  message
 /////////////////////////////////////////////////
-// 分开定义是为了解决key同民问题，支持同一个名字下各种类型数据
-typedef struct s_sis_message {
-    void              *parent;   // 信息的来源 - 主要用于回调函数的参数
-    s_sis_map_pointer *maps ;     // 映射表
-} s_sis_message;
+// #define s_sis_message s_sis_map_pointer
+// 直接利用 s_sis_net_message 仅仅对map进行操作
+#define s_sis_message s_sis_net_message
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +42,7 @@ void sis_message_del(s_sis_message *, const char*);
 void sis_message_set_int(s_sis_message *, const char*, int64);
 void sis_message_set_bool(s_sis_message *msg_, const char* key_, bool in_);
 void sis_message_set_double(s_sis_message *, const char*, double);
+// 需要保存的字符串用set_str 如果只是一次性传递 直接set
 void sis_message_set_str(s_sis_message *, const char*, char*, size_t );
 // void sis_message_set_strlist(s_sis_message *, const char*, s_sis_string_list *);
 void sis_message_set_method(s_sis_message *, const char*, sis_method_define *);

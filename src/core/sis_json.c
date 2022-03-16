@@ -4,6 +4,8 @@
 //////////////////////////////////////////////
 //   inside parse function define
 ///////////////////////////////////////////////
+// 如果引号中包含 "" 压缩时时必须加上 /" 字符串中不能包含单 /
+// 解析时严格要求 引号中的数据 如果包含子引号 必须是 /" 否则解析失败
 
 /* jump whitespace and cr/lf */
 static const char *skip(const char *in_)
@@ -203,7 +205,34 @@ static const char *_sis_parse_string(s_sis_json_handle *handle_, s_sis_json_node
 	}
 	return ptr;
 }
+// static const char *_sis_parse_bool(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *str_)
+// {
+// 	node_->type = SIS_JSON_BOOL;
+// 	const char *ptr = str_;
 
+// 	int len = 0;
+// 	while (*ptr && *ptr != ','&& *ptr != ' ')
+// 	{
+// 		ptr++;
+// 		len++;
+// 	}
+// 	node_->value = sis_strdup(str_, len);
+// 	return ptr;
+// }
+static const char *_sis_parse_info(s_sis_json_handle *handle_, int type, s_sis_json_node *node_, const char *str_)
+{
+	node_->type = type;
+	const char *ptr = str_;
+
+	int len = 0;
+	while (*ptr && *ptr != ','&& *ptr != ' ')
+	{
+		ptr++;
+		len++;
+	}
+	node_->value = sis_strdup(str_, len);
+	return ptr;
+}
 static const char *_sis_parse_number(s_sis_json_handle *handle_, s_sis_json_node *node_, const char *num_)
 {
 
@@ -211,7 +240,7 @@ static const char *_sis_parse_number(s_sis_json_handle *handle_, s_sis_json_node
 	int len = 0;
 
 	int isfloat = 0;
-	while (strchr("-.0123456789", (unsigned char)*ptr) && *ptr)
+	while (strchr("-.0123456789e", (unsigned char)*ptr) && *ptr)
 	{
 		if (*ptr == '.' && ptr[1] >= '0' && ptr[1] <= '9')
 		{
@@ -262,6 +291,7 @@ static const char *_sis_parse_array(s_sis_json_handle *handle_, s_sis_json_node 
 		if (!value_ || !*value_)
 		{
 			handle_->error = value_;
+			// exit(0);
 			return 0;
 		}
 		// value_ = skip(value_);
@@ -347,6 +377,14 @@ static const char *_sis_parse_value(s_sis_json_handle *handle_, s_sis_json_node 
 	{
 		return _sis_parse_object(handle_, node_, value_);
 	}
+	if (!sis_strncasecmp(value_, "false", 5)||!sis_strncasecmp(value_, "true", 4))
+	{
+		return _sis_parse_info(handle_, SIS_JSON_BOOL, node_, value_);
+	}
+	if (!sis_strncasecmp(value_, "NaN", 3))
+	{
+		return _sis_parse_info(handle_, SIS_JSON_DOUBLE, node_, value_);
+	}
 	return 0;
 }
 
@@ -373,8 +411,11 @@ bool _sis_json_parse(s_sis_json_handle *handle_, const char *content_)
 
 s_sis_json_handle *sis_json_open(const char *fn_)
 {
+	if (!fn_)
+	{
+		return NULL;
+	}
 	s_sis_json_handle *handle = NULL;
-
 	s_sis_sds buffer = sis_file_read_to_sds(fn_);
 	if (!buffer)
 	{
@@ -427,14 +468,6 @@ s_sis_json_handle *sis_json_load(const char *content_, size_t len_)
 	{
 		return NULL;
 	}
-	if (len_ <= 0)
-	{
-		len_ = strlen(content_);
-	}
-	if (len_ <= 0)
-	{
-		return NULL;
-	}
 	struct s_sis_json_handle *handle = (s_sis_json_handle *)sis_malloc(sizeof(s_sis_json_handle));
 	memset(handle, 0, sizeof(s_sis_json_handle));
 
@@ -469,6 +502,10 @@ void sis_json_save(s_sis_json_node *node_, const char *fn_)
 	size_t len;
 	char *buffer = sis_json_output(node_, &len);
 	sis_file_write(fp, buffer, len);
+	if (buffer[len] != '\r')
+	{
+		sis_file_write(fp, "\r", 1);
+	}
 	sis_file_close(fp);
 	sis_free(buffer);
 }
@@ -643,6 +680,32 @@ void sis_json_object_set_int(s_sis_json_node *node_, const char *key_, int64 val
 		sis_lldtoa(value_, c->value, 32, 10);
 	}
 }
+void sis_json_object_add_bool(s_sis_json_node *node_, const char *key_, bool value_)
+{
+	// _sis_json_check_write(h_);
+	s_sis_json_node *c = sis_json_create_node();
+	if (c)
+	{
+		c->type = SIS_JSON_BOOL;
+		c->key = sis_strdup(key_, sis_strlen(key_));
+		c->value = value_ ? sis_strdup("true", 4) : sis_strdup("false", 5); 
+		sis_json_array_add_node(node_, c);
+	}
+}
+void sis_json_object_set_bool(s_sis_json_node *node_, const char *key_, bool value_)
+{
+	// _sis_json_check_write(h_);
+	s_sis_json_node *c = sis_json_cmp_child_node(node_, key_);
+	if (!c)
+	{
+		sis_json_object_add_bool(node_, key_, value_);
+	}
+	else
+	{
+		sis_free(c->value);
+		c->value = value_ ? sis_strdup("true", 4) : sis_strdup("false", 5); 
+	}
+}
 void sis_json_object_add_uint(s_sis_json_node *node_, const char *key_, uint64 value_)
 {
 	// _sis_json_check_write(h_);
@@ -705,8 +768,9 @@ void sis_json_object_add_string(s_sis_json_node *node_, const char *key_, const 
 	s_sis_json_node *c = sis_json_create_node();
 	if (c)
 	{
+		// printf("node:%p\n", c);
 		c->type = SIS_JSON_STRING;
-		c->key = sis_strdup(key_, 0);
+		c->key = sis_strdup(key_, sis_strlen(key_));
 		c->value = sis_strdup(value_, len_);
 		sis_json_array_add_node(node_, c);
 	}
@@ -853,6 +917,7 @@ s_sis_json_node *sis_json_create_node(void)
 {
 	s_sis_json_node *node = (s_sis_json_node *)sis_malloc(sizeof(s_sis_json_node));
 	memset(node, 0, sizeof(s_sis_json_node));
+	// printf("node:%p\n", node);
 	return node;
 }
 
@@ -867,15 +932,17 @@ void sis_json_delete_node(s_sis_json_node *node_)
 		node_->prev->next = node_->next;
 	}
 	if (node_->next)
-	{
-		
+	{	
 		node_->next->prev = node_->prev;
 	}	
 	if (node_->father)
 	{
 		// printf("-%p %p %p---\n",node_->father,node_->father->child,node_->next);
 		node_->father->child = node_->next;
-		if(node_->next) {node_->next->father = node_->father;}
+		if(node_->next)
+		{
+			node_->next->father = node_->father;
+		}
 	}
 	if (node_->child)
 	{
@@ -896,7 +963,7 @@ void sis_json_delete_node(s_sis_json_node *node_)
 	if (node_->value)
 	{
 		sis_free(node_->value);
-		node_->key = NULL;
+		node_->value = NULL;
 	}
 	sis_free(node_);
 }
@@ -908,9 +975,12 @@ void sis_json_delete_node(s_sis_json_node *node_)
 static char *_sis_json_to_value(s_sis_json_node *node_, int depth_, int fmt_);
 static char *_sis_json_to_number(s_sis_json_node *node_)
 {
-	return sis_strdup(node_->value, 0);
+	return sis_strdup(node_->value, sis_strlen(node_->value));
 }
-
+static char *_sis_json_to_bool(s_sis_json_node *node_)
+{
+	return sis_strdup(node_->value, sis_strlen(node_->value));
+}
 // \n, new line，另起一行
 // \t, tab，表格
 // \b, word boundary，词边界
@@ -960,6 +1030,7 @@ static char *_sis_json_to_string(const char *str_)
 		}
 		else
 		{
+			// 注释掉 引号前不会再添加'\'
 			*ptr2++ = '\\';
 			switch (token = *ptr++)
 			{
@@ -1298,6 +1369,9 @@ char *_sis_json_to_value(s_sis_json_node *node_, int depth_, int fmt_)
 	case SIS_JSON_INT:
 		out = _sis_json_to_number(node_);
 		break;
+	case SIS_JSON_BOOL:
+		out = _sis_json_to_bool(node_);
+		break;
 	case SIS_JSON_DOUBLE:
 		out = _sis_json_to_number(node_);
 		break;
@@ -1356,9 +1430,9 @@ void sis_json_printf(s_sis_json_node *node_, int *i)
 			first = first->next;
 		}
 	}
-	// printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_,
-	// 		node_->child, node_->prev, node_->next,
-	// 		node_->key, node_->value);
+	printf("%d| %d| %p,%p,%p,%p| k=%s v=%s \n", *i, node_->type, node_,
+			node_->child, node_->prev, node_->next,
+			node_->key, node_->value);
 }
 
 //////////////////////////////////////////////
@@ -1374,10 +1448,19 @@ int64 sis_json_get_int(s_sis_json_node *root_, const char *key_, int64 defaultva
 	}
 	return defaultvalue_;
 }
+bool sis_json_get_valid(s_sis_json_node *root_, const char *key_)
+{
+	s_sis_json_node *c = sis_json_find_node(root_, key_);
+	if (c && sis_strcasecmp(c->value, "NaN") && sis_strcasecmp(c->value, "nil"))
+	{
+		return true;
+	}
+	return false;
+}
 double sis_json_get_double(s_sis_json_node *root_, const char *key_, double defaultvalue_)
 {
 	s_sis_json_node *c = sis_json_find_node(root_, key_);
-	if (c)
+	if (c && sis_strcasecmp(c->value, "NaN"))
 	{
 		return atof(c->value);
 	}
@@ -1468,6 +1551,10 @@ s_sis_json_node *sis_json_last_node(s_sis_json_node *node_)
 
 s_sis_json_node *sis_json_cmp_child_node(s_sis_json_node *object_, const char *key_)
 {
+	if (!object_ || !key_)
+	{
+		return NULL;
+	}
 	s_sis_json_node *c = object_->child;
 	while (c && sis_strcasecmp(c->key, key_))
 	{
@@ -1517,6 +1604,118 @@ void sis_json_show(s_sis_json_node *node_, int *i)
 			node_->key, node_->value);
 }
 
+// 寻到匹配的{} 忽略引号中的 {}
+size_t sis_json_get_match_sign(s_sis_memory *m_)
+{
+	if (!m_)
+	{
+		return 0;
+	}
+	char *in = sis_memory(m_);
+	size_t move = 0;
+	int note = 0;
+	int sign = 0;
+	while ((m_->offset + move) < m_->size)
+	{
+		if (note == 1)
+		{
+			if (in && *in && (unsigned char)*in == '"')
+			{
+				note = 0; goto next;
+			}
+		}
+		else
+		{
+			if (in && *in && (unsigned char)*in == '"')
+			{
+				note = 1;  goto next;
+			}
+			if (sign == 0)
+			{
+				if (in && *in && (unsigned char)*in == '{')
+				{
+					sign = 1; goto next;
+				}
+			}
+			else
+			{
+				if (in && *in && (unsigned char)*in == '{')
+				{
+					sign ++; goto next;
+				}
+				if (in && *in && (unsigned char)*in == '}')
+				{
+					sign --; 
+					if (sign == 0)
+					{
+						return move + 1;
+					}
+					goto next;
+				}
+			}
+		}
+next:
+		in++;
+		move++;
+	}
+	return 0;
+}
+int sis_json_sub(const char *fn_, void *source_, cb_sis_sub_json *cb_)
+{
+	s_sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);
+	if (!fp || !cb_)
+	{
+        LOG(5)("open json file fail [%s].\n", fn_); 
+		return -1;
+	}
+	sis_file_seek(fp, 0, SEEK_SET);
+	s_sis_memory *mfile = sis_memory_create();
+	while (1)
+	{
+		size_t bytes = sis_memory_readfile(mfile, fp, SIS_MEMORY_SIZE);
+		if (bytes <= 0)
+		{
+			break;
+		}
+		// printf("----\n");
+		size_t offset = sis_json_get_match_sign(mfile);
+		// 偏移位置包括回车字符 0 表示没有回车符号，需要继续读
+		while (offset)
+		{
+			s_sis_json_handle *handle = sis_json_load(sis_memory(mfile), offset);
+			// sis_out_binary("---",sis_memory(mfile), offset);
+			if (handle)
+			{
+				cb_(source_, handle->node);
+				sis_json_close(handle);
+			}
+			sis_memory_move(mfile, offset);
+			offset = sis_json_get_match_sign(mfile);
+		}
+	}
+	sis_memory_destroy(mfile);     
+    sis_file_close(fp);
+	return 0;
+}
+#if 0
+static int cb_json_sub(void *source, s_sis_json_node *node)
+{
+	size_t len = 0;
+	char *str = sis_json_output_zip(node, &len);
+	printf("[%zu]  |%s|\n", len, str);
+	sis_free(str);
+	return 0;
+}
+int main()
+{
+	// const char *fn = "../bin/sisdb.values.conf";
+	// const char *fn = "market.conf";
+	const char *fn = "../sisdb/test/sisa.json";
+
+	sis_json_sub(fn, NULL, cb_json_sub);
+
+}
+#endif
 #if 0
 
 int main1()
@@ -1571,7 +1770,10 @@ int main()
 {
 	safe_memory_start();
 	// const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":12345}}\"}";
-	const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":[\"d1\",\"d2\",33]}}\",\"key2\":[\"d1\\\",\"d2\",33]}";
+	// 下面字符串合法
+	const char *command = "{\"key1\":\"{\\\"m1\\\":1,\\\"m2\\\":{\\\"k1\\\":[\\\"d1\\\",\\\"d2\\\",33]}}\",\"key2\":true,\"key3\":[\"d1\",\"d2\",33]}";
+	// 下面字符串不合法
+	// const char *command = "{\"key1\":\"{\"m1\":1,\"m2\":{\"k1\":[\"d1\",\"d2\",33]}}\",\"key2\":true,\"key3\":[\"d1\",\"d2\",33]}";
 	s_sis_json_handle *h = sis_json_load(command,strlen(command));
 	if (!h) {return -1;}
 
@@ -1591,15 +1793,21 @@ int main()
 
 		int iii=1;
 		sis_json_show(h->node,&iii);
-
+		size_t len1;
+		char *str1 = sis_json_output_zip(h->node, &len1);
+		printf("out1: %s\n", str1);
+		sis_free(str1);
 	}
+
 	sis_free(str);
 	sis_json_close(h);
 	safe_memory_stop();
 	return 0;
 
 }
-int main2()
+#endif
+#if 0
+int main()
 {
 	safe_memory_start();
 	//const char *command = "{\"format\":\"array\",\"count\":20,\"range\":{\"start\":-100,\"count\":1}}";
@@ -1639,32 +1847,29 @@ int main2()
 	int iii=1;
 	sis_json_show(h->node,&iii);
 	
-	// s_sis_json_node *jone = sis_json_create_array();
-	// s_sis_json_node *jval = NULL;
-
-	// 	jval = sis_json_create_array();
-	// 	sis_json_array_add_string(jval, "111", 3);
-	// 	sis_json_array_add_string(jval, "222", 3);
-	// 	sis_json_array_add_node(jone, jval);
-
-	// sis_json_object_add_node(h->node, "values", jone);
+	s_sis_json_node *jone = sis_json_create_object();
+	sis_json_object_add_bool(jone, "status", 1);
+	sis_json_object_add_bool(jone, "status1", 0);
+	sis_json_object_add_node(h->node, "values", jone);
 
 	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"format"));
 	// sis_json_delete_node(sis_json_cmp_child_node(h->node,"count"));
 	// printf("----------------\n");
-	// sis_json_show(h->node,&iii);
+	sis_json_show(h->node,&iii);
 
 	size_t len = 0;
 	char *str = sis_json_output(h->node, &len);
 	printf("%p [%ld]\n", h->node, len);
 	printf("|%s|\n",str);
-	sis_free(str);
+	sis_free(str); 
 
 	str = (char *)sis_json_get_str(h->node, "argv");
 	printf("argv : %s \n",str);
 
 	str = sis_json_output_zip(h->node, &len);
 	printf("|%s|\n",str);	
+
+
 	sis_free(str);
 
 	s_sis_json_node *no = sis_json_clone(h->node, 1);

@@ -5,14 +5,16 @@
 #include <sis_core.h>
 #include <sis_file.h>
 #include <sis_str.h>
+#include <sis_memory.h>
 
 #define SIS_JSON_NULL    0
 #define SIS_JSON_ROOT    1 // 根节点
 #define SIS_JSON_INT     2
-#define SIS_JSON_DOUBLE  3
-#define SIS_JSON_STRING  4
-#define SIS_JSON_ARRAY   5
-#define SIS_JSON_OBJECT  6
+#define SIS_JSON_BOOL    3
+#define SIS_JSON_DOUBLE  4
+#define SIS_JSON_STRING  5
+#define SIS_JSON_ARRAY   6
+#define SIS_JSON_OBJECT  7
 
 typedef struct s_sis_json_node
 {
@@ -31,6 +33,8 @@ typedef struct s_sis_json_handle
 	char  *content;    // json内容
 	struct s_sis_json_node *node;
 } s_sis_json_handle; //专门提供给读json的快速结构体
+
+typedef int (cb_sis_sub_json)(void *, s_sis_json_node *);
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,6 +73,9 @@ void sis_json_object_add_node(s_sis_json_node *source_, const char *key_, s_sis_
 // 修改到child，如果没有发现key_,就增加一个
 void sis_json_object_add_int(s_sis_json_node *node_, const char *key_, int64 value_);
 void sis_json_object_set_int(s_sis_json_node *node_, const char *key_, int64 value_);
+
+void sis_json_object_add_bool(s_sis_json_node *node_, const char *key_, bool value_);
+void sis_json_object_set_bool(s_sis_json_node *node_, const char *key_, bool value_);
 
 void sis_json_object_add_uint(s_sis_json_node *node_, const char *key_, uint64 value_);
 void sis_json_object_set_uint(s_sis_json_node *node_, const char *key_, uint64 value_);
@@ -111,6 +118,7 @@ char *sis_json_output_zip(s_sis_json_node *node_, size_t *len_);
 
 void sis_json_printf(s_sis_json_node *node_, int *i);
 //======== read option =============//
+bool sis_json_get_valid(s_sis_json_node *root_, const char *key_);
 
 int64 sis_json_get_int(s_sis_json_node *root_, const char *key_, int64 defaultvalue_);
 double sis_json_get_double(s_sis_json_node *root_, const char *key_, double defaultvalue_);

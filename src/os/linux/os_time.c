@@ -56,5 +56,6 @@ void sis_time_format_now(char *out_, size_t olen)
 	time_t now = sis_time_get_now(); 
 	struct tm ptm = {0};
 	sis_localtime(&ptm, &now);
-	strftime(out_, olen, "[%y-%m-%d %H:%M:%S]", &ptm);
+	// strftime(out_, olen, "[%y-%m-%d %H:%M:%S]", &ptm);
+	strftime(out_, olen, "%y%m%d-%H%M%S", &ptm);
 }

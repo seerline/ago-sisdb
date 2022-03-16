@@ -525,7 +525,7 @@ void sis_conf_close(s_sis_conf_handle *handle_)
 
 s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 {
-	s_sis_conf_handle *handle = NULL;
+	s_sis_conf_handle *handle = SIS_MALLOC(s_sis_conf_handle, handle);
 	// printf("sis_conf_load : %s\n", content_);
 	char *content = (char *)sis_malloc(len_ + 1);
 	memmove(content, content_, len_);
@@ -533,11 +533,9 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_)
 	const char *value = _sis_conf_skip(handle, content);
 	if (value && *value && *value == '{')
 	{
-		handle = (s_sis_conf_handle *)sis_malloc(sizeof(s_sis_conf_handle));
-		memset(handle, 0, sizeof(s_sis_conf_handle));
 		s_sis_json_node *node = sis_json_create_node();
 		handle->node = node;
-		value = _sis_conf_skip(handle,_sis_parse_value(handle, node, value));
+		value = _sis_conf_skip(handle, _sis_parse_value(handle, node, value));
 	}
 	sis_free(content);
 	// size_t i;
@@ -563,6 +561,100 @@ s_sis_sds sis_conf_file_to_json_sds(const char *fn_)
 	return NULL;
 }
 
+// 寻到匹配的{}
+size_t sis_conf_get_match_sign(s_sis_memory *m_)
+{
+	if (!m_)
+	{
+		return 0;
+	}
+	char *in = sis_memory(m_);
+	size_t move = 0;
+	int note = 0;
+	int sign = 0;
+	while ((m_->offset + move) < m_->size)
+	{
+		if (note)
+		{
+			if ((unsigned char)*in == '\n' || (unsigned char)*in == '\r')
+			{
+				note = 0; goto next;
+			}
+		}
+		else
+		{
+			if (in && *in && (unsigned char)*in == SIS_CONF_NOTE_SIGN)
+			{
+				note = 1;  goto next;
+			}
+			if (sign == 0)
+			{
+				if (in && *in && (unsigned char)*in == '{')
+				{
+					sign = 1; goto next;
+				}
+			}
+			else
+			{
+				if (in && *in && (unsigned char)*in == '{')
+				{
+					sign ++; goto next;
+				}
+				if (in && *in && (unsigned char)*in == '}')
+				{
+					sign --; 
+					if (sign == 0)
+					{
+						return move + 1;
+					}
+					goto next;
+				}
+			}
+		}
+next:
+		in++;
+		move++;
+	}
+	return 0;
+}
+int sis_conf_sub(const char *fn_, void *source_, cb_sis_sub_json *cb_)
+{
+	s_sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);
+	if (!fp || !cb_)
+	{
+        LOG(5)("open conf file fail [%s].\n", fn_); 
+		return -1;
+	}
+	sis_file_seek(fp, 0, SEEK_SET);
+	s_sis_memory *mfile = sis_memory_create();
+	while (1)
+	{
+		size_t bytes = sis_memory_readfile(mfile, fp, SIS_MEMORY_SIZE);
+		if (bytes <= 0)
+		{
+			break;
+		}
+		// printf("----\n");
+		size_t offset = sis_conf_get_match_sign(mfile);
+		// 偏移位置包括回车字符 0 表示没有回车符号，需要继续读
+		while (offset)
+		{
+			s_sis_conf_handle *handle = sis_conf_load(sis_memory(mfile), offset);
+			// sis_out_binary("---",sis_memory(mfile), offset);
+			if (handle)
+			{
+				cb_(source_, handle->node);
+				sis_conf_close(handle);
+			}
+			sis_memory_move(mfile, offset);
+			offset = sis_conf_get_match_sign(mfile);
+		}
+	}
+	sis_memory_destroy(mfile);     
+    sis_file_close(fp);
+	return 0;
+}
+
 #if 0
 void json_printf(s_sis_json_node *node_, int *i)
 {
@@ -584,11 +676,29 @@ void json_printf(s_sis_json_node *node_, int *i)
 			node_->child, node_->prev, node_->next,
 			node_->key, node_->value);
 }
-
+static int cb_json_sub(void *source, s_sis_json_node *node)
+{
+	size_t len = 0;
+	char *str = sis_json_output_zip(node, &len);
+	printf("[%zu]  |%s|\n", len, str);
+	sis_free(str);
+	return 0;
+}
 int main()
 {
 	// const char *fn = "../bin/sisdb.values.conf";
-	const char *fn = "market.conf";
+	const char *fn = "init.conf";
+	// const char *fn = "../sisdb/test/sisa.conf";
+
+	sis_conf_sub(fn, NULL, cb_json_sub);
+
+}
+
+int main1()
+{
+	// const char *fn = "../bin/sisdb.values.conf";
+	// const char *fn = "market.conf";
+	const char *fn = "../sisdb/test/test.conf";
 	s_sis_conf_handle *h = sis_conf_open(fn);
 	if (!h) return -1;
 	printf("====================\n");
@@ -610,7 +720,7 @@ int main()
 
 	size_t len = 0;
 	char *str = sis_conf_to_json(h->node, &len);
-	printf("[%lld]  |%s|\n", len, str);
+	printf("[%zu]  |%s|\n", len, str);
 	sis_free(str);
 	sis_conf_close(h);
 

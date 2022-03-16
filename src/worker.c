@@ -10,8 +10,12 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 {
 	if (task_->work_mode == SIS_WORK_MODE_ONCE)
 	{
-        sis_wait_thread_close(task_->work_thread);
-		return true;
+		if (!task_->isfirst)
+		{
+			task_->isfirst = true;
+			return true;
+		}	
+        sis_wait_thread_close(task_->work_thread);        
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_NOTICE)
 	{
@@ -29,11 +33,6 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
 	{
-		if (!task_->isfirst)
-		{
-			task_->isfirst = true;
-			return true;
-		}	
 		// printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
 		int o = sis_wait_thread_wait(task_->work_thread, task_->work_gap.delay);
 		// printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
@@ -83,7 +82,7 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 
         }
 	}
-    sis_sleep(100);
+    sis_sleep(300);
 	return false;
 }
 s_sis_work_thread *sis_work_thread_create()
@@ -181,6 +180,20 @@ s_sis_sds _sis_worker_get_workname(s_sis_worker *worker_, const char *workname_)
     }
     return workername;
 }
+// s_sis_sds _sis_worker_get_workname(s_sis_worker *worker_, const char *workname_)
+// {
+//     s_sis_sds workername = sis_sdsempty();
+//     if (worker_)
+//     {
+//         workername = sis_sdscatfmt(workername, "%S",  worker_->workername);
+//         workername = sis_sdscatfmt(workername, ".%s", workname_);
+//     }
+//     else
+//     {
+//         workername = sis_sdscat(workername, workname_);
+//     }
+//     return workername;
+// }
 
 bool _sis_worker_init(s_sis_worker *worker_, s_sis_json_node *node_)
 {
@@ -257,46 +270,54 @@ void _sis_load_work_time(s_sis_worker *worker_, s_sis_json_node *node_)
 /////////////////////////////////
 //  worker
 /////////////////////////////////
-
-s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
+s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_, s_sis_json_node *node_)
 {
-    if (!node_)
+    if (!name_ || sis_str_substr_nums(name_, sis_strlen(name_), '.') > 1)
     {
+        LOG(3)("workname [%s] cannot '.' !\n", name_ ? name_ : "");  
         return NULL;
     }
-    s_sis_worker *worker = SIS_MALLOC(s_sis_worker, worker);
-
-    worker->father = father_; 
-
-    worker->status = SIS_WORK_INIT_NONE;
-
-    s_sis_json_node *classname_node = sis_json_cmp_child_node(node_, "classname");
-    if (classname_node)
+    s_sis_json_node *node = NULL;
+    if (!node_)
     {
-        worker->classname = sis_sdsnew(sis_json_get_str(node_, "classname"));
+        node = sis_json_create_object();
+        sis_json_object_add_string(node, "classname", name_, sis_strlen(name_));
     }
     else
     {
-        worker->classname = sis_sdsnew(node_->key);
+        node = node_;
     }
-    if (sis_str_substr_nums(node_->key, '.') > 1)
+    // size_t iii = 1;
+    // printf("%s\n", sis_json_output(node, &iii));
+    s_sis_worker *worker = SIS_MALLOC(s_sis_worker, worker);
+    worker->father = father_; 
+    worker->status = SIS_WORK_INIT_NONE;
+    s_sis_json_node *classname_node = sis_json_cmp_child_node(node, "classname");
+    if (classname_node)
     {
-        LOG(3)("workname [%s] cannot '.' !\n", node_->key);  
-        sis_worker_destroy(worker);
-        return NULL;
+        worker->classname = sis_sdsnew(sis_json_get_str(node, "classname"));
+    }
+    else
+    {
+        worker->classname = sis_sdsnew(name_);
     }
     // 需要遍历前导字符
-    worker->workername = _sis_worker_get_workname(worker, node_->key);
+    worker->workername = _sis_worker_get_workname(worker, name_);
 
     // 必须在 _sis_worker_init 之前初始化workers
     worker->workers = sis_map_pointer_create();
 
     // 调用公共初始化配置
-    if (!_sis_worker_init(worker, node_))
+    if (!node->key)
+    {
+        node->key = sis_strdup(name_, sis_strlen(name_));
+    }
+    if (!_sis_worker_init(worker, node))
     {
         LOG(3)("init worker [%s] error.\n", worker->classname);
         sis_worker_destroy(worker);
-        return NULL;
+        worker = NULL;
+        goto work_exit;
     }
     worker->status |= SIS_WORK_INIT_METHOD;
     // 如果有 working 表示有独立线程需要启动
@@ -304,7 +325,7 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
     {
         worker->service_thread = sis_work_thread_create();
         // 设置工作模式
-        _sis_load_work_time(worker, node_);
+        _sis_load_work_time(worker, node);
 
         if (worker->service_thread->work_mode != SIS_WORK_MODE_NONE)
         {
@@ -313,7 +334,8 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
             {
                 LOG(3)("can't start service_thread\n");
                 sis_worker_destroy(worker);
-                return NULL;
+                worker = NULL;
+                goto work_exit;
             }
         }
     }
@@ -337,17 +359,46 @@ s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
     {
         // 不能够被检索的工作线程，由用户自行管理
     }
-    LOG(5)("worker [%s] start. workname = %s status: %d sub-workers = %d \n", 
+    LOG(5)("worker start. [%s] workname = %s status: %d sub-workers = %d \n", 
         worker->classname, worker->workername, 
         worker->status, (int)sis_map_pointer_getsize(worker->workers));
+work_exit:
+    if (!node_)
+    {
+        sis_json_delete_node(node);
+    }
 	return worker;
+}
+
+s_sis_worker *sis_worker_create_of_conf(s_sis_worker *father_, const char *name_, const char *config_)
+{
+    s_sis_worker *worker = NULL;
+    s_sis_conf_handle *handle = sis_conf_load(config_, sis_strlen(config_));
+    if (handle)
+    {
+        worker = sis_worker_create_of_name(father_, name_, handle->node);
+        sis_conf_close(handle);
+    }
+    else
+    {
+        worker = sis_worker_create_of_name(father_, name_, NULL);
+    }
+    return worker;
+}
+s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
+{
+    if (!node_)
+    {
+        return NULL;
+    }
+    return sis_worker_create_of_name(father_, node_->key, node_);
 }
 
 void sis_worker_destroy(void *worker_)
 {   
     s_sis_worker *worker =(s_sis_worker *)worker_;
 
-    LOG(5)("worker [%s] kill.\n", worker->workername);
+    LOG(5)("worker kill. [%s] %s \n", worker->classname, worker->workername);
     // 应该先释放 notice 再释放其他的
     worker->status = SIS_WORK_INIT_NONE;
     if (worker->service_thread)
@@ -463,18 +514,20 @@ s_sis_worker *sis_worker_get(s_sis_worker *worker_, const char *workname_)
         s_sis_server *server = sis_get_server();
         return sis_map_pointer_get(server->workers, workname_);
     }
-    // else
+    else
     {
         s_sis_dict_entry *de;
         s_sis_dict_iter *di = sis_dict_get_iter(worker_->workers);
         while ((de = sis_dict_next(di)) != NULL)
         {
             s_sis_worker *work = (s_sis_worker *)sis_dict_getval(de);
-            printf("---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
+            printf("get ---- %s : [%s] %s\n", work->classname, (char *)sis_dict_getkey(de), work->workername);
         }
         sis_dict_iter_free(di);
 
-        s_sis_sds wname = _sis_worker_get_workname(worker_, workname_);
+        s_sis_sds wname = sis_sdsdup(worker_->workername);
+        wname = sis_sdscatfmt(wname, ".%s", workname_);
+        printf("get worker : %s %s %s %s\n", worker_->classname, worker_->workername, wname, workname_);
         s_sis_worker *worker = sis_map_pointer_find(worker_->workers, wname);
         sis_sdsfree(wname);
         return worker;
@@ -491,7 +544,7 @@ s_sis_worker *sis_worker_search(const char *workname_)
     {
         return NULL;
     }
-    int count = sis_str_substr_nums(workname_, '.') - 1;
+    int count = sis_str_substr_nums(workname_, sis_strlen(workname_), '.') - 1;
     int index = 1;
     while(count > 0)
     {

@@ -1,35 +1,4 @@
-﻿/* SDSLib 2.0 -- A C dynamic strings library
- *
- * Copyright (c) 2006-2015, Salvatore Sanfilippo <antirez at gmail dot com>
- * Copyright (c) 2015, Oran Agra
- * Copyright (c) 2015, Redis Labs, Inc
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of Redis nor the names of its contributors may be used
- *     to endorse or promote products derived from this software without
- *     specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
+﻿
 #ifndef _SIS_SDS_H
 #define _SIS_SDS_H
 
@@ -42,9 +11,17 @@
 #include <sis_os.h>
 
 
-typedef char * sds;
+typedef char * s_sis_sds;
 
 #pragma pack(push,1)
+
+typedef struct s_sis_sds_save
+{
+	s_sis_sds     current_v;    // 当前配置 优先级最高
+	s_sis_sds     father_v;     // 上级信息
+	s_sis_sds     default_v;    // 默认配置 优先级最低
+} s_sis_sds_save;
+
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
  * However is here to document the layout of type 5 SDS strings. */
 struct sdshdr5 {
@@ -93,7 +70,7 @@ struct sdshdr64 {
 extern "C" {
 #endif
 
-static inline size_t sdslen(const sds s) {
+static inline size_t sis_sdslen(const s_sis_sds s) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -110,7 +87,7 @@ static inline size_t sdslen(const sds s) {
     return 0;
 }
 
-static inline size_t sdsavail(const sds s) {
+static inline size_t sis_sdsavail(const s_sis_sds s) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5: {
@@ -136,7 +113,7 @@ static inline size_t sdsavail(const sds s) {
     return 0;
 }
 
-static inline void sdssetlen(sds s, size_t newlen) {
+static inline void sis_sdssetlen(s_sis_sds s, size_t newlen) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -160,7 +137,7 @@ static inline void sdssetlen(sds s, size_t newlen) {
     }
 }
 
-static inline void sdsinclen(sds s, size_t inc) {
+static inline void sis_sdsinclen(s_sis_sds s, size_t inc) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -185,8 +162,8 @@ static inline void sdsinclen(sds s, size_t inc) {
     }
 }
 
-/* sdsalloc() = sdsavail() + sdslen() */
-static inline size_t sdsalloc(const sds s) {
+/* sis_sdsalloc() = sis_sdsavail() + sis_sdslen() */
+static inline size_t sis_sdsalloc(const s_sis_sds s) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -203,7 +180,7 @@ static inline size_t sdsalloc(const sds s) {
     return 0;
 }
 
-static inline void sdssetalloc(sds s, size_t newlen) {
+static inline void sis_sdssetalloc(s_sis_sds s, size_t newlen) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -224,90 +201,72 @@ static inline void sdssetalloc(sds s, size_t newlen) {
     }
 }
 
-sds sdsnewlen(const void *init, size_t initlen);
-sds sdsnew(const char *init);
-sds sdsempty(void);
-sds sdsdup(const sds s);
-void sdsfree(sds s);
-sds sdsgrowzero(sds s, size_t len);
-sds sdscatlen(sds s, const void *t, size_t len);
-sds sdscat(sds s, const char *t);
-sds sdscatsds(sds s, const sds t);
-sds sdscpylen(sds s, const char *t, size_t len);
-sds sdscpy(sds s, const char *t);
+#define SIS_SDS_SIZE(s) (s ? sis_sdslen(s) : 0)
 
-sds sdscatvprintf(sds s, const char *fmt, va_list ap);
+s_sis_sds sis_sdsnewlen(const void *init, size_t initlen);
+s_sis_sds sis_sdsnew(const char *init);
+s_sis_sds sis_sdsempty(void);
+s_sis_sds sis_sdsdup(const s_sis_sds s);
+void *sis_sdspos(void *);
+void sis_sdsfree(s_sis_sds s);
+
+/* #define  sis_sdsfree(s)   { \
+//     if (s) {  printf("%s %lld %p\n", __func__, (int64)sis_thread_self(), s);\
+//     sis_free(sis_sdspos(s)); }}
+*/
+s_sis_sds sis_sdsgrowzero(s_sis_sds s, size_t len);
+s_sis_sds sis_sdscatlen(s_sis_sds s, const void *t, size_t len);
+s_sis_sds sis_sdscat(s_sis_sds s, const char *t);
+s_sis_sds sis_sdscatsds(s_sis_sds s, const s_sis_sds t);
+s_sis_sds sis_sdscpylen(s_sis_sds s, const char *t, size_t len);
+s_sis_sds sis_sdscpy(s_sis_sds s, const char *t);
+
+s_sis_sds sis_sdscatvprintf(s_sis_sds s, const char *fmt, va_list ap);
 #ifdef __GNUC__
-sds sdscatprintf(sds s, const char *fmt, ...)
+s_sis_sds sis_sdscatprintf(s_sis_sds s, const char *fmt, ...)
     __attribute__((format(printf, 2, 3)));
 #else
-sds sdscatprintf(sds s, const char *fmt, ...);
+s_sis_sds sis_sdscatprintf(s_sis_sds s, const char *fmt, ...);
 #endif
 
-sds sdscatfmt(sds s, char const *fmt, ...);
-sds sdstrim(sds s, const char *cset);
-void sdsrange(sds s, ssize_t start, ssize_t end);
-void sdsupdatelen(sds s);
-void sdsclear(sds s);
-int sdscmp(const sds s1, const sds s2);
+s_sis_sds sis_sdscatfmt(s_sis_sds s, char const *fmt, ...);
+s_sis_sds sis_sdstrim(s_sis_sds s, const char *cset);
+void sis_sdsrange(s_sis_sds s, ssize_t start, ssize_t end);
+void sis_sdsupdatelen(s_sis_sds s);
+void sis_sdsclear(s_sis_sds s);
+int sis_sdscmp(const s_sis_sds s1, const s_sis_sds s2);
 #ifndef WARN_NOUSE_REALLOC
-sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count);
-void sdsfreesplitres(sds *tokens, int count);
-sds *sdssplitargs(const char *line, int *argc);
+s_sis_sds *sis_sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count);
+void sis_sdsfreesplitres(s_sis_sds *tokens, int count);
+s_sis_sds *sis_sdssplitargs(const char *line, int *argc);
 #endif
-void sdstolower(sds s);
-void sdstoupper(sds s);
-sds sdsfromlonglong(long long value);
-sds sdscatrepr(sds s, const char *p, size_t len);
-sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen);
-sds sdsjoin(char **argv, int argc, char *sep);
-sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
+void sis_sdstolower(s_sis_sds s);
+void sis_sdstoupper(s_sis_sds s);
+s_sis_sds sis_sdsnewlong(long long value);
+s_sis_sds sis_sdscatrepr(s_sis_sds s, const char *p, size_t len);
+s_sis_sds sis_sdsmapchars(s_sis_sds s, const char *from, const char *to, size_t setlen);
+s_sis_sds sis_sdsjoin(char **argv, int argc, char *sep);
+s_sis_sds sis_sdsjoinsds(s_sis_sds *argv, int argc, const char *sep, size_t seplen);
 
 /* Low level functions exposed to the user API */
-sds sdsMakeRoomFor(sds s, size_t addlen);
-void sdsIncrLen(sds s, ssize_t incr);
-sds sdsRemoveFreeSpace(sds s);
-size_t sdsAllocSize(sds s);
-void *sdsAllocPtr(sds s);
+s_sis_sds sis_sds_addlen(s_sis_sds s, size_t addlen);
+void sis_sds_incrlen(s_sis_sds s, ssize_t incr);
+s_sis_sds sis_sds_remove_freespace(s_sis_sds s);
+size_t sis_sds_allocsize(s_sis_sds s);
+void *sis_sds_allocptr(s_sis_sds s);
 
-/* Export the allocator used by SDS to the program using SDS.
- * Sometimes the program SDS is linked to, may use a different set of
- * allocators, but may want to allocate or free things that SDS will
- * respectively free or allocate. */
-#ifndef WARN_NOUSE_REALLOC
-void *sds_malloc(size_t size);
-void *sds_realloc(void *ptr, size_t size);
-void sds_free(void *ptr);
-#endif
+// 初始化信息
+s_sis_sds_save *sis_sds_save_create(const char *cv_, const char *dv_);
+
+void sis_sds_save_destroy(s_sis_sds_save *sdss_);
+// 设置从其他地方转过来的信息
+void sis_sds_save_set(s_sis_sds_save *, const char *fv_);
+// 得到最可能的需要信息
+s_sis_sds sis_sds_save_get(s_sis_sds_save *);
+
 #ifdef __cplusplus
 }
 #endif
 
-#define s_sis_sds sds
-#define sis_sdsfree sdsfree
-#define sis_sdsclear sdsclear
-#define sis_sdsempty sdsempty
-#define sis_sdsdup sdsdup
-#define sis_sdsnew sdsnew
-#define sis_sdsnewlong sdsfromlonglong
-#define sis_sdsnewlen sdsnewlen
-#define sis_sdssetlen sdssetlen
-#define sis_sds_addlen sdsMakeRoomFor
-
-static inline s_sis_sds sis_sdscpy(s_sis_sds s, const char *t)
-{
-    if (!s)
-    {
-        s = sdsempty();
-    }
-    return sdscpylen(s, t, strlen(t));
-} 
-#define sis_sdscpylen sdscpylen
-#define sis_sdslen sdslen
-#define sis_sdsdup sdsdup
-#define sis_sdscatlen sdscatlen
-#define sis_sdscat sdscat
-#define sis_sdscatsds sdscatsds
-#define sis_sdscatfmt sdscatfmt
 
 #endif

@@ -148,6 +148,23 @@ int sis_cut_ratio_int(s_sis_struct_list *list_, int count_, int div_)
     sis_free(ins);
     return list_->count;
 }
+
+int sis_ai_get_min_index(int inc_, double ins_[])
+{
+    int index = 0;
+    double minv = ins_[0];
+    for (int i = 1; i < inc_; i++)
+    {
+        if (minv > ins_[i])
+        {
+            minv = ins_[i];
+            index = i;
+        }
+    }
+    // printf("sis_ai_get_min_index %d %.2f\n",index, minv);
+    return index;
+}
+
 // 从连续值中求得标准归一值 mid 无用
 double sis_ai_normalization_series(double value_, double min_, double max_)
 {
@@ -290,6 +307,115 @@ double sis_ai_normalization_series_acceleration(int nums_, double ins_[], double
     sis_free(outs);
     return o;
 }
+
+// 求均值和中位数
+int sis_ai_get_avg_and_mid(int nums_, double ins_[], double *avg_, double *mid_)
+{
+    if (nums_ > 1)
+    {
+        if (*avg_)
+        {
+            double sums = 0.0;
+            for (int i = 0; i < nums_; i++)
+            {
+                sums += ins_[i];
+            }
+            *avg_ = sums / nums_;
+        }
+        if (*mid_)
+        {
+            double *ins = sis_malloc(sizeof(double)*nums_);
+            memmove(ins, ins_, sizeof(double)*nums_);
+            qsort(ins, nums_, sizeof(double), sis_sort_double_list);
+            if (nums_ % 2 == 0)
+            {
+                int index = nums_ / 2 - 1;
+                *mid_ = (ins_[index] + ins_[index + 1]) / 2.0;  
+            }
+            else
+            {
+                int index = nums_ / 2;
+                *mid_ = ins_[index];  
+            }
+        }
+    }
+    else if (nums_ == 1)
+    {
+        *avg_ = *avg_ ? ins_[0] : 0.0;
+        *mid_ = *mid_ ? ins_[0] : 0.0;
+    } 
+    return 0;
+}
+
+/////////////////////////////////////////////////////////
+//
+/////////////////////////////////////////////////////////
+
+void sis_ai_calc_avgm(double in_, s_ai_avg_m *avgm_)
+{
+    if (SIS_IS_ZERO(in_))
+    {
+        return ;
+    }
+    if (avgm_->nums == 0)
+    {
+        avgm_->nums = 1;
+        avgm_->avgm = in_;
+    }
+    else if (avgm_->nums < SIS_AI_AVG_MIN)
+    {
+        avgm_->avgm = (avgm_->avgm * (SIS_AI_AVG_MIN - 1) + in_) / SIS_AI_AVG_MIN;
+        avgm_->nums ++;                
+    }
+    else if (avgm_->nums < SIS_AI_AVG_MAX)
+    {
+        avgm_->avgm = (avgm_->avgm * avgm_->nums + in_) / (avgm_->nums + 1);        
+        avgm_->nums ++;
+    }
+    else
+    {
+        avgm_->avgm = (avgm_->avgm * (SIS_AI_AVG_MAX - 1) + in_) / SIS_AI_AVG_MAX;                
+    }
+}
+
+void sis_ai_calc_avgr(double son_, double mom_, s_ai_avg_r *avgr_)
+{
+    if (SIS_IS_ZERO(mom_) || (SIS_IS_ZERO(son_) && avgr_->nums < SIS_AI_AVG_MIN))
+    {
+        return ;
+    }
+    double newv = son_ / mom_;
+    if (avgr_->nums == 0)
+    {
+        avgr_->nums = 1;
+        avgr_->avgm = son_;
+        avgr_->avgr = newv;
+    }
+    else if (avgr_->nums < SIS_AI_AVG_MIN)
+    {
+        double newm = (avgr_->avgm * (SIS_AI_AVG_MIN - 1) + son_);
+        avgr_->avgr = (avgr_->avgm * (SIS_AI_AVG_MIN - 1)) / newm * avgr_->avgr + 
+                    son_ / newm * newv;
+        avgr_->avgm = newm / SIS_AI_AVG_MIN;
+        avgr_->nums = avgr_->nums + 1;                
+    }
+    else if (avgr_->nums < SIS_AI_AVG_MAX)
+    {
+        double newm = (avgr_->avgm * avgr_->nums + son_);
+        avgr_->avgr = (avgr_->avgm * avgr_->nums) / newm * avgr_->avgr + 
+                     son_ / newm * newv;
+        avgr_->nums = avgr_->nums + 1;
+        avgr_->avgm = newm / avgr_->nums;        
+    }
+    else
+    {
+        double newm = (avgr_->avgm * (SIS_AI_AVG_MAX - 1) + son_);
+        avgr_->avgr = (avgr_->avgm * (SIS_AI_AVG_MAX - 1)) / newm * avgr_->avgr + 
+                     son_ / newm * newv;
+        avgr_->avgm = newm / SIS_AI_AVG_MAX;                
+    }
+}
+
 /////////////////////////////////////////////////////////
 //
 /////////////////////////////////////////////////////////

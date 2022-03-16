@@ -141,6 +141,20 @@ const char *sis_str_split(const char *s_, size_t *len_, char c_)
 	}
 	return ptr;
 }
+void sis_str_merge(char *in_, size_t ilen_, char ch_, const char *one_, const char *two_)
+{
+	size_t s1 = sis_strlen(one_);
+	memmove(in_, one_, s1);
+	in_ += s1;  
+	if (ch_)
+	{
+		*in_ = ch_; in_++;
+	}
+	size_t s2 = sis_strlen(two_);
+	memmove(in_, two_, s2);
+	in_ += s2;  *in_ = 0;
+}
+
 int sis_str_divide(const char *in_, char ch_, char *one_, char *two_)
 {
 	one_[0] = 0;
@@ -248,6 +262,58 @@ int sis_strsub(char *big_, char *small_)
 	}	
 	return (int)(str - big_);
 }
+bool sis_str_method(const char *minfo_, char *mname_, size_t mlen_, char *param_, size_t plen_)
+{
+	int o = 0;
+	const char *ptr = minfo_;
+	const char *start = minfo_;
+	while (ptr && *ptr)
+	{
+		if (*ptr == '(')
+		{
+			if (ptr == start)
+			{
+				return false;
+			}
+			sis_strncpy(mname_, mlen_, start, ptr - start);
+			ptr++;
+			start = ptr;
+			o++;
+		}
+		else if (*ptr == ')')
+		{
+			if (ptr == start)
+			{
+				param_[0] = 0;
+			}
+			else
+			{
+				sis_strncpy(param_, plen_, start, ptr - start);
+			}
+			o++; 
+			break;
+		}
+		else
+		{
+			ptr++;
+		}
+	}
+	return o == 2;
+}
+bool sis_str_exist_ch(const char *in_, size_t ilen_, const char *ic_, size_t clen_)
+{
+    for (size_t i = 0; i < ilen_; i++)
+    {
+		for (size_t j = 0; j < clen_; j++)
+        {
+			if (in_[i] == ic_[j])
+			{
+				return true;
+			}
+		}
+    }
+    return false;	
+}
 
 int sis_str_pos(const char *in_, size_t ilen_, char c)
 {
@@ -296,14 +362,14 @@ void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 		sis_strcpy(out_, olen_, in_);
 	}
 }
-int sis_str_substr_nums(const char *s, char c)
+int sis_str_substr_nums(const char *s, size_t ilen_, char c)
 {
 	if (!s)
 	{
 		return 0;
 	}
 	int i, len, count;
-	len = (int)strlen(s);
+	len = (int)ilen_;
 	for (i = 0, count = 0; i < len; i++)
 	{
 		if (s[i] == c)
@@ -552,6 +618,15 @@ bool sis_str_get_time_id(char *out_, size_t olen_)
 	return true;
 }
 
+void sis_str_get_random(char *out_, size_t olen_)
+{
+	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+	int maxsize = (int)strlen(sign);
+	for (int i = 0; i < olen_; i++)
+	{
+		out_[i] = sign[rand() % maxsize];
+	}
+}
 bool sis_str_get_id(char *out_, size_t olen_)
 {
 	static char *sign = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
@@ -608,6 +683,94 @@ int64 sis_str_read_long(char *s)
 
     return mult*v;
 }
+
+void sis_str_change(char *outs_, int olen_, const char *ins_, const char *cuts_, const char *news_)
+{
+	outs_[0] = 0;
+	int isize  = sis_strlen(ins_);
+	int cutsize = sis_strlen(cuts_);
+	int newsize = sis_strlen(news_);
+	char *ptr = strstr(ins_, cuts_);
+	if (!ptr || cutsize == 0 || isize == 0)
+	{
+		return ;
+	}
+	if (isize + newsize - cutsize >= olen_)
+	{
+		return ;
+	}
+	if (ptr == ins_)
+	{
+		int size = isize - cutsize;
+		if (newsize > 0)
+		{
+			memmove(outs_, news_, newsize);
+		}
+		memmove(outs_ + newsize, ptr + cutsize, size);
+		outs_[size + newsize] = 0;
+	}
+	else
+	{
+		int osize = ptr - ins_;
+		memmove(outs_, ins_, osize);
+		if (newsize > 0)
+		{
+			memmove(outs_ + osize, news_, newsize);
+		}
+		osize += newsize;
+		int size = isize - cutsize;
+		memmove(outs_ + osize, ptr + cutsize, size);
+		osize += size;
+		outs_[osize] = 0;
+	}
+}
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH --> .SSE ==> 600600.SSE
+// 600600.SSE .SSE --> SH ==> SH600600
+void sis_str_swap_ht(const char *v1_, int v1len_, const char *v1sign_, int v1slen_,
+	char *v2_, int v2len_, const char *v2sign_, int v2slen_)
+{
+    v2_[0] = 0;
+	char *ptr = strstr(v1_, v1sign_);
+	if (!ptr || !v2_ || v2len_ < v1len_ - v1slen_ + v2slen_)
+	{
+		return ;
+	}
+	if (ptr == v1_)
+	{
+		// 原始标记在头 -- 换到尾部
+		int size = v1len_ - v1slen_;
+		memmove(v2_, ptr + v1slen_, size);
+		memmove(v2_ + size, v2sign_, v2slen_);
+		v2_[size + v2slen_] = 0;
+	}
+	else
+	{
+		// 原始标记在尾部 -- 换到头部
+		int size = ptr - v1_;
+		memmove(v2_, v2sign_, v2slen_);
+		memmove(v2_ + v2slen_,  v1_, size);
+		v2_[size + v2slen_] = 0;
+	}
+}
+
+// 从 V1 --> V2 头尾标记符更换
+// SH600600 SH SZ--> .SSE .SZE ==> 600600.SSE
+// 600600.SSE .SSE .SZE --> SH SZ ==> SH600600
+void sis_str_swap_ht2(const char *v1_, int v1len_, const char *v1sign1_, const char *v1sign2_,
+	char *v2_, int v2len_, const char *v2sign1_, const char *v2sign2_)
+{
+	v2_[0] = 0;
+	if (strstr(v1_, v1sign1_))
+	{
+		sis_str_swap_ht(v1_, v1len_, v1sign1_, sis_strlen(v1sign1_), v2_, v2len_, v2sign1_, sis_strlen(v2sign1_));
+	}
+	if (strstr(v1_, v1sign2_))
+	{
+		sis_str_swap_ht(v1_, v1len_, v1sign2_, sis_strlen(v1sign2_), v2_, v2len_, v2sign2_, sis_strlen(v2sign2_));
+	}
+}
+
 #if 0
 #include <sis_time.h>
 

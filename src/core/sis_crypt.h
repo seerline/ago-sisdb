@@ -2,7 +2,7 @@
 #ifndef _SIS_CRYPT_H
 #define _SIS_CRYPT_H
 
-#include <sis_net.node.h>
+#include <sis_net.msg.h>
 #include <sis_memory.h>
 #include <sis_obj.h>
 

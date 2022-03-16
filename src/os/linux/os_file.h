@@ -29,8 +29,14 @@
 #define SIS_FILE_IO_RSYNC      /*0x101000 */   O_DSYNC 
 #else
 #define SIS_FILE_IO_RSYNC      /*0x101000 */   O_RSYNC 
-#endif 
+#endif
 #define SIS_FILE_IO_SYNC       /*0x80     */   O_SYNC   
+
+// O_DSYNC 等待磁盘 I/O 结束后再返回，不更新文件属性，只更改数据，在文件长度不变情况下安全。
+// O_SYNC  完全更新磁盘再返回，数据库log必备
+// 但通常应用程序知道什么时候应该写盘 因此一般用 fsync 和 fdatasync
+// fdatasync由于不用修改文件属性会比fsync快一倍 但是对于文件大小有变化的情况，不修改文件大小属性会让系统无法识别新增的内容
+// 通常log为了加速 会生成固定大小的多个文件，一个写完写第二个，对log写盘后，再回收给log队列
 
 // access 访问模式，宏定义和含义如下：
 //     O_RDONLY         1    只读打开                           
@@ -43,9 +49,6 @@
 //         O_APPEND    0x0800   追加打开文件                       
 //         O_TEXT      0x4000   打开文本文件翻译CR-LF控制字符       
 //         O_BINARY    0x8000   打开二进制字符，不作CR-LF翻译                                                          
-//         O_DSYNC 等待物理 I/O 结束后再 write。在不影响读取新写入的数据的前提下，不等待文件属性更新。
-//         O_RSYNC read 等待所有写入同一区域的写操作完成后再进行
-//         O_SYNC
 // mode 该参数仅在 access = O_CREAT方式下使用，其取值如下：        
 //     S_IFMT      0xF000   文件类型掩码                        
 //     S_IFDIR     0x4000   目录                                
@@ -83,6 +86,8 @@ size_t sis_size(s_sis_handle fp_);
 size_t sis_read(s_sis_handle fp_, char *in_, size_t len_);
 size_t sis_write(s_sis_handle fp_, const char *in_, size_t len_);
 
+#define sis_fsync(a) fsync(a)
+#define sis_fdatasync(a) fdatasync(a)
 
 #define s_sis_file_handle FILE *
 
@@ -97,15 +102,17 @@ size_t sis_file_size(s_sis_file_handle fp_);
 size_t sis_file_read(s_sis_file_handle fp_, char *in_, size_t len_);
 size_t sis_file_write(s_sis_file_handle fp_, const char *in_, size_t len_);
 
+int sis_file_fsync(s_sis_file_handle fp_);
+
 void sis_file_getpath(const char *fn_, char *out_, int olen_);
 void sis_file_getname(const char *fn_, char *out_, int olen_);
 
 bool sis_file_exists(const char *fn_);
 bool sis_path_exists(const char *path_);
 
-void sis_file_rename(char *oldn_, char *newn_);
+int  sis_file_rename(char *oldn_, char *newn_);
 
-void sis_file_delete(const char *fn_);
+int  sis_file_delete(const char *fn_);
 
 void sis_path_complete(char *path_,int maxlen_);
 bool sis_path_mkdir(const char *path_);

@@ -16,13 +16,17 @@ int _sis_dynamic_get_style(const char *str_)
 	{
 		return SIS_DYNAMIC_TYPE_INT;
 	}
+	if(!sis_strcasecmp(str_,"wsec")||!sis_strcasecmp(str_,"W"))
+	{
+		return SIS_DYNAMIC_TYPE_WSEC;
+	}
 	if(!sis_strcasecmp(str_,"msec")||!sis_strcasecmp(str_,"T"))
 	{
-		return SIS_DYNAMIC_TYPE_TICK;
+		return SIS_DYNAMIC_TYPE_MSEC;
 	}
-	if(!sis_strcasecmp(str_,"sec")||!sis_strcasecmp(str_,"S"))
+	if(!sis_strcasecmp(str_,"second")||!sis_strcasecmp(str_,"S"))
 	{
-		return SIS_DYNAMIC_TYPE_SEC;
+		return SIS_DYNAMIC_TYPE_TSEC;
 	}
 	if(!sis_strcasecmp(str_,"minute")||!sis_strcasecmp(str_,"M"))
 	{
@@ -64,6 +68,27 @@ void sis_dynamic_field_destroy(void *field_)
 	s_sis_dynamic_field *field = (s_sis_dynamic_field *)field_;
 	sis_free(field);
 }
+
+int sis_dynamic_field_scale(int style_)
+{
+	int o = 1;
+	switch (style_)
+	{
+	case SIS_DYNAMIC_TYPE_WSEC: o = 864000000;
+		break;
+	case SIS_DYNAMIC_TYPE_MSEC: o = 86400000;
+		break;
+	case SIS_DYNAMIC_TYPE_TSEC:  o = 86400;
+		break;
+	case SIS_DYNAMIC_TYPE_MINU: o = 1440;
+		break;	
+	default: // SIS_DYNAMIC_TYPE_DATE
+		o = 1;
+		break;
+	}
+	return o;
+}
+
 ////////////////////////////////////////////////////////////////
 // s_sis_dynamic_db
 ////////////////////////////////////////////////////////////////
@@ -72,6 +97,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	s_sis_json_node *fields = sis_json_cmp_child_node(node_, "fields");
 	if (!fields)
 	{
+		LOG(8)("no fields.\n");
 		return NULL;	
 	}
 	
@@ -138,8 +164,8 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		sis_map_list_set(dyna->fields, name, unit);		
 
 		if (!dyna->field_time &&
-		 	(unit->style == SIS_DYNAMIC_TYPE_SEC || 
-			 unit->style == SIS_DYNAMIC_TYPE_TICK || 
+		 	(unit->style == SIS_DYNAMIC_TYPE_TSEC || 
+			 unit->style == SIS_DYNAMIC_TYPE_MSEC || 
 			 unit->style == SIS_DYNAMIC_TYPE_MINU ||
 			 unit->style == SIS_DYNAMIC_TYPE_DATE))
 		{
@@ -157,6 +183,7 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 	}
 	if (offset == 0)
 	{
+		// LOG(8)("offset == 0.\n");
 		sis_map_list_destroy(dyna->fields);
 		sis_free(dyna);
 		return NULL;
@@ -168,17 +195,54 @@ s_sis_dynamic_db *sis_dynamic_db_create(s_sis_json_node *node_)
 		dyna->field_mindex = dyna->field_time;
 	}
 	LOG(5)("dyna->size ---%s %d %p\n", dyna->name, dyna->size, dyna);
+	dyna->refs = 1;
+	return dyna;
+}
+s_sis_dynamic_db *sis_dynamic_db_create_none(const char *name_, size_t size_)
+{	
+	s_sis_dynamic_db *dyna = SIS_MALLOC(s_sis_dynamic_db, dyna);
+	dyna->name = sis_sdsnew(name_);
+	dyna->size = size_; 
+	dyna->refs = 1;
 	return dyna;
 }
 
-void sis_dynamic_db_destroy(void *db_)
+void sis_dynamic_db_decr(s_sis_dynamic_db *db_)
 {
-	s_sis_dynamic_db *db = (s_sis_dynamic_db *)db_;
-	// printf("dyna->free --- %s \n", db->name);
-	sis_sdsfree(db->name);
-	sis_map_list_destroy(db->fields);
-	sis_pointer_list_destroy(db->field_solely);
-	sis_free(db);
+	if (db_->refs == 1)
+	{
+		sis_sdsfree(db_->name);
+		if (db_->fields)
+		{
+			sis_map_list_destroy(db_->fields);
+		}
+		if (db_->field_solely)
+		{
+			sis_pointer_list_destroy(db_->field_solely);
+		}
+		sis_free(db_);
+	}
+	else
+	{
+		db_->refs--;
+	}
+}
+void sis_dynamic_db_setname(s_sis_dynamic_db *db_, const char *name_)
+{
+	sis_sdsfree(db_->name);
+	db_->name = sis_sdsnew(name_);
+}
+
+void sis_dynamic_db_incr(s_sis_dynamic_db *db_)
+{
+	// printf("++++ %s %d %p\n", db_->name, db_->refs, db_);
+	db_->refs++;
+}
+void sis_dynamic_db_destroy(void *db)
+{
+	// s_sis_dynamic_db *db_ = (s_sis_dynamic_db *)db;
+	// printf("--- %s %d %p\n", db_->name, db_->refs, db_);
+	sis_dynamic_db_decr((s_sis_dynamic_db *)db);
 }
 
 s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_, const char *field_)
@@ -199,60 +263,6 @@ s_sis_dynamic_field *sis_dynamic_db_get_field(s_sis_dynamic_db *db_, int *index_
 	return field;
 }
 
-s_sis_sds sis_dynamic_dbinfo_to_conf(s_sis_dynamic_db *db_, s_sis_sds in_)
-{
-	in_ = sis_sdscatfmt(in_, "%s:", db_->name);
-	in_ = sis_sdscat(in_, "{fields:{");
-	char sign[5];
-	int fnums = sis_map_list_getsize(db_->fields);
-	for(int i = 0; i < fnums; i++)
-	{
-		s_sis_dynamic_field *unit= (s_sis_dynamic_field *)sis_map_list_geti(db_->fields, i);
-		if(!unit) continue;
-		if (i > 0)
-		{
-			in_ = sis_sdscat(in_, ",");
-		}
-		in_ = sis_sdscatfmt(in_, "%s:[", unit->fname);
-		sign[0] = unit->style; sign[1] = 0;
-		in_ = sis_sdscatfmt(in_, "%s", sign);
-		in_ = sis_sdscatfmt(in_, ",%u", unit->len);
-		int index = 0;
-		if (unit->mindex)
-		{
-			sign[index] = 'I'; index++;
-		} 
-		if (unit->solely)
-		{
-			sign[index] = 'O'; index++;
-		} 
-		sign[index] = 0;
-		if (sign[0]) 
-		{
-			in_ = sis_sdscatfmt(in_, ",%u", unit->count);
-			in_ = sis_sdscatfmt(in_, ",%u", unit->dot);
-			in_ = sis_sdscatfmt(in_, "%s", sign);
-		}
-		else
-		{
-			if (unit->dot > 0) 
-			{
-				in_ = sis_sdscatfmt(in_, ",%u", unit->count);
-				in_ = sis_sdscatfmt(in_, ",%u", unit->dot);
-			}	
-			else
-			{
-				if (unit->count > 0) 
-				{
-					in_ = sis_sdscatfmt(in_, ",%u", unit->count);
-				}
-			}
-		}
-		in_ = sis_sdscat(in_, "]");
-	}
-	in_ = sis_sdscat(in_, "}}");
-	return in_;
-}
 bool sis_dynamic_dbinfo_same(s_sis_dynamic_db *db1_, s_sis_dynamic_db *db2_)
 {
 	int fnums = sis_map_list_getsize(db1_->fields);
@@ -279,62 +289,6 @@ bool sis_dynamic_dbinfo_same(s_sis_dynamic_db *db1_, s_sis_dynamic_db *db2_)
 	return true;
 }
 
-s_sis_json_node *sis_dynamic_dbinfo_to_json(s_sis_dynamic_db *db_)
-{
-	s_sis_json_node *jone = sis_json_create_object();
-	s_sis_json_node *jfields = sis_json_create_object();
-
-	// 先处理字段
-	char sign[5];
-	int  index = 0;
-	int fnums = sis_map_list_getsize(db_->fields);
-	for (int i = 0; i < fnums; i++)
-	{
-		s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_geti(db_->fields, i);
-		if(!inunit) continue;
-		s_sis_json_node *jfield = sis_json_create_array();
-		// sis_json_array_add_uint(jfield, i);
-		sign[0] = inunit->style; sign[1] = 0;
-		sis_json_array_add_string(jfield, sign, 1);
-		sis_json_array_add_uint(jfield, inunit->len);
-
-		index = 0;
-		if (inunit->mindex)
-		{
-			sign[index] = 'I'; index++;
-		} 
-		if (inunit->solely)
-		{
-			sign[index] = 'O'; index++;
-		} 
-		sign[index] = 0;
-		if (sign[0]) 
-		{
-			sis_json_array_add_uint(jfield, inunit->count);
-			sis_json_array_add_uint(jfield, inunit->dot);
-			sis_json_array_add_string(jfield, sign, index);
-		}
-		else
-		{
-			if (inunit->dot > 0) 
-			{
-				sis_json_array_add_uint(jfield, inunit->count);
-				sis_json_array_add_uint(jfield, inunit->dot);	
-			}	
-			else
-			{
-				if (inunit->count > 0) 
-				{
-					sis_json_array_add_uint(jfield, inunit->count);
-				}
-			}
-		}
-		sis_json_object_add_node(jfields, inunit->fname, jfield);
-	}
-	sis_json_object_add_node(jone, "fields", jfields);
-	return jone;
-}
-
 msec_t sis_dynamic_db_get_time(s_sis_dynamic_db *db_, int index_, void *in_, size_t ilen_)
 {
 	if (!db_->field_time || !in_ || ilen_ % db_->size || ( index_ + 1 ) * db_->size > ilen_)
@@ -351,96 +305,10 @@ uint64 sis_dynamic_db_get_mindex(s_sis_dynamic_db *db_, int index_, void *in_, s
 	}
 	return _sis_field_get_uint(db_->field_mindex, (const char*)in_ + index_ * db_->size, 0);
 }
-s_sis_sds sis_dynamic_db_to_array_sds(s_sis_dynamic_db *db_, const char *key_, void *in_, size_t ilen_)
-{
-	s_sis_dynamic_db *indb = db_;
 
-	int count = (int)(ilen_ / indb->size);
-	int fnums = sis_map_list_getsize(indb->fields);
-
-	if (count < 1 || fnums < 1)
-	{
-		return NULL;
-	}
-	s_sis_json_node *jone = sis_json_create_object();
-	s_sis_json_node *jtwo = sis_json_create_array();
-	// printf("to array : fnum = %d count = %d \n", fnums, count);
-	const char *val = (const char *)in_;
-	for (int k = 0; k < count; k++)
-	{
-		s_sis_json_node *jval = sis_json_create_array();
-		for (int i = 0; i < fnums; i++)
-		{
-			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_geti(indb->fields, i);
-			sis_dynamic_field_to_array(jval, inunit, val);
-		}
-		if (count == 1)
-		{
-			sis_json_delete_node(jtwo);	
-			jtwo = jval;
-		}
-		else
-		{
-			sis_json_array_add_node(jtwo, jval);
-		}
-		val += indb->size;
-	}
-	// printf("to array : fnum = %d count = %d \n", fnums, count);
-	s_sis_sds o = NULL;	
-	if (key_)
-	{
-		sis_json_object_add_node(jone, key_, jtwo);
-		o = sis_json_to_sds(jone, true);
-	}
-	else
-	{
-		o = sis_json_to_sds(jtwo, true);	
-	}
-	sis_json_delete_node(jone);	
-	return o;
-}
-
-s_sis_sds sis_dynamic_db_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ilen_)
-{
-	s_sis_dynamic_db *indb = db_;
-
-	int count = (int)(ilen_ / indb->size);
-
-	s_sis_sds o = sis_sdsempty();
-	int fnums = sis_map_list_getsize(indb->fields);
-	const char *val = (const char *)in_;
-	for (int k = 0; k < count; k++)
-	{
-		for (int i = 0; i < fnums; i++)
-		{
-			s_sis_dynamic_field *inunit = (s_sis_dynamic_field *)sis_map_list_geti(indb->fields, i);
-			o = sis_dynamic_field_to_csv(o, inunit, val);
-		}
-		o = sis_csv_make_end(o);
-		val += indb->size;
-	}
-	return o;
-}
-
-s_sis_sds sis_dynamic_conf_to_array_sds(const char *confstr_, void *in_, size_t ilen_)
-{
-	s_sis_conf_handle *injson = sis_conf_load(confstr_, strlen(confstr_));
-	if (!injson)
-	{
-		return NULL;
-	}
-	s_sis_dynamic_db *indb = sis_dynamic_db_create(injson->node);
-	if (!indb)
-	{
-		LOG(1)("init db error.\n");
-		sis_conf_close(injson);
-		return NULL;
-	}
-	sis_conf_close(injson);
-	s_sis_sds o = sis_dynamic_db_to_array_sds(indb, indb->name, in_, ilen_);
-	sis_dynamic_db_destroy(indb);
-	return o;
-}
+///////////////////////////////
+// 转换对象定义
+///////////////////////////////
 
 // 类型和长度一样，数量可能不一样
 void _sis_dynamic_unit_copy(void *inunit_, void *in_, void *out_)
@@ -457,41 +325,45 @@ void _sis_dynamic_unit_copy(void *inunit_, void *in_, void *out_)
 	// 		0, outunit->len*(outunit->count - count));
 	// }
 }	
-uint64 _sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
+uint64 sis_time_unit_convert(int instyle, int outstyle, uint64 in64)
 {
 	uint64 u64 = in64;
 	switch (instyle)
 	{
-	case SIS_DYNAMIC_TYPE_SEC:
+	case SIS_DYNAMIC_TYPE_TSEC:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 1000; break;
+			case SIS_DYNAMIC_TYPE_MSEC: u64 = in64 * 1000 + 999; break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = in64 / 60;   break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64);   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = sis_time_get_idate(in64) / 10000;   break;
 		}
 		break;
-	case SIS_DYNAMIC_TYPE_TICK:
+	case SIS_DYNAMIC_TYPE_MSEC:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_SEC: u64 = in64 / 1000; break;
+			case SIS_DYNAMIC_TYPE_TSEC: u64 = in64 / 1000; break;
 			case SIS_DYNAMIC_TYPE_MINU: u64 = in64 / 1000 / 60;   break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64 / 1000);   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = sis_time_get_idate(in64 / 1000) / 10000;   break;
 		}
 		break;
 	case SIS_DYNAMIC_TYPE_MINU:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_TICK: u64 = in64 * 60 * 1000; break;
-			case SIS_DYNAMIC_TYPE_SEC:  u64 = in64 * 60; break;
+			case SIS_DYNAMIC_TYPE_MSEC: u64 = in64 * 60 * 1000 + 59999; break;
+			case SIS_DYNAMIC_TYPE_TSEC: u64 = in64 * 60; break;
 			case SIS_DYNAMIC_TYPE_DATE: u64 = sis_time_get_idate(in64 * 60);   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = sis_time_get_idate(in64 * 60) / 10000;   break;
 		}
 		break;
 	case SIS_DYNAMIC_TYPE_DATE:
 		switch (outstyle)
 		{
-			case SIS_DYNAMIC_TYPE_TICK: u64 = sis_time_make_time(in64, 120000) * 1000; break;
-			case SIS_DYNAMIC_TYPE_SEC:  u64 = sis_time_make_time(in64, 120000); break;
-			case SIS_DYNAMIC_TYPE_MINU: u64 = sis_time_make_time(in64, 120000) / 60;   break;
+			case SIS_DYNAMIC_TYPE_MSEC: u64 = sis_time_make_time(in64, 235959) * 1000 + 999; break;
+			case SIS_DYNAMIC_TYPE_TSEC:  u64 = sis_time_make_time(in64, 235959); break;
+			case SIS_DYNAMIC_TYPE_MINU: u64 = sis_time_make_time(in64, 235959) / 60;   break;
+			case SIS_DYNAMIC_TYPE_YEAR: u64 = in64 / 10000;   break;
 		}
 		break;
 	}
@@ -518,11 +390,13 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					switch (outunit->style)
 					{
 					case SIS_DYNAMIC_TYPE_INT:
+						_sis_field_set_int(outunit, (char *)out_, i64, i);
+						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						_sis_field_set_int(outunit, (char *)out_, i64, i);
 						break;
-					case SIS_DYNAMIC_TYPE_SEC:
-					case SIS_DYNAMIC_TYPE_TICK:
+					case SIS_DYNAMIC_TYPE_TSEC:
+					case SIS_DYNAMIC_TYPE_MSEC:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
 					case SIS_DYNAMIC_TYPE_UINT:
@@ -537,8 +411,8 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					}
 				}
 				break;
-			case SIS_DYNAMIC_TYPE_SEC:
-			case SIS_DYNAMIC_TYPE_TICK:
+			case SIS_DYNAMIC_TYPE_TSEC:
+			case SIS_DYNAMIC_TYPE_MSEC:
 			case SIS_DYNAMIC_TYPE_MINU:
 			case SIS_DYNAMIC_TYPE_DATE:
 			case SIS_DYNAMIC_TYPE_UINT:
@@ -547,14 +421,16 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					switch (outunit->style)
 					{
 					case SIS_DYNAMIC_TYPE_INT:
+						_sis_field_set_int(outunit, (char *)out_, (int64)u64, i);
+						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						_sis_field_set_int(outunit, (char *)out_, (int64)u64, i);
 						break;
-					case SIS_DYNAMIC_TYPE_SEC:
-					case SIS_DYNAMIC_TYPE_TICK:
+					case SIS_DYNAMIC_TYPE_TSEC:
+					case SIS_DYNAMIC_TYPE_MSEC:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
-						u64 = _sis_time_unit_convert(inunit->style, outunit->style, u64);
+						u64 = sis_time_unit_convert(inunit->style, outunit->style, u64);
 						_sis_field_set_uint(outunit, (char *)out_, u64, i);
 						break;
 					case SIS_DYNAMIC_TYPE_UINT:
@@ -577,8 +453,8 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					case SIS_DYNAMIC_TYPE_INT:
 						_sis_field_set_int(outunit, (char *)out_, (int64)f64, i);
 						break;
-					case SIS_DYNAMIC_TYPE_SEC:
-					case SIS_DYNAMIC_TYPE_TICK:
+					case SIS_DYNAMIC_TYPE_TSEC:
+					case SIS_DYNAMIC_TYPE_MSEC:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
 					case SIS_DYNAMIC_TYPE_UINT:
@@ -589,7 +465,7 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						// 这里特殊处理一下
-						_sis_field_set_price(outunit, (char *)out_, (double)f64, i);
+						_sis_field_set_price(outunit, (char *)out_, (double)f64, inunit->dot, 1, i);
 						break;
 					case SIS_DYNAMIC_TYPE_CHAR:
 						// 不支持
@@ -605,8 +481,8 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 					case SIS_DYNAMIC_TYPE_INT:
 						_sis_field_set_int(outunit, (char *)out_, (int64)f64, i);
 						break;
-					case SIS_DYNAMIC_TYPE_SEC:
-					case SIS_DYNAMIC_TYPE_TICK:
+					case SIS_DYNAMIC_TYPE_TSEC:
+					case SIS_DYNAMIC_TYPE_MSEC:
 					case SIS_DYNAMIC_TYPE_MINU:
 					case SIS_DYNAMIC_TYPE_DATE:
 					case SIS_DYNAMIC_TYPE_UINT:
@@ -617,7 +493,11 @@ void _sis_dynamic_unit_convert(void *inunit_,void *in_, void *out_)
 						break;
 					case SIS_DYNAMIC_TYPE_PRICE:
 						// 这里特殊处理一下
-						_sis_field_set_price(outunit, (char *)out_, (double)f64, i);
+						{
+							int dot = _sis_field_get_price_dot(inunit, in_, i);
+							int valid = _sis_field_get_price_valid(inunit, in_, i);
+							_sis_field_set_price(outunit, (char *)out_, (double)f64, dot, valid, i);
+						}
 						break;
 					case SIS_DYNAMIC_TYPE_CHAR:
 						// 不支持
@@ -680,22 +560,7 @@ void _sis_dynamic_method_owner(void *convert_, void *in_, size_t ilen_, void *ou
 	}
 }
 
-s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_)
-{
-	char *str = NULL;
-	size_t olen;
-	if (iszip_)
-	{
-		str = sis_json_output_zip(node_, &olen);
-	}
-	else
-	{
-		str = sis_json_output(node_, &olen);
-	}
-	s_sis_sds o = sis_sdsnewlen(str, olen);
-	sis_free(str);
-    return o;
-}
+
 ////////////////////////////////////////////////////
 // 单个db转换为其他结构 传入需要转换的db
 ////////////////////////////////////////////////////
@@ -830,127 +695,6 @@ int sis_dynamic_convert(s_sis_dynamic_convert *cls_,
 
 error:
 	return cls_->error;
-}
-
-// match_keys : * --> whole_keys
-// match_keys : k,m1 | whole_keys : k1,k2,m1,m2 --> k1,k2,m1
-s_sis_sds sis_match_key(s_sis_sds match_keys, s_sis_sds whole_keys)
-{
-	s_sis_sds o = NULL;
-	if (!sis_strcasecmp(match_keys, "*"))
-	{
-		o = sis_sdsdup(whole_keys);
-	}
-	else
-	{
-        s_sis_string_list *slist = sis_string_list_create();
-        sis_string_list_load(slist, whole_keys, sis_sdslen(whole_keys), ",");
-        for (int i = 0; i < sis_string_list_getsize(slist); i++)
-        {
-            const char *key = sis_string_list_get(slist, i);
-            int index = sis_str_subcmp(key, match_keys, ',');
-		    if (index >= 0)
-		    {
-                if (o)
-                {
-                    o = sis_sdscatfmt(o, ",%s", key);
-                }
-                else
-                {
-                    o = sis_sdsnew(key);
-                }
-    		}
-        }
-        sis_string_list_destroy(slist);
-	}
-	return o;
-}
-s_sis_sds sis_match_sdb(s_sis_sds match_sdbs, s_sis_sds whole_sdbs)
-{
-	s_sis_sds o = NULL;
-	s_sis_json_handle *injson = sis_json_load(whole_sdbs, sis_sdslen(whole_sdbs));
-	if (!injson)
-	{
-		o = sis_sdsdup(match_sdbs);
-	}
-	else
-	{
-		s_sis_json_node *innode = sis_json_first_node(injson->node);
-		while (innode)
-		{
-			if (!sis_strcasecmp(match_sdbs, "*") || sis_str_subcmp_strict(innode->key, match_sdbs, ',') >= 0)
-			{
-				if (!o)
-				{
-					o = sis_sdsnew(innode->key);
-				}
-				else
-				{
-					o = sis_sdscatfmt(o, ",%s", innode->key);
-				}
-			}
-			innode = sis_json_next_node(innode);
-		}
-		sis_json_close(injson);
-	}
-	return o;
-}
-s_sis_sds sis_match_sdb_of_sds(s_sis_sds match_sdbs, s_sis_sds whole_sdbs)
-{
-	s_sis_sds o = NULL;
-	if (!sis_strcasecmp(match_sdbs, "*"))
-	{
-		o = sis_sdsdup(whole_sdbs);
-	}
-	else
-	{
-        s_sis_json_handle *injson = sis_json_load(whole_sdbs, sis_sdslen(whole_sdbs));
-		if (!injson)
-		{
-			o = sis_sdsdup(whole_sdbs);
-		}
-		else
-		{
-			s_sis_json_node *innode = sis_json_first_node(injson->node);
-			s_sis_json_node *next = innode;
-			while (innode)
-			{
-				int index = sis_str_subcmp_strict(innode->key, match_sdbs, ',');
-				if (index < 0)
-				{
-					next = sis_json_next_node(innode);
-					// 这里删除
-					sis_json_delete_node(innode);
-					innode = next;
-				}
-				else
-				{
-					innode = sis_json_next_node(innode);
-				}
-			}
-			o = sis_json_to_sds(injson->node, 1);
-			sis_json_close(injson);
-		}
-	}
-	return o;
-}
-s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs)
-{
-    s_sis_json_node *innode = sis_json_create_object();
-    int count = sis_map_list_getsize(whole_sdbs);
-    for (int i = 0; i < count; i++)
-    {
-        s_sis_dynamic_db *db = sis_map_list_geti(whole_sdbs, i);
-		int index = sis_str_subcmp_strict(db->name, match_sdbs, ',');
-		if (index < 0)
-		{
-			continue;
-		}
-		sis_json_object_add_node(innode, db->name, sis_dynamic_dbinfo_to_json(db));
-    }
-    s_sis_sds o = sis_json_to_sds(innode, 1);
-	sis_json_delete_node(innode);
-	return o;
 }
 
 // s_sis_dynamic_class *_sis_dynamic_class_create(s_sis_json_node *innode_,s_sis_json_node *outnode_)
@@ -1415,7 +1159,7 @@ int main()
 	sprintf(in_info[0].name, "123");
 	sprintf(in_info[1].name, "2345");
 
-	s_sis_sds in = sis_dynamic_db_to_array_sds(indb, "stock", in_info, count*sizeof(_local_info));
+	s_sis_sds in = sis_sdb_to_array_sds(indb, "stock", in_info, count*sizeof(_local_info));
 	printf("indb = \n%s\n",in);
 	sis_sdsfree(in);	
 
@@ -1424,7 +1168,7 @@ int main()
 	char *out_info = sis_malloc(size + 1);
 	sis_dynamic_convert(convert, (const char *)in_info, count*sizeof(_local_info), out_info, size);
 
-	s_sis_sds out = sis_dynamic_db_to_array_sds(outdb, "stock", out_info, size);
+	s_sis_sds out = sis_sdb_to_array_sds(outdb, "stock", out_info, size);
 	printf("outdb = \n%s\n",out);
 	sis_sdsfree(out);	
 
