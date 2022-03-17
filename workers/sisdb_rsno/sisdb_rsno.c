@@ -269,6 +269,12 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
 ///////////////////////////////////////////
 //  callback define end.
 ///////////////////////////////////////////
+
+/**
+ * @brief 
+ * @param argv_ 工作者上下文
+ * @return void* 
+ */
 static void *_thread_snos_read_sub(void *argv_)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)argv_;
@@ -306,7 +312,10 @@ static void *_thread_snos_read_sub(void *argv_)
     context->status = SIS_RSNO_NONE;
     return NULL;
 }
-
+/**
+ * @brief 启动一天的行情订阅
+ * @param context 工作者上下文
+ */
 void sisdb_rsno_sub_start(s_sisdb_rsno_cxt *context) 
 {
     // 有值就干活 完毕后释放
@@ -337,6 +346,12 @@ void sisdb_rsno_sub_stop(s_sisdb_rsno_cxt *context)
 ///////////////////////////////////////////
 //  method define
 /////////////////////////////////////////
+
+/**
+ * @brief 将字段和回调函数设置从通信上下文中取出并设置到工作者上下文中
+ * @param context 工作者上下文
+ * @param msg 通信上下文
+ */
 void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
 {
     sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
@@ -373,6 +388,12 @@ void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
     context->cb_sub_incrzip = sis_message_get_method(msg, "cb_sub_incrzip");
     context->cb_sub_chars   = sis_message_get_method(msg, "cb_sub_chars"  );
 }
+/**
+ * @brief 启动一天行情的订阅
+ * @param worker_ 工作者对象指针
+ * @param argv_ 消息上下文
+ * @return int 
+ */
 int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

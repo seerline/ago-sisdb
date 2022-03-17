@@ -109,17 +109,16 @@ void sis_socket_session_init(s_sis_socket_session *session_);
 
 typedef struct s_sis_socket_server
 {
-
 	uv_loop_t           *uv_s_worker;
-	uv_tcp_t             uv_s_handle;	//服务器链接
-	uv_thread_t          uv_s_thread; // server 线程句柄
+	uv_tcp_t             uv_s_handle;		//服务器链接
+	uv_thread_t          uv_s_thread; 		// server 线程句柄
 	uv_async_t           uv_w_async;
 	      
-	bool                 isinit;     // 是否已初始化，用于 close 函数中判断
+	bool                 isinit;     		// 是否已初始化，用于 close 函数中判断
 	bool                 isexit;     
 	// ??? 客户断线后 删除了对象 却没清理发送队列
-	s_sis_net_uv_catch  *write_list; // 发送队列   
-	s_sis_net_list      *sessions; // 子客户端链接 s_sis_socket_session
+	s_sis_net_uv_catch  *write_list; 		// 发送队列   
+	s_sis_net_list      *sessions; 			// 子客户端链接 s_sis_socket_session
 
 	char                 ip[128];
 	int                  port;

@@ -67,6 +67,11 @@ static inline s_sis_unlock_node *sis_lock_queue_head(s_sis_lock_queue *queue_)
     sis_rwlock_unlock(&queue_->rlock);
     return node;
 }
+/**
+ * @brief 从队列中获取队列头的下一个节点
+ * @param queue_ 队列
+ * @return s_sis_unlock_node* 
+ */
 static inline s_sis_unlock_node *sis_lock_queue_head_next(s_sis_lock_queue *queue_)
 {
     s_sis_unlock_node *node = NULL;
@@ -92,6 +97,11 @@ static inline s_sis_unlock_node *sis_lock_queue_next(s_sis_lock_queue *queue_, s
     sis_rwlock_unlock(&queue_->rlock);
     return node;      
 }
+/**
+ * @brief 将数据添加到队列尾部，操作过程中加锁独占写入权限
+ * @param queue_ 被操作的队列
+ * @param obj_ 待添加的数据
+ */
 void sis_lock_queue_push(s_sis_lock_queue *queue_, s_sis_object *obj_)
 {  
     s_sis_unlock_node *new_node = sis_unlock_node_create(obj_);
@@ -410,13 +420,15 @@ int sis_fast_queue_push(s_sis_fast_queue *queue_, s_sis_object *obj_)
     sis_mutex_unlock(&queue_->wlock);
 	return 1;
 }
-/////////////////////////////////////////////////
-//  s_sis_lock_reader
-/////////////////////////////////////////////////
-// int __check_while = 0;
-void *_thread_reader(void *argv_)
+
+/**
+ * @brief 多线程读取器s_sis_lock_reader的线程回调函数
+ * @param reader_ 读取器
+ * @return void*  永远为NULL
+ */
+void *_thread_reader(void *reader_)
 {
-    s_sis_lock_reader *reader = (s_sis_lock_reader *)argv_;
+    s_sis_lock_reader *reader = (s_sis_lock_reader *)reader_;
     s_sis_lock_list *ullist = (s_sis_lock_list *)reader->father;
 
 	sis_wait_thread_start(reader->work_thread);
@@ -504,7 +516,15 @@ void *_thread_reader(void *argv_)
     sis_wait_thread_stop(reader->work_thread);
     return NULL;
 }
-
+/**
+ * @brief 创建读者
+ * @param ullist_ 读者关联的共享列表
+ * @param mode_ 返回数据的方式SIS_UNLOCK_READER_HEAD，SIS_UNLOCK_READER_TAIL，表示从头读起还是从尾部读起
+ * @param cb_source_ 传递给回调函数的第一个参数
+ * @param cb_recv_ 读者在收到数据后执行的回调函数
+ * @param cb_realtime_ 历史数据发送完毕后所执行的回调函数
+ * @return s_sis_lock_reader* 创建完毕的读者指针
+ */
 s_sis_lock_reader *sis_lock_reader_create(s_sis_lock_list *ullist_, 
     int mode_, void *cb_source_, 
     cb_lock_reader *cb_recv_,
@@ -593,14 +613,20 @@ bool _unlock_check_user_cursor(s_sis_lock_list *ullist, s_sis_unlock_node *node)
     sis_rwlock_unlock(&ullist->userslock);  
     return o;
 }
+/**
+ * @brief 共享列表的后台守护函数
+ * @param argv_ 守护者，本身与读者是同一类型，s_sis_lock_reader
+ * @return NULL
+ */
 static void *_thread_watcher(void *argv_)
 {
-    s_sis_lock_reader *reader = (s_sis_lock_reader *)argv_;
-    s_sis_lock_list *ullist = (s_sis_lock_list *)reader->father;
-	sis_wait_thread_start(reader->work_thread);
-    while (sis_wait_thread_noexit(reader->work_thread))
+    s_sis_lock_reader *watcher = (s_sis_lock_reader *)argv_;
+    s_sis_lock_list *ullist = (s_sis_lock_list *)watcher->father;
+	sis_wait_thread_start(watcher->work_thread);
+    while (sis_wait_thread_noexit(watcher->work_thread))
     {
-        if (sis_wait_thread_wait(reader->work_thread, 3000) == SIS_WAIT_NOTICE)
+        //QQQ 这里有没有可能会漏掉信号？
+        if (sis_wait_thread_wait(watcher->work_thread, 3000) == SIS_WAIT_NOTICE)
         {
             // printf("reader notice.\n");
             // 如果被通知就一定有数据 同步消息给其他读者
@@ -609,8 +635,9 @@ static void *_thread_watcher(void *argv_)
                 sis_rwlock_lock_r(&ullist->userslock);
                 for (int i = 0; i < ullist->users->count; i++)
                 {
-                    s_sis_lock_reader *other = (s_sis_lock_reader *)sis_pointer_list_get(ullist->users, i);
-                    sis_wait_thread_notice(other->work_thread);
+                    //QQQ 这里会不会重复通知？
+                    s_sis_lock_reader *reader = (s_sis_lock_reader *)sis_pointer_list_get(ullist->users, i);
+                    sis_wait_thread_notice(reader->work_thread);
                 }
                 sis_rwlock_unlock(&ullist->userslock); 
             }
@@ -618,31 +645,35 @@ static void *_thread_watcher(void *argv_)
             // sis_sleep(10);
             // continue; // 不能要 否则内存不能释放
         }
-        if (sis_wait_thread_isexit(reader->work_thread))
+        //QQQ 这里可不可以直接简化？SIS_WAIT_STATUS_NONE表示何种意义？
+        if (sis_wait_thread_isexit(watcher->work_thread))
         {
             break;
         }
-        if (!sis_wait_thread_iswork(reader->work_thread))
+        if (!sis_wait_thread_iswork(watcher->work_thread))
         {
             continue;
         }
         sis_mutex_lock(&ullist->watchlock);
+        // 处理历史数据
+        // QQQ 历史数据的应用场景？
         if (ullist->save_mode != SIS_UNLOCK_SAVE_ALL) // 需要全部保留就什么也不干
         {
-            if (reader->cursor == NULL)
+            if (watcher->cursor == NULL)
             {
+                //QQQ 这里为什么不是头部节点？
                 s_sis_unlock_node *node = sis_lock_queue_head_next(ullist->work_queue);
                 if (node)
                 {
-                    reader->cursor = node;
+                    watcher->cursor = node;
                 }   
             }
-            if (reader->cursor)
+            if (watcher->cursor)
             {
-                s_sis_unlock_node *next = sis_lock_queue_next(ullist->work_queue, reader->cursor);
+                s_sis_unlock_node *next = sis_lock_queue_next(ullist->work_queue, watcher->cursor);
                 while(next)   
                 {
-                    if (_unlock_check_user_cursor(ullist, reader->cursor))
+                    if (_unlock_check_user_cursor(ullist, watcher->cursor))
                     {
                         break;
                     }
@@ -660,9 +691,9 @@ static void *_thread_watcher(void *argv_)
                     }
                     else // SIS_UNLOCK_SAVE_SIZE
                     {
-                        if (reader->cursor->obj)
+                        if (watcher->cursor->obj)
                         {
-                            ullist->cursize += sizeof(s_sis_object) + SIS_OBJ_GET_SIZE(reader->cursor->obj);
+                            ullist->cursize += sizeof(s_sis_object) + SIS_OBJ_GET_SIZE(watcher->cursor->obj);
                         }
                         if (ullist->cursize > ullist->maxsize)
                         {
@@ -672,17 +703,21 @@ static void *_thread_watcher(void *argv_)
                             sis_object_decr(obj);
                         }                       
                     }
-                    reader->cursor = next;
-                    next = sis_lock_queue_next(ullist->work_queue, reader->cursor);
+                    watcher->cursor = next;
+                    next = sis_lock_queue_next(ullist->work_queue, watcher->cursor);
                 }
             } 
         }
         sis_mutex_unlock(&ullist->watchlock);           
     }
-    sis_wait_thread_stop(reader->work_thread);
+    sis_wait_thread_stop(watcher->work_thread);
     return NULL;
 }
-
+/**
+ * @brief 创建一个加锁的共享队列，并启动守护线程执行_thread_watcher对其监听，
+ * @param maxsize_ 设置队列历史数据处理模式，0,保存所有，1不保存，其他，按maxsize_大小（最低不小于1024）保存
+ * @return s_sis_lock_list* 创建完成的共享队列
+ */
 s_sis_lock_list *sis_lock_list_create(size_t maxsize_)
 {
     s_sis_lock_list *o = SIS_MALLOC(s_sis_lock_list, o);
@@ -738,6 +773,12 @@ void sis_lock_list_destroy(s_sis_lock_list *ullist_)
     sis_lock_queue_destroy(ullist_->work_queue);
     sis_free(ullist_);
 }
+
+/**
+ * @brief 数据添加到队列尾部，并通知守护者线程
+ * @param ullist_ 被操作队列
+ * @param obj_ 添加的数据
+ */
 void sis_lock_list_push(s_sis_lock_list *ullist_, s_sis_object *obj_)
 {
     sis_lock_queue_push(ullist_->work_queue, obj_);

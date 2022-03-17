@@ -1,7 +1,7 @@
 #include "worker.h"
 #include "sis_conf.h"
 #include "sisdb_sys.h"
-
+// 创建用户对象，其中用户名密码等均采用sds字符串
 s_sisdb_userinfo *sis_userinfo_create(const char *username_, const char *password_, int access_)
 {
     s_sisdb_userinfo *o = SIS_MALLOC(s_sisdb_userinfo, o);

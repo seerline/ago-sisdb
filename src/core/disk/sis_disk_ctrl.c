@@ -191,6 +191,15 @@ void sis_disk_rcatch_init_of_idx(s_sis_disk_rcatch *in_, s_sis_disk_idx_unit *ri
     in_->callback = NULL;
     memset(&in_->search_msec, 0, sizeof(s_sis_msec_pair));
 }
+
+/**
+ * @brief 
+ * @param in_ 
+ * @param subkeys_ 需要读取行情的股票列表
+ * @param subsdbs_ 需要读取行情的数据格式，JSON
+ * @param search_ 
+ * @param cb_ 回调函数组合
+ */
 void sis_disk_rcatch_init_of_sub(s_sis_disk_rcatch *in_, const char *subkeys_, const char *subsdbs_,
     s_sis_msec_pair *search_, void *cb_)
 {

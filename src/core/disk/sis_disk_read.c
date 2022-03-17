@@ -79,6 +79,14 @@ int sis_disk_reader_sub_getsize(s_sis_disk_reader_sub *sub_)
 //  s_sis_disk_reader
 ///////////////////////////
 
+/**
+ * @brief 
+ * @param path_ 
+ * @param name_ 
+ * @param style_ 
+ * @param cb_ 读文件的回调函数结构体，包含了一组相关的回调函数
+ * @return s_sis_disk_reader* 
+ */
 s_sis_disk_reader *sis_disk_reader_create(const char *path_, const char *name_, int style_, s_sis_disk_reader_cb *cb_)
 {
     s_sis_disk_reader *o = SIS_MALLOC(s_sis_disk_reader, o);
@@ -189,12 +197,23 @@ int sis_disk_reader_sub_sic(s_sis_disk_reader *reader_, const char *keys_, const
     _disk_reader_close(reader_);
     return 0;
 }
-
+// 读取 仅支持 SNO  
+// 如果定义了 cb_bytedata cb_chardata 就解压数据再返回
+// 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
+/**
+ * @brief 读取SNO文件
+ * @param reader_ 
+ * @param keys_ 需要读取行情的股票列表
+ * @param sdbs_ 行情格式，JSON字符串
+ * @param idate_ 需要读取的行情日期
+ * @return int 
+ */
 int sis_disk_reader_sub_sno(s_sis_disk_reader *reader_, const char *keys_, const char *sdbs_, int idate_)
 {
     int o = _disk_reader_open(reader_, SIS_DISK_TYPE_SNO, idate_);
     if (o)
     {
+        // 通知订阅者读取或订阅结束
         if (reader_->callback->cb_stop)
         {
             reader_->callback->cb_stop(reader_->callback->cb_source, idate_);

@@ -21,7 +21,7 @@ bool sis_net_is_ip4(const char *ip_)
 //////////////////////////
 // s_sis_url
 //////////////////////////
-
+/** 创建一个空白的网络连接配置数据结构体，字段包含IP、端口、加密方式、压缩方式、通讯协议、连接方式、角色方式等*/
 s_sis_url *sis_url_create()
 {
 	s_sis_url *o = SIS_MALLOC(s_sis_url, o);
@@ -83,7 +83,13 @@ void sis_url_set_ip4(s_sis_url *url_, const char *ip_)
 		sis_socket_getip4(ip_, url_->ip4, 16);
 	}
 }
-
+/**
+ * @brief 根据JSON配置网络参数
+ * @param node_ JSON配置
+ * @param url_ 网络连接参数
+ * @return true 成功
+ * @return false JSON配置为空
+ */
 bool sis_url_load(s_sis_json_node *node_, s_sis_url *url_)
 {
     if (!node_) 
@@ -227,6 +233,7 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 //////////////////////////
 // s_sis_net_class
 //////////////////////////
+/** 根据网络配置数据，生成网络连接处理类的对象 */
 s_sis_net_class *sis_net_class_create(s_sis_url *url_)
 {
 	s_sis_net_class *o = SIS_MALLOC(s_sis_net_class, o);
@@ -354,7 +361,13 @@ int sis_ws_match_hand_ans(s_sis_net_class *cls, s_sis_net_context *cxt)
 	sis_memory_destroy(ans);
 	return 1; // 成功 
 }
-
+/**
+ * @brief 数据接收回调函数
+ * @param handle_ 
+ * @param sid_ session id
+ * @param in_ 收到的数据
+ * @param ilen_ 数据长度
+ */
 static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen_)
 {
 	// sis_out_binary("recv", in_, ilen_);
@@ -367,6 +380,7 @@ static void cb_server_recv_after(void *handle_, int sid_, char* in_, size_t ilen
 	}
 	if (cxt->status == SIS_NET_WORKING)
 	{
+		//QQQ 如何处理分包的问题？
 		sis_net_mems_push(cxt->recv_nodes, in_, ilen_);
 		// 发送通知
 		// sis_wait_thread_notice(cls->read_thread);
@@ -462,15 +476,22 @@ static void cb_client_send_after(void* handle_, int sid_, int status_)
 	{
 		LOG(5)("send to server fail. [%d:%d]\n", sid_, status_);
 	}
-}
 
-static void cb_server_connected(void *handle_, int sid_)
+}
+/**
+ * @brief 新连接处理回调函数，在生成好session，accept连接成功后调用该函数。主要完成以下内容”
+ * （1）在HASH表中查找上下文数据，如果找不到，就生成全新的上下文
+ * @param sender_ 与当前网络连接关联的网络连接处理类s_sis_net_class
+ * @param sid_ 与客户端关联的sessionId,利用该ID可以获取客户端的上下文环境
+ */
+static void cb_server_connected(void *sender_, int sid_)
 {
 	LOG(5)("connected. [%d]\n", sid_);	
-	s_sis_net_class *cls = (s_sis_net_class *)handle_;
+	s_sis_net_class *cls = (s_sis_net_class *)sender_;
 	s_sis_net_context *cxt = sis_map_kint_get(cls->cxts, sid_);
 	if (!cxt)
 	{
+		//QQQ 既然sid是与之前的上下文没有关联的，那么上下文数据也应该是全新的。这里再重新查找有何意义？
 		cxt = (s_sis_net_context *)sis_net_context_create(cls, sid_); 
 		sis_map_kint_set(cls->cxts, sid_, cxt);
 	}
@@ -481,6 +502,7 @@ static void cb_server_connected(void *handle_, int sid_)
 		sis_memory_clear(cxt->recv_memory);
 		sis_net_mems_clear(cxt->recv_nodes);
 	}
+
 	sis_socket_server_set_rwcb(cls->server, sid_, cb_server_recv_after, cb_server_send_after);
 	sis_net_slot_set(cxt->slots, cls->url->compress, cls->url->crypt, cls->url->protocol);
 	if (cls->url->protocol == SIS_NET_PROTOCOL_WS)
@@ -646,6 +668,11 @@ void sis_net_class_close_cxt(s_sis_net_class *cls_, int sid_)
 // 	}
 // }
 
+/**
+ * @brief 将收到的数据从s_sis_net_mem中取出，合成s_sis_net_message
+ * @param cls 
+ * @param cxt 
+ */
 void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 {
 	int count = sis_net_mems_read(cxt->recv_nodes, 0);
@@ -699,6 +726,11 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 		sis_net_mems_free_read(cxt->recv_nodes);
 	}
 }
+/**
+ * @brief 网络连接处理类s_sis_net_class的后台数据处理函数
+ * @param argv 网络连接处理类 s_sis_net_class
+ * @return void* 
+ */
 void *_thread_net_class_read(void* argv)
 {
 	s_sis_net_class *cls = (s_sis_net_class *)argv;
@@ -752,6 +784,11 @@ void *_thread_net_class_read(void* argv)
     sis_wait_thread_stop(cls->read_thread);
 	return NULL;
 }
+/**
+ * @brief 启动网络连接，如果是服务器模式，则先设置好回调函数地址，然后开始监听端口
+ * @param cls_ 网络配置对象
+ * @return true 成功，false 失败
+ */
 bool sis_net_class_open(s_sis_net_class *cls_)
 {
 	if (!cls_->read_thread)
@@ -765,6 +802,7 @@ bool sis_net_class_open(s_sis_net_class *cls_)
 			return false;
 		}
 	}
+	// 服务器模式
 	if (cls_->url->io == SIS_NET_IO_WAITCNT)
 	{
 		sis_socket_server_set_cb(cls_->server, cb_server_connected, cb_server_disconnect);
@@ -778,6 +816,7 @@ bool sis_net_class_open(s_sis_net_class *cls_)
 			cls_->work_status = SIS_NET_WORKING;
 		}
 	}
+	// 客户端模式
 	else
 	{
 		sis_socket_client_set_cb(cls_->client, cb_client_connected, cb_client_disconnect);
@@ -806,6 +845,14 @@ void sis_net_class_close(s_sis_net_class *cls_)
 	}
 }
 // 未连接时也需要设置
+/**
+ * @brief 根据SESSION_ID从网络连接对象的字典中获取该连接的上下文s_sis_net_context，并注册相应的数据应答处理回调函数
+ * @param cls_ 本项目的网络连接对象s_sis_net_class
+ * @param sid_ 当前连接的SESSION_ID
+ * @param source_ 当前连接对应的worker
+ * @param cb_ 当前连接的数据应答处理回调函数
+ * @return int 永远为0 
+ */
 int sis_net_class_set_cb(s_sis_net_class *cls_, int sid_, void *source_, cb_net_reply cb_)
 {
 	s_sis_net_context *cxt = sis_map_kint_get(cls_->cxts, sid_);

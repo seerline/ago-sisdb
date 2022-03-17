@@ -194,7 +194,13 @@ s_sis_net_mem_node *_net_mems_reset_node(s_sis_net_mems *nodes_, size_t isize_)
 	nodes_->wnums++;
 	return node;
 }
-
+/**
+ * @brief 将数据添加到缓存区，后续经过解压缩、协议处理后才能使用
+ * @param nodes_ 数据缓存s_sis_net_mems
+ * @param in_ 收到的数据
+ * @param isize_ 收到的数据大小
+ * @return int 
+ */
 int  sis_net_mems_push(s_sis_net_mems *nodes_, void *in_, size_t isize_)
 {
 	sis_mutex_lock(&nodes_->lock);
@@ -709,9 +715,18 @@ void _net_list_free(s_sis_net_list *list_, int index_)
 	}
 	list_->stop_sec[index_] = 0;
 }
-
+/**
+ * @brief 将新的session添加到session列表，并按如下方法分配SESSON ID，把已有的ID遍历一遍，
+ * （1）如果发现有处于未使用状态的，直接拿来用
+ * （2）如果发现有处于关闭状态且超过超时时间的，直接拿来用
+ * （3）如果都没有，新增一个
+ * @param list_ 服务器的SESSION列表
+ * @param in_ 新添加的session
+ * @return int 分配到的SESSON ID
+ */
 int sis_net_list_new(s_sis_net_list *list_, void *in_)
 {
+	//QQQ session的各种状态之间的切换，在哪里进行？这里需要考虑线程安全么？SESSION ID如果每个新连接都不一样的话，那这个东西存在的意义是什么？
 	time_t now_sec = sis_time_get_now();
 	int index = -1;
 	for (int i = 0; i < list_->max_count; i++)

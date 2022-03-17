@@ -4,6 +4,7 @@
 #include <fnmatch.h>
 #include <sys/stat.h>
 
+/* Replace \ to / in the path string */
 void sis_file_fixpath(char *in_)
 {
 	int size = strlen(in_);
@@ -126,8 +127,8 @@ s_sis_file_handle sis_file_open(const char *fn_, int mode_, int access_)
 		if (mode_ & SIS_FILE_IO_CREATE || mode_ & SIS_FILE_IO_TRUNC || mode_ & SIS_FILE_IO_WRITE || mode_ & SIS_FILE_IO_RDWR)
 		{
 			fp = fopen(fn_, "a+");
-			fclose(fp);
-			fp = fopen(fn_, "rb+");
+		//	fclose(fp);
+		//	fp = fopen(fn_, "rb+");
 		}
 	}
 	return fp;
@@ -227,6 +228,7 @@ void sis_file_getname(const char *fn_, char *out_, int olen_)
 	sis_strncpy(out_, olen_, fn_, len);
 	out_[len] = 0;
 }
+
 bool sis_file_exists(const char *fn_)
 {
 	sis_file_fixpath((char *)fn_);

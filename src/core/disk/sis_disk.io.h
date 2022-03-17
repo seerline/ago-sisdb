@@ -333,7 +333,7 @@ typedef struct s_sis_disk_rcatch {
     int                          iswhole;
     s_sis_sds                    sub_keys;   // "*" 为全部都要 或者 k1,k2,k3
 	s_sis_sds                    sub_sdbs;   // "*" 为全部都要 或者 k1,k2,k3
-    struct s_sis_disk_reader_cb *callback;   // 读文件的回调    
+    struct s_sis_disk_reader_cb *callback;   // 读文件的回调函数组合    
     // 返回的数据
     s_sis_disk_head              head;     // 块头信息
     int                          kidx;     // key的索引信息

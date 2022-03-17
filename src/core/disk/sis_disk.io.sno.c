@@ -399,7 +399,7 @@ void sis_disk_sno_rctrl_start(s_sis_disk_ctrl *cls_)
 {
     s_sis_db_chars *chars = sis_disk_sno_rctrl_rpop(cls_->sno_rctrl);
     s_sis_disk_reader_cb *callback = cls_->rcatch->callback; 
-    printf("start chars= %p %p %p\n", chars, callback->cb_bytedata, callback->cb_chardata);
+    LOG(9)("start chars= %p %p %p\n", chars, callback->cb_bytedata, callback->cb_chardata);
     while (chars && !cls_->isstop)
     {
         if(callback->cb_chardata)
@@ -417,7 +417,7 @@ void sis_disk_sno_rctrl_start(s_sis_disk_ctrl *cls_)
         }        
         chars = sis_disk_sno_rctrl_rpop(cls_->sno_rctrl);
     }
-    printf("start chars ok= %p\n", chars);
+    LOG(9)("start chars ok= %p\n", chars);
 }
 int cb_sis_disk_io_read_sno(void *source_, s_sis_disk_head *head_, char *imem_, size_t isize_)
 {
@@ -526,7 +526,7 @@ int sis_disk_io_sub_sno_part(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     s_sis_pointer_list *subparts = sis_pointer_list_create(); 
     // 获取数据索引列表 --> filters
     _disk_io_sub_sno_parts(cls_, rcatch_, subparts);
-    LOG(5)("sub filters count =  %d %s %s\n", subparts->count, rcatch_->sub_keys, rcatch_->sub_sdbs);
+    LOG(9)("sub filters count =  %d %s %s\n", subparts->count, rcatch_->sub_keys, rcatch_->sub_sdbs);
     if(subparts->count < 1)
     {
         sis_pointer_list_destroy(subparts);
@@ -591,6 +591,16 @@ int sis_disk_io_sub_sno_part(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     sis_pointer_list_destroy(subparts); 
     return 0;
 }
+
+/**
+ * @brief 
+ * @param cls_ 
+ * @param subkeys_ 需要读取行情的股票列表
+ * @param subsdbs_ 需要读取行情的数据格式，JSON
+ * @param search_ 
+ * @param cb_ 回调函数组合
+ * @return int 
+ */
 int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char *subsdbs_,
                     s_sis_msec_pair *search_, void *cb_)
 {
@@ -600,6 +610,10 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
     }
     sis_disk_rcatch_init_of_sub(cls_->rcatch, subkeys_, subsdbs_, search_, cb_);
     cls_->isstop = false;  // 用户可以随时中断
+
+    /**
+     * @brief 回调函数组合，实际上这里的callback与函数入参cb_完全相等
+     */
     s_sis_disk_reader_cb *callback = cls_->rcatch->callback;   
 
     if (callback->cb_bytedata || callback->cb_chardata)
@@ -607,6 +621,7 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
         cls_->sno_rctrl = sis_disk_sno_rctrl_create(1024*1024); 
     }
 
+    // 通知订阅者文件读取已开始
     if(callback->cb_start)
     {
         callback->cb_start(callback->cb_source, cls_->open_date);
@@ -633,6 +648,7 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
     }
     if (cls_->isstop)
     {
+        // 通知订阅者文件读取已中断
         if(callback->cb_break)
         {
             callback->cb_break(callback->cb_source, cls_->stop_date);
@@ -640,6 +656,7 @@ int sis_disk_io_sub_sno(s_sis_disk_ctrl *cls_, const char *subkeys_, const char 
     }
     else
     {
+        // 通知订阅者文件读取已正常结束
         if(callback->cb_stop)
         {
             callback->cb_stop(callback->cb_source, cls_->stop_date);

@@ -38,6 +38,12 @@ int sis_strcase_match(const char *son_, const char *source_)
 	return 1;
 }
 
+/**
+ * @brief 比较两个字符串，比较过程忽略大小写，注意，如果两个字符串长度不一致，则比较长度按二者最小长度考虑，超过比较长度的不做比较
+ * @param s1_ 
+ * @param s2_ 
+ * @return int 0 相等，1 不等
+ */
 int sis_strcasecmp(const char *s1_, const char *s2_)
 {
 	if (!s1_)
@@ -362,6 +368,14 @@ void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 		sis_strcpy(out_, olen_, in_);
 	}
 }
+/*从字符串中找出指定字符的出现次数，最后部分的count++逻辑看不懂
+参数列表：
+    s，字符串
+    ilen，字符串长度
+    c,目标字符
+返回值：
+    目标字符的出现次数，当字符串非空时，返回值不小于1
+*/
 int sis_str_substr_nums(const char *s, size_t ilen_, char c)
 {
 	if (!s)
@@ -377,6 +391,7 @@ int sis_str_substr_nums(const char *s, size_t ilen_, char c)
 			count++;
 		}
 	}
+	// 后面的这一段逻辑看不懂
 	if (len > 0 && s[len - 1] != c)
 	{
 		count++;

@@ -435,7 +435,7 @@ bool _sis_conf_parse(s_sis_conf_handle *handle_, const char *content_)
 	return true;
 }
 
-//////////////////////////////////////////////
+///////////////////////////////////////////////
 //   output main function define
 ///////////////////////////////////////////////
 
@@ -617,6 +617,13 @@ next:
 	}
 	return 0;
 }
+/**
+ * @brief 从文件中读取JSON配置，并调用回调函数执行配置
+ * @param fn_ 配置文件
+ * @param source_ 传递给回调函数的第一个参数
+ * @param cb_ 回调函数
+ * @return int 成功返回0
+ */
 int sis_conf_sub(const char *fn_, void *source_, cb_sis_sub_json *cb_)
 {
 	s_sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);

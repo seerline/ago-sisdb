@@ -11,6 +11,7 @@
 #define __WIN32__
 
 // ***  注意顺序不能变  *** //
+#ifdef WINDOWS
 #include <winsock2.h>
 #include <windows.h>
 #pragma comment (lib, "ws2_32.lib")
@@ -52,3 +53,4 @@
 #define RESET      ""
 
 #endif //_SIS_OS_H
+#endif

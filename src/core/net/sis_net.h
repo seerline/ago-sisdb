@@ -59,7 +59,9 @@
 #define SIS_NET_EXIT		    (8)  // 准备退出，通知线程结束工作 结束后 SIS_NET_NONE
 
 #pragma pack(push,1)
-// 从配置文件中获取的数据
+/**
+ * @brief 网络连接配置数据，从文件中获取，包含IP、端口、加密方式、压缩方式、通讯协议、连接方式、角色方式等
+ */
 typedef struct s_sis_url {
 	uint8          io;     // 连接方式 等待连接 主动去连接两种方式
 	uint8          role;        // 角色 client server 两种方式 由客户端发起请求 server 响应请求
@@ -118,7 +120,7 @@ void sis_net_slot_set(s_sis_net_slot *slots, uint8 compress, uint8 crypt, uint8 
 
 // 收到消息后的回调 s_sis_net_message - 
 typedef void (*cb_net_reply)(void *, s_sis_net_message *);
-
+/** 网络连接对象存储的与每个客户端对应的上下文数据*/
 typedef struct s_sis_net_context {
 	uint8              status;       // 当前的工作状态 SIS_NET_WORKING...HANDING DISCONNECT
 	int                rid;          // 对端的 socket ID 
@@ -144,7 +146,7 @@ typedef struct s_sis_net_context {
 //          外层只用跟 s_sis_net_message 进行交互 其他全部由 class 处理
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
+/** 网络连接处理类，包含网络配置结构体，客户端服务器对象，各种回调函数 */
 typedef struct s_sis_net_class {
 	s_sis_url            *url;      // 本机需要监听的ip地址
 

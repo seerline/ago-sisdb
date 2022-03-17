@@ -48,6 +48,12 @@ static inline void _sis_message_set(s_sis_message *msg_, const char* key_, s_sis
     }
     sis_map_pointer_set(msg_->map, key_, unit);
 }
+/**
+ * @brief 从请求应答s_sis_message的键值对map中，根据键获取数据
+ * @param msg_ 请求应答数据s_sis_message
+ * @param key_ 键
+ * @return s_sis_message_unit* 
+ */
 static inline s_sis_message_unit *_sis_message_get(s_sis_message *msg_, const char* key_)
 {
     if (!msg_->map)
@@ -159,7 +165,12 @@ s_sis_sds sis_message_get_str(s_sis_message *msg_, const char *key_)
     }
     return NULL;
 }
-
+/**
+ * @brief 通过函数名从请求应答数据s_sis_message中获取函数指针，该函数指针如果存在的话，应该存储于s_sis_message内部的键值对中
+ * @param msg_ 请求应答数据s_sis_message
+ * @param key_ 函数名
+ * @return sis_method_define* 函数指针
+ */
 sis_method_define *sis_message_get_method(s_sis_message *msg_, const char *key_)
 {
     s_sis_message_unit *unit = _sis_message_get(msg_, key_);
