@@ -233,9 +233,7 @@ bool sis_wait_thread_noexit(s_sis_wait_thread *swt_)
 int sis_wait_thread_wait(s_sis_wait_thread *swt_, int waitmsec_)
 {
 	int waitmsec = waitmsec_ > 3 ? waitmsec_ : swt_->wait_msec;
-	return (sis_thread_wait_sleep_msec(swt_->work_wait, waitmsec) == SIS_ETIMEDOUT)?
-		SIS_WAIT_TIMEOUT:
-		SIS_WAIT_NOTICE;
+	return (sis_thread_wait_sleep_msec(swt_->work_wait, waitmsec) == SIS_ETIMEDOUT) ? SIS_WAIT_TIMEOUT : SIS_WAIT_NOTICE;
 }
 void sis_wait_thread_stop(s_sis_wait_thread *swt_)
 {
