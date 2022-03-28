@@ -51,6 +51,8 @@ void sis_message_set(s_sis_message *, const char*, void *, sis_free_define *);
 
 bool sis_message_exist(s_sis_message *, const char*);
 
+int sis_message_get_cmd(const char *icmd_, s_sis_sds *service_, s_sis_sds *command_);
+
 int64 sis_message_get_int(s_sis_message *, const char*);
 bool sis_message_get_bool(s_sis_message *msg_, const char*);
 double sis_message_get_double(s_sis_message *, const char*);

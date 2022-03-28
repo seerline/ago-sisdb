@@ -124,7 +124,27 @@ bool sis_message_exist(s_sis_message *msg_, const char *key_)
 {
     return _sis_message_get(msg_, key_) ? true : false;
 }
-
+int sis_message_get_cmd(const char *icmd_, s_sis_sds *service_, s_sis_sds *command_)
+{
+    int o = 0;
+    if (icmd_)
+    {
+        sis_str_divide_sds(icmd_, '.', service_, command_);
+        // printf("%s %p %p  %s %s \n", icmd_, service_, command_, *service_, *command_);
+        if (*command_ == NULL)
+        {
+            *command_ = *service_;
+            *service_ = NULL;
+            o = 1;
+        }
+        else
+        {
+            o = 2;
+        }
+        // printf("%s %p %p  %s %s \n", icmd_, service_, command_, *service_, *command_);
+    }
+    return o;
+}
 int64 sis_message_get_int(s_sis_message *msg_, const char *key_)
 {
     s_sis_message_unit *unit = _sis_message_get(msg_, key_);
