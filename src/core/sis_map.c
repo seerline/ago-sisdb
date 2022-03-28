@@ -79,7 +79,7 @@ void *_sis_dict_int_dup(const void *val)
  */
 void *_sis_dict_int64_dup(const void *val)
 {
-	return val;
+	return (void *)val;
 }
 
 void *_sis_dict_obj_dup(const void *val)
@@ -379,7 +379,7 @@ void *sis_map_kint_get(s_sis_map_kint *map_, int64 key_)
 }
 int sis_map_kint_set(s_sis_map_kint *map_, int64 key_, void *val_)
 {
-	sis_dict_replace(map_,  (const void *)key_,val_);	
+	sis_dict_replace(map_,  (void *)key_,val_);	
 	// sis_dict_replace(map_, (void *)&key_, val_);	
 	return 0;
 }
