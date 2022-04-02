@@ -322,9 +322,12 @@ bool _subdb_reader_init(s_subdb_cxt *context)
                 userinfo->sub_keys ? userinfo->sub_keys : "nil",
                 context->work_keys ? context->work_keys : "nil",
                 keys ? keys : "nil");
-            sis_net_message_set_char(netmsg, keys, sis_sdslen(keys));
-            context->cb_net_message(context->cb_source, netmsg);
-            sis_sdsfree(keys);
+            if (keys)
+            {
+                sis_net_message_set_char(netmsg, keys, sis_sdslen(keys));
+                context->cb_net_message(context->cb_source, netmsg);
+                sis_sdsfree(keys);
+            }
             sis_net_message_clear(netmsg);
             netmsg->cid = userinfo->cid;
             sis_net_message_set_tag(netmsg, SIS_NET_TAG_SUB_SDB);
