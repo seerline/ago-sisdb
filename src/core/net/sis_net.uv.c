@@ -1007,7 +1007,8 @@ void _thread_reconnect(void* argv)
 		{
 			if (count > 25)
 			{
-				sis_socket_client_open(client);
+				// sis_socket_client_open(client);
+				sis_socket_client_open_sync(client);
 				count = 0;
 			}
 			count++;
@@ -1160,7 +1161,7 @@ static void _cb_after_connect(uv_connect_t *handle, int status)
 	if (status)
 	{
 		LOG(8)("client connect error: %s.\n", uv_strerror(status));
-		sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, NULL);
+		// sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, NULL);
 		client->work_status |= SIS_UV_CONNECT_FAIL;
 		return;
 	}
@@ -1242,6 +1243,20 @@ void _thread_client(void* arg)
     _uv_exit_loop(client->uv_c_worker);
 	LOG(5)("client connect thread stop. [%d]\n", client->work_status);
 }
+
+void sis_socket_client_open_sync(s_sis_socket_client *client_){
+	if (client_->work_status == SIS_UV_CONNECT_WAIT)
+	{
+		return ;
+	}
+	client_->work_status = SIS_UV_CONNECT_WAIT;
+	if (!_sis_socket_client_init(client_)) 
+	{
+		return ;
+	}
+	_thread_client(client_);
+}
+
 bool sis_socket_client_open(s_sis_socket_client *client_)
 {
 	if (client_->work_status == SIS_UV_CONNECT_WAIT)
