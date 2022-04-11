@@ -1244,7 +1244,8 @@ void _thread_client(void* arg)
 	LOG(5)("client connect thread stop. [%d]\n", client->work_status);
 }
 
-void sis_socket_client_open_sync(s_sis_socket_client *client_){
+void sis_socket_client_open_sync(s_sis_socket_client *client_)
+{
 	if (client_->work_status == SIS_UV_CONNECT_WAIT)
 	{
 		return ;

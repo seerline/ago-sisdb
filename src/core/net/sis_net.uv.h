@@ -192,6 +192,8 @@ void sis_socket_client_destroy(s_sis_socket_client *);
 
 void sis_socket_client_close(s_sis_socket_client *);
 
+void sis_socket_client_open_sync(s_sis_socket_client *);
+
 bool sis_socket_client_open(s_sis_socket_client *);
 bool sis_socket_client_open6(s_sis_socket_client *);
 
