@@ -14,21 +14,6 @@ static s_sis_server _server = {
 extern s_sis_modules *__modules[];
 extern const char *__modules_name[];
 
-void sis_worker_merge_conf(s_sis_json_node *node_, const char *workinfo_)
-{
-	s_sis_conf_handle *handle = sis_conf_load(workinfo_, sis_strlen(workinfo_));
-	if (handle)
-	{
-		s_sis_json_node *node = handle->node;
-		s_sis_json_node *cmdnode = sis_json_cmp_child_node(node_, node->key);
-		if (cmdnode)
-		{
-			sis_json_delete_node(cmdnode);
-		}
-		sis_json_object_add_node(node_, node->key, sis_json_clone(node, 1));
-		sis_conf_close(handle);
-	}
-}
 /**
  * @brief 根据JSON配置文件创建工作者并初始化，包括：
 * (1) 根据工作者的classname获取对应的接插件module
@@ -51,11 +36,6 @@ int _server_open_workers()
 	{
 		if (!sis_map_pointer_get(_server.workers, next->key))
 		{
-			if (sis_strlen(_server.work_name) > 0 && !sis_strcasecmp(next->key, _server.work_name))
-			{
-				// 如果有特殊控制 就直接替换或合并到next中去
-				sis_worker_merge_conf(next, _server.work_conf);
-			}
 			s_sis_worker *worker = sis_worker_create(NULL, next);
 			if (worker)
 			{
@@ -189,6 +169,15 @@ void sis_server_uninit()
 	sis_map_pointer_destroy(_server.modules);
 }
 
+const char *sis_get_server_cmd(const char *cmdname_)
+{
+	if (_server.work_conf)
+	{
+		return (const char *)sis_map_sds_get(_server.work_conf, cmdname_);
+	}
+	return NULL;
+}
+
  #ifndef TEST_DEBUG 
  
 int main(int argc, char *argv[])
@@ -204,8 +193,11 @@ int main(int argc, char *argv[])
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'c' && argv[c + 1] && argv[c + 2])
 		{
-			sis_strcpy(_server.work_name, 1024, argv[c + 1]);
-			sis_strcpy(_server.work_conf, 1024, argv[c + 2]);
+			if (!_server.work_conf)
+			{
+				_server.work_conf = sis_map_sds_create();
+			}
+			sis_map_sds_set(_server.work_conf, argv[c + 1], argv[c + 2]);
 			c++;
 			c++;
 		}
@@ -289,7 +281,10 @@ int main(int argc, char *argv[])
 	sis_server_uninit();
 
 	LOG(3)("program exit.\n");
-
+	if (_server.work_conf)
+	{
+		sis_map_sds_destroy(_server.work_conf);
+	}
 	sis_conf_close(_server.config);
 
 	sis_log_close();
