@@ -2,7 +2,7 @@
 #define _OS_THREAD_H
 
 // #include <sis_os.h>
-#ifdef WINDOWS
+// #ifdef WINDOWS
 #include <os_time.h>
 #include <minwinbase.h>
 
@@ -154,5 +154,5 @@ atomic_fetch_sub_##short_type(atomic_##short_type##_t *a,		\
 #ifdef __cplusplus
 }
 #endif
-#endif // DEBUG
+// #endif // WINDOWS
 #endif /* _SIS_THREAD_H */

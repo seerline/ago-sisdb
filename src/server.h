@@ -26,6 +26,8 @@ typedef struct s_sis_server
 	int status; //是否已经初始化
 	
 	char conf_name[SIS_PATH_LEN];  //配置文件路径
+	char work_name[SIS_PATH_LEN];  //控制工作类 指定类名下合并或替换配置
+	char work_conf[SIS_PATH_LEN];  //控制文件名
 
 	size_t log_size;
 	int    log_level;
