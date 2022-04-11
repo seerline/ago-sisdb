@@ -25,7 +25,7 @@ static inline void safe_memory_stop(){};
 
 #define MEMORY_INFO_SIZE  32
 
-#pragma pack(push,1)
+// #pragma pack(push,1)
 typedef struct s_memory_node {
     char   info[MEMORY_INFO_SIZE];
     unsigned int size; 
@@ -33,7 +33,7 @@ typedef struct s_memory_node {
 	struct s_memory_node * prev;     
 	struct s_memory_node * next;
 }s_memory_node;
-#pragma pack(pop)
+// #pragma pack(pop)
 
 #define MEMORY_NODE_SIZE  (sizeof(s_memory_node))
 

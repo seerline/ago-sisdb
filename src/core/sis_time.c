@@ -43,6 +43,18 @@ int sis_msec_get_itime(msec_t msec) //103020
 	sis_time_check((time_t)(msec/1000), &ptm);
 	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
+
+long sis_msec_get_mtime(msec_t msec) //103020 000
+{
+	if (msec == 0)
+	{
+		return 0;
+	}
+	struct tm ptm = {0};
+	sis_time_check((time_t)(msec/1000), &ptm);
+	return (ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec) * 1000l + msec % 1000;
+}
+
 int sis_sec_get_itime(time_t ttime) //103020
 {
 	return ttime ? sis_time_get_itime(ttime) : 0;
