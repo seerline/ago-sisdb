@@ -527,3 +527,35 @@ void sis_net_msg_tag_sub_close(s_sis_net_message *netmsg_, const char *info_)
     netmsg_->switchs.sw_tag = 1;
     SIS_NET_SET_STR(netmsg_->switchs.sw_info, netmsg_->info, info_);
 }
+
+void sis_net_msg_clear(s_sis_net_message *netmsg_)
+{
+    sis_net_msg_clear_service(netmsg_);
+    sis_net_msg_clear_cmd(netmsg_);
+    sis_net_msg_clear_info(netmsg_);
+    sis_net_msg_clear_subject(netmsg_);
+}
+void sis_net_msg_clear_service(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_service = 0;
+    sis_sdsfree(netmsg_->service);
+    netmsg_->service = NULL;
+}
+void sis_net_msg_clear_cmd(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_cmd = 0;
+    sis_sdsfree(netmsg_->cmd);
+    netmsg_->cmd = NULL;
+}
+void sis_net_msg_clear_info(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_info = 0;
+    sis_sdsfree(netmsg_->info);
+    netmsg_->info = NULL;
+}
+void sis_net_msg_clear_subject(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_subject = 0;
+    sis_sdsfree(netmsg_->subject);
+    netmsg_->subject = NULL;
+}

@@ -200,5 +200,10 @@ void sis_net_msg_tag_sub_stop(s_sis_net_message *,  const char *info_);
 void sis_net_msg_tag_sub_open(s_sis_net_message *, const char *info_);
 void sis_net_msg_tag_sub_close(s_sis_net_message *, const char *info_);
 
+void sis_net_msg_clear(s_sis_net_message *);
+void sis_net_msg_clear_service(s_sis_net_message *);
+void sis_net_msg_clear_cmd(s_sis_net_message *);
+void sis_net_msg_clear_info(s_sis_net_message *);
+void sis_net_msg_clear_subject(s_sis_net_message *);
 
 #endif //_SIS_CRYPT_H
