@@ -115,12 +115,12 @@ s_sis_dict_type _sis_dict_type_nofree_val_s = {
  * @brief 键为64位整数的默认初始化实现，added by zhangchao
  */
 s_sis_dict_type _sis_dict_type_int_key_s = {
-	_sis_dict_int64_hash,	       /* hash function */
-	_sis_dict_int64_dup,		   /* key dup */
-	NULL,					   /* val dup */
+	_sis_dict_int64_hash,	     /* hash function */
+	_sis_dict_int64_dup,		 /* key dup */
+	NULL,					     /* val dup */
 	_sis_dict_int64_compare,     /* key compare */
-	NULL,		   /* key destructor */
-	NULL					   /* val destructor */
+	NULL,		                 /* key destructor */
+	NULL					     /* val destructor */
 };
 
 s_sis_dict_type _sis_dict_type_obj_key_s = {

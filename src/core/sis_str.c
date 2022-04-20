@@ -391,7 +391,6 @@ int sis_str_substr_nums(const char *s, size_t ilen_, char c)
 			count++;
 		}
 	}
-	// 后面的这一段逻辑看不懂
 	if (len > 0 && s[len - 1] != c)
 	{
 		count++;

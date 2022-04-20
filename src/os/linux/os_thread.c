@@ -163,50 +163,38 @@
 //     }  
 //     return 0;  
 // }  
-
-/**
- * @brief 调用操作系统API创建线程
- * @param func_ 新线程运行时执行的函数
- * @param worker_ 新线程运行时传递给func_的参数
- * @param thread_ 用以保存结果的sis线程对象
- * @return true 成功
- * @return false 失败
- */
-bool sis_thread_create(cb_thread_working func_, void* worker_, s_sis_thread *thread_)
+ 
+bool sis_thread_create(cb_thread_working func_, void* val_, s_sis_thread *thread_)
 {
-	s_sis_thread_id_t thread_id = 0;//创建线程后操作系统返回的线程ID
-	pthread_attr_t attr;//操作系统定义的线程相关属性
-	
-	// 初始化线程属性
-	if(pthread_attr_init(&attr))
+	s_sis_thread_id_t result = 0;
+	pthread_attr_t attr;
+	int irc;
+	irc = pthread_attr_init(&attr);
+	if (irc)
+	{
 		return false;
-
-	// 设置线程堆栈大小为64M	
-	if(pthread_attr_setstacksize(&attr, 1024 * 64)) //测试2008-07-15
+	}
+	irc = pthread_attr_setstacksize(&attr, 1024 * 64); //测试2008-07-15
+	if (irc)
+	{
 		return false;
-
-	/** 设置线程状态为可分离
-	 * 在任何一个时间点上，线程是可结合的（joinable），或者是分离的（detached）。一个可结合的线程能够被其他线程收回其资源和杀死；
-	 * 在被其他线程回收之前，它的存储器资源（如栈）是不释放的。相反，一个分离的线程是不能被其他线程回收或杀死的，它的存储器资源在它
-	 * 终止时由系统自动释放。
-	 * 线程的分离状态决定一个线程以什么样的方式来终止自己。在默认情况下线程是非分离状态的，这种情况下，原有的线程等待创建的线程结束。
-	 * 只有当pthread_join（）函数返回时，创建的线程才算终止，才能释放自己占用的系统资源。而分离线程不是这样子的，它没有被其他的线
-	 * 程所等待，自己运行结束了，线程也就终止了，马上释放系统资源。
-	 * 如果我们在创建线程时就知道不需要了解线程的终止状态，则可以pthread_attr_t结构中的detachstate线程属性，让线程以分离状态启动。
-	*/	
-	//QQQ  如果不用此方式，会造成条件变量广播丢失问题
-	if(pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED))
-		return false;
+	}
+	irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	// 如果不用此方式，会造成条件变量广播丢失问题
 	// irc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE); // join 阻塞等
-	if(pthread_create(&thread_id, &attr, func_, worker_))
+	if (irc)
+	{
 		return false;
-
-	//变量attr在其使用完毕后将其资源回收	
+	}
+	irc = pthread_create(&result, &attr, func_, val_);
+	if (irc)
+	{
+		return false;
+	}
 	pthread_attr_destroy(&attr);
-	thread_->argv = worker_;
+	thread_->argv = val_;
 	thread_->worker = func_;
-	thread_->thread_id = thread_id;
+	thread_->thread_id = result;
 	thread_->working = true;
 	// sis_thread_auto_cpu(thread_);
 	return true;	
@@ -311,10 +299,9 @@ int sis_mutex_wait_lock_w(s_sis_rwlock_t *rwlock_, int msec_)
 	return pthread_rwlock_timedwrlock(rwlock_, &ts);
 }
 #endif
-/**
- * @brief 获取互斥锁，如果锁被占用就挂起线程，直到锁被释放为止
- * @param wait_ 被操作的线程对象
- */
+/////////////////////////////////////
+//
+//////////////////////////////////////////
 void sis_thread_wait_start(s_sis_wait *wait_)
 {
 	sis_mutex_lock(&wait_->mutex);
@@ -325,11 +312,6 @@ void sis_thread_wait_stop(s_sis_wait *wait_)
 }
 #ifndef __XRELEASE__
 // 要测试，暂时先这样，后期要检查问题
-/** 满足以下条件之一，即可返回：
- * （1）等待超时delay_秒
- * （2）收到互斥体wait_->mutex的解锁信号
- * （3）wait_->cond条件满足
- */
 int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 {
 	struct timeval tv;
@@ -340,17 +322,6 @@ int sis_thread_wait_sleep(s_sis_wait *wait_, int delay_) // 秒
 	return pthread_cond_timedwait(&wait_->cond, &wait_->mutex, &ts);
 	// 返回 SIS_ETIMEDOUT 就正常处理
 }
-/** 
- */
-
-/**
- * @brief 满足以下条件之一，即可返回：
- * （1）等待超时msec_毫秒
- * （2）wait_->cond收到信号
- * @param wait_ 等待式线程对象
- * @param msec_ 超时时间
- * @return int 
- */
 int sis_thread_wait_sleep_msec(s_sis_wait *wait_, int msec_) // 毫秒
 {
 	struct timeval tv;   // 微秒
@@ -418,7 +389,6 @@ void sis_thread_wait_init(s_sis_wait *wait_)
 }
 void sis_thread_wait_notice(s_sis_wait *wait_)
 {
-	//QQQ 这里为什么要先lock，是为了保证不丢信号么？
 	// pthread_mutex_lock(&wait_->mutex);
 	if (!pthread_mutex_trylock(&wait_->mutex)) // 保证已经处于等待状态 否则死锁
 	{

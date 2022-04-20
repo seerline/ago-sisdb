@@ -207,7 +207,9 @@ int sis_disk_reader_sub_log(s_sis_disk_reader *, int idate_);
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
 int sis_disk_reader_sub_sic(s_sis_disk_reader *, const char *keys_, const char *sdbs_, int idate_);
 
-
+// 读取 仅支持 SNO  
+// 如果定义了 cb_bytedata cb_chardata 就解压数据再返回
+// 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3
 int sis_disk_reader_sub_sno(s_sis_disk_reader *, const char *keys_, const char *sdbs_, int idate_);
 
 // 取消一个正在订阅的任务 只有处于非订阅状态下才能订阅 避免重复订阅

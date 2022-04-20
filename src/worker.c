@@ -19,21 +19,30 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 			task_->isfirst = true;
 			return true;
 		}	
-        task_->work_thread->work_status = SIS_WAIT_STATUS_EXIT;
+        sis_wait_thread_close(task_->work_thread);        
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_NOTICE)
 	{
-        //QQQ 等待通知执行任务的具体应用场合？信号本身是脉冲量而不是状态量，那如何保证信号发出以后不被错过？
-		if (sis_wait_thread_wait(task_->work_thread, 30000) == SIS_WAIT_NOTICE
-            && task_->work_thread->work_status != SIS_WAIT_STATUS_EXIT)
+		int o = sis_wait_thread_wait(task_->work_thread, 30000);
+		// printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
+		if (o == SIS_WAIT_NOTICE)
 		{
-			return true;
+			// only notice return true.
+			if (sis_wait_thread_noexit(task_->work_thread))
+			{
+				// printf("notice work...\n");
+				return true;
+			}
 		}
 	}
 	else if (task_->work_mode == SIS_WORK_MODE_GAPS)
 	{
-		if (sis_wait_thread_wait(task_->work_thread, task_->work_gap.delay) == SIS_WAIT_TIMEOUT)
+		// printf("gap = [%d, %d , %d]\n", task_->work_gap.start ,task_->work_gap.stop, task_->work_gap.delay);
+		int o = sis_wait_thread_wait(task_->work_thread, task_->work_gap.delay);
+		// printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
+		if (o != SIS_WAIT_NOTICE)
 		{
+			// printf("delay 1 = %d\n", task_->work_gap.delay);
 			if (task_->work_gap.start == task_->work_gap.stop)
 			{
 				return true;
@@ -41,12 +50,13 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 			else
 			{
 				int min = sis_time_get_iminute(0);
-				if ((task_->work_gap.start < min && min < task_->work_gap.stop) ||
+				if ((task_->work_gap.start < task_->work_gap.stop && min > task_->work_gap.start && min < task_->work_gap.stop) ||
 					(task_->work_gap.start > task_->work_gap.stop && (min > task_->work_gap.start || min < task_->work_gap.stop)))
 				{
 					return true;
 				}
 			}
+			// printf("delay = %d\n", task_->work_gap.delay);
 		}
 	}
 	else // SIS_WORK_MODE_PLANS
@@ -58,9 +68,12 @@ bool sis_work_thread_wait(s_sis_work_thread *task_)
 		}		
 		else 
         {
-            if (sis_wait_thread_wait(task_->work_thread, 30000) == SIS_WAIT_TIMEOUT)
+            int o = sis_wait_thread_wait(task_->work_thread, 30000);
+            // printf("notice start... %d %d\n", SIS_ETIMEDOUT, o);
+            if (o != SIS_WAIT_NOTICE)
             {
                 int min = sis_time_get_iminute(0);
+                // printf("save plan ... -- -- -- %d \n", min);
                 for (int k = 0; k < task_->work_plans->count; k++)
                 {
                     uint16 *lm = sis_struct_list_get(task_->work_plans, k);
@@ -92,11 +105,19 @@ s_sis_work_thread *sis_work_thread_create()
  * @return true 成功
  * @return false 出错
  */
-bool sis_work_thread_open(s_sis_work_thread *task_, cb_thread_working func_, void *worker_)
+bool sis_work_thread_open(s_sis_work_thread *task_, cb_thread_working func_, void *val_)
 {
+    // if (task_->work_mode == SIS_WORK_MODE_NONE)
+    // {
+    //     return false;
+    // }
     // 默认30秒
     task_->work_thread = sis_wait_thread_create(30000);
-    return sis_wait_thread_open(task_->work_thread, func_, worker_);
+	if (!sis_wait_thread_open(task_->work_thread, func_, val_))
+	{
+		return false;
+	}
+	return true;
 }
 void sis_work_thread_destroy(s_sis_work_thread *task_)
 {
@@ -109,6 +130,10 @@ void sis_work_thread_destroy(s_sis_work_thread *task_)
 	LOG(5)("work_thread end.\n");
 }
 
+/////////////////////////////////////////
+// worker thread function
+/////////////////////////////////////////
+
 /**
  * @brief （1）调用工作者的module的work_init函数
  * （2）获取互斥锁,根据工作者的任务类别选择时机执行module的working函数
@@ -118,32 +143,42 @@ void sis_work_thread_destroy(s_sis_work_thread *task_)
  */
 void *_service_work_thread(void *argv_)
 {
-    if(argv_== NULL)
-        return NULL;
-
 	s_sis_worker *worker = (s_sis_worker *)argv_;
+	if (!worker)
+	{
+		return NULL;
+	}
     s_sis_work_thread *service_thread = worker->service_thread;
-    //调用工作者对应module的work_init函数
 	if (worker->slots->work_init)
 	{
 		worker->slots->work_init(worker);
 	}
-    /*  更改工作者的状态为SIS_WAIT_STATUS_WORK*/
-    service_thread->work_thread->work_status = SIS_WAIT_STATUS_WORK;
-    /*  获取互斥锁，如果锁被占用就挂起线程，直到锁被释放为止*/
-    sis_thread_wait_start(service_thread->work_thread->work_wait);
-    while (service_thread->work_thread->work_status == SIS_WAIT_STATUS_WORK)
+    sis_wait_thread_start(service_thread->work_thread);
+    while (sis_wait_thread_noexit(service_thread->work_thread))
     {
-        SIS_EXIT_SIGNAL;// 程序任意地方发生异常，或者收到退出信号，则退出循环;
-
-        if (sis_work_thread_wait(service_thread)
-            && worker->slots->working)
-                worker->slots->working(worker);
-    }
-
+        SIS_EXIT_SIGNAL;
+        if (sis_work_thread_wait(service_thread))
+        {
+            if (sis_wait_thread_isexit(service_thread->work_thread))
+            {
+                break;
+            }
+            if (sis_wait_thread_iswork(service_thread->work_thread))
+            {                
+                // LOG(10)("work = %p mode = %d\n", worker, service_thread->work_mode);
+                // --------user option--------- //
+                if (worker->slots->working)
+                {
+                    worker->slots->working(worker);
+                }
+                // LOG(10)("work end. status = %d\n", worker->status);
+            }
+        }
+    }	
 	if (worker->slots->work_uninit)
-        worker->slots->work_uninit(worker);
-        
+	{
+		worker->slots->work_uninit(worker);
+	}	
     sis_wait_thread_stop(service_thread->work_thread);
 	LOG(5)("work [%s] end.\n", worker->workername);
     return NULL;
@@ -192,29 +227,26 @@ s_sis_sds _sis_worker_get_workname(s_sis_worker *worker_, const char *workname_)
  */
 bool _sis_worker_init(s_sis_worker *worker_, s_sis_json_node *node_)
 {
-    // 根据工作者的classname获取对应的接插件module
     worker_->slots = sis_get_worker_slot(worker_->classname);
     if (!worker_->slots)
     {
         LOG(3)("no find class : %s\n", worker_->classname);
         return false;
     }
-    // 调用module的初始化方法init
+    // init
     if (worker_->slots->init && !worker_->slots->init(worker_, node_))
     {
         LOG(1)("load worker [%s] config error.\n", worker_->classname);
         return false;
     }
-    // 为methods分配内存
+    // init methods
     worker_->methods = sis_methods_create(NULL, 0);
-    // 将module的methods添加到工作者的methods表中
 	for (int i = 0; i < worker_->slots->mnums; i++)
 	{
 		s_sis_method *method = worker_->slots->methods + i;
 		sis_methods_register(worker_->methods, method);
         // printf("---[%d]--- %s : %p %s\n", i, val->name, val->proc, val->style);
-	}
-    // 调用module的method_init方法 
+	} 
     if (sis_map_pointer_getsize(worker_->methods) > 0)
     {
         if (worker_->slots->method_init)
@@ -265,6 +297,9 @@ void _sis_load_work_time(s_sis_worker *worker_, s_sis_json_node *node_)
         }
     }
 }
+/////////////////////////////////
+//  worker
+/////////////////////////////////
 /**
  * @brief 根据work名称及其json配置文件，创建工作者，并根据json配置对工作者初始化，包括：
 * (1) 根据工作者的classname获取对应的接插件module
@@ -294,11 +329,11 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     {
         node = node_;
     }
-    // 为工作者分配内存空间
+    // size_t iii = 1;
+    // printf("%s\n", sis_json_output(node, &iii));
     s_sis_worker *worker = SIS_MALLOC(s_sis_worker, worker);
     worker->father = father_; 
     worker->status = SIS_WORK_INIT_NONE;
-    // 为工作者设置归属类名classname
     s_sis_json_node *classname_node = sis_json_cmp_child_node(node, "classname");
     if (classname_node)
     {
@@ -308,7 +343,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     {
         worker->classname = sis_sdsnew(name_);
     }
-    // 为工作者设置名称workername，如果包含是子工作者，则需要遍历前导字符使workername包含完整路径
+    // 需要遍历前导字符
     worker->workername = _sis_worker_get_workname(worker, name_);
 
     // 必须在 _sis_worker_init 之前初始化workers
@@ -319,8 +354,6 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     {
         node->key = sis_strdup(name_, sis_strlen(name_));
     }
-
-    // 初始化工作者，并调用对应module的初始化方法
     if (!_sis_worker_init(worker, node))
     {
         LOG(3)("init worker [%s] error.\n", worker->classname);
@@ -329,7 +362,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
         goto work_exit;
     }
     worker->status |= SIS_WORK_INIT_METHOD;
-    // 启动独立线程运行module的working函数
+    // 如果有 working 表示有独立线程需要启动
     if (worker->slots->working) 
     {
         worker->service_thread = sis_work_thread_create();
@@ -394,8 +427,6 @@ s_sis_worker *sis_worker_create_of_conf(s_sis_worker *father_, const char *name_
     }
     return worker;
 }
-
-// QQQ 什么样的场景下会用到父工作者
 /**
  * @brief 根据JSON配置文件创建工作者，初始化，包括：
 * (1) 根据工作者的classname获取对应的接插件module

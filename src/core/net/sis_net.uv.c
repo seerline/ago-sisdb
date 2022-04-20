@@ -1007,6 +1007,7 @@ void _thread_reconnect(void* argv)
 		{
 			if (count > 25)
 			{
+				// 20220401 张超改
 				// sis_socket_client_open(client);
 				sis_socket_client_open_sync(client);
 				count = 0;

@@ -188,8 +188,6 @@ void sis_wait_thread_notice(s_sis_wait_thread *swt_)
  */
 bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void *source_)
 {
-
-
     if (!sis_thread_create(func_, source_, &swt_->work_thread))
     {
         return false;
