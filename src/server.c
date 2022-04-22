@@ -92,10 +92,10 @@ bool _server_open(const char *cmdinfo)
 			// sis_json_show(_server.config->node, &ii);
 			sis_json_object_merge(_server.config->node, hcmd->node);
 
-			char *str = NULL;
-			size_t olen;
-			str = sis_json_output(_server.config->node, &olen);
-			printf(str);
+			// char *str = NULL;
+			// size_t olen;
+			// str = sis_json_output(_server.config->node, &olen);
+			// printf(str);
 
 			sis_json_close(hcmd);
 		}
