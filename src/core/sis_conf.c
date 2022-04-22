@@ -35,13 +35,13 @@ static const char *_sis_parse_string(s_sis_conf_handle *handle_, s_sis_json_node
 {
 	int len = 0;
 	const char *ptr = value_;
-	if (*ptr && *ptr == '"')
+	if (*ptr && *ptr == '\"')
 	{
 		value_++;
 		ptr++;
 		while (*ptr && (unsigned char)*ptr > 0x20 && *ptr != SIS_CONF_NOTE_SIGN)
 		{
-			if (*ptr == '"')
+			if (*ptr == '\"')
 			{
 				ptr++;
 				break;
@@ -130,6 +130,7 @@ static const char *_sis_parse_array(s_sis_conf_handle *handle_, s_sis_json_node 
 
 	struct s_sis_json_node *child = NULL;
 	node_->child = child = sis_json_create_node();
+	child->father = node_;
 	int index = 0;
 	while (value_ && *value_)
 	{
@@ -187,7 +188,7 @@ static const char *_sis_parse_object(s_sis_conf_handle *handle_, s_sis_json_node
 	}
 	struct s_sis_json_node *child = NULL;
 	node_->child = child = sis_json_create_node();
-
+	child->father = node_;
 	while (value_ && *value_)
 	{
 		value_ = _sis_conf_skip(handle_,value_);

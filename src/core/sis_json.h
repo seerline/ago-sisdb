@@ -53,6 +53,9 @@ void sis_json_save(s_sis_json_node *node_, const char *fn_); //把json存到文�
 s_sis_json_node *sis_json_clone(s_sis_json_node *src_, int child_); 
 // child_==0 表示只当前节点
 
+// 把子节点的数据添加到src的节点中去，
+// 如果同名节点除了object外都直接覆盖 object 直接进入下级节点遍历 
+void sis_json_object_merge(s_sis_json_node *src_, s_sis_json_node *son_);
 //////////////////////////////////////////////
 //======== write option =============//
 //   write function define

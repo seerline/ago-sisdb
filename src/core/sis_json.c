@@ -565,6 +565,35 @@ s_sis_json_node *sis_json_clone(s_sis_json_node *node_, int child_)
 	return newitem;
 }
 
+void sis_json_object_merge(s_sis_json_node *src_, s_sis_json_node *son_)
+{
+	s_sis_json_node *cptr, *nptr = 0;
+	cptr = son_->child;
+	while (cptr)
+	{
+		nptr = sis_json_cmp_child_node(src_, cptr->key);
+		if (!nptr)
+		{
+			// 不存在同样的命名就直接增加节点
+			sis_json_object_add_node(src_, cptr->key, sis_json_clone(cptr, 1));			
+		}
+		else
+		{
+			if (cptr->type == SIS_JSON_OBJECT)
+			{
+				sis_json_object_merge(nptr, cptr);
+			}
+			else
+			{
+				sis_json_delete_node(nptr);
+				sis_json_object_add_node(src_, cptr->key, sis_json_clone(cptr, 1));
+			}
+		}
+		
+		cptr = cptr->next;
+	}	
+}
+
 //////////////////////////////////////////////
 //   write function define
 ///////////////////////////////////////////////

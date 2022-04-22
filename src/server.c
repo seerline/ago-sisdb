@@ -65,7 +65,7 @@ void _sig_kill(int sn)
 }
 
 // 读取配置文件
-bool _server_open()
+bool _server_open(const char *cmdinfo)
 {
 	if (!sis_file_exists(_server.conf_name))
 	{
@@ -78,6 +78,27 @@ bool _server_open()
 	{
 		printf("conf file %s format error.\n", _server.conf_name);
 		return false;
+	}
+	if (sis_strlen(cmdinfo) > 0)
+	{
+		s_sis_json_handle *hcmd = sis_json_open(cmdinfo);
+		if (!hcmd)
+		{
+			printf("merge file %s no open.\n", cmdinfo);
+		}
+		else
+		{
+			// int ii = 1;
+			// sis_json_show(_server.config->node, &ii);
+			sis_json_object_merge(_server.config->node, hcmd->node);
+
+			char *str = NULL;
+			size_t olen;
+			str = sis_json_output(_server.config->node, &olen);
+			printf(str);
+
+			sis_json_close(hcmd);
+		}
 	}
 
 	char conf_path[SIS_PATH_LEN];
@@ -114,6 +135,19 @@ bool _server_open()
 	return true;
 }
 
+void _server_merge_cmd(const char *cmdinfo)
+{
+	s_sis_json_handle *handle = sis_json_open(cmdinfo);
+	if (!handle)
+	{
+		printf("merge file %s no open.\n", cmdinfo);
+		return ;
+	}
+	
+
+	sis_json_close(handle);
+}
+
 bool sis_is_server(void *self_)
 {
 	if (self_ == &_server)
@@ -143,7 +177,7 @@ void _server_help()
 	printf("command format:\n");
 	printf("		-f xxxx.conf : install custom conf. \n");
 	printf("		-d           : debug mode run. \n");
-	printf("		-c workname cmd.conf : install command conf. \n");
+	printf("		-w workinfo.json : install workinfo config. \n");
 	printf("		-h           : help. \n");
 }
 /**
@@ -169,21 +203,14 @@ void sis_server_uninit()
 	sis_map_pointer_destroy(_server.modules);
 }
 
-const char *sis_get_server_cmd(const char *cmdname_)
-{
-	if (_server.work_conf)
-	{
-		return (const char *)sis_map_sds_get(_server.work_conf, cmdname_);
-	}
-	return NULL;
-}
-
  #ifndef TEST_DEBUG 
  
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 1024, "%s.conf", argv[0]);
 	int c = 1;
+	char cmdinfo[255]; 
+	cmdinfo[0] = 0;
 	while (c < argc)
 	{
 		if (argv[c][0] == '-' && argv[c][1] == 'f' && argv[c + 1])
@@ -191,14 +218,9 @@ int main(int argc, char *argv[])
 			sis_strcpy(_server.conf_name, 1024, argv[c + 1]);
 			c++;
 		}
-		else if (argv[c][0] == '-' && argv[c][1] == 'c' && argv[c + 1] && argv[c + 2])
+		else if (argv[c][0] == '-' && argv[c][1] == 'w' && argv[c + 1])
 		{
-			if (!_server.work_conf)
-			{
-				_server.work_conf = sis_map_sds_create();
-			}
-			sis_map_sds_set(_server.work_conf, argv[c + 1], argv[c + 2]);
-			c++;
+			sis_strcpy(cmdinfo, 255, argv[c + 1]);
 			c++;
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'd')
@@ -218,7 +240,8 @@ int main(int argc, char *argv[])
 		// 如果是debug模式就开启内存检查
 		safe_memory_start();
 	}
-	if (!_server_open())
+
+	if (!_server_open(cmdinfo))
 	{
 		printf("conf file %s load error.\n", _server.conf_name);
 		return 0;
@@ -281,10 +304,7 @@ int main(int argc, char *argv[])
 	sis_server_uninit();
 
 	LOG(3)("program exit.\n");
-	if (_server.work_conf)
-	{
-		sis_map_sds_destroy(_server.work_conf);
-	}
+
 	sis_conf_close(_server.config);
 
 	sis_log_close();
