@@ -236,8 +236,11 @@ int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_
 	node->size += sizeof(int);
 	memmove(node->memory + node->size, &sign_, sizeof(int8));
 	node->size += sizeof(int8);
-	memmove(node->memory + node->size, in_, isize_);
-	node->size += isize_;
+	if (in_ && isize_ > 0)
+	{
+		memmove(node->memory + node->size, in_, isize_);
+		node->size += isize_;
+	}
 	node->nums ++;
 	// if (node->nums % 100000 == 0)
 	// printf("push sign: %zu %d %d %d\n", node->size, node->nums, node->rpos, node->maxsize);
@@ -269,8 +272,11 @@ int  sis_net_mems_push_kv(s_sis_net_mems *nodes_, int kidx_, int sidx_, void *in
 	node->size += sizeof(int);
 	memmove(node->memory + node->size, &sidx_, sizeof(int));
 	node->size += sizeof(int);
-	memmove(node->memory + node->size, in_, isize_);
-	node->size += isize_;
+	if (in_ && isize_ > 0)
+	{
+		memmove(node->memory + node->size, in_, isize_);
+		node->size += isize_;
+	}
 	node->nums ++;
 	nodes_->wsize += (isize + sizeof(int));
 	sis_mutex_unlock(&nodes_->lock);

@@ -14,7 +14,6 @@
 /////////////////////////////////////////////////
 
 #define SIS_NET_MEMSIZE  16*1024*1024
-
 typedef struct s_sis_net_mem {
 	int                    size;    // 数据尺寸
 	char                   data[0]; // 数据区
