@@ -300,7 +300,7 @@ int  sis_net_mems_cat(s_sis_net_mems *nodes_, void *in_, size_t isize_)
 	// }
 	memmove(node->memory + node->size, in_, isize_);
 	node->size += isize_;
-	node->nums = 1; // 此时所哟欧数据都在一起 nums 失去意义恒定为 1
+	node->nums = 1; // 此时所有数据都在一起 nums 失去意义恒定为 1
 	// 拷贝内存结束
 	nodes_->wsize += isize_;
 	sis_mutex_unlock(&nodes_->lock);
@@ -395,7 +395,7 @@ int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_)
 		int readnums = readnums_ == 0 ? nodes_->wuses : readnums_;
 		s_sis_net_mem_node *next = nodes_->whead;	
 		sis_net_mems_rhead(nodes_);
-		// printf("=== %p %d %d %d %d\n", next, nodes_->wuses, next ? next->size : -1, nodes_->rnums, nodes_->wsize);
+		// printf("=== %p %d %d %d %d\n", next, nodes_->wuses, next ? next->nums : -1, nodes_->rnums, nodes_->wsize);
 		while (next && next->size > 0 && nodes_->wuses > 0 && nodes_->rnums < readnums)
 		{
 			nodes_->wnums--;
@@ -436,7 +436,7 @@ int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_)
 		sis_mutex_unlock(&nodes_->lock);
 		return 	nodes_->rnums;
 	}
-	printf("==3== lock ok. %d :: %d\n", nodes_->rnums, nodes_->wnums);
+	// printf("==3== lock ok. %d :: %d\n", nodes_->rnums, nodes_->wnums);
 	return 0;
 }
 int sis_net_mems_free_read(s_sis_net_mems *nodes_)
@@ -451,6 +451,31 @@ int  sis_net_mems_count(s_sis_net_mems *nodes_)
 {
 	sis_mutex_lock(&nodes_->lock);
 	int count = nodes_->rnums + nodes_->wnums;
+	sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+int  sis_net_mems_nums(s_sis_net_mems *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	int count = 0;
+	if (nodes_->rnums > 0)
+	{
+		s_sis_net_mem_node *next = nodes_->rhead;
+		while (next && next->nums > 0)
+		{
+			count += next->nums;
+			next = next->next;
+		}
+	}
+	if (nodes_->wnums > 0)
+	{
+		s_sis_net_mem_node *next = nodes_->whead;
+		while (next && next->nums > 0)
+		{
+			count += next->nums;
+			next = next->next;
+		}
+	}
 	sis_mutex_unlock(&nodes_->lock);
 	return count;
 }

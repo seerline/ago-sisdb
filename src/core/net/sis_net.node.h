@@ -63,6 +63,7 @@ int  sis_net_mems_free_read(s_sis_net_mems *nodes_);
 
 // 队列是否为空
 int  sis_net_mems_count(s_sis_net_mems *nodes_);
+int  sis_net_mems_nums(s_sis_net_mems *nodes_);
 size_t  sis_net_mems_size(s_sis_net_mems *nodes_);
 
 /////////////////////////////////////////////////
