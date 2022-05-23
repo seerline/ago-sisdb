@@ -1398,7 +1398,7 @@ int sis_fsort_list_find(s_sis_fsort_list *list_, void *value_)
 	for (int i = 0; i < list_->value->count; i++)
 	{
 		void *v = sis_pointer_list_get(list_->value, i);
-		if (v < value_)
+		if (v == value_)
 		{
 			return i;
 		}
