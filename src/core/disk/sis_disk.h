@@ -12,8 +12,12 @@
 typedef struct s_sis_disk_reader_cb {
     // 用户需要传递的上下文
     void *cb_source; 
-    // 通知文件开始读取了或订阅开始 需要全部转换为毫秒传出 无时序为0
-    void (*cb_start)(void *, int);  // 日期
+    /**
+     * @brief 通知文件读取或订阅开始，需要全部转换为毫秒传出 无时序为0,
+     * 第一个参数为回调函数提供者（订阅者）的对象指针,
+     * 第二个参数为日期
+     */
+    void (*cb_start)(void *, int);
     // 返回key定义
     void (*cb_dict_keys)(void *, void *key_, size_t);  // 返回key信息
     // 返回sdb定义
@@ -28,8 +32,18 @@ typedef struct s_sis_disk_reader_cb {
     // 支持 LOG SNO SDB IDX 
     void (*cb_original)(void *, s_sis_disk_head *, void *out_, size_t olen_); // 头描述 实际返回的数据区和大小
     // 通知文件结束了
-    void (*cb_stop)(void *, int); //第一个参数就是用户传递进来的指针
-    // 被中断
+
+    /**
+     * @brief 通知文件读取或订阅结束
+     * 第一个参数为回调函数提供者（订阅者）的对象指针,
+     * 第二个参数为日期
+     */
+    void (*cb_stop)(void *, int);
+    /**
+     * @brief 通知文件读取或订阅被中断
+     * 第一个参数为回调函数提供者（订阅者）的对象指针,
+     * 第二个参数为日期
+     */
     void (*cb_break)(void *, int); 
 } s_sis_disk_reader_cb;
 
@@ -75,8 +89,8 @@ typedef struct s_sis_disk_reader_sub {
 typedef struct s_sis_disk_reader {
     // ------init info------ //
     int                   style;
-    s_sis_sds             fpath;
-    s_sis_sds             fname;
+    s_sis_sds             fpath;    // 文件路径
+    s_sis_sds             fname;    // 文件名
     s_sis_disk_reader_cb *callback;   // 读文件的回调
     // ------sub info------ //
     s_sis_msec_pair       search_msec;
@@ -182,9 +196,6 @@ int sis_disk_writer_one_remove(s_sis_disk_writer *, const char *kname_);
 // 单键值多记录数据 inlist_ : s_sis_sds 的列表
 int sis_disk_writer_mul_remove(s_sis_disk_writer *, const char *kname_);
 
-///////////////////////////
-//  s_sis_disk_reader
-///////////////////////////
 s_sis_disk_reader *sis_disk_reader_create(const char *path_, const char *name_, int style_, s_sis_disk_reader_cb *cb_);
 void sis_disk_reader_destroy(void *);
 

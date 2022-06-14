@@ -24,14 +24,14 @@ typedef struct s_sis_dict_entry {
     } v;
     struct s_sis_dict_entry *next;
 } s_sis_dict_entry;
-
+// 字典类型
 typedef struct s_sis_dict_type {
-    uint64_t (*hashmake)(const void *key);
-    void *(*kdup)(const void *key);
-    void *(*vdup)(const void *obj);
-    int (*kcompare)(const void *key1, const void *key2);
-    void (*kfree)(void *obj);
-    void (*vfree)(void *obj);
+    uint64_t (*hashmake)(const void *key);//HASH生成函数
+    void *(*kdup)(const void *key);//键值复制函数
+    void *(*vdup)(const void *obj);//值复制函数
+    int (*kcompare)(const void *key1, const void *key2);//键值比较函数
+    void (*kfree)(void *obj);//键值析构函数
+    void (*vfree)(void *obj);//值析构函数
 } s_sis_dict_type;
 
 /* This is our hash table structure. Every dictionary has two of this as we

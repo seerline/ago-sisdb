@@ -13,11 +13,19 @@ static s_sis_server _server = {
 
 extern s_sis_modules *__modules[];
 extern const char *__modules_name[];
-/////////////////////////////////
-//  server
-/////////////////////////////////
+
+/**
+ * @brief 根据JSON配置文件创建工作者并初始化，包括：
+* (1) 根据工作者的classname获取对应的接插件module
+* (2) 调用module的初始化方法init
+* (3) 将module的methods添加到工作者的methods表中
+* (4) 调用一遍module的method_init方法
+* (5) 启动独立线程运行module的working函数
+ * @return int 工作者列表的数量
+ */
 int _server_open_workers()
 {
+	// 从conf配置中读取workers的json设置文件
 	s_sis_json_node *workers = sis_json_cmp_child_node(_server.config->node, "workers");
 	if (!workers)
 	{
@@ -56,7 +64,8 @@ void _sig_kill(int sn)
 	sis_map_pointer_clear(_server.workers);
 }
 
-bool _server_open()
+// 读取配置文件
+bool _server_open(const char *cmdinfo)
 {
 	if (!sis_file_exists(_server.conf_name))
 	{
@@ -69,6 +78,27 @@ bool _server_open()
 	{
 		printf("conf file %s format error.\n", _server.conf_name);
 		return false;
+	}
+	if (sis_strlen(cmdinfo) > 0)
+	{
+		s_sis_json_handle *hcmd = sis_json_open(cmdinfo);
+		if (!hcmd)
+		{
+			printf("merge file %s no open.\n", cmdinfo);
+		}
+		else
+		{
+			// int ii = 1;
+			// sis_json_show(_server.config->node, &ii);
+			sis_json_object_merge(_server.config->node, hcmd->node);
+
+			// char *str = NULL;
+			// size_t olen;
+			// str = sis_json_output(_server.config->node, &olen);
+			// printf(str);
+
+			sis_json_close(hcmd);
+		}
 	}
 
 	char conf_path[SIS_PATH_LEN];
@@ -105,6 +135,19 @@ bool _server_open()
 	return true;
 }
 
+void _server_merge_cmd(const char *cmdinfo)
+{
+	s_sis_json_handle *handle = sis_json_open(cmdinfo);
+	if (!handle)
+	{
+		printf("merge file %s no open.\n", cmdinfo);
+		return ;
+	}
+	
+
+	sis_json_close(handle);
+}
+
 bool sis_is_server(void *self_)
 {
 	if (self_ == &_server)
@@ -119,6 +162,11 @@ s_sis_server *sis_get_server()
 	return &_server;
 }
 
+/**
+ * @brief 根据工作者的classname，从模块HASH表中查找对应的接插件方法并返回
+ * @param name_ 工作者的classname
+ * @return s_sis_modules* 找到的s_sis_modules指针
+ */
 s_sis_modules *sis_get_worker_slot(const char *name_)
 {
 	return (s_sis_modules *)sis_map_pointer_get(_server.modules, name_);
@@ -129,9 +177,13 @@ void _server_help()
 	printf("command format:\n");
 	printf("		-f xxxx.conf : install custom conf. \n");
 	printf("		-d           : debug mode run. \n");
+	printf("		-w workinfo.json : install workinfo config. \n");
 	printf("		-h           : help. \n");
 }
-
+/**
+ * @brief 加载所有模块至_server.modules
+ * @return int 
+ */
 int sis_server_init()
 {
 	// 加载模块
@@ -151,18 +203,24 @@ void sis_server_uninit()
 	sis_map_pointer_destroy(_server.modules);
 }
 
-#ifndef TEST_DEBUG 
-
+ #ifndef TEST_DEBUG 
+ 
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 1024, "%s.conf", argv[0]);
-		
 	int c = 1;
+	char cmdinfo[255]; 
+	cmdinfo[0] = 0;
 	while (c < argc)
 	{
 		if (argv[c][0] == '-' && argv[c][1] == 'f' && argv[c + 1])
 		{
 			sis_strcpy(_server.conf_name, 1024, argv[c + 1]);
+			c++;
+		}
+		else if (argv[c][0] == '-' && argv[c][1] == 'w' && argv[c + 1])
+		{
+			sis_strcpy(cmdinfo, 255, argv[c + 1]);
 			c++;
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'd')
@@ -176,12 +234,14 @@ int main(int argc, char *argv[])
 		}
 		c++;
 	}
+	LOG(8)("loading conf file [%s]\n", _server.conf_name);
 	if (_server.work_mode & SERVER_WORK_MODE_DEBUG)
 	{
 		// 如果是debug模式就开启内存检查
 		safe_memory_start();
 	}
-	if (!_server_open())
+
+	if (!_server_open(cmdinfo))
 	{
 		printf("conf file %s load error.\n", _server.conf_name);
 		return 0;
@@ -212,11 +272,14 @@ int main(int argc, char *argv[])
 	sis_sigignore(SIGPIPE);
 
 	sis_set_signal(SIS_SIGNAL_WORK);
-	//  创建工作者
+
+	//  为工作者HASH表分配内存
 	_server.workers = sis_map_pointer_create_v(sis_worker_destroy);
 
+	// 创建工作者并初始化，调用对应module的初始化方法init和method_init
 	int workers = _server_open_workers();
 
+	// 循环等待所有work都退出
 	if (workers > 0)
 	{
 		printf("program start. workers = %d.\n", workers);

@@ -113,19 +113,25 @@ FUNCTION(WRITE_CONTROL_FILE IN_LIST)
     SET(CLASS_LIST ${IN_LIST})
     # 写类引用
     FOREACH (DIR ${CLASS_LIST})
-        MESSAGE("install ${DIR} ok ...")
-        FILE(APPEND ${FILENAME} "extern s_sis_modules sis_modules_${DIR};\n")
+        IF (${DIR} MATCHES "^[a-zA-Z0-9_]+")
+            MESSAGE("install ${DIR} ok ...")
+            FILE(APPEND ${FILENAME} "extern s_sis_modules sis_modules_${DIR};\n")
+        ENDIF()
     ENDFOREACH(DIR)
     # 写类数组
     FILE(APPEND ${FILENAME} "\ns_sis_modules *__modules[] = {\n")
     FOREACH (DIR ${CLASS_LIST})
-        FILE(APPEND ${FILENAME} "    &sis_modules_${DIR},\n")
+        IF (${DIR} MATCHES "^[a-zA-Z0-9_]+")
+            FILE(APPEND ${FILENAME} "    &sis_modules_${DIR},\n")
+        ENDIF()
     ENDFOREACH(DIR)
     FILE(APPEND ${FILENAME} "    0\n  };\n")
     # 写类名
     FILE(APPEND ${FILENAME} "\nconst char *__modules_name[] = {\n")
     FOREACH (DIR ${CLASS_LIST})
-        FILE(APPEND ${FILENAME} "    \"${DIR}\",\n")
+        IF (${DIR} MATCHES "^[a-zA-Z0-9_]+")
+            FILE(APPEND ${FILENAME} "    \"${DIR}\",\n")
+        ENDIF()
     ENDFOREACH(DIR)
     FILE(APPEND ${FILENAME} "    0\n  };\n")
 ENDFUNCTION(WRITE_CONTROL_FILE)
@@ -333,7 +339,7 @@ IF(MSVC)
 ENDIF()
 
 # 指定编译类型为 DEBUG
-SET(CMAKE_BUILD_TYPE DEBUG) 
+SET(CMAKE_BUILD_TYPE DEBUG)
 # 指定编译类型为RELEASE
 # SET(CMAKE_BUILD_TYPE RELEASE) 
 

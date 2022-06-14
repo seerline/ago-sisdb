@@ -231,9 +231,11 @@ typedef struct s_sis_fsort_list {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 s_sis_fsort_list *sis_fsort_list_create(void *vfree_); 
 void sis_fsort_list_destroy(void *);
 void sis_fsort_list_clear(s_sis_fsort_list *list_);
+// 默认从大到小排序
 int  sis_fsort_list_set(s_sis_fsort_list *, double key_, void *in_);
 void *sis_fsort_list_get(s_sis_fsort_list *, int index_);
 

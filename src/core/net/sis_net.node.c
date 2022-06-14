@@ -194,7 +194,13 @@ s_sis_net_mem_node *_net_mems_reset_node(s_sis_net_mems *nodes_, size_t isize_)
 	nodes_->wnums++;
 	return node;
 }
-
+/**
+ * @brief 将数据添加到缓存区，后续经过解压缩、协议处理后才能使用
+ * @param nodes_ 数据缓存s_sis_net_mems
+ * @param in_ 收到的数据
+ * @param isize_ 收到的数据大小
+ * @return int 
+ */
 int  sis_net_mems_push(s_sis_net_mems *nodes_, void *in_, size_t isize_)
 {
 	sis_mutex_lock(&nodes_->lock);
@@ -230,8 +236,11 @@ int  sis_net_mems_push_sign(s_sis_net_mems *nodes_, int8 sign_, void *in_, size_
 	node->size += sizeof(int);
 	memmove(node->memory + node->size, &sign_, sizeof(int8));
 	node->size += sizeof(int8);
-	memmove(node->memory + node->size, in_, isize_);
-	node->size += isize_;
+	if (in_ && isize_ > 0)
+	{
+		memmove(node->memory + node->size, in_, isize_);
+		node->size += isize_;
+	}
 	node->nums ++;
 	// if (node->nums % 100000 == 0)
 	// printf("push sign: %zu %d %d %d\n", node->size, node->nums, node->rpos, node->maxsize);
@@ -263,8 +272,11 @@ int  sis_net_mems_push_kv(s_sis_net_mems *nodes_, int kidx_, int sidx_, void *in
 	node->size += sizeof(int);
 	memmove(node->memory + node->size, &sidx_, sizeof(int));
 	node->size += sizeof(int);
-	memmove(node->memory + node->size, in_, isize_);
-	node->size += isize_;
+	if (in_ && isize_ > 0)
+	{
+		memmove(node->memory + node->size, in_, isize_);
+		node->size += isize_;
+	}
 	node->nums ++;
 	nodes_->wsize += (isize + sizeof(int));
 	sis_mutex_unlock(&nodes_->lock);
@@ -288,7 +300,7 @@ int  sis_net_mems_cat(s_sis_net_mems *nodes_, void *in_, size_t isize_)
 	// }
 	memmove(node->memory + node->size, in_, isize_);
 	node->size += isize_;
-	node->nums = 1; // 此时所哟欧数据都在一起 nums 失去意义恒定为 1
+	node->nums = 1; // 此时所有数据都在一起 nums 失去意义恒定为 1
 	// 拷贝内存结束
 	nodes_->wsize += isize_;
 	sis_mutex_unlock(&nodes_->lock);
@@ -383,7 +395,7 @@ int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_)
 		int readnums = readnums_ == 0 ? nodes_->wuses : readnums_;
 		s_sis_net_mem_node *next = nodes_->whead;	
 		sis_net_mems_rhead(nodes_);
-		// printf("=== %p %d %d %d %d\n", next, nodes_->wuses, next ? next->size : -1, nodes_->rnums, nodes_->wsize);
+		// printf("=== %p %d %d %d %d\n", next, nodes_->wuses, next ? next->nums : -1, nodes_->rnums, nodes_->wsize);
 		while (next && next->size > 0 && nodes_->wuses > 0 && nodes_->rnums < readnums)
 		{
 			nodes_->wnums--;
@@ -424,7 +436,7 @@ int sis_net_mems_read(s_sis_net_mems *nodes_, int readnums_)
 		sis_mutex_unlock(&nodes_->lock);
 		return 	nodes_->rnums;
 	}
-	printf("==3== lock ok. %d :: %d\n", nodes_->rnums, nodes_->wnums);
+	// printf("==3== lock ok. %d :: %d\n", nodes_->rnums, nodes_->wnums);
 	return 0;
 }
 int sis_net_mems_free_read(s_sis_net_mems *nodes_)
@@ -439,6 +451,31 @@ int  sis_net_mems_count(s_sis_net_mems *nodes_)
 {
 	sis_mutex_lock(&nodes_->lock);
 	int count = nodes_->rnums + nodes_->wnums;
+	sis_mutex_unlock(&nodes_->lock);
+	return count;
+}
+int  sis_net_mems_nums(s_sis_net_mems *nodes_)
+{
+	sis_mutex_lock(&nodes_->lock);
+	int count = 0;
+	if (nodes_->rnums > 0)
+	{
+		s_sis_net_mem_node *next = nodes_->rhead;
+		while (next && next->nums > 0)
+		{
+			count += next->nums;
+			next = next->next;
+		}
+	}
+	if (nodes_->wnums > 0)
+	{
+		s_sis_net_mem_node *next = nodes_->whead;
+		while (next && next->nums > 0)
+		{
+			count += next->nums;
+			next = next->next;
+		}
+	}
 	sis_mutex_unlock(&nodes_->lock);
 	return count;
 }
@@ -709,9 +746,18 @@ void _net_list_free(s_sis_net_list *list_, int index_)
 	}
 	list_->stop_sec[index_] = 0;
 }
-
+/**
+ * @brief 将新的session添加到session列表，并按如下方法分配SESSON ID，把已有的ID遍历一遍，
+ * （1）如果发现有处于未使用状态的，直接拿来用
+ * （2）如果发现有处于关闭状态且超过超时时间的，直接拿来用
+ * （3）如果都没有，新增一个
+ * @param list_ 服务器的SESSION列表
+ * @param in_ 新添加的session
+ * @return int 分配到的SESSON ID
+ */
 int sis_net_list_new(s_sis_net_list *list_, void *in_)
 {
+	//QQQ session的各种状态之间的切换，在哪里进行？这里需要考虑线程安全么？SESSION ID如果每个新连接都不一样的话，那这个东西存在的意义是什么？
 	time_t now_sec = sis_time_get_now();
 	int index = -1;
 	for (int i = 0; i < list_->max_count; i++)

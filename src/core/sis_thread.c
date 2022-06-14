@@ -179,6 +179,13 @@ void sis_wait_thread_notice(s_sis_wait_thread *swt_)
 		sis_thread_wait_notice(swt_->work_wait);
 	}
 }
+/**
+ * @brief 调用操作系统API创建线程
+ * @param swt_ 用以保存结果的s_sis_wait_thread线程对象
+ * @param func_ 新线程运行时执行的函数，线程创建成功后会立即运行，为了实现wait的效果，在该函数中需要主动申请swt_对象中的互斥锁，并对条件变量进行监听
+ * @param source_ 新线程运行时传递给func_的参数
+ * @return true 成功，false 失败
+ */
 bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void *source_)
 {
     if (!sis_thread_create(func_, source_, &swt_->work_thread))
@@ -190,14 +197,19 @@ bool sis_wait_thread_open(s_sis_wait_thread *swt_, cb_thread_working func_, void
 		sis_sleep(1);
 	}
 	return true;
+
 }
-// 退出线程标志 但不会马上退出
+// 设置线程标志为SIS_WAIT_STATUS_EXIT， 但不会马上退出
 void sis_wait_thread_close(s_sis_wait_thread *swt_)
 {
     swt_->work_status = SIS_WAIT_STATUS_EXIT;
 }
 
-//////// 以下在线程中执行 ////// 
+/**
+ * @brief (1)更改工作者的状态为SIS_WAIT_STATUS_WORK
+ * (2)获取互斥锁，如果锁被占用就挂起线程，直到锁被释放为止
+ * @param swt_ 需要启动的线程对象
+ */
 void sis_wait_thread_start(s_sis_wait_thread *swt_)
 {
     swt_->work_status = SIS_WAIT_STATUS_WORK;
@@ -207,14 +219,19 @@ bool sis_wait_thread_noexit(s_sis_wait_thread *swt_)
 {
 	return (swt_->work_status != SIS_WAIT_STATUS_EXIT);
 }
+
+/**
+ * @brief 满足以下条件之一，即可返回：
+ * （1）等待超时waitmsec_毫秒
+ * （2）swt_->work_wait->cond收到信号
+ * @param swt_ 等待式线程对象
+ * @param waitmsec_ 等待时间
+ * @return int 
+ */
 int sis_wait_thread_wait(s_sis_wait_thread *swt_, int waitmsec_)
 {
 	int waitmsec = waitmsec_ > 3 ? waitmsec_ : swt_->wait_msec;
-	if (sis_thread_wait_sleep_msec(swt_->work_wait, waitmsec) == SIS_ETIMEDOUT)
-	{
-		return SIS_WAIT_TIMEOUT;
-	}
-	return SIS_WAIT_NOTICE;
+	return (sis_thread_wait_sleep_msec(swt_->work_wait, waitmsec) == SIS_ETIMEDOUT) ? SIS_WAIT_TIMEOUT : SIS_WAIT_NOTICE;
 }
 void sis_wait_thread_stop(s_sis_wait_thread *swt_)
 {

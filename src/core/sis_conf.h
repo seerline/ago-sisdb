@@ -15,6 +15,7 @@
 #define SIS_CONF_NOTE_SIGN '#'  
 #define SIS_CONF_INCLUDE "include"  
 
+// conf配置文件结构体
 typedef struct s_sis_conf_handle
 {
 	int  err_no;           // 0 无错 
@@ -53,7 +54,7 @@ s_sis_conf_handle *sis_conf_load(const char *content_, size_t len_);
 
 s_sis_sds sis_conf_file_to_json_sds(const char *fn_);
 
-// 针对大文件多节点配置文件 使用分段加载 回调返回数据
+
 int sis_conf_sub(const char *fn_, void *source_, cb_sis_sub_json *cb_);
 
 #ifdef __cplusplus

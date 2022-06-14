@@ -31,8 +31,8 @@ typedef struct s_sis_unlock_node {
 /////////////////////////////////////////////////
 typedef struct s_sis_lock_queue {
     int                rnums;  // 可读元素个数
-    s_sis_unlock_node *rhead;
-    s_sis_unlock_node *rtail;
+    s_sis_unlock_node *rhead;  // 队列头部节点
+    s_sis_unlock_node *rtail;   //队列尾部节点
 
     s_sis_rwlock_t     rlock;   // cpu占用相对较高 不用理会
 } s_sis_lock_queue;
@@ -168,7 +168,7 @@ typedef struct s_sis_lock_reader
 
 // 每个读者自己启动一个线程 当收到数据后 各自处理 适用于各个用户处理时间严重不平衡的情况 
 // 因为每个读者读取数据会有锁动作 因此速度比fast稍慢
-// 有点是可以设置数据不销毁 对有历史数据需求的特别适用
+// 优点是可以设置数据不销毁 对有历史数据需求的特别适用
 // 主动开启一个守护线程 相当于一个读者 用来及时销毁过期的数据
 typedef struct s_sis_lock_list {
 
@@ -179,6 +179,7 @@ typedef struct s_sis_lock_list {
 
     s_sis_mutex_t        watchlock;  // 对数据进行操作时必须加锁
     s_sis_lock_reader   *watcher;    // 守护线程 处理数据发布 如果不需要保留所有数据 就定时清理不用的数据
+    //QQQ 历史数据处理模式，如何实现以及如何使用？
     int                  save_mode;  // 历史数据处理模式 
  
     size_t               cursize;    // 数据总的长度 由 watcher 统计
@@ -226,6 +227,7 @@ extern "C" {
 //  s_sis_lock_reader
 /////////////////////////////////////////////////
 // mode_  从什么位置开始读取
+
 s_sis_lock_reader *sis_lock_reader_create(s_sis_lock_list *ullist_, 
     int mode_, void *cb_source_, 
     cb_lock_reader *cb_recv_,

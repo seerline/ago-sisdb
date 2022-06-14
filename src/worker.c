@@ -5,7 +5,11 @@
 /////////////////////////////////////////////////
 //  worker thread
 /////////////////////////////////////////////////
-
+/**
+ * @brief 根据任务类型及当前时间，判断当前任务是否允许执行
+ * @param task_ 工作者线程对象
+ * @return true 允许立即执行后续任务，false 不允许 
+ */
 bool sis_work_thread_wait(s_sis_work_thread *task_)
 {
 	if (task_->work_mode == SIS_WORK_MODE_ONCE)
@@ -93,6 +97,14 @@ s_sis_work_thread *sis_work_thread_create()
 	return o;
 }
 
+/**
+ * @brief 创建线程
+ * @param task_ 保存结果的s_sis_work_thread对象
+ * @param func_ 线程将要执行的回调函数
+ * @param worker_ 线程执行时传递给回调函数func_的参数
+ * @return true 成功
+ * @return false 出错
+ */
 bool sis_work_thread_open(s_sis_work_thread *task_, cb_thread_working func_, void *val_)
 {
     // if (task_->work_mode == SIS_WORK_MODE_NONE)
@@ -122,6 +134,13 @@ void sis_work_thread_destroy(s_sis_work_thread *task_)
 // worker thread function
 /////////////////////////////////////////
 
+/**
+ * @brief （1）调用工作者的module的work_init函数
+ * （2）获取互斥锁,根据工作者的任务类别选择时机执行module的working函数
+ * （3）等待任务完成，并回收资源
+ * @param argv_ 工作者s_sis_worker
+ * @return void* 永远NULL
+ */
 void *_service_work_thread(void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)argv_;
@@ -195,6 +214,17 @@ s_sis_sds _sis_worker_get_workname(s_sis_worker *worker_, const char *workname_)
 //     return workername;
 // }
 
+/**
+ * @brief 根据json配置对工作者初始化，包括：
+* (1) 根据工作者的classname获取对应的接插件module
+* (2) 调用module的初始化方法init
+* (3) 将module的methods添加到工作者的methods表中
+* (4) 调用一遍module的method_init方法
+ * @param worker_ 需要被初始化的工作者
+ * @param node_ 工作者的json配置
+ * @return true 成功
+ * @return false 失败
+ */
 bool _sis_worker_init(s_sis_worker *worker_, s_sis_json_node *node_)
 {
     worker_->slots = sis_get_worker_slot(worker_->classname);
@@ -270,6 +300,18 @@ void _sis_load_work_time(s_sis_worker *worker_, s_sis_json_node *node_)
 /////////////////////////////////
 //  worker
 /////////////////////////////////
+/**
+ * @brief 根据work名称及其json配置文件，创建工作者，并根据json配置对工作者初始化，包括：
+* (1) 根据工作者的classname获取对应的接插件module
+* (2) 调用module的初始化方法init
+* (3) 将module的methods添加到工作者的methods表中
+* (4) 调用一遍module的method_init方法
+* (5) 启动独立线程运行module的working函数
+ * @param father_ 父工作者
+ * @param name_ 父工作者
+ * @param node_ 工作者的json配置，如果为NULL，则自动创建空白配置
+ * @return s_sis_worker* 生成的工作者对象指针
+ */
 s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_, s_sis_json_node *node_)
 {
     if (!name_ || sis_str_substr_nums(name_, sis_strlen(name_), '.') > 1)
@@ -385,6 +427,17 @@ s_sis_worker *sis_worker_create_of_conf(s_sis_worker *father_, const char *name_
     }
     return worker;
 }
+/**
+ * @brief 根据JSON配置文件创建工作者，初始化，包括：
+* (1) 根据工作者的classname获取对应的接插件module
+* (2) 调用module的初始化方法init
+* (3) 将module的methods添加到工作者的methods表中
+* (4) 调用一遍module的method_init方法
+* (5) 启动独立线程运行module的working函数
+ * @param father_ 父工作者
+ * @param node_ 工作者的json配置，如果为NULL，则直接返回NULL
+ * @return s_sis_worker* 生成的工作者对象指针，配置为空时返回NULL
+ */
 s_sis_worker *sis_worker_create(s_sis_worker *father_, s_sis_json_node *node_)
 {
     if (!node_)

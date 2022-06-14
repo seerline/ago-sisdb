@@ -92,10 +92,15 @@ void sis_net_message_destroy(void *in_)
 {
 	sis_net_message_decr(in_);
 }
+/**
+ * @brief 网络消息的引用次数自增+1
+ * @param in_ 网络消息
+ */
 void sis_net_message_incr(s_sis_net_message *in_)
 {
     if (in_ && in_->refs != 0xFFFFFFFF) 
     {
+        //QQQ 这里需要考虑线程安全么？
         in_->refs++;
     }
 }
@@ -521,4 +526,36 @@ void sis_net_msg_tag_sub_close(s_sis_net_message *netmsg_, const char *info_)
     netmsg_->tag = SIS_NET_TAG_SUB_CLOSE;
     netmsg_->switchs.sw_tag = 1;
     SIS_NET_SET_STR(netmsg_->switchs.sw_info, netmsg_->info, info_);
+}
+
+void sis_net_msg_clear(s_sis_net_message *netmsg_)
+{
+    sis_net_msg_clear_service(netmsg_);
+    sis_net_msg_clear_cmd(netmsg_);
+    sis_net_msg_clear_info(netmsg_);
+    sis_net_msg_clear_subject(netmsg_);
+}
+void sis_net_msg_clear_service(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_service = 0;
+    sis_sdsfree(netmsg_->service);
+    netmsg_->service = NULL;
+}
+void sis_net_msg_clear_cmd(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_cmd = 0;
+    sis_sdsfree(netmsg_->cmd);
+    netmsg_->cmd = NULL;
+}
+void sis_net_msg_clear_info(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_info = 0;
+    sis_sdsfree(netmsg_->info);
+    netmsg_->info = NULL;
+}
+void sis_net_msg_clear_subject(s_sis_net_message *netmsg_)
+{
+    netmsg_->switchs.sw_subject = 0;
+    sis_sdsfree(netmsg_->subject);
+    netmsg_->subject = NULL;
 }

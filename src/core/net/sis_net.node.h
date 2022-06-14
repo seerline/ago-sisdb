@@ -14,7 +14,6 @@
 /////////////////////////////////////////////////
 
 #define SIS_NET_MEMSIZE  16*1024*1024
-
 typedef struct s_sis_net_mem {
 	int                    size;    // 数据尺寸
 	char                   data[0]; // 数据区
@@ -64,6 +63,7 @@ int  sis_net_mems_free_read(s_sis_net_mems *nodes_);
 
 // 队列是否为空
 int  sis_net_mems_count(s_sis_net_mems *nodes_);
+int  sis_net_mems_nums(s_sis_net_mems *nodes_);
 size_t  sis_net_mems_size(s_sis_net_mems *nodes_);
 
 /////////////////////////////////////////////////

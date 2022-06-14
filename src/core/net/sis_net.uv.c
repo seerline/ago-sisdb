@@ -362,11 +362,17 @@ static void _uv_exit_loop(uv_loop_t* loop)
 // s_sis_socket_session
 //////////////////////////////////////////////////////////////
 
+/**
+ * @brief 创建新的session并初始化，需要关注的是这里需要将session自身的指针赋值到uv_w_handle.data，这样才可以在后续的回调函数中通过uv_w_handle获取到对应的session
+ * @param father_ 服务器句柄 s_sis_socket_server
+ * @return s_sis_socket_session* 
+ */
 s_sis_socket_session *sis_socket_session_create(void *father_)
 {
 	s_sis_socket_session *session = SIS_MALLOC(s_sis_socket_session, session); 
 	session->sid = -1;
 	session->father = father_;
+	//QQQ 这里只赋值了data，那uv_w_handle的整体赋值在哪里呢？
 	session->uv_w_handle.data = session;
 	session->uv_r_buffer = uv_buf_init((char*)sis_malloc(MAX_NET_UV_BUFFSIZE), MAX_NET_UV_BUFFSIZE);
 	session->send_nodes = sis_net_nodes_create();
@@ -479,7 +485,7 @@ static void cb_session_closed(uv_handle_t *handle)
 	sis_net_list_stop(server->sessions, session->sid - 1);
 	LOG(5)("server of session close ok.[%p] %d %d\n", session, session->sid, server->sessions->cur_count);
 }
-
+/** 关闭服务器连接 */
 void sis_socket_server_close(s_sis_socket_server *server_)
 { 
 	if (!server_->isinit) 
@@ -527,6 +533,7 @@ bool _sis_socket_server_init(s_sis_socket_server *server)
 		return false;
 	}
 	server->isinit = true;
+	/** 这个赋值保证在新连接的回调函数里面，可以通过地一个参数获取s_sis_socket_server的地址*/
 	server->uv_s_handle.data = server;
 
 	server->uv_w_async.data = server;
@@ -608,7 +615,12 @@ static void cb_server_read_alloc(uv_handle_t *handle, size_t suggested_size, uv_
 	}
 	*buffer = session->uv_r_buffer;
 }
-
+/**
+ * @brief 供uv库调用的读取数据处理函数，主要任务是判断数据是否已经读取完毕，并调用session的数据回调函数
+ * @param handle 读取数据的tcp句柄，它的data属性保存的实际上是session
+ * @param nread 已读取数据的长度
+ * @param buffer 读取数据的缓冲区
+ */
 static void cb_server_read_after(uv_stream_t *handle, ssize_t nread, const uv_buf_t* buffer)
 {
 	if (!handle->data) 
@@ -638,7 +650,14 @@ static void cb_server_read_after(uv_stream_t *handle, ssize_t nread, const uv_bu
 		session->cb_recv_after(server->cb_source, session->sid, buffer->base, nread);
 	}
 }
-
+/**
+ * @brief 新子客户端接入的回调函数，在连接成功时做以下工作：
+ * （1）创建并初始化session
+ * （2）accept连接
+ * （3）从接入的子客户端连接中读取数据
+ * @param handle uv库的tcp句柄
+ * @param status 连接错误码，0 成功，非0,连接遇到错误
+ */
 static void cb_server_new_connect(uv_stream_t *handle, int status)
 {
 	s_sis_socket_server *server = (s_sis_socket_server *)handle->data;
@@ -648,13 +667,14 @@ static void cb_server_new_connect(uv_stream_t *handle, int status)
 		return;
 	}
 	s_sis_socket_session *session = sis_socket_session_create(server);
-	int o = uv_tcp_init(server->uv_s_worker, &session->uv_w_handle); 
+	int o = uv_tcp_init(server->uv_s_worker, &session->uv_w_handle);
 	if (o) 
 	{
 		LOG(5)("no init client %d. close.\n", session->sid);
 		sis_socket_session_destroy(session, 1);
 		return;
 	}
+	//分配SESSION ID
 	int index = sis_net_list_new(server->sessions, session);
 	session->sid = index + 1;
 
@@ -665,6 +685,7 @@ static void cb_server_new_connect(uv_stream_t *handle, int status)
 		uv_close((uv_handle_t*)&session->uv_w_handle, cb_session_closed);
 		return;
 	}
+	// 调用server的新连接处理回调
 	if (server->cb_connected_s2c) 
 	{
 		server->cb_connected_s2c(server->cb_source, session->sid);
@@ -689,7 +710,12 @@ bool _sis_socket_server_listen(s_sis_socket_server *server)
 	// LOG(5)("server listen %s:%d.\n", server->ip, server->port);
 	return true;
 }
-
+/**
+ * @brief 监听端口，并开启独立线程运行uv_loop
+ * @param server 
+ * @return true 
+ * @return false 
+ */
 bool sis_socket_server_open(s_sis_socket_server *server)
 {
 	sis_socket_server_close(server);
@@ -909,6 +935,13 @@ bool sis_socket_server_send(s_sis_socket_server *server, int sid_, s_sis_memory 
 	return true;
 }
  
+ /**
+  * @brief 设置session的数据接收回调函数和数据发送回调函数
+  * @param server 服务器句柄
+  * @param sid_ session id
+  * @param cb_recv_ 数据接收回调函数
+  * @param cb_send_ 数据发送回调函数
+  */
 void sis_socket_server_set_rwcb(s_sis_socket_server *server, int sid_, 
 	cb_socket_recv_after cb_recv_, cb_socket_send_after cb_send_)
 {
@@ -918,7 +951,7 @@ void sis_socket_server_set_rwcb(s_sis_socket_server *server, int sid_,
 		sis_socket_session_set_rwcb(session, cb_recv_, cb_send_);
 	}
 }
-//服务器-新链接回调函数
+//设置服务器-新链接回调函数
 void sis_socket_server_set_cb(s_sis_socket_server *server, 
 	cb_socket_connect cb_connected_,
 	cb_socket_connect cb_disconnect_)
@@ -974,7 +1007,9 @@ void _thread_reconnect(void* argv)
 		{
 			if (count > 25)
 			{
-				sis_socket_client_open(client);
+				// 20220401 张超改
+				// sis_socket_client_open(client);
+				sis_socket_client_open_sync(client);
 				count = 0;
 			}
 			count++;
@@ -1127,7 +1162,7 @@ static void _cb_after_connect(uv_connect_t *handle, int status)
 	if (status)
 	{
 		LOG(8)("client connect error: %s.\n", uv_strerror(status));
-		sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, NULL);
+		// sis_socket_close_handle((uv_handle_t*)&session->uv_w_handle, NULL);
 		client->work_status |= SIS_UV_CONNECT_FAIL;
 		return;
 	}
@@ -1209,6 +1244,21 @@ void _thread_client(void* arg)
     _uv_exit_loop(client->uv_c_worker);
 	LOG(5)("client connect thread stop. [%d]\n", client->work_status);
 }
+
+void sis_socket_client_open_sync(s_sis_socket_client *client_)
+{
+	if (client_->work_status == SIS_UV_CONNECT_WAIT)
+	{
+		return ;
+	}
+	client_->work_status = SIS_UV_CONNECT_WAIT;
+	if (!_sis_socket_client_init(client_)) 
+	{
+		return ;
+	}
+	_thread_client(client_);
+}
+
 bool sis_socket_client_open(s_sis_socket_client *client_)
 {
 	if (client_->work_status == SIS_UV_CONNECT_WAIT)

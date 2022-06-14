@@ -12,7 +12,7 @@ void sis_file_destroy(s_sis_file *file_)
 {
     sis_free(file_);
 }
-
+// 读取文件内容至字符串
 s_sis_sds sis_file_read_to_sds(const char *fn_)
 {
 	s_sis_file_handle fp = sis_file_open(fn_, SIS_FILE_IO_READ, 0);

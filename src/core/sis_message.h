@@ -51,11 +51,14 @@ void sis_message_set(s_sis_message *, const char*, void *, sis_free_define *);
 
 bool sis_message_exist(s_sis_message *, const char*);
 
+int sis_message_get_cmd(const char *icmd_, s_sis_sds *service_, s_sis_sds *command_);
+
 int64 sis_message_get_int(s_sis_message *, const char*);
 bool sis_message_get_bool(s_sis_message *msg_, const char*);
 double sis_message_get_double(s_sis_message *, const char*);
 s_sis_sds sis_message_get_str(s_sis_message *, const char*);
 // s_sis_string_list *sis_message_get_strlist(s_sis_message *, const char*);
+
 sis_method_define *sis_message_get_method(s_sis_message *, const char*);
 // 用户自定义结构体 如果 sis_free_define = NULL 不释放
 void *sis_message_get(s_sis_message *, const char*);

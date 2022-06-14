@@ -25,7 +25,7 @@ typedef struct s_sis_server
 {
 	int status; //是否已经初始化
 	
-	char conf_name[SIS_PATH_LEN];  //配置文件路径
+	char conf_name[SIS_PATH_LEN];  // 配置文件路径
 
 	size_t log_size;
 	int    log_level;
@@ -56,6 +56,7 @@ s_sis_modules *sis_get_worker_slot(const char *);
 int sis_server_init();
 
 void sis_server_uninit();
+
 #ifdef __cplusplus
 }
 #endif
