@@ -377,7 +377,7 @@ int sis_disk_io_read_sdb(s_sis_disk_ctrl *cls_, s_sis_disk_rcatch *rcatch_)
     case SIS_DISK_HID_MSG_SNO:
         rcatch_->kidx   = sis_memory_get_ssize(rcatch_->memory);
         rcatch_->sidx   = sis_memory_get_ssize(rcatch_->memory);
-        rcatch_->series = sis_memory_get_ssize(rcatch_->memory);
+        // rcatch_->series = sis_memory_get_ssize(rcatch_->memory);
         break;
     case SIS_DISK_HID_DICT_KEY:
     case SIS_DISK_HID_DICT_SDB:

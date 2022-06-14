@@ -332,7 +332,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
             LOG(5)("worker service_thread create. %d\n", worker->service_thread->work_mode);
             if (!sis_work_thread_open(worker->service_thread, _service_work_thread, worker))
             {
-                LOG(3)("can't start service_thread\n");
+                LOG(3)("can't start service_thread.\n");
                 sis_worker_destroy(worker);
                 worker = NULL;
                 goto work_exit;

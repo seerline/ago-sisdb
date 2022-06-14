@@ -221,12 +221,12 @@ int frwdb_read(s_frwdb_cxt *context_, s_sis_message *netmsg)
 		}
 		else
 		{
-		    sis_net_message_set_byte(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));  
+		    sis_net_message_set_byte(netmsg, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));  
 		}	
 	}
 	else
 	{
-		sis_net_message_set_char(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));  
+		sis_net_message_set_char(netmsg, SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));  
 	}
 	frwdb_reader_destroy(reader);
 	sis_object_destroy(obj);

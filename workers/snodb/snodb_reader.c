@@ -100,7 +100,6 @@ int snodb_register_reader(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 
 s_sis_object *snodb_read_get_obj(s_snodb_reader *reader_)
 {
-
 	s_snodb_cxt *snodb = (s_snodb_cxt *)reader_->father;
 	if (!snodb->rfile_config)
 	{
@@ -116,9 +115,13 @@ s_sis_object *snodb_read_get_obj(s_snodb_reader *reader_)
 	if (sis_worker_command(reader_->sub_disker, "get", msg) == SIS_METHOD_OK)
 	{
 		obj = sis_message_get(msg, "object");
-		if (reader_->rfmt & SISDB_FORMAT_CHARS)
+		if (obj && reader_->rfmt & SISDB_FORMAT_CHARS)
 		{
-			s_sis_dynamic_db *db = sis_map_list_get(snodb->map_sdbs, reader_->sub_sdbs);
+			// printf("obj= %p %d %d %s %s\n", obj, SIS_OBJ_GET_SIZE(obj), 
+			// 	reader_->sub_date, reader_->sub_keys, reader_->sub_sdbs);
+			// sis_out_binary("...", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+			s_sis_dynamic_db *db = sis_message_get(msg, "dbinfo");
+			// s_sis_dynamic_db *db = sis_map_list_get(snodb->map_sdbs, reader_->sub_sdbs);
 			if (db)
 			{
 				// 这里未来可以做格式转换处理
@@ -128,7 +131,8 @@ s_sis_object *snodb_read_get_obj(s_snodb_reader *reader_)
 			else
 			{
 				obj = NULL;
-			}			
+			}	
+			// printf("obj= %p db= %p, %d\n", obj, db, sis_map_list_getsize(snodb->map_sdbs));		
 		}
 		else
 		{
@@ -186,7 +190,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 	}
 
 	s_sis_object *obj = NULL;
-	// printf("%s %d %d\n", __func__, reader->sub_date ,context->work_date);
+	// printf("%s %d %d %d\n", __func__, reader->sub_date ,context->work_date, reader->iszip);
 	if (reader->sub_date != context->work_date || (context->status == SIS_SUB_STATUS_STOP))
 	{
 		reader->sub_disk = true;
@@ -198,6 +202,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 		reader->sub_disk = false;
 		// 从实时数据中获取对应数据
 	}	
+	// printf("obj = %s\n", obj ? SIS_OBJ_GET_CHAR(obj) : "-");
 	if (!obj)
 	{
 		snodb_reader_destroy(reader);

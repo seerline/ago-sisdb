@@ -15,15 +15,15 @@
 struct s_sis_method snodb_methods[] = {
 // 网络结构体
     {"init",      cmd_snodb_init,   SIS_METHOD_ACCESS_NONET, NULL},  // 
-    {"set",       cmd_snodb_set,    SIS_METHOD_ACCESS_RDWR, NULL},   // 
-    {"start",     cmd_snodb_start,  SIS_METHOD_ACCESS_RDWR, NULL},   // 开始发送数据 
-    {"stop",      cmd_snodb_stop,   SIS_METHOD_ACCESS_RDWR, NULL},   // 数据流发布完成 此时不再接收数据
+    {"set",       cmd_snodb_set,    SIS_METHOD_ACCESS_RDWR,  NULL},  // 
+    {"start",     cmd_snodb_start,  SIS_METHOD_ACCESS_RDWR,  NULL},  // 开始发送数据 
+    {"stop",      cmd_snodb_stop,   SIS_METHOD_ACCESS_RDWR,  NULL},  // 数据流发布完成 此时不再接收数据
     {"ipub",      cmd_snodb_ipub,   SIS_METHOD_ACCESS_NONET, NULL},  // 发布数据流 单条数据 kidx+sidx+data
-    {"pub",       cmd_snodb_pub,    SIS_METHOD_ACCESS_RDWR, NULL},   // 发布数据流 单条数据 key sdb data
+    {"pub",       cmd_snodb_pub,    SIS_METHOD_ACCESS_RDWR,  NULL},  // 发布数据流 单条数据 key sdb data
     {"zpub",      cmd_snodb_zpub,   SIS_METHOD_ACCESS_NONET, NULL},  // 发布数据流 只有完成的压缩数据块
-    {"sub",       cmd_snodb_sub,    SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据流 
-    {"unsub",     cmd_snodb_unsub,  SIS_METHOD_ACCESS_READ, NULL},   // 取消订阅数据流 
-    {"get",       cmd_snodb_get,    SIS_METHOD_ACCESS_READ, NULL},   // 订阅数据流 
+    {"sub",       cmd_snodb_sub,    SIS_METHOD_ACCESS_READ,  NULL},  // 订阅数据流 
+    {"unsub",     cmd_snodb_unsub,  SIS_METHOD_ACCESS_READ,  NULL},  // 取消订阅数据流 
+    {"get",       cmd_snodb_get,    SIS_METHOD_ACCESS_READ,  NULL},  // 订阅数据流 
     {"clear",     cmd_snodb_clear,  SIS_METHOD_ACCESS_NONET, NULL},  // 清理数据流  
 // 磁盘工具
     {"rlog",      cmd_snodb_rlog,  0, NULL},  // 异常退出时加载磁盘数据

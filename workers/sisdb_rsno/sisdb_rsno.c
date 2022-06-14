@@ -9,6 +9,7 @@
 
 // 从行情流文件中获取数据源
 static s_sis_method _sisdb_rsno_methods[] = {
+  {"get",    cmd_sisdb_rsno_get, 0, NULL},
   {"sub",    cmd_sisdb_rsno_sub, 0, NULL},
   {"unsub",  cmd_sisdb_rsno_unsub, 0, NULL},
   {"setcb",  cmd_sisdb_rsno_setcb, 0, NULL}
@@ -372,6 +373,51 @@ void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
     context->cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys"  );
     context->cb_sub_incrzip = sis_message_get_method(msg, "cb_sub_incrzip");
     context->cb_sub_chars   = sis_message_get_method(msg, "cb_sub_chars"  );
+}
+
+int cmd_sisdb_rsno_get(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
+
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    // 设置表结构
+    // 设置数据对象
+    context->work_reader = sis_disk_reader_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SNO, NULL);
+    
+    s_sis_msec_pair pair; 
+    int subdate = sis_message_get_int(msg, "sub-date");
+    pair.start = (msec_t)sis_time_make_time(subdate, 0) * 1000;
+    pair.stop = (msec_t)sis_time_make_time(subdate, 235959) * 1000 + 999;
+    const char *subkeys = sis_message_get_str(msg, "sub-keys");
+    const char *subsdbs = sis_message_get_str(msg, "sub-sdbs");
+    LOG(5)("get sno open. [%d] %d %s %s\n", context->work_date, subdate, subkeys, subsdbs);
+    s_sis_object *obj = sis_disk_reader_get_obj(context->work_reader, subkeys, subsdbs, &pair);
+
+    s_sis_dynamic_db *db = sis_disk_reader_getdb(context->work_reader, subsdbs);
+    LOG(5)("get sno stop. [%d] %p %p %p\n", context->work_date, context->work_reader, obj, db);
+    if (db)
+    {
+        sis_dynamic_db_incr(db);
+        sis_message_set(msg, "dbinfo", db, sis_dynamic_db_destroy);
+    }
+    sis_disk_reader_destroy(context->work_reader);
+    context->work_reader = NULL;
+
+    LOG(5)("get sno stop. ok [%d] %d\n", context->work_date, context->status);
+    if (!obj)
+    {
+        return SIS_METHOD_NIL;
+    }
+    else
+    {
+        // sis_out_binary("ooo", SIS_OBJ_GET_CHAR(obj), SIS_OBJ_GET_SIZE(obj));
+        sis_message_set(msg, "object", obj, sis_object_destroy);
+    }
+    return SIS_METHOD_OK;
 }
 int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
 {
