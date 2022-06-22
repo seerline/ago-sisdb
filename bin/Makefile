@@ -18,7 +18,6 @@ else
 endif
 
 test:
-	rm -f test
 ifeq (../$(op), $(wildcard ../$(op)))
 	cd ../$(op) && cmake ../src/ -DMODE=TEST && $(MAKE) 
 else

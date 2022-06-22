@@ -377,11 +377,60 @@ ENDIF()
 ######################输出文件##########################
 SET(MYOUT_PATH ${CMAKE_SOURCE_DIR}/../)
 
-######################默认生成可执行文件文件##########################
-#设置目标文件的目录
-SET(EXECUTABLE_OUTPUT_PATH ${MYOUT_PATH})
-SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${MYOUT_PATH}bin)
-#生成可执行文件
-ADD_EXECUTABLE(${PROJECT_NAME} ${SRCFILE_LIST})
-#把LIBRARIES链接到输出文件中
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES})
+# cmake .. -DMODE=static 加参数运行时 生成静态链接库
+# cmake .. -DMODE=share  加参数运行时 生成动态链接库
+SET(MYMODE "compiler_${MODE}")
+MESSAGE(STATUS "compiler : ${MYMODE}")
+
+IF (MYMODE STREQUAL "compiler_static")
+    ######################生成静态库文件##########################
+    # 设置输出库文件目录
+    MESSAGE(STATUS "static :  ${MYMODE}" )
+    IF(MSVC)
+        SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${MYOUT_PATH}lib)
+    ELSE()
+        SET(LIBRARY_OUTPUT_PATH ${MYOUT_PATH}lib) 
+    ENDIF()
+    ADD_LIBRARY(${PROJECT_NAME} STATIC ${SRCFILE_LIST})
+    # IF(MSVC AND MSVC_STATIC_RUNTIME)     
+    #     FOREACH(var 
+    #         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+    #         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+    #     )
+    #     IF(${var} STREQUAL "/MD")
+    #         STRING(REGEX REPLACE "/MD" "/MT" ${var} "${${var}}")
+    #     ENDIF()
+    #     ENDFOREACH()
+    # ENDIF()
+    # 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
+    TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
+    # 去除目标生成的Lib前缀
+    # SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES PREFIX "")
+ELSEIF (MYMODE STREQUAL "compiler_share")
+    ######################生成动态库文件##########################
+    # 设置输出库文件目录
+    MESSAGE(STATUS "share : ${MYMODE}")
+    IF(MSVC)
+        SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${MYOUT_PATH}lib)
+    ELSE()
+        SET(LIBRARY_OUTPUT_PATH ${MYOUT_PATH}lib) 
+    ENDIF()
+    ADD_LIBRARY(${PROJECT_NAME} SHARED ${SRCFILE_LIST})
+    # 把LIBRARIES链接到输出文件中,需在ADD_LIBRARY之后定义
+    TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES}) 
+    # 去除目标生成的.so前缀
+    # SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES SUFFIX "")
+    IF(MSVC)
+        SET_TARGET_PROPERTIES( ${PROJECT_NAME} PROPERTIES SUFFIX ".dll")
+    ENDIF()
+ELSE()
+    ######################默认生成可执行文件文件##########################
+    #设置目标文件的目录
+    MESSAGE(STATUS "exec : ${MYMODE}")
+    SET(EXECUTABLE_OUTPUT_PATH ${MYOUT_PATH})
+    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${MYOUT_PATH}bin)
+    #生成可执行文件
+    ADD_EXECUTABLE(${PROJECT_NAME} ${SRCFILE_LIST})
+    #把LIBRARIES链接到输出文件中
+    TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES})
+ENDIF()
