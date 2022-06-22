@@ -1471,7 +1471,7 @@ void sis_json_printf(s_sis_json_node *node_, int *i)
 int64 sis_json_get_int(s_sis_json_node *root_, const char *key_, int64 defaultvalue_)
 {
 	s_sis_json_node *c = sis_json_find_node(root_, key_);
-	if (c)
+	if (c && c->value)
 	{
 		return sis_atoll(c->value);
 	}

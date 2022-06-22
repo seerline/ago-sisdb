@@ -48,6 +48,7 @@ typedef struct s_snodb_reader
 
 	bool                iszip;        // 是否返回压缩格式
 	bool                ishead;       // 是否从头发送
+	bool                isfields;     // 是否返回字段名 仅仅在JSON格式返回
 	bool                isinit;       // 0 刚刚订阅 1 正常订阅 
 	bool                isstop;       // 用户中断 什么也不能干
  

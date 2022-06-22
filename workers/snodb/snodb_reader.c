@@ -125,7 +125,7 @@ s_sis_object *snodb_read_get_obj(s_snodb_reader *reader_)
 			if (db)
 			{
 				// 这里未来可以做格式转换处理
-				s_sis_sds omem = sis_db_format_sds(db, NULL, reader_->rfmt, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), 0);
+				s_sis_sds omem = sis_db_format_sds(db, NULL, reader_->rfmt, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj), reader_->isfields);
 				obj = sis_object_create(SIS_OBJECT_SDS, omem);
 			}
 			else
@@ -172,6 +172,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
         {
 			reader->rfmt = sis_db_get_format_from_node(argnode->node, reader->rfmt);
             reader->ishead = sis_json_get_int(argnode->node, "sub-head", 1);
+			reader->isfields = sis_json_get_int(argnode->node, "isfields", 1);
             reader->sub_date = sis_json_get_int(argnode->node, "sub-date", context->work_date);
             sis_json_close(argnode);
         }
@@ -179,6 +180,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 	if (reader->rfmt == SISDB_FORMAT_BITZIP)
 	{
 		reader->iszip = true;
+		
 	}
 	reader->sub_whole = false;
     sis_str_divide_sds(netmsg->subject, '.', &reader->sub_keys, &reader->sub_sdbs);
@@ -208,6 +210,9 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 		snodb_reader_destroy(reader);
 		return SIS_METHOD_NIL;
 	}
+	sis_net_msg_clear_cmd(netmsg);
+	sis_net_msg_clear_service(netmsg);
+	sis_net_message_set_tag(netmsg, SIS_NET_TAG_OK);
 	if (reader->rfmt & SISDB_FORMAT_BYTES)
 	{
 		if (reader->iszip)
@@ -223,6 +228,7 @@ int snodb_read(s_snodb_cxt *context_, s_sis_net_message *netmsg)
 	{
 		sis_net_message_set_char(netmsg, SIS_OBJ_GET_CHAR(obj),SIS_OBJ_GET_SIZE(obj));
 	}
+
 	snodb_reader_destroy(reader);
 	sis_object_destroy(obj);
 
