@@ -130,7 +130,6 @@ typedef struct s_sis_double_list {
 	double avgv;
 	double minv;
 	double maxv;
-	s_sis_struct_list *index;   // time
 	s_sis_struct_list *value;   // double
 } s_sis_double_list;
 
@@ -149,10 +148,6 @@ int sis_sort_uint32_list(const void *arg1, const void *arg2);
 void sis_double_list_sort(s_sis_double_list *src_);
 
 int sis_double_list_push(s_sis_double_list *, double in_);
-
-// 增加索引的功能
-int sis_double_list_push_index(s_sis_double_list *, uint32 index_, double in_);
-uint32 sis_double_list_get_index(s_sis_double_list *list_, int index_);
 
 double sis_double_list_get(s_sis_double_list *, int index_);
 double *sis_double_list_gets(s_sis_double_list *, int index_);

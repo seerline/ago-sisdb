@@ -760,14 +760,12 @@ int sis_sort_list_getsize(s_sis_sort_list *list_)
 s_sis_double_list *sis_double_list_create()
 {
 	s_sis_double_list *o = SIS_MALLOC(s_sis_double_list, o);
-	o->index = sis_struct_list_create(sizeof(uint32));
 	o->value = sis_struct_list_create(sizeof(double));
 	return o;
 }
 void sis_double_list_destroy(void *list)
 {
 	s_sis_double_list *list_ = (s_sis_double_list *)list;
-	sis_struct_list_destroy(list_->index);
 	sis_struct_list_destroy(list_->value);
 	sis_free(list_);
 }
@@ -776,7 +774,6 @@ void sis_double_list_clear(s_sis_double_list *list_)
 	list_->avgv = 0.0;
 	list_->maxv = 0.0;
 	list_->minv = 0.0;
-	sis_struct_list_clear(list_->index);
 	sis_struct_list_clear(list_->value);
 }
 
@@ -789,27 +786,6 @@ int sis_double_list_push(s_sis_double_list *list_, double in_)
 	list_->minv = SIS_MINF(list_->minv, in_);
 
 	return sis_struct_list_push(list_->value, &in_);
-}
-int sis_double_list_push_index(s_sis_double_list *list_, uint32 index_, double in_)
-{
-	int count = list_->value->count;
-	double sumv = count * list_->avgv;
-	list_->avgv = (sumv + in_) / (count + 1);
-	list_->maxv = SIS_MAXF(list_->maxv, in_);
-	list_->minv = SIS_MINF(list_->minv, in_);
-
-	sis_struct_list_push(list_->index, &index_);
-	return sis_struct_list_push(list_->value, &in_);
-}
-
-uint32 sis_double_list_get_index(s_sis_double_list *list_, int index_)
-{
-	uint32 *o = (uint32 *)sis_struct_list_get(list_->index, index_);
-	if (o)
-	{
-		return *o;
-	}
-	return 0;
 }
 double sis_double_list_get(s_sis_double_list *list_, int index_)
 {
@@ -841,7 +817,6 @@ int sis_sort_int32_list(const void *arg1, const void *arg2 )
 void sis_double_list_sort(s_sis_double_list *list_)
 {
    qsort(sis_struct_list_get(list_->value, 0), list_->value->count, sizeof(double), sis_sort_double_list);
-   qsort(sis_struct_list_get(list_->index, 0), list_->index->count, sizeof(int32), sis_sort_int32_list);
 }
 
 int sis_double_list_count_nozero_split(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_)
