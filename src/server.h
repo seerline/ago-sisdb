@@ -25,15 +25,19 @@ typedef struct s_sis_server
 {
 	int status; //是否已经初始化
 	
+	int  load_mode;    // 0 conf 1 json
 	char conf_name[SIS_PATH_LEN];  // 配置文件路径
+	char json_name[SIS_PATH_LEN];  // 配置文件路径
 
 	size_t log_size;
 	int    log_level;
 	char   log_path[SIS_PATH_LEN];   // log路径
 	char   log_name[SIS_PATH_LEN];    // log文件名，通常以执行文件名为名
 
-	s_sis_conf_handle *config;       // 配置文件句柄
+	s_sis_conf_handle *conf_h;       // 配置文件句柄
+	s_sis_json_handle *json_h;    
 
+	s_sis_json_node *cfgnode;
 	// int  work_series;                // 序列号
 	int  work_mode;                  // 以什么模式来运行程序
 

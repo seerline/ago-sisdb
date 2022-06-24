@@ -26,7 +26,7 @@ extern const char *__modules_name[];
 int _server_open_workers()
 {
 	// 从conf配置中读取workers的json设置文件
-	s_sis_json_node *workers = sis_json_cmp_child_node(_server.config->node, "workers");
+	s_sis_json_node *workers = sis_json_cmp_child_node(_server.cfgnode, "workers");
 	if (!workers)
 	{
 		return 0;
@@ -67,18 +67,35 @@ void _sig_kill(int sn)
 // 读取配置文件
 bool _server_open(const char *cmdinfo)
 {
-	if (!sis_file_exists(_server.conf_name))
+	char config[1024];
+	sis_strcpy(config, 1024, _server.load_mode ? _server.json_name, _server.conf_name);
+	LOG(8)("loading config file [%s]\n", config);
+	if (!sis_file_exists(config))
 	{
-		printf("conf file %s no finded.\n", _server.conf_name);
+		printf("conf file %s no finded.\n", config);
 		return false;
+	}
+	if (_server.load_mode)
+	{
+		_server.json_h = sis_json_open(config);
+		if (!_server.json_h)
+		{
+			printf("config file %s format error.\n", config);
+			return false;
+		}
+		_server.cfgnode = _server.json_h->node;	
+	}
+	else
+	{
+		_server.conf_h = sis_conf_open(config);
+		if (!_server.conf_h)
+		{
+			printf("config file %s format error.\n", config);
+			return false;
+		}
+		_server.cfgnode = _server.conf_h->node;	
 	}
 
-	_server.config = sis_conf_open(_server.conf_name);
-	if (!_server.config)
-	{
-		printf("conf file %s format error.\n", _server.conf_name);
-		return false;
-	}
 	if (sis_strlen(cmdinfo) > 0)
 	{
 		s_sis_json_handle *hcmd = sis_json_open(cmdinfo);
@@ -89,12 +106,12 @@ bool _server_open(const char *cmdinfo)
 		else
 		{
 			// int ii = 1;
-			// sis_json_show(_server.config->node, &ii);
-			sis_json_object_merge(_server.config->node, hcmd->node);
+			// sis_json_show(_server.cfgnode, &ii);
+			sis_json_object_merge(_server.cfgnode, hcmd->node);
 
 			// char *str = NULL;
 			// size_t olen;
-			// str = sis_json_output(_server.config->node, &olen);
+			// str = sis_json_output(_server.cfgnode, &olen);
 			// printf(str);
 
 			sis_json_close(hcmd);
@@ -102,12 +119,12 @@ bool _server_open(const char *cmdinfo)
 	}
 
 	char conf_path[SIS_PATH_LEN];
-	sis_file_getpath(_server.conf_name, conf_path, SIS_PATH_LEN);
+	sis_file_getpath(config, conf_path, SIS_PATH_LEN);
 
-	s_sis_json_node *lognode = sis_json_cmp_child_node(_server.config->node, "log");
+	s_sis_json_node *lognode = sis_json_cmp_child_node(_server.cfgnode, "log");
 	if (lognode)
 	{
-		// printf("%s || %s\n",conf_path, _server.conf_name);
+		// printf("%s || %s\n",conf_path, config);
 		sis_cat_fixed_path(conf_path, sis_json_get_str(lognode, "path"),
 						   _server.log_path, SIS_PATH_LEN);
 		// printf("%s == %s\n",conf_path, _server.log_path);
@@ -120,7 +137,7 @@ bool _server_open(const char *cmdinfo)
 	}
 	// 生成log文件
 	char name[SIS_PATH_LEN];
-	sis_file_getname(_server.conf_name, name, SIS_PATH_LEN);
+	sis_file_getname(config, name, SIS_PATH_LEN);
 	size_t len = strlen(name);
 	for (int i = (int)len - 1; i > 0; i--)
 	{
@@ -176,6 +193,7 @@ void _server_help()
 {
 	printf("command format:\n");
 	printf("		-f xxxx.conf : install custom conf. \n");
+	printf("		-j xxxx.json : install custom json. \n");
 	printf("		-d           : debug mode run. \n");
 	printf("		-w workinfo.json : install workinfo config. \n");
 	printf("		-h           : help. \n");
@@ -208,6 +226,7 @@ void sis_server_uninit()
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 1024, "%s.conf", argv[0]);
+	sis_sprintf(_server.json_name, 1024, "%s.conf", argv[0]);
 	int c = 1;
 	char cmdinfo[255]; 
 	cmdinfo[0] = 0;
@@ -217,6 +236,13 @@ int main(int argc, char *argv[])
 		{
 			sis_strcpy(_server.conf_name, 1024, argv[c + 1]);
 			c++;
+			_server.load_mode = 0;
+		}
+		else if (argv[c][0] == '-' && argv[c][1] == 'j' && argv[c + 1])
+		{
+			sis_strcpy(_server.json_name, 1024, argv[c + 1]);
+			c++;
+			_server.load_mode = 1;
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'w' && argv[c + 1])
 		{
@@ -234,7 +260,6 @@ int main(int argc, char *argv[])
 		}
 		c++;
 	}
-	LOG(8)("loading conf file [%s]\n", _server.conf_name);
 	if (_server.work_mode & SERVER_WORK_MODE_DEBUG)
 	{
 		// 如果是debug模式就开启内存检查
@@ -243,7 +268,7 @@ int main(int argc, char *argv[])
 
 	if (!_server_open(cmdinfo))
 	{
-		printf("conf file %s load error.\n", _server.conf_name);
+		printf("config file %s load error.\n", _server.load_mode ? _server.json_name : _server.conf_name);
 		return 0;
 	}
 	if (sis_server_init() < 1)
@@ -305,8 +330,14 @@ int main(int argc, char *argv[])
 
 	LOG(3)("program exit.\n");
 
-	sis_conf_close(_server.config);
-
+	if (_server.load_mode)
+	{
+		sis_json_close(_server.json_h);
+	}
+	else
+	{
+		sis_conf_close(_server.conf_h);
+	}
 	sis_log_close();
 
 	if (_server.work_mode & SERVER_WORK_MODE_DEBUG)
