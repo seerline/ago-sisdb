@@ -42,6 +42,7 @@ void *sis_struct_list_last(s_sis_struct_list *);
 void *sis_struct_list_get(s_sis_struct_list *, int index_);
 void *sis_struct_list_next(s_sis_struct_list *list_, void *);
 
+void *sis_struct_list_empty(s_sis_struct_list *list_);
 void *sis_struct_list_offset(s_sis_struct_list *list_, void *, int offset_);
 
 void sis_struct_list_set_size(s_sis_struct_list *list_, int len_);

@@ -5,7 +5,8 @@
 
 static s_sis_server _server = {
 	.status = SERVER_STATUS_NONE,
-	.config = NULL,
+	.conf_h = NULL,
+	.json_h = NULL,
 	.work_mode = SERVER_WORK_MODE_NORMAL,
 	.log_level = 5,
 	.log_size = 10,
@@ -63,12 +64,42 @@ void _sig_kill(int sn)
 	// printf("exit! %d\n", sis_map_pointer_getsize(_server.workers));  
 	sis_map_pointer_clear(_server.workers);
 }
-
+void _fmt_trans(const char *confname, const char *jsonname)
+{
+	LOG(8)("loading config file [%s]\n", _server.conf_name);
+	if (!sis_file_exists(_server.conf_name))
+	{
+		printf("conf file %s no finded.\n", _server.conf_name);
+		return ;
+	}
+	_server.conf_h = sis_conf_open(_server.conf_name);
+	if (!_server.conf_h)
+	{
+		printf("config file %s format error.\n", _server.conf_name);
+		return ;
+	}
+	size_t ilen = 0;
+	char *str = sis_json_output(_server.conf_h->node, &ilen);
+	if (str && ilen > 0)
+	{
+		sis_writefile(_server.json_name, str, ilen);
+		sis_free(str);
+	}
+	sis_conf_close(_server.conf_h);
+}
 // 读取配置文件
 bool _server_open(const char *cmdinfo)
 {
 	char config[1024];
-	sis_strcpy(config, 1024, _server.load_mode ? _server.json_name, _server.conf_name);
+	if (_server.load_mode )
+	{
+		sis_strcpy(config, 1024, _server.json_name);
+	}
+	else
+	{
+		sis_strcpy(config, 1024, _server.conf_name);
+	}
+	
 	LOG(8)("loading config file [%s]\n", config);
 	if (!sis_file_exists(config))
 	{
@@ -194,6 +225,7 @@ void _server_help()
 	printf("command format:\n");
 	printf("		-f xxxx.conf : install custom conf. \n");
 	printf("		-j xxxx.json : install custom json. \n");
+	printf("		-t xxxx.conf xxxx.json : trans conf to json. \n");
 	printf("		-d           : debug mode run. \n");
 	printf("		-w workinfo.json : install workinfo config. \n");
 	printf("		-h           : help. \n");
@@ -226,13 +258,24 @@ void sis_server_uninit()
 int main(int argc, char *argv[])
 {
 	sis_sprintf(_server.conf_name, 1024, "%s.conf", argv[0]);
-	sis_sprintf(_server.json_name, 1024, "%s.conf", argv[0]);
+	sis_sprintf(_server.json_name, 1024, "%s.json", argv[0]);
 	int c = 1;
 	char cmdinfo[255]; 
 	cmdinfo[0] = 0;
 	while (c < argc)
 	{
-		if (argv[c][0] == '-' && argv[c][1] == 'f' && argv[c + 1])
+		if (argv[c][0] == '-' && argv[c][1] == 't' && argv[c + 1])
+		{
+			_server.fmt_trans = 1;
+			sis_strcpy(_server.conf_name, 1024, argv[c + 1]);
+			c++;
+			if (argv[c + 1])
+			{
+				sis_strcpy(_server.json_name, 1024, argv[c + 1]);
+			}
+			c++;
+		}
+		else if (argv[c][0] == '-' && argv[c][1] == 'f' && argv[c + 1])
 		{
 			sis_strcpy(_server.conf_name, 1024, argv[c + 1]);
 			c++;
@@ -259,6 +302,11 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 		c++;
+	}
+	if (_server.fmt_trans > 0)
+	{
+		_fmt_trans(_server.conf_name, _server.json_name);
+		exit(0);
 	}
 	if (_server.work_mode & SERVER_WORK_MODE_DEBUG)
 	{

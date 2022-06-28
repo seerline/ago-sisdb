@@ -181,6 +181,16 @@ void *sis_struct_list_get(s_sis_struct_list *list_, int index_)
 	}
 	return o;
 }
+void *sis_struct_list_empty(s_sis_struct_list *list_)
+{
+	_struct_list_grow(list_, 1);
+	int offset = list_->count + list_->start;
+	memset((char *)list_->buffer + (offset * list_->len), 0, list_->len);
+
+	list_->count++;
+	return (char *)list_->buffer + (offset * list_->len);
+}
+
 void *sis_struct_list_next(s_sis_struct_list *list_, void *current_)
 {
 	int offset = 1;
