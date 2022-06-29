@@ -43,7 +43,16 @@ int sis_msec_get_itime(msec_t msec) //103020
 	sis_time_check((time_t)(msec/1000), &ptm);
 	return ptm.tm_hour * 10000 + ptm.tm_min * 100 + ptm.tm_sec;
 }
-
+int sis_msec_get_idate(msec_t msec) //20151012
+{
+	if (msec == 0)
+	{
+		return 0;
+	}
+	struct tm ptm = {0};
+	sis_time_check((time_t)(msec/1000), &ptm);
+	return (ptm.tm_year + 1900) * 10000 + (ptm.tm_mon + 1) * 100 + ptm.tm_mday;
+}
 long sis_msec_get_mtime(msec_t msec) //103020 000
 {
 	if (msec == 0)
