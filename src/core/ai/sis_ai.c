@@ -237,6 +237,10 @@ double sis_ai_series_drift(int nums_, double ins_[])
         avg += ins_[i]; 
     }
     avg /= nums_;
+    if (SIS_IS_ZERO(avg))
+    {
+        return 0.0;
+    }
     // 求斜率
     double *x = (double *)sis_calloc(sizeof(double) * nums_);
     double *outs = (double *)sis_calloc(sizeof(double) * nums_);
