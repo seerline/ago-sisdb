@@ -28,6 +28,8 @@ typedef struct s_sis_kv_pair{
 
 
 typedef struct s_sis_map_list{
+	int                 safe;   // 0 不锁 1 锁
+	s_sis_mutex_t       rwlock; // 是否增加读写锁
 	s_sis_map_int      *map;   // 存入的整数就是list的索引
 	s_sis_pointer_list *list;  // 实际数据存在这里
 }s_sis_map_list;

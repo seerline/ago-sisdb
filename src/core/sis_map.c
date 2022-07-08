@@ -148,6 +148,7 @@ s_sis_dict_type _sis_dict_type_sds_s = {
 s_sis_map_list *sis_map_list_create(void *vfree_)
 {
 	s_sis_map_list *o = SIS_MALLOC(s_sis_map_list, o);
+	sis_mutex_init(&o->rwlock, NULL);
 	o->map = sis_map_int_create();
 	o->list = sis_pointer_list_create();
 	o->list->vfree = vfree_;
@@ -160,68 +161,62 @@ void sis_map_list_destroy(void *mlist_)
 	sis_pointer_list_destroy(mlist->list);
 	sis_free(mlist);
 }
+#define SIS_MLIST_LOCK(m) { if (m->safe) { sis_mutex_lock(&m->rwlock); } }
+#define SIS_MLIST_UNLOCK(m) { if (m->safe) { sis_mutex_unlock(&m->rwlock); } }
+
 void sis_map_list_clear(s_sis_map_list *mlist_)
 {
+	SIS_MLIST_LOCK(mlist_);
 	sis_map_int_clear(mlist_->map);
 	sis_pointer_list_clear(mlist_->list);
+	SIS_MLIST_UNLOCK(mlist_);
 }
 
 int sis_map_list_get_index(s_sis_map_list *mlist_, const char *key_)
 {
-	if (!mlist_ || !key_ || sis_map_list_getsize(mlist_) < 1)
+	if (!mlist_ || !key_ )
 	{
 		return -1;
 	}
-	return sis_map_int_get(mlist_->map, key_);
+	// if (!mlist_ || !key_ || sis_map_list_getsize(mlist_) < 1)
+	// {
+	// 	return -1;
+	// }
+	SIS_MLIST_LOCK(mlist_);
+	int i = sis_map_int_get(mlist_->map, key_);
+	SIS_MLIST_UNLOCK(mlist_);
+	return i; 
 }
 void *sis_map_list_geti(s_sis_map_list *mlist_, int index_)
 {
-	return sis_pointer_list_get(mlist_->list, index_);
+	SIS_MLIST_LOCK(mlist_);
+	void *r = sis_pointer_list_get(mlist_->list, index_);
+	SIS_MLIST_UNLOCK(mlist_);
+	return r;
 }
 
-// void *sis_map_list_first(s_sis_map_list *mlist_)
-// {
-// 	for (int i = 0; i < mlist_->list->count; i++)
-// 	{
-// 		void *val = sis_pointer_list_get(mlist_->list, i);
-// 		if (val)
-// 		{
-// 			return val;
-// 		}
-// 	}
-// 	return NULL;
-// }
-// void *sis_map_list_next(s_sis_map_list *mlist_, void *node_)
-// {
-// 	int index = sis_pointer_list_indexof(mlist_, node_);
-// 	if (index < 0)
-// 	{
-// 		return NULL;
-// 	}
-// 	for (int i = index + 1; i < mlist_->list->count; i++)
-// 	{
-// 		void *val = sis_pointer_list_get(mlist_->list, i);
-// 		if (val)
-// 		{
-// 			return val;
-// 		}
-// 	}
-// 	return NULL;
-// }
 void *sis_map_list_get(s_sis_map_list *mlist_, const char *key_)
 {
-	int index = sis_map_list_get_index(mlist_, key_);
-	if (index < 0 || index > mlist_->list->count - 1)
+	if (!mlist_ || !key_ )
 	{
 		return NULL;
 	}
-	return sis_pointer_list_get(mlist_->list, index);
+	void *o = NULL;
+	SIS_MLIST_LOCK(mlist_);
+	int index = sis_map_int_get(mlist_->map, key_);
+	if (index >= 0 && index < mlist_->list->count)
+	{
+		o = sis_pointer_list_get(mlist_->list, index);
+	}
+	SIS_MLIST_UNLOCK(mlist_);
+	return o;
 }
 
 // map有变化必须全部重索引
 int sis_map_list_set(s_sis_map_list *mlist_, const char *key_, void *value_)
 {
-	int index = sis_map_list_get_index(mlist_, key_);
+	SIS_MLIST_LOCK(mlist_);
+	int index = sis_map_int_get(mlist_->map, key_);
 	// printf(" %s index = %d\n",key_, index);
 	if (index >= 0)
 	{
@@ -234,11 +229,16 @@ int sis_map_list_set(s_sis_map_list *mlist_, const char *key_, void *value_)
 		sis_pointer_list_push(mlist_->list, value_);
 		index = mlist_->list->count - 1;
 	}
+	SIS_MLIST_UNLOCK(mlist_);
 	return index;
 }
 int sis_map_list_getsize(s_sis_map_list *mlist_)
-{
-	return mlist_->list->count;
+{	
+	int count = 0;
+	SIS_MLIST_LOCK(mlist_);
+	count = mlist_->list->count;
+	SIS_MLIST_UNLOCK(mlist_);
+	return count;
 }
 
 // 创建并初始化一个HASH表
