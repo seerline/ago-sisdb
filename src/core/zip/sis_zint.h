@@ -7,14 +7,16 @@
 
 // 取值范围 0x0FFF FFFF 268435455 理论上保留两位小数可以支持到268万 无损失
 // 小数位最多6位
+#define SIS_MAX_ZINT32 0x0FFFFFFF
 typedef struct zint32 {
 	unsigned int zint    : 28;
 	unsigned int attr    : 3;   // 0 有效无缩放 0x7 无效数据 1-6缩小倍数
 	unsigned int sign    : 1;   // 0 正 1 负
 } zint32;
 
-// 取值范围 0x3FFF FFFF FFFF FFFF 
+// 取值范围 0x03FF FFFF FFFF FFFF 
 // 小数位最多30位
+#define SIS_MAX_ZINT64 0x03FFFFFFFFFFFFFF
 typedef struct zint64 {
 	unsigned long long zint    : 58;
 	unsigned long long attr    : 5;  // 0 有效无缩放 0x1F 无效数据  1-30缩小倍数
@@ -26,7 +28,7 @@ typedef struct zint64 {
 static inline zint32 sis_double_to_zint32(double in_, int dot_, bool valid_)
 {
     zint32 z = {0};
-    if (!valid_ || in_ > (double)0x0FFFFFFF || in_ < (double)-0x0FFFFFFF)
+    if (!valid_ || in_ > (double)SIS_MAX_ZINT32 || in_ < (double)-1*SIS_MAX_ZINT32)
     {
         z.attr = 7;
     }
@@ -38,7 +40,7 @@ static inline zint32 sis_double_to_zint32(double in_, int dot_, bool valid_)
         int maxdot = sis_min(dot_, 6);
         for (int i = 0; i < maxdot; i++)
         {
-            if (in * 10 > (double)0x0FFFFFFF)
+            if (in * 10 > (double)SIS_MAX_ZINT32)
             {
                 z.attr = i;
                 break;
@@ -61,7 +63,7 @@ static inline int32 sis_double_to_int32(double in_, int dot_, bool valid_)
 static inline zint64 sis_double_to_zint64(double in_, int dot_, bool valid_)
 {
     zint64 z = {0};
-    if (!valid_ || in_ > (double)0x3FFFFFFFFFFFFFFF || in_ < (double)-0x3FFFFFFFFFFFFFFF)
+    if (!valid_ || in_ > (double)SIS_MAX_ZINT64 || in_ < (double)-1*SIS_MAX_ZINT64)
     {
         z.attr = 31;
     }
@@ -72,7 +74,7 @@ static inline zint64 sis_double_to_zint64(double in_, int dot_, bool valid_)
         int maxdot = sis_min(dot_, 30);
         for (int i = 0; i < maxdot; i++)
         {
-            if (in * 10 > (double)0x3FFFFFFFFFFFFFFF)
+            if (in * 10 > (double)SIS_MAX_ZINT64)
             {
                 z.attr = i;
                 break;
