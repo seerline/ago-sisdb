@@ -277,7 +277,20 @@ int sis_struct_list_setone(s_sis_struct_list *list_, int index_, void *in_)
 	return index_;
 	
 }
-
+void sis_struct_list_rect(s_sis_struct_list *list_, int rows_)
+{
+	if (rows_ < 1 || rows_ > list_->count)
+	{
+		return;
+	}
+	list_->start = list_->start + list_->count - rows_;
+	if (list_->count == rows_ && list_->start > rows_)
+	{
+		memmove(list_->buffer, (char *)list_->buffer + (list_->start * list_->len), list_->count * list_->len);		
+		list_->start = 0;
+	}
+	list_->count = rows_;
+}
 void sis_struct_list_limit(s_sis_struct_list *list_, int limit_)
 {
 	if (limit_ < 1 || limit_ > list_->count)

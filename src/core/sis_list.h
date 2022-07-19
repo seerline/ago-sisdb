@@ -51,6 +51,7 @@ int sis_struct_list_set(s_sis_struct_list *, void *in_, int inlen_);
 
 int sis_struct_list_setone(s_sis_struct_list *, int index_, void *in_);
 
+void sis_struct_list_rect(s_sis_struct_list *list_, int rows_);
 void sis_struct_list_limit(s_sis_struct_list *, int limit_);
 int sis_struct_list_clone(s_sis_struct_list *src_, s_sis_struct_list *dst_);
 int sis_struct_list_append(s_sis_struct_list *src_, s_sis_struct_list *dst_);
