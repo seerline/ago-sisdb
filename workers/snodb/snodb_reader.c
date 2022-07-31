@@ -416,6 +416,7 @@ s_snodb_reader *snodb_reader_create()
 	s_snodb_reader *o = SIS_MALLOC(s_snodb_reader, o);
 	return o;
 }
+// ??? 有时候某天的历史文件不能读取 发指令后直接就执行该函数 有时间查查问题
 void snodb_reader_destroy(void *reader_)
 {
 	s_snodb_reader *reader = (s_snodb_reader *)reader_;
