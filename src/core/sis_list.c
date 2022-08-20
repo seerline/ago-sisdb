@@ -831,15 +831,15 @@ int sis_double_list_getsize(s_sis_double_list *list_)
 
 int sis_sort_double_list(const void *arg1, const void *arg2 ) 
 { 
-    return (*(double *)arg1 - *(double *)arg2);
+    return *(double *)arg1 > *(double *)arg2 ? 1 : -1;
 }
 int sis_sort_int32_list(const void *arg1, const void *arg2 ) 
 { 
-    return (*(int32 *)arg1 - *(int32 *)arg2);
+    return *(int32 *)arg1 > *(int32 *)arg2 ? 1 : -1;
 }
 void sis_double_list_sort(s_sis_double_list *list_)
 {
-   qsort(sis_struct_list_get(list_->value, 0), list_->value->count, sizeof(double), sis_sort_double_list);
+   qsort(sis_struct_list_first(list_->value), list_->value->count, sizeof(double), sis_sort_double_list);
 }
 
 int sis_double_list_count_nozero_split(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_)
