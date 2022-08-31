@@ -643,7 +643,7 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 	{
 		if (!in_)
 		{
-			if (ilen_ > 0 ) LOG(5)("==== curr_size = %d\n", sisdb_incr_getsize(reader->sub_ziper));
+			//if (ilen_ > 0 ) LOG(5)("==== curr_size = %d\n", sisdb_incr_getsize(reader->sub_ziper));
 			sisdb_incr_zip_restart(reader->sub_ziper);	
 			return 0;
 		}
@@ -670,7 +670,7 @@ static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t ile
 		}
 
 		sisdb_incr_zip_set(reader->sub_ziper, kidx, sidx, in_, ilen_);
-		LOG(5)("==== cb_unzip_reply = %s %s -> %d  %d | %d  %d | === %d\n", kname, sname, kidx, sidx, kidx_, sidx_, sisdb_incr_getsize(reader->sub_ziper));
+		//LOG(5)("==== cb_unzip_reply = %s %s -> %d  %d | %d  %d | === %d\n", kname, sname, kidx, sidx, kidx_, sidx_, sisdb_incr_getsize(reader->sub_ziper));
 
 	}
     return 0;
