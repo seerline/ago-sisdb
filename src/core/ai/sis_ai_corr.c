@@ -27,7 +27,7 @@ double sis_ai_corrcoef(double *i1, double *i2, int size)
 
     //计算相关系数
     double r1 = 0, r2 = 0, r3 = 0;
-    for (long i = 0; i < size; i++)
+    for (int i = 0; i < size; i++)
     {
         r1 += (i1[i] - ave1) * (i2[i] - ave2);
         r2 += pow((i1[i] - ave1), 2);
@@ -36,7 +36,7 @@ double sis_ai_corrcoef(double *i1, double *i2, int size)
     return SIS_IS_ZERO(r2 * r3) ? 0.0 : (r1 / sqrt(r2 * r3));
 }
 
-#if 1
+#if 0
 int main()
 {
     double in1[12] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};   

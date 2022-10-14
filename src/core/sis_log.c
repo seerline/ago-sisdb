@@ -135,7 +135,6 @@ void sis_log(const char *fmt_, ...)
 
 	if (_sis_log.outscreen)
 	{
-		va_start(args, fmt_);
 		switch (_sis_log.warning)
 		{
 			case 0:
@@ -150,7 +149,12 @@ void sis_log(const char *fmt_, ...)
 			default:
 				break;
 		}
-		vfprintf(stderr, fmt_, args);
+		sis_time_format_now(_sis_log.showtime, 127);
+		va_start(args, fmt_);
+		sis_sprintf(_sis_log.buffer, 1023, "%s[%x]%s.%s", 
+			_sis_log.showtime, sis_thread_handle(_sis_log.id), _sis_log.funcname, fmt_);
+		vfprintf(stderr, _sis_log.buffer, args);
+		// vfprintf(stderr, fmt_, args);
 		va_end(args);
 		fprintf(stderr, RESET);
 	}
@@ -200,7 +204,7 @@ void sis_out_percent_stop()
 
 size_t sis_writefile(const char *name, void *value, size_t len)
 {
-	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_APPEND | SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
+	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
 	if (fp)
 	{
 		size_t size = sis_file_write(fp, (char *)value, len);

@@ -158,6 +158,8 @@ int sis_double_list_getsize(s_sis_double_list *list_);
 
 void sis_double_list_clear(s_sis_double_list *list_);
 
+// 根据合计值 按nums来分割数据
+int sis_double_list_value_split(s_sis_double_list *list_, int nums_, double split[]);
 // 以0为中间点
 int sis_double_list_count_nozero_split(s_sis_double_list *list_,s_sis_struct_list *splits_, int nums_);
 // 以0为中间点 不包括0附近的值

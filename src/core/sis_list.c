@@ -842,6 +842,30 @@ void sis_double_list_sort(s_sis_double_list *list_)
    qsort(sis_struct_list_first(list_->value), list_->value->count, sizeof(double), sis_sort_double_list);
 }
 
+int sis_double_list_value_split(s_sis_double_list *list_, int nums_, double split[])
+{
+	sis_double_list_sort(list_);
+	double sumv = list_->avgv * list_->value->count;
+	double curv = sumv / nums_;
+	int idx = 0;
+	for (int i = 0; i < list_->value->count; i++)
+	{
+		double v = sis_double_list_get(list_, i);
+		sumv += v;
+		if (sumv >= curv)
+		{
+			split[idx] = v;
+			idx++;
+			if (idx >= nums_ - 1)
+			{
+				break;
+			}
+			sumv = 0.0;
+		}
+	}
+	return idx;	
+}
+
 int sis_double_list_count_nozero_split(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_)
 {
 	double minimum = 0.001;
