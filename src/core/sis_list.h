@@ -72,8 +72,8 @@ int sis_struct_list_pack(s_sis_struct_list *list_);
 
 typedef struct s_sis_sort_list {
 	int8               isascend; // 是否为升序
-	s_sis_struct_list *key;     // int64 类型
-	s_sis_struct_list *value;   // 结构类型
+	s_sis_struct_list *key;      // int64 类型
+	s_sis_struct_list *value;    // 结构类型
 } s_sis_sort_list;
 
 #ifdef __cplusplus
@@ -221,7 +221,7 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 //////////////////////////////////////////////////////////////////////////
 
 typedef struct s_sis_fsort_list {
-	s_sis_struct_list  *key;     // int 类型
+	s_sis_struct_list  *key;     // double 类型
 	s_sis_pointer_list *value;   // 结构类型
 } s_sis_fsort_list;
 

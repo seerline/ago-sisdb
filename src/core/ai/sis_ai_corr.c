@@ -63,13 +63,35 @@ int sis_ai_corrcoef_max(double *i1, double *i2, int size, s_sis_ai_corrcoef *cor
     if (corr && size > 5)
     {
         corr->offset = size * 0.382;
-        corr->offset = sis_min(corr->offset, 1);
+        corr->offset = sis_max(corr->offset, 1);
         corr->corrcoef = sis_ai_corrcoef_ex(i1, i2, size, &corr->offset);
         return 1;
     }
     return 0;
 }
 
+#define CORR_MINV (0.00000001)
+double sis_ai_corr_dir(double *i1, double *i2, int size)
+{
+    int sames = 0;
+    int diffs = 0;
+    for (int i = 0; i < size; i++)
+    {
+        if ((i1[i] > CORR_MINV && i2[i] > CORR_MINV) || (i1[i] < -CORR_MINV && i2[i] < -CORR_MINV))
+        {
+            sames = sames + 1;
+        }
+        else
+        {
+            diffs = diffs + 1;
+        }
+    }
+    if (sames == diffs)
+    {
+        return 0.0;
+    }
+    return sames > diffs ? (double)sames / (double)size : -1 * (double)diffs / (double)size;
+}
 #if 0
 int main()
 {
