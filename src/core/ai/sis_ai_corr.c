@@ -110,7 +110,19 @@ int main()
     {
         in2[i] = in1[i] * 1000;
     }
+    in2[8] /= 10; 
     printf(" %.4f \n", sis_ai_corrcoef(in1, in2, 12));
+
+    double in11[12]; 
+    double in21[12];
+    for (int i = 0; i < 12; i++)
+    {
+        in11[i] = (int)in1[i] % 2 == 0 ? -1 : 1;
+        in21[i] = in11[i];
+    }
+    in21[8] *= -1; 
+    in21[4] *= -1; 
+    printf(" %.4f \n", sis_ai_corrcoef(in11, in21, 12));
     return 0;
 }
 #endif

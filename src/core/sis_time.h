@@ -45,6 +45,7 @@ bool sis_time_str_is_date(char* date); //判断字符串是不是日期20150212
 
 void sis_time_format_minute(char * out_, size_t olen_, time_t tt_); //"930"
 void sis_time_format_date(char * out_, size_t olen_, int date_); //"2015-09-12"
+void sis_time_format_csec(char * out_, size_t olen_, msec_t tt_); //"09:30:00"
 void sis_time_format_msec(char * out_, size_t olen_, msec_t tt_); //"09:30:00.123"
 void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_); //"20150912103000"
 void sis_msec_format_datetime(char * out_, size_t olen_, msec_t tt_); //"20150912103059000"
