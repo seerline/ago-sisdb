@@ -77,13 +77,19 @@ void sis_memory_pack(s_sis_memory *m_)
 	}
 	else
 	{
-		m_->size = sis_memory_get_size(m_);
-		if (m_->size > 0)
+		if (sis_memory_get_size(m_) > 0 && m_->size > m_->maxsize / 3)
 		{
+			m_->size = sis_memory_get_size(m_);
 			memmove(m_->buffer, m_->buffer + m_->offset, m_->size);
 			memset(m_->buffer + m_->size, 0, m_->offset);
+			m_->offset = 0;
 		}
-		m_->offset = 0;
+		// if (m_->size > 0)
+		// {
+		// 	memmove(m_->buffer, m_->buffer + m_->offset, m_->size);
+		// 	memset(m_->buffer + m_->size, 0, m_->offset);
+		// }
+		// m_->offset = 0;
 	}
 }
 void sis_memory_jumpto(s_sis_memory *m_, size_t off_)
