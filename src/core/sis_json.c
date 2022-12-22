@@ -658,6 +658,10 @@ s_sis_json_node *sis_json_create_object(void)
 void sis_json_array_add_node(s_sis_json_node *source_, s_sis_json_node *node_)
 {
 	// _sis_json_check_write(h_);
+	if (!node_)
+	{	
+		return;
+	}
 	struct s_sis_json_node *last = sis_json_last_node(source_);
 	if (!last)
 	{
@@ -673,7 +677,9 @@ void sis_json_array_add_node(s_sis_json_node *source_, s_sis_json_node *node_)
 void sis_json_object_add_node(s_sis_json_node *source_, const char *key_, s_sis_json_node *node_)
 {
 	if (!node_)
-	{	return;}
+	{	
+		return;
+	}
 	if (node_->key)
 	{
 		sis_free(node_->key);

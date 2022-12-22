@@ -157,6 +157,7 @@ static void cb_dict_keys(void *context_, void *key_, size_t size)
 {
     s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
 	s_sis_sds srckeys = sis_sdsnewlen((char *)key_, size);
+    // printf("====%s \n === %s\n",srckeys, (char *)key_);
     sis_sdsfree(context->ziper_keys);
 	context->ziper_keys = sis_match_key(context->work_keys, srckeys);
     if (!context->ziper_keys)
