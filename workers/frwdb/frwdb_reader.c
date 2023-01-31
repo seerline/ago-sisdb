@@ -875,7 +875,7 @@ int frwdb_reader_history_start(s_frwdb_reader *reader_)
 	sis_message_set_str(msg, "sub-keys",   reader_->sub_keys, sis_sdslen(reader_->sub_keys));
 	sis_message_set_str(msg, "sub-sdbs",   reader_->sub_sdbs, sis_sdslen(reader_->sub_sdbs));
 
-    sis_message_set(msg, "source", reader_, NULL);
+    sis_message_set(msg, "cb_source", reader_, NULL);
     sis_message_set_method(msg, "cb_sub_start" ,  reader_->cb_sub_start);
     sis_message_set_method(msg, "cb_sub_stop"  ,  reader_->cb_sub_stop );
     sis_message_set_method(msg, "cb_dict_sdbs" ,  reader_->cb_dict_sdbs);

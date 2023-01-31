@@ -721,7 +721,7 @@ int sis_disk_ctrl_write_start(s_sis_disk_ctrl *cls_)
     {
         access = SIS_DISK_ACCESS_CREATE;
     }
-    printf("-5--ss-- %s %d\n", cls_->work_fps->cur_name, cls_->open_date);
+    // printf("-5--ss-- %s %d\n", cls_->work_fps->cur_name, cls_->open_date);
     if (access == SIS_DISK_ACCESS_CREATE)
     {
         // 工作文件和索引文件保持同样的随机码 应该创建时才生成

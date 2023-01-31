@@ -155,7 +155,7 @@ _API_SISDB_DLLEXPORT_ int api_sisdb_client_cmd(
 	
 	if (cb_source_ && cb_reply_)
 	{
-		sis_message_set(msg, "source", cb_source_, NULL);
+		sis_message_set(msg, "cb_source", cb_source_, NULL);
 		sis_message_set(msg, "cb_reply", cb_reply_, NULL);
 	}
 	cmd_sisdb_client_bytes_nowait(mclass->worker, msg);

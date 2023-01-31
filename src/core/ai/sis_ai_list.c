@@ -185,6 +185,10 @@ int sis_ai_list_get_size(s_sis_ai_list *list_)
 
 int sis_ai_get_hash(const char *in_, int isize_, int nums_)
 {
+    if (nums_ < 1)
+    {
+        return 0;
+    }
     int index = 0;
     for (int i = 0; i < isize_; i++)
     {

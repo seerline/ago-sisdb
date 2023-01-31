@@ -388,7 +388,7 @@ int cmd_sisdb_client_setcb(void *worker_, void *argv_)
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_client_cxt *context = (s_sisdb_client_cxt *)worker->context;
     s_sis_message *msg = (s_sis_message *)argv_;
-    context->cb_source     = sis_message_get(msg, "source");
+    context->cb_source     = sis_message_get(msg, "cb_source");
     context->cb_connected  = sis_message_get_method(msg, "cb_connected" );
     context->cb_disconnect = sis_message_get_method(msg, "cb_disconnect");
     return SIS_METHOD_OK;
@@ -508,7 +508,7 @@ int cmd_sisdb_client_chars_nowait(void *worker_, void *argv_)
 		(const char *)sis_message_get(msg, "key"), 
 		sis_message_get(msg, "val"), 
         sis_message_get_int(msg, "vlen"),
-        sis_message_get(msg, "source"), 
+        sis_message_get(msg, "cb_source"), 
         sis_message_get(msg, "cb_reply"));
 
     ask->format = SIS_NET_FORMAT_CHARS;
@@ -534,7 +534,7 @@ int cmd_sisdb_client_bytes_nowait(void *worker_, void *argv_)
 		(const char *)sis_message_get(msg, "key"), 
 		sis_message_get(msg, "val"), 
         sis_message_get_int(msg, "vlen"),
-        sis_message_get(msg, "source"), 
+        sis_message_get(msg, "cb_source"), 
         sis_message_get(msg, "cb_reply"));
 
     ask->format = SIS_NET_FORMAT_BYTES;

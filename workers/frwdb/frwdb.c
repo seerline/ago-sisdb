@@ -14,7 +14,7 @@
 // NULL 默认为读取
 struct s_sis_method frwdb_methods[] = {
 // 写入操作
-    {"create",    cmd_frwdb_create, SIS_METHOD_ACCESS_RDWR,  NULL},   // 默认 json 格式
+    {"create",    cmd_frwdb_create, SIS_METHOD_ACCESS_RDWR,  NULL},  // 默认 json 格式
     {"setdb",     cmd_frwdb_setdb,  SIS_METHOD_ACCESS_RDWR, NULL},   // 设置数据表 可叠加 
     {"start",     cmd_frwdb_start,  SIS_METHOD_ACCESS_RDWR, NULL},   // 开始发送数据 设置写入状态日期
     {"set",       cmd_frwdb_set,    SIS_METHOD_ACCESS_RDWR, NULL},   // 写入数据 json单条数据 key sdb data
@@ -695,7 +695,7 @@ int frwdb_wlog_load(s_sis_worker *worker)
     sis_message_set_str(msg, "work-name", work_name, sis_sdslen(work_name));
 	sis_message_set_int(msg, "work-date", context->wlog_mark);
 
-	sis_message_set(msg, "source", worker, NULL);
+	sis_message_set(msg, "cb_source", worker, NULL);
 	sis_message_set_method(msg, "cb_netmsg", cb_frwdb_wlog_load);
 
 	int o = sis_worker_command(context->wlog_worker, "sub", msg);

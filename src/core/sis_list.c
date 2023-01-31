@@ -56,7 +56,11 @@ void _struct_list_grow(s_sis_struct_list *list_, int addlen_)
 	}
 
 	int maxlen = newlen;
-	if (newlen < 16)
+	if (newlen == 1)
+	{
+		maxlen = 1;
+	}
+	else if (newlen < 16)
 	{
 		maxlen = 16;
 	}

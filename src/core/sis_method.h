@@ -14,6 +14,7 @@ typedef int (sis_method_define)(void *, void *);
 #define SIS_METHOD_VOID_FALSE  ((void *)0)
 
 #define SIS_METHOD_OK      1 
+#define SIS_METHOD_TRANS   2 
 #define SIS_METHOD_ERROR   0
 
 #define SIS_METHOD_NIL     -3

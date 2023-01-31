@@ -552,6 +552,23 @@ s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_)
     return o;
 }
 
+int sis_json_merge_rpath(s_sis_json_node *node_, const char *rkey, const char *rpath_)
+{
+	const char *str = sis_json_get_str(node_, rkey);
+	if (str)
+	{
+		s_sis_sds rpath = sis_sdsnew(rpath_);
+		rpath = sis_sdscatfmt(rpath, "/%s", str);
+		sis_json_object_set_string(node_, rkey, rpath, sis_sdslen(rpath));
+		return 1;
+	}
+	// else
+	{
+		sis_json_object_add_string(node_, rkey, rpath_, sis_strlen(rpath_));
+	}
+	return 0;
+}
+
 // match_keys : * --> whole_keys
 // match_keys : k,m1 | whole_keys : k1,k2,m1,m2 --> k1,k2,m1
 s_sis_sds sis_match_key(s_sis_sds match_keys, s_sis_sds whole_keys)

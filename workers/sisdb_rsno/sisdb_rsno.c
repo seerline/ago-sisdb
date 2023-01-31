@@ -382,7 +382,7 @@ void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
     {
         context->work_date = sis_time_get_idate(0);
     }
-    context->cb_source      = sis_message_get(msg, "source");
+    context->cb_source      = sis_message_get(msg, "cb_source");
     context->cb_sub_start   = sis_message_get_method(msg, "cb_sub_start"  );
     context->cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop"   );
     context->cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs"  );
@@ -562,7 +562,7 @@ int main()
     }
 
     s_sis_message *msg = sis_message_create(); 
-    sis_message_set(msg, "source", nowwork, NULL);
+    sis_message_set(msg, "cb_source", nowwork, NULL);
     sis_message_set_int(msg, "sub-date", 20210617);
     sis_message_set_method(msg, "cb_sub_start"     ,cb_sub_start1      );
     sis_message_set_method(msg, "cb_sub_stop"      ,cb_sub_stop1       );

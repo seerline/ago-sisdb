@@ -413,7 +413,7 @@ void _sisdb_rsdb_init(s_sisdb_rsdb_cxt *context, s_sis_message *msg)
     {
         context->work_date.stop = curdate;
     }
-    context->cb_source      = sis_message_get(msg, "source");
+    context->cb_source      = sis_message_get(msg, "cb_source");
     context->cb_sub_start   = sis_message_get_method(msg, "cb_sub_start"  );
     context->cb_sub_stop    = sis_message_get_method(msg, "cb_sub_stop"   );
     context->cb_dict_sdbs   = sis_message_get_method(msg, "cb_dict_sdbs"  );

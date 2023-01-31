@@ -154,6 +154,10 @@ void *_service_work_thread(void *argv_)
 		worker->slots->work_init(worker);
 	}
     sis_wait_thread_start(service_thread->work_thread);
+    while(!(worker->status & SIS_WORK_INIT_WORKER))
+    {
+        sis_sleep(10);
+    }
     while (sis_wait_thread_noexit(service_thread->work_thread))
     {
         SIS_EXIT_SIGNAL;
@@ -381,7 +385,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
             }
         }
     }
-    worker->status |= SIS_WORK_INIT_WORKER;
+    // worker->status |= SIS_WORK_INIT_WORKER;
     // 这里已经初始化完成
     // 只有父节点不为空 才会写入workers 用于检索
     if (worker->father)
@@ -404,6 +408,7 @@ s_sis_worker *sis_worker_create_of_name(s_sis_worker *father_, const char *name_
     LOG(5)("worker start. [%s] workname = %s status: %d sub-workers = %d \n", 
         worker->classname, worker->workername, 
         worker->status, (int)sis_map_pointer_getsize(worker->workers));
+    worker->status |= SIS_WORK_INIT_WORKER;
 work_exit:
     if (!node_)
     {
