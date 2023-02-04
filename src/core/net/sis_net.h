@@ -16,6 +16,10 @@
 #include <sis_crypt.h>
 
 #include "sis_list.lock.h"
+#if defined __cplusplus
+	extern "C"{
+#endif
+
 // 网络协议版本号
 #define SIS_NET_VERSION        1   
 
@@ -223,6 +227,8 @@ int sis_net_class_set_slot(s_sis_net_class *, int sid_, char *compress, char * c
 // 不阻塞 不要释放传进来的 s_sis_net_message 系统自己会处理
 int sis_net_class_send(s_sis_net_class *, s_sis_net_message *);
 
-
+#if defined __cplusplus
+	}
+#endif
 
 #endif //_SIS_NET_H

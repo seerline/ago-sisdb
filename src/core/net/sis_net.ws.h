@@ -14,6 +14,11 @@
 #include <sis_json.h>
 #include <sis_bits.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+
 #define WS_MAX_HEAD_LEN  (10 + 6)  // 实际是10 保险起见多留几个字节
 #define WS_MAX_SEND_BUFF (16 * 1024 - WS_MAX_HEAD_LEN)  // 确保不超过16K
 // 浏览器的ws协议不能超过64K数据大小，因此必须拆包，才能发送给浏览器，否则发送失败
@@ -51,3 +56,7 @@ int sis_net_unpack_ws(s_sis_memory* in_, s_sis_net_tail *, s_sis_memory *out_);
 //  char r400[96];
 //  char r403[90];
 //  char r101[129];
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
