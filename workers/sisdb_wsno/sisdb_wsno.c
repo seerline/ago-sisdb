@@ -99,7 +99,7 @@ bool sisdb_wsno_start(s_sisdb_wsno_cxt *context)
     }
     return true;
 }
-msec_t _wsno_msec = 0;
+static msec_t _wsno_msec = 0;
 static int cb_sub_start(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 

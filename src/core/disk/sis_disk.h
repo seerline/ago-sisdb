@@ -238,6 +238,11 @@ s_sis_node *sis_disk_reader_get_mul(s_sis_disk_reader *, const char *kname_);
 // 返回值为 s_sis_memory
 s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_);
 
+// 获取sno键值
+s_sis_object *sis_disk_reader_get_keys(s_sis_disk_reader *, int idate);
+// 获取sno数据库
+s_sis_object *sis_disk_reader_get_sdbs(s_sis_disk_reader *, int idate);
+
 // 仅仅支持同一个数据集合的订阅 多集合订阅需要通过 sis_disk_reader_get_obj 合并后输出
 // 以流的方式读取文件 从文件中一条一条发出 按时序 无时序的会最先发出 只支持 SDB SNO 时间范围单位为毫秒
 // 可支持多个key和sdb订阅 k1,k2,k3  db1,db2,db3

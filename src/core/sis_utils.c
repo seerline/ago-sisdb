@@ -692,7 +692,6 @@ s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs)
 
 int sis_get_map_keys(s_sis_sds keys_, s_sis_map_list *map_keys_)
 {
-	sis_map_list_clear(map_keys_);
 	s_sis_string_list *klist = sis_string_list_create();
 	sis_string_list_load(klist, keys_, sis_sdslen(keys_), ",");
 	// 重新设置keys
@@ -708,7 +707,6 @@ int sis_get_map_keys(s_sis_sds keys_, s_sis_map_list *map_keys_)
 
 int sis_get_map_sdbs(s_sis_sds sdbs_, s_sis_map_list *map_sdbs_)
 {
-	sis_map_list_clear(map_sdbs_);
 	s_sis_json_handle *injson = sis_json_load(sdbs_, sis_sdslen(sdbs_));
 	if (!injson)
 	{
