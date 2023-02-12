@@ -140,7 +140,7 @@ void sis_mul_worker_cxt_wait(s_sis_mul_worker_cxt *cxt)
                 }
             }
         }
-        sis_sleep(300);
+        sis_sleep(3);
     }
 }
 

@@ -82,8 +82,11 @@ void sisdb_wseg_clear(s_sisdb_wseg_cxt *context)
     }
     sis_sdsfree(context->wsno_keys); context->wsno_keys = NULL;
     sis_sdsfree(context->wsno_sdbs); context->wsno_sdbs = NULL;
-    sis_map_list_destroy(context->maps_sdbs);
-    
+    if (context->maps_sdbs)
+    {
+        sis_map_list_destroy(context->maps_sdbs);
+        context->maps_sdbs = NULL;
+    }    
 }
 
 static msec_t _wsno_msec = 0;
@@ -102,8 +105,13 @@ static int cb_sub_start(void *worker_, void *argv_)
     }
     sisdb_wseg_clear(context);
 
-    context->status = SIS_WSEG_OPEN;
+    context->status = SIS_WSEG_WORK;
 
+    context->wheaded[0] = 0;
+    context->wheaded[1] = 0;
+    context->wheaded[2] = 0;
+    context->wheaded[3] = 0;
+    
     LOG(5)("wsno start. %d status : %d\n", context->work_date, context->status);
     _wsno_msec = sis_time_get_now_msec();
     return SIS_METHOD_OK;
@@ -145,29 +153,6 @@ int sisdb_wseg_get_style(s_sis_dynamic_db *db)
     return SIS_SEG_DATE;
 }
 
-void sisdb_wseg_opendbs(s_sisdb_wseg_cxt *context)
-{
-    s_sis_sds rpath = sis_sdsdup(sis_sds_save_get(context->work_path));
-    rpath = sis_sdscatfmt(rpath, "/%s/", sis_sds_save_get(context->work_name));
-    int count = sis_map_list_getsize(context->maps_sdbs);
-    for (int i = 0; i < count; i++)
-    {
-        s_sis_dynamic_db *db = sis_map_list_geti(context->maps_sdbs, i);
-        int index = sisdb_wseg_get_style(db);
-        if (!context->writer[index])
-        {
-            context->writer[index] = sis_disk_writer_create(rpath, sisdb_wseg_get_sname(index), SIS_DISK_TYPE_SNO);
-            if (sis_disk_writer_open(context->writer[index], context->work_date) == 0)
-            {
-                LOG(5)("open wsno fail. %s %s\n", rpath, sisdb_wseg_get_sname(index));
-                sis_disk_writer_close(context->writer[index]);
-                sis_disk_writer_destroy(context->writer[index]);
-                context->writer[index] = NULL;
-            }
-        }
-    }
-    sis_sdsfree(rpath);
-}
 s_sis_sds sisdb_wseg_getdbs_sds(s_sisdb_wseg_cxt *context, int style)
 {
     s_sis_sds curr_sdbs = NULL;
@@ -204,16 +189,13 @@ static int cb_sub_stop(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wseg_cxt *context = (s_sisdb_wseg_cxt *)worker->context;
-    if (context->status == SIS_WSEG_FAIL)
+    if (context->status == SIS_WSEG_WORK)
     {
-        context->status = SIS_WSEG_INIT;
-        return SIS_METHOD_ERROR;
+        LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
+        sisdb_wseg_clear(context);
+        LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
     }
-    LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
-    sisdb_wseg_clear(context);
-    LOG(5)("wsno stop cost = %lld\n", sis_time_get_now_msec() - _wsno_msec);
-
-    context->status = SIS_WSEG_INIT;
+    context->status = SIS_WSEG_NONE;
     return SIS_METHOD_OK;
 }
 static int cb_dict_keys(void *worker_, void *argv_)
@@ -234,121 +216,112 @@ static int cb_dict_sdbs(void *worker_, void *argv_)
     {
         context->maps_sdbs = sis_map_list_create(sis_dynamic_db_destroy);
     }
+    printf("%s %s\n", __func__, context->wsno_sdbs);
     sis_map_list_clear(context->maps_sdbs);
     sis_get_map_sdbs(context->wsno_sdbs, context->maps_sdbs);
 
-    sisdb_wseg_opendbs(context);
-    
     return SIS_METHOD_OK;
+}
+
+static int _write_wseg_head(s_sisdb_wseg_cxt *context, int index)
+{
+    if (context->status != SIS_WSEG_WORK)
+    {
+        return -1;
+    }
+    // 先打开文件句柄
+    s_sis_sds rpath = sis_sdsdup(sis_sds_save_get(context->work_path));
+    rpath = sis_sdscatfmt(rpath, "/%s/", sis_sds_save_get(context->work_name));
+    if (!context->writer[index])
+    {
+        context->writer[index] = sis_disk_writer_create(rpath, sisdb_wseg_get_sname(index), SIS_DISK_TYPE_SNO);
+        if (sis_disk_writer_open(context->writer[index], context->work_date) == 0)
+        {
+            LOG(5)("open wsno fail. %s %s\n", rpath, sisdb_wseg_get_sname(index));
+            sis_disk_writer_close(context->writer[index]);
+            sis_disk_writer_destroy(context->writer[index]);
+            context->writer[index] = NULL;
+        }
+    }
+    sis_sdsfree(rpath);
+    if (!context->writer[index])
+    {
+        return -2;
+    }
+    // 准备写头信息
+    if (context->wheaded[index] == 0)
+    {
+        s_sis_sds newsdbs = sisdb_wseg_getdbs_sds(context, index);
+        if (!newsdbs)
+        {
+            newsdbs =  sis_sdsdup(context->wsno_sdbs);
+        } 
+        // printf("new [%d] %s %s\n", i, context->wsno_keys, newsdbs);
+        sis_disk_writer_set_kdict(context->writer[index], context->wsno_keys, sis_sdslen(context->wsno_keys));
+        sis_disk_writer_set_sdict(context->writer[index], newsdbs, sis_sdslen(newsdbs));
+        sis_disk_writer_start(context->writer[index]);
+        sis_sdsfree(newsdbs); 
+        context->wheaded[index] = 1;
+    }
+    return 0;
 }
 static int cb_decode(void *context_, int kidx_, int sidx_, char *in_, size_t isize_)
 {
     s_sisdb_wseg_cxt *context = (s_sisdb_wseg_cxt *)context_;
-    
-    if (in_ && isize_ && kidx_>=0 && sidx_>=0)
+
+    if (in_ && isize_ && kidx_ >= 0 && sidx_ >= 0)
     {
         const char *kname = sisdb_incr_get_kname(context->work_unzip, kidx_);
         const char *sname = sisdb_incr_get_sname(context->work_unzip, sidx_);
 
         s_sis_dynamic_db *db = sis_map_list_get(context->maps_sdbs, sname);
         int idx = sisdb_wseg_get_style(db);
-        sis_disk_writer_sno(context->writer[idx], kname, sname, in_, isize_);
+        // sisdb_wseg_opendbs(context, idx);
+        _write_wseg_head(context, idx);
+        if (context->writer[idx])
+        {
+            sis_disk_writer_sno(context->writer[idx], kname, sname, in_, isize_);
+        }
     }
     return 0;
 } 
 
-static int _write_wsno_head(s_sisdb_wseg_cxt *context, int iszip)
-{
-    if (context->status != SIS_WSEG_OPEN)
-    {
-        return 0;
-    }
-    if (iszip)
-    {
-        // 如果接收的是压缩格式 必须要在这里过滤代码 和 结构
-        s_sis_sds newkeys = sis_match_key(context->work_keys, context->wsno_keys);
-        if (!newkeys)
-        {
-            newkeys =  sis_sdsdup(context->wsno_keys);
-        }
-        for (int i = 0; i < 4; i++)
-        {
-            if (!context->writer[i])
-            {
-                continue;
-            }
-            s_sis_sds newsdbs = sisdb_wseg_getdbs_sds(context, i);
-            if (!newsdbs)
-            {
-                newsdbs =  sis_sdsdup(context->wsno_sdbs);
-            } 
-            sis_disk_writer_set_kdict(context->writer[i], newkeys, sis_sdslen(newkeys));
-            sis_disk_writer_set_sdict(context->writer[i], newsdbs, sis_sdslen(newsdbs));
-            printf("new %s %s\n", newkeys, newsdbs);
-            sis_sdsfree(newkeys); 
-            sis_sdsfree(newsdbs); 
-            sis_disk_writer_start(context->writer[i]);
-        }
-        
-        context->work_unzip = sisdb_incr_create(); 
-        sisdb_incr_set_keys(context->work_unzip, context->wsno_keys);
-        sisdb_incr_set_sdbs(context->work_unzip,  context->wsno_sdbs);
-        sisdb_incr_unzip_start(context->work_unzip, context, cb_decode);
-        printf("sno %s %s\n", context->wsno_keys, context->wsno_sdbs);
-        
-    }
-    else
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            if (!context->writer[i])
-            {
-                continue;
-            }
-            s_sis_sds newsdbs = sisdb_wseg_getdbs_sds(context, i);
-            if (!newsdbs)
-            {
-                newsdbs =  sis_sdsdup(context->wsno_sdbs);
-            } 
-            sis_disk_writer_set_kdict(context->writer[i], context->wsno_keys, sis_sdslen(context->wsno_keys));
-            sis_disk_writer_set_sdict(context->writer[i], newsdbs, sis_sdslen(newsdbs));
-            sis_disk_writer_start(context->writer[i]);
-            sis_sdsfree(newsdbs); 
-        }
-    }
-    context->status = SIS_WSEG_HEAD;
-    return 0;
-}
 static int cb_sub_chars(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wseg_cxt *context = (s_sisdb_wseg_cxt *)worker->context;
-    if (context->status == SIS_WSEG_FAIL)
+    if (context->status != SIS_WSEG_WORK)
     {
         return SIS_METHOD_ERROR;
     }
-    _write_wsno_head(context, 0);
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
     s_sis_dynamic_db *db = sis_map_list_get(context->maps_sdbs, inmem->sname);
     int idx = sisdb_wseg_get_style(db);
-    sis_disk_writer_sno(context->writer[idx], inmem->kname, inmem->sname, inmem->data, inmem->size);
-    // if (!sis_strcasecmp(inmem->kname, "SH600745"))
-    // {
-    //     printf("%s %zu\n", __func__, inmem->size);
-    // }
+    printf("wwww %s %d | %p %d\n", inmem->sname, idx, inmem->data, inmem->size);
+    _write_wseg_head(context, idx);
+    if (context->writer[idx])
+    {
+        sis_disk_writer_sno(context->writer[idx], inmem->kname, inmem->sname, inmem->data, inmem->size);
+    }
+
 	return SIS_METHOD_OK;
 }
 static int cb_sub_incrzip(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wseg_cxt *context = (s_sisdb_wseg_cxt *)worker->context;
-    if (context->status == SIS_WSEG_FAIL)
+    if (context->status != SIS_WSEG_WORK)
     {
         return SIS_METHOD_ERROR;
     }
-    _write_wsno_head(context, 1);
-
     s_sis_db_incrzip *inmem = (s_sis_db_incrzip *)argv_;
+    if (!context->work_unzip)
+    {
+        context->work_unzip = sisdb_incr_create(); 
+        sisdb_incr_set_keys(context->work_unzip, context->wsno_keys);
+        sisdb_incr_set_sdbs(context->work_unzip,  context->wsno_sdbs);
+        sisdb_incr_unzip_start(context->work_unzip, context, cb_decode);
+    }
     if (context->work_unzip)
     {
         sisdb_incr_unzip_set(context->work_unzip, inmem);
@@ -367,7 +340,7 @@ int cmd_sisdb_wseg_getcb(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 
     s_sisdb_wseg_cxt *context = (s_sisdb_wseg_cxt *)worker->context;
-    if (context->status != SIS_WSEG_NONE && context->status != SIS_WSEG_INIT)
+    if (context->status != SIS_WSEG_NONE)
     {
         return SIS_METHOD_ERROR;
     }
@@ -383,6 +356,5 @@ int cmd_sisdb_wseg_getcb(void *worker_, void *argv_)
     sis_message_set_method(msg, "cb_sub_chars"   ,cb_sub_chars);
     sis_message_set_method(msg, "cb_sub_incrzip" ,cb_sub_incrzip);
 
-    context->status = SIS_WSEG_INIT;
     return SIS_METHOD_OK; 
 }

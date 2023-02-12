@@ -776,7 +776,7 @@ s_sis_object *_disk_reader_get_sno_obj(s_sis_disk_reader *reader_, const char *k
     }   
     reader_->search_msec.start = smsec_->start;
     reader_->search_msec.stop  = smsec_->stop;
-
+    
     reader_->isone = 1;
     sis_disk_reader_init(reader_, kname_, sname_, smsec_, 0);
 
@@ -827,6 +827,7 @@ s_sis_object *_disk_reader_get_sno_obj(s_sis_disk_reader *reader_, const char *k
 // 从对应文件中获取数据 拼成完整的数据返回 只支持 SNO SDB 单键单表 
 s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
 {
+
     s_sis_object * obj = NULL;
     if (reader_->style == SIS_DISK_TYPE_SNO)
     {

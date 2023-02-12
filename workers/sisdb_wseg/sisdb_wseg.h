@@ -6,9 +6,7 @@
 #include "sisdb_incr.h"
 
 #define  SIS_WSEG_NONE     0 // 
-#define  SIS_WSEG_INIT     1 // 是否初始化
-#define  SIS_WSEG_OPEN     2 // 是否打开
-#define  SIS_WSEG_HEAD     3 // 是否写了头
+#define  SIS_WSEG_WORK     1 // 是否初始化
 #define  SIS_WSEG_EXIT     4 // 退出
 #define  SIS_WSEG_FAIL     5 // 打开失败
 
@@ -36,6 +34,7 @@ typedef struct s_sisdb_wseg_cxt
     s_sis_sds_save    *work_name;     // 可配置 也可传入
 
     s_sis_disk_writer *writer[4];     // 写盘类
+	int                wheaded[4];    // 是否已经写了头信息
  
 	int                work_date;     // 工作日期  
 	s_sis_sds          work_keys;     // 筛选后的 

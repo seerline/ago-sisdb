@@ -353,10 +353,17 @@ int sisdb_rseg_init_sdbs(s_sisdb_rseg_cxt *context, int idate)
     for (int i = 0; i < 4; i++)
     {
         s_sis_disk_reader *reader = sis_disk_reader_create(rpath, sisdb_wseg_get_sname(i), SIS_DISK_TYPE_SNO, NULL);
-        s_sis_object *obj = sis_disk_reader_get_sdbs(reader, context->work_date);
-        printf("read sdbs: %s \n", SIS_OBJ_SDS(obj));
-        sis_get_map_sdbs(SIS_OBJ_SDS(obj), context->maps_sdbs);
-        sis_object_destroy(obj);
+        if (!reader)
+        {
+            continue;
+        }
+        s_sis_object *obj = sis_disk_reader_get_sdbs(reader, idate);
+        if (obj)
+        {
+            printf("read sdbs: %s \n", SIS_OBJ_SDS(obj));
+            sis_get_map_sdbs(SIS_OBJ_SDS(obj), context->maps_sdbs);
+            sis_object_destroy(obj);
+        }
         sis_disk_reader_destroy(reader);
     }    
     if (sis_map_list_getsize(context->maps_sdbs) < 1)
@@ -397,6 +404,7 @@ int cmd_sisdb_rseg_get(void *worker_, void *argv_)
     s_sis_sds rpath = sis_sdsdup(sis_sds_save_get(context->work_path));
     rpath = sis_sdscatfmt(rpath, "/%s/", sis_sds_save_get(context->work_name));
     s_sis_disk_reader *reader = sis_disk_reader_create(rpath, sisdb_wseg_get_sname(index), SIS_DISK_TYPE_SNO, NULL);
+    
     s_sis_object *obj = sis_disk_reader_get_obj(reader, subkeys, subsdbs, &pair);
 
     sis_dynamic_db_incr(db);
