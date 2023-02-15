@@ -387,28 +387,30 @@ int cmd_sisdb_rseg_get(void *worker_, void *argv_)
     pair.stop = (msec_t)sis_time_make_time(subdate, 235959) * 1000 + 999;
     const char *subkeys = sis_message_get_str(msg, "sub-keys");
     const char *subsdbs = sis_message_get_str(msg, "sub-sdbs");
-    LOG(5)("get sno open. [%d] %d %s %s\n", context->wget_date, subdate, subkeys, subsdbs);
-    if (!context->maps_sdbs || context->wget_date == 0 || context->wget_date != subdate)
+    const char *subtype = sis_message_get_str(msg, "sub-type");
+    
+    LOG(5)("get sno open. [%d] %d %s %s %s\n", context->wget_date, subdate, subtype, subkeys, subsdbs);
+    if (!subtype)
     {
-        sisdb_rseg_init_sdbs(context, subdate);
-        context->wget_date = subdate;
+        if (!context->maps_sdbs || context->wget_date == 0 || context->wget_date != subdate)
+        {
+            sisdb_rseg_init_sdbs(context, subdate);
+            context->wget_date = subdate;
+        }
+        // 设置表结构
+        s_sis_dynamic_db *db = sis_map_list_get(context->maps_sdbs, subsdbs);
+        if (!db)
+        {
+            return SIS_METHOD_NIL;
+        }
+        int index = sisdb_wseg_get_style(db);
+        subtype = sisdb_wseg_get_sname(index);
     }
-    // 设置表结构
-    s_sis_dynamic_db *db = sis_map_list_get(context->maps_sdbs, subsdbs);
-    if (!db)
-    {
-        return SIS_METHOD_NIL;
-    }
-    int index = sisdb_wseg_get_style(db);
     // 设置数据对象
     s_sis_sds rpath = sis_sdsdup(sis_sds_save_get(context->work_path));
     rpath = sis_sdscatfmt(rpath, "/%s/", sis_sds_save_get(context->work_name));
-    s_sis_disk_reader *reader = sis_disk_reader_create(rpath, sisdb_wseg_get_sname(index), SIS_DISK_TYPE_SNO, NULL);
-    
+    s_sis_disk_reader *reader = sis_disk_reader_create(rpath, subtype, SIS_DISK_TYPE_SNO, NULL);
     s_sis_object *obj = sis_disk_reader_get_obj(reader, subkeys, subsdbs, &pair);
-
-    sis_dynamic_db_incr(db);
-    sis_message_set(msg, "dbinfo", db, sis_dynamic_db_destroy);
     sis_disk_reader_destroy(reader);
     sis_sdsfree(rpath);
 

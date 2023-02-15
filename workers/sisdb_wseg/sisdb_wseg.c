@@ -297,7 +297,7 @@ static int cb_sub_chars(void *worker_, void *argv_)
     s_sis_db_chars *inmem = (s_sis_db_chars *)argv_;
     s_sis_dynamic_db *db = sis_map_list_get(context->maps_sdbs, inmem->sname);
     int idx = sisdb_wseg_get_style(db);
-    printf("wwww %s %d | %p %d\n", inmem->sname, idx, inmem->data, inmem->size);
+    // printf("wwww %s %d | %p %d\n", inmem->sname, idx, inmem->data, inmem->size);
     _write_wseg_head(context, idx);
     if (context->writer[idx])
     {
