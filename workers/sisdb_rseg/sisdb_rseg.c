@@ -207,7 +207,7 @@ static void cb_chardata(void *context_, const char *kname_, const char *sname_, 
 
 int sisdb_rseg_get_style(s_sisdb_rseg_cxt *context)
 {
-    int style = SIS_SEG_NONE;
+    int style = SIS_SEG_FSEC_INCR;
     if (!context->work_sdbs || context->work_sdbs[0] == '*')
     {
         int count = sis_map_list_getsize(context->maps_sdbs);
@@ -215,7 +215,7 @@ int sisdb_rseg_get_style(s_sisdb_rseg_cxt *context)
         {
             s_sis_dynamic_db *db = sis_map_list_geti(context->maps_sdbs, i);
             style = sisdb_wseg_get_style(db);
-            if (style != SIS_SEG_NONE)
+            if (style != SIS_SEG_FSEC_INCR)
             {
                 break;
             }
@@ -231,7 +231,7 @@ int sisdb_rseg_get_style(s_sisdb_rseg_cxt *context)
             const char *dbname = sis_string_list_get(klist, i);
             s_sis_dynamic_db *db = sis_map_list_get(context->maps_sdbs, dbname);
             style = sisdb_wseg_get_style(db);
-            if (style != SIS_SEG_NONE)
+            if (style != SIS_SEG_FSEC_INCR)
             {
                 break;
             }
@@ -312,9 +312,10 @@ void _sisdb_rseg_init(s_sisdb_rseg_cxt *context, s_sis_message *msg)
     {
         subdate = sis_message_get_int(msg, "sub-date");
     }
+    // printf("=== %d %d %lld \n", subdate, sis_message_exist(msg, "sub-date"), sis_message_get_int(msg, "sub-date"));
     if (!context->maps_sdbs || context->work_date == 0 || context->work_date != subdate)
     {
-        sisdb_rseg_init_sdbs(context, context->work_date);
+        sisdb_rseg_init_sdbs(context, subdate);
         context->work_date = subdate;
     }
     {
@@ -350,7 +351,7 @@ int sisdb_rseg_init_sdbs(s_sisdb_rseg_cxt *context, int idate)
     // 读取全部的数据结构
     s_sis_sds rpath = sis_sdsdup(sis_sds_save_get(context->work_path));
     rpath = sis_sdscatfmt(rpath, "/%s/", sis_sds_save_get(context->work_name));
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 2; i++)
     {
         s_sis_disk_reader *reader = sis_disk_reader_create(rpath, sisdb_wseg_get_sname(i), SIS_DISK_TYPE_SNO, NULL);
         if (!reader)
@@ -414,7 +415,7 @@ int cmd_sisdb_rseg_get(void *worker_, void *argv_)
     sis_disk_reader_destroy(reader);
     sis_sdsfree(rpath);
 
-    LOG(5)("get sno stop. ok [%d] %d\n", context->wget_date, context->status);
+    LOG(5)("get sno stop. ok [%d] %d %p\n", context->wget_date, context->status, obj);
     if (!obj)
     {
         return SIS_METHOD_NIL;
@@ -440,9 +441,11 @@ int cmd_sisdb_rseg_sub(void *worker_, void *argv_)
     }
     _sisdb_rseg_init(context, msg);
     
-    context->status = SIS_RSEG_WORK;
-
-    sis_thread_create(sis_thread_snos_read_sub, context, &context->work_thread);
+    if (context->maps_sdbs && sis_map_list_getsize(context->maps_sdbs) > 0)
+    {
+        context->status = SIS_RSEG_WORK;
+        sis_thread_create(sis_thread_snos_read_sub, context, &context->work_thread);
+    }
 
     return SIS_METHOD_OK;
 }

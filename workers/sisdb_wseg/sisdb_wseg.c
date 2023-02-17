@@ -70,7 +70,7 @@ void sisdb_wseg_clear(s_sisdb_wseg_cxt *context)
         sisdb_incr_destroy(context->work_unzip);
         context->work_unzip = NULL;
     }
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 2; i++)
     {
         if (context->writer[i])
         {
@@ -118,39 +118,30 @@ static int cb_sub_start(void *worker_, void *argv_)
 }
 const char *sisdb_wseg_get_sname(int idx)
 {
-    switch (idx)
+    if (idx == SIS_SEG_FSEC_INCR)
     {
-    case SIS_SEG_DATE:
-        return "date";
-    case SIS_SEG_MINU:
-        return "minu";
-    case SIS_SEG_MSEC:
-        return "msec";
-    case SIS_SEG_NONE:
-        return "none";
-    default:
-        return "none";
+       return "date"; 
     }
+    return "fsec";
 }
 int sisdb_wseg_get_style(s_sis_dynamic_db *db)
 {
     if (!db || !db->field_time)
     {
-        return SIS_SEG_NONE;
+        return SIS_SEG_FSEC_INCR;
     }
     switch (db->field_time->style)
     {
         case SIS_DYNAMIC_TYPE_WSEC:
         case SIS_DYNAMIC_TYPE_MSEC:
         case SIS_DYNAMIC_TYPE_TSEC:
-            return SIS_SEG_MSEC;
+            return SIS_SEG_FSEC_DECR;
         case SIS_DYNAMIC_TYPE_MINU:
-            return SIS_SEG_MINU;
         case SIS_DYNAMIC_TYPE_DATE:
         case SIS_DYNAMIC_TYPE_YEAR:
-            return SIS_SEG_DATE;
+            return SIS_SEG_FSEC_INCR;
     }
-    return SIS_SEG_DATE;
+    return SIS_SEG_FSEC_INCR;
 }
 
 s_sis_sds sisdb_wseg_getdbs_sds(s_sisdb_wseg_cxt *context, int style)

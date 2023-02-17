@@ -12,20 +12,16 @@
 
 // 一种分离式sno的读写格式
 // 对写入的数据格式 分为不同时间节点 写入不同文件 方便不同时间需求的数据存取
-// 日时序 date/2020/20201010.idx
-//       date/2020/20201010.sno
 //       日时序的数据结构体可以key设置为CN000000 所有股票的集合体 方便读取 也可以同时存放单个股票的数据
-// 分时序 minu/2020/20201010.idx
-//       minu/2020/20201010.sno
-// 秒时序 msec/2020/20201010.idx
-//       msec/2020/20201010.sno
-// 无时序 none/2020/20201010.idx
-//       none/2020/20201010.sno
+// 日｜分｜无｜时序 
+//       date/2020/20201010.idx
+//       date/2020/20201010.sno
+// 秒｜毫秒｜时序 
+//       fsec/2020/20201010.idx
+//       fsec/2020/20201010.sno
 
-#define  SIS_SEG_DATE  0
-#define  SIS_SEG_MINU  1
-#define  SIS_SEG_MSEC  2
-#define  SIS_SEG_NONE  3
+#define  SIS_SEG_FSEC_INCR  0  // 分钟 日 无时序的数据集合
+#define  SIS_SEG_FSEC_DECR  1  // 比秒小的数据集合
 
 typedef struct s_sisdb_wseg_cxt
 {

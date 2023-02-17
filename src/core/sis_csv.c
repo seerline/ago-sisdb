@@ -192,14 +192,19 @@ void sis_csv_write_close(s_sis_file_handle fp_)
 s_sis_sds sis_csv_make_str(s_sis_sds in_, const char *str_, size_t len_)
 {
 	size_t size = sis_sdslen(in_);
+	int len = len_;
+	if (!str_[len_ - 1])
+	{
+		len = sis_strlen(str_);
+	}
 	if (size > 0 && in_[size - 1] != '\n')
 	{
 		in_ = sis_sdscatlen(in_, ",", 1);
-		return sis_sdscatlen(in_, str_, len_);
+		return sis_sdscatlen(in_, str_, len);
 	}
 	else
 	{
-		return sis_sdscatlen(in_, str_, len_);
+		return sis_sdscatlen(in_, str_, len);
 	}
 }
 s_sis_sds sis_csv_make_int(s_sis_sds in_, int64 val_)

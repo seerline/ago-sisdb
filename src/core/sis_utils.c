@@ -309,6 +309,11 @@ s_sis_sds sis_sdb_fields_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ile
 {
 	s_sis_sds o = sis_sdsempty();
 	int fnums = sis_string_list_getsize(fields_);
+	// sis_map_list_getsize(db_->fields);
+	// if (fields_)
+	// {
+	// 	fnums = sis_string_list_getsize(fields_);
+	// }
 	if (isfields_)
 	{
 		for (int i = 0; i < fnums; i++)
