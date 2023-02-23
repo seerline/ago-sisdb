@@ -200,6 +200,19 @@ static int cb_encode(void *context_, char *in_, size_t ilen_)
     }
     return 0;
 } 
+static void cb_bytedata(void *context_, int kidx_, int sidx_, void *out_, size_t olen_)
+{
+    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)context_;
+    if (context->cb_sub_bytes)
+    {
+        s_sis_db_bytes inmem = {0};
+        inmem.kidx= kidx_;
+        inmem.sidx= sidx_;
+        inmem.data = out_;
+        inmem.size = olen_;
+        context->cb_sub_bytes(context->cb_source, &inmem);
+    }
+}
 // #include "stk_struct.v4.h"
 // static int _read_nums = 0;
 static void cb_chardata(void *context_, const char *kname_, const char *sname_, void *out_, size_t olen_)
@@ -286,7 +299,14 @@ static void *_thread_snos_read_sub(void *argv_)
     rsno_cb->cb_start = cb_start;
     rsno_cb->cb_dict_keys = cb_dict_keys;
     rsno_cb->cb_dict_sdbs = cb_dict_sdbs;
-    rsno_cb->cb_chardata = cb_chardata;
+    if (context->cb_sub_bytes)
+    {
+        rsno_cb->cb_bytedata = cb_bytedata;
+    }
+    else
+    {
+        rsno_cb->cb_chardata = cb_chardata;
+    }
     rsno_cb->cb_stop = cb_stop;
     rsno_cb->cb_break = cb_break;
 
@@ -389,6 +409,7 @@ void _sisdb_rsno_init(s_sisdb_rsno_cxt *context, s_sis_message *msg)
     context->cb_dict_keys   = sis_message_get_method(msg, "cb_dict_keys"  );
     context->cb_sub_incrzip = sis_message_get_method(msg, "cb_sub_incrzip");
     context->cb_sub_chars   = sis_message_get_method(msg, "cb_sub_chars"  );
+    context->cb_sub_bytes   = sis_message_get_method(msg, "cb_sub_bytes"  );
 }
 int cmd_sisdb_rsno_get(void *worker_, void *argv_)
 {
@@ -525,13 +546,13 @@ int cb_sub_stop1(void *worker_, void *argv_)
 int cb_dict_keys1(void *worker_, void *argv_)
 {
     // printf("%s : %s\n", __func__, (char *)argv_);
-    printf("=====%s : \n", __func__);
+    // printf("=====%s : \n", __func__);
     return 0;
 }
 int cb_dict_sdbs1(void *worker_, void *argv_)
 {
     // printf("%s : %s\n", __func__, (char *)argv_);
-    printf("=====%s : \n", __func__);
+    // printf("=====%s : \n", __func__);
     return 0;
 }
 
@@ -547,6 +568,12 @@ int cb_sub_chars1(void *worker_, void *argv_)
         // s_v4_stk_snapshot *snap = (s_v4_stk_snapshot *)inmem->data;
         // printf("%s %lld %d %lld\n", inmem->kname, snap->time, sis_zint32_i(snap->newp), snap->volume);
     // }
+    if (!sis_strcasecmp(inmem->sname, "stk_orders") && inmem->kname[1] == 'H')
+    {
+        printf("inmem->sname %s \n", inmem->kname);
+        // s_v4_stk_snapshot *snap = (s_v4_stk_snapshot *)inmem->data;
+        // printf("%s %lld %d %lld\n", inmem->kname, snap->time, sis_zint32_i(snap->newp), snap->volume);
+    }
     _recv_count++;
     return 0;
 }
@@ -563,7 +590,7 @@ int main()
 
     s_sis_message *msg = sis_message_create(); 
     sis_message_set(msg, "cb_source", nowwork, NULL);
-    sis_message_set_int(msg, "sub-date", 20210617);
+    sis_message_set_int(msg, "sub-date", 20210601);
     sis_message_set_method(msg, "cb_sub_start"     ,cb_sub_start1      );
     sis_message_set_method(msg, "cb_sub_stop"      ,cb_sub_stop1       );
     sis_message_set_method(msg, "cb_dict_sdbs"     ,cb_dict_sdbs1      );

@@ -220,11 +220,14 @@ static int _write_wseg_head(s_sisdb_wseg_cxt *context, int index)
     {
         return -1;
     }
+
     // 先打开文件句柄
     s_sis_sds rpath = sis_sdsdup(sis_sds_save_get(context->work_path));
     rpath = sis_sdscatfmt(rpath, "/%s/", sis_sds_save_get(context->work_name));
+
     if (!context->writer[index])
     {
+        sis_disk_control_remove(rpath, sisdb_wseg_get_sname(index), SIS_DISK_TYPE_SNO, context->work_date);
         context->writer[index] = sis_disk_writer_create(rpath, sisdb_wseg_get_sname(index), SIS_DISK_TYPE_SNO);
         if (sis_disk_writer_open(context->writer[index], context->work_date) == 0)
         {

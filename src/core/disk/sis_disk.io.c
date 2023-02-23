@@ -931,7 +931,7 @@ int sis_disk_ctrl_merge(s_sis_disk_ctrl *src_)
     sis_disk_ctrl_write_start(tmp_);
     // 然后遍历索引 读取一块就写入一块
     int count = sis_map_list_getsize(src_->map_idxs);
-    printf("=== %s --> %s : %d count = %d\n", src_->fpath, despath, nowdate, count);
+    // printf("=== %s --> %s : %d count = %d\n", src_->fpath, despath, nowdate, count);
     s_sis_disk_rcatch *rcatch = src_->rcatch;
     s_sis_disk_wcatch *wcatch = tmp_->wcatch;
     sis_disk_wcatch_init(wcatch);

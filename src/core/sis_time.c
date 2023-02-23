@@ -74,6 +74,16 @@ int sis_time_get_iminute(time_t ttime) //1030
 	sis_time_check(ttime, &ptm);
 	return ptm.tm_hour * 100 + ptm.tm_min;
 }
+int sis_msec_get_iminute(msec_t msec) //1030
+{
+	if (msec == 0)
+	{
+		return 0;
+	}
+	struct tm ptm = {0};
+	sis_time_check((time_t)(msec/1000), &ptm);
+	return ptm.tm_hour * 100 + ptm.tm_min;
+}
 int sis_time_get_isec(time_t ttime)
 {
 	struct tm ptm = {0};
