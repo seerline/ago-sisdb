@@ -446,6 +446,10 @@ int cmd_sisdb_rseg_sub(void *worker_, void *argv_)
         context->status = SIS_RSEG_WORK;
         sis_thread_create(sis_thread_snos_read_sub, context, &context->work_thread);
     }
+    else
+    {
+        cb_stop(context, sis_message_get_int(msg, "sub-date"));
+    }
 
     return SIS_METHOD_OK;
 }

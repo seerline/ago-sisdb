@@ -36,10 +36,10 @@ double sis_ai_corrcoef(double *i1, double *i2, int size)
     return SIS_IS_ZERO(r2 * r3) ? 0.0 : (r1 / sqrt(r2 * r3));
 }
 // 偏移值不大于总数据量的4/10 避免过度拟合
-double sis_ai_corrcoef_ex(double *i1, double *i2, int size, int *offset)
+double sis_ai_corrcoef_offset(double *i1, double *i2, int size, int *offset)
 {
     int maxoff = *offset;
-    maxoff = sis_min(maxoff, size * 0.382);
+    maxoff = sis_min(maxoff, size * 0.382 + 1);
     double maxcorr = sis_ai_corrcoef(i1, i2, size);
     *offset = 0;
     for (int i = 1; i <= maxoff; i++)
@@ -57,19 +57,17 @@ double sis_ai_corrcoef_ex(double *i1, double *i2, int size, int *offset)
     }
     return maxcorr;
 }
-
 int sis_ai_corrcoef_max(double *i1, double *i2, int size, s_sis_ai_corrcoef *corr)
 {
     if (corr && size > 5)
     {
-        corr->offset = size * 0.382;
+        corr->offset = size * 0.382 + 1;
         corr->offset = sis_max(corr->offset, 1);
-        corr->corrcoef = sis_ai_corrcoef_ex(i1, i2, size, &corr->offset);
+        corr->corrcoef = sis_ai_corrcoef_offset(i1, i2, size, &corr->offset);
         return 1;
     }
     return 0;
 }
-
 #define CORR_MINV (0.00000001)
 double sis_ai_corr_dir(double *i1, double *i2, int size)
 {
@@ -77,7 +75,7 @@ double sis_ai_corr_dir(double *i1, double *i2, int size)
     int diffs = 0;
     for (int i = 0; i < size; i++)
     {
-        if ((i1[i] > CORR_MINV && i2[i] > CORR_MINV) || (i1[i] < -CORR_MINV && i2[i] < -CORR_MINV))
+        if ((i1[i] > CORR_MINV && i2[i] > CORR_MINV) || (i1[i] < -1 * CORR_MINV && i2[i] < -1 * CORR_MINV))
         {
             sames = sames + 1;
         }
@@ -90,8 +88,43 @@ double sis_ai_corr_dir(double *i1, double *i2, int size)
     {
         return 0.0;
     }
-    return sames > diffs ? (double)sames / (double)size : -1 * (double)diffs / (double)size;
+    double corr = sames > diffs ? (double)sames / (double)size : -1 * (double)diffs / (double)size;
+    return (corr - 0.5) * 2.0;
 }
+
+double sis_ai_corr_dir_offset(double *i1, double *i2, int size, int *offset)
+{
+    int maxoff = *offset;
+    maxoff = sis_min(maxoff, size * 0.382 + 1);
+    double maxcorr = sis_ai_corr_dir(i1, i2, size);
+    *offset = 0;
+    for (int i = 1; i <= maxoff; i++)
+    {
+        double corr = sis_ai_corr_dir(i1, &i2[i], size - i);
+        if (corr >= maxcorr)
+        {
+            *offset = i;
+            maxcorr = corr;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return maxcorr;
+}
+int sis_ai_corr_dir_max(double *i1, double *i2, int size, s_sis_ai_corrcoef *corr)
+{
+    if (corr && size > 5)
+    {
+        corr->offset = size * 0.382 + 1;
+        corr->offset = sis_max(corr->offset, 1);
+        corr->corrcoef = sis_ai_corr_dir_offset(i1, i2, size, &corr->offset);
+        return 1;
+    }
+    return 0;
+}
+
 #if 0
 int main()
 {
@@ -105,7 +138,7 @@ int main()
     printf(" %.4f \n", sis_ai_corrcoef(in1, &in2[4], 8));
 
     int offset = 5;
-    printf(" %.4f offset = %d\n", sis_ai_corrcoef_ex(in1, in2, 12, &offset), offset);
+    printf(" %.4f offset = %d\n", sis_ai_corrcoef_offset(in1, in2, 12, &offset), offset);
     for (int i = 0; i < 12; i++)
     {
         in2[i] = in1[i] * 1000;

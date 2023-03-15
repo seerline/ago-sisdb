@@ -168,7 +168,14 @@ bool _server_open(const char *cmdinfo)
 	}
 	// 生成log文件
 	char name[SIS_PATH_LEN];
-	sis_file_getname(config, name, SIS_PATH_LEN);
+	if (sis_strlen(cmdinfo) > 0)
+	{
+		sis_file_getname(cmdinfo, name, SIS_PATH_LEN);
+	}
+	else
+	{
+		sis_file_getname(config, name, SIS_PATH_LEN);
+	}
 	size_t len = strlen(name);
 	for (int i = (int)len - 1; i > 0; i--)
 	{
