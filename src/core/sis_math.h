@@ -223,6 +223,7 @@ static inline int sis_int_random(int min, int max)
 	mid = rand() % mid + min;
 	return mid;
 }
+
 static inline double sis_double_random(double min_, double max_)
 {
 	int min = (int)(min_ * 1000);
@@ -243,4 +244,23 @@ static inline double sis_double_random(double min_, double max_)
 	mid = rand() % mid + min;
 	return (double)mid / 1000.0;
 }
+
+static inline int sis_score_random(int maxv_, int minv_)  
+{
+	int curv = 0;
+	if (maxv_ < 1 || minv_ < 1 || maxv_ < minv_)
+	{
+		return curv;
+	}
+	for (int i = 0; i < minv_; i++)
+	{
+		if (sis_int_random(0, maxv_) < minv_)
+		{
+			curv++;
+		}
+	}
+	return curv;
+}
+
 #endif //_SIS_MATH_H
+

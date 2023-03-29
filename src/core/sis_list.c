@@ -814,6 +814,39 @@ int sis_double_list_push(s_sis_double_list *list_, double in_)
 
 	return sis_struct_list_push(list_->value, &in_);
 }
+
+int sis_double_list_push_limit(s_sis_double_list *list_, int maxnums_, double in_)
+{
+	s_sis_struct_list *vlist = list_->value;
+	if (vlist->maxcount < 2 * maxnums_)
+	{
+		sis_struct_list_set_maxsize(vlist, 2 * maxnums_);
+	}
+	if (vlist->count < maxnums_)
+	{
+		int offset = vlist->count + vlist->start;
+		memmove((char *)vlist->buffer + (offset * vlist->len), &in_, vlist->len);
+		vlist->count++;
+	}
+	else
+	{
+		if (vlist->start < maxnums_)
+		{
+			int offset = vlist->count + vlist->start;
+			memmove((char *)vlist->buffer + (offset * vlist->len), &in_, vlist->len);
+			vlist->start ++; 			
+		}
+		else
+		{
+			int offset = (vlist->start + 1) * vlist->len;
+			memmove((char *)vlist->buffer,  (char *)vlist->buffer + offset, (vlist->count - 1) * vlist->len);
+			vlist->start = 0;
+			memmove((char *)vlist->buffer + ((vlist->count - 1) * vlist->len), &in_, vlist->len);
+		}
+	}
+	return vlist->count;
+}
+
 double sis_double_list_get(s_sis_double_list *list_, int index_)
 {
 	double *o = (double *)sis_struct_list_get(list_->value, index_);
