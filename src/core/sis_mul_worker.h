@@ -4,7 +4,27 @@
 #include "sis_method.h"
 #include "sis_thread.h"
 #include "sis_list.h"
+#include "sis_time.h"
 
+typedef struct s_sis_event_info
+{
+	int    style;     // 事件类型
+	int    nums;      // 数量
+    msec_t usec_set;  // 开始
+	msec_t usec_sum;  // 总花费时间
+	msec_t usec_max;  // 最大
+	msec_t usec_min;  // 最小
+} s_sis_event_info;
+
+#define SIS_EVENT_OPEN(T,_i_,_e_) if (T) { _i_[_e_].usec_set = sis_time_get_now_usec(); }
+#define SIS_EVENT_STOP(T,_i_,_e_) if (T) { \
+            _i_[_e_].style = _e_;\
+            _i_[_e_].nums++;\
+            msec_t costusec = sis_time_get_now_usec() - _i_[_e_].usec_set;\
+            _i_[_e_].usec_sum += costusec;\
+            _i_[_e_].usec_max = SIS_MAXI(_i_[_e_].usec_max, costusec);\
+            _i_[_e_].usec_min = SIS_MINI(_i_[_e_].usec_min, costusec);\
+        }
 typedef struct s_sis_worker_task
 {
     void                         *context;    // 上下文
