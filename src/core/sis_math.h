@@ -10,7 +10,8 @@
 #define  sis_max(a,b)    (((a) > (b)) ? (a) : (b))
 #define  sis_min(a,b)    (((a) < (b)) ? (a) : (b))
 
-#define SIS_MINI(a, b) ((a) && (b) ? (((a) < (b)) ? (a) : (b)) : (a ? a : b))
+#define SIS_MAXI(a, b) (((a) > (b)) ? (a) : (b))
+#define SIS_MINI(a, b) ((a != 0 ) && (b != 0) ? (((a) < (b)) ? (a) : (b)) : ((a != 0) ? (a) : (b)))
 
 #define SIS_IS_ZERO(a) ((a) == 0 || (((a) > -0.0000001) && ((a) < 0.0000001)))
 #define SIS_MINF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) < (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
@@ -223,6 +224,7 @@ static inline int sis_int_random(int min, int max)
 	mid = rand() % mid + min;
 	return mid;
 }
+
 static inline double sis_double_random(double min_, double max_)
 {
 	int min = (int)(min_ * 1000);
@@ -243,4 +245,23 @@ static inline double sis_double_random(double min_, double max_)
 	mid = rand() % mid + min;
 	return (double)mid / 1000.0;
 }
+
+static inline int sis_score_random(int maxv_, int minv_)  
+{
+	int curv = 0;
+	if (maxv_ < 1 || minv_ < 1 || maxv_ < minv_)
+	{
+		return curv;
+	}
+	for (int i = 0; i < minv_; i++)
+	{
+		if (sis_int_random(0, maxv_) < minv_)
+		{
+			curv++;
+		}
+	}
+	return curv;
+}
+
 #endif //_SIS_MATH_H
+

@@ -148,6 +148,8 @@ int sis_sort_uint32_list(const void *arg1, const void *arg2);
 
 // 排序必须放置到新的数组中
 void sis_double_list_sort(s_sis_double_list *src_);
+// 限制型插入 不计算最大最小值 均值
+int sis_double_list_push_limit(s_sis_double_list *, int maxnums, double in_);
 
 int sis_double_list_push(s_sis_double_list *, double in_);
 

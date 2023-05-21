@@ -126,7 +126,7 @@ int cmd_sisdb_flog_sub(void *worker_, void *argv_)
     {
         context->work_date = sis_message_get_int(msg, "work-date");
     }
-    context->cb_source =  sis_message_get(msg, "source");
+    context->cb_source =  sis_message_get(msg, "cb_source");
     context->cb_sub_start =  sis_message_get_method(msg, "cb_sub_start");
     context->cb_sub_stop =  sis_message_get_method(msg, "cb_sub_stop");
     context->cb_netmsg =  sis_message_get_method(msg, "cb_netmsg");
@@ -284,7 +284,7 @@ int main()
     sis_message_set_str(msg, "work-path", ".", 1);
     sis_message_set_str(msg, "work-name", "wlog", 4);
     sis_message_set_int(msg, "work-date", 20211010);
-    // sis_message_set(msg, "source", worker, NULL);
+    // sis_message_set(msg, "cb_source", worker, NULL);
     // sis_message_set_method(msg, "cb_sub_start", NULL);
     // sis_message_set_method(msg, "cb_sub_stop", NULL);
     // sis_message_set_method(msg, "cb_netmsg", cb_rlog_netmsg);

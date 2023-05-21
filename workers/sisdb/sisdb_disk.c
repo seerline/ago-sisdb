@@ -263,7 +263,7 @@ int sisdb_rlog_read(s_sis_worker *worker)
     sis_message_set_str(msg, "work-path", work_path, sis_sdslen(work_path));
     sis_message_set_str(msg, "work-name", work_name, sis_sdslen(work_name));
     sis_message_set_int(msg, "work-date", context->work_date);
-    sis_message_set(msg, "source", worker, NULL);
+    sis_message_set(msg, "cb_source", worker, NULL);
     // sis_message_set_method(msg, "cb_sub_start", NULL);
     // sis_message_set_method(msg, "cb_sub_stop", NULL);
     sis_message_set_method(msg, "cb_netmsg", cb_rlog_netmsg);

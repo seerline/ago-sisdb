@@ -34,6 +34,7 @@ typedef struct s_sisdb_rsno_cxt
     sis_method_define *cb_dict_keys;    // 需要发送行情的股票列表，代码串 字符串
     sis_method_define *cb_sub_incrzip;  // 增量压缩格式
     sis_method_define *cb_sub_chars;    // s_sis_db_chars
+    sis_method_define *cb_sub_bytes;    // s_sis_db_bytes
 
 }s_sisdb_rsno_cxt;
 

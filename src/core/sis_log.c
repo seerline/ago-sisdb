@@ -204,7 +204,7 @@ void sis_out_percent_stop()
 
 size_t sis_writefile(const char *name, void *value, size_t len)
 {
-	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE, 0);
+	s_sis_file_handle fp = sis_file_open(name, SIS_FILE_IO_READ | SIS_FILE_IO_WRITE | SIS_FILE_IO_CREATE | SIS_FILE_IO_APPEND, 0);
 	if (fp)
 	{
 		size_t size = sis_file_write(fp, (char *)value, len);

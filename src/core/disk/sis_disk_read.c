@@ -776,7 +776,7 @@ s_sis_object *_disk_reader_get_sno_obj(s_sis_disk_reader *reader_, const char *k
     }   
     reader_->search_msec.start = smsec_->start;
     reader_->search_msec.stop  = smsec_->stop;
-
+    
     reader_->isone = 1;
     sis_disk_reader_init(reader_, kname_, sname_, smsec_, 0);
 
@@ -827,6 +827,7 @@ s_sis_object *_disk_reader_get_sno_obj(s_sis_disk_reader *reader_, const char *k
 // 从对应文件中获取数据 拼成完整的数据返回 只支持 SNO SDB 单键单表 
 s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *reader_, const char *kname_, const char *sname_, s_sis_msec_pair *smsec_)
 {
+
     s_sis_object * obj = NULL;
     if (reader_->style == SIS_DISK_TYPE_SNO)
     {
@@ -839,6 +840,52 @@ s_sis_object *sis_disk_reader_get_obj(s_sis_disk_reader *reader_, const char *kn
     }
     return obj;
 }
+// 获取sno键值
+s_sis_object *sis_disk_reader_get_keys(s_sis_disk_reader *reader_, int idate)
+{
+    return NULL;
+}
+s_sis_sds sis_map_sdict_as_sdbs(s_sis_map_list *map_sdicts_)
+{
+    s_sis_json_node *innode = sis_json_create_object();
+    int count = sis_map_list_getsize(map_sdicts_);
+    for (int i = 0; i < count; i++)
+    {
+        s_sis_disk_sdict *sdict = sis_map_list_geti(map_sdicts_, i);
+        s_sis_dynamic_db *db = sis_disk_sdict_last(sdict);
+		sis_json_object_add_node(innode, db->name, sis_sdbinfo_to_json(db));
+    }
+    s_sis_sds o = sis_json_to_sds(innode, 1);
+	sis_json_delete_node(innode);
+	return o;
+}
+// 获取sno数据库
+s_sis_object *sis_disk_reader_get_sdbs(s_sis_disk_reader *reader_, int idate)
+{
+    if (reader_->style == SIS_DISK_TYPE_SNO)
+    {
+        reader_->munit = sis_disk_ctrl_create(reader_->style, reader_->fpath, reader_->fname, idate);
+    }
+    else if (reader_->style == SIS_DISK_TYPE_SDB)
+    {
+        reader_->munit = sis_disk_ctrl_create(reader_->style, reader_->fpath, reader_->fname, 0);
+    }
+    else
+    {
+        return NULL;
+    }
+    s_sis_object * obj = NULL;
+    int o = sis_disk_ctrl_read_start(reader_->munit);
+    if (o == SIS_DISK_CMD_OK || o == SIS_DISK_CMD_NO_IDX)
+    {
+        obj = sis_object_create(SIS_OBJECT_SDS, sis_map_sdict_as_sdbs(reader_->munit->map_sdicts));
+    }
+    sis_disk_ctrl_read_stop(reader_->munit);
+    sis_disk_ctrl_destroy(reader_->munit);
+    reader_->munit = NULL;
+    return obj;
+}
+
 //////////////////////////////////
 // 订阅的相关函数
 /////////////////////////////////

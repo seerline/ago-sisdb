@@ -30,7 +30,7 @@ static inline void safe_memory_stop(){};
 typedef struct s_memory_node {
     char   info[MEMORY_INFO_SIZE];
     unsigned int size; 
-    unsigned short line;  
+    unsigned int line;  
 	struct s_memory_node * prev;     
 	struct s_memory_node * next;
 }s_memory_node;
@@ -48,6 +48,7 @@ static inline void safe_memory_newnode(void *__p__,unsigned int size_, int line_
     sis_mutex_lock(&__memory_mutex);
     s_memory_node *__n = (s_memory_node *)__p__; 
     __n->size = size_;
+    __n->prev = NULL; 
     __n->next = NULL; 
     __n->line = line_; 
     // memmove(__n->info, func_, MEMORY_INFO_SIZE); __n->info[MEMORY_INFO_SIZE - 1] = 0; 

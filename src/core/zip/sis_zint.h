@@ -32,6 +32,12 @@ static inline zint32 sis_double_to_zint32(double in_, int dot_, bool valid_)
     {
         z.attr = 7;
     }
+    else if (SIS_IS_ZERO(in_))
+    {
+        z.zint = 0;
+        z.attr = 0;
+        z.sign = 0;
+    }
     else
     {
         z.sign = in_ < 0.0;

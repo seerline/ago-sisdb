@@ -725,6 +725,9 @@ void _make_read_data(s_sis_net_class *cls, s_sis_net_context *cxt)
 		sis_net_message_destroy(netmsg);
 		sis_net_mems_free_read(cxt->recv_nodes);
 	}
+	// 这里清理一下接收缓存
+	sis_memory_pack(cxt->recv_memory);  
+	// printf("recv_memory size = %zu %zu | %zu\n", cxt->recv_memory->maxsize, cxt->recv_memory->size, sis_net_mems_size(cxt->recv_nodes));
 }
 /**
  * @brief 网络连接处理类s_sis_net_class的后台数据处理函数

@@ -28,7 +28,7 @@ inline void safe_memory_stop(){};
 
 typedef struct s_memory_node {
     char   info[MEMORY_INFO_SIZE];
-    unsigned short line;  //  
+    unsigned int line;  //  
 	struct s_memory_node * prev;     
 	struct s_memory_node * next;
 }s_memory_node;

@@ -21,6 +21,7 @@ int sis_msec_get_idate(msec_t msec); //20151012
 long sis_msec_get_mtime(msec_t msec);//103020000 时分秒毫秒
 int sis_sec_get_itime(time_t ttime); //103020
 int sis_time_get_iminute(time_t ttime); //1030
+int sis_msec_get_iminute(msec_t msec); //1030
 int sis_time_get_isec(time_t ttime); // 20
 int sis_time_get_showtime(time_t ttime); //0212103020 月日时间
 msec_t sis_msec_get_showtime(msec_t ttime); //20211030103050123 月日时间
@@ -45,6 +46,7 @@ bool sis_time_str_is_date(char* date); //判断字符串是不是日期20150212
 
 void sis_time_format_minute(char * out_, size_t olen_, time_t tt_); //"930"
 void sis_time_format_date(char * out_, size_t olen_, int date_); //"2015-09-12"
+void sis_time_format_csec(char * out_, size_t olen_, msec_t tt_); //"09:30:00"
 void sis_time_format_msec(char * out_, size_t olen_, msec_t tt_); //"09:30:00.123"
 void sis_time_format_datetime(char * out_, size_t olen_, time_t tt_); //"20150912103000"
 void sis_msec_format_datetime(char * out_, size_t olen_, msec_t tt_); //"20150912103059000"

@@ -309,6 +309,11 @@ s_sis_sds sis_sdb_fields_to_csv_sds(s_sis_dynamic_db *db_, void *in_, size_t ile
 {
 	s_sis_sds o = sis_sdsempty();
 	int fnums = sis_string_list_getsize(fields_);
+	// sis_map_list_getsize(db_->fields);
+	// if (fields_)
+	// {
+	// 	fnums = sis_string_list_getsize(fields_);
+	// }
 	if (isfields_)
 	{
 		for (int i = 0; i < fnums; i++)
@@ -552,6 +557,23 @@ s_sis_sds sis_json_to_sds(s_sis_json_node *node_, bool iszip_)
     return o;
 }
 
+int sis_json_merge_rpath(s_sis_json_node *node_, const char *rkey, const char *rpath_)
+{
+	const char *str = sis_json_get_str(node_, rkey);
+	if (str)
+	{
+		s_sis_sds rpath = sis_sdsnew(rpath_);
+		rpath = sis_sdscatfmt(rpath, "/%s", str);
+		sis_json_object_set_string(node_, rkey, rpath, sis_sdslen(rpath));
+		return 1;
+	}
+	// else
+	{
+		sis_json_object_add_string(node_, rkey, rpath_, sis_strlen(rpath_));
+	}
+	return 0;
+}
+
 // match_keys : * --> whole_keys
 // match_keys : k,m1 | whole_keys : k1,k2,m1,m2 --> k1,k2,m1
 s_sis_sds sis_match_key(s_sis_sds match_keys, s_sis_sds whole_keys)
@@ -675,7 +697,6 @@ s_sis_sds sis_match_sdb_of_map(s_sis_sds match_sdbs, s_sis_map_list *whole_sdbs)
 
 int sis_get_map_keys(s_sis_sds keys_, s_sis_map_list *map_keys_)
 {
-	sis_map_list_clear(map_keys_);
 	s_sis_string_list *klist = sis_string_list_create();
 	sis_string_list_load(klist, keys_, sis_sdslen(keys_), ",");
 	// 重新设置keys
@@ -691,7 +712,6 @@ int sis_get_map_keys(s_sis_sds keys_, s_sis_map_list *map_keys_)
 
 int sis_get_map_sdbs(s_sis_sds sdbs_, s_sis_map_list *map_sdbs_)
 {
-	sis_map_list_clear(map_sdbs_);
 	s_sis_json_handle *injson = sis_json_load(sdbs_, sis_sdslen(sdbs_));
 	if (!injson)
 	{

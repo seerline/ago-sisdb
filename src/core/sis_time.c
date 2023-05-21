@@ -74,6 +74,16 @@ int sis_time_get_iminute(time_t ttime) //1030
 	sis_time_check(ttime, &ptm);
 	return ptm.tm_hour * 100 + ptm.tm_min;
 }
+int sis_msec_get_iminute(msec_t msec) //1030
+{
+	if (msec == 0)
+	{
+		return 0;
+	}
+	struct tm ptm = {0};
+	sis_time_check((time_t)(msec/1000), &ptm);
+	return ptm.tm_hour * 100 + ptm.tm_min;
+}
 int sis_time_get_isec(time_t ttime)
 {
 	struct tm ptm = {0};
@@ -276,7 +286,25 @@ void sis_time_format_msec(char * out_, size_t olen_, msec_t tt_) //"09:30:00.123
 				ptm.tm_hour, ptm.tm_min, ptm.tm_sec, msec);
 
 }
+void sis_time_format_csec(char * out_, size_t olen_, msec_t tt_) //"09:30:00"
+{
+	if (!out_)
+	{
+		return;
+	}
+	if (tt_ == 0)
+	{
+		sis_strcpy(out_, olen_, "00:00:00");
+		return;
+	}
+	time_t tt = tt_ / 1000;
+	struct tm ptm = {0};
+	sis_time_check(tt, &ptm);
 
+	sis_sprintf(out_, olen_, "%02d:%02d:%02d",
+				ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
+
+}
 void sis_time_format_datetime(char *out_, size_t olen_, time_t tt_) //"20150912103000"
 {
 	if (!out_)

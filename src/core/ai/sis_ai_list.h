@@ -47,6 +47,9 @@ double sis_ai_list_get(s_sis_ai_list *, int fidx_, int kidx_);
 int sis_ai_list_get_field_size(s_sis_ai_list *list_);
 int sis_ai_list_get_size(s_sis_ai_list *list_);
 
+// 获得字符串的hash值 最大不超过nums 便于进行多任务运算
+int sis_ai_get_hash(const char *, int isize, int nums);
+
 #ifdef __cplusplus
 }
 #endif

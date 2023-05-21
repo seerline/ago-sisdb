@@ -168,7 +168,14 @@ bool _server_open(const char *cmdinfo)
 	}
 	// 生成log文件
 	char name[SIS_PATH_LEN];
-	sis_file_getname(config, name, SIS_PATH_LEN);
+	if (sis_strlen(cmdinfo) > 0)
+	{
+		sis_file_getname(cmdinfo, name, SIS_PATH_LEN);
+	}
+	else
+	{
+		sis_file_getname(config, name, SIS_PATH_LEN);
+	}
 	size_t len = strlen(name);
 	for (int i = (int)len - 1; i > 0; i--)
 	{
@@ -308,11 +315,8 @@ int main(int argc, char *argv[])
 		_fmt_trans(_server.conf_name, _server.json_name);
 		exit(0);
 	}
-	if (_server.work_mode & SERVER_WORK_MODE_DEBUG)
-	{
-		// 如果是debug模式就开启内存检查
-		safe_memory_start();
-	}
+
+	safe_memory_start();
 
 	if (!_server_open(cmdinfo))
 	{
@@ -388,10 +392,7 @@ int main(int argc, char *argv[])
 	}
 	sis_log_close();
 
-	if (_server.work_mode & SERVER_WORK_MODE_DEBUG)
-	{
-		safe_memory_stop();
-	}
+	safe_memory_stop();
 
 	return 0;
 }

@@ -99,7 +99,7 @@ bool sisdb_wsno_start(s_sisdb_wsno_cxt *context)
     }
     return true;
 }
-msec_t _wsno_msec = 0;
+static msec_t _wsno_msec = 0;
 static int cb_sub_start(void *worker_, void *argv_)
 {
 	s_sis_worker *worker = (s_sis_worker *)worker_; 
@@ -269,7 +269,7 @@ int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
     sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
     sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
 
-    sis_message_set(msg, "source", worker, NULL);
+    sis_message_set(msg, "cb_source", worker, NULL);
     sis_message_set_method(msg, "cb_sub_start"   ,cb_sub_start);
     sis_message_set_method(msg, "cb_sub_stop"    ,cb_sub_stop);
     sis_message_set_method(msg, "cb_dict_sdbs"   ,cb_dict_sdbs);

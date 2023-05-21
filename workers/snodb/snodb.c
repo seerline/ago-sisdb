@@ -541,7 +541,9 @@ bool _snodb_write_init(s_snodb_cxt *context)
         {
             return false;
         }
+		sis_map_list_clear(context->map_keys);
 		sis_get_map_keys(context->work_keys, context->map_keys);
+		sis_map_list_clear(context->map_sdbs);
 		sis_get_map_sdbs(context->work_sdbs, context->map_sdbs);
         context->status = SIS_SUB_STATUS_WORK;
     }
