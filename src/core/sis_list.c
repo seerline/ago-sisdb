@@ -288,9 +288,14 @@ void sis_struct_list_rect(s_sis_struct_list *list_, int rows_)
 		return;
 	}
 	list_->start = list_->start + list_->count - rows_;
-	if (list_->count == rows_ && list_->start > rows_)
+	// if (list_->count == rows_ && list_->start > rows_)
+	// {
+	// 	memmove(list_->buffer, (char *)list_->buffer + (list_->start * list_->len), list_->count * list_->len);		
+	// 	list_->start = 0;
+	// }
+	if (list_->start > rows_)
 	{
-		memmove(list_->buffer, (char *)list_->buffer + (list_->start * list_->len), list_->count * list_->len);		
+		memmove(list_->buffer, (char *)list_->buffer + (list_->start * list_->len), rows_ * list_->len);		
 		list_->start = 0;
 	}
 	list_->count = rows_;
