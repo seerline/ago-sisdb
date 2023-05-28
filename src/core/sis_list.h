@@ -64,6 +64,7 @@ int sis_struct_list_pack(s_sis_struct_list *list_);
 }
 #endif
 
+
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_sort_list ---------------------------------//
 //  固定长度的列表
@@ -218,6 +219,23 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 #ifdef __cplusplus
 }
 #endif
+
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_int_list --------------------------------//
+//  存储指针的列表,记录长度为sizeof(int64)
+///////////////////////////////////////////////////////////////////////////
+
+#define s_sis_int_list s_sis_pointer_list
+#define s_sis_int_create sis_pointer_list_create
+#define s_sis_int_destroy sis_pointer_list_destroy
+#define s_sis_int_clear sis_pointer_list_clear
+
+int   sis_int_list_push(s_sis_pointer_list *, int64 in_);
+int   sis_int_list_set(s_sis_pointer_list *, int64 in_);
+int   sis_int_list_update(s_sis_pointer_list *, int index_, int64 in_);
+int   sis_int_list_insert(s_sis_pointer_list *, int index_, int64 in_);
+int64 sis_int_list_get(s_sis_pointer_list *, int index_);
+int   sis_int_list_delete(s_sis_pointer_list *src_, int start_, int count_);
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_fsort_list ---------------------------------//

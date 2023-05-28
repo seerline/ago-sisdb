@@ -1403,6 +1403,73 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_)
 	}
 	return 0;
 }
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_fsort_list --------------------------------//
+///////////////////////////////////////////////////////////////////////////
+
+int   sis_int_list_push(s_sis_int_list *list_, int64 in_)
+{
+	_pointer_list_grow(list_, list_->count + 1);
+	int64 *ptr = (int64 *)list_->buffer;
+	ptr[list_->count] = in_;
+	list_->count++;
+	return list_->count;
+}
+int   sis_int_list_update(s_sis_int_list *list_, int index_, int64 in_)
+{
+	if (index_ >= 0 && index_ < list_->count)
+	{
+		int64 *ptr = (int64 *)list_->buffer;
+		ptr[index_] = in_;
+		return index_;
+	}
+	return -1;	
+}
+int   sis_int_list_insert(s_sis_int_list *list_, int index_, int64 in_)
+{
+	if (list_->count < 1)
+	{
+		return sis_int_list_push(list_, in_);
+	}
+	if (index_ < 0 || index_ > list_->count - 1)
+	{
+		return -1;
+	}
+	_pointer_list_grow(list_, list_->count + 1);
+	memmove((char *)list_->buffer + ((index_ + 1) * list_->len), (char *)list_->buffer + (index_ * list_->len),
+			(list_->count - index_) * list_->len);
+
+	int64 *ptr = (int64 *)list_->buffer;
+	ptr[index_] = in_;
+
+	list_->count++;
+	return index_;
+}
+int64 sis_int_list_get(s_sis_int_list *list_, int index_)
+{
+	int i64 = -1;
+	if (index_ >= 0 && index_ < list_->count)
+	{
+		int64 *ptr = (int64 *)list_->buffer;
+		i64 = ptr[index_];
+	}
+	return i64;
+}
+int   sis_int_list_delete(s_sis_int_list *list_, int start_, int count_)
+{
+	if (start_ < 0 || count_ < 1 || start_ + count_ > list_->count)
+	{
+		return 0;
+	}
+	if ((list_->count > count_ + start_))
+	{
+		memmove((char *)list_->buffer + (start_ * list_->len), (char *)list_->buffer + ((start_ + count_) * list_->len),
+			(list_->count - count_ - start_) * list_->len);
+	}
+
+	list_->count = list_->count - count_;
+	return count_;
+}
 
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_fsort_list --------------------------------//
