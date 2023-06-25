@@ -226,9 +226,9 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 ///////////////////////////////////////////////////////////////////////////
 
 #define s_sis_int_list s_sis_pointer_list
-#define s_sis_int_create sis_pointer_list_create
-#define s_sis_int_destroy sis_pointer_list_destroy
-#define s_sis_int_clear sis_pointer_list_clear
+#define sis_int_list_create sis_pointer_list_create
+#define sis_int_list_destroy sis_pointer_list_destroy
+#define sis_int_list_clear sis_pointer_list_clear
 
 int   sis_int_list_push(s_sis_pointer_list *, int64 in_);
 int   sis_int_list_set(s_sis_pointer_list *, int64 in_);
