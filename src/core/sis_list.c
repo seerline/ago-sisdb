@@ -907,7 +907,33 @@ int sis_double_list_value_split(s_sis_double_list *list_, int nums_, double spli
 	}
 	return idx;	
 }
-
+int sis_double_list_split(s_sis_double_list *list_, int nums_, double split[])
+{
+	if (nums_ >= list_->value->count)
+	{
+		return 0;
+	}
+	sis_double_list_sort(list_);
+	double step = (double)list_->value->count / (double)(nums_ + 1);
+	for (int i = 0; i < nums_; i++)
+	{
+		if (i == 0)
+		{
+			int stop  = (int)(step);
+			split[i] = (sis_double_list_get(list_, stop - 1) + sis_double_list_get(list_, stop)) / 2.0;
+		}
+		if (i == nums_ - 1)
+		{
+			split[i] = sis_double_list_get(list_, list_->value->count - 1) + 0.1;
+		}
+		else
+		{
+			int stop  = (int)(step * (i + 1));
+			split[i] = (sis_double_list_get(list_, stop - 1) + sis_double_list_get(list_, stop)) / 2.0;
+		}
+	}
+	return nums_;	
+}
 int sis_double_list_count_nozero_split(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_)
 {
 	double minimum = 0.001;
