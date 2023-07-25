@@ -37,9 +37,9 @@ sis_net.h   提供给外部用户访问的接口和类型
 | #page  |   通用   | 分页传输时的页面信息 |
 | ....   |   通用   |                      |
 
-
 #### 多进程通讯
-    监听指定端口 
+
+    监听指定端口
     接收信息 并更新到共享内存
     主进程负责定时把共享内存数据广播同步出去，保证单机同时只有一个进程同步状态
     次进程同步自己的信息到共享内存 start stop status 等状态信息
@@ -50,7 +50,6 @@ sis_net.h   提供给外部用户访问的接口和类型
     主进程挂了 次进程升级为主进程 此时需要强制检查一次所有服务是否健壮 然后清理掉挂的那个服务 再广播给网络 由网络的监控服务记录该次事故
     请求客户端连接的服务如果挂掉，需要返回disconnect信息和回调
 
-
 <!-- | crc      |  通用 |  数据校验 crc16 crc32
    | fmt    |  随msg  | 随msg   |  msg格式 0 字符 1 表示有描述msg的数据格式 可能二进制、压缩、加密等
    | encrypt  |  通用 |  加密算法 sha256 rsa128
@@ -59,27 +58,27 @@ sis_net.h   提供给外部用户访问的接口和类型
 
 #### tag 预定义信息
 
-|   值 | 定义              | 说明                                              | info 可能值 |
-| ---: | :---------------- | :------------------------------------------------ | :---------- |
-| -100 | SIS_NET_TAG_INVALID   | 请求已经失效                                      | STRING     |
-|   -3 | SIS_NET_TAG_NIL       | 请求的数据为空                                    | STRING     |
-|   -2 | SIS_NET_TAG_ERROR     | 未知原因错误 msg中可能存放字符串的错误原因        | STRING      |
-|   -1 | SIS_NET_TAG_NOAUTH    | 未登录验证                                        | STRING    |
-|    0 | SIS_NET_TAG_OK        | 数据正确 通常表示为请求完成的应答                 | NULL        |
-|    1 | SIS_NET_TAG_INT       | 返回整数 二进制64位整数                           | INT64       |
-|    2 | SIS_NET_TAG_JSON      | 返回JSON字符串                                 | STRING      |
-|    3 | SIS_NET_TAG_ARRAY     | 返回ARRAY字符串                 | STRING       |
-|    4 | SIS_NET_TAG_CHAR      | 返回字符串 字符串                                 | STRING      |
-|    5 | SIS_NET_TAG_CHARS     | 返回字符串列表 count+[size+data]                  | CHARS       |
-|    6 | SIS_NET_TAG_BYTE      | 返回二进制 数据流                                 | DATA        |
-|    7 | SIS_NET_TAG_BYTES     | 返回二进制列表 count+[size+data]                  | DATAS       |
-|   100 | SIS_NET_TAG_SUB_OPEN  | 订阅打开 字符串日期                               | DATE        |
-|   101 | SIS_NET_TAG_SUB_KEY   | 订阅时返回的键值 START 时初始化 然后递增  | 逗号分隔 STRING      |
-|   102 | SIS_NET_TAG_SUB_SDB   | 订阅是返回的结构 START 时初始化 然后递增          | JSON        |
-|   103 | SIS_NET_TAG_SUB_START | 订阅开始 字符串日期                               | DATE        |
-|   104 | SIS_NET_TAG_SUB_WAIT  | 订阅缓存数据结束 等待新的数据 字符串日期          | DATE        |
-|   105 | SIS_NET_TAG_SUB_STOP  | 订阅结束 字符串日期                               | DATE        |
-|   106 | SIS_NET_TAG_SUB_CLOSE | 订阅关闭 字符串日期                               | DATE        |
+|   值 | 定义                  | 说明                                       | info 可能值     |
+| ---: | :-------------------- | :----------------------------------------- | :-------------- |
+| -100 | SIS_NET_TAG_INVALID   | 请求已经失效                               | STRING          |
+|   -3 | SIS_NET_TAG_NIL       | 请求的数据为空                             | STRING          |
+|   -2 | SIS_NET_TAG_ERROR     | 未知原因错误 msg中可能存放字符串的错误原因 | STRING          |
+|   -1 | SIS_NET_TAG_NOAUTH    | 未登录验证                                 | STRING          |
+|    0 | SIS_NET_TAG_OK        | 数据正确 通常表示为请求完成的应答          | NULL            |
+|    1 | SIS_NET_TAG_INT       | 返回整数 二进制64位整数                    | INT64           |
+|    2 | SIS_NET_TAG_JSON      | 返回JSON字符串                             | STRING          |
+|    3 | SIS_NET_TAG_ARRAY     | 返回ARRAY字符串                            | STRING          |
+|    4 | SIS_NET_TAG_CHAR      | 返回字符串 字符串                          | STRING          |
+|    5 | SIS_NET_TAG_CHARS     | 返回字符串列表 count+[size+data]           | CHARS           |
+|    6 | SIS_NET_TAG_BYTE      | 返回二进制 数据流                          | DATA            |
+|    7 | SIS_NET_TAG_BYTES     | 返回二进制列表 count+[size+data]           | DATAS           |
+|  100 | SIS_NET_TAG_SUB_OPEN  | 订阅打开 字符串日期                        | DATE            |
+|  101 | SIS_NET_TAG_SUB_KEY   | 订阅时返回的键值 START 时初始化 然后递增   | 逗号分隔 STRING |
+|  102 | SIS_NET_TAG_SUB_SDB   | 订阅是返回的结构 START 时初始化 然后递增   | JSON            |
+|  103 | SIS_NET_TAG_SUB_START | 订阅开始 字符串日期                        | DATE            |
+|  104 | SIS_NET_TAG_SUB_WAIT  | 订阅缓存数据结束 等待新的数据 字符串日期   | DATE            |
+|  105 | SIS_NET_TAG_SUB_STOP  | 订阅结束 字符串日期                        | DATE            |
+|  106 | SIS_NET_TAG_SUB_CLOSE | 订阅关闭 字符串日期                        | DATE            |
 
 #### tag 预定义信息
 
@@ -88,12 +87,12 @@ sis_net.h   提供给外部用户访问的接口和类型
 
 #### 二进制数据包的末尾 有一个字节的标志位
 
-| 关键字   | 位长          | 值域          | 说明         |
-| :--- | :-- | :------------- | :----------- |
-| - | - | - | 0 - 原始二进制数据 |
-| crc16 | 1  |   0..1     | 是否有crc16数据校验  |
-| compress | 3 | 0..7     | 7种压缩方式  |
-| 6..7 | 4 | 0..15        | 15种加密方式  |
+| 关键字   | 位长 | 值域  | 说明                |
+| :------- | :--- | :---- | :------------------ |
+| -        | -    | -     | 0 - 原始二进制数据  |
+| crc16    | 1    | 0..1  | 是否有crc16数据校验 |
+| compress | 3    | 0..7  | 7种压缩方式         |
+| 6..7     | 4    | 0..15 | 15种加密方式        |
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // 对于 json 格式请求和应答
@@ -200,16 +199,21 @@ sis_net.h   提供给外部用户访问的接口和类型
 // [] array 数据 -- 字符串
 
 ```
-// id  -- 谁干的事结果给谁 针对异步问题数据的对应关系问题 [必选]
+// sno  -- 谁干的事结果给谁 针对异步问题数据的对应关系问题 [必选]
 // cmd -- 干什么 [必选]
-// key -- 对谁干 [可选]
-// sdb -- 对什么属性干 [可选] 
-// argv -- 怎么干... [可选]
+// service -- 对谁干 [可选]
+// subject -- 对什么属性干 [可选] 
+// info -- 怎么干... [可选]
 ```
 
 // 请求格式例子:
-// id:{"cmd":"sisdb.get","key":"sh600601","sdb":"info","argv":[11,"sssss",{"min":16}]}
-// argv参数只能为数值、字符串，[],{}，必须能够被js解析，
+// 10001:{"service":"交易网关1","cmd":"下单","subject":"SH600601","info":{}}
+
+// 应答格式例子:
+
+10001:{"tag":0}
+
+// info参数只能为数值、字符串，[],{}，必须能够被js解析，
 // id:{"cmd":"sisdb.set","key":"sh600601","sdb":"info","argv":[{"time":100,"newp":100.01}]}
 
 // 应答格式例子:
