@@ -1540,6 +1540,7 @@ int sis_fsort_list_set(s_sis_fsort_list *list_, double key_, void *in_)
 	int index = _fsort_list_find(list_, key_);
 	if (index < 0 || index > list_->key->count - 1)
 	{
+		index = list_->key->count;
 		sis_struct_list_push(list_->key, &key_);
 		sis_pointer_list_push(list_->value, in_);
 	}
@@ -1548,7 +1549,7 @@ int sis_fsort_list_set(s_sis_fsort_list *list_, double key_, void *in_)
 		sis_struct_list_insert(list_->key, index, &key_);
 		sis_pointer_list_insert(list_->value, index, in_);
 	}
-	return list_->key->count;
+	return index;
 }
 int sis_fsort_list_find(s_sis_fsort_list *list_, void *value_)
 {
