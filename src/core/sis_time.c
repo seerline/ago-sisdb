@@ -164,6 +164,21 @@ time_t sis_time_make_time(int tdate, int ttime)
 	stime.tm_yday = 0;
 	return mktime(&stime);
 }
+msec_t sis_time_make_msec(int tdate, int ttime, int msec)
+{
+	struct tm stime;
+	stime.tm_year = tdate / 10000 - 1900;
+	stime.tm_mon = (tdate % 10000) / 100 - 1;
+	stime.tm_mday = tdate % 100;
+	stime.tm_hour = ttime / 10000;
+	stime.tm_min = (ttime % 10000) / 100;
+	stime.tm_sec = ttime % 100;
+	stime.tm_isdst = 0;
+	stime.tm_wday = 0;
+	stime.tm_yday = 0;
+	msec_t ms = mktime(&stime);
+	return ms * 1000 + msec % 1000;	
+}
 
 int sis_time_get_week_ofday(int today)
 {

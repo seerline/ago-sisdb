@@ -35,6 +35,7 @@ int sis_time_get_iminute_offset_time(time_t tstart, time_t tend);// 判断中间
 int sis_time_get_iminute_minnum(int source, int minnum);  //增加或减少分钟  900,-5 --> 855
 
 time_t sis_time_make_time(int tdate, int ttime);
+msec_t sis_time_make_msec(int tdate, int ttime, int msec);
 int sis_time_get_week_ofday(int today);// 判断是周几 [0,6]
 int sis_time_get_month_ofday(int today);// 判断是几月[0,11]
 int sis_time_get_dayoffset_ofday(int tstart, int tend);// 判断中间间隔几天
