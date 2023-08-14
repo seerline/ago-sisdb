@@ -81,6 +81,8 @@
 #define SIS_DYNAMIC_TYPE_FLOAT  'F'  // 4 8
 #define SIS_DYNAMIC_TYPE_PRICE  'P'  // 4 8
 // 时间类型 定义
+// 不要想全部用毫秒 来区分如何存储 如何存储应该是上层来决定的
+// 比如存储参数增加按年聚合 按月聚合 默认按日聚合数据
 #define SIS_DYNAMIC_TYPE_WSEC   'W'  // 微秒 8  
 #define SIS_DYNAMIC_TYPE_MSEC   'T'  // 毫秒 8  
 #define SIS_DYNAMIC_TYPE_TSEC   'S'  // 秒   4 8  
