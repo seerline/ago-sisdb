@@ -435,7 +435,7 @@ typedef struct s_sis_disk_ctrl {
     int64                sno_count;     // 记录数
     size_t               sno_size;      // SIS_DISK_HID_MSG_SNO 当前累计数据量
     s_sis_map_list      *sno_wcatch;    // 从实时文件转盘后文件 临时存放数据 s_sis_disk_wcatch
-    s_sis_disk_sno_rctrl*sno_rctrl;    // 分块读取时的缓存 根据sno进行排序
+    s_sis_disk_sno_rctrl*sno_rctrl;     // 分块读取时的缓存 根据sno进行排序
     ///// net 专用工具 //////
     int                  net_pages;     // 块数
     msec_t               net_msec;      // 第一条有时间序列记录的时间  

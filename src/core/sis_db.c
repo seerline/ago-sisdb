@@ -426,7 +426,7 @@ int _subdb_cxt_sub_data(s_sis_subdb_cxt *cxt)
 	for (int i = 0; i < count; i++)
 	{
 		s_sis_subdb_unit *unit = sis_map_list_geti(cxt->work_units, i);
-		int nums = sis_node_list_get_size(unit->vlist);
+		int nums = sis_node_list_getsize(unit->vlist);
 		for (int k = 0; k < nums; k++)
 		{
 			msec_t curv = _subdb_cxt_get_vmsec(unit); 
@@ -454,7 +454,7 @@ int _subdb_cxt_sub_data(s_sis_subdb_cxt *cxt)
 				break;
 			}
 		}
-		if (nums > 0 && sis_node_list_get_size(unit->vlist) < 1)
+		if (nums > 0 && sis_node_list_getsize(unit->vlist) < 1)
 		{
 			if (cxt->cb_key_stop)
 			{

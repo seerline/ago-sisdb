@@ -31,8 +31,9 @@
 
 typedef struct s_sis_db_chars
 {
-	const char   *kname;
-	const char   *sname;
+	const char   *kname; // 键值名
+	const char   *sname; // 数据表名
+	const char   *cname; // 集合名
 	uint32        size;
 	void         *data;     
 } s_sis_db_chars;

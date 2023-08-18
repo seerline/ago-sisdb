@@ -561,7 +561,7 @@ void sis_node_list_clear(s_sis_node_list *list_)
 int   sis_node_list_push(s_sis_node_list *list_, void *in_)
 {
 	s_sis_struct_list *last = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, list_->nodes->count - 1);
-	if (last->count >= list_->node_count)
+	if ((last->start + last->count) >= list_->node_count)
 	{
 		s_sis_struct_list *node = sis_struct_list_create(list_->node_size);
 		sis_struct_list_set_size(node, list_->node_count);
@@ -576,6 +576,7 @@ int   sis_node_list_push(s_sis_node_list *list_, void *in_)
 	return list_->count - 1;
 }
 
+
 void *sis_node_list_get(s_sis_node_list *list_, int index_)
 {
 	if (index_ < 0 || index_ > list_->count - 1)
@@ -585,6 +586,12 @@ void *sis_node_list_get(s_sis_node_list *list_, int index_)
 	int offset = index_ + list_->nouse;
 	int nodeidx = offset / list_->node_count;
 	s_sis_struct_list *node = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, nodeidx);
+	// if (node->count == 0)
+	// {
+	// 	sis_pointer_list_delete(list_->nodes, nodeidx, 1);
+	// 	list_->nouse -= list_->node_count;
+	// 	return sis_node_list_get(list_, index_);
+	// }
 	void *o = NULL;
 	if (node)
 	{
@@ -593,10 +600,29 @@ void *sis_node_list_get(s_sis_node_list *list_, int index_)
 	// if (!o)
 	// {
 	// 	printf(":===1: %d %d | %d %d %d %d %d\n", nodeidx, offset, list_->nodes->count, 
-	// 		list_->node_count, list_->count, list_->nouse, node->count);
+	// 		list_->node_count, list_->count, list_->nouse, node ? node->count : -1);
 	// }
 	return o;
 }
+void *sis_node_list_empty(s_sis_node_list *list_)
+{
+	void *v = NULL;
+	s_sis_struct_list *last = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, list_->nodes->count - 1);
+	if ((last->start + last->count) >= list_->node_count)
+	{
+		s_sis_struct_list *node = sis_struct_list_create(list_->node_size);
+		sis_struct_list_set_size(node, list_->node_count);
+		sis_pointer_list_push(list_->nodes, node);
+		v = sis_struct_list_empty(node);
+	}
+	else
+	{
+		v = sis_struct_list_empty(last);
+	}	
+	list_->count++;
+	return v;
+}
+
 void *sis_node_list_pop(s_sis_node_list *list_)
 {
 	s_sis_struct_list *node = NULL;
@@ -608,6 +634,7 @@ void *sis_node_list_pop(s_sis_node_list *list_)
 		{
 			sis_pointer_list_delete(list_->nodes, nodeidx, 1);
 			list_->nouse -= list_->node_count;
+			// LOG(1)("nouse:%d\n", list_->nouse);
 		}
 		else
 		{
@@ -616,7 +643,7 @@ void *sis_node_list_pop(s_sis_node_list *list_)
 	}
 	if (!node)
 	{
-		printf(":1: %d %d\n", nodeidx, list_->nodes->count);
+		// printf(":1: %d %d\n", nodeidx, list_->nodes->count);
 		return NULL;
 	}
 	void *o = sis_struct_list_pop(node);
@@ -624,16 +651,17 @@ void *sis_node_list_pop(s_sis_node_list *list_)
 	{ // 有实际数据弹出
 		list_->count--;
 		list_->nouse++;
+		// LOG(1)("nouse:%d\n", list_->nouse);
 	}
 	else
 	{
-		printf(":2: %d %d\n", nodeidx, list_->nodes->count);
+		// printf(":2: %d %d\n", nodeidx, list_->nodes->count);
 		return NULL;
 	}
 	return o;
 }
 
-int   sis_node_list_get_size(s_sis_node_list *list_)
+int   sis_node_list_getsize(s_sis_node_list *list_)
 {
 	return list_->count;
 }

@@ -10,6 +10,7 @@
 // 从行情流文件中获取数据源
 static s_sis_method _sisdb_rsno_methods[] = {
   {"get",    cmd_sisdb_rsno_get, 0, NULL},
+  {"getdb",  cmd_sisdb_rsno_getdb, 0, NULL},
   {"sub",    cmd_sisdb_rsno_sub, 0, NULL},
   {"unsub",  cmd_sisdb_rsno_unsub, 0, NULL},
   {"setcb",  cmd_sisdb_rsno_setcb, 0, NULL}
@@ -455,6 +456,36 @@ int cmd_sisdb_rsno_get(void *worker_, void *argv_)
     }
     return SIS_METHOD_OK;
 }
+int cmd_sisdb_rsno_getdb(void *worker_, void *argv_)
+{
+    s_sis_worker *worker = (s_sis_worker *)worker_; 
+    s_sisdb_rsno_cxt *context = (s_sisdb_rsno_cxt *)worker->context;
+
+    s_sis_message *msg = (s_sis_message *)argv_; 
+    // 设置表结构
+    // 设置数据对象
+    s_sis_disk_reader *reader = sis_disk_reader_create(
+        sis_sds_save_get(context->work_path), 
+        sis_sds_save_get(context->work_name), 
+        SIS_DISK_TYPE_SNO, NULL);
+    if (!reader)
+    {
+        return SIS_METHOD_NIL;
+    }
+    int subdate = sis_message_get_int(msg, "sub-date");
+    // 这里不筛选 直接返回全部结构数据
+    s_sis_object *obj = sis_disk_reader_get_sdbs(reader, subdate);
+    sis_disk_reader_destroy(reader);
+    if (!obj)
+    {
+        return SIS_METHOD_NIL;
+    }
+    s_sis_sds dbinfo = sis_sdsdup(SIS_OBJ_SDS(obj));
+    sis_object_destroy(obj);
+    sis_message_set(msg, "dbinfo", dbinfo, sis_sdsfree_call);
+    return SIS_METHOD_OK;
+}
+
 int cmd_sisdb_rsno_sub(void *worker_, void *argv_)
 {
     s_sis_worker *worker = (s_sis_worker *)worker_; 

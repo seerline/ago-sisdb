@@ -87,7 +87,12 @@ bool sisdb_wsno_start(s_sisdb_wsno_cxt *context)
 
     sis_sdsfree(context->wsno_keys); context->wsno_keys = NULL;
     sis_sdsfree(context->wsno_sdbs); context->wsno_sdbs = NULL;
-
+    
+    if (context->wmode)
+    {
+        sis_disk_control_remove(sis_sds_save_get(context->work_path), sis_sds_save_get(context->work_name), SIS_DISK_TYPE_SNO, context->work_date);
+    }
+        
     context->writer = sis_disk_writer_create(
         sis_sds_save_get(context->work_path), 
         sis_sds_save_get(context->work_name), 
@@ -265,9 +270,12 @@ int cmd_sisdb_wsno_getcb(void *worker_, void *argv_)
     {
         return SIS_METHOD_ERROR;
     }
-    s_sis_message *msg = (s_sis_message *)argv_; 
+    s_sis_message *msg = (s_sis_message *)argv_;
+    
     sis_sds_save_set(context->work_path, sis_message_get_str(msg, "work-path"));
     sis_sds_save_set(context->work_name, sis_message_get_str(msg, "work-name"));
+    
+    context->wmode = sis_message_get_int(msg, "overwrite");
 
     sis_message_set(msg, "cb_source", worker, NULL);
     sis_message_set_method(msg, "cb_sub_start"   ,cb_sub_start);

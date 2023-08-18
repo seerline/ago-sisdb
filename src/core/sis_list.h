@@ -281,7 +281,7 @@ typedef struct s_sis_index_list {
 	int		       count;    // 当前个数
 	unsigned char *used;     // 是否有效 初始为 0 
 	void          *buffer;   // used 为 0 需调用vfree
-	void (*vfree)(void *);  // == NULL 不释放对应内存
+	void (*vfree)(void *);   // == NULL 不释放对应内存
 } s_sis_index_list;
 #ifdef __cplusplus
 extern "C" {
@@ -353,9 +353,11 @@ void sis_node_list_clear(s_sis_node_list *list_);
 int   sis_node_list_push(s_sis_node_list *, void *in_);
 void *sis_node_list_get(s_sis_node_list *, int index_);
 
+void *sis_node_list_empty(s_sis_node_list *);
+
 void *sis_node_list_pop(s_sis_node_list *);
 
-int   sis_node_list_get_size(s_sis_node_list *);
+int   sis_node_list_getsize(s_sis_node_list *);
 #ifdef __cplusplus
 }
 #endif
