@@ -221,6 +221,26 @@ int sis_str_divide_sds(const char *in_, char ch_, s_sis_sds *one_,  s_sis_sds *t
     *one_ = count > 0 ? sis_sdsnewlen(start, count) : NULL;
 	return 1;
 }
+void sis_str_swap(const char *in_, char *out, char ic_,char oc_)
+{
+	char *ptr = (char *)in_;
+	while (ptr && *ptr)
+	{
+		if ((unsigned char)*ptr == ic_)
+		{
+			*out = oc_;
+		}
+		else
+		{
+			*out = (unsigned char)*ptr;
+		}
+		ptr++;
+		out++;
+	}
+	// out[sis_strlen(in_)] = 0;
+	*out = 0;
+}
+
 const char *sis_str_replace(const char *in_, char ic_, char oc_)
 {
 	char *ptr = (char *)in_;

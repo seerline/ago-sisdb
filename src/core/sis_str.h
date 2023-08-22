@@ -80,6 +80,8 @@ int sis_str_subcmp_strict(const char *sub, const char *s, char c);
 
 int sis_str_subcmp_match(const char *sub, const char *s, char c);  
 
+void sis_str_swap(const char *in, char *out, char ic_,char oc_); // 把in中的ic替换为oc
+
 const char *sis_str_replace(const char *in, char ic_,char oc_); // 把in中的ic替换为oc
 void sis_str_to_lower(char *in_);
 void sis_str_to_upper(char *in_);
