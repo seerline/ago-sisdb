@@ -36,7 +36,7 @@ typedef struct s_sis_json_handle
 
 typedef int (cb_sis_sub_json)(void *, s_sis_json_node *);
 
-#define MAKER_SET_ARGV(_j_, _s_, _f_, _n_, _v_) { _s_ = _v_; if (_j_) { _s_ = sis_json_cmp_child_node(_j_, _n_) ? _f_(_j_, _n_, _s_) : _s_; }}
+#define MAKER_SET_ARGV(_j_, _s_, _f_, _n_, _v_) { _s_ = _v_; if (_j_) { { _s_ = sis_json_find_node(_j_, _n_) ? _f_(_j_, _n_, _s_) : _s_; }}
 
 #ifdef __cplusplus
 extern "C" {
