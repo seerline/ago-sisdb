@@ -299,9 +299,13 @@ int main(int argc, char *argv[])
 			sis_strcpy(cmdinfo, 255, argv[c + 1]);
 			c++;
 		}
-		else if (argv[c][0] == '-' && argv[c][1] == 'd')
+		else if (argv[c][0] == '-' && argv[c][1] == 'p')
 		{
 			_server.work_mode = _server.work_mode | SERVER_WORK_MODE_DEBUG;
+		}
+		else if (argv[c][0] == '-' && argv[c][1] == 'd')
+		{
+			_server.work_mode = _server.work_mode | SERVER_WORK_MODE_FACE;
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'h')
 		{
@@ -330,7 +334,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	
-	if (!(_server.work_mode & SERVER_WORK_MODE_DEBUG))
+	if (!(_server.work_mode & SERVER_WORK_MODE_DEBUG) && !(_server.work_mode & SERVER_WORK_MODE_FACE))
 	{
 		sis_fork_process();
 	}	
