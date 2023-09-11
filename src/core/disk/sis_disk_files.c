@@ -163,6 +163,64 @@ int sis_disk_files_open_create(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
     unit->status = SIS_DISK_STATUS_CREATE | SIS_DISK_STATUS_NOSTOP;
     return 0;
 }
+size_t sis_disk_files_seek_log(s_sis_disk_files_unit *unit)
+{ 
+    size_t offset = 0;
+
+    s_sis_memory *imem = sis_memory_create_size(2 * SIS_MEMORY_SIZE);
+    bool             FILEEND = false;
+    bool             LINEEND = true;
+    size_t           size = 0;
+    s_sis_disk_head  head;   
+    // 从头开始读
+    sis_file_seek(unit->fp_1, sizeof(s_sis_disk_main_head), SEEK_SET);
+    offset += sizeof(s_sis_disk_main_head);
+    size_t ssize = 0;
+    while (!FILEEND)
+    {
+        size_t bytes = sis_memory_readfile(imem, unit->fp_1, SIS_MEMORY_SIZE);
+        if (bytes <= 0)
+        {
+            FILEEND = true; // 文件读完了, 但要处理完数据
+        }
+        // 缓存不够大就继续读
+        if (sis_memory_get_size(imem) < size)
+        {
+            continue;
+        }
+        while (sis_memory_get_size(imem) >= 2)
+        {   
+            if (LINEEND)
+            {
+                memmove(&head, sis_memory(imem), sizeof(s_sis_disk_head));
+                sis_memory_move(imem, sizeof(s_sis_disk_head));
+                if (head.hid != SIS_DISK_HID_MSG_LOG)
+                {
+                    FILEEND = true; 
+                    break;
+                }
+                // 读取数据区长度
+                ssize = (size_t)sis_memory(imem);
+                size = sis_memory_get_ssize(imem);
+                ssize =  (size_t)sis_memory(imem) - ssize; 
+                if (sis_memory_get_size(imem) < size)
+                {
+                    LINEEND = false;
+                    break;
+                }
+            }
+            sis_memory_move(imem, size);
+            // printf("%zu %zu %zu\n", offset, ssize, size);
+            offset += sizeof(s_sis_disk_head) + ssize + size;
+            // printf("--- %zu %zu %zu\n", offset, ssize, size);
+            size = 0;
+            LINEEND = true;
+        } // while SIS_DISK_MIN_RSIZE
+    } // while
+    LOG(5)("move offset: %zu %zu\n", offset, sis_file_seek(unit->fp_1, 0, SEEK_END));
+    sis_memory_destroy(imem);
+    return offset;
+}
 int sis_disk_files_open_append(s_sis_disk_files *cls_, s_sis_disk_files_unit *unit)
 {
     if (!unit)
@@ -198,7 +256,9 @@ int sis_disk_files_open_append(s_sis_disk_files *cls_, s_sis_disk_files_unit *un
     }
     else
     {
-        unit->offset = sis_file_seek(unit->fp_1, 0, SEEK_END);
+        // unit->offset = sis_file_seek(unit->fp_1, 0, SEEK_END);
+        unit->offset = sis_disk_files_seek_log(unit);
+        ftruncate(fileno(unit->fp_1), unit->offset);
         // ??? 可以在这里检查文件是否完整 不完整需要从头遍历到完整的位置
     }
     // LOG(5)("open ok..2..: %zu %d\n", unit->offset, cls_->main_head.style);
@@ -339,6 +399,7 @@ size_t sis_disk_files_write_sync(s_sis_disk_files *cls_)
     {
         return 0;
     }
+    // LOG(5)("sync: %p %zu %zu\n", unit->fp_1, sis_file_seek(unit->fp_1, 0, SEEK_END), sis_memory_get_size(unit->fcatch));
     if (sis_memory_get_size(unit->fcatch) > 0)
     {
         size = sis_file_write(unit->fp_1, sis_memory(unit->fcatch), sis_memory_get_size(unit->fcatch));
@@ -409,8 +470,11 @@ size_t sis_disk_files_write(s_sis_disk_files *cls_, s_sis_disk_head  *head_, voi
         sis_memory_cat(unit->fcatch, (char *)head_, sizeof(s_sis_disk_head));
         sis_memory_cat_ssize(unit->fcatch, ilen_);
         size_t size = sis_file_write(unit->fp_1, sis_memory(unit->fcatch), sis_memory_get_size(unit->fcatch)); 
+        sis_memory_clear(unit->fcatch);
         size += sis_file_write(unit->fp_1, in_, ilen_);
         sis_file_fsync(unit->fp_1); 
+        // printf("%lld %lld\n", sis_file_seek(unit->fp_1, 0, SEEK_END), sis_memory_get_size(unit->fcatch));
+        // printf("%lld %lld\n", sis_file_seek(unit->fp_1, 0, SEEK_END), sis_memory_get_size(unit->fcatch));
         return size; 
     }
 
@@ -516,13 +580,29 @@ size_t sis_disk_files_read_fulltext(s_sis_disk_files *cls_, void *source_, cb_si
                 }
                 if (head.hid != SIS_DISK_HID_NONE)
                 {
-                    if (callback(source_, &head, sis_memory(imem), size) < 0)
+                    int ret = callback(source_, &head, sis_memory(imem), size);
+                    sis_out_binary("ok:", sis_memory(imem), size) ;
+                    if (ret == -2)
+                    {
+                    //     // 文坏块
+                        sis_out_binary("mem:", sis_memory(imem) - 128, size + 128) ;
+                    }
+                    // else 
+                    if (ret < 0)
                     {
                         // 回调返回 -1 表示已经没有读者了
                         LOG(5)("user jump ok.\n");
                         READSTOP = true;
                         break;
                     }
+                }
+                else
+                {
+                    sis_out_binary("zero:", sis_memory(imem) - 128, size + 128) ;
+                    // 出错
+                    LOG(5)("file fail.\n");
+                    READSTOP = true;
+                    break;
                 }
                 sis_memory_move(imem, size);
                 size = 0;

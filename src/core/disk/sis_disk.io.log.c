@@ -21,6 +21,7 @@ size_t sis_disk_io_write_log(s_sis_disk_ctrl *cls_, void *in_, size_t ilen_)
         head.hid = SIS_DISK_HID_MSG_LOG;
         head.zip = SIS_DISK_ZIP_NOZIP; // LOG不压缩
         size = sis_disk_files_write(cls_->work_fps, &head, in_, ilen_);
+        
     }
     return size;
 }
@@ -31,9 +32,13 @@ int cb_sis_disk_io_read_log(void *source_, s_sis_disk_head *head_, char *imem_, 
     s_sis_disk_reader_cb *callback = ctrl->rcatch->callback; 
     // 根据hid不同写入不同的数据到obj
     // LOG(5)("other hid : %d at log. %zu\n", head_->hid, isize_);
+    // sis_out_binary("mem:", imem_, isize_);
     if(head_->hid != SIS_DISK_HID_MSG_LOG)
     {
+        // 这应该是严重错误
         LOG(5)("other hid : %d at log.\n", head_->hid);
+        // sis_out_binary("mem:", imem_, isize_);
+        return -2;
     }
     else
     {
