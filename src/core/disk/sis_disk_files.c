@@ -581,7 +581,7 @@ size_t sis_disk_files_read_fulltext(s_sis_disk_files *cls_, void *source_, cb_si
                 if (head.hid != SIS_DISK_HID_NONE)
                 {
                     int ret = callback(source_, &head, sis_memory(imem), size);
-                    sis_out_binary("ok:", sis_memory(imem), size) ;
+                    // sis_out_binary("ok:", sis_memory(imem), size) ;
                     if (ret == -2)
                     {
                     //     // 文坏块
