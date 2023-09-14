@@ -185,7 +185,15 @@ bool _server_open(const char *cmdinfo)
 			break;
 		}
 	}
-	sis_sprintf(_server.log_name, SIS_PATH_LEN, "%s%s.log", _server.log_path, name);
+	if (_server.work_mode & SERVER_WORK_MODE_DATE)
+	{
+		int idate = sis_time_get_idate(0);
+		sis_sprintf(_server.log_name, SIS_PATH_LEN, "%s%d.%s.log", _server.log_path, idate, name);
+	}
+	else
+	{
+		sis_sprintf(_server.log_name, SIS_PATH_LEN, "%s%s.log", _server.log_path, name);
+	}
 
 	return true;
 }
@@ -305,7 +313,7 @@ int main(int argc, char *argv[])
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'd')
 		{
-			_server.work_mode = _server.work_mode | SERVER_WORK_MODE_FACE;
+			_server.work_mode = _server.work_mode | SERVER_WORK_MODE_FACE | SERVER_WORK_MODE_DATE;
 		}
 		else if (argv[c][0] == '-' && argv[c][1] == 'h')
 		{
