@@ -981,7 +981,131 @@ int sis_double_list_count_nozero_split(s_sis_double_list *list_, s_sis_struct_li
 	
 	return o;
 }
+int sis_double_list_count_zero_pair_nosort(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_)
+{
+	double minimum = 0.0001;
+	s_sis_double_list *up_list = sis_double_list_create();
+	s_sis_double_list *dn_list = sis_double_list_create();
+	for (int i = 0; i < list_->value->count; i++)
+	{
+		double v = sis_double_list_get(list_, i);
+		if ( v > minimum)
+		{
+			sis_double_list_push(up_list, v);
+		}
+		if ( v < -1 * minimum)
+		{
+			sis_double_list_push(dn_list, v);
+		}
+	}	
+	int upnums = up_list->value->count > dn_list->value->count ? nums_ / 2 + nums_ % 2 : nums_ / 2;
+	int dnnums = dn_list->value->count > up_list->value->count ? nums_ / 2 + nums_ % 2 : nums_ / 2;
+	// printf("%d %d %d %d\n", upnums, dnnums, up_list->value->count, dn_list->value->count);
+	if (upnums + dnnums < nums_)
+	{
+		dnnums += 1;
+	}
+	s_sis_double_split split;
+	int dncount = sis_double_list_getsize(dn_list);
+	if (dnnums < dncount && dnnums > 1)
+	{
+		double step = (double)dncount / (double)dnnums;
+		double agov = sis_double_list_get(dn_list, 0) - minimum;
+		for (int i = 0; i < dnnums; i++)
+		{
+			if (i == 0)
+			{
+				split.minv = agov;
+				split.maxv = sis_double_list_get(dn_list, (int)step);
+				agov = split.maxv;
+			}
+			else if (i == dnnums - 1)
+			{
+				split.minv = agov;
+				split.maxv = -1 * minimum;
+			}
+			else
+			{
+				split.minv = agov;
+				split.maxv = sis_double_list_get(dn_list, (int)((i + 1) * step));
+				agov = split.maxv;
+			}
+			// printf("== %d %f | %f %f\n", dnnums, step, split.minv, split.maxv);
+			sis_struct_list_push(splits_, &split);
+		}
+	}
+	else
+	{
+		double minv = sis_double_list_get(dn_list, 0) - minimum;
+		double maxv = -1 * minimum;
+		double step = (maxv - minv) / (double)dnnums;
+		for (int i = 0; i < dnnums; i++)
+		{
+			if (i == dnnums - 1)
+			{
+				split.minv = minv +  i * step;
+				split.maxv = maxv;
+			}
+			else
+			{
+				split.minv = minv +  i * step; 
+				split.maxv = minv + (i + 1) * step;
+			}
+			sis_struct_list_push(splits_, &split);
+		}
+	}
+	int upcount = sis_double_list_getsize(up_list);
+	if (upnums < upcount && upnums > 1)
+	{
+		double step = (double)upcount / (double)upnums;
+		double agov = minimum;
+		for (int i = 0; i < upnums; i++)
+		{
+			if (i == 0)
+			{
+				split.minv = minimum;
+				split.maxv = sis_double_list_get(up_list, (int)step);
+				agov = split.maxv;
+			}
+			else if (i == upnums - 1)
+			{
+				split.minv = agov;
+				split.maxv = sis_double_list_get(up_list, upcount - 1) + minimum;
+			}
+			else
+			{
+				split.minv = agov;
+				split.maxv = sis_double_list_get(up_list, (int)((i + 1) * step));
+				agov = split.maxv;
+			}
+			sis_struct_list_push(splits_, &split);
+		}
+	}
+	else
+	{
+		double minv = minimum;
+		double maxv = sis_double_list_get(up_list, upcount - 1) + minimum;
+		double step = (maxv - minv) / (double)upnums;
+		for (int i = 0; i < upnums; i++)
+		{
+			if (i == upnums - 1)
+			{
+				split.minv = minv +  i * step;
+				split.maxv = maxv;
+			}
+			else
+			{
+				split.minv = minv +  i * step; 
+				split.maxv = minv + (i + 1) * step;
+			}
+			sis_struct_list_push(splits_, &split);
+		}
+	}
+	sis_double_list_destroy(up_list);
+	sis_double_list_destroy(dn_list);
 
+	return splits_->count;	
+}
 int sis_double_list_count_zero_pair(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_)
 {
 	double minimum = 0.000000001;
@@ -1460,6 +1584,18 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_)
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_fsort_list --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
+int sis_int_list_indexof(s_sis_int_list *list_, int64 in_)
+{
+	int64 *ptr = (int64 *)list_->buffer;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (ptr[i] == in_)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
 
 int   sis_int_list_push(s_sis_int_list *list_, int64 in_)
 {

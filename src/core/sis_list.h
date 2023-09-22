@@ -168,6 +168,7 @@ int sis_double_list_split(s_sis_double_list *list_, int nums_, double split[]);
 // 以0为中间点
 int sis_double_list_count_nozero_split(s_sis_double_list *list_,s_sis_struct_list *splits_, int nums_);
 // 以0为中间点 不包括0附近的值
+int sis_double_list_count_zero_pair_nosort(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_);
 int sis_double_list_count_zero_pair(s_sis_double_list *list_,s_sis_struct_list *splits_, int nums_);
 // 获取区间分片，排序后按数量分片
 int sis_double_list_count_split(s_sis_double_list *list_, s_sis_struct_list *splits_, int nums_);
@@ -231,6 +232,8 @@ int sis_pointer_list_find_and_delete(s_sis_pointer_list *list_, void *finder_);
 #define sis_int_list_create sis_pointer_list_create
 #define sis_int_list_destroy sis_pointer_list_destroy
 #define sis_int_list_clear sis_pointer_list_clear
+
+int sis_int_list_indexof(s_sis_pointer_list *, int64 in_);
 
 int   sis_int_list_push(s_sis_pointer_list *, int64 in_);
 int   sis_int_list_set(s_sis_pointer_list *, int64 in_);
