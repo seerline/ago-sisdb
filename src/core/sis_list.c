@@ -905,7 +905,7 @@ int sis_sort_double_list(const void *arg1, const void *arg2 )
 }
 int sis_sort_int32_list(const void *arg1, const void *arg2 ) 
 { 
-    return *(int32 *)arg1 > *(int32 *)arg2 ? 1 : -1;
+    return *(int32 *)arg1 == *(int32 *)arg2 ? 0 : *(int32 *)arg1 > *(int32 *)arg2 ? 1 : -1;
 }
 void sis_double_list_sort(s_sis_double_list *list_)
 {

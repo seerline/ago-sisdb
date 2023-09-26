@@ -5,6 +5,8 @@
 #include <math.h>
 #include <sis_malloc.h>
 
+#define  SIS_MINV   (0.0000001)
+
 #define  MERGEINT(a,b)     ( (unsigned int)( ((unsigned short)(a) << 16) | (unsigned short)(b)) )
 
 #define  sis_max(a,b)    (((a) > (b)) ? (a) : (b))
@@ -13,7 +15,7 @@
 #define SIS_MAXI(a, b) (((a) > (b)) ? (a) : (b))
 #define SIS_MINI(a, b) ((a != 0 ) && (b != 0) ? (((a) < (b)) ? (a) : (b)) : ((a != 0) ? (a) : (b)))
 
-#define SIS_IS_ZERO(a) ((a) == 0 || (((a) > -0.0000001) && ((a) < 0.0000001)))
+#define SIS_IS_ZERO(a) ((a) == 0 || (((a) > -1 * SIS_MINV) && ((a) < SIS_MINV)))
 #define SIS_MINF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) < (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 #define SIS_MAXF(a, b) (!SIS_IS_ZERO(a) && !SIS_IS_ZERO(b) ? (((a) > (b)) ? (a) : (b)) : (!SIS_IS_ZERO(a) ? a : b))
 

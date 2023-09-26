@@ -142,9 +142,9 @@ extern "C" {
 
 s_sis_double_list *sis_double_list_create(); 
 void sis_double_list_destroy(void *);
-
+// 升序
 int sis_sort_double_list(const void *arg1, const void *arg2);
-
+// 升序
 int sis_sort_uint32_list(const void *arg1, const void *arg2);
 
 // 排序必须放置到新的数组中

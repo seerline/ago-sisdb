@@ -96,7 +96,7 @@
 #pragma pack(push,1)
 
 typedef struct s_sis_dynamic_field {    
-    char           fname[32];  // 字段名 类型不要动 比较时有用
+    char           fname[255];  // 字段名 类型不要动 比较时有用
                                // 以字段名为唯一检索标记，如果用户对字段名
     unsigned char  style;      // 数据类型
     unsigned short len;        // 数据长度
@@ -539,6 +539,7 @@ static inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynami
 s_sis_dynamic_field *sis_dynamic_field_create(char *name_);
 void sis_dynamic_field_destroy(void *db_);
 
+s_sis_dynamic_field *sis_dynamic_db_add_field(s_sis_dynamic_db *db_, const char *fname_, int style, int ilen, int count, int dot);
 // 得到时间字段的精度
 int sis_dynamic_field_scale(int style_);
 
