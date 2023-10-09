@@ -536,7 +536,7 @@ static inline void sis_dynamic_field_json_to_struct(s_sis_sds out_, s_sis_dynami
 //////////////////////////////////////////////////////////////
 // 
 //////////////////////////////////////////////////////////////
-s_sis_dynamic_field *sis_dynamic_field_create(char *name_);
+s_sis_dynamic_field *sis_dynamic_field_create(const char *name_);
 void sis_dynamic_field_destroy(void *db_);
 
 s_sis_dynamic_field *sis_dynamic_db_add_field(s_sis_dynamic_db *db_, const char *fname_, int style, int ilen, int count, int dot);

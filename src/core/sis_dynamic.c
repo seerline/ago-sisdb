@@ -57,7 +57,7 @@ int _sis_dynamic_get_style(const char *str_)
 ////////////////////////////////////////////////////////////////
 // s_sis_dynamic_field
 ////////////////////////////////////////////////////////////////
-s_sis_dynamic_field *sis_dynamic_field_create(char *name_)
+s_sis_dynamic_field *sis_dynamic_field_create(const char *name_)
 {
 	s_sis_dynamic_field *o = SIS_MALLOC(s_sis_dynamic_field, o);
 	sis_strcpy(o->fname, 32, name_);
