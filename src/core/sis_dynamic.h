@@ -364,12 +364,12 @@ static inline void _sis_field_set_float(s_sis_dynamic_field *unit_, char *val_, 
 	{
 	case 4:
 		f32 = (float32)f64_;
-		memmove(val_ + unit_->offset + index_*sizeof(float32), &f32, unit_->len);
+		memmove(val_ + unit_->offset + index_ * sizeof(float32), &f32, unit_->len);
 		break;
 	case 8:
 	default:
 		f64 = (float64)f64_;
-		memmove(val_ + unit_->offset + index_*sizeof(float64), &f64, unit_->len);
+		memmove(val_ + unit_->offset + index_ * sizeof(float64), &f64, unit_->len);
 		break;
 	}
 }

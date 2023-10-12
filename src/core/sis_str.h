@@ -77,6 +77,8 @@ void sis_str_substr(char *out_, size_t olen_, const char *in_, char c, int idx_)
 int sis_str_subcmp(const char *sub, const char *s, char c);  //-1没有匹配的
 // 严格匹配
 int sis_str_subcmp_strict(const char *sub, const char *s, char c);  
+// 严格匹配 最后字符串
+int sis_strsubcmp_last(const char *sub, const char *s, char c);  
 
 int sis_str_subcmp_match(const char *sub, const char *s, char c);  
 

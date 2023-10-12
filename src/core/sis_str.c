@@ -1,6 +1,7 @@
 ﻿#include <sis_str.h>
 #include <sis_map.h>
 #include <sis_sds.h>
+#include <sis_math.h>
 
 bool sis_str_isnumber(const char *in_, size_t ilen_)
 {
@@ -149,16 +150,28 @@ const char *sis_str_split(const char *s_, size_t *len_, char c_)
 }
 void sis_str_merge(char *in_, size_t ilen_, char ch_, const char *one_, const char *two_)
 {
-	size_t s1 = sis_strlen(one_);
-	memmove(in_, one_, s1);
-	in_ += s1;  
+	int off = 0;
+	if (one_)
+	{
+		size_t s1 = sis_strlen(one_);
+		s1 = sis_min(s1, ilen_ - 2);
+		memmove(in_, one_, s1);
+		in_ += s1;  
+		off += s1;
+	}
 	if (ch_)
 	{
 		*in_ = ch_; in_++;
+		off++;
 	}
-	size_t s2 = sis_strlen(two_);
-	memmove(in_, two_, s2);
-	in_ += s2;  *in_ = 0;
+	if (two_)
+	{
+		size_t s2 = sis_strlen(two_);
+		s2 = sis_min(s2, ilen_ - off - 1);
+		memmove(in_, two_, s2);
+		in_ += s2;
+	}
+	*in_ = 0;
 }
 
 int sis_str_divide(const char *in_, char ch_, char *one_, char *two_)
@@ -478,6 +491,34 @@ int sis_str_subcmp_strict(const char *sub, const char *s, char c)
 		}
 	}
 	return -1;
+}
+int sis_strsubcmp_last(const char *sub, const char *s, char c) 
+{
+	if (!sub || !s)
+	{
+		return -1;
+	}
+	int i;
+	int sublen = (int)strlen(sub);
+	int len = (int)strlen(s);
+	for (i = len - 2; i >= 0; i--)
+	{
+		if (s[i] == c)
+		{
+			if (!sis_strncasecmp(sub, &s[i + 1], len - i - 1) && sublen == len - i - 1)
+			{
+				return 0;
+			}
+		}
+	}
+	if (i < 0)
+	{ //strncmp
+		if (!sis_strncasecmp(sub, &s[0], len) && sublen == len)
+		{
+			return 0;
+		}
+	}
+	return 1;
 }
 // s 串为 “01,02”, 检查sub中有没有这些字串，sub=“1111“ 返回-1， ”10200“ 返回 0 表示发现字串
 int sis_str_subcmp_match(const char *sub, const char *s, char c) //-1没有匹配的
