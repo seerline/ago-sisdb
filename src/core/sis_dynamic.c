@@ -78,8 +78,8 @@ s_sis_dynamic_field *sis_dynamic_db_add_field(s_sis_dynamic_db *db_, const char 
 		field->len    = ilen;       
 		field->count  = count;	
 		field->dot    = dot;     // 输出为字符串时保留的小数点
-		field->mindex = 0;     // 该字段是否为主索引
-		field->solely = 0;     // 该字段是否为唯一值
+		field->mindex = 0;       // 该字段是否为主索引
+		field->solely = 0;       // 该字段是否为唯一值
 		field->offset = db_->size;
 		db_->size += field->count * field->len;
 		sis_map_list_set(db_->fields, fname_, field);

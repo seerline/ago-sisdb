@@ -561,7 +561,7 @@ void sis_node_list_clear(s_sis_node_list *list_)
 int   sis_node_list_push(s_sis_node_list *list_, void *in_)
 {
 	s_sis_struct_list *last = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, list_->nodes->count - 1);
-	if ((last->start + last->count) >= list_->node_count)
+	if (!last || (last->start + last->count) >= list_->node_count)
 	{
 		s_sis_struct_list *node = sis_struct_list_create(list_->node_size);
 		sis_struct_list_set_size(node, list_->node_count);
@@ -608,10 +608,11 @@ void *sis_node_list_empty(s_sis_node_list *list_)
 {
 	void *v = NULL;
 	s_sis_struct_list *last = (s_sis_struct_list *)sis_pointer_list_get(list_->nodes, list_->nodes->count - 1);
-	if ((last->start + last->count) >= list_->node_count)
+	if (!last || (last->start + last->count) >= list_->node_count)
 	{
 		s_sis_struct_list *node = sis_struct_list_create(list_->node_size);
 		sis_struct_list_set_size(node, list_->node_count);
+		// LOG(1)("++ nouse:%d %d\n", list_->nouse, list_->node_count);
 		sis_pointer_list_push(list_->nodes, node);
 		v = sis_struct_list_empty(node);
 	}
@@ -634,7 +635,7 @@ void *sis_node_list_pop(s_sis_node_list *list_)
 		{
 			sis_pointer_list_delete(list_->nodes, nodeidx, 1);
 			list_->nouse -= list_->node_count;
-			// LOG(1)("nouse:%d\n", list_->nouse);
+			// LOG(1)("-- nouse:%d %d\n", list_->nouse, list_->node_count);
 		}
 		else
 		{

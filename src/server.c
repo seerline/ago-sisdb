@@ -100,7 +100,7 @@ bool _server_open(const char *cmdinfo)
 		sis_strcpy(config, 1024, _server.conf_name);
 	}
 	
-	LOG(8)("loading config file [%s]\n", config);
+	printf("loading config file [%s]\n", config);
 	if (!sis_file_exists(config))
 	{
 		printf("conf file %s no finded.\n", config);
