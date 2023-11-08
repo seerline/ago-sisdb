@@ -813,7 +813,203 @@ int sis_sort_list_getsize(s_sis_sort_list *list_)
 {
 	return sis_min(list_->key->count, list_->value->count);
 }
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_pint_slist --------------------------------//
+///////////////////////////////////////////////////////////////////////////
+s_sis_pint_slist *sis_pint_slist_create() 
+{
+	s_sis_pint_slist *o = SIS_MALLOC(s_sis_pint_slist, o);
+	o->isascend = 0;
+	o->maxcount = 0;
+	o->count = 0;
+	return o;
+}
+void sis_pint_slist_destroy(void *list_)
+{
+	s_sis_pint_slist *list = (s_sis_pint_slist *)list_;
+	if (list->keys)
+	{
+		sis_free(list->keys);
+	}
+	list->keys = NULL;
+	if (list->value)
+	{
+		sis_free(list->value);
+	}
+	list->value = NULL;
+	list->maxcount = 0;
+	sis_free(list);
+}
+void sis_pint_slist_clear(s_sis_pint_slist *list_)
+{
+	list_->count = 0;
+}
+void sis_pint_slist_set_maxsize(s_sis_pint_slist *list_, int rows_)
+{
+	if (rows_ > list_->maxcount)
+	{
+		list_->maxcount = rows_;
+		int  *keys  = sis_malloc(sizeof(int) * list_->maxcount);
+		void *value = sis_malloc(sizeof(char *) * list_->maxcount);
+		if (list_->count > 0)
+		{
+			memmove(keys,  list_->keys,  sizeof(int)    * list_->count);
+			memmove(value, list_->value, sizeof(char *) * list_->count);
+		}
+		if (list_->keys)
+		{
+			sis_free(list_->keys);
+		}
+		// printf("::::: %d %p ", rows_, list_->value);
+		if (list_->value)
+		{
+			sis_free(list_->value);
+		}
+		list_->keys = keys;
+		list_->value= value;
+		// printf(":= %p \n", list_->value);
+		return ;	
+	}
+	// if (rows_ < list_->maxcount)
+	// {
 
+	// }
+}
+
+int sis_pint_slist_set(s_sis_pint_slist *list_, int key_, void *in_)
+{
+	int finded = -1;
+	int index = list_->count;
+	if (list_->isascend)
+	{
+		for (int i = 0; i < list_->count; i++)
+		{
+			if (list_->keys[i] == key_)
+			{
+				finded = i;
+			}
+			if (list_->keys[i] > key_)
+			{
+				index = i;
+				// 插入
+				break;
+			}
+		}
+	}
+	else
+	{
+		for (int i = 0; i < list_->count; i++)
+		{
+			if (list_->keys[i] == key_)
+			{
+				finded = i;
+			}
+			if (list_->keys[i] < key_)
+			{
+				index = i;
+				// 插入
+				break;
+			}
+		}
+	}
+	if (finded >= 0)
+	{
+		list_->keys[finded] = key_;
+		char **ptr = (char **)list_->value;
+		ptr[finded] = (char *)in_;
+		return finded;
+	}
+	if (index >= list_->count)
+	{
+		if (list_->count < list_->maxcount)
+		{
+			list_->keys[list_->count] = key_;
+			char **ptr = (char **)list_->value;
+			ptr[list_->count] = (char *)in_;
+			list_->count ++;
+		}
+		else
+		{
+			// 表示设置的值在区间范围外了
+			return -1;
+		}
+	}
+	else
+	{
+		// char **ptr = (char **)list_->value;
+		int count = list_->count;
+		if (list_->count >= list_->maxcount)
+		{
+			count = list_->maxcount - 1;
+		}
+		// for (int i = index; i < count; i++)
+		// {
+		// 	list_->keys[index + 1]
+		// }
+		
+
+		// 向后方移动内存
+		memmove((char *)list_->keys + ((index + 1) * sizeof(int)),
+			(char *)list_->keys + (index * sizeof(int)),
+			(count - index) * sizeof(int));
+		memmove((char *)list_->value + ((index + 1) * sizeof(char *)),
+			(char *)list_->value + (index * sizeof(char *)),
+			(count - index) * sizeof(char *));
+
+		list_->keys[index] = key_;
+		char **ptr = (char **)list_->value;
+		ptr[index] = in_;
+		if (list_->count < list_->maxcount)
+		{
+			list_->count ++;
+		}
+	}
+	return index;
+}
+
+void *sis_pint_slist_get(s_sis_pint_slist *list_, int index_)
+{
+	if (index_ < 0 || index_ > list_->count - 1)
+	{
+		return NULL;
+	}
+	char **ptr = (char **)list_->value;
+	return ptr[index_];
+}
+int sis_pint_slist_delk(s_sis_pint_slist *list_, int key_)
+{
+	int index = -1;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->keys[i] == key_)
+		{
+			index = i;
+			// 插入
+			break;
+		}
+	}
+	sis_pint_slist_del(list_, index);
+	return index;
+}
+void sis_pint_slist_del(s_sis_pint_slist *list_, int index_)
+{
+	if (index_ < 0 || index_ > list_->count - 1)
+	{
+		return ;
+	}
+	if (index_ < list_->count - 1)
+	{
+		memmove((char *)list_->keys + (index_ * sizeof(int)), (char *)list_->keys + ((index_ + 1) * sizeof(int)),
+				(list_->count - 1 - index_) * sizeof(int));
+		memmove((char *)list_->value + (index_ * sizeof(void *)), (char *)list_->value + ((index_ + 1) * sizeof(void *)),
+				(list_->count - 1 - index_) * sizeof(void *));
+	}
+	list_->count --;
+}
+int sis_pint_slist_getsize(s_sis_pint_slist *list_)
+{
+	return list_->count;
+}
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_double_list --------------------------------//
 ///////////////////////////////////////////////////////////////////////////
@@ -2338,6 +2534,90 @@ int main()
     }
 
     sis_double_list_destroy(vlist);
+	return 0;
+}
+#endif
+
+#if 0
+// test s_sis_pint_slist
+int main()
+{
+	s_sis_pint_slist *v = sis_pint_slist_create(); 
+
+	sis_pint_slist_set_maxsize(v, 5);
+	
+	for (int i = 0; i < 20; i++)
+	{
+		sis_pint_slist_set(v, i, (void *)i);
+		printf("===%d===\n", i);
+		for (int k = 0; k < v->count; k++)
+		{
+			void *s = sis_pint_slist_get(v, k);
+			printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+		}
+	}
+	printf("======\n");
+	sis_pint_slist_delk(v, 16);
+	for (int k = 0; k < v->count; k++)
+	{
+		void *s = sis_pint_slist_get(v, k);
+		printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+	}
+	printf("======\n");
+	sis_pint_slist_set(v, 18, (void *)1001);
+	for (int k = 0; k < v->count; k++)
+	{
+		void *s = sis_pint_slist_get(v, k);
+		printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+	}
+	sis_pint_slist_set_maxsize(v, 10);
+	printf("======\n");
+	sis_pint_slist_set(v, 13, (void *)1002);
+	for (int k = 0; k < v->count; k++)
+	{
+		void *s = sis_pint_slist_get(v, k);
+		printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+	}
+	printf("======\n");
+	sis_pint_slist_set(v, 16, (void *)1003);
+	for (int k = 0; k < v->count; k++)
+	{
+		void *s = sis_pint_slist_get(v, k);
+		printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+	}
+
+	/////
+	printf("===isascend===\n");
+	v->isascend = 1;
+	sis_pint_slist_clear(v);
+
+	for (int i = 0; i < 20; i = i + 2)
+	{
+		sis_pint_slist_set(v, i, (void *)i);
+		printf("===%d===\n", i);
+		for (int k = 0; k < v->count; k++)
+		{
+			void *s = sis_pint_slist_get(v, k);
+			printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+		}
+	}
+	printf("======\n");
+	sis_pint_slist_delk(v, 2);
+	for (int k = 0; k < v->count; k++)
+	{
+		void *s = sis_pint_slist_get(v, k);
+		printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+	}
+	printf("======\n");
+	sis_pint_slist_set(v, 3, (void *)1001);
+	for (int k = 0; k < v->count; k++)
+	{
+		void *s = sis_pint_slist_get(v, k);
+		printf("::===%d %d===%lld\n", v->count, k, (int64)s);
+	}
+
+	sis_pint_slist_destroy(v);
+
 	return 0;
 }
 #endif

@@ -2,7 +2,6 @@
 #include "worker.h"
 #include <sis_mul_worker.h>
 #include <sis_math.h>
-#include <sis_ai_list.h>
 
 static void *_thread_mul_worker(void *argv_)
 {
@@ -98,7 +97,7 @@ void sis_mul_worker_cxt_destroy(s_sis_mul_worker_cxt *cxt)
 }
 void sis_mul_worker_cxt_add_task(s_sis_mul_worker_cxt *cxt, const char *hashstr,sis_method_define *method, void *context,void *argv,void *vfree)
 {
-    int idx = sis_ai_get_hash(hashstr, sis_strlen(hashstr), cxt->wnums);
+    int idx = sis_get_hash(hashstr, sis_strlen(hashstr), cxt->wnums);
     // printf("idx = %d %s %d %d\n", idx, hashstr, sis_strlen(hashstr), cxt->wnums);
     if (cxt->wthreads[idx])
     {

@@ -104,6 +104,38 @@ int sis_sort_list_getsize(s_sis_sort_list *list_);
 }
 #endif
 
+// 排序指针队列
+typedef struct s_sis_pint_slist {
+	int		     maxcount; // 总数
+	int		     count;    // 当前个数
+	int8         isascend; // 是否为升序
+	int          *keys;     // int* 类型
+	void         *value;    // 结构类型
+} s_sis_pint_slist;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+s_sis_pint_slist *sis_pint_slist_create(); 
+void sis_pint_slist_destroy(void *);
+void sis_pint_slist_clear(s_sis_pint_slist *list_);
+
+void sis_pint_slist_set_maxsize(s_sis_pint_slist *list_, int rows_);
+
+int sis_pint_slist_set(s_sis_pint_slist *, int key_, void *in_);
+
+void *sis_pint_slist_get(s_sis_pint_slist *, int index_);
+
+int sis_pint_slist_delk(s_sis_pint_slist *list_, int key_);
+
+void sis_pint_slist_del(s_sis_pint_slist *list_, int index_);
+
+int sis_pint_slist_getsize(s_sis_pint_slist *list_);
+
+#ifdef __cplusplus
+}
+#endif
+
 ///////////////////////////////////////////////////////////////////////////
 //------------------------s_sis_double_list -----------------------------//
 // 一组浮点数的数组，支持取均值，排序后取分割区块值 

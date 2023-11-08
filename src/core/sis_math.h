@@ -264,6 +264,20 @@ static inline int sis_score_random(int maxv_, int minv_)
 	}
 	return curv;
 }
-
+// 获得字符串的hash值 最大不超过nums 便于进行多任务运算
+static inline int sis_get_hash(const char *in_, int isize_, int nums_)
+{
+    if (nums_ < 1)
+    {
+        return 0;
+    }
+    int index = 0;
+    for (int i = 0; i < isize_; i++)
+    {
+        index += ((unsigned char)(in_[i]) % nums_);
+    }
+    index = index % nums_;
+    return index;
+}
 #endif //_SIS_MATH_H
 
