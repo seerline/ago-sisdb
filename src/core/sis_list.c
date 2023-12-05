@@ -1044,6 +1044,22 @@ int sis_double_list_push(s_sis_double_list *list_, double in_)
 
 	return sis_struct_list_push(list_->value, &in_);
 }
+void sis_double_list_calc(s_sis_double_list *list_)
+{
+	list_->avgv = 0.0;
+	list_->maxv = 0.0;
+	list_->minv = 0.0;
+	int count = list_->value->count;
+	double sumv = 0.0;
+	for (int i = 0; i < count; i++)
+	{
+		double v = sis_double_list_get(list_, i);
+		sumv += v;
+		list_->maxv = SIS_MAXF(list_->maxv, v);
+		list_->minv = SIS_MINF(list_->minv, v);
+	}
+	list_->avgv = (sumv) / (count);
+}
 
 int sis_double_list_push_limit(s_sis_double_list *list_, int maxnums_, double in_)
 {

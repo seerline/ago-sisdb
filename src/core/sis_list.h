@@ -179,6 +179,7 @@ int sis_sort_double_list(const void *arg1, const void *arg2);
 // 升序
 int sis_sort_uint32_list(const void *arg1, const void *arg2);
 
+void sis_double_list_calc(s_sis_double_list *src_);
 // 排序必须放置到新的数组中
 void sis_double_list_sort(s_sis_double_list *src_);
 // 限制型插入 不计算最大最小值 均值
