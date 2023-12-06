@@ -645,6 +645,65 @@ int sis_time_get_idate_from_shstr(const char *in_) //"2015-10-20" => 20151020
 
 	return year * 10000 + mon * 100 + mday;
 }
+msec_t sis_time_get_msec_from_shortstr(const char *in_, int idate) //"12:30:38"  
+{
+	msec_t out = 0;
+	if (strlen(in_) < 7)
+	{
+		return out;
+	}
+
+	int i = 0, c = 0;
+
+	int hour, min, sec, msec = 0;
+
+	i = 0;
+
+	hour = in_[i++] - '0';
+	if (in_[i] != ':')
+	{
+		hour = 10 * hour + in_[i++] - '0';
+	}
+	if (23 < hour)
+	{
+		return out;
+	}
+
+	i++; // skip ':'
+
+	min = in_[i++] - '0';
+	if (in_[i] != ':')
+	{
+		min = 10 * min + in_[i++] - '0';
+	}
+	if (59 < min)
+	{
+		return out;
+	}
+
+	i++; // skip ':'
+
+	sec = in_[i++] - '0';
+	if (in_[i] != ':')
+	{
+		sec = 10 * sec + in_[i++] - '0';
+	}
+	if (60 < sec)
+	{
+		return out;
+	}
+
+	if (in_[i] && in_[i] == '.')
+	{
+		++i;
+		msec = in_[i++] - '0';
+		msec = 10 * msec + in_[i++] - '0';
+		msec = 10 * msec + in_[i++] - '0';
+	}
+	out = sis_time_make_time(idate, hour * 10000 + min * 100 + sec);
+    return  out * 1000 + msec;
+}
+
 msec_t sis_time_get_msec_from_longstr(const char *in_) //"2015-10-20 12:30:38"
 {
 	msec_t out = 0;
