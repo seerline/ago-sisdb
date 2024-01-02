@@ -25,7 +25,7 @@
 #define SIS_ITOF(f, z) ((double)(f)/(double)(z))
 
 #define SIS_ZOOM_UP(f, z) ({ int _v_ = (double)(f)/(double)(z); _v_ * z < f ? (_v_ + 1) * z : _v_ * z; })
-#define SIS_ZOOM_DN(f, z) ({ int _v_ = (double)(f)/(double)(z); _v_ * z; })
+#define SIS_ZOOM_DN(f, z) ({ int _v_ = (double)(f)/(double)(z); _v_ == 0 ? z : _v_ * z; })
 
 // a <= a
 #define SIS_FLOOR(f, z) ((double)((long long)((f)*(z)))/(double)(z))
