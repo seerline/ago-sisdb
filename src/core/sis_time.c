@@ -653,7 +653,7 @@ msec_t sis_time_get_msec_from_shortstr(const char *in_, int idate) //"12:30:38"
 		return out;
 	}
 
-	int i = 0, c = 0;
+	int i = 0;
 
 	int hour, min, sec, msec = 0;
 
