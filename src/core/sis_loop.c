@@ -11,8 +11,11 @@ s_sis_floops *sis_floops_create(int size)
 {
 	s_sis_floops *o = SIS_MALLOC(s_sis_floops, o);
 	o->size  = size;
-	o->value = sis_malloc(sizeof(float) * size);
-	memset(o->value, 0, sizeof(float) * size);
+	if (size > 0)
+	{
+		o->value = sis_malloc(sizeof(float) * size);
+		memset(o->value, 0, sizeof(float) * size);
+	}
 	o->mini = -1;
 	o->maxi = -1;
 	return o;
@@ -23,6 +26,33 @@ void sis_floops_destroy(void *floops_)
 	sis_free(floops->value);
 	sis_free(floops); 
 }
+void sis_floops_reset_size(s_sis_floops *floops, int newsize)
+{
+	if (newsize > floops->size)
+	{
+		float *value = sis_malloc(sizeof(float) * newsize);
+		if (floops->count > 0)
+		{
+			if (floops->start > 0)
+			{
+				memmove(value, &floops->value[floops->start], (floops->size - floops->start) * sizeof(float));
+				memmove(&value[floops->size - floops->start], floops->value, (floops->count + floops->start - floops->size) * sizeof(float));
+				floops->start = 0;
+			}
+			else
+			{
+				memmove(value, &floops->value[floops->start], floops->count * sizeof(float));
+			}
+		}
+		sis_free(floops->value);
+		floops->value = value;
+	}
+	// if (newsize < floops->size)
+	// {
+	// 	sis_floops_recalc(floops);
+	// }
+}
+
 void sis_floops_clear(s_sis_floops *floops)
 {
 	if (floops)

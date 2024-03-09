@@ -28,6 +28,7 @@ s_sis_floops *sis_floops_create(int size);
 void sis_floops_destroy(void *);
 void sis_floops_clear(s_sis_floops *);
 
+void sis_floops_reset_size(s_sis_floops *, int newsize);
 
 float sis_floops_get(s_sis_floops *, int index);
 int sis_floops_push(s_sis_floops *, float ); 
