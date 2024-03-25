@@ -7,6 +7,10 @@
 
 #pragma pack(push,1)
 
+///////////////////////
+// s_sis_groups 定义
+///////////////////////
+
 // 内部都为升序 
 typedef struct s_sis_groups_kv {
 	int     gindex;      // 哪个分组 -1 未进入分组
@@ -43,6 +47,18 @@ typedef struct s_sis_groups {
 	void  (*vfree)(void *);             // 释放 value 的函数
 	s_sis_pointer_list **vindexs;       // 仅保存数据指针 zero_index为 0值的分组 从 1 开始为实际分组 统一由小到大
 } s_sis_groups;
+
+///////////////////////
+// s_sis_fgroup 定义
+///////////////////////
+typedef struct s_sis_fgroup {
+	int		     maxcount; // 总数
+	int		     count;    // 当前个数
+	double      *key;      // 索引
+	void        *val;      // 数据指针
+	void (*vfree)(void *); // == NULL 不释放对应内存
+} s_sis_fgroup;
+
 
 #pragma pack(pop)
 
@@ -93,5 +109,28 @@ void *sis_groups_iter_get_v(s_sis_groups *);
 s_sis_groups_kv *sis_groups_iter_get_kv(s_sis_groups *);
 
 void sis_groups_iter_stop(s_sis_groups *);
+
+
+///////////////////////
+// s_sis_fgroup 定义
+///////////////////////
+
+s_sis_fgroup *sis_fgroup_create(void *vfree_); 
+void sis_fgroup_destroy(void *);
+void sis_fgroup_clear(s_sis_fgroup *list_);
+// 默认从大到小排序
+int   sis_fgroup_set(s_sis_fgroup *, double key_, void *in_);
+void *sis_fgroup_get(s_sis_fgroup *, int index_);
+
+double sis_fgroup_getkey(s_sis_fgroup *, int index_);
+
+// 找对应数据指针
+int sis_fgroup_find(s_sis_fgroup *, void *value_);
+
+void sis_fgroup_reset(s_sis_fgroup *list_, double key_, int index_);
+
+void sis_fgroup_del(s_sis_fgroup *list_, int index_);
+int sis_fgroup_getsize(s_sis_fgroup *list_);
+
 
 #endif

@@ -1626,7 +1626,7 @@ void _pointer_list_grow(s_sis_pointer_list *list_, int len_)
 	else
 	{
 		maxlen = len_ + POINTER_LIST_STEP_ROW;
-	}
+	} 
 	void *newbuffer = sis_malloc(maxlen * list_->len);
 	if (list_->buffer)
 	{

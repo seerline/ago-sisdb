@@ -733,6 +733,225 @@ void sis_groups_iter_stop(s_sis_groups *groups)
 	groups->iter =  NULL;
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+//------------------------s_sis_fgroup --------------------------------//
+///////////////////////////////////////////////////////////////////////////
+
+s_sis_fgroup *sis_fgroup_create(void *vfree_)
+{
+	s_sis_fgroup *o = SIS_MALLOC(s_sis_fgroup, o);
+	o->maxcount = 0;
+	o->count = 0;
+	o->key = NULL;
+	o->val = NULL;
+	o->vfree = vfree_;
+	return o;
+}
+void sis_fgroup_destroy(void *list_)
+{
+	s_sis_fgroup *list = (s_sis_fgroup *)list_;
+	sis_fgroup_clear(list);
+	if (list->key)
+	{
+		sis_free(list->key);
+	}
+	if (list->val)
+	{
+		sis_free(list->val);
+	}
+	sis_free(list);
+}
+void sis_fgroup_clear(s_sis_fgroup *list_)
+{
+	char **ptr = (char **)list_->val;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (list_->vfree && ptr[i])
+		{
+			list_->vfree(ptr[i]);
+			ptr[i] = NULL;
+		}
+	}
+	list_->count = 0;
+}
+void _fgroup_grow(s_sis_fgroup *list_, int incr_)
+{
+	int newlen = list_->count + incr_;
+	if (newlen <= list_->maxcount)
+	{
+		return;
+	}
+	int maxlen = newlen;
+	if (newlen == 1)
+	{
+		maxlen = 1;
+	}
+	else if (newlen < 16)
+	{
+		maxlen = 16;
+	}
+	else if (newlen >= 16 && newlen < 256)
+	{
+		maxlen = 256;
+	}
+	else if (newlen >= 256 && newlen < 4096)
+	{
+		maxlen = 4096;
+	}
+	else
+	{
+		maxlen = newlen * 2;
+	}
+	double *newkey = sis_malloc(maxlen * sizeof(double));
+	void  *newval = sis_malloc(maxlen * sizeof(char *));
+	if (list_->val)
+	{
+		if (list_->count > 0)
+		{
+			memmove(newval, list_->val, list_->count * sizeof(char *));
+		}
+		sis_free(list_->val);
+	}
+	if (list_->key)
+	{
+		if (list_->count > 0)
+		{
+			memmove(newkey, list_->key, list_->count * sizeof(double));
+		}
+		sis_free(list_->key);
+	}
+	list_->key = newkey;
+	list_->val = newval;
+	list_->maxcount = maxlen;
+}
+int _fgroup_find(s_sis_fgroup *list_, int left, int right, double curv)
+{
+	while(left <= right) 
+	{
+        int mid = left + (right - left) / 2;
+
+        // 检查中间元素
+        if (list_->key[mid] == curv) 
+		{
+            return mid;
+        }
+
+        // 如果目标值比中间元素小，只需在右侧查找 
+        if (list_->key[mid] > curv) 
+		{
+            left = mid + 1;
+        }
+        // 如果目标值比中间元素大，只需在左侧查找
+        else 
+		{
+            right = mid - 1;
+        }
+    }
+	return left;
+}
+int sis_fgroup_set(s_sis_fgroup *list_, double key_, void *in_)
+{
+	int index = _fgroup_find(list_, 0, list_->count - 1, key_);
+	_fgroup_grow(list_, 1);
+	if (index < 0 || index > list_->count - 1)
+	{
+		list_->key[list_->count] = key_;
+		char **ptr = (char **)list_->val;
+		ptr[list_->count] = (char *)in_;
+		
+		list_->count++;
+		index = list_->count;
+	}
+	else
+	{
+		memmove(&list_->key[index + 1], &list_->key[index], (list_->count - index) * sizeof(double));
+		memmove((char *)list_->val + ((index + 1) * sizeof(char *)), (char *)list_->val + (index * sizeof(char *)),
+			(list_->count - index) * sizeof(char *));
+
+		list_->key[index] = key_;
+		char **ptr = (char **)list_->val;
+		ptr[index] = (char *)in_;
+
+		list_->count++;
+	}
+	
+	return index;
+}
+int sis_fgroup_find(s_sis_fgroup *list_, void *value_)
+{
+	char **ptr = (char **)list_->val;
+	for (int i = 0; i < list_->count; i++)
+	{
+		if (ptr[i]== value_)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+void *sis_fgroup_get(s_sis_fgroup *list_, int index_)
+{
+	char *rtn = NULL;
+	if (index_ >= 0 && index_ < list_->count)
+	{
+		char **ptr = (char **)list_->val;
+		rtn = ptr[index_];
+	}
+	return rtn;
+}
+double sis_fgroup_getkey(s_sis_fgroup *list_, int index_)
+{
+	double rtn = 0.0;
+	if (index_ >= 0 && index_ < list_->count)
+	{
+		rtn = list_->key[index_];
+	}
+	return rtn;
+}
+void sis_fgroup_del(s_sis_fgroup *list_, int index_)
+{
+	if (index_ < 0 || list_->count < 1 || index_ > list_->count - 1)
+	{
+		return ;
+	}
+	char **ptr = (char **)list_->val;
+	if (list_->vfree && ptr[index_])
+	{
+		list_->vfree(ptr[index_]);
+		ptr[index_] = NULL;
+	}
+	if (index_ < list_->count - 1)
+	{
+		memmove(&list_->key[index_], &list_->key[index_ + 1], (list_->count - index_ - 1) * sizeof(double));
+		memmove((char *)list_->val + (index_ * sizeof(char *)), (char *)list_->val + ((index_ + 1 )* sizeof(char *)),
+			(list_->count - index_ - 1) * sizeof(char *));
+	}
+	list_->count--;
+}
+
+void sis_fgroup_reset(s_sis_fgroup *list_, double key_, int index_)
+{
+	if (index_ < 0 || list_->count < 1 || index_ > list_->count - 1)
+	{
+		return ;
+	}
+	char **ptr = (char **)list_->val;
+	char *mval = ptr[index_];
+	if (index_ < list_->count - 1)
+	{
+		memmove(&list_->key[index_], &list_->key[index_ + 1], (list_->count - index_ - 1) * sizeof(double));
+		memmove((char *)list_->val + (index_ * sizeof(char *)), (char *)list_->val + ((index_ + 1 )* sizeof(char *)),
+			(list_->count - index_ - 1) * sizeof(char *));
+	}
+	list_->count--;
+	sis_fgroup_set(list_, key_, mval);
+}
+
+int sis_fgroup_getsize(s_sis_fgroup *list_)
+{
+	return list_->count;
+}
 #if 0
 void printf_group(s_sis_groups *g)
 {

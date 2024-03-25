@@ -106,9 +106,9 @@ int sis_sort_list_getsize(s_sis_sort_list *list_);
 
 // 排序指针队列
 typedef struct s_sis_pint_slist {
-	int		     maxcount; // 总数
-	int		     count;    // 当前个数
-	int8         isascend; // 是否为升序
+	int		     maxcount;  // 总数
+	int		     count;     // 当前个数
+	int8         isascend;  // 是否为升序
 	int          *keys;     // int* 类型
 	void         *value;    // 结构类型
 } s_sis_pint_slist;
