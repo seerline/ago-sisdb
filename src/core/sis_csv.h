@@ -23,7 +23,9 @@ typedef struct s_sis_file_csv
 	s_sis_map_int      *head;      // 头信息 对应 cols
 	s_sis_pointer_list *list;      // s_sis_file_csv_unit 
 }s_sis_file_csv;
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 s_sis_file_csv * sis_file_csv_open(const char *name_, char c_, int mode_, int access_);
 void sis_file_csv_close(s_sis_file_csv *csv_);
 
@@ -51,7 +53,9 @@ s_sis_sds sis_csv_make_uint(s_sis_sds in_, uint64 val_);
 s_sis_sds sis_csv_make_double(s_sis_sds in_, double val_, int dot_);
 s_sis_sds sis_csv_make_end(s_sis_sds in_);
 
-
+#ifdef __cplusplus
+}
+#endif
 #define  SIS_CSV_GET_INT(a,z)   ({   \
     char s[64]; memmove(s, a->argv[z], a->argsize[z]); s[a->argsize[z]] = 0; \
     sis_trim(s); sis_atoll(s); \

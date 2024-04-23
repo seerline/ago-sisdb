@@ -145,7 +145,7 @@ static void _cb_recv(void *source_, s_sis_net_message *msg_)
         {
             switch (msg_->tag)
             {
-            case SIS_NET_TAG_SUB_OPEN:
+            case SIS_NET_TAG_SUB_START:
             case SIS_NET_TAG_SUB_WAIT:
             case SIS_NET_TAG_SUB_STOP:
                 if(ask->cb_reply)
