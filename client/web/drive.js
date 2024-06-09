@@ -8,8 +8,8 @@ function connect_server() {
   // client.ws = new WebSocket('ws://woan2007.ticp.io:7329');
   // client.ws = new WebSocket('ws://192.168.1.202:7329');
   // client.ws = new WebSocket('ws://d17.sci-inv.cn:30010');
-  client.ws = new WebSocket('ws://d31.sci-inv.cn:30010');
-  // client.ws = new WebSocket('ws://127.0.0.1:30010');
+  // client.ws = new WebSocket('ws://d31.sci-inv.cn:30010');
+  client.ws = new WebSocket('ws://127.0.0.1:30010');
   
   // client.ws = new WebSocket('ws://127.0.0.1:7329');
   // client.ws = new WebSocket('ws://192.168.3.118:10810');
