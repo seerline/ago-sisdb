@@ -444,7 +444,7 @@ int cmd_sisdb_rsno_get(void *worker_, void *argv_)
     sis_disk_reader_destroy(context->work_reader);
     context->work_reader = NULL;
 
-    LOG(5)("get sno stop. ok [%d] %d\n", context->work_date, context->status);
+    LOG(5)("get sno stop. ok [%d] %d %d\n", context->work_date, subdate, context->status);
     if (!obj)
     {
         return SIS_METHOD_NIL;
