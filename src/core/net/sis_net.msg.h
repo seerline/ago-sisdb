@@ -7,6 +7,10 @@
 #include <sis_list.h>
 #include <sis_map.h>
 
+#if defined __cplusplus
+	extern "C"{
+#endif
+
 //--------------------------------------------------------------//
 // 正常网络包处理流程
 // 1.收到数据 判断包是否完整 完整就切断数据原样放到队列中
@@ -205,5 +209,9 @@ void sis_net_msg_clear_service(s_sis_net_message *);
 void sis_net_msg_clear_cmd(s_sis_net_message *);
 void sis_net_msg_clear_info(s_sis_net_message *);
 void sis_net_msg_clear_subject(s_sis_net_message *);
+
+#if defined __cplusplus
+	}
+#endif
 
 #endif //_SIS_CRYPT_H

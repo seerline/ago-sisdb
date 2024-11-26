@@ -55,7 +55,7 @@ static inline zint32 sis_double_to_zint32(double in_, int dot_, bool valid_)
             in = in * 10;
         }        
         // printf("=2= %f\n", in_);
-        z.zint = (in + 0.5);
+        z.zint = (in + 0.5000001);
         z.attr = z.zint != 0 ? z.attr : 0;
     }
 	return z;
